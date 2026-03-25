@@ -25,27 +25,185 @@
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+        }
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none; z-index: 0;
+        }
+        #root { position: relative; z-index: 1; }
+
+        /* ── Notion Styler 전용 클래스 ── */
+        .ns-wrap {
+            width: 100%; max-width: 1080px;
+            margin: 0 auto; padding: 48px 20px 80px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr;
+            column-gap: 20px;
+            align-items: stretch;
+        }
+        .ns-full {
+            grid-column: 1 / -1;
+        }
+        .ns-col-left,
+        .ns-col-right {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        /* 텍스트 입력 카드 = 높이 유동 확장 */
+        .ns-col-left > .ns-card:first-child {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .ns-col-left > .ns-card:first-child .ns-textarea {
+            flex: 1;
+            min-height: 120px;
+        }
+        /* 미리보기 카드 = 높이 맞춤 확장 */
+        .ns-col-right > .ns-card:first-child {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .ns-col-right > .ns-card:first-child .ns-preview {
+            flex: 1;
+            min-height: 160px;
+        }
+        @media (max-width: 760px) {
+            .ns-wrap { grid-template-columns: 1fr; }
+            .ns-full { grid-column: 1; }
+        }
+        .ns-card {
+            background: var(--card-bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px;
+        }
+        .ns-card-title {
+            font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+            text-transform: uppercase; color: var(--fg-muted); margin-bottom: 16px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .ns-card-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+        .ns-label { display: block; font-size: 13px; font-weight: 500; color: var(--fg-muted); margin-bottom: 8px; }
+        .ns-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .ns-align-btns { display: flex; gap: 3px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 3px; }
+        .ns-align-btn { padding: 5px; border: none; background: none; cursor: pointer; color: var(--fg-muted); border-radius: 5px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+        .ns-align-btn.active { background: var(--primary); color: #fff; }
+        .ns-textarea {
+            width: 100%; background: var(--bg); border: 1px solid var(--border);
+            border-radius: 8px; padding: 12px 14px; font-size: 16px;
+            color: var(--fg); outline: none; transition: border-color 0.2s; resize: vertical;
+            min-height: 100px; font-family: inherit;
+        }
+        .ns-textarea:focus { border-color: var(--primary); }
+        .ns-tab-group { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+        .ns-tab {
+            flex: 1; padding: 8px 10px; background: var(--bg);
+            border: 1px solid var(--border); border-radius: 8px;
+            color: var(--fg-muted); font-size: 12px; font-family: inherit;
+            cursor: pointer; transition: all 0.15s; text-align: center;
+            display: flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap;
+        }
+        .ns-tab.active { background: rgba(0,111,238,0.1); border-color: var(--primary); color: var(--primary); font-weight: 700; }
+        .ns-color-grid { display: flex; flex-wrap: wrap; gap: 5px; padding: 6px 0; align-content: flex-start; }
+        .ns-swatch {
+            width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.15s; border: 2px solid transparent; outline: none;
+            flex-shrink: 0;
+        }
+        .ns-swatch:hover { transform: scale(1.15); }
+        .ns-swatch.selected { outline: 2px solid var(--primary); outline-offset: 2px; transform: scale(1.15); }
+        .ns-swatch-transparent { background: white; border: 1px solid var(--border); position: relative; overflow: hidden; }
+        .ns-swatch-transparent::before { content: ''; position: absolute; width: 140%; height: 2px; background: #f31260; transform: rotate(-45deg); }
+        .ns-custom-color { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; border-radius: 50%; overflow: hidden; }
+        .ns-color-input { position: absolute; width: 200%; height: 200%; opacity: 0; cursor: pointer; }
+        .ns-color-preview { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); }
+        .ns-font-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        .ns-font-btn {
+            padding: 8px 4px; font-size: 11px; background: var(--bg);
+            border: 1px solid var(--border); border-radius: 8px;
+            color: var(--fg-muted); cursor: pointer; font-family: inherit;
+            transition: all 0.15s; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .ns-font-btn.active { background: rgba(0,111,238,0.1); border-color: var(--primary); color: var(--primary); font-weight: 700; }
+        .ns-preview {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+            padding: 24px; min-height: 100px; display: flex; align-items: center; justify-content: center; overflow-x: auto;
+        }
+        .ns-code-wrap { position: relative; margin-bottom: 10px; }
+        .ns-code {
+            width: 100%; padding: 14px 48px 14px 14px;
+            background: #12121e; color: #e2e8f0;
+            border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+            overflow-x: auto; white-space: pre-wrap; word-break: break-all;
+            border: 1px solid #252535; margin: 0;
+        }
+        .ns-copy-btn {
+            position: absolute; right: 8px; top: 8px;
+            padding: 7px; background: rgba(255,255,255,0.08); border: none;
+            border-radius: 6px; cursor: pointer; color: #94a3b8;
+            display: flex; align-items: center; transition: all 0.15s;
+        }
+        .ns-copy-btn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+        .ns-copy-btn.copied { background: #17c964; color: #fff; }
+        .ns-hint { font-size: 11.5px; color: var(--fg-muted); display: flex; align-items: center; gap: 5px; }
+        .ns-hint code { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; background: var(--border); padding: 1px 5px; border-radius: 4px; color: var(--fg); }
+        .ns-actions { display: flex; gap: 8px; }
+        .ns-action-btn {
+            flex: 1; padding: 13px; background: var(--card-bg);
+            border: 1px solid var(--border); border-radius: 10px;
+            color: var(--fg-muted); font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all 0.15s;
+            display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit;
+        }
+        .ns-action-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(0,111,238,0.06); }
+
+        /* ── 색상 스와치 Tailwind 다크모드 보정 ── */
+        [data-theme="dark"] .ns-swatch.bg-gray-200  { background-color: #3f3f46 !important; }
+        [data-theme="dark"] .ns-swatch.bg-white     { background-color: #27272a !important; border-color: #3f3f46 !important; }
+        [data-theme="dark"] .ns-swatch-transparent  { background-color: #27272a !important; border-color: #3f3f46 !important; }
+
+        /* ── 색상 탭 (글자색/배경색) 토글 ── */
+        .ns-tab-group .ns-tab { min-height: 38px; }
+
+        /* ── 크기 탭 균등 배분 ── */
+        .ns-tab-group.size-tabs .ns-tab { flex: 1; }
+
+        /* ── 글꼴 스타일 그리드 호버 ── */
+        .ns-font-btn:hover:not(.active) {
+            background: rgba(0,111,238,0.06);
+            border-color: var(--primary);
+            color: var(--primary);
         }
 
-        /* dark mode override for React/Tailwind body */
-        [data-theme="dark"] body { background: #0d0d0d !important; }
-        [data-theme="dark"] .bg-gray-50 { background-color: #0d0d0d !important; }
-        [data-theme="dark"] .bg-white { background-color: #1a1a1a !important; }
-        [data-theme="dark"] .border-gray-100,
-        [data-theme="dark"] .border-gray-200 { border-color: #2a2a2a !important; }
-        [data-theme="dark"] .text-gray-900,
-        [data-theme="dark"] .text-gray-800,
-        [data-theme="dark"] .text-gray-700 { color: #ecedee !important; }
-        [data-theme="dark"] .text-gray-500,
-        [data-theme="dark"] .text-gray-400 { color: #888 !important; }
-        [data-theme="dark"] .bg-gray-100 { background-color: #2a2a2a !important; }
-        [data-theme="dark"] textarea { background: #1a1a1a !important; color: #ecedee !important; border-color: #2a2a2a !important; }
+        /* ── 정렬 버튼 호버 ── */
+        .ns-align-btn:hover:not(.active) {
+            background: var(--bg-sec);
+            color: var(--fg);
+        }
+
+        /* ── 미리보기 영역 다크모드 배경 ── */
+        [data-theme="dark"] .ns-preview { background: #18181b; }
+
+        /* ── 코드 블록 다크모드 ── */
+        [data-theme="dark"] .ns-code { background: #0d0d1a; border-color: #1e1e30; }
     </style>
 </head>
 
-<body class="bg-gray-50">
+<body>
     <div id="root"></div>
 
     <script type="text/babel">
@@ -355,270 +513,138 @@
             const currentLatex = generateLatex();
 
             return (
-                <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4 font-sans text-gray-800">
-                    <div className="max-w-3xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+                <div className="ns-wrap">
 
-                        {/* Header */}
-                        <div className="bg-white border-b border-gray-100 p-6 flex items-center justify-between">
-                            <div>
-                                <div className="app-badge" style={{marginBottom:'10px'}}>Notion Tool</div>
-                                <h1 style={{fontSize:'20px',fontWeight:'700',letterSpacing:'-0.02em',color:'var(--fg)',margin:'0 0 2px'}}>
-                                    노션 <span style={{color:'var(--primary)'}}>수식 스타일러</span>
-                                </h1>
-                                <p style={{fontSize:'12px',color:'var(--fg-muted)'}}>LaTeX Formula Generator</p>
-                            </div>
-
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={handleRandomize}
-                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                                    title="랜덤 스타일 (Random)"
-                                >
-                                    <Shuffle size={18} />
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setText("Hello Notion!");
-                                        setTextColor("default");
-                                        setBgColor("transparent");
-                                        setSize("normalsize");
-                                        setFontStyle("text");
-                                        setAlignment("c");
-                                        setColorMode("text");
-                                    }}
-                                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                                    title="초기화"
-                                >
-                                    <RefreshCcw size={18} />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="p-6 md:p-8 space-y-8">
-
-                            {/* Input Section */}
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-end">
-                                    <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                                        <Type size={16} />
-                                        텍스트 입력
-                                    </label>
-
-                                    {/* Alignment Controls */}
-                                    <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
-                                        <button
-                                            onClick={() => setAlignment('l')}
-                                            className={`p-1.5 rounded-md transition-all ${alignment === 'l' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-                                            title="왼쪽 정렬"
-                                        >
-                                            <AlignLeft size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => setAlignment('c')}
-                                            className={`p-1.5 rounded-md transition-all ${alignment === 'c' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-                                            title="가운데 정렬"
-                                        >
-                                            <AlignCenter size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => setAlignment('r')}
-                                            className={`p-1.5 rounded-md transition-all ${alignment === 'r' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-                                            title="오른쪽 정렬"
-                                        >
-                                            <AlignRight size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <textarea
-                                    value={text}
-                                    onChange={(e) => setText(e.target.value)}
-                                    placeholder="여기에 텍스트를 입력하세요..."
-                                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none text-lg min-h-[100px]"
-                                />
-                            </div>
-
-                            {/* Controls Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-                                {/* Color Section (Tabs) */}
-                                <div className="space-y-4">
-                                    <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                                        <Palette size={16} />
-                                        색상 설정
-                                    </label>
-
-                                    {/* Tabs */}
-                                    <div className="flex p-1 bg-gray-100 rounded-lg w-full">
-                                        <button
-                                            onClick={() => setColorMode('text')}
-                                            className={`flex-1 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 transition-all ${colorMode === 'text'
-                                                    ? 'bg-white text-blue-600 shadow-sm'
-                                                    : 'text-gray-500 hover:text-gray-700'
-                                                }`}
-                                        >
-                                            <Type size={14} /> 글자색
-                                        </button>
-                                        <button
-                                            onClick={() => setColorMode('background')}
-                                            className={`flex-1 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 transition-all ${colorMode === 'background'
-                                                    ? 'bg-white text-blue-600 shadow-sm'
-                                                    : 'text-gray-500 hover:text-gray-700'
-                                                }`}
-                                        >
-                                            <PaintBucket size={14} /> 배경색
-                                        </button>
-                                    </div>
-
-                                    {/* Color Grid */}
-                                    <div className="flex flex-wrap gap-3 p-2 min-h-[100px] content-start">
-
-                                        {/* Transparent Option (Only for Background) */}
-                                        {colorMode === 'background' && (
-                                            <button
-                                                onClick={() => setBgColor('transparent')}
-                                                className={`w-9 h-9 rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-110 border border-gray-300 bg-white relative overflow-hidden group ${bgColor === 'transparent' ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : ''}`}
-                                                title="배경 없음 (투명)"
-                                            >
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <div className="w-full h-px bg-red-500 rotate-45 transform origin-center"></div>
-                                                </div>
-                                            </button>
-                                        )}
-
-                                        {colors.map((c) => {
-                                            const isActive = colorMode === 'text' ? textColor === c.value : bgColor === c.value;
-                                            const setFn = colorMode === 'text' ? setTextColor : setBgColor;
-                                            const displayClass = colorMode === 'text' ? c.class : c.bgClass;
-
-                                            if (colorMode === 'background' && c.value === 'default') return null;
-
-                                            return (
-                                                <button
-                                                    key={c.value}
-                                                    onClick={() => setFn(c.value)}
-                                                    className={`w-9 h-9 rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-110 ${displayClass} ${isActive ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : ''}`}
-                                                    title={c.name}
-                                                >
-                                                    {c.value === 'custom' && (
-                                                        <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center relative">
-                                                            <input
-                                                                type="color"
-                                                                className="w-12 h-12 -m-2 cursor-pointer opacity-0 absolute"
-                                                                value={colorMode === 'text' ? customTextColor : customBgColor}
-                                                                onChange={(e) => {
-                                                                    if (colorMode === 'text') {
-                                                                        setCustomTextColor(e.target.value);
-                                                                        setTextColor('custom');
-                                                                    } else {
-                                                                        setCustomBgColor(e.target.value);
-                                                                        setBgColor('custom');
-                                                                    }
-                                                                }}
-                                                            />
-                                                            <span
-                                                                className="w-5 h-5 rounded-full border border-gray-100 shadow-sm"
-                                                                style={{ backgroundColor: colorMode === 'text' ? customTextColor : customBgColor }}
-                                                            ></span>
-                                                        </div>
-                                                    )}
-                                                    {isActive && c.value !== 'custom' && (
-                                                        <Check size={14} className={['default', 'gold', 'yellow'].includes(c.value) ? 'text-black' : 'text-white'} />
-                                                    )}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                {/* Font Options (Size & Style) */}
-                                <div className="space-y-6">
-
-                                    {/* Size Selector */}
-                                    <div className="space-y-3">
-                                        <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                                            <Type size={16} />
-                                            크기 (Size)
-                                        </label>
-                                        <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
-                                            {sizes.map((s) => (
-                                                <button
-                                                    key={s.value}
-                                                    onClick={() => setSize(s.value)}
-                                                    className={`flex-1 py-2 text-xs md:text-sm rounded-md transition-all ${size === s.value
-                                                            ? 'bg-white text-blue-600 shadow-sm font-semibold'
-                                                            : 'text-gray-500 hover:text-gray-700'
-                                                        }`}
-                                                >
-                                                    {s.name}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Style Selector */}
-                                    <div className="space-y-3">
-                                        <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-                                            <CaseUpper size={16} />
-                                            글꼴 스타일 (Font Style)
-                                        </label>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {fontStyles.map((style) => (
-                                                <button
-                                                    key={style.value}
-                                                    onClick={() => setFontStyle(style.value)}
-                                                    className={`py-2 px-1 text-xs rounded-lg border transition-all truncate ${fontStyle === style.value
-                                                            ? 'bg-blue-50 border-blue-200 text-blue-700 ring-1 ring-blue-200 font-medium'
-                                                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                                                        }`}
-                                                    title={style.note || style.name}
-                                                >
-                                                    {style.name}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="border-t border-gray-100 my-4"></div>
-
-                            {/* Preview Section */}
-                            <div className="space-y-3">
-                                <label className="block text-sm font-medium text-gray-700">미리보기 (Preview)</label>
-                                <div
-                                    className="w-full min-h-[120px] flex justify-center items-center p-8 bg-white border border-gray-200 rounded-xl shadow-sm overflow-x-auto"
-                                >
-                                    <div ref={previewRef} className="text-xl"></div>
-                                </div>
-                            </div>
-
-                            {/* Code Output Section */}
-                            <div className="space-y-3">
-                                <label className="block text-sm font-medium text-gray-700">생성된 코드 (Notion용)</label>
-                                <div className="relative">
-                                    <pre className="w-full p-4 pr-14 bg-gray-900 text-gray-100 rounded-xl font-mono text-sm overflow-x-auto border border-gray-800">
-                                        {currentLatex}
-                                    </pre>
-                                    <button
-                                        onClick={handleCopy}
-                                        className={`absolute right-2 top-2 p-2 rounded-lg transition-all flex items-center justify-center ${isCopied
-                                                ? 'bg-green-500 text-white'
-                                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                            }`}
-                                        title="복사하기"
-                                    >
-                                        {isCopied ? <Check size={18} /> : <Copy size={18} />}
-                                    </button>
-                                </div>
-                                <p className="text-xs text-gray-500 flex items-center gap-1 mt-2">
-                                    <Info size={12} />
-                                    노션에서 <code>/수식</code> 또는 <code>/math</code> 입력 후 위 코드를 붙여넣으세요.
-                                </p>
-                            </div>
-
-                        </div>
+                    {/* 헤더 — 전체 너비 */}
+                    <div className="app-header ns-full" style={{marginBottom:'8px'}}>
+                        <div className="app-badge">Notion Tool</div>
+                        <h1 className="app-title">노션 <span>수식 스타일러</span></h1>
+                        <p className="app-desc">LaTeX 수식을 노션 인라인 블록에 바로 붙여넣을 수 있도록 생성합니다.</p>
                     </div>
+
+                    {/* 왼쪽 열 — 설정 */}
+                    <div className="ns-col-left">
+
+                        {/* 텍스트 입력 카드 */}
+                        <div className="ns-card">
+                            <div className="ns-card-title">텍스트 입력</div>
+                            <div className="ns-label-row">
+                                <label className="ns-label" style={{margin:0}}>입력</label>
+                                <div className="ns-align-btns">
+                                    <button onClick={() => setAlignment('l')} className={`ns-align-btn ${alignment === 'l' ? 'active' : ''}`} title="왼쪽"><AlignLeft size={14}/></button>
+                                    <button onClick={() => setAlignment('c')} className={`ns-align-btn ${alignment === 'c' ? 'active' : ''}`} title="가운데"><AlignCenter size={14}/></button>
+                                    <button onClick={() => setAlignment('r')} className={`ns-align-btn ${alignment === 'r' ? 'active' : ''}`} title="오른쪽"><AlignRight size={14}/></button>
+                                </div>
+                            </div>
+                            <textarea
+                                value={text}
+                                onChange={(e) => setText(e.target.value)}
+                                placeholder="여기에 텍스트를 입력하세요..."
+                                className="ns-textarea"
+                            />
+                        </div>
+
+                        {/* 스타일 설정 카드 */}
+                        <div className="ns-card">
+                            <div className="ns-card-title">스타일 설정</div>
+
+                            {/* 색상 */}
+                            <label className="ns-label">색상</label>
+                            <div className="ns-tab-group" style={{marginBottom:'10px'}}>
+                                <button onClick={() => setColorMode('text')} className={`ns-tab ${colorMode === 'text' ? 'active' : ''}`}>
+                                    <Type size={13}/> 글자색
+                                </button>
+                                <button onClick={() => setColorMode('background')} className={`ns-tab ${colorMode === 'background' ? 'active' : ''}`}>
+                                    <PaintBucket size={13}/> 배경색
+                                </button>
+                            </div>
+                            <div className="ns-color-grid">
+                                {colorMode === 'background' && (
+                                    <button onClick={() => setBgColor('transparent')} className={`ns-swatch ns-swatch-transparent ${bgColor === 'transparent' ? 'selected' : ''}`} title="투명"/>
+                                )}
+                                {colors.map((c) => {
+                                    const isActive = colorMode === 'text' ? textColor === c.value : bgColor === c.value;
+                                    const setFn = colorMode === 'text' ? setTextColor : setBgColor;
+                                    const displayClass = colorMode === 'text' ? c.class : c.bgClass;
+                                    if (colorMode === 'background' && c.value === 'default') return null;
+                                    return (
+                                        <button key={c.value} onClick={() => setFn(c.value)}
+                                            className={`ns-swatch ${displayClass} ${isActive ? 'selected' : ''}`} title={c.name}>
+                                            {c.value === 'custom' && (
+                                                <div className="ns-custom-color">
+                                                    <input type="color" className="ns-color-input"
+                                                        value={colorMode === 'text' ? customTextColor : customBgColor}
+                                                        onChange={(e) => {
+                                                            if (colorMode === 'text') { setCustomTextColor(e.target.value); setTextColor('custom'); }
+                                                            else { setCustomBgColor(e.target.value); setBgColor('custom'); }
+                                                        }}
+                                                    />
+                                                    <span className="ns-color-preview" style={{backgroundColor: colorMode === 'text' ? customTextColor : customBgColor}}/>
+                                                </div>
+                                            )}
+                                            {isActive && c.value !== 'custom' && (
+                                                <Check size={13} style={{color: ['default','gold'].includes(c.value) ? '#000' : '#fff'}}/>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* 크기 */}
+                            <label className="ns-label" style={{marginTop:'16px'}}>크기 (Size)</label>
+                            <div className="ns-tab-group">
+                                {sizes.map(s => (
+                                    <button key={s.value} onClick={() => setSize(s.value)} className={`ns-tab ${size === s.value ? 'active' : ''}`}>{s.name}</button>
+                                ))}
+                            </div>
+
+                            {/* 글꼴 스타일 */}
+                            <label className="ns-label" style={{marginTop:'16px'}}>글꼴 스타일</label>
+                            <div className="ns-font-grid">
+                                {fontStyles.map(style => (
+                                    <button key={style.value} onClick={() => setFontStyle(style.value)}
+                                        className={`ns-font-btn ${fontStyle === style.value ? 'active' : ''}`}
+                                        title={style.note || style.name}>
+                                        {style.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                    </div>{/* /ns-col-left */}
+
+                    {/* 오른쪽 열 — 미리보기 & 코드 */}
+                    <div className="ns-col-right">
+
+                        {/* 미리보기 카드 */}
+                        <div className="ns-card">
+                            <div className="ns-card-title">미리보기</div>
+                            <div className="ns-preview">
+                                <div ref={previewRef}></div>
+                            </div>
+                        </div>
+
+                        {/* 코드 출력 카드 */}
+                        <div className="ns-card">
+                            <div className="ns-card-title">생성된 코드 (Notion용)</div>
+                            <div className="ns-code-wrap">
+                                <pre className="ns-code">{currentLatex}</pre>
+                                <button onClick={handleCopy} className={`ns-copy-btn ${isCopied ? 'copied' : ''}`} title="복사">
+                                    {isCopied ? <Check size={16}/> : <Copy size={16}/>}
+                                </button>
+                            </div>
+                            <p className="ns-hint"><Info size={12}/> 노션에서 <code>/수식</code> 또는 <code>/math</code> 입력 후 붙여넣으세요.</p>
+                        </div>
+
+                        {/* 액션 버튼 */}
+                        <div className="ns-actions">
+                            <button onClick={handleRandomize} className="ns-action-btn"><Shuffle size={15}/> 랜덤 스타일</button>
+                            <button onClick={() => { setText("Hello Notion!"); setTextColor("default"); setBgColor("transparent"); setSize("normalsize"); setFontStyle("text"); setAlignment("c"); setColorMode("text"); }}
+                                className="ns-action-btn"><RefreshCcw size={15}/> 초기화</button>
+                        </div>
+
+                    </div>{/* /ns-col-right */}
+
                 </div>
             );
         };
@@ -626,9 +652,8 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<NotionFormulaGenerator />);
     </script>
-    <!-- 우상단 오버레이: 테마 + 홈 -->
-    <div class="top-overlay">
-      <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="테마 변경">💻</button>
+    <!-- 좌상단: 홈 -->
+    <div class="top-overlay-left">
       <a href="/" class="overlay-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -636,6 +661,18 @@
         </svg>
         <span>Home</span>
       </a>
+    </div>
+    <!-- 우상단: 보기모드 + 공유 -->
+    <div class="top-overlay">
+      <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+      <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+          <polyline points="16 6 12 2 8 6"/>
+          <line x1="12" x2="12" y1="2" y2="15"/>
+        </svg>
+        <span>공유</span>
+      </button>
     </div>
 </body>
 

@@ -46,7 +46,16 @@
             font-family: 'Pretendard', sans-serif;
             overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
-            background-color: #f8fafc;
+            background-color: var(--bg);
+        }
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none; z-index: 0;
         }
 
         .transition-all {
@@ -185,28 +194,155 @@
         }
 
         /* (old floating-home-btn removed — using .top-overlay from hero-theme.css) */
+
+        /* ---- 드래그 업로드 상태 ---- */
+        #upload-zone.drag-over {
+            border-color: var(--primary) !important;
+            background-color: rgba(0, 111, 238, 0.07) !important;
+            transform: scale(1.02);
+        }
+        #upload-zone.drag-over .upload-icon {
+            transform: scale(1.15) translateY(-3px);
+        }
+
+        /* ════ HeroUI 통합 오버라이드 ════ */
+
+        /* 카드/패널 — CSS 변수 기반 */
+        .bg-white   { background-color: var(--card-bg) !important; }
+        .bg-slate-50 { background-color: var(--bg-sec)  !important; }
+        .bg-slate-100{ background-color: var(--bg-sec)  !important; }
+        .border-slate-50,
+        .border-slate-100,
+        .border-slate-200 { border-color: var(--border) !important; }
+        .text-slate-900,
+        .text-slate-800,
+        .text-slate-700 { color: var(--fg)      !important; }
+        .text-slate-500,
+        .text-slate-400 { color: var(--fg-muted)!important; }
+
+        /* Indigo → HeroUI Primary (#006fee) */
+        .text-indigo-600,
+        .text-indigo-400 { color: var(--primary) !important; }
+        .text-indigo-300  { color: var(--fg-muted) !important; }
+        .bg-indigo-50     { background-color: rgba(0,111,238,0.08) !important; }
+        .hover\:bg-indigo-50:hover    { background-color: rgba(0,111,238,0.08) !important; }
+        .hover\:text-indigo-600:hover { color: var(--primary) !important; }
+        .hover\:border-indigo-400:hover,
+        .focus\:border-indigo-400:focus { border-color: var(--primary) !important; }
+        .ring-indigo-200  { --tw-ring-color: rgba(0,111,238,0.25) !important; }
+        .border-indigo-600 { border-color: var(--primary) !important; } /* 로더 스피너 */
+
+        /* 업로드 아이콘 — primary 계열 */
+        .upload-icon {
+            background-color: rgba(0,111,238,0.1) !important;
+            color: var(--primary) !important;
+        }
+
+        /* Smart Fit 버튼 */
+        .smart-gradient {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-h) 100%) !important;
+            box-shadow: 0 4px 16px rgba(0,111,238,0.28) !important;
+        }
+
+        /* 90° 회전 버튼 */
+        .bg-slate-900 {
+            background-color: var(--fg) !important;
+            color: var(--bg) !important;
+        }
+        [data-theme="dark"] .bg-slate-900 {
+            background-color: var(--fg) !important;
+            color: var(--bg) !important;
+        }
+
+        /* 값 입력 필드 */
+        .value-input {
+            background-color: var(--input-bg) !important;
+            color: var(--primary) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 0.5rem !important;
+        }
+
+        /* 활성 preset 버튼 — shadow를 primary 계열로 */
+        .btn-active {
+            box-shadow: 0 4px 14px rgba(0,111,238,0.28) !important;
+        }
+
+        /* Range 슬라이더 트랙 */
+        input[type="range"] {
+            background: var(--border) !important;
+        }
+
+        /* 상태 표시 박스 */
+        header .flex.items-center.gap-3 {
+            background: var(--card-bg) !important;
+            border-color: var(--border) !important;
+        }
+
+        /* 저장 버튼 활성 상태 */
+        #save-btn-sidebar:not(:disabled) {
+            background: var(--primary) !important;
+            color: #fff !important;
+            cursor: pointer !important;
+            box-shadow: 0 4px 20px rgba(0,111,238,0.3) !important;
+        }
+        #save-btn-sidebar:disabled {
+            background-color: var(--bg-sec) !important;
+            color: var(--fg-muted) !important;
+        }
+
+        /* 커스텀 입력 필드 */
+        #custom-ratio-input,
+        #custom-grid-input {
+            background-color: var(--input-bg) !important;
+            border-color: var(--border) !important;
+            color: var(--fg) !important;
+            font-size: 12px !important;
+        }
+
+        /* 편집 초기화 버튼 */
+        button[onclick="resetAdjustments()"] {
+            border-color: var(--border) !important;
+            color: var(--fg-muted) !important;
+        }
+        button[onclick="resetAdjustments()"]:hover {
+            color: var(--primary) !important;
+            background-color: rgba(0,111,238,0.08) !important;
+            border-color: var(--primary) !important;
+        }
+
+        /* + 버튼 (커스텀 추가) */
+        button[onclick*="toggleInput"] {
+            background-color: var(--bg-sec) !important;
+            color: var(--fg-muted) !important;
+        }
+        button[onclick*="toggleInput"]:hover {
+            background-color: rgba(0,111,238,0.1) !important;
+            color: var(--primary) !important;
+        }
+
+        /* 빈 상태 이미지 플레이스홀더 */
+        .bg-slate-50.text-slate-200 {
+            background-color: var(--bg-sec) !important;
+            color: var(--border) !important;
+        }
+
+        /* 로더 */
+        .bg-slate-900\/40 { background-color: rgba(0,0,0,0.48) !important; }
+        #loader .bg-white { background-color: var(--card-bg) !important; }
     </style>
 </head>
 
 <body class="text-slate-900 antialiased">
 
-    <div class="max-w-[1400px] mx-auto px-6 py-12">
-        <header class="flex flex-col lg:flex-row items-center justify-between gap-8 mb-16">
-            <div class="text-center lg:text-left">
-                <div class="app-badge" style="margin-bottom:14px">Creative</div>
-                <h1 class="text-5xl font-extrabold tracking-tight mb-2" style="color:var(--fg)">
-                    Grid <span style="color:var(--primary)">Maker</span>
-                </h1>
-                <p style="color:var(--fg-muted);font-size:1.1rem;font-style:italic">이미지를 조각내어 더 큰 가치를 만드세요.</p>
-            </div>
+    <div class="max-w-[1100px] mx-auto px-6 py-6" style="position:relative;z-index:1">
 
-            <div class="flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
-                <div id="status-indicator" class="w-2.5 h-2.5 rounded-full bg-slate-300 ml-2"></div>
-                <span id="status-label" class="text-sm font-bold text-slate-400 mr-2">Ready to work</span>
-            </div>
-        </header>
+        <div class="app-header" style="margin-bottom:24px">
+            <div class="app-badge">Creative</div>
+            <h1 class="app-title">Grid <span>Maker</span></h1>
+            <p class="app-desc">정교하게 분할하고, 완벽하게 전달하세요.</p>
+        </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             <!-- Sidebar Controls -->
             <aside class="lg:col-span-4 space-y-8">
 
@@ -221,10 +357,11 @@
                             <input type="file" id="file-input" class="hidden" accept="image/*">
                             <div class="relative z-10">
                                 <div
-                                    class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-all">
+                                    class="upload-icon w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-all">
                                     <i data-lucide="upload" class="w-5 h-5"></i>
                                 </div>
-                                <p class="text-sm font-bold text-slate-700 leading-none">이미지 선택</p>
+                                <p class="text-sm font-bold text-slate-700 leading-none">클릭 또는 드래그하여 업로드</p>
+                                <p class="text-xs text-slate-400 mt-1">PNG, JPG, WEBP 지원</p>
                             </div>
                         </div>
                     </div>
@@ -270,7 +407,7 @@
                 </div>
 
                 <button id="save-btn-sidebar" disabled
-                    class="w-full py-6 bg-slate-100 text-slate-400 rounded-[2rem] font-black text-xl flex items-center justify-center gap-3 cursor-not-allowed transition-all shadow-none">
+                    class="w-full py-5 bg-slate-100 text-slate-400 rounded-[1.5rem] font-black text-base flex items-center justify-center gap-2 cursor-not-allowed transition-all shadow-none" style="letter-spacing:-0.01em">
                     <i data-lucide="archive"></i> 압축파일 생성
                 </button>
             </aside>
@@ -589,6 +726,23 @@
         el.fileInput.onchange = (e) => handleFile(e.target.files[0]);
         el.uploadZone.onclick = () => el.fileInput.click();
 
+        // 드래그 앤 드롭
+        el.uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            el.uploadZone.classList.add('drag-over');
+        });
+        el.uploadZone.addEventListener('dragleave', (e) => {
+            if (!el.uploadZone.contains(e.relatedTarget)) {
+                el.uploadZone.classList.remove('drag-over');
+            }
+        });
+        el.uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            el.uploadZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+
         el.zoomSlider.oninput = (e) => {
             state.scale = parseFloat(e.target.value);
             updateSliderUI();
@@ -799,9 +953,8 @@
 
         init();
     </script>
-    <!-- 우상단 오버레이: 테마 + 홈 -->
-    <div class="top-overlay">
-      <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="테마 변경">💻</button>
+    <!-- 좌상단: 홈 -->
+    <div class="top-overlay-left">
       <a href="/" class="overlay-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -809,6 +962,18 @@
         </svg>
         <span>Home</span>
       </a>
+    </div>
+    <!-- 우상단: 보기모드 + 공유 -->
+    <div class="top-overlay">
+      <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+      <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+          <polyline points="16 6 12 2 8 6"/>
+          <line x1="12" x2="12" y1="2" y2="15"/>
+        </svg>
+        <span>공유</span>
+      </button>
     </div>
 </body>
 

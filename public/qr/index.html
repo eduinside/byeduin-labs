@@ -11,26 +11,48 @@
   <!-- html5-qrcode (스캔용) -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
+
     body {
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      padding: 1rem 1rem 5rem;
+      padding: 48px 1rem 5rem;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
     }
 
     .wrap {
       width: 100%;
       max-width: 440px;
-      margin-top: 3.5rem; /* top-overlay 공간 */
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 외부 카드 래퍼 */
+    .qr-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1.5rem;
+      overflow: hidden;
     }
 
     /* 탭 */
     .tabs {
       display: flex;
       border-bottom: 1px solid var(--border);
-      background: var(--card-bg);
     }
     .tab-btn {
       flex: 1;
@@ -53,16 +75,23 @@
 
     /* 카드 바디 */
     .card-body {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-top: none;
-      border-radius: 0 0 1rem 1rem;
       padding: 1.5rem;
     }
 
-    /* 탭 패널 */
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
+    /* 탭 패널 — 두 패널이 항상 공간을 차지하여 높이 고정 */
+    .tab-panels-wrap {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+    .tab-panel {
+      grid-area: 1 / 1;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .tab-panel.active {
+      visibility: visible;
+      pointer-events: auto;
+    }
 
     /* 스캔 입력 그리드 */
     .scan-grid {
@@ -274,6 +303,7 @@
     <p class="app-desc">생성부터 스캔까지 한 번에</p>
   </div>
 
+  <div class="qr-card">
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('generate')" id="tabBtnGenerate">생성하기</button>
     <button class="tab-btn" onclick="switchTab('scan')" id="tabBtnScan">스캔하기</button>
@@ -281,6 +311,7 @@
 
   <div class="card-body">
 
+  <div class="tab-panels-wrap">
     <!-- 생성 탭 -->
     <div id="generateTab" class="tab-panel active">
       <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--fg-muted);margin-bottom:0.4rem;">
@@ -340,6 +371,7 @@
         </div>
       </div>
     </div>
+  </div><!-- /.tab-panels-wrap -->
 
     <!-- 공통 히스토리 -->
     <div class="history-section">
@@ -350,12 +382,12 @@
       <ul id="historyList"></ul>
     </div>
   </div>
+  </div><!-- /.qr-card -->
 
 </div>
 
-<!-- 우상단 오버레이: 테마 + 홈 -->
-<div class="top-overlay">
-  <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="테마 변경">💻</button>
+<!-- 좌상단: 홈 -->
+<div class="top-overlay-left">
   <a href="/" class="overlay-btn">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -363,6 +395,18 @@
     </svg>
     <span>Home</span>
   </a>
+</div>
+<!-- 우상단: 보기모드 + 공유 -->
+<div class="top-overlay">
+  <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+  <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+      <polyline points="16 6 12 2 8 6"/>
+      <line x1="12" x2="12" y1="2" y2="15"/>
+    </svg>
+    <span>공유</span>
+  </button>
 </div>
 
 <script>

@@ -108,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="usage-idea">${item.idea}</div>
                 </div>
+                <button class="card-toggle-btn" aria-label="링크 보기" title="링크 보기">▼</button>
             </div>
             <div class="card-extra">
                 <div class="btn-group">
@@ -116,29 +117,31 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        // Add visited mark ONLY when a link inside is clicked
+        // 방문 표시
         card.querySelectorAll('.btn-action').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 AddVisited(item.id);
             });
         });
 
-        // Toggle Expand
-        card.addEventListener('click', (e) => {
-            // If click was on a button within card-extra, don't toggle
-            if (e.target.closest('.card-extra')) return;
-
+        // 토글 버튼으로만 확장/축소
+        const toggleBtn = card.querySelector('.card-toggle-btn');
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             const isExpanded = card.classList.contains('expanded');
 
             if (!isExpanded) {
-                // Close other expanded cards
                 const currentExpanded = document.querySelector('.resource-card.expanded');
                 if (currentExpanded && currentExpanded !== card) {
                     currentExpanded.classList.remove('expanded');
+                    const prevBtn = currentExpanded.querySelector('.card-toggle-btn');
+                    if (prevBtn) prevBtn.textContent = '▼';
                 }
             }
 
             card.classList.toggle('expanded');
+            toggleBtn.textContent = card.classList.contains('expanded') ? '▲' : '▼';
         });
 
         return card;

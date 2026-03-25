@@ -13,13 +13,35 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 1rem 1rem 7rem;
+      padding: 48px 1rem 7rem;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .timer-wrap {
+      width: 100%;
+      max-width: 500px;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     /* 시계 */
     .clock-section {
       text-align: center;
-      margin-top: 3.5rem;
+      margin-top: 0;
       margin-bottom: 1.5rem;
     }
     #main-clock {
@@ -38,7 +60,6 @@
     /* 메인 카드 */
     .main-card {
       width: 100%;
-      max-width: 500px;
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 1.5rem;
@@ -263,11 +284,15 @@
 </head>
 <body>
 
+<div class="timer-wrap">
+
+  <div class="app-header" style="width:100%;text-align:left;">
+    <div class="app-badge">Utility</div>
+    <h1 class="app-title">Smart <span>Timer</span></h1>
+    <p class="app-desc">반복 알람 스케줄을 직관적으로 관리합니다.</p>
+  </div>
+
   <div class="clock-section">
-    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px">
-      <div class="app-badge" style="margin:0">Utility</div>
-      <span style="font-size:13px;font-weight:600;color:var(--fg-muted)">스마트 알람</span>
-    </div>
     <div id="main-date">...</div>
     <div id="main-clock">00:00:00</div>
   </div>
@@ -361,9 +386,10 @@
 
   <input type="file" id="importInput" style="display:none" accept=".json" onchange="importAlarms(event)">
 
-  <!-- 우상단 오버레이: 테마 + 홈 -->
-  <div class="top-overlay">
-    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="테마 변경">💻</button>
+</div><!-- /.timer-wrap -->
+
+  <!-- 좌상단: 홈 -->
+  <div class="top-overlay-left">
     <a href="/" class="overlay-btn">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -371,6 +397,18 @@
       </svg>
       <span>Home</span>
     </a>
+  </div>
+  <!-- 우상단: 보기모드 + 공유 -->
+  <div class="top-overlay">
+    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+    <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+        <polyline points="16 6 12 2 8 6"/>
+        <line x1="12" x2="12" y1="2" y2="15"/>
+      </svg>
+      <span>공유</span>
+    </button>
   </div>
 
   <script>

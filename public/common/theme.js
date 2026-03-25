@@ -72,7 +72,26 @@
     updateIcon(getStoredTheme());
   }
 
+  // 공유 함수
+  function shareCurrentPage() {
+    var url = window.location.href;
+    var title = document.title;
+    if (navigator.share) {
+      navigator.share({ title: title, url: url }).catch(function() {});
+    } else {
+      navigator.clipboard.writeText(url).then(function() {
+        var btn = document.getElementById('shareBtn');
+        if (btn) {
+          var prev = btn.innerHTML;
+          btn.innerHTML = '<span>✓ 복사됨</span>';
+          setTimeout(function() { btn.innerHTML = prev; }, 1500);
+        }
+      }).catch(function() { alert('URL: ' + url); });
+    }
+  }
+
   // 전역 노출
   window.cycleTheme = cycleTheme;
   window.getTheme = getStoredTheme;
+  window.shareCurrentPage = shareCurrentPage;
 })();
