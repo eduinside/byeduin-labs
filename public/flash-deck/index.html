@@ -239,12 +239,37 @@
 
     /* 플립 카드 */
     .flip-scene {
-      perspective: 1000px;
-      height: 260px;
+      perspective: 1200px;
+      height: 340px;
       margin-bottom: 20px;
       cursor: pointer;
     }
-    @media (max-width: 480px) { .flip-scene { height: 220px; } }
+    @media (max-width: 480px) { .flip-scene { height: 260px; } }
+
+    /* 전체화면 모드 */
+    .study-fullscreen {
+      position: fixed; inset: 0; z-index: 1000;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      padding: 20px;
+    }
+    .study-fullscreen .flip-scene {
+      flex: 1; height: auto; margin-bottom: 16px;
+    }
+    .study-fullscreen .study-top { flex-shrink: 0; }
+    .study-fullscreen .study-progress { flex-shrink: 0; }
+    .study-fullscreen #study-actions { flex-shrink: 0; }
+    .study-fullscreen .keyboard-hints { flex-shrink: 0; }
+    .study-fullscreen body::before { display: none; }
+
+    .btn-fullscreen {
+      width: 32px; height: 32px; padding: 0;
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 8px; cursor: pointer; color: var(--fg-muted);
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all 0.15s; flex-shrink: 0;
+    }
+    .btn-fullscreen:hover { border-color: var(--primary); color: var(--primary); }
 
     .flip-card {
       width: 100%; height: 100%;
@@ -492,8 +517,12 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
         나가기
       </button>
-      <span id="study-deck-name" style="font-size:13px;font-weight:700;color:var(--fg-muted)"></span>
+      <span id="study-deck-name" style="font-size:13px;font-weight:700;color:var(--fg-muted);flex:1;text-align:center"></span>
       <span id="study-counter" class="study-counter"></span>
+      <button class="btn-fullscreen" id="btn-fullscreen" onclick="toggleFullscreen()" title="전체화면">
+        <svg id="fs-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+        <svg id="fs-icon-compress" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+      </button>
     </div>
 
     <div class="study-progress">
@@ -536,6 +565,7 @@
       <div class="kbd-hint"><kbd class="kbd">Space</kbd> 뒤집기</div>
       <div class="kbd-hint"><kbd class="kbd">←</kbd> 모르겠어요</div>
       <div class="kbd-hint"><kbd class="kbd">→</kbd> 알아요</div>
+      <div class="kbd-hint"><kbd class="kbd">F</kbd> 전체화면</div>
     </div>
   </div>
 
@@ -558,6 +588,10 @@
       </div>
 
       <div class="result-actions">
+        <button class="fd-btn fd-btn-ghost" onclick="goHome()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          전체 목록
+        </button>
         <button class="fd-btn fd-btn-ghost" onclick="exitStudy()">덱으로 돌아가기</button>
         <button class="fd-btn fd-btn-primary" onclick="restartStudy()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
@@ -631,10 +665,11 @@ function renderHome() {
     const lastStudied = deck.lastStudied
       ? new Date(deck.lastStudied).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
       : '미학습';
+    const studyCount = deck.studyCount || 0;
     return `<div class="deck-item" style="animation-delay:${i * 0.05}s">
       <div class="deck-item-emoji">🗂️</div>
       <div class="deck-item-name" title="${esc(deck.name)}">${esc(deck.name)}</div>
-      <div class="deck-item-meta">카드 ${total}장 · 마지막 ${lastStudied}</div>
+      <div class="deck-item-meta">카드 ${total}장 · 학습 ${studyCount}회 · 마지막 ${lastStudied}</div>
       <div class="deck-item-progress">
         <div class="fd-progress-bar">
           <div class="fd-progress-fill" style="width:${pct}%"></div>
@@ -857,20 +892,48 @@ function markCard(pass) {
     if (pass) { card.passCount = (card.passCount || 0) + 1; card.mastered = card.passCount >= 2; }
     else       { card.failCount = (card.failCount || 0) + 1; card.mastered = false; }
     deck.lastStudied = Date.now();
-    saveData(data);
+    saveData(data); // studyCount는 showResult()에서 세션 완료 시 증가
   }
   if (pass) studyResults.pass++; else studyResults.fail++;
   studyIndex++;
   showStudyCard();
 }
 
-function exitStudy() { renderDeckView(); }
+function exitStudy() {
+  exitFullscreen();
+  renderDeckView();
+}
 
-function restartStudy() { startStudy(); }
+function restartStudy() {
+  exitFullscreen();
+  startStudy();
+}
+
+// ── 전체화면 ──
+let isFullscreen = false;
+function toggleFullscreen() {
+  const studyEl = document.getElementById('view-study');
+  isFullscreen = !isFullscreen;
+  studyEl.classList.toggle('study-fullscreen', isFullscreen);
+  document.getElementById('fs-icon-expand').style.display   = isFullscreen ? 'none'  : '';
+  document.getElementById('fs-icon-compress').style.display = isFullscreen ? ''     : 'none';
+  // 전체화면 진입 시 body 스크롤 잠금
+  document.body.style.overflow = isFullscreen ? 'hidden' : '';
+}
+function exitFullscreen() {
+  if (!isFullscreen) return;
+  isFullscreen = false;
+  document.getElementById('view-study').classList.remove('study-fullscreen');
+  document.getElementById('fs-icon-expand').style.display   = '';
+  document.getElementById('fs-icon-compress').style.display = 'none';
+  document.body.style.overflow = '';
+}
 
 // 키보드 단축키
 document.addEventListener('keydown', e => {
   if (currentView !== 'study') return;
+  if (e.key === 'Escape' && isFullscreen) { exitFullscreen(); return; }
+  if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); return; }
   if (e.key === ' ' || e.key === 'ArrowUp') { e.preventDefault(); flipCard(); }
   else if (e.key === 'ArrowRight') markCard(true);
   else if (e.key === 'ArrowLeft')  markCard(false);
@@ -880,6 +943,14 @@ document.addEventListener('keydown', e => {
 //  결과 뷰
 // ══════════════════════════════════════════════════════
 function showResult() {
+  // 학습 세션 완료 횟수 증가
+  const data = getData();
+  const deck = data.decks.find(d => d.id === currentDeckId);
+  if (deck) {
+    deck.studyCount = (deck.studyCount || 0) + 1;
+    saveData(data);
+  }
+
   const total = studyQueue.length;
   const pass  = studyResults.pass;
   const fail  = studyResults.fail;

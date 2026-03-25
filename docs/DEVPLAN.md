@@ -19,16 +19,17 @@
 
 | 앱 | 경로 | 카테고리 | 비고 |
 |---|---|---|---|
-| QR Master | `/qr/` | utility | QR 생성 + 스캔 |
-| Smart Timer | `/timer/` | utility | 스마트 반복 알람 |
-| Grid Maker | `/grid-maker/` | creative | 이미지 그리드 분할 |
+| QR Master | `/qr/` | utility | QR 생성 + 스캔, 히스토리 |
+| Smart Timer | `/timer/` | utility | 반복 알람 타이머 |
+| Grid Maker | `/grid-maker/` | creative | 이미지 그리드 분할, 드래그 업로드 |
 | Moon Phase | `/moon-phase/` | edu | 달 위상 시뮬레이터 |
 | YT Thumbnail | `/yt-thumb/` | creative | 유튜브 썸네일 추출 |
 | Notion Image DL | `/notion-image-downloader/` | notion | 노션 이미지 일괄 다운로드 |
 | Notion Styler | `/notion-styler/` | notion | LaTeX 수식 스타일러 |
 | Numberblocks | `/numberblocks/` | edu | 넘버블록스 에피소드 파인더 |
-| Login Helper | (모달, 외부 링크) | utility | 에듀나비 교원업무지원 안내 |
-| Content ID Viewer | (모달, 외부 링크) | utility | 에듀나비 아카이브 안내 |
+| Flash Deck | `/flash-deck/` | edu | 플래시카드 덱 제작 및 학습 |
+| Login Helper | (모달) | utility | 에듀나비 교원업무지원 안내 |
+| Content ID Viewer | (모달) | utility | 에듀나비 아카이브 안내 |
 
 ---
 
@@ -93,52 +94,44 @@
 ### 인트로 (`/index.html`)
 - JS 데이터 렌더링 (`APPS` 배열 → 카드 자동 생성)
 - 카테고리별 섹션 분리 (utility / creative / notion / edu)
-- **모달 시스템**: 상세설명, 기능 목록, 링크를 모달로 표시 (Login Helper, Content ID Viewer 등)
+- 모달 시스템 (Login Helper, Content ID Viewer 등)
 - 파비콘: `logo.jpg`
 - 우상단 테마 전환 + 공유 버튼
 
 ### QR Master (`/qr/`)
-- 생성하기 / 스캔하기 2탭 구성
-- `.qr-card` 래퍼 (border-radius: 1.5rem, overflow: hidden)
+- 생성하기 / 스캔하기 2탭, `.qr-card` 래퍼
 - 스캔 히스토리 로컬스토리지 저장
-- **TODO**: 두 탭 패널 고정 높이 통일 (탭 전환 시 레이아웃 변동 없도록)
+- **TODO**: 두 탭 패널 고정 높이 통일
 
 ### Smart Timer (`/timer/`)
 - 반복 알람 + 세션 종료 알림
-- `.timer-wrap` 래퍼, `body::before` 격자 배경
-- 앱 헤더: `◆ UTILITY` / `Smart Timer`
 
 ### Grid Maker (`/grid-maker/`)
-- 이미지 드래그 업로드 지원
-- HeroUI CSS 변수 적용 (`indigo-*` → `var(--primary)` 전면 교체)
-- **TODO**: 2단 레이아웃 (좁은 사이드바 좌측 + 캔버스 우측), 버튼 가시성 개선
+- 이미지 드래그 업로드, HeroUI CSS 변수 전면 적용
+- **TODO**: 2단 레이아웃, 버튼 가시성 개선
 
 ### YT Thumbnail (`/yt-thumb/`)
 - 유튜브 URL → 썸네일 추출
-- `.app-header` 카드 외부로 이동
-- 오버레이 업데이트 완료
 
 ### Notion Image DL (`/notion-image-downloader/`)
-- Notion API 프록시 연동
-- 오류 메시지 실제 API 응답 노출 (기존: 무조건 "404"로 표시하던 버그 수정)
-- 오버레이 업데이트 완료
+- Notion API 프록시 연동, 오류 메시지 실제 응답 노출
 
 ### Notion Styler (`/notion-styler/`)
-- React + Babel + KaTeX 구성
-- **2단 레이아웃**: 좌측 (텍스트 입력 + 스타일 설정) / 우측 (미리보기 + 코드 + 액션)
-- 폰트 스타일 4열 그리드 (`repeat(4, 1fr)`)
-- 섹션 구분: `ns-card-title::after` 라인 구분자
-- 다크모드 보정: `[data-theme="dark"]` 오버라이드
-- **TODO**: 텍스트 입력 높이 ↔ 미리보기 높이 맞춤, 색상 스와치 컴팩트 정렬
+- React + Babel + KaTeX, 2단 레이아웃, 4열 폰트 그리드
+- **TODO**: 텍스트 입력 ↔ 미리보기 높이 맞춤, 색상 스와치 컴팩트
 
 ### Moon Phase (`/moon-phase/`)
-- 자체 다크 테마 유지 (HeroUI 미적용)
-- 홈 버튼: 좌상단 인라인 스타일 (`left:12px`)
+- 자체 다크 테마 유지, 홈 버튼 좌상단
 
 ### Numberblocks (`/numberblocks/`)
 - 에피소드 파인더 + 유튜브 연동
-- 오버레이 업데이트 완료
-- **TODO**: 애니메이션 축소, HeroUI 전면 적용, 아이템 클릭 시 펼침 효과 → 심플 버튼 교체, 홈 버튼 상단 메뉴 간섭 해결, 클릭 아이템 하위 버튼 중앙 정렬, 모바일 접근성
+- **TODO**: 애니메이션 축소, HeroUI 전면 적용, 모바일 접근성, 홈 버튼 간섭 해결
+
+### Flash Deck (`/flash-deck/`) ← 신규
+- 덱 관리, 카드 단건/일괄 입력, CSS 3D 플립 학습 모드
+- 전체화면 모드 (F키), 학습 통계 (studyCount, passCount, mastered)
+- localStorage: `vives-flashdeck`
+- 상세 내용: `docs/PLAN-flashcard.md` 참고
 
 ---
 
@@ -177,44 +170,17 @@
 }
 ```
 
-### 카테고리 추가
-```javascript
-{ id: "newcat", label: "🔥 새 카테고리", desc: "설명" }
-```
-
----
-
-## 앱별 개선 아이디어 (별도 요청 시 구현)
-
-### QR Master
-- QR 크기 슬라이더, 색상 커스터마이징, 오류 정정 레벨 선택
-
-### Smart Timer
-- 스누즈 기능 (+5분/+10분), 카운트다운 탭, 볼륨 조절
-
-### Grid Maker
-- 프리셋 그리드 (3×3, 2×3, 4×4), 셀 간 여백 설정, 개별 다운로드
-
-### YT Thumbnail
-- 인앱 미리보기, 4종 품질 동시 표시, 마크다운 복사, 1클릭 다운로드
-
-### Notion Image DL
-- 다운로드 전 이미지 목록 미리보기, 선택적 다운로드 (체크박스)
-
-### Notion Styler
-- 자주 쓰는 수식 프리셋, 수식 히스토리
-
-### Numberblocks
-- 즐겨찾기, 학습 진도 표시, 랜덤 에피소드 추천
-
 ---
 
 ## 파일 구조 (현재)
 
 ```
 byeduin-labs/
+├── README.md
 ├── docs/
 │   ├── DEVPLAN.md              ← 이 파일
+│   ├── PLAN.md                 ← 작업 플랜 (진행/완료/대기)
+│   ├── PLAN-flashcard.md       ← Flash Deck 상세 계획
 │   └── numberblocks-readme.md
 ├── public/
 │   ├── index.html
@@ -229,6 +195,7 @@ byeduin-labs/
 │   ├── yt-thumb/index.html
 │   ├── notion-image-downloader/index.html
 │   ├── notion-styler/index.html
+│   ├── flash-deck/index.html
 │   └── numberblocks/
 │       ├── index.html
 │       ├── app.js

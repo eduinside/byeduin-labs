@@ -51,6 +51,12 @@
 ### Numberblocks
 - 즐겨찾기, 학습 진도 표시, 랜덤 에피소드 추천
 
+### Flash Deck
+- 덱 이름 변경, 덱 복제
+- 카드 앞/뒤 직접 편집
+- 학습 기록 그래프 (날짜별 정확도)
+- 마크다운 지원 (앞/뒷면 텍스트 스타일링)
+
 ---
 
 ## 완료된 작업
@@ -62,6 +68,7 @@
 - [x] 홈 버튼 → 좌상단 (`.top-overlay-left`)
 - [x] 테마 전환 + 공유 → 우상단 (`.top-overlay`)
 - [x] `body::before` 격자 배경 패턴 전체 적용
+- [x] `app-badge::before` 이중 다이아몬드 버그 수정
 
 ### 인트로 (`index.html`)
 - [x] JS 렌더링 방식으로 전환 (APPS 배열)
@@ -70,6 +77,7 @@
 - [x] Smart Timer 이름 반영
 - [x] 파비콘 → `logo.jpg`
 - [x] 공유 버튼 추가
+- [x] Flash Deck 교육 카테고리 등록
 
 ### 각 앱
 - [x] QR Master: 카드 디자인, 오버레이 통일
@@ -80,7 +88,10 @@
 - [x] Notion Styler: 2단 레이아웃, 4열 폰트 그리드, HeroUI 적용
 - [x] Moon Phase: 홈 버튼 좌상단으로 이동
 - [x] Numberblocks: 오버레이 통일
+- [x] Flash Deck: 신규 앱 완성 (덱 관리, 카드 입력, 학습 모드, 결과 화면)
 
 ### 문서
 - [x] `DEVPLAN.md` → `docs/DEVPLAN.md` 이동 및 최신화
+- [x] `docs/PLAN.md` 작성
+- [x] `docs/PLAN-flashcard.md` 작성
 - [x] `README.md` 루트에 신규 작성
