@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Grid Maker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap');
+
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+        }
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+            background-color: #f8fafc;
+        }
+
+        .transition-all {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .content-width {
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .preview-stage {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+            border-radius: 2rem;
+            padding: 1.5rem;
+            min-height: 500px;
+            position: relative;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .crop-target {
+            position: relative;
+            width: 100%;
+            background-color: #f1f5f9;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: aspect-ratio 0.4s ease;
+            cursor: move;
+            user-select: none;
+            touch-action: none;
+            border-radius: 4px;
+        }
+
+        #preview-img {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            z-index: 1;
+            pointer-events: none;
+            will-change: transform;
+            transform-origin: center center;
+        }
+
+        .grid-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .grid-line-v {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: invert(0.1);
+        }
+
+        .grid-line-h {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: invert(0.1);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 5px;
+            background: #e2e8f0;
+            border-radius: 99px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-active {
+            background-color: var(--primary) !important;
+            color: white !important;
+            border-color: var(--primary) !important;
+            box-shadow: 0 8px 12px -3px rgba(79, 70, 229, 0.25) !important;
+        }
+
+        .glass-info {
+            position: absolute;
+            bottom: 1.5rem;
+            left: 1.5rem;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(8px);
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            z-index: 50;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            line-height: 1.5;
+        }
+
+        .smart-gradient {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        }
+
+        .value-input {
+            width: 3.5rem;
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.75rem;
+            color: var(--primary);
+            background-color: #f5f3ff;
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.25rem 0;
+            outline: none;
+        }
+
+        /* Floating Home Button Style */
+        .floating-home-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 52px;
+            height: 52px;
+            background: #4f46e5;
+            color: white !important;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 9999;
+            text-decoration: none;
+        }
+
+        .floating-home-btn:hover {
+            transform: scale(1.1) translateY(-4px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+            background: #4338ca;
+        }
+
+        .floating-home-btn:active {
+            transform: scale(0.95);
+        }
+
+        .floating-home-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+    </style>
+</head>
+
+<body class="text-slate-900 antialiased">
+
+    <div class="max-w-[1400px] mx-auto px-6 py-12">
+        <header class="flex flex-col lg:flex-row items-center justify-between gap-8 mb-16">
+            <div class="text-center lg:text-left">
+                <div
+                    class="inline-flex items-center gap-2 bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-full text-xs font-bold mb-4">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> All-in-One Image Tool
+                </div>
+                <h1 class="text-5xl font-extrabold text-slate-900 tracking-tight mb-2">
+                    Grid <span class="text-indigo-600">Maker</span>
+                </h1>
+                <p class="text-slate-500 font-medium text-lg italic">이미지를 조각내어 더 큰 가치를 만드세요.</p>
+            </div>
+
+            <div class="flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
+                <div id="status-indicator" class="w-2.5 h-2.5 rounded-full bg-slate-300 ml-2"></div>
+                <span id="status-label" class="text-sm font-bold text-slate-400 mr-2">Ready to work</span>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+            <!-- Sidebar Controls -->
+            <aside class="lg:col-span-4 space-y-8">
+
+                <!-- Combined Steps Card -->
+                <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
+                    <!-- Step 01: Upload -->
+                    <div class="p-8">
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-5">01.
+                            이미지 업로드</label>
+                        <div id="upload-zone"
+                            class="relative overflow-hidden border-2 border-dashed border-slate-200 rounded-3xl p-8 text-center hover:border-indigo-400 hover:bg-indigo-50/50 transition-all cursor-pointer group">
+                            <input type="file" id="file-input" class="hidden" accept="image/*">
+                            <div class="relative z-10">
+                                <div
+                                    class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-all">
+                                    <i data-lucide="upload" class="w-5 h-5"></i>
+                                </div>
+                                <p class="text-sm font-bold text-slate-700 leading-none">이미지 선택</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-100"></div>
+
+                    <!-- Step 02: Ratio -->
+                    <div class="p-8 relative">
+                        <div class="flex justify-between items-center mb-5 pr-10">
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">02. 개별
+                                비율</label>
+                        </div>
+                        <div class="absolute top-8 right-8 flex gap-1 items-center">
+                            <input type="text" id="custom-ratio-input" placeholder="비율 (16:9)"
+                                class="hidden w-24 px-2 py-1 bg-slate-50 border border-slate-100 rounded-lg text-[10px] outline-none focus:border-indigo-400 transition-all">
+                            <button onclick="toggleInput('custom-ratio-input')"
+                                class="w-7 h-7 bg-slate-100 text-slate-400 rounded-lg flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 transition-all">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3" id="ratio-container"></div>
+                    </div>
+
+                    <div class="border-t border-slate-100"></div>
+
+                    <!-- Step 03: Layout -->
+                    <div class="p-8 relative">
+                        <div class="flex justify-between items-center mb-5 pr-10">
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">03. 전체
+                                레이아웃</label>
+                        </div>
+                        <div class="absolute top-8 right-8 flex gap-1 items-center">
+                            <input type="text" id="custom-grid-input" placeholder="그리드 (4*1)"
+                                class="hidden w-24 px-2 py-1 bg-slate-50 border border-slate-100 rounded-lg text-[10px] outline-none focus:border-indigo-400 transition-all">
+                            <button onclick="toggleInput('custom-grid-input')"
+                                class="w-7 h-7 bg-slate-100 text-slate-400 rounded-lg flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 transition-all">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3" id="preset-container"></div>
+                    </div>
+                </div>
+
+                <button id="save-btn-sidebar" disabled
+                    class="w-full py-6 bg-slate-100 text-slate-400 rounded-[2rem] font-black text-xl flex items-center justify-center gap-3 cursor-not-allowed transition-all shadow-none">
+                    <i data-lucide="archive"></i> 압축파일 생성
+                </button>
+            </aside>
+
+            <!-- Main Canvas & Adjustments -->
+            <main class="lg:col-span-8 flex flex-col gap-8">
+                <div class="content-width">
+                    <div class="preview-stage shadow-xl shadow-indigo-100/50 mb-8">
+                        <div id="empty-view" class="text-center animate-pulse">
+                            <div
+                                class="w-24 h-24 bg-slate-50 text-slate-200 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6">
+                                <i data-lucide="image" class="w-12 h-12"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800 mb-2">이미지가 비어있습니다</h3>
+                            <p class="text-slate-400 font-medium">편집할 이미지를 먼저 로드해 주세요.</p>
+                        </div>
+
+                        <div id="preview-box" class="crop-target hidden">
+                            <img id="preview-img" src="" alt="preview">
+                            <div id="grid-overlay" class="grid-overlay"></div>
+                            <div id="info-badge" class="glass-info hidden shadow-2xl"></div>
+                        </div>
+                    </div>
+
+                    <!-- Adjustment Panel -->
+                    <div id="adjustment-panel"
+                        class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 space-y-8 opacity-40 pointer-events-none transition-all">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                            <div class="grid grid-cols-2 gap-4">
+                                <button onclick="smartAutoFit()"
+                                    class="smart-gradient text-white py-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 transition-all hover:-translate-y-0.5 active:translate-y-0">
+                                    <i data-lucide="wand-2" class="w-4 h-4"></i> 스마트 핏
+                                </button>
+                                <button onclick="rotate90()"
+                                    class="bg-slate-900 text-white py-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-slate-200 transition-all hover:-translate-y-0.5 active:translate-y-0">
+                                    <i data-lucide="rotate-cw" class="w-4 h-4"></i> 90° 회전
+                                </button>
+                            </div>
+                            <button onclick="resetAdjustments()"
+                                class="w-full py-4 text-[11px] font-bold text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl border border-dashed border-slate-200 transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="refresh-ccw" class="w-3.5 h-3.5"></i> 편집 초기화
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <label
+                                        class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">확대/축소</label>
+                                    <div class="flex items-center gap-1.5">
+                                        <input type="number" id="zoom-val-input" value="100" class="value-input"
+                                            min="10" max="500">
+                                        <span class="text-xs font-extrabold text-indigo-300">%</span>
+                                    </div>
+                                </div>
+                                <input type="range" id="zoom-slider" min="0.1" max="5" step="0.01" value="1">
+                            </div>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <label
+                                        class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">회전</label>
+                                    <div class="flex items-center gap-1.5">
+                                        <input type="number" id="rotate-val-input" value="0" class="value-input"
+                                            min="-360" max="360">
+                                        <span class="text-xs font-extrabold text-indigo-300">°</span>
+                                    </div>
+                                </div>
+                                <input type="range" id="rotate-slider" min="-180" max="180" step="1" value="0">
+                            </div>
+                        </div>
+
+                        <!-- Simple Help Section -->
+                        <div class="pt-6 border-t border-slate-50 flex flex-wrap gap-x-8 gap-y-3 justify-center">
+                            <div class="flex items-center gap-2 text-slate-400">
+                                <i data-lucide="mouse-pointer-2" class="w-3.5 h-3.5"></i>
+                                <span class="text-[11px] font-medium">드래그 및 핀치 줌으로 구도 조정</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-slate-400">
+                                <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                                <span class="text-[11px] font-medium">설정 자동 저장 및 스마트 핏 지원</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div id="loader"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] hidden flex flex-col items-center justify-center">
+        <div class="bg-white p-12 rounded-[3rem] shadow-2xl flex flex-col items-center text-center">
+            <div class="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-6"></div>
+            <p class="font-bold text-slate-800 text-lg">이미지 분할 중</p>
+            <p class="text-slate-400 text-sm mt-1">잠시만 기다려 주세요...</p>
+        </div>
+    </div>
+
+    <div id="toast"
+        class="fixed bottom-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-10 py-4 rounded-full shadow-2xl transition-all opacity-0 translate-y-10 z-[200] font-bold text-sm tracking-tight text-center">
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const STORAGE_KEY = 'grid_maker_pro_settings_v5';
+
+        let state = {
+            image: null,
+            ratio: '1:1',
+            cols: 2,
+            rows: 1,
+            offsetX: 0,
+            offsetY: 0,
+            scale: 1,
+            rotation: 0,
+            customRatios: [],
+            customGrids: []
+        };
+
+        const defaultGridPresets = [
+            { label: '2 x 1', c: 2, r: 1 },
+            { label: '3 x 1', c: 3, r: 1 },
+            { label: '1 x 1', c: 1, r: 1 },
+            { label: '3 x 2', c: 3, r: 2 },
+            { label: '3 x 3', c: 3, r: 3 }
+        ];
+
+        const el = {
+            fileInput: document.getElementById('file-input'),
+            uploadZone: document.getElementById('upload-zone'),
+            previewImg: document.getElementById('preview-img'),
+            previewBox: document.getElementById('preview-box'),
+            emptyView: document.getElementById('empty-view'),
+            overlay: document.getElementById('grid-overlay'),
+            saveBtn: document.getElementById('save-btn-sidebar'),
+            loader: document.getElementById('loader'),
+            toast: document.getElementById('toast'),
+            presetContainer: document.getElementById('preset-container'),
+            ratioContainer: document.getElementById('ratio-container'),
+            adjPanel: document.getElementById('adjustment-panel'),
+            zoomSlider: document.getElementById('zoom-slider'),
+            rotateSlider: document.getElementById('rotate-slider'),
+            zoomValInput: document.getElementById('zoom-val-input'),
+            rotateValInput: document.getElementById('rotate-val-input'),
+            infoBadge: document.getElementById('info-badge'),
+            customRatioInput: document.getElementById('custom-ratio-input'),
+            customGridInput: document.getElementById('custom-grid-input'),
+            statusDot: document.getElementById('status-indicator'),
+            statusLabel: document.getElementById('status-label')
+        };
+
+        let isDragging = false;
+        let lastX, lastY;
+        let initialDist = 0;
+        let initialAngle = 0;
+        let startScale = 1;
+        let startRotation = 0;
+
+        function init() {
+            loadSettings();
+            renderPresets();
+            setupInputListeners();
+            updateUI();
+        }
+
+        function toggleInput(id) {
+            const input = document.getElementById(id);
+            if (input.classList.contains('hidden')) {
+                input.classList.remove('hidden');
+                input.focus();
+                input.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        if (id === 'custom-ratio-input') addCustomRatio();
+                        else addCustomGrid();
+                        input.classList.add('hidden');
+                    }
+                };
+            } else {
+                input.classList.add('hidden');
+            }
+        }
+
+        function saveSettings() {
+            const dataToSave = {
+                ratio: state.ratio,
+                cols: state.cols,
+                rows: state.rows,
+                customRatios: state.customRatios,
+                customGrids: state.customGrids
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    state.ratio = parsed.ratio || '1:1';
+                    state.cols = parsed.cols || 2;
+                    state.rows = parsed.rows || 1;
+                    state.customRatios = parsed.customRatios || [];
+                    state.customGrids = parsed.customGrids || [];
+                } catch (e) { }
+            }
+        }
+
+        function renderPresets() {
+            el.ratioContainer.innerHTML = `
+                <button onclick="changeRatio('1:1')" data-id="ratio-1:1" class="ratio-option py-3.5 px-4 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-xs text-slate-500 transition-all">1:1</button>
+                <button onclick="changeRatio('4:5')" data-id="ratio-4:5" class="ratio-option py-3.5 px-4 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-xs text-slate-500 transition-all">4:5</button>
+            `;
+            state.customRatios.forEach(r => {
+                const btn = document.createElement('button');
+                btn.className = 'ratio-option py-3.5 px-4 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-xs text-slate-500 transition-all';
+                btn.textContent = r;
+                btn.dataset.id = `ratio-${r}`;
+                btn.onclick = () => changeRatio(r);
+                el.ratioContainer.appendChild(btn);
+            });
+
+            el.presetContainer.innerHTML = '';
+            const allGrids = [...defaultGridPresets, ...state.customGrids];
+            allGrids.forEach(p => {
+                const btn = document.createElement('button');
+                btn.className = 'grid-option py-3.5 px-2 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-[11px] text-slate-500 transition-all hover:bg-slate-100';
+                btn.textContent = p.label;
+                btn.dataset.id = `grid-${p.c}-${p.r}`;
+                btn.onclick = () => updateGrid(p.c, p.r);
+                el.presetContainer.appendChild(btn);
+            });
+            updateUI();
+        }
+
+        function setupInputListeners() {
+            el.zoomValInput.onchange = (e) => {
+                let val = parseFloat(e.target.value);
+                if (isNaN(val)) val = 100;
+                val = Math.max(10, Math.min(500, val));
+                state.scale = val / 100;
+                updateSliderUI();
+                applyTransform();
+            };
+            el.rotateValInput.onchange = (e) => {
+                let val = parseFloat(e.target.value);
+                if (isNaN(val)) val = 0;
+                state.rotation = val;
+                updateSliderUI();
+                applyTransform();
+            };
+        }
+
+        function addCustomRatio() {
+            const val = el.customRatioInput.value.trim();
+            if (/^\d+:\d+$/.test(val)) {
+                if (!state.customRatios.includes(val)) {
+                    state.customRatios.push(val);
+                    saveSettings(); renderPresets();
+                }
+            }
+        }
+
+        function addCustomGrid() {
+            const val = el.customGridInput.value.trim().toLowerCase();
+            const match = val.match(/^(\d+)[x\*×](\d+)$/);
+            if (match) {
+                const c = parseInt(match[1]);
+                const r = parseInt(match[2]);
+                if (c > 0 && r > 0) {
+                    const label = `${c} x ${r}`;
+                    if (!state.customGrids.find(g => g.c === c && g.r === r)) {
+                        state.customGrids.push({ label, c, r });
+                        saveSettings(); renderPresets();
+                    }
+                }
+            }
+        }
+
+        function changeRatio(r) { state.ratio = r; saveSettings(); updateUI(); }
+        function updateGrid(c, r) { state.cols = c; state.rows = r; saveSettings(); updateUI(); }
+
+        function resetAdjustments() {
+            state.offsetX = 0; state.offsetY = 0; state.rotation = 0; state.scale = 1;
+            updateSliderUI(); applyTransform();
+        }
+
+        function rotate90() {
+            state.rotation = (Math.round(state.rotation / 90) * 90 + 90);
+            updateSliderUI(); applyTransform();
+        }
+
+        function updateSliderUI() {
+            el.zoomSlider.value = state.scale;
+            el.rotateSlider.value = state.rotation;
+            el.zoomValInput.value = Math.round(state.scale * 100);
+            el.rotateValInput.value = Math.round(state.rotation);
+            updateInfoBadge();
+        }
+
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    state.image = img;
+                    el.previewImg.src = e.target.result;
+                    el.adjPanel.classList.remove('opacity-40', 'pointer-events-none');
+                    updateUI();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        el.fileInput.onchange = (e) => handleFile(e.target.files[0]);
+        el.uploadZone.onclick = () => el.fileInput.click();
+
+        el.zoomSlider.oninput = (e) => {
+            state.scale = parseFloat(e.target.value);
+            updateSliderUI();
+            applyTransform();
+        };
+
+        el.rotateSlider.oninput = (e) => {
+            state.rotation = parseInt(e.target.value);
+            updateSliderUI();
+            applyTransform();
+        };
+
+        const getDist = (t1, t2) => Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+        const getAngle = (t1, t2) => Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * 180 / Math.PI;
+
+        el.previewBox.addEventListener('mousedown', e => {
+            if (!state.image) return;
+            isDragging = true; lastX = e.clientX; lastY = e.clientY;
+        });
+
+        window.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            state.offsetX += (e.clientX - lastX);
+            state.offsetY += (e.clientY - lastY);
+            lastX = e.clientX; lastY = e.clientY;
+            applyTransform();
+        });
+
+        window.addEventListener('mouseup', () => isDragging = false);
+
+        el.previewBox.addEventListener('touchstart', e => {
+            if (!state.image) return;
+            if (e.touches.length === 1) {
+                isDragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+                isDragging = false;
+                initialDist = getDist(e.touches[0], e.touches[1]);
+                initialAngle = getAngle(e.touches[0], e.touches[1]);
+                startScale = state.scale;
+                startRotation = state.rotation;
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchmove', e => {
+            if (e.touches.length === 1 && isDragging) {
+                state.offsetX += (e.touches[0].clientX - lastX);
+                state.offsetY += (e.touches[0].clientY - lastY);
+                lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+                applyTransform();
+            } else if (e.touches.length === 2 && initialDist > 0) {
+                const currentDist = getDist(e.touches[0], e.touches[1]);
+                const currentAngle = getAngle(e.touches[0], e.touches[1]);
+                state.scale = Math.min(Math.max(0.1, startScale * (currentDist / initialDist)), 5);
+                let deltaAngle = currentAngle - initialAngle;
+                state.rotation = startRotation + deltaAngle;
+                updateSliderUI(); applyTransform();
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', () => { isDragging = false; initialDist = 0; });
+
+        function applyTransform() {
+            el.previewImg.style.transform = `translate(${state.offsetX}px, ${state.offsetY}px) rotate(${state.rotation}deg) scale(${state.scale})`;
+        }
+
+        function smartAutoFit() {
+            if (!state.image) return;
+            state.offsetX = 0; state.offsetY = 0; state.rotation = 0;
+            const [unitW, unitH] = state.ratio.split(':').map(Number);
+            const targetTotalRatio = (unitW * state.cols) / (unitH * state.rows);
+            const imgRatio = state.image.width / state.image.height;
+            state.scale = imgRatio > targetTotalRatio ? imgRatio / targetTotalRatio : targetTotalRatio / imgRatio;
+            updateSliderUI(); updateUI();
+            showToast("최적의 구도를 찾았습니다.");
+        }
+
+        function updateInfoBadge() {
+            const [unitW, unitH] = state.ratio.split(':').map(Number);
+            const pieceW = 1080;
+            const pieceH = Math.round((1080 / unitW) * unitH);
+            const totalPieces = state.cols * state.rows;
+            const estSizeKB = Math.round((pieceW * pieceH * 3 * 0.1) / 1024);
+            const totalSizeMB = ((estSizeKB * totalPieces) / 1024).toFixed(1);
+
+            el.infoBadge.innerHTML = `
+                <div class="font-bold border-b border-white/20 pb-1 mb-1 opacity-60 uppercase text-[9px] tracking-widest">Image Details</div>
+                조각: ${pieceW}x${pieceH} px (${totalPieces}개)<br>
+                예상: 약 ${estSizeKB}KB/조각 (합계 ${totalSizeMB}MB)
+            `;
+        }
+
+        function updateUI() {
+            document.querySelectorAll('.ratio-option').forEach(b => b.classList.toggle('btn-active', b.dataset.id === `ratio-${state.ratio}`));
+            document.querySelectorAll('.grid-option').forEach(b => b.classList.toggle('btn-active', b.dataset.id === `grid-${state.cols}-${state.rows}`));
+
+            if (!state.image) return;
+
+            el.emptyView.classList.add('hidden');
+            el.previewBox.classList.remove('hidden');
+            el.infoBadge.classList.remove('hidden');
+            el.saveBtn.disabled = false;
+            el.saveBtn.className = 'w-full py-6 smart-gradient text-white rounded-[2rem] font-black text-xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-indigo-200 cursor-pointer hover:-translate-y-1';
+            el.statusDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-200 ml-2';
+            el.statusLabel.className = 'text-sm font-bold text-emerald-600 mr-2';
+            el.statusLabel.textContent = 'Active Editing';
+
+            const [unitW, unitH] = state.ratio.split(':').map(Number);
+            const totalW = unitW * state.cols;
+            const totalH = unitH * state.rows;
+            el.previewBox.style.aspectRatio = `${totalW} / ${totalH}`;
+
+            const boxRatio = totalW / totalH;
+            const imgRatio = state.image.width / state.image.height;
+
+            if (imgRatio > boxRatio) {
+                el.previewImg.style.width = 'auto'; el.previewImg.style.height = '100%';
+            } else {
+                el.previewImg.style.width = '100%'; el.previewImg.style.height = 'auto';
+            }
+
+            updateInfoBadge();
+
+            el.overlay.innerHTML = '';
+            if (state.cols > 1 || state.rows > 1) {
+                for (let i = 1; i < state.cols; i++) {
+                    const line = document.createElement('div');
+                    line.className = 'grid-line-v';
+                    line.style.left = `${(i / state.cols) * 100}%`;
+                    el.overlay.appendChild(line);
+                }
+                for (let i = 1; i < state.rows; i++) {
+                    const line = document.createElement('div');
+                    line.className = 'grid-line-h';
+                    line.style.top = `${(i / state.rows) * 100}%`;
+                    el.overlay.appendChild(line);
+                }
+            }
+            applyTransform();
+        }
+
+        el.saveBtn.onclick = async () => {
+            if (!state.image) return;
+            el.loader.classList.remove('hidden');
+            const zip = new JSZip();
+            const [unitW, unitH] = state.ratio.split(':').map(Number);
+            const qualityW = 1080;
+            const qualityH = Math.round((qualityW / unitW) * unitH);
+
+            const masterCanvas = document.createElement('canvas');
+            const mCtx = masterCanvas.getContext('2d');
+            const fullW = qualityW * state.cols;
+            const fullH = qualityH * state.rows;
+            masterCanvas.width = fullW; masterCanvas.height = fullH;
+
+            mCtx.save();
+            mCtx.translate(fullW / 2, fullH / 2);
+            const rect = el.previewBox.getBoundingClientRect();
+            const scaleFactor = fullW / rect.width;
+            mCtx.translate(state.offsetX * scaleFactor, state.offsetY * scaleFactor);
+            mCtx.rotate(state.rotation * Math.PI / 180);
+            mCtx.scale(state.scale, state.scale);
+
+            let dW, dH;
+            const imgRatio = state.image.width / state.image.height;
+            const boxRatio = (unitW * state.cols) / (unitH * state.rows);
+            if (imgRatio > boxRatio) {
+                dH = fullH; dW = dH * imgRatio;
+            } else {
+                dW = fullW; dH = dW / imgRatio;
+            }
+            mCtx.drawImage(state.image, -dW / 2, -dH / 2, dW, dH);
+            mCtx.restore();
+
+            try {
+                const tileCanvas = document.createElement('canvas');
+                const tCtx = tileCanvas.getContext('2d');
+                tileCanvas.width = qualityW;
+                tileCanvas.height = qualityH;
+                const jobs = [];
+                for (let r = 0; r < state.rows; r++) {
+                    for (let c = 0; c < state.cols; c++) {
+                        tCtx.clearRect(0, 0, qualityW, qualityH);
+                        tCtx.drawImage(masterCanvas, c * qualityW, r * qualityH, qualityW, qualityH, 0, 0, qualityW, qualityH);
+                        jobs.push(new Promise(res => {
+                            tileCanvas.toBlob(blob => { zip.file(`part_${r + 1}_${c + 1}.jpg`, blob); res(); }, 'image/jpeg', 0.92);
+                        }));
+                    }
+                }
+                await Promise.all(jobs);
+                const content = await zip.generateAsync({ type: 'blob' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = `grid_pack_${Date.now()}.zip`;
+                link.click();
+                showToast("압축 파일이 저장되었습니다.");
+            } catch (e) { showToast("오류가 발생했습니다."); } finally { el.loader.classList.add('hidden'); }
+        };
+
+        function showToast(m) {
+            el.toast.textContent = m;
+            el.toast.classList.remove('opacity-0', 'translate-y-10');
+            el.toast.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                el.toast.classList.remove('opacity-100', 'translate-y-0');
+                el.toast.classList.add('opacity-0', 'translate-y-10');
+            }, 3000);
+        }
+
+        init();
+    </script>
+    <a href="/" class="floating-home-btn" title="byeduin apps" aria-label="byeduin apps">
+        <svg viewBox="0 0 24 24">
+            <path
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+            </path>
+        </svg>
+    </a>
+</body>
+
+</html>

@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR 코드 마스터 (생성 & 스캔)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QRCode.js (생성용) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- html5-qrcode (스캔용) -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        #qrcode img,
+        #qrcode canvas {
+            margin: 0 auto;
+            border-radius: 8px;
+        }
+
+        /* 스캐너 비디오 컨테이너 스타일 */
+        #reader {
+            width: 100%;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        #reader video {
+            object-fit: cover;
+            border-radius: 0.5rem;
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* 탭 활성/비활성 스타일 */
+        .tab-active {
+            border-bottom: 2px solid #4f46e5;
+            color: #4f46e5;
+            font-weight: 700;
+        }
+
+        .tab-inactive {
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .tab-inactive:hover {
+            color: #374151;
+        }
+
+        /* Floating Home Button Style */
+        .floating-home-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 52px;
+            height: 52px;
+            background: #4f46e5;
+            color: white !important;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 9999;
+            text-decoration: none;
+        }
+
+        .floating-home-btn:hover {
+            transform: scale(1.1) translateY(-4px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+            background: #4338ca;
+        }
+
+        .floating-home-btn:active {
+            transform: scale(0.95);
+        }
+
+        .floating-home-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden relative">
+
+        <!-- 헤더 & 탭 -->
+        <div class="bg-white border-b border-gray-100">
+            <div class="bg-indigo-600 p-6 text-center text-white">
+                <h1 class="text-2xl font-bold mb-1">
+                    <i class="fa-solid fa-qrcode mr-2"></i>QR Master
+                </h1>
+                <p class="text-indigo-200 text-sm">생성부터 스캔까지 한 번에</p>
+            </div>
+
+            <div class="flex text-sm">
+                <button onclick="switchTab('generate')" id="tabBtnGenerate"
+                    class="flex-1 py-4 text-center transition-colors tab-active">
+                    <i class="fa-solid fa-pen-to-square mr-1"></i> 생성하기
+                </button>
+                <button onclick="switchTab('scan')" id="tabBtnScan"
+                    class="flex-1 py-4 text-center transition-colors tab-inactive">
+                    <i class="fa-solid fa-camera mr-1"></i> 스캔하기
+                </button>
+            </div>
+        </div>
+
+        <div class="p-6">
+
+            <!-- [탭 1] QR 생성기 -->
+            <div id="generateTab" class="space-y-6">
+                <div class="space-y-3">
+                    <label class="block text-sm font-medium text-gray-700">변환할 주소 (URL) 또는 텍스트</label>
+                    <input type="text" id="urlInput"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
+                        placeholder="https://example.com" onkeypress="handleEnter(event)">
+
+                    <button onclick="generateQR()"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md active:scale-95 transform duration-150 flex items-center justify-center gap-2">
+                        <span>QR 코드 생성</span>
+                        <i class="fa-solid fa-magic"></i>
+                    </button>
+                </div>
+
+                <!-- 생성 결과 -->
+                <div id="genResultArea" class="hidden flex-col items-center space-y-4 pt-4 border-t border-gray-100">
+                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-inner">
+                        <div id="qrcode" class="bg-white p-2"></div>
+                    </div>
+                    <div class="text-center w-full">
+                        <p id="genResultText" class="text-xs text-gray-500 mb-3 truncate px-4 font-mono"></p>
+                        <button onclick="downloadQR()"
+                            class="w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm">
+                            <i class="fa-solid fa-download"></i> 이미지 저장
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- [탭 2] QR 스캐너 -->
+            <div id="scanTab" class="hidden space-y-5">
+
+                <!-- 스캔 방식 선택 버튼 -->
+                <div class="grid grid-cols-3 gap-2 mb-2">
+                    <button onclick="startCamera()" id="btnCam"
+                        class="flex flex-col items-center justify-center p-3 border-2 border-dashed border-indigo-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all text-indigo-600">
+                        <i class="fa-solid fa-video mb-1 text-lg"></i>
+                        <span class="text-[10px] font-bold mt-1">카메라</span>
+                    </button>
+                    <label for="qrInputFile"
+                        class="flex flex-col items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-xl hover:border-gray-500 hover:bg-gray-50 transition-all text-gray-600 cursor-pointer">
+                        <i class="fa-regular fa-image mb-1 text-lg"></i>
+                        <span class="text-[10px] font-bold mt-1">파일 업로드</span>
+                        <input type="file" id="qrInputFile" accept="image/*" class="hidden"
+                            onchange="handleFileUpload(this)">
+                    </label>
+                    <button onclick="handleClipboardPaste()"
+                        class="flex flex-col items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-xl hover:border-gray-500 hover:bg-gray-50 transition-all text-gray-600">
+                        <i class="fa-regular fa-clipboard mb-1 text-lg"></i>
+                        <span class="text-[10px] font-bold mt-1">붙여넣기</span>
+                    </button>
+                </div>
+                <div class="text-center text-[10px] text-gray-400 -mt-3">
+                    <i class="fa-solid fa-circle-info mr-1"></i>Ctrl+V로 이미지를 바로 붙여넣을 수도 있습니다
+                </div>
+
+                <!-- 카메라 영역 -->
+                <div id="cameraArea" class="hidden relative bg-black rounded-lg overflow-hidden shadow-inner group">
+                    <div id="reader" class="w-full h-64 bg-black"></div>
+                    <button onclick="stopCamera()"
+                        class="absolute top-2 right-2 bg-white/80 hover:bg-white text-gray-800 rounded-full p-1.5 w-8 h-8 flex items-center justify-center shadow-lg transition-all z-10">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    <div class="absolute bottom-4 left-0 right-0 text-center text-white text-xs opacity-70">
+                        QR 코드를 비춰주세요
+                    </div>
+                </div>
+
+                <!-- 스캔 결과 -->
+                <div id="scanResultArea"
+                    class="hidden bg-green-50 border border-green-200 rounded-xl p-4 animate-pulse-once">
+                    <div class="flex items-start gap-3">
+                        <div class="bg-green-100 text-green-600 p-2 rounded-full shrink-0">
+                            <i class="fa-solid fa-check"></i>
+                        </div>
+                        <div class="overflow-hidden w-full">
+                            <h3 class="text-xs font-bold text-green-800 mb-1">스캔 성공!</h3>
+                            <p id="scanResultText"
+                                class="text-sm text-gray-800 break-all font-mono bg-white p-2 rounded border border-green-100 mb-2 select-all">
+                            </p>
+                            <div class="flex gap-2">
+                                <button onclick="copyScanResult()"
+                                    class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded transition-colors">
+                                    <i class="fa-regular fa-copy mr-1"></i>복사
+                                </button>
+                                <a id="scanResultLink" href="#" target="_blank"
+                                    class="hidden text-xs bg-gray-700 hover:bg-gray-900 text-white px-3 py-1.5 rounded transition-colors flex items-center">
+                                    <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i>이동
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 공통 히스토리 영역 -->
+            <div class="pt-6 mt-2 border-t border-gray-100">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left"></i> 히스토리
+                    </h3>
+                    <button onclick="clearHistory()" class="text-xs text-red-400 hover:text-red-600 hover:underline">
+                        지우기
+                    </button>
+                </div>
+
+                <ul id="historyList" class="space-y-2 max-h-40 overflow-y-auto pr-1 text-sm custom-scrollbar">
+                    <li class="text-center text-gray-400 py-4 text-xs">기록이 없습니다.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 푸터 -->
+        <div class="bg-gray-50 p-3 text-center text-[10px] text-gray-400 border-t">
+            QR Master &copy; Local Storage Only
+        </div>
+    </div>
+
+    <script>
+        // --- 전역 변수 ---
+        let html5QrCode = null;
+        let isCameraRunning = false;
+
+        // --- 초기화 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadHistory();
+
+            // 전역 붙여넣기 이벤트 리스너 추가 (Ctrl+V 지원)
+            document.addEventListener('paste', handlePasteEvent);
+        });
+
+        // --- 탭 전환 로직 ---
+        function switchTab(tab) {
+            const genTab = document.getElementById('generateTab');
+            const scnTab = document.getElementById('scanTab');
+            const btnGen = document.getElementById('tabBtnGenerate');
+            const btnScn = document.getElementById('tabBtnScan');
+
+            if (tab === 'generate') {
+                genTab.classList.remove('hidden');
+                scnTab.classList.add('hidden');
+                btnGen.className = "flex-1 py-4 text-center transition-colors tab-active";
+                btnScn.className = "flex-1 py-4 text-center transition-colors tab-inactive";
+                stopCamera(); // 탭 이동시 카메라 끄기
+            } else {
+                genTab.classList.add('hidden');
+                scnTab.classList.remove('hidden');
+                btnGen.className = "flex-1 py-4 text-center transition-colors tab-inactive";
+                btnScn.className = "flex-1 py-4 text-center transition-colors tab-active";
+            }
+        }
+
+        // --- [탭 1] 생성 기능 ---
+        function handleEnter(e) {
+            if (e.key === 'Enter') generateQR();
+        }
+
+        function generateQR(text = null) {
+            const inputVal = text || document.getElementById('urlInput').value.trim();
+            if (!inputVal) return alert('내용을 입력해주세요.');
+
+            const container = document.getElementById('qrcode');
+            container.innerHTML = "";
+            document.getElementById('genResultArea').classList.remove('hidden');
+            document.getElementById('genResultText').textContent = inputVal;
+
+            new QRCode(container, {
+                text: inputVal,
+                width: 180,
+                height: 180,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            if (!text) document.getElementById('urlInput').value = inputVal;
+            addToHistory(inputVal, 'gen'); // 타입: 생성(gen)
+        }
+
+        function downloadQR() {
+            const img = document.querySelector('#qrcode img');
+            const canvas = document.querySelector('#qrcode canvas');
+
+            const link = document.createElement('a');
+            link.download = `qr_code_${Date.now()}.png`;
+
+            if (img && img.src) link.href = img.src;
+            else if (canvas) link.href = canvas.toDataURL("image/png");
+            else return;
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- [탭 2] 스캔 기능 ---
+
+        // 1. 카메라 스캔 시작
+        function startCamera() {
+            if (isCameraRunning) return;
+
+            const readerElem = document.getElementById('reader');
+            document.getElementById('cameraArea').classList.remove('hidden');
+            document.getElementById('scanResultArea').classList.add('hidden');
+
+            // html5QrCode 인스턴스 생성 또는 재사용
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+            html5QrCode.start(
+                { facingMode: "environment" }, // 후면 카메라 우선
+                config,
+                onScanSuccess,
+                (errorMessage) => {
+                    // 스캔 중 에러는 무시 (계속 스캔하므로)
+                }
+            ).then(() => {
+                isCameraRunning = true;
+            }).catch(err => {
+                console.error(err);
+                alert("카메라를 시작할 수 없습니다. 권한을 확인해주세요.\n(HTTPS 또는 로컬환경 필수)");
+                document.getElementById('cameraArea').classList.add('hidden');
+            });
+        }
+
+        // 2. 카메라 끄기
+        function stopCamera() {
+            if (html5QrCode && isCameraRunning) {
+                html5QrCode.stop().then(() => {
+                    isCameraRunning = false;
+                    document.getElementById('cameraArea').classList.add('hidden');
+                    // DOM 정리
+                    html5QrCode.clear();
+                }).catch(err => console.log("Stop failed", err));
+            } else {
+                document.getElementById('cameraArea').classList.add('hidden');
+            }
+        }
+
+        // 3. 파일 업로드 스캔
+        function handleFileUpload(input) {
+            if (input.files.length === 0) return;
+            const imageFile = input.files[0];
+            scanImageFile(imageFile);
+            input.value = ''; // 입력 초기화
+        }
+
+        // 3-1. 공통 이미지 스캔 로직 (파일, 붙여넣기 공용)
+        function scanImageFile(file) {
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+
+            // 스캔 탭으로 이동 (다른 탭에 있을 경우)
+            switchTab('scan');
+
+            html5QrCode.scanFile(file, true)
+                .then(decodedText => {
+                    onScanSuccess(decodedText);
+                })
+                .catch(err => {
+                    alert(`QR 코드를 찾을 수 없습니다.\n이미지가 너무 흐리거나 QR이 없을 수 있습니다.`);
+                });
+        }
+
+        // 3-2. 전역 Paste 이벤트 핸들러 (Ctrl+V)
+        function handlePasteEvent(e) {
+            const items = e.clipboardData.items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf("image") !== -1) {
+                    const blob = items[i].getAsFile();
+                    const file = new File([blob], "pasted_image.png", { type: blob.type });
+                    scanImageFile(file);
+                    return; // 첫 번째 이미지만 처리
+                }
+            }
+        }
+
+        // 3-3. 버튼 클릭 핸들러 (안내용)
+        async function handleClipboardPaste() {
+            try {
+                // 권한이 있다면 시도
+                const clipboardItems = await navigator.clipboard.read();
+                for (const item of clipboardItems) {
+                    const imageType = item.types.find(type => type.startsWith('image/'));
+                    if (imageType) {
+                        const blob = await item.getType(imageType);
+                        const file = new File([blob], "clipboard_image.png", { type: imageType });
+                        scanImageFile(file);
+                        return;
+                    }
+                }
+                alert("클립보드에 이미지가 없습니다.");
+            } catch (err) {
+                // 권한 오류 발생 시 (iframe 등) 사용자에게 안내
+                alert("브라우저 보안 설정으로 인해 버튼 기능이 제한되었습니다.\n\n키보드의 [Ctrl+V] (맥은 Cmd+V)를 누르면 이미지가 바로 붙여넣기 됩니다!");
+            }
+        }
+
+        // 4. 스캔 성공 콜백
+        function onScanSuccess(decodedText, decodedResult) {
+            if (isCameraRunning) stopCamera();
+
+            const resultArea = document.getElementById('scanResultArea');
+            const resultText = document.getElementById('scanResultText');
+            const resultLink = document.getElementById('scanResultLink');
+
+            resultArea.classList.remove('hidden');
+            resultText.textContent = decodedText;
+
+            // URL인지 확인
+            if (isValidURL(decodedText)) {
+                resultLink.href = decodedText;
+                resultLink.classList.remove('hidden');
+                resultLink.classList.add('flex');
+            } else {
+                resultLink.classList.add('hidden');
+                resultLink.classList.remove('flex');
+            }
+
+            addToHistory(decodedText, 'scan');
+        }
+
+        function copyScanResult() {
+            const text = document.getElementById('scanResultText').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('클립보드에 복사되었습니다.');
+            }).catch(() => {
+                alert('복사에 실패했습니다.');
+            });
+        }
+
+        // URL 유효성 검사 헬퍼
+        function isValidURL(string) {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        // --- [공통] 히스토리 관리 ---
+        function addToHistory(text, type) {
+            let history = JSON.parse(localStorage.getItem('qr_history')) || [];
+
+            // 중복 제거
+            history = history.filter(item => item.text !== text);
+
+            const newItem = {
+                text: text,
+                type: type, // 'gen' or 'scan'
+                date: new Date().toLocaleDateString()
+            };
+            history.unshift(newItem);
+            if (history.length > 30) history.pop();
+
+            localStorage.setItem('qr_history', JSON.stringify(history));
+            renderHistory(history);
+        }
+
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem('qr_history')) || [];
+            renderHistory(history);
+        }
+
+        function renderHistory(history) {
+            const list = document.getElementById('historyList');
+            list.innerHTML = '';
+
+            if (history.length === 0) {
+                list.innerHTML = '<li class="text-center text-gray-400 py-4 text-xs">기록이 없습니다.</li>';
+                return;
+            }
+
+            history.forEach(item => {
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center bg-white p-3 rounded-lg border border-gray-100 hover:border-indigo-200 transition-colors cursor-pointer group";
+
+                // 클릭 시: 생성 기록이면 재생성, 스캔 기록이면 결과 표시(여기선 편의상 생성탭으로 보냄)
+                li.onclick = () => {
+                    switchTab('generate');
+                    generateQR(item.text);
+                };
+
+                // 아이콘 설정
+                const iconClass = item.type === 'scan' ? 'fa-camera text-green-500' : 'fa-pen-to-square text-indigo-500';
+                const typeLabel = item.type === 'scan' ? '스캔됨' : '생성됨';
+
+                li.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <div class="bg-gray-50 p-2 rounded-full shrink-0">
+                            <i class="fa-solid ${iconClass} text-xs"></i>
+                        </div>
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="text-xs font-medium text-gray-700 truncate w-48 sm:w-56">${item.text}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] text-gray-400 border border-gray-100 px-1 rounded">${typeLabel}</span>
+                                <span class="text-[10px] text-gray-400">${item.date}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="event.stopPropagation(); deleteHistoryItem('${item.text}')" 
+                        class="text-gray-300 hover:text-red-500 p-2 transition-colors">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function deleteHistoryItem(text) {
+            let history = JSON.parse(localStorage.getItem('qr_history')) || [];
+            history = history.filter(item => item.text !== text);
+            localStorage.setItem('qr_history', JSON.stringify(history));
+            renderHistory(history);
+        }
+
+        function clearHistory() {
+            if (confirm('기록을 모두 삭제하시겠습니까?')) {
+                localStorage.removeItem('qr_history');
+                renderHistory([]);
+            }
+        }
+    </script>
+    <a href="/" class="floating-home-btn" title="byeduin apps" aria-label="byeduin apps">
+        <svg viewBox="0 0 24 24">
+            <path
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+            </path>
+        </svg>
+    </a>
+</body>
+
+</html>

@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>노션 이미지 다운로더</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f10;
+    --surface: #18181b;
+    --surface2: #222228;
+    --border: #2e2e36;
+    --accent: #7c6af7;
+    --accent-dim: rgba(124,106,247,0.15);
+    --accent-hover: #9585f9;
+    --text: #e8e8f0;
+    --text-dim: #888899;
+    --text-muted: #55556a;
+    --success: #4ade80;
+    --warn: #fb923c;
+    --error: #f87171;
+    --radius: 12px;
+  }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 16px 80px;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { width: 100%; max-width: 580px; position: relative; z-index: 1; }
+
+  .header { margin-bottom: 40px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--accent-dim); border: 1px solid rgba(124,106,247,0.3);
+    color: var(--accent-hover); font-size: 11px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 99px; margin-bottom: 14px;
+  }
+  .badge::before { content: '◆'; font-size: 8px; }
+  h1 { font-size: 28px; font-weight: 700; line-height: 1.25; letter-spacing: -0.03em; }
+  h1 span { color: var(--accent-hover); }
+  .desc { margin-top: 10px; font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px; margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  label { display: block; font-size: 13px; font-weight: 500; color: var(--text-dim); margin-bottom: 6px; }
+  input[type="text"], input[type="password"] {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; font-size: 13px;
+    font-family: 'JetBrains Mono', monospace; color: var(--text);
+    outline: none; transition: border-color 0.2s; margin-bottom: 14px;
+  }
+  input:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--text-muted); }
+
+  .hint { font-size: 11.5px; color: var(--text-muted); line-height: 1.6; margin-top: -10px; margin-bottom: 14px; }
+  .hint a { color: var(--accent); text-decoration: none; }
+  .hint a:hover { text-decoration: underline; }
+
+  /* 보안 안내 */
+  .security-note {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: rgba(124,106,247,0.07); border: 1px solid rgba(124,106,247,0.2);
+    border-radius: 8px; padding: 12px 14px; margin-bottom: 14px;
+    font-size: 12px; color: var(--text-dim); line-height: 1.6;
+  }
+  .security-note .icon { color: var(--accent); font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
+  .options { display: flex; gap: 8px; margin-bottom: 4px; }
+  .opt-btn {
+    flex: 1; padding: 8px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text-muted); font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif; cursor: pointer;
+    transition: all 0.15s; text-align: center;
+  }
+  .opt-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent-hover); font-weight: 700; }
+
+  .btn-run {
+    width: 100%; padding: 14px; background: var(--accent);
+    border: none; border-radius: 10px; color: #fff; font-size: 15px;
+    font-weight: 700; font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer; transition: background 0.15s, transform 0.1s;
+    letter-spacing: -0.01em;
+  }
+  .btn-run:hover { background: var(--accent-hover); }
+  .btn-run:active { transform: scale(0.99); }
+  .btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .progress-wrap { margin-bottom: 16px; display: none; }
+  .progress-bar-bg { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 10px; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-hover)); border-radius: 99px; width: 0%; transition: width 0.3s ease; }
+  .progress-text { font-size: 12px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+
+  .log-wrap { display: none; }
+  .log-header { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .log-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .log {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    color: var(--text-dim); max-height: 260px; overflow-y: auto; line-height: 1.8;
+  }
+  .log-item { display: flex; gap: 8px; }
+  .log-item.ok .log-icon { color: var(--success); }
+  .log-item.skip .log-icon { color: var(--warn); }
+  .log-item.err .log-icon { color: var(--error); }
+  .log-item.info .log-icon { color: var(--accent); }
+
+  .summary {
+    display: none; background: rgba(74,222,128,0.08);
+    border: 1px solid rgba(74,222,128,0.25); border-radius: var(--radius);
+    padding: 14px 18px; font-size: 13px; color: var(--success);
+    text-align: center; font-weight: 600; margin-bottom: 16px;
+  }
+
+  .guide {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent); border-radius: var(--radius);
+    padding: 16px 20px; margin-bottom: 16px;
+  }
+  .guide-title { font-size: 12px; font-weight: 700; color: var(--accent-hover); margin-bottom: 10px; }
+  .guide ol { padding-left: 18px; }
+  .guide li { font-size: 13px; color: var(--text-dim); line-height: 1.7; margin-bottom: 4px; }
+  .guide li code { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; background: var(--border); padding: 1px 5px; border-radius: 4px; color: var(--text); }
+  .guide a { color: var(--accent); text-decoration: none; }
+  .guide a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="badge">Notion Tool</div>
+    <h1>이미지 <span>일괄 다운로드</span></h1>
+    <p class="desc">노션 DB의 이미지를 JPG / PNG로 변환해 한 번에 저장합니다.</p>
+  </div>
+
+  <div class="guide">
+    <div class="guide-title">📋 사용 전 준비 (최초 1회)</div>
+    <ol>
+      <li><a href="https://www.notion.so/profile/integrations" target="_blank">노션 인테그레이션 페이지</a>에서 새 인테그레이션을 만들고 <code>secret_...</code> 토큰을 복사합니다.</li>
+      <li>대상 DB 페이지 우측 상단 <code>···</code> → 연결 추가에서 만든 인테그레이션을 연결합니다.</li>
+      <li>DB URL에서 ID를 복사합니다. <code>notion.so/.../[여기 32자리]?v=...</code></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <div class="card-title">설정</div>
+
+    <label>노션 API 토큰</label>
+    <input type="password" id="token" placeholder="secret_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+
+    <div class="security-note">
+      <span class="icon">🔒</span>
+      <span>토큰은 브라우저에서 이 서버의 프록시 함수로만 전달되며, 서버에 저장되거나 로그에 기록되지 않습니다.</span>
+    </div>
+
+    <label>데이터베이스 ID</label>
+    <input type="text" id="dbid" placeholder="32자리 영문+숫자">
+    <p class="hint">URL에서 <code>?v=</code> 앞의 32자리 문자열</p>
+
+    <label>저장 형식</label>
+    <div class="options">
+      <button class="opt-btn active" onclick="setFmt('jpg', this)">JPG</button>
+      <button class="opt-btn" onclick="setFmt('png', this)">PNG</button>
+    </div>
+  </div>
+
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="progress-text" id="progressText">준비 중...</div>
+  </div>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="log-wrap" id="logWrap">
+    <div class="log-header">진행 로그</div>
+    <div class="log" id="log"></div>
+  </div>
+
+  <button class="btn-run" id="runBtn" onclick="run()">⬇ 이미지 다운로드 시작</button>
+
+</div>
+<script>
+// 토큰은 이 변수에만 머물고, Function 호출 후 응답이 오면 메모리에서 사라짐
+let fmt = 'jpg';
+
+function setFmt(f, el) {
+  fmt = f;
+  document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function addLog(type, icon, msg) {
+  const log = document.getElementById('log');
+  const item = document.createElement('div');
+  item.className = `log-item ${type}`;
+  item.innerHTML = `<span class="log-icon">${icon}</span><span>${msg}</span>`;
+  log.appendChild(item);
+  log.scrollTop = log.scrollHeight;
+}
+
+function setProgress(cur, total, msg) {
+  const pct = total > 0 ? Math.round((cur / total) * 100) : 0;
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressText').textContent = msg;
+}
+
+// 자체 Netlify Function 프록시 호출 (토큰은 body에 담겨 HTTPS로만 전송)
+async function notionCall(token, path, payload) {
+  const resp = await fetch('/.netlify/functions/notion', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    // 토큰을 body에 포함 — HTTPS 통신이므로 전송 중 평문 노출 없음
+    body: JSON.stringify({ token, path, payload }),
+  });
+  if (!resp.ok) throw new Error(`프록시 오류: ${resp.status}`);
+  return resp.json();
+}
+
+async function getAllPages(token, dbId) {
+  const pages = [];
+  let cursor = null;
+  do {
+    const data = await notionCall(token, `/v1/databases/${dbId}/query`, { page_size: 100, ...(cursor ? { start_cursor: cursor } : {}) });
+    pages.push(...data.results);
+    cursor = data.has_more ? data.next_cursor : null;
+  } while (cursor);
+  return pages;
+}
+
+function getTitle(page) {
+  for (const prop of Object.values(page.properties || {})) {
+    if (prop.type === 'title' && prop.title?.length) {
+      return prop.title[0].plain_text.replace(/[\\/*?:"<>|]/g, '_').trim() || page.id;
+    }
+  }
+  return page.id;
+}
+
+function getImageUrlsFromProps(page) {
+  const urls = [];
+  for (const prop of Object.values(page.properties || {})) {
+    if (prop.type === 'files') {
+      for (const f of prop.files || []) {
+        if (f.type === 'file') urls.push(f.file.url);
+        else if (f.type === 'external') urls.push(f.external.url);
+      }
+    }
+  }
+  return urls;
+}
+
+async function getImageUrlsFromBlocks(token, pageId) {
+  const urls = [];
+  try {
+    const data = await notionCall(token, `/v1/blocks/${pageId}/children`);
+    for (const block of data.results || []) {
+      if (block.type === 'image') {
+        const img = block.image;
+        if (img.type === 'file') urls.push(img.file.url);
+        else if (img.type === 'external') urls.push(img.external.url);
+      }
+    }
+  } catch (_) {}
+  return urls;
+}
+
+async function downloadAsBlob(imgUrl) {
+  const r = await fetch(imgUrl);
+  if (!r.ok) throw new Error(`다운로드 실패: ${r.status}`);
+  return r.blob();
+}
+
+function blobToCanvas(blob) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      res(c);
+    };
+    img.onerror = rej;
+    img.src = url;
+  });
+}
+
+function canvasToBlob(canvas, format) {
+  return new Promise(res => canvas.toBlob(res, format === 'jpg' ? 'image/jpeg' : 'image/png', 0.92));
+}
+
+function triggerDownload(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+async function run() {
+  const token = document.getElementById('token').value.trim();
+  const dbId  = document.getElementById('dbid').value.trim().replace(/-/g, '');
+
+  if (!token || !dbId) { alert('토큰과 DB ID를 모두 입력해 주세요.'); return; }
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.textContent = '처리 중...';
+
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('logWrap').style.display = 'block';
+  document.getElementById('summary').style.display = 'none';
+  document.getElementById('log').innerHTML = '';
+
+  let saved = 0, skipped = 0, failed = 0;
+
+  try {
+    addLog('info', '◆', 'DB 항목 불러오는 중...');
+    const pages = await getAllPages(token, dbId);
+    addLog('info', '◆', `총 ${pages.length}개 항목 발견`);
+
+    for (let i = 0; i < pages.length; i++) {
+      const page  = pages[i];
+      const title = getTitle(page);
+      setProgress(i + 1, pages.length, `처리 중... ${i + 1} / ${pages.length}`);
+
+      const propUrls  = getImageUrlsFromProps(page);
+      const blockUrls = await getImageUrlsFromBlocks(token, page.id);
+      const allUrls   = [...propUrls, ...blockUrls];
+
+      if (!allUrls.length) {
+        addLog('skip', '–', `[${title}] 이미지 없음`);
+        skipped++;
+        continue;
+      }
+
+      for (let j = 0; j < allUrls.length; j++) {
+        try {
+          const blob   = await downloadAsBlob(allUrls[j]);
+          const canvas = await blobToCanvas(blob);
+          const out    = await canvasToBlob(canvas, fmt);
+          const fname  = allUrls.length === 1
+            ? `${title}.${fmt}`
+            : `${title}_${String(j + 1).padStart(3, '0')}.${fmt}`;
+          triggerDownload(out, fname);
+          addLog('ok', '✓', fname);
+          saved++;
+          await new Promise(r => setTimeout(r, 300));
+        } catch (e) {
+          addLog('err', '✗', `[${title}] 이미지 ${j + 1} 실패`);
+          failed++;
+        }
+      }
+    }
+
+    const sumEl = document.getElementById('summary');
+    sumEl.style.display = 'block';
+    sumEl.textContent = `완료! 저장 ${saved}개 · 이미지 없음 ${skipped}개 · 실패 ${failed}개`;
+
+  } catch (e) {
+    addLog('err', '✗', `오류: ${e.message}`);
+  }
+
+  // 실행 완료 후 토큰 입력란 초기화 (메모리에서 제거)
+  document.getElementById('token').value = '';
+  btn.disabled = false;
+  btn.textContent = '⬇ 이미지 다운로드 시작';
+}
+</script>
+</body>
+</html>

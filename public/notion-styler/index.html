@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>노션 수식 스타일러 (Notion LaTeX Generator)</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <!-- Babel (for JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- KaTeX JS -->
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        /* Floating Home Button Style */
+        .floating-home-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 52px;
+            height: 52px;
+            background: #4f46e5;
+            color: white !important;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 9999;
+            text-decoration: none;
+        }
+
+        .floating-home-btn:hover {
+            transform: scale(1.1) translateY(-4px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+            background: #4338ca;
+        }
+
+        .floating-home-btn:active {
+            transform: scale(0.95);
+        }
+
+        .floating-home-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Inline Icons (Lucide Style) to prevent CDN errors ---
+        const IconBase = ({ children, size = 24, className = "" }) => (
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width={size}
+                height={size}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={className}
+            >
+                {children}
+            </svg>
+        );
+
+        const Copy = (props) => (
+            <IconBase {...props}>
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+            </IconBase>
+        );
+
+        const Check = (props) => (
+            <IconBase {...props}>
+                <polyline points="20 6 9 17 4 12" />
+            </IconBase>
+        );
+
+        const Palette = (props) => (
+            <IconBase {...props}>
+                <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
+                <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
+                <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
+                <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
+                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.6 0 1-.4 1-1 0-.6-.4-1-1-1-2 0-2-4 2-4 2 0 3-1 3-3 0-2-3-3-5-3z" />
+            </IconBase>
+        );
+
+        const Type = (props) => (
+            <IconBase {...props}>
+                <polyline points="4 7 4 4 20 4 20 7" />
+                <line x1="9" x2="15" y1="20" y2="20" />
+                <line x1="12" x2="12" y1="4" y2="20" />
+            </IconBase>
+        );
+
+        const RefreshCcw = (props) => (
+            <IconBase {...props}>
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                <path d="M16 16h5v5" />
+            </IconBase>
+        );
+
+        const Info = (props) => (
+            <IconBase {...props}>
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 16v-4" />
+                <path d="M12 8h.01" />
+            </IconBase>
+        );
+
+        const CaseUpper = (props) => (
+            <IconBase {...props}>
+                <path d="m3 15 4-8 4 8" />
+                <path d="M4 13h6" />
+                <circle cx="18" cy="12" r="3" />
+                <path d="M21 9v6" />
+            </IconBase>
+        );
+
+        const AlignLeft = (props) => (
+            <IconBase {...props}>
+                <line x1="21" x2="3" y1="6" y2="6" />
+                <line x1="15" x2="3" y1="12" y2="12" />
+                <line x1="17" x2="3" y1="18" y2="18" />
+            </IconBase>
+        );
+
+        const AlignCenter = (props) => (
+            <IconBase {...props}>
+                <line x1="21" x2="3" y1="6" y2="6" />
+                <line x1="17" x2="7" y1="12" y2="12" />
+                <line x1="19" x2="5" y1="18" y2="18" />
+            </IconBase>
+        );
+
+        const AlignRight = (props) => (
+            <IconBase {...props}>
+                <line x1="21" x2="3" y1="6" y2="6" />
+                <line x1="21" x2="9" y1="12" y2="12" />
+                <line x1="21" x2="7" y1="18" y2="18" />
+            </IconBase>
+        );
+
+        const PaintBucket = (props) => (
+            <IconBase {...props}>
+                <path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z" />
+                <path d="m5 2 5 5" />
+                <path d="M2 13h15" />
+                <path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z" />
+            </IconBase>
+        );
+
+        const Shuffle = (props) => (
+            <IconBase {...props}>
+                <path d="M16 3h5v5" />
+                <path d="M4 20L21 3" />
+                <path d="M21 16v5h-5" />
+                <path d="M15 15l6 6" />
+                <path d="M4 4l5 5" />
+            </IconBase>
+        );
+
+        // --- Main App ---
+
+        const NotionFormulaGenerator = () => {
+            const [text, setText] = useState("Hello Notion!");
+
+            // Text Color State
+            const [textColor, setTextColor] = useState("default");
+            const [customTextColor, setCustomTextColor] = useState("#000000");
+
+            // Background Color State
+            const [bgColor, setBgColor] = useState("transparent");
+            const [customBgColor, setCustomBgColor] = useState("#f0f0f0");
+            const [colorMode, setColorMode] = useState("text"); // 'text' or 'background'
+
+            const [size, setSize] = useState("normalsize");
+            const [fontStyle, setFontStyle] = useState("text");
+            const [alignment, setAlignment] = useState("c");
+            const [isCopied, setIsCopied] = useState(false);
+            const previewRef = useRef(null);
+
+            // Colors
+            const colors = [
+                { name: 'Default', value: 'default', class: 'bg-gray-200 text-black', bgClass: 'bg-white border border-gray-200' },
+                { name: 'Gray', value: 'gray', class: 'bg-gray-400 text-white', bgClass: 'bg-gray-400' },
+                { name: 'Brown', value: 'brown', class: 'bg-amber-700 text-white', bgClass: 'bg-amber-700' },
+                { name: 'Orange', value: 'orange', class: 'bg-orange-500 text-white', bgClass: 'bg-orange-500' },
+                { name: 'Yellow', value: 'gold', class: 'bg-yellow-400 text-black', bgClass: 'bg-yellow-400' },
+                { name: 'Green', value: 'green', class: 'bg-green-500 text-white', bgClass: 'bg-green-500' },
+                { name: 'Blue', value: 'blue', class: 'bg-blue-500 text-white', bgClass: 'bg-blue-500' },
+                { name: 'Purple', value: 'purple', class: 'bg-purple-500 text-white', bgClass: 'bg-purple-500' },
+                { name: 'Pink', value: 'magenta', class: 'bg-pink-500 text-white', bgClass: 'bg-pink-500' },
+                { name: 'Red', value: 'red', class: 'bg-red-500 text-white', bgClass: 'bg-red-500' },
+                { name: 'Custom', value: 'custom', class: 'bg-white border border-gray-300', bgClass: 'bg-white border border-dashed border-gray-400' },
+            ];
+
+            // Sizes
+            const sizes = [
+                { name: 'Tiny', value: 'tiny' },
+                { name: 'Small', value: 'small' },
+                { name: 'Normal', value: 'normalsize' },
+                { name: 'Large', value: 'large' },
+                { name: 'Huge', value: 'huge' },
+            ];
+
+            // Styles
+            const fontStyles = [
+                { name: '기본 (Normal)', value: 'text', cmd: '\\text' },
+                { name: '굵게 (Bold)', value: 'textbf', cmd: '\\textbf' },
+                { name: '기울임 (Italic)', value: 'textit', cmd: '\\textit' },
+                { name: '고딕 (Sans)', value: 'textsf', cmd: '\\textsf' },
+                { name: '타자기 (Mono)', value: 'texttt', cmd: '\\texttt' },
+                { name: '수식 (Math)', value: 'math', cmd: '' },
+                { name: '칠판 (Bb)', value: 'mathbb', cmd: '\\mathbb', note: '대문자 전용' },
+                { name: '필기체 (Cal)', value: 'mathcal', cmd: '\\mathcal', note: '대문자 전용' },
+                { name: '프락투어 (Frak)', value: 'mathfrak', cmd: '\\mathfrak', note: '영문 전용' },
+                { name: '세리프 (Serif)', value: 'mathrm', cmd: '\\textrm' },
+            ];
+
+            useEffect(() => {
+                renderMath();
+            }, [text, textColor, customTextColor, bgColor, customBgColor, size, fontStyle, alignment]);
+
+            const generateLatex = () => {
+                if (!text) return "";
+
+                const currentStyle = fontStyles.find(s => s.value === fontStyle);
+                const cmd = currentStyle ? currentStyle.cmd : '\\text';
+
+                // Process Lines
+                const lines = text.split('\n');
+                const styledLines = lines.map(line => {
+                    if (fontStyle === 'math') return line;
+
+                    // 빈 줄 처리 (빈 줄이 array를 깨지 않도록 ~ 추가)
+                    if (!line.trim()) return `${cmd}{~}`;
+
+                    // Special handling for math fonts that ignore spaces (Bb, Cal, Frak)
+                    if (['mathbb', 'mathcal', 'mathfrak'].includes(fontStyle)) {
+                        const processedLine = line.split(' ').join('~');
+                        return `${cmd}{${processedLine}}`;
+                    }
+
+                    return `${cmd}{${line}}`;
+                });
+                const innerContent = styledLines.join(' \\\\ ');
+                const alignedContent = `\\begin{array}{${alignment}}${innerContent}\\end{array}`;
+
+                // Apply Text Color
+                let colorCmd = "";
+                if (textColor !== 'default') {
+                    const c = textColor === 'custom' ? customTextColor : textColor;
+                    colorCmd = `\\color{${c}} `;
+                }
+
+                // Apply Size
+                let sizeCmd = "";
+                if (size !== 'normalsize') {
+                    sizeCmd = `\\${size} `;
+                }
+
+                // Combine inner content with size and text color
+                let contentBlock = `{ ${colorCmd}${sizeCmd}${alignedContent} }`;
+
+                // Apply Background Color (Wrap everything in colorbox)
+                if (bgColor !== 'transparent') {
+                    const bg = bgColor === 'custom' ? customBgColor : bgColor;
+                    return `\\colorbox{${bg}}{$\\displaystyle ${contentBlock}$}`;
+                }
+
+                return contentBlock;
+            };
+
+            const renderMath = () => {
+                if (window.katex && previewRef.current) {
+                    const latex = generateLatex();
+                    try {
+                        window.katex.render(latex, previewRef.current, {
+                            throwOnError: false,
+                            displayMode: true,
+                        });
+                    } catch (e) {
+                        // console.error(e);
+                    }
+                }
+            };
+
+            const handleCopy = () => {
+                const latex = generateLatex();
+                try {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = latex;
+                    textArea.style.position = "fixed";
+                    textArea.style.left = "-9999px";
+                    textArea.style.top = "0";
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    const successful = document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    if (successful) {
+                        setIsCopied(true);
+                        setTimeout(() => setIsCopied(false), 2000);
+                        return;
+                    }
+                } catch (err) {
+                    console.warn("Fallback copy failed", err);
+                }
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(latex)
+                        .then(() => {
+                            setIsCopied(true);
+                            setTimeout(() => setIsCopied(false), 2000);
+                        })
+                        .catch(err => {
+                            alert("복사에 실패했습니다.");
+                        });
+                } else {
+                    alert("복사 기능을 사용할 수 없습니다.");
+                }
+            };
+
+            const handleRandomize = () => {
+                const validColors = colors.filter(c => c.value !== 'custom');
+                const randomTextColor = validColors[Math.floor(Math.random() * validColors.length)];
+                setTextColor(randomTextColor.value);
+
+                if (Math.random() < 0.15) {
+                    const randomBg = validColors[Math.floor(Math.random() * validColors.length)];
+                    setBgColor(randomBg.value);
+                } else {
+                    setBgColor('transparent');
+                }
+
+                const randomSize = sizes[Math.floor(Math.random() * sizes.length)];
+                setSize(randomSize.value);
+
+                const randomStyle = fontStyles[Math.floor(Math.random() * fontStyles.length)];
+                setFontStyle(randomStyle.value);
+
+                setColorMode('text');
+            };
+
+            const currentLatex = generateLatex();
+
+            return (
+                <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4 font-sans text-gray-800">
+                    <div className="max-w-3xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+
+                        {/* Header */}
+                        <div className="bg-white border-b border-gray-100 p-6 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-black text-white p-2 rounded-lg">
+                                    <span className="font-serif italic text-xl">N</span>
+                                </div>
+                                <div>
+                                    <h1 className="text-xl font-bold text-gray-900">노션 수식 스타일러</h1>
+                                    <p className="text-xs text-gray-500">Notion LaTeX Generator</p>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleRandomize}
+                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                                    title="랜덤 스타일 (Random)"
+                                >
+                                    <Shuffle size={18} />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setText("Hello Notion!");
+                                        setTextColor("default");
+                                        setBgColor("transparent");
+                                        setSize("normalsize");
+                                        setFontStyle("text");
+                                        setAlignment("c");
+                                        setColorMode("text");
+                                    }}
+                                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                                    title="초기화"
+                                >
+                                    <RefreshCcw size={18} />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-6 md:p-8 space-y-8">
+
+                            {/* Input Section */}
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-end">
+                                    <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                                        <Type size={16} />
+                                        텍스트 입력
+                                    </label>
+
+                                    {/* Alignment Controls */}
+                                    <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
+                                        <button
+                                            onClick={() => setAlignment('l')}
+                                            className={`p-1.5 rounded-md transition-all ${alignment === 'l' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                                            title="왼쪽 정렬"
+                                        >
+                                            <AlignLeft size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => setAlignment('c')}
+                                            className={`p-1.5 rounded-md transition-all ${alignment === 'c' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                                            title="가운데 정렬"
+                                        >
+                                            <AlignCenter size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => setAlignment('r')}
+                                            className={`p-1.5 rounded-md transition-all ${alignment === 'r' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                                            title="오른쪽 정렬"
+                                        >
+                                            <AlignRight size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <textarea
+                                    value={text}
+                                    onChange={(e) => setText(e.target.value)}
+                                    placeholder="여기에 텍스트를 입력하세요..."
+                                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none text-lg min-h-[100px]"
+                                />
+                            </div>
+
+                            {/* Controls Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+                                {/* Color Section (Tabs) */}
+                                <div className="space-y-4">
+                                    <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                                        <Palette size={16} />
+                                        색상 설정
+                                    </label>
+
+                                    {/* Tabs */}
+                                    <div className="flex p-1 bg-gray-100 rounded-lg w-full">
+                                        <button
+                                            onClick={() => setColorMode('text')}
+                                            className={`flex-1 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 transition-all ${colorMode === 'text'
+                                                    ? 'bg-white text-blue-600 shadow-sm'
+                                                    : 'text-gray-500 hover:text-gray-700'
+                                                }`}
+                                        >
+                                            <Type size={14} /> 글자색
+                                        </button>
+                                        <button
+                                            onClick={() => setColorMode('background')}
+                                            className={`flex-1 py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 transition-all ${colorMode === 'background'
+                                                    ? 'bg-white text-blue-600 shadow-sm'
+                                                    : 'text-gray-500 hover:text-gray-700'
+                                                }`}
+                                        >
+                                            <PaintBucket size={14} /> 배경색
+                                        </button>
+                                    </div>
+
+                                    {/* Color Grid */}
+                                    <div className="flex flex-wrap gap-3 p-2 min-h-[100px] content-start">
+
+                                        {/* Transparent Option (Only for Background) */}
+                                        {colorMode === 'background' && (
+                                            <button
+                                                onClick={() => setBgColor('transparent')}
+                                                className={`w-9 h-9 rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-110 border border-gray-300 bg-white relative overflow-hidden group ${bgColor === 'transparent' ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : ''}`}
+                                                title="배경 없음 (투명)"
+                                            >
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <div className="w-full h-px bg-red-500 rotate-45 transform origin-center"></div>
+                                                </div>
+                                            </button>
+                                        )}
+
+                                        {colors.map((c) => {
+                                            const isActive = colorMode === 'text' ? textColor === c.value : bgColor === c.value;
+                                            const setFn = colorMode === 'text' ? setTextColor : setBgColor;
+                                            const displayClass = colorMode === 'text' ? c.class : c.bgClass;
+
+                                            if (colorMode === 'background' && c.value === 'default') return null;
+
+                                            return (
+                                                <button
+                                                    key={c.value}
+                                                    onClick={() => setFn(c.value)}
+                                                    className={`w-9 h-9 rounded-full shadow-sm flex items-center justify-center transition-transform hover:scale-110 ${displayClass} ${isActive ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : ''}`}
+                                                    title={c.name}
+                                                >
+                                                    {c.value === 'custom' && (
+                                                        <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center relative">
+                                                            <input
+                                                                type="color"
+                                                                className="w-12 h-12 -m-2 cursor-pointer opacity-0 absolute"
+                                                                value={colorMode === 'text' ? customTextColor : customBgColor}
+                                                                onChange={(e) => {
+                                                                    if (colorMode === 'text') {
+                                                                        setCustomTextColor(e.target.value);
+                                                                        setTextColor('custom');
+                                                                    } else {
+                                                                        setCustomBgColor(e.target.value);
+                                                                        setBgColor('custom');
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <span
+                                                                className="w-5 h-5 rounded-full border border-gray-100 shadow-sm"
+                                                                style={{ backgroundColor: colorMode === 'text' ? customTextColor : customBgColor }}
+                                                            ></span>
+                                                        </div>
+                                                    )}
+                                                    {isActive && c.value !== 'custom' && (
+                                                        <Check size={14} className={['default', 'gold', 'yellow'].includes(c.value) ? 'text-black' : 'text-white'} />
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Font Options (Size & Style) */}
+                                <div className="space-y-6">
+
+                                    {/* Size Selector */}
+                                    <div className="space-y-3">
+                                        <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                                            <Type size={16} />
+                                            크기 (Size)
+                                        </label>
+                                        <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+                                            {sizes.map((s) => (
+                                                <button
+                                                    key={s.value}
+                                                    onClick={() => setSize(s.value)}
+                                                    className={`flex-1 py-2 text-xs md:text-sm rounded-md transition-all ${size === s.value
+                                                            ? 'bg-white text-blue-600 shadow-sm font-semibold'
+                                                            : 'text-gray-500 hover:text-gray-700'
+                                                        }`}
+                                                >
+                                                    {s.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Style Selector */}
+                                    <div className="space-y-3">
+                                        <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                                            <CaseUpper size={16} />
+                                            글꼴 스타일 (Font Style)
+                                        </label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {fontStyles.map((style) => (
+                                                <button
+                                                    key={style.value}
+                                                    onClick={() => setFontStyle(style.value)}
+                                                    className={`py-2 px-1 text-xs rounded-lg border transition-all truncate ${fontStyle === style.value
+                                                            ? 'bg-blue-50 border-blue-200 text-blue-700 ring-1 ring-blue-200 font-medium'
+                                                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                                        }`}
+                                                    title={style.note || style.name}
+                                                >
+                                                    {style.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="border-t border-gray-100 my-4"></div>
+
+                            {/* Preview Section */}
+                            <div className="space-y-3">
+                                <label className="block text-sm font-medium text-gray-700">미리보기 (Preview)</label>
+                                <div
+                                    className="w-full min-h-[120px] flex justify-center items-center p-8 bg-white border border-gray-200 rounded-xl shadow-sm overflow-x-auto"
+                                >
+                                    <div ref={previewRef} className="text-xl"></div>
+                                </div>
+                            </div>
+
+                            {/* Code Output Section */}
+                            <div className="space-y-3">
+                                <label className="block text-sm font-medium text-gray-700">생성된 코드 (Notion용)</label>
+                                <div className="relative">
+                                    <pre className="w-full p-4 pr-14 bg-gray-900 text-gray-100 rounded-xl font-mono text-sm overflow-x-auto border border-gray-800">
+                                        {currentLatex}
+                                    </pre>
+                                    <button
+                                        onClick={handleCopy}
+                                        className={`absolute right-2 top-2 p-2 rounded-lg transition-all flex items-center justify-center ${isCopied
+                                                ? 'bg-green-500 text-white'
+                                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                            }`}
+                                        title="복사하기"
+                                    >
+                                        {isCopied ? <Check size={18} /> : <Copy size={18} />}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500 flex items-center gap-1 mt-2">
+                                    <Info size={12} />
+                                    노션에서 <code>/수식</code> 또는 <code>/math</code> 입력 후 위 코드를 붙여넣으세요.
+                                </p>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<NotionFormulaGenerator />);
+    </script>
+    <a href="/" class="floating-home-btn" title="byeduin apps" aria-label="byeduin apps">
+        <svg viewBox="0 0 24 24">
+            <path
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+            </path>
+        </svg>
+    </a>
+</body>
+
+</html>
