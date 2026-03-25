@@ -3,31 +3,39 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>노션 이미지 다운로더</title>
+<title>Notion Image DL — byeduin</title>
+<link rel="stylesheet" href="/common/hero-theme.css">
+<script src="/common/theme.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
-    --bg: #0f0f10;
-    --surface: #18181b;
+  /* 라이트/다크 양쪽 지원 — hero-theme.css 변수 매핑 */
+  :root,
+  [data-theme="light"] {
+    --surface:  var(--card-bg);
+    --surface2: var(--bg-sec);
+    --accent:        var(--primary);
+    --accent-dim:    rgba(0,111,238,0.1);
+    --accent-hover:  var(--primary-h);
+    --text:      var(--fg);
+    --text-dim:  var(--fg-muted);
+    --text-muted:#a1a1aa;
+    --success: #17c964;
+    --warn:    #f5a524;
+    --error:   #f31260;
+    --radius:  12px;
+  }
+
+  [data-theme="dark"] {
+    --surface:  #18181b;
     --surface2: #222228;
-    --border: #2e2e36;
-    --accent: #7c6af7;
-    --accent-dim: rgba(124,106,247,0.15);
-    --accent-hover: #9585f9;
-    --text: #e8e8f0;
-    --text-dim: #888899;
     --text-muted: #55556a;
-    --success: #4ade80;
-    --warn: #fb923c;
-    --error: #f87171;
-    --radius: 12px;
   }
 
   body {
-    font-family: 'Noto Sans KR', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
@@ -77,7 +85,7 @@
   label { display: block; font-size: 13px; font-weight: 500; color: var(--text-dim); margin-bottom: 6px; }
   input[type="text"], input[type="password"] {
     width: 100%; background: var(--bg); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 14px; font-size: 13px;
+    border-radius: 8px; padding: 12px 14px; font-size: 16px;
     font-family: 'JetBrains Mono', monospace; color: var(--text);
     outline: none; transition: border-color 0.2s; margin-bottom: 14px;
   }
@@ -109,10 +117,10 @@
 
   .btn-run {
     width: 100%; padding: 14px; background: var(--accent);
-    border: none; border-radius: 10px; color: #fff; font-size: 15px;
-    font-weight: 700; font-family: 'Noto Sans KR', sans-serif;
+    border: none; border-radius: 10px; color: #fff; font-size: 16px;
+    font-weight: 700; font-family: inherit;
     cursor: pointer; transition: background 0.15s, transform 0.1s;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.01em; min-height: 48px;
   }
   .btn-run:hover { background: var(--accent-hover); }
   .btn-run:active { transform: scale(0.99); }
@@ -246,8 +254,22 @@ async function notionCall(token, path, payload) {
     // 토큰을 body에 포함 — HTTPS 통신이므로 전송 중 평문 노출 없음
     body: JSON.stringify({ token, path, payload }),
   });
-  if (!resp.ok) throw new Error(`프록시 오류: ${resp.status}`);
-  return resp.json();
+  const data = await resp.json().catch(() => null);
+  if (!resp.ok) {
+    // Notion API 오류 메시지 표시
+    const notionMsg = data?.message || data?.code || null;
+    if (resp.status === 404) {
+      throw new Error(notionMsg
+        ? `DB를 찾을 수 없음: ${notionMsg}`
+        : '404 — DB ID가 잘못됐거나 인테그레이션이 DB에 연결되지 않았습니다. (Notion 워크스페이스 → DB → ··· → 연결 추가)'
+      );
+    }
+    if (resp.status === 401) {
+      throw new Error('401 — 토큰이 잘못됐거나 만료됐습니다. 인테그레이션 토큰을 다시 확인해 주세요.');
+    }
+    throw new Error(notionMsg ? `Notion 오류 ${resp.status}: ${notionMsg}` : `프록시 오류: ${resp.status}`);
+  }
+  return data;
 }
 
 async function getAllPages(token, dbId) {
@@ -403,5 +425,17 @@ async function run() {
   btn.textContent = '⬇ 이미지 다운로드 시작';
 }
 </script>
+
+<!-- 우상단 오버레이: 테마 + 홈 -->
+<div class="top-overlay">
+  <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="테마 변경">💻</button>
+  <a href="/" class="overlay-btn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    <span>Home</span>
+  </a>
+</div>
 </body>
 </html>

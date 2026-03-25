@@ -1,0 +1,166 @@
+/* =====================================================
+   byeduin VIVES — 공통 HeroUI 테마 CSS
+   /common/hero-theme.css
+   ===================================================== */
+
+/* --- Light Mode (기본값) --- */
+:root,
+[data-theme="light"] {
+  --bg:        #ffffff;
+  --bg-sec:    #f4f4f5;
+  --card-bg:   #f4f4f5;
+  --border:    #e4e4e7;
+  --fg:        #11181c;
+  --fg-muted:  #71717a;
+  --input-bg:  #f4f4f5;
+  --primary:   #006fee;
+  --primary-h: #005bc4;
+  --primary-fg:#ffffff;
+  --danger:    #f31260;
+  --success:   #17c964;
+  --shadow:    0 4px 24px rgba(0,0,0,0.08);
+}
+
+/* --- Dark Mode --- */
+[data-theme="dark"] {
+  --bg:        #0d0d0d;
+  --bg-sec:    #1a1a1a;
+  --card-bg:   #1a1a1a;
+  --border:    #2a2a2a;
+  --fg:        #ecedee;
+  --fg-muted:  #888888;
+  --input-bg:  #1a1a1a;
+  --primary:   #006fee;
+  --primary-h: #338ef7;
+  --primary-fg:#ffffff;
+  --danger:    #f31260;
+  --success:   #17c964;
+  --shadow:    0 4px 24px rgba(0,0,0,0.4);
+}
+
+/* --- Base --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  transition: background 0.2s ease, color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* --- 공통 컴포넌트 --- */
+.hero-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.hero-input {
+  display: block;
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  color: var(--fg);
+  font-size: 1rem;           /* iOS 자동 줌 방지 (16px 이상) */
+  padding: 0.75rem 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.hero-input:focus {
+  border-color: var(--primary);
+}
+
+.hero-input::placeholder {
+  color: var(--fg-muted);
+}
+
+.hero-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--primary);
+  color: var(--primary-fg);
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  font-family: inherit;
+  min-height: 44px;          /* 모바일 터치 타겟 */
+  text-decoration: none;
+}
+
+.hero-btn:hover  { background: var(--primary-h); }
+.hero-btn:active { transform: scale(0.98); }
+.hero-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.hero-btn-ghost {
+  background: var(--card-bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+}
+
+.hero-btn-ghost:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--card-bg);
+}
+
+/* --- 우상단 플로팅 오버레이 --- */
+.top-overlay {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 9999;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.overlay-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--fg-muted);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  min-height: 36px;
+  font-family: inherit;
+  /* 반투명 배경 */
+  background: color-mix(in srgb, var(--card-bg) 85%, transparent);
+}
+
+.overlay-btn:hover {
+  color: var(--fg);
+  border-color: var(--primary);
+}
+
+/* 다크모드에서 overlay-btn 보정 */
+[data-theme="dark"] .overlay-btn {
+  background: rgba(26, 26, 26, 0.85);
+}
+
+[data-theme="light"] .overlay-btn {
+  background: rgba(244, 244, 245, 0.9);
+}

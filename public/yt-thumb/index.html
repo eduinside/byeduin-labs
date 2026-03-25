@@ -1,301 +1,391 @@
 <!DOCTYPE html>
 <html lang="ko">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>유튜브 썸네일 추출기</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YT Thumbnail — byeduin</title>
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <script src="/common/theme.js"></script>
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 1rem 1rem 4rem;
+    }
 
-        /* 스크롤바 스타일링 */
-        #historyList::-webkit-scrollbar {
-            width: 8px;
-        }
+    .wrap {
+      width: 100%;
+      max-width: 480px;
+      margin-top: 3.5rem;
+    }
 
-        #historyList::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
+    .app-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 1.75rem;
+    }
 
-        #historyList::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
-        }
+    .app-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
 
-        #historyList::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
+    .yt-icon {
+      width: 36px;
+      height: 36px;
+      background: #ff0000;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
 
-        .dark #historyList::-webkit-scrollbar-track {
-            background: #2d3748;
-        }
+    .app-header h1 { font-size: 1.2rem; font-weight: 700; }
+    .app-header p  { font-size: 0.8rem; color: var(--fg-muted); margin-top: 2px; }
 
-        .dark #historyList::-webkit-scrollbar-thumb {
-            background: #4a5568;
-        }
+    .desc { font-size: 0.85rem; color: var(--fg-muted); margin-bottom: 1.25rem; line-height: 1.5; }
 
-        /* Floating Home Button Style */
-        .floating-home-btn {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 52px;
-            height: 52px;
-            background: #4f46e5;
-            color: white !important;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 9999;
-            text-decoration: none;
-        }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; margin-top: 0.75rem; }
 
-        .floating-home-btn:hover {
-            transform: scale(1.1) translateY(-4px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
-            background: #4338ca;
-        }
+    /* 결과 영역 */
+    #result {
+      margin-top: 1.25rem;
+      display: none;
+    }
 
-        .floating-home-btn:active {
-            transform: scale(0.95);
-        }
+    .thumb-item {
+      margin-bottom: 1rem;
+    }
 
-        .floating-home-btn svg {
-            width: 24px;
-            height: 24px;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-    </style>
+    .thumb-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--fg-muted);
+      margin-bottom: 0.375rem;
+    }
+
+    /* 썸네일 미리보기 */
+    .thumb-preview {
+      width: 100%;
+      border-radius: 0.625rem;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      background: #000;
+      margin-bottom: 0.5rem;
+      aspect-ratio: 16/9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .thumb-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .thumb-url-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.625rem;
+      padding: 0.5rem 0.75rem;
+    }
+
+    .thumb-url {
+      flex: 1;
+      font-size: 0.72rem;
+      font-family: monospace;
+      color: var(--primary);
+      word-break: break-all;
+      text-decoration: none;
+    }
+
+    .thumb-url:hover { text-decoration: underline; }
+
+    .btn-copy {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--fg-muted);
+      padding: 4px;
+      border-radius: 0.375rem;
+      transition: color 0.15s, background 0.15s;
+      flex-shrink: 0;
+      min-width: 28px;
+      min-height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-copy:hover { color: var(--primary); background: var(--border); }
+
+    /* 에러 */
+    .error-box {
+      background: rgba(243,18,96,0.08);
+      border: 1px solid rgba(243,18,96,0.3);
+      border-radius: 0.625rem;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      color: var(--danger);
+    }
+
+    /* 히스토리 */
+    .history-section {
+      margin-top: 1.25rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+      display: none;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .history-header span { font-size: 0.9rem; font-weight: 700; }
+    .btn-clear-h { font-size: 0.75rem; color: var(--danger); background: none; border: none; cursor: pointer; font-family: inherit; }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-height: 220px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 0.5rem 0.625rem;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    .history-item:hover { border-color: var(--primary); }
+
+    .history-thumb {
+      width: 64px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 0.375rem;
+      flex-shrink: 0;
+      background: #000;
+    }
+
+    .history-info { flex: 1; min-width: 0; }
+    .history-vid  { font-size: 0.78rem; font-family: monospace; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-links { display: flex; gap: 0.625rem; margin-top: 2px; }
+    .history-links a { font-size: 0.7rem; color: var(--fg-muted); text-decoration: none; }
+    .history-links a:hover { color: var(--primary); text-decoration: underline; }
+
+    .btn-del-h {
+      background: none; border: none; color: var(--fg-muted);
+      cursor: pointer; padding: 4px; font-size: 0.875rem;
+      min-width: 24px; min-height: 24px; display: flex;
+      align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .btn-del-h:hover { color: var(--danger); }
+  </style>
 </head>
+<body>
+<div class="wrap">
+  <div class="app-card">
 
-<body class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center min-h-screen p-4">
-
-    <div
-        class="w-full max-w-lg mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 transition-all duration-300">
-        <!-- Header -->
-        <div class="flex items-center mb-6">
-            <svg class="w-8 h-8 text-red-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
-                </path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <h1 class="text-2xl font-bold text-gray-800 dark:text-white">유튜브 썸네일 추출기</h1>
-        </div>
-
-        <p class="text-gray-600 dark:text-gray-400 mb-6 text-sm">유튜브 동영상의 URL을 입력하여 고화질 썸네일 링크를 추출하세요.</p>
-
-        <!-- Input Area -->
-        <div class="relative">
-            <input type="text" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=..."
-                class="w-full pl-4 pr-4 py-3 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all outline-none">
-        </div>
-
-        <!-- Buttons -->
-        <div class="grid grid-cols-2 gap-4 mt-4">
-            <button onclick="extractThumbnail()"
-                class="w-full bg-red-600 text-white font-semibold py-3 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-500 focus:ring-opacity-50 transition-all shadow-md active:scale-95">
-                추출하기
-            </button>
-            <button onclick="toggleHistory()"
-                class="w-full bg-gray-500 text-white font-semibold py-3 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-4 focus:ring-gray-500 focus:ring-opacity-50 transition-all shadow-md active:scale-95">
-                히스토리
-            </button>
-        </div>
-
-        <!-- Result Section -->
-        <div id="result" class="mt-8 transition-opacity duration-500 opacity-0 hidden">
-            <!-- 결과가 여기에 표시됩니다. -->
-        </div>
-
-        <!-- History Section -->
-        <div id="historyContainer" class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 hidden">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-gray-800 dark:text-white">검색 히스토리</h2>
-                <button onclick="clearHistory()"
-                    class="text-xs text-red-500 hover:underline focus:outline-none uppercase tracking-tighter">전체
-                    삭제</button>
-            </div>
-            <div id="historyList" class="space-y-3 max-h-64 overflow-y-auto pr-2">
-                <!-- 히스토리 아이템 삽입 영역 -->
-            </div>
-        </div>
+    <div class="app-header">
+      <div class="yt-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+          <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z"/>
+        </svg>
+      </div>
+      <div>
+        <h1>유튜브 썸네일 추출기</h1>
+        <p>YouTube Thumbnail Extractor</p>
+      </div>
     </div>
 
-    <script>
-        const HISTORY_KEY = 'youtube_thumbnail_history_v2';
+    <p class="desc">유튜브 URL을 입력하면 썸네일 이미지를 미리보기하고 링크를 복사할 수 있습니다.</p>
 
-        function extractThumbnail() {
-            const urlInput = document.getElementById('youtubeUrl').value.trim();
-            const resultDiv = document.getElementById('result');
+    <label style="display:block;font-size:0.78rem;font-weight:600;color:var(--fg-muted);margin-bottom:0.375rem;">
+      유튜브 URL
+    </label>
+    <input type="url" id="youtubeUrl" class="hero-input"
+           placeholder="https://www.youtube.com/watch?v=..."
+           onkeyup="if(event.key==='Enter')extractThumbnail()">
 
-            if (!urlInput) {
-                showError('URL을 입력해주세요.');
-                return;
-            }
+    <div class="btn-row">
+      <button onclick="extractThumbnail()" class="hero-btn">추출하기</button>
+      <button onclick="toggleHistory()" class="hero-btn hero-btn-ghost">히스토리</button>
+    </div>
 
-            // Shorts, Live 등 다양한 형식을 포함한 강화된 정규표현식
-            const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?|shorts|live)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-            const match = urlInput.match(regex);
+    <!-- 결과 -->
+    <div id="result"></div>
 
-            if (match && match[1]) {
-                const videoId = match[1];
-                saveToHistory(videoId);
-                displayResult(videoId);
-            } else {
-                showError('유효하지 않은 유튜브 URL입니다.');
-            }
-        }
+    <!-- 히스토리 -->
+    <div class="history-section" id="historySection">
+      <div class="history-header">
+        <span>검색 히스토리</span>
+        <button class="btn-clear-h" onclick="clearHistory()">전체 삭제</button>
+      </div>
+      <div class="history-list" id="historyList"></div>
+    </div>
 
-        function displayResult(videoId) {
-            const resultDiv = document.getElementById('result');
-            const maxResUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-            const hqUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  </div>
+</div>
 
-            resultDiv.classList.remove('hidden');
-            resultDiv.innerHTML = `
-                <div class="space-y-5">
-                    <div>
-                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 italic">최대 해상도 (maxresdefault.jpg)</p>
-                        <div class="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
-                            <a href="${maxResUrl}" target="_blank" class="text-red-500 hover:text-red-600 dark:hover:text-red-400 font-mono text-xs break-all flex-grow">${maxResUrl}</a>
-                            <button onclick="copyToClipboard(this, '${maxResUrl}')" class="ml-4 p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none transition-colors">
-                                <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            </button>
-                        </div>
-                    </div>
-                    <div>
-                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 italic">고화질 (hqdefault.jpg)</p>
-                        <div class="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
-                            <a href="${hqUrl}" target="_blank" class="text-red-500 hover:text-red-600 dark:hover:text-red-400 font-mono text-xs break-all flex-grow">${hqUrl}</a>
-                            <button onclick="copyToClipboard(this, '${hqUrl}')" class="ml-4 p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none transition-colors">
-                                <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            setTimeout(() => { resultDiv.classList.add('opacity-100'); }, 50);
+<!-- 우상단 오버레이 -->
+<div class="top-overlay">
+  <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="테마 변경">💻</button>
+  <a href="/" class="overlay-btn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    <span>Home</span>
+  </a>
+</div>
 
-            if (!document.getElementById('historyContainer').classList.contains('hidden')) {
-                renderHistory();
-            }
-        }
+<script>
+  const HISTORY_KEY = 'youtube_thumbnail_history_v2';
+  const YT_REGEX = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?|shorts|live)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
 
-        function showError(message) {
-            const resultDiv = document.getElementById('result');
-            resultDiv.classList.remove('hidden');
-            resultDiv.innerHTML = `<div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg" role="alert"><p class="text-sm font-bold">${message}</p></div>`;
-            setTimeout(() => { resultDiv.classList.add('opacity-100'); }, 50);
-        }
+  function extractThumbnail() {
+    const url = document.getElementById('youtubeUrl').value.trim();
+    const result = document.getElementById('result');
+    if (!url) { showError('URL을 입력해주세요.'); return; }
+    const match = url.match(YT_REGEX);
+    if (match && match[1]) {
+      saveToHistory(match[1]);
+      displayResult(match[1]);
+      if (!document.getElementById('historySection').style.display || document.getElementById('historySection').style.display !== 'none') {
+        renderHistory();
+      }
+    } else {
+      showError('유효하지 않은 유튜브 URL입니다.');
+    }
+  }
 
-        function copyToClipboard(button, text) {
-            const tempInput = document.createElement('input');
-            tempInput.value = text;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand('copy');
-            document.body.removeChild(tempInput);
+  function displayResult(videoId) {
+    const result = document.getElementById('result');
+    const maxRes = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    const hq     = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 
-            const originalIcon = button.innerHTML;
-            button.innerHTML = `<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
-            setTimeout(() => { button.innerHTML = originalIcon; }, 1500);
-        }
+    result.style.display = 'block';
+    result.innerHTML = `
+      <div class="thumb-item">
+        <div class="thumb-label">최대 해상도 (maxresdefault)</div>
+        <div class="thumb-preview">
+          <img src="${maxRes}" alt="maxres thumbnail"
+               onerror="this.parentElement.innerHTML='<span style=&quot;color:#888;font-size:0.8rem&quot;>이미지 없음 (1080p 미지원 영상)</span>'">
+        </div>
+        <div class="thumb-url-row">
+          <a href="${maxRes}" target="_blank" class="thumb-url" rel="noopener">${maxRes}</a>
+          <button class="btn-copy" onclick="copyUrl(this,'${maxRes}')" title="복사">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="thumb-item">
+        <div class="thumb-label">고화질 (hqdefault)</div>
+        <div class="thumb-preview">
+          <img src="${hq}" alt="hq thumbnail">
+        </div>
+        <div class="thumb-url-row">
+          <a href="${hq}" target="_blank" class="thumb-url" rel="noopener">${hq}</a>
+          <button class="btn-copy" onclick="copyUrl(this,'${hq}')" title="복사">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    `;
+  }
 
-        function saveToHistory(videoId) {
-            let history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
-            history = history.filter(id => id !== videoId);
-            history.unshift(videoId);
-            localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 30)));
-        }
+  function showError(msg) {
+    const result = document.getElementById('result');
+    result.style.display = 'block';
+    result.innerHTML = `<div class="error-box">${msg}</div>`;
+  }
 
-        function toggleHistory() {
-            const historyContainer = document.getElementById('historyContainer');
-            const isHidden = historyContainer.classList.toggle('hidden');
-            if (!isHidden) {
-                renderHistory();
-            }
-        }
+  function copyUrl(btn, url) {
+    navigator.clipboard.writeText(url).then(() => {
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      setTimeout(() => {
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      }, 1500);
+    }).catch(() => alert('복사 실패'));
+  }
 
-        function renderHistory() {
-            const historyList = document.getElementById('historyList');
-            const history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
-            historyList.innerHTML = '';
+  function saveToHistory(videoId) {
+    let h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    h = h.filter(id => id !== videoId);
+    h.unshift(videoId);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 30)));
+  }
 
-            if (history.length === 0) {
-                historyList.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center py-6 text-sm italic">기록이 없습니다.</p>';
-                return;
-            }
+  function toggleHistory() {
+    const sec = document.getElementById('historySection');
+    const hidden = sec.style.display === 'none' || !sec.style.display;
+    sec.style.display = hidden ? 'block' : 'none';
+    if (hidden) renderHistory();
+  }
 
-            history.forEach(videoId => {
-                const hqUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-                const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-                const itemHtml = `
-                    <div class="flex items-center bg-gray-50 dark:bg-gray-700/50 p-2 rounded-xl transition-all border border-transparent hover:border-gray-200 dark:hover:border-gray-600">
-                        <div class="flex-shrink-0 cursor-pointer" onclick="applyFromHistory('${videoId}')">
-                            <img src="${hqUrl}" alt="thumbnail" class="w-20 h-12 object-cover rounded-lg shadow-sm">
-                        </div>
-                        <div class="flex-grow min-w-0 ml-4">
-                             <p class="text-xs font-mono text-gray-800 dark:text-gray-200 truncate font-semibold">${videoId}</p>
-                             <div class="flex gap-2 mt-1">
-                                <button onclick="applyFromHistory('${videoId}')" class="text-[10px] text-blue-500 hover:underline">불러오기</button>
-                                <a href="${videoUrl}" target="_blank" class="text-[10px] text-gray-400 hover:underline">영상보기</a>
-                             </div>
-                        </div>
-                        <button onclick="deleteFromHistory('${videoId}')" class="ml-2 p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 group transition-colors">
-                            <svg class="w-4 h-4 text-gray-400 group-hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        </button>
-                    </div>
-                `;
-                historyList.insertAdjacentHTML('beforeend', itemHtml);
-            });
-        }
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    const h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    if (!h.length) { list.innerHTML = '<p style="text-align:center;color:var(--fg-muted);font-size:0.8rem;padding:1rem">기록이 없습니다.</p>'; return; }
+    list.innerHTML = h.map(id => `
+      <div class="history-item" onclick="applyFromHistory('${id}')">
+        <img class="history-thumb" src="https://img.youtube.com/vi/${id}/mqdefault.jpg" alt="">
+        <div class="history-info">
+          <div class="history-vid">${id}</div>
+          <div class="history-links">
+            <a href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener" onclick="event.stopPropagation()">영상 보기</a>
+          </div>
+        </div>
+        <button class="btn-del-h" onclick="event.stopPropagation();deleteFromHistory('${id}')">✕</button>
+      </div>
+    `).join('');
+  }
 
-        function applyFromHistory(videoId) {
-            document.getElementById('youtubeUrl').value = `https://www.youtube.com/watch?v=${videoId}`;
-            displayResult(videoId);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+  function applyFromHistory(videoId) {
+    document.getElementById('youtubeUrl').value = `https://www.youtube.com/watch?v=${videoId}`;
+    displayResult(videoId);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
-        function deleteFromHistory(videoIdToDelete) {
-            let history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
-            history = history.filter(id => id !== videoIdToDelete);
-            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-            renderHistory();
-        }
+  function deleteFromHistory(videoId) {
+    let h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]').filter(id => id !== videoId);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
+    renderHistory();
+  }
 
-        function clearHistory() {
-            if (confirm('모든 기록을 삭제하시겠습니까?')) {
-                localStorage.removeItem(HISTORY_KEY);
-                renderHistory();
-            }
-        }
-
-        document.getElementById('youtubeUrl').addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') extractThumbnail();
-        });
-    </script>
-    <a href="/" class="floating-home-btn" title="byeduin apps" aria-label="byeduin apps">
-        <svg viewBox="0 0 24 24">
-            <path
-                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
-            </path>
-        </svg>
-    </a>
+  function clearHistory() {
+    if (confirm('모든 기록을 삭제하시겠습니까?')) {
+      localStorage.removeItem(HISTORY_KEY);
+      renderHistory();
+    }
+  }
+</script>
 </body>
-
 </html>

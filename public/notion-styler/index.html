@@ -4,7 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>노션 수식 스타일러 (Notion LaTeX Generator)</title>
+    <title>Notion Styler — byeduin</title>
+    <link rel="stylesheet" href="/common/hero-theme.css">
+    <script src="/common/theme.js"></script>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -27,44 +29,19 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
 
-        /* Floating Home Button Style */
-        .floating-home-btn {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 52px;
-            height: 52px;
-            background: #4f46e5;
-            color: white !important;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 9999;
-            text-decoration: none;
-        }
-
-        .floating-home-btn:hover {
-            transform: scale(1.1) translateY(-4px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
-            background: #4338ca;
-        }
-
-        .floating-home-btn:active {
-            transform: scale(0.95);
-        }
-
-        .floating-home-btn svg {
-            width: 24px;
-            height: 24px;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
+        /* dark mode override for React/Tailwind body */
+        [data-theme="dark"] body { background: #0d0d0d !important; }
+        [data-theme="dark"] .bg-gray-50 { background-color: #0d0d0d !important; }
+        [data-theme="dark"] .bg-white { background-color: #1a1a1a !important; }
+        [data-theme="dark"] .border-gray-100,
+        [data-theme="dark"] .border-gray-200 { border-color: #2a2a2a !important; }
+        [data-theme="dark"] .text-gray-900,
+        [data-theme="dark"] .text-gray-800,
+        [data-theme="dark"] .text-gray-700 { color: #ecedee !important; }
+        [data-theme="dark"] .text-gray-500,
+        [data-theme="dark"] .text-gray-400 { color: #888 !important; }
+        [data-theme="dark"] .bg-gray-100 { background-color: #2a2a2a !important; }
+        [data-theme="dark"] textarea { background: #1a1a1a !important; color: #ecedee !important; border-color: #2a2a2a !important; }
     </style>
 </head>
 
@@ -651,13 +628,17 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<NotionFormulaGenerator />);
     </script>
-    <a href="/" class="floating-home-btn" title="byeduin apps" aria-label="byeduin apps">
-        <svg viewBox="0 0 24 24">
-            <path
-                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
-            </path>
+    <!-- 우상단 오버레이: 테마 + 홈 -->
+    <div class="top-overlay">
+      <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="테마 변경">💻</button>
+      <a href="/" class="overlay-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
         </svg>
-    </a>
+        <span>Home</span>
+      </a>
+    </div>
 </body>
 
 </html>

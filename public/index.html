@@ -1,139 +1,330 @@
 <!DOCTYPE html>
-<html lang="ko" class="dark">
+<html lang="ko">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>byeduin VIVES</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            // HeroUI v3 default dark palette
-            background: '#0d0d0d',
-            foreground: '#ecedee',
-            'default-100': '#1a1a1a',
-            'default-200': '#2a2a2a',
-            'default-300': '#3a3a3a',
-            primary: '#006fee',
-            'primary-foreground': '#ffffff',
-            secondary: '#7828c8',
-          },
-          borderRadius: {
-            xl: '0.75rem',
-            '2xl': '1rem',
-            '3xl': '1.5rem',
-          },
-          fontFamily: {
-            sans: ['-apple-system', 'BlinkMacSystemFont', 'Inter', 'Segoe UI', 'sans-serif'],
-          },
-        },
-      },
-    }
-  </script>
+  <link rel="stylesheet" href="/common/hero-theme.css" />
+  <script src="/common/theme.js"></script>
   <style>
-    body { background-color: #0d0d0d; color: #ecedee; }
-    .card {
-      background: #1a1a1a;
-      border: 1px solid #2a2a2a;
+    body {
+      min-height: 100vh;
+    }
+
+    .site-header {
+      padding: 2rem 1.5rem 1rem;
+      max-width: 860px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-group img {
+      width: 32px;
+      height: 32px;
+    }
+
+    .logo-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .logo-title span {
+      color: var(--primary);
+    }
+
+    .logo-sub {
+      font-size: 0.8rem;
+      color: var(--fg-muted);
+      margin-top: 1px;
+    }
+
+    main {
+      padding: 0 1.5rem 5rem;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    /* 카테고리 섹션 */
+    .category-section {
+      margin-bottom: 2.5rem;
+    }
+
+    .category-header {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .category-label {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .category-desc {
+      font-size: 0.8rem;
+      color: var(--fg-muted);
+    }
+
+    /* 카드 그리드 */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.875rem;
+    }
+
+    @media (max-width: 640px) {
+      .card-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 400px) {
+      .card-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* 앱 카드 */
+    .app-card {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
       border-radius: 1rem;
+      padding: 1.25rem;
       transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+      position: relative;
     }
-    .card:hover {
-      border-color: #006fee55;
+
+    .app-card:hover {
+      border-color: rgba(0, 111, 238, 0.4);
       transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(0, 111, 238, 0.12);
+      box-shadow: 0 8px 32px rgba(0, 111, 238, 0.1);
     }
-    .tag {
-      background: #2a2a2a;
-      border-radius: 9999px;
+
+    .card-emoji {
+      font-size: 1.5rem;
+      margin-bottom: 0.625rem;
+    }
+
+    .card-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .card-desc {
+      font-size: 0.8rem;
+      color: var(--fg-muted);
+      line-height: 1.4;
+    }
+
+    /* 외부 링크 뱃지 */
+    .external-badge {
+      position: absolute;
+      top: 0.625rem;
+      right: 0.75rem;
       font-size: 0.7rem;
-      padding: 2px 10px;
-      color: #888;
+      color: var(--fg-muted);
+      opacity: 0.6;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--fg-muted);
+      padding: 1.5rem;
+      border-top: 1px solid var(--border);
     }
   </style>
 </head>
-<body class="min-h-screen font-sans">
 
-  <!-- Header -->
-  <header class="px-6 py-8 max-w-4xl mx-auto">
-    <div class="flex items-center gap-3 mb-2">
-      <img src="/favicon.svg" alt="logo" class="w-8 h-8" />
-      <span class="text-2xl font-bold tracking-tight">byeduin <span class="text-[#006fee]">VIVES</span></span>
+<body>
+
+  <header class="site-header">
+    <div>
+      <div class="logo-group">
+        <img src="/favicon.svg" alt="logo" />
+        <span class="logo-title">byeduin <span>VIVES</span></span>
+      </div>
+      <div class="logo-sub" style="margin-left:44px;">바이브 코딩으로 만든 작은 앱 모음</div>
     </div>
-    <p class="text-sm text-[#888] ml-11">바이브 코딩으로 만든 작은 앱 모음</p>
   </header>
 
-  <!-- App Grid -->
-  <main class="px-6 pb-16 max-w-4xl mx-auto">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  <main id="main"></main>
 
-      <a href="/qr/" class="card p-5 block no-underline">
-        <div class="text-2xl mb-3">📱</div>
-        <div class="font-semibold mb-1">QR Code</div>
-        <div class="text-sm text-[#888] mb-3">QR 코드 생성 및 읽기</div>
-        <span class="tag">utility</span>
-      </a>
+  <footer>byeduin · built with vibe coding</footer>
 
-      <a href="/timer/" class="card p-5 block no-underline">
-        <div class="text-2xl mb-3">⏱️</div>
-        <div class="font-semibold mb-1">Timer</div>
-        <div class="text-sm text-[#888] mb-3">타이머 앱</div>
-        <span class="tag">utility</span>
-      </a>
+  <!-- 우상단 테마 토글 -->
+  <div class="top-overlay">
+    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="테마 변경">💻</button>
+  </div>
 
-      <a href="/grid/" class="card p-5 block no-underline">
-        <div class="text-2xl mb-3">⬛</div>
-        <div class="font-semibold mb-1">Grid</div>
-        <div class="text-sm text-[#888] mb-3">그리드 생성 도구</div>
-        <span class="tag">tool</span>
-      </a>
+  <script>
+    /* =============================================
+       앱 목록 — 여기에만 추가하면 됩니다.
+       =============================================
+       타입 A (내부 앱):
+         { emoji, title, desc, href, category }
 
-      <a href="/moon-phase/" class="card p-5 block no-underline">
-        <div class="text-2xl mb-3">🌙</div>
-        <div class="font-semibold mb-1">Moon Phase</div>
-        <div class="text-sm text-[#888] mb-3">오늘의 달 위상 계산기</div>
-        <span class="tag">info</span>
-      </a>
+       타입 B (외부 링크):
+         { type:"link", emoji, title, desc, href, external:true, category }
+       ============================================= */
+    const APPS = [
+      // --- 유틸리티 ---
+      {
+        emoji: "📱",
+        title: "QR Code",
+        desc: "QR 코드 생성 및 읽기",
+        href: "/qr/",
+        category: "utility",
+      },
+      {
+        emoji: "⏱️",
+        title: "Timer",
+        desc: "반복 알람 스마트 시스템",
+        href: "/content/",
+        category: "utility",
+      },
+      {
+        emoji: "📎",
+        title: "Edunavi Content ID Viewer",
+        desc: "에듀나비 아카이브 콘텐츠 ID 보는 크롬 확장",
+        href: "/chrome-extentions/content-id-viewer-for-edunavi.zip",
+        category: "utility",
+      },
+      {
+        emoji: "🔑",
+        title: "Edunavi Login Helper",
+        desc: "에듀나비 교원업무지원 로그인 도우미",
+        href: "https://www.eduin.info/31d48623-c7a0-8053-90ae-f20631f1c640",
+        category: "utility",
+      },
 
-      <a href="/yt-thumb/" class="card p-5 block no-underline">
-        <div class="text-2xl mb-3">🎬</div>
-        <div class="font-semibold mb-1">YT Thumbnail</div>
-        <div class="text-sm text-[#888] mb-3">유튜브 썸네일 추출기</div>
-        <span class="tag">tool</span>
-      </a>
+      // --- 크리에이티브 ---
+      {
+        emoji: "⬛",
+        title: "Grid",
+        desc: "이미지를 그리드로 분할 저장",
+        href: "/grid/",
+        category: "creative",
+      },
+      {
+        emoji: "🎬",
+        title: "YT Thumbnail",
+        desc: "유튜브 썸네일 추출기",
+        href: "/yt-thumb/",
+        category: "creative",
+      },
 
-      <a href="/notion-image-downloader/" class="card p-5 block no-underline">
-        <div class="text-2xl mb-3">🖼️</div>
-        <div class="font-semibold mb-1">Notion Image DL</div>
-        <div class="text-sm text-[#888] mb-3">노션 이미지 일괄 다운로드</div>
-        <span class="tag">notion</span>
-      </a>
+      // --- 노션 도구 ---
+      {
+        emoji: "🖼️",
+        title: "Notion Image DL",
+        desc: "노션 DB 이미지 일괄 다운로드",
+        href: "/notion-image-downloader/",
+        category: "notion",
+      },
+      {
+        emoji: "🎨",
+        title: "Notion Styler",
+        desc: "노션 수식 LaTeX 스타일러",
+        href: "/notion-styler/",
+        category: "notion",
+      },
 
-      <a href="/notion-styler/" class="card p-5 block no-underline">
-        <div class="text-2xl mb-3">🎨</div>
-        <div class="font-semibold mb-1">Notion Styler</div>
-        <div class="text-sm text-[#888] mb-3">노션 페이지 스타일링 도구</div>
-        <span class="tag">notion</span>
-      </a>
+      // --- 교육 ---
+      {
+        emoji: "🔢",
+        title: "Numberblocks",
+        desc: "넘버블록스 에피소드 파인더",
+        href: "/numberblocks/",
+        category: "edu",
+      },
 
-      <a href="/numberblocks/" class="card p-5 block no-underline">
-        <div class="text-2xl mb-3">🔢</div>
-        <div class="font-semibold mb-1">Numberblocks</div>
-        <div class="text-sm text-[#888] mb-3">넘버블록스 파인더</div>
-        <span class="tag">edu</span>
-      </a>
+      // --- 정보 탐색 ---
+      {
+        emoji: "🌙",
+        title: "Moon Phase",
+        desc: "오늘의 달 위상 시뮬레이터",
+        href: "/moon-phase/",
+        category: "info",
+      },
+    ];
 
-    </div>
-  </main>
+    /* =============================================
+       카테고리 정의 — 새 카테고리가 필요하면 추가
+       ============================================= */
+    const CATEGORIES = [
+      { id: "utility", label: "🛠 유틸리티", desc: "일상에서 자주 쓰는 도구" },
+      { id: "creative", label: "🎨 크리에이티브", desc: "미디어·콘텐츠 제작 보조" },
+      { id: "notion", label: "📐 노션 도구", desc: "Notion 워크플로우 지원" },
+      { id: "edu", label: "📚 교육", desc: "학습·교육용 앱" },
+      { id: "info", label: "🌐 정보 탐색", desc: "정보 조회 및 시각화" },
+    ];
 
-  <!-- Footer -->
-  <footer class="px-6 py-6 text-center text-xs text-[#555] border-t border-[#1a1a1a]">
-    byeduin · built with vibe coding
-  </footer>
+    /* =============================================
+       렌더링 — 수정 불필요
+       ============================================= */
+    function render() {
+      const main = document.getElementById('main');
+      main.innerHTML = '';
+
+      CATEGORIES.forEach(cat => {
+        const items = APPS.filter(a => a.category === cat.id);
+        if (items.length === 0) return;
+
+        const section = document.createElement('section');
+        section.className = 'category-section';
+        section.innerHTML = `
+          <div class="category-header">
+            <span class="category-label">${cat.label}</span>
+            <span class="category-desc">${cat.desc}</span>
+          </div>
+          <div class="card-grid" id="grid-${cat.id}"></div>
+        `;
+        main.appendChild(section);
+
+        const grid = section.querySelector(`#grid-${cat.id}`);
+        items.forEach(app => {
+          const isExternal = app.type === 'link' || app.external;
+          const a = document.createElement('a');
+          a.className = 'app-card';
+          a.href = app.href;
+          if (isExternal) {
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+          }
+          a.innerHTML = `
+            ${isExternal ? '<span class="external-badge">↗</span>' : ''}
+            <div class="card-emoji">${app.emoji}</div>
+            <div class="card-title">${app.title}</div>
+            <div class="card-desc">${app.desc}</div>
+          `;
+          grid.appendChild(a);
+        });
+      });
+    }
+
+    render();
+  </script>
 
 </body>
+
 </html>

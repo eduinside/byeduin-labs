@@ -1,569 +1,547 @@
 <!DOCTYPE html>
 <html lang="ko">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR 코드 마스터 (생성 & 스캔)</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- QRCode.js (생성용) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- html5-qrcode (스캔용) -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Master — byeduin</title>
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <script src="/common/theme.js"></script>
+  <!-- QRCode.js (생성용) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- html5-qrcode (스캔용) -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 1rem 1rem 5rem;
+    }
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+    .wrap {
+      width: 100%;
+      max-width: 440px;
+      margin-top: 3.5rem; /* top-overlay 공간 */
+    }
 
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            background-color: #f3f4f6;
-        }
+    /* 헤더 */
+    .app-header {
+      background: var(--primary);
+      border-radius: 1rem 1rem 0 0;
+      padding: 1.5rem;
+      text-align: center;
+      color: #fff;
+    }
+    .app-header h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .app-header p  { font-size: 0.85rem; opacity: 0.85; }
 
-        #qrcode img,
-        #qrcode canvas {
-            margin: 0 auto;
-            border-radius: 8px;
-        }
+    /* 탭 */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--card-bg);
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 1rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--fg-muted);
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+      min-height: 48px;
+      font-family: inherit;
+    }
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
 
-        /* 스캐너 비디오 컨테이너 스타일 */
-        #reader {
-            width: 100%;
-            border-radius: 0.5rem;
-            overflow: hidden;
-        }
+    /* 카드 바디 */
+    .card-body {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 1rem 1rem;
+      padding: 1.5rem;
+    }
 
-        #reader video {
-            object-fit: cover;
-            border-radius: 0.5rem;
-        }
+    /* 탭 패널 */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
 
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-        }
+    /* 스캔 입력 그리드 */
+    .scan-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.625rem;
+      margin-bottom: 1rem;
+    }
 
-        /* 탭 활성/비활성 스타일 */
-        .tab-active {
-            border-bottom: 2px solid #4f46e5;
-            color: #4f46e5;
-            font-weight: 700;
-        }
+    .scan-opt {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.375rem;
+      padding: 0.875rem 0.5rem;
+      background: var(--bg);
+      border: 1.5px dashed var(--border);
+      border-radius: 0.75rem;
+      color: var(--fg-muted);
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 600;
+      min-height: 72px;
+      transition: border-color 0.2s, color 0.2s;
+      font-family: inherit;
+    }
+    .scan-opt:hover { border-color: var(--primary); color: var(--primary); }
+    .scan-opt svg { width: 22px; height: 22px; }
 
-        .tab-inactive {
-            color: #6b7280;
-            font-weight: 500;
-        }
+    /* 카메라 영역 */
+    #cameraArea {
+      display: none;
+      position: relative;
+      border-radius: 0.75rem;
+      overflow: hidden;
+      background: #000;
+      margin-bottom: 1rem;
+    }
+    #reader { width: 100%; height: 240px; }
+    #reader video { object-fit: cover; border-radius: 0; }
+    .camera-close {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 32px;
+      height: 32px;
+      background: rgba(255,255,255,0.85);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      z-index: 10;
+    }
 
-        .tab-inactive:hover {
-            color: #374151;
-        }
+    /* QR 결과 */
+    #genResultArea {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      margin-top: 1rem;
+    }
+    #genResultArea.show { display: flex; }
 
-        /* Floating Home Button Style */
-        .floating-home-btn {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 52px;
-            height: 52px;
-            background: #4f46e5;
-            color: white !important;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 9999;
-            text-decoration: none;
-        }
+    #qrcode-wrap {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1rem;
+    }
+    #qrcode img, #qrcode canvas { margin: 0 auto; border-radius: 4px; }
 
-        .floating-home-btn:hover {
-            transform: scale(1.1) translateY(-4px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
-            background: #4338ca;
-        }
+    #genResultText {
+      font-size: 0.75rem;
+      color: var(--fg-muted);
+      font-family: monospace;
+      word-break: break-all;
+      text-align: center;
+    }
 
-        .floating-home-btn:active {
-            transform: scale(0.95);
-        }
+    /* 스캔 결과 */
+    #scanResultArea {
+      display: none;
+      background: var(--bg);
+      border: 1px solid var(--success);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    #scanResultArea.show { display: block; }
 
-        .floating-home-btn svg {
-            width: 24px;
-            height: 24px;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-    </style>
+    .scan-result-header {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--success);
+      margin-bottom: 0.5rem;
+    }
+
+    #scanResultText {
+      font-size: 0.85rem;
+      font-family: monospace;
+      word-break: break-all;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      margin-bottom: 0.625rem;
+      user-select: all;
+    }
+
+    .scan-actions { display: flex; gap: 0.5rem; }
+    .scan-actions a, .scan-actions button {
+      font-size: 0.8rem;
+      padding: 0.4rem 0.875rem;
+      border-radius: 0.5rem;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-family: inherit;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .btn-copy-scan { background: var(--primary); color: #fff; }
+    .btn-open-link { background: var(--card-bg); border: 1px solid var(--border) !important; color: var(--fg); display: none; }
+    .btn-open-link.show { display: inline-flex; }
+
+    /* 히스토리 */
+    .history-section {
+      margin-top: 1.25rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+    }
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    .history-header span { font-size: 0.85rem; font-weight: 700; }
+    .btn-clear { font-size: 0.75rem; color: var(--danger); background: none; border: none; cursor: pointer; font-family: inherit; }
+
+    #historyList { list-style: none; padding: 0; margin: 0; max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.625rem;
+      padding: 0.625rem 0.75rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .history-item:hover { border-color: var(--primary); }
+
+    .history-icon {
+      width: 28px; height: 28px;
+      background: var(--card-bg);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 0.8rem;
+    }
+
+    .history-text { flex: 1; min-width: 0; }
+    .history-text .main { font-size: 0.8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-text .sub  { font-size: 0.7rem; color: var(--fg-muted); }
+
+    .history-del {
+      background: none;
+      border: none;
+      color: var(--fg-muted);
+      cursor: pointer;
+      padding: 4px;
+      font-size: 1rem;
+      line-height: 1;
+      flex-shrink: 0;
+      min-width: 24px;
+      min-height: 24px;
+    }
+    .history-del:hover { color: var(--danger); }
+
+    .history-empty { text-align: center; font-size: 0.8rem; color: var(--fg-muted); padding: 1.5rem 0; }
+
+    /* 유틸 */
+    .mt-1 { margin-top: 0.5rem; }
+    .mt-2 { margin-top: 0.75rem; }
+    .w-full { width: 100%; }
+    .hint { font-size: 0.72rem; color: var(--fg-muted); text-align: center; margin-top: 0.375rem; }
+  </style>
 </head>
+<body>
+<div class="wrap">
 
-<body class="min-h-screen flex items-center justify-center p-4">
+  <div class="app-header">
+    <h1>📱 QR Master</h1>
+    <p>생성부터 스캔까지 한 번에</p>
+  </div>
 
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden relative">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('generate')" id="tabBtnGenerate">생성하기</button>
+    <button class="tab-btn" onclick="switchTab('scan')" id="tabBtnScan">스캔하기</button>
+  </div>
 
-        <!-- 헤더 & 탭 -->
-        <div class="bg-white border-b border-gray-100">
-            <div class="bg-indigo-600 p-6 text-center text-white">
-                <h1 class="text-2xl font-bold mb-1">
-                    <i class="fa-solid fa-qrcode mr-2"></i>QR Master
-                </h1>
-                <p class="text-indigo-200 text-sm">생성부터 스캔까지 한 번에</p>
-            </div>
+  <div class="card-body">
 
-            <div class="flex text-sm">
-                <button onclick="switchTab('generate')" id="tabBtnGenerate"
-                    class="flex-1 py-4 text-center transition-colors tab-active">
-                    <i class="fa-solid fa-pen-to-square mr-1"></i> 생성하기
-                </button>
-                <button onclick="switchTab('scan')" id="tabBtnScan"
-                    class="flex-1 py-4 text-center transition-colors tab-inactive">
-                    <i class="fa-solid fa-camera mr-1"></i> 스캔하기
-                </button>
-            </div>
-        </div>
+    <!-- 생성 탭 -->
+    <div id="generateTab" class="tab-panel active">
+      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--fg-muted);margin-bottom:0.4rem;">
+        변환할 주소 (URL) 또는 텍스트
+      </label>
+      <input type="text" id="urlInput" class="hero-input"
+             placeholder="https://example.com"
+             onkeypress="if(event.key==='Enter')generateQR()">
+      <button onclick="generateQR()" class="hero-btn w-full mt-2">QR 코드 생성</button>
 
-        <div class="p-6">
-
-            <!-- [탭 1] QR 생성기 -->
-            <div id="generateTab" class="space-y-6">
-                <div class="space-y-3">
-                    <label class="block text-sm font-medium text-gray-700">변환할 주소 (URL) 또는 텍스트</label>
-                    <input type="text" id="urlInput"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
-                        placeholder="https://example.com" onkeypress="handleEnter(event)">
-
-                    <button onclick="generateQR()"
-                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md active:scale-95 transform duration-150 flex items-center justify-center gap-2">
-                        <span>QR 코드 생성</span>
-                        <i class="fa-solid fa-magic"></i>
-                    </button>
-                </div>
-
-                <!-- 생성 결과 -->
-                <div id="genResultArea" class="hidden flex-col items-center space-y-4 pt-4 border-t border-gray-100">
-                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-inner">
-                        <div id="qrcode" class="bg-white p-2"></div>
-                    </div>
-                    <div class="text-center w-full">
-                        <p id="genResultText" class="text-xs text-gray-500 mb-3 truncate px-4 font-mono"></p>
-                        <button onclick="downloadQR()"
-                            class="w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm">
-                            <i class="fa-solid fa-download"></i> 이미지 저장
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- [탭 2] QR 스캐너 -->
-            <div id="scanTab" class="hidden space-y-5">
-
-                <!-- 스캔 방식 선택 버튼 -->
-                <div class="grid grid-cols-3 gap-2 mb-2">
-                    <button onclick="startCamera()" id="btnCam"
-                        class="flex flex-col items-center justify-center p-3 border-2 border-dashed border-indigo-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all text-indigo-600">
-                        <i class="fa-solid fa-video mb-1 text-lg"></i>
-                        <span class="text-[10px] font-bold mt-1">카메라</span>
-                    </button>
-                    <label for="qrInputFile"
-                        class="flex flex-col items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-xl hover:border-gray-500 hover:bg-gray-50 transition-all text-gray-600 cursor-pointer">
-                        <i class="fa-regular fa-image mb-1 text-lg"></i>
-                        <span class="text-[10px] font-bold mt-1">파일 업로드</span>
-                        <input type="file" id="qrInputFile" accept="image/*" class="hidden"
-                            onchange="handleFileUpload(this)">
-                    </label>
-                    <button onclick="handleClipboardPaste()"
-                        class="flex flex-col items-center justify-center p-3 border-2 border-dashed border-gray-300 rounded-xl hover:border-gray-500 hover:bg-gray-50 transition-all text-gray-600">
-                        <i class="fa-regular fa-clipboard mb-1 text-lg"></i>
-                        <span class="text-[10px] font-bold mt-1">붙여넣기</span>
-                    </button>
-                </div>
-                <div class="text-center text-[10px] text-gray-400 -mt-3">
-                    <i class="fa-solid fa-circle-info mr-1"></i>Ctrl+V로 이미지를 바로 붙여넣을 수도 있습니다
-                </div>
-
-                <!-- 카메라 영역 -->
-                <div id="cameraArea" class="hidden relative bg-black rounded-lg overflow-hidden shadow-inner group">
-                    <div id="reader" class="w-full h-64 bg-black"></div>
-                    <button onclick="stopCamera()"
-                        class="absolute top-2 right-2 bg-white/80 hover:bg-white text-gray-800 rounded-full p-1.5 w-8 h-8 flex items-center justify-center shadow-lg transition-all z-10">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                    <div class="absolute bottom-4 left-0 right-0 text-center text-white text-xs opacity-70">
-                        QR 코드를 비춰주세요
-                    </div>
-                </div>
-
-                <!-- 스캔 결과 -->
-                <div id="scanResultArea"
-                    class="hidden bg-green-50 border border-green-200 rounded-xl p-4 animate-pulse-once">
-                    <div class="flex items-start gap-3">
-                        <div class="bg-green-100 text-green-600 p-2 rounded-full shrink-0">
-                            <i class="fa-solid fa-check"></i>
-                        </div>
-                        <div class="overflow-hidden w-full">
-                            <h3 class="text-xs font-bold text-green-800 mb-1">스캔 성공!</h3>
-                            <p id="scanResultText"
-                                class="text-sm text-gray-800 break-all font-mono bg-white p-2 rounded border border-green-100 mb-2 select-all">
-                            </p>
-                            <div class="flex gap-2">
-                                <button onclick="copyScanResult()"
-                                    class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded transition-colors">
-                                    <i class="fa-regular fa-copy mr-1"></i>복사
-                                </button>
-                                <a id="scanResultLink" href="#" target="_blank"
-                                    class="hidden text-xs bg-gray-700 hover:bg-gray-900 text-white px-3 py-1.5 rounded transition-colors flex items-center">
-                                    <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i>이동
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 공통 히스토리 영역 -->
-            <div class="pt-6 mt-2 border-t border-gray-100">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2">
-                        <i class="fa-solid fa-clock-rotate-left"></i> 히스토리
-                    </h3>
-                    <button onclick="clearHistory()" class="text-xs text-red-400 hover:text-red-600 hover:underline">
-                        지우기
-                    </button>
-                </div>
-
-                <ul id="historyList" class="space-y-2 max-h-40 overflow-y-auto pr-1 text-sm custom-scrollbar">
-                    <li class="text-center text-gray-400 py-4 text-xs">기록이 없습니다.</li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- 푸터 -->
-        <div class="bg-gray-50 p-3 text-center text-[10px] text-gray-400 border-t">
-            QR Master &copy; Local Storage Only
-        </div>
+      <div id="genResultArea">
+        <div id="qrcode-wrap"><div id="qrcode"></div></div>
+        <div id="genResultText"></div>
+        <button onclick="downloadQR()" class="hero-btn hero-btn-ghost w-full" style="font-size:0.9rem;">
+          ⬇ 이미지 저장
+        </button>
+      </div>
     </div>
 
-    <script>
-        // --- 전역 변수 ---
-        let html5QrCode = null;
-        let isCameraRunning = false;
+    <!-- 스캔 탭 -->
+    <div id="scanTab" class="tab-panel">
+      <div class="scan-grid">
+        <button class="scan-opt" onclick="startCamera()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 7l-7-5-7 5M23 7v10l-7 5-7-5V7"/><path d="M16 12l-7-5-7 5"/>
+          </svg>
+          카메라
+        </button>
+        <label class="scan-opt" for="qrInputFile">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/>
+            <path d="M21 15l-5-5L5 21"/>
+          </svg>
+          파일
+          <input type="file" id="qrInputFile" accept="image/*" class="hidden" style="display:none" onchange="handleFileUpload(this)">
+        </label>
+        <button class="scan-opt" onclick="handleClipboardPaste()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          붙여넣기
+        </button>
+      </div>
+      <p class="hint">Ctrl+V로 이미지를 바로 붙여넣을 수 있습니다</p>
 
-        // --- 초기화 ---
-        document.addEventListener('DOMContentLoaded', () => {
-            loadHistory();
+      <div id="cameraArea">
+        <div id="reader"></div>
+        <button class="camera-close" onclick="stopCamera()">✕</button>
+      </div>
 
-            // 전역 붙여넣기 이벤트 리스너 추가 (Ctrl+V 지원)
-            document.addEventListener('paste', handlePasteEvent);
-        });
+      <div id="scanResultArea">
+        <div class="scan-result-header">✓ 스캔 성공!</div>
+        <div id="scanResultText"></div>
+        <div class="scan-actions">
+          <button class="btn-copy-scan" onclick="copyScanResult()">복사</button>
+          <a id="scanResultLink" class="btn-open-link" href="#" target="_blank" rel="noopener">↗ 이동</a>
+        </div>
+      </div>
+    </div>
 
-        // --- 탭 전환 로직 ---
-        function switchTab(tab) {
-            const genTab = document.getElementById('generateTab');
-            const scnTab = document.getElementById('scanTab');
-            const btnGen = document.getElementById('tabBtnGenerate');
-            const btnScn = document.getElementById('tabBtnScan');
+    <!-- 공통 히스토리 -->
+    <div class="history-section">
+      <div class="history-header">
+        <span>히스토리</span>
+        <button class="btn-clear" onclick="clearHistory()">지우기</button>
+      </div>
+      <ul id="historyList"></ul>
+    </div>
+  </div>
 
-            if (tab === 'generate') {
-                genTab.classList.remove('hidden');
-                scnTab.classList.add('hidden');
-                btnGen.className = "flex-1 py-4 text-center transition-colors tab-active";
-                btnScn.className = "flex-1 py-4 text-center transition-colors tab-inactive";
-                stopCamera(); // 탭 이동시 카메라 끄기
-            } else {
-                genTab.classList.add('hidden');
-                scnTab.classList.remove('hidden');
-                btnGen.className = "flex-1 py-4 text-center transition-colors tab-inactive";
-                btnScn.className = "flex-1 py-4 text-center transition-colors tab-active";
-            }
-        }
+</div>
 
-        // --- [탭 1] 생성 기능 ---
-        function handleEnter(e) {
-            if (e.key === 'Enter') generateQR();
-        }
+<!-- 우상단 오버레이: 테마 + 홈 -->
+<div class="top-overlay">
+  <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="테마 변경">💻</button>
+  <a href="/" class="overlay-btn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    <span>Home</span>
+  </a>
+</div>
 
-        function generateQR(text = null) {
-            const inputVal = text || document.getElementById('urlInput').value.trim();
-            if (!inputVal) return alert('내용을 입력해주세요.');
+<script>
+  let html5QrCode = null;
+  let isCameraRunning = false;
 
-            const container = document.getElementById('qrcode');
-            container.innerHTML = "";
-            document.getElementById('genResultArea').classList.remove('hidden');
-            document.getElementById('genResultText').textContent = inputVal;
+  document.addEventListener('DOMContentLoaded', () => {
+    loadHistory();
+    document.addEventListener('paste', handlePasteEvent);
+  });
 
-            new QRCode(container, {
-                text: inputVal,
-                width: 180,
-                height: 180,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-            });
+  function switchTab(tab) {
+    const panels = { generate: document.getElementById('generateTab'), scan: document.getElementById('scanTab') };
+    const btns   = { generate: document.getElementById('tabBtnGenerate'), scan: document.getElementById('tabBtnScan') };
+    Object.keys(panels).forEach(k => {
+      panels[k].classList.toggle('active', k === tab);
+      btns[k].classList.toggle('active', k === tab);
+    });
+    if (tab !== 'scan') stopCamera();
+  }
 
-            if (!text) document.getElementById('urlInput').value = inputVal;
-            addToHistory(inputVal, 'gen'); // 타입: 생성(gen)
-        }
+  /* ---- 생성 ---- */
+  function generateQR(text) {
+    const val = text || document.getElementById('urlInput').value.trim();
+    if (!val) return alert('내용을 입력해주세요.');
+    const container = document.getElementById('qrcode');
+    container.innerHTML = '';
+    new QRCode(container, { text: val, width: 180, height: 180, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.H });
+    document.getElementById('genResultText').textContent = val;
+    document.getElementById('genResultArea').classList.add('show');
+    if (!text) document.getElementById('urlInput').value = val;
+    addToHistory(val, 'gen');
+  }
 
-        function downloadQR() {
-            const img = document.querySelector('#qrcode img');
-            const canvas = document.querySelector('#qrcode canvas');
+  function downloadQR() {
+    const img = document.querySelector('#qrcode img');
+    const cvs = document.querySelector('#qrcode canvas');
+    const a = document.createElement('a');
+    a.download = `qr_${Date.now()}.png`;
+    if (img && img.src) a.href = img.src;
+    else if (cvs) a.href = cvs.toDataURL('image/png');
+    else return;
+    a.click();
+  }
 
-            const link = document.createElement('a');
-            link.download = `qr_code_${Date.now()}.png`;
+  /* ---- 스캔 ---- */
+  function startCamera() {
+    if (isCameraRunning) return;
+    document.getElementById('cameraArea').style.display = 'block';
+    document.getElementById('scanResultArea').classList.remove('show');
+    if (!html5QrCode) html5QrCode = new Html5Qrcode('reader');
+    html5QrCode.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 220, height: 220 } }, onScanSuccess, () => {})
+      .then(() => { isCameraRunning = true; })
+      .catch(() => {
+        alert('카메라를 시작할 수 없습니다. 권한을 확인해주세요.');
+        document.getElementById('cameraArea').style.display = 'none';
+      });
+  }
 
-            if (img && img.src) link.href = img.src;
-            else if (canvas) link.href = canvas.toDataURL("image/png");
-            else return;
+  function stopCamera() {
+    if (html5QrCode && isCameraRunning) {
+      html5QrCode.stop().then(() => {
+        isCameraRunning = false;
+        document.getElementById('cameraArea').style.display = 'none';
+        html5QrCode.clear();
+      }).catch(() => {});
+    } else {
+      document.getElementById('cameraArea').style.display = 'none';
+    }
+  }
 
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+  function handleFileUpload(input) {
+    if (!input.files.length) return;
+    scanImageFile(input.files[0]);
+    input.value = '';
+  }
 
-        // --- [탭 2] 스캔 기능 ---
+  function scanImageFile(file) {
+    if (!html5QrCode) html5QrCode = new Html5Qrcode('reader');
+    switchTab('scan');
+    html5QrCode.scanFile(file, true)
+      .then(onScanSuccess)
+      .catch(() => alert('QR 코드를 찾을 수 없습니다.'));
+  }
 
-        // 1. 카메라 스캔 시작
-        function startCamera() {
-            if (isCameraRunning) return;
+  function handlePasteEvent(e) {
+    for (const item of e.clipboardData.items) {
+      if (item.type.startsWith('image/')) {
+        scanImageFile(new File([item.getAsFile()], 'paste.png', { type: item.type }));
+        return;
+      }
+    }
+  }
 
-            const readerElem = document.getElementById('reader');
-            document.getElementById('cameraArea').classList.remove('hidden');
-            document.getElementById('scanResultArea').classList.add('hidden');
+  async function handleClipboardPaste() {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const t = item.types.find(t => t.startsWith('image/'));
+        if (t) { scanImageFile(new File([await item.getType(t)], 'clip.png', { type: t })); return; }
+      }
+      alert('클립보드에 이미지가 없습니다.');
+    } catch {
+      alert('Ctrl+V (또는 Cmd+V)로 이미지를 붙여넣어 주세요.');
+    }
+  }
 
-            // html5QrCode 인스턴스 생성 또는 재사용
-            if (!html5QrCode) {
-                html5QrCode = new Html5Qrcode("reader");
-            }
+  function onScanSuccess(text) {
+    if (isCameraRunning) stopCamera();
+    document.getElementById('scanResultText').textContent = text;
+    document.getElementById('scanResultArea').classList.add('show');
+    const link = document.getElementById('scanResultLink');
+    try { new URL(text); link.href = text; link.classList.add('show'); }
+    catch { link.classList.remove('show'); }
+    addToHistory(text, 'scan');
+  }
 
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+  function copyScanResult() {
+    const text = document.getElementById('scanResultText').textContent;
+    navigator.clipboard.writeText(text).then(() => alert('복사되었습니다.')).catch(() => alert('복사 실패'));
+  }
 
-            html5QrCode.start(
-                { facingMode: "environment" }, // 후면 카메라 우선
-                config,
-                onScanSuccess,
-                (errorMessage) => {
-                    // 스캔 중 에러는 무시 (계속 스캔하므로)
-                }
-            ).then(() => {
-                isCameraRunning = true;
-            }).catch(err => {
-                console.error(err);
-                alert("카메라를 시작할 수 없습니다. 권한을 확인해주세요.\n(HTTPS 또는 로컬환경 필수)");
-                document.getElementById('cameraArea').classList.add('hidden');
-            });
-        }
+  /* ---- 히스토리 ---- */
+  function addToHistory(text, type) {
+    let h = JSON.parse(localStorage.getItem('qr_history') || '[]');
+    h = h.filter(i => i.text !== text);
+    h.unshift({ text, type, date: new Date().toLocaleDateString() });
+    if (h.length > 30) h.pop();
+    localStorage.setItem('qr_history', JSON.stringify(h));
+    renderHistory(h);
+  }
 
-        // 2. 카메라 끄기
-        function stopCamera() {
-            if (html5QrCode && isCameraRunning) {
-                html5QrCode.stop().then(() => {
-                    isCameraRunning = false;
-                    document.getElementById('cameraArea').classList.add('hidden');
-                    // DOM 정리
-                    html5QrCode.clear();
-                }).catch(err => console.log("Stop failed", err));
-            } else {
-                document.getElementById('cameraArea').classList.add('hidden');
-            }
-        }
+  function loadHistory() { renderHistory(JSON.parse(localStorage.getItem('qr_history') || '[]')); }
 
-        // 3. 파일 업로드 스캔
-        function handleFileUpload(input) {
-            if (input.files.length === 0) return;
-            const imageFile = input.files[0];
-            scanImageFile(imageFile);
-            input.value = ''; // 입력 초기화
-        }
+  function renderHistory(h) {
+    const list = document.getElementById('historyList');
+    list.innerHTML = '';
+    if (!h.length) {
+      list.innerHTML = '<li class="history-empty">기록이 없습니다.</li>';
+      return;
+    }
+    h.forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'history-item';
+      li.onclick = () => { switchTab('generate'); generateQR(item.text); };
+      li.innerHTML = `
+        <div class="history-icon">${item.type === 'scan' ? '📷' : '⬜'}</div>
+        <div class="history-text">
+          <div class="main">${item.text}</div>
+          <div class="sub">${item.type === 'scan' ? '스캔됨' : '생성됨'} · ${item.date}</div>
+        </div>
+        <button class="history-del" onclick="event.stopPropagation();deleteHistoryItem('${item.text.replace(/'/g,"\\'")}')">✕</button>
+      `;
+      list.appendChild(li);
+    });
+  }
 
-        // 3-1. 공통 이미지 스캔 로직 (파일, 붙여넣기 공용)
-        function scanImageFile(file) {
-            if (!html5QrCode) {
-                html5QrCode = new Html5Qrcode("reader");
-            }
+  function deleteHistoryItem(text) {
+    let h = JSON.parse(localStorage.getItem('qr_history') || '[]').filter(i => i.text !== text);
+    localStorage.setItem('qr_history', JSON.stringify(h));
+    renderHistory(h);
+  }
 
-            // 스캔 탭으로 이동 (다른 탭에 있을 경우)
-            switchTab('scan');
-
-            html5QrCode.scanFile(file, true)
-                .then(decodedText => {
-                    onScanSuccess(decodedText);
-                })
-                .catch(err => {
-                    alert(`QR 코드를 찾을 수 없습니다.\n이미지가 너무 흐리거나 QR이 없을 수 있습니다.`);
-                });
-        }
-
-        // 3-2. 전역 Paste 이벤트 핸들러 (Ctrl+V)
-        function handlePasteEvent(e) {
-            const items = e.clipboardData.items;
-            for (let i = 0; i < items.length; i++) {
-                if (items[i].type.indexOf("image") !== -1) {
-                    const blob = items[i].getAsFile();
-                    const file = new File([blob], "pasted_image.png", { type: blob.type });
-                    scanImageFile(file);
-                    return; // 첫 번째 이미지만 처리
-                }
-            }
-        }
-
-        // 3-3. 버튼 클릭 핸들러 (안내용)
-        async function handleClipboardPaste() {
-            try {
-                // 권한이 있다면 시도
-                const clipboardItems = await navigator.clipboard.read();
-                for (const item of clipboardItems) {
-                    const imageType = item.types.find(type => type.startsWith('image/'));
-                    if (imageType) {
-                        const blob = await item.getType(imageType);
-                        const file = new File([blob], "clipboard_image.png", { type: imageType });
-                        scanImageFile(file);
-                        return;
-                    }
-                }
-                alert("클립보드에 이미지가 없습니다.");
-            } catch (err) {
-                // 권한 오류 발생 시 (iframe 등) 사용자에게 안내
-                alert("브라우저 보안 설정으로 인해 버튼 기능이 제한되었습니다.\n\n키보드의 [Ctrl+V] (맥은 Cmd+V)를 누르면 이미지가 바로 붙여넣기 됩니다!");
-            }
-        }
-
-        // 4. 스캔 성공 콜백
-        function onScanSuccess(decodedText, decodedResult) {
-            if (isCameraRunning) stopCamera();
-
-            const resultArea = document.getElementById('scanResultArea');
-            const resultText = document.getElementById('scanResultText');
-            const resultLink = document.getElementById('scanResultLink');
-
-            resultArea.classList.remove('hidden');
-            resultText.textContent = decodedText;
-
-            // URL인지 확인
-            if (isValidURL(decodedText)) {
-                resultLink.href = decodedText;
-                resultLink.classList.remove('hidden');
-                resultLink.classList.add('flex');
-            } else {
-                resultLink.classList.add('hidden');
-                resultLink.classList.remove('flex');
-            }
-
-            addToHistory(decodedText, 'scan');
-        }
-
-        function copyScanResult() {
-            const text = document.getElementById('scanResultText').textContent;
-            navigator.clipboard.writeText(text).then(() => {
-                alert('클립보드에 복사되었습니다.');
-            }).catch(() => {
-                alert('복사에 실패했습니다.');
-            });
-        }
-
-        // URL 유효성 검사 헬퍼
-        function isValidURL(string) {
-            try {
-                new URL(string);
-                return true;
-            } catch (_) {
-                return false;
-            }
-        }
-
-        // --- [공통] 히스토리 관리 ---
-        function addToHistory(text, type) {
-            let history = JSON.parse(localStorage.getItem('qr_history')) || [];
-
-            // 중복 제거
-            history = history.filter(item => item.text !== text);
-
-            const newItem = {
-                text: text,
-                type: type, // 'gen' or 'scan'
-                date: new Date().toLocaleDateString()
-            };
-            history.unshift(newItem);
-            if (history.length > 30) history.pop();
-
-            localStorage.setItem('qr_history', JSON.stringify(history));
-            renderHistory(history);
-        }
-
-        function loadHistory() {
-            const history = JSON.parse(localStorage.getItem('qr_history')) || [];
-            renderHistory(history);
-        }
-
-        function renderHistory(history) {
-            const list = document.getElementById('historyList');
-            list.innerHTML = '';
-
-            if (history.length === 0) {
-                list.innerHTML = '<li class="text-center text-gray-400 py-4 text-xs">기록이 없습니다.</li>';
-                return;
-            }
-
-            history.forEach(item => {
-                const li = document.createElement('li');
-                li.className = "flex justify-between items-center bg-white p-3 rounded-lg border border-gray-100 hover:border-indigo-200 transition-colors cursor-pointer group";
-
-                // 클릭 시: 생성 기록이면 재생성, 스캔 기록이면 결과 표시(여기선 편의상 생성탭으로 보냄)
-                li.onclick = () => {
-                    switchTab('generate');
-                    generateQR(item.text);
-                };
-
-                // 아이콘 설정
-                const iconClass = item.type === 'scan' ? 'fa-camera text-green-500' : 'fa-pen-to-square text-indigo-500';
-                const typeLabel = item.type === 'scan' ? '스캔됨' : '생성됨';
-
-                li.innerHTML = `
-                    <div class="flex items-center gap-3 overflow-hidden">
-                        <div class="bg-gray-50 p-2 rounded-full shrink-0">
-                            <i class="fa-solid ${iconClass} text-xs"></i>
-                        </div>
-                        <div class="flex flex-col overflow-hidden">
-                            <span class="text-xs font-medium text-gray-700 truncate w-48 sm:w-56">${item.text}</span>
-                            <div class="flex items-center gap-2">
-                                <span class="text-[10px] text-gray-400 border border-gray-100 px-1 rounded">${typeLabel}</span>
-                                <span class="text-[10px] text-gray-400">${item.date}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <button onclick="event.stopPropagation(); deleteHistoryItem('${item.text}')" 
-                        class="text-gray-300 hover:text-red-500 p-2 transition-colors">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                `;
-                list.appendChild(li);
-            });
-        }
-
-        function deleteHistoryItem(text) {
-            let history = JSON.parse(localStorage.getItem('qr_history')) || [];
-            history = history.filter(item => item.text !== text);
-            localStorage.setItem('qr_history', JSON.stringify(history));
-            renderHistory(history);
-        }
-
-        function clearHistory() {
-            if (confirm('기록을 모두 삭제하시겠습니까?')) {
-                localStorage.removeItem('qr_history');
-                renderHistory([]);
-            }
-        }
-    </script>
-    <a href="/" class="floating-home-btn" title="byeduin apps" aria-label="byeduin apps">
-        <svg viewBox="0 0 24 24">
-            <path
-                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
-            </path>
-        </svg>
-    </a>
+  function clearHistory() {
+    if (confirm('기록을 모두 삭제하시겠습니까?')) {
+      localStorage.removeItem('qr_history');
+      renderHistory([]);
+    }
+  }
+</script>
 </body>
-
 </html>
