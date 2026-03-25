@@ -246,21 +246,26 @@
     }
     @media (max-width: 480px) { .flip-scene { height: 260px; } }
 
-    /* 전체화면 모드 */
-    .study-fullscreen {
-      position: fixed; inset: 0; z-index: 1000;
+    /* 전체화면 모드 — .fd-view.active보다 specificity 높게 */
+    .fd-view.study-fullscreen {
+      display: flex !important; flex-direction: column;
+      position: fixed; inset: 0; z-index: 10000;
       background: var(--bg);
-      display: flex; flex-direction: column;
-      padding: 20px;
+      padding: 20px 24px;
+      overflow: hidden;
     }
+    .study-fullscreen .study-top  { flex-shrink: 0; margin-bottom: 16px; }
+    .study-fullscreen .study-progress { flex-shrink: 0; margin-bottom: 16px; }
     .study-fullscreen .flip-scene {
-      flex: 1; height: auto; margin-bottom: 16px;
+      flex: 1 1 0; min-height: 0;
+      margin-bottom: 16px;
     }
-    .study-fullscreen .study-top { flex-shrink: 0; }
-    .study-fullscreen .study-progress { flex-shrink: 0; }
     .study-fullscreen #study-actions { flex-shrink: 0; }
     .study-fullscreen .keyboard-hints { flex-shrink: 0; }
-    .study-fullscreen body::before { display: none; }
+
+    /* 전체화면 진입 시 고정 오버레이 숨김 */
+    body.fd-fullscreen .top-overlay,
+    body.fd-fullscreen .top-overlay-left { display: none !important; }
 
     .btn-fullscreen {
       width: 32px; height: 32px; padding: 0;
@@ -415,7 +420,7 @@
 
   <!-- 앱 헤더 -->
   <header class="app-header">
-    <span class="app-badge">◆ EDU</span>
+    <span class="app-badge">EDU</span>
     <h1 class="app-title">Flash Deck</h1>
     <p class="app-desc">플래시카드 덱을 만들고 반복 학습하세요</p>
   </header>
@@ -912,31 +917,33 @@ function restartStudy() {
 // ── 전체화면 ──
 let isFullscreen = false;
 function toggleFullscreen() {
-  const studyEl = document.getElementById('view-study');
   isFullscreen = !isFullscreen;
-  studyEl.classList.toggle('study-fullscreen', isFullscreen);
-  document.getElementById('fs-icon-expand').style.display   = isFullscreen ? 'none'  : '';
-  document.getElementById('fs-icon-compress').style.display = isFullscreen ? ''     : 'none';
-  // 전체화면 진입 시 body 스크롤 잠금
-  document.body.style.overflow = isFullscreen ? 'hidden' : '';
+  _applyFullscreen();
+  // 버튼 포커스 해제 → 키보드 단축키 정상 작동
+  document.activeElement?.blur();
 }
 function exitFullscreen() {
   if (!isFullscreen) return;
   isFullscreen = false;
-  document.getElementById('view-study').classList.remove('study-fullscreen');
-  document.getElementById('fs-icon-expand').style.display   = '';
-  document.getElementById('fs-icon-compress').style.display = 'none';
-  document.body.style.overflow = '';
+  _applyFullscreen();
+}
+function _applyFullscreen() {
+  const studyEl = document.getElementById('view-study');
+  studyEl.classList.toggle('study-fullscreen', isFullscreen);
+  document.body.classList.toggle('fd-fullscreen', isFullscreen);
+  document.body.style.overflow = isFullscreen ? 'hidden' : '';
+  document.getElementById('fs-icon-expand').style.display   = isFullscreen ? 'none' : '';
+  document.getElementById('fs-icon-compress').style.display = isFullscreen ? ''     : 'none';
 }
 
 // 키보드 단축키
 document.addEventListener('keydown', e => {
   if (currentView !== 'study') return;
-  if (e.key === 'Escape' && isFullscreen) { exitFullscreen(); return; }
-  if (e.key === 'f' || e.key === 'F') { toggleFullscreen(); return; }
+  if (e.key === 'Escape') { if (isFullscreen) exitFullscreen(); return; }
+  if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFullscreen(); return; }
   if (e.key === ' ' || e.key === 'ArrowUp') { e.preventDefault(); flipCard(); }
-  else if (e.key === 'ArrowRight') markCard(true);
-  else if (e.key === 'ArrowLeft')  markCard(false);
+  else if (e.key === 'ArrowRight') { e.preventDefault(); markCard(true); }
+  else if (e.key === 'ArrowLeft')  { e.preventDefault(); markCard(false); }
 });
 
 // ══════════════════════════════════════════════════════
