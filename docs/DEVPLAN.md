@@ -1,6 +1,6 @@
 # byeduin VIVES — 개발 계획
 
-> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-03-26
+> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-03-27 (2차)
 
 ---
 
@@ -28,6 +28,7 @@
 | Notion Styler | `/notion-styler/` | notion | LaTeX 수식 스타일러 |
 | Numberblocks | `/numberblocks/` | edu | 넘버블록스 에피소드 파인더 |
 | Flash Deck | `/flash-deck/` | edu | 플래시카드 덱 제작 및 학습 |
+| Chalkboard | `/chalkboard/` | edu | 칠판·화이트보드 메모 앱 |
 | Login Helper | (모달) | utility | 에듀나비 교원업무지원 안내 |
 | Content ID Viewer | (모달) | utility | 에듀나비 아카이브 안내 |
 
@@ -93,7 +94,7 @@
 
 ### 인트로 (`/index.html`)
 - JS 데이터 렌더링 (`APPS` 배열 → 카드 자동 생성)
-- 카테고리별 섹션 분리 (utility / creative / notion / edu)
+- 카테고리 순서: edu(교육) → utility → creative → notion (교육 최상단)
 - 모달 시스템 (Login Helper, Content ID Viewer 등)
 - 파비콘: `logo.jpg`
 - 우상단 테마 전환 + 공유 버튼
@@ -127,11 +128,29 @@
 - 에피소드 파인더 + 유튜브 연동
 - **TODO**: 애니메이션 축소, HeroUI 전면 적용, 모바일 접근성, 홈 버튼 간섭 해결
 
-### Flash Deck (`/flash-deck/`) ← 신규
+### Flash Deck (`/flash-deck/`)
 - 덱 관리, 카드 단건/일괄 입력, CSS 3D 플립 학습 모드
 - 전체화면 모드 (F키), 학습 통계 (studyCount, passCount, mastered)
+- **버그 수정**: 전체화면에서 마지막 카드 완료 시 결과 화면 미전환 → `showResult()` 진입 시 `exitFullscreen()` 먼저 호출
+- AI 프롬프트 카드: 덱 그리드 맨 끝 점선 카드, 빈 상태 시 버튼으로 대체 — Gemini/ChatGPT 프롬프트 모달 (기본·영단어·역사·수식 4종)
+- 덱 카드 삭제 아이콘: hover 시 우상단 노출, confirm 후 삭제
 - localStorage: `vives-flashdeck`
 - 상세 내용: `docs/PLAN-flashcard.md` 참고
+
+### Chalkboard (`/chalkboard/`)
+- 칠판 모드(진한 초록 배경·흰 글씨) ↔ 화이트보드 모드(흰 배경·검정 글씨) 전환
+- 텍스트 추가 (기본 80px, SIZES: 32~200px 범위), 드래그 이동
+- 선 그리기 모드 추가, 선 드래그 이동 지원
+- 4색 팔레트: 기본(칠판=흰/화이트보드=검정) · 노랑 · 분홍 · 파랑
+- 컨텍스트 메뉴: 텍스트/선 클릭 시 크기 조정·색상 변경·편집·삭제 (마우스오버)
+- 툴바: 칠판·화이트보드 전환 / 텍스트 추가 / 선 추가 / 저장 — 우측 배치
+- 저장 버튼 → 드롭다운 (TXT / JPG 내보내기), 자동저장 펄스 효과
+- 목록 화면: Flash Deck 스타일 그리드 카드 (배경색 썸네일 + 첫 텍스트 미리보기)
+- 목록 화면 "내 보드" 섹션 타이틀 + 새 보드 버튼 Flash Deck 패턴으로 통일
+- 홈 화면 padding-top 68px (상단 오버레이 버튼 간섭 해소)
+- localStorage 자동저장 (`vives-chalkboard`), 구형 데이터 type 필드 보정
+- 다크/라이트 모드 미적용 (전용 배경색 사용)
+- 상세 내용: `docs/PLAN-chalkboard.md` 참고
 
 ---
 
@@ -181,6 +200,7 @@ byeduin-labs/
 │   ├── DEVPLAN.md              ← 이 파일
 │   ├── PLAN.md                 ← 작업 플랜 (진행/완료/대기)
 │   ├── PLAN-flashcard.md       ← Flash Deck 상세 계획
+│   ├── PLAN-chalkboard.md      ← Chalkboard 상세 계획
 │   └── numberblocks-readme.md
 ├── public/
 │   ├── index.html
@@ -196,6 +216,7 @@ byeduin-labs/
 │   ├── notion-image-downloader/index.html
 │   ├── notion-styler/index.html
 │   ├── flash-deck/index.html
+│   ├── chalkboard/index.html
 │   └── numberblocks/
 │       ├── index.html
 │       ├── app.js

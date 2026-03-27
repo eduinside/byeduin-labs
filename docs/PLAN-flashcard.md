@@ -1,6 +1,6 @@
 # Flash Deck — 개발 계획 및 구현 현황
 
-> 작성: 2026-03-26 / 구현 완료: 2026-03-26
+> 작성: 2026-03-26 / 최종 업데이트: 2026-03-27
 
 ---
 
@@ -48,6 +48,9 @@
 - [x] 정확도 진행률 바 애니메이션
 - [x] 세션 완료 시 `studyCount` 증가
 - [x] 버튼: 전체 목록 / 덱으로 돌아가기 / 다시 학습
+- [x] **버그 수정** (2026-03-27): 전체화면에서 마지막 카드 완료 시 결과 화면으로 전환되지 않던 문제
+  - 원인: `.fd-view.study-fullscreen { display:flex !important }` 가 `.fd-view { display:none }` 보다 specificity 높아 study 뷰가 result 화면 위에 계속 표시됨
+  - 해결: `showResult()` 진입 시 `exitFullscreen()` 먼저 호출
 
 #### 키보드 단축키
 - [x] `Space` / `↑` — 카드 뒤집기

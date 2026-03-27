@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Chalkboard — byeduin</title>
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <script src="/common/theme.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif;
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+    body.in-board::before { display: none; }
+
+    /* Hide home/share overlays inside board */
+    body.in-board .top-overlay,
+    body.in-board .top-overlay-left { display: none !important; }
+
+    /* ── Views ── */
+    .cb-view { display: none; }
+    .cb-view.active { display: block; }
+
+    #view-board {
+      position: fixed; inset: 0;
+      display: none; flex-direction: column;
+      overflow: hidden; z-index: 500;
+    }
+    #view-board.active { display: flex; }
+
+    /* ── Toolbar ── */
+    #cb-tb {
+      height: 52px;
+      display: flex; align-items: center; gap: 6px;
+      padding: 0 14px;
+      border-bottom: 1px solid transparent;
+      flex-shrink: 0; z-index: 100;
+    }
+
+    .tb-btn {
+      height: 36px; padding: 0 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      cursor: pointer; font-size: 13px; font-weight: 600;
+      font-family: inherit;
+      display: flex; align-items: center; gap: 6px;
+      transition: background 0.15s;
+      white-space: nowrap; background: transparent;
+    }
+    .tb-btn.on { opacity: 1 !important; }
+
+    .tb-sep { flex: 1; }
+
+    #tb-name {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 6px;
+      font-size: 14px; font-weight: 600;
+      font-family: inherit;
+      padding: 4px 10px;
+      max-width: 200px;
+      cursor: text;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    #tb-name:hover { border-color: rgba(255,255,255,0.35); }
+    #tb-name:focus { outline: none; border-color: rgba(255,255,255,0.55); background: rgba(255,255,255,0.06); }
+    body.board-white #tb-name { border-color: rgba(0,0,0,0.18); }
+    body.board-white #tb-name:hover { border-color: rgba(0,0,0,0.3); }
+    body.board-white #tb-name:focus { border-color: rgba(0,0,0,0.45); background: rgba(0,0,0,0.04); }
+
+    /* 저장 버튼 */
+    #btn-save { flex-direction: column; height: auto; padding: 5px 12px; gap: 0; align-items: center; }
+    .btn-save-main { display: flex; align-items: center; gap: 6px; }
+    .btn-autosave { font-size: 9px; font-weight: 600; opacity: 0.55; letter-spacing: 0.04em; display: flex; align-items: center; gap: 3px; margin-top: 2px; transition: opacity 0.2s; }
+    .btn-autosave::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #4ade80; display: inline-block; flex-shrink: 0; transition: box-shadow 0.3s; }
+    .btn-autosave.flash::before { box-shadow: 0 0 0 3px rgba(74,222,128,0.4); }
+
+    /* 저장 드롭다운 */
+    #save-dropdown {
+      position: fixed;
+      display: none;
+      flex-direction: column;
+      gap: 3px;
+      padding: 6px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      z-index: 9500;
+      min-width: 150px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.45);
+    }
+    #save-dropdown.open { display: flex; }
+    .save-opt {
+      height: 36px; padding: 0 12px;
+      border-radius: 7px; border: none;
+      cursor: pointer; font-size: 13px; font-weight: 600;
+      font-family: inherit;
+      display: flex; align-items: center; gap: 8px;
+      text-align: left; background: transparent;
+      transition: background 0.15s;
+    }
+
+    #btn-back {
+      width: 36px; height: 36px;
+      border-radius: 8px; border: 1px solid transparent;
+      background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+
+    /* ── Canvas ── */
+    #cb-canvas {
+      flex: 1; position: relative; overflow: hidden;
+    }
+    #cb-canvas.mode-text { cursor: text; }
+    #cb-canvas.mode-line { cursor: crosshair; }
+    #cb-canvas.mode-select { cursor: default; }
+
+    /* SVG overlay for lines */
+    #cb-svg {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      z-index: 1; overflow: visible;
+    }
+
+    /* ── Text elements ── */
+    .cb-el {
+      position: absolute; z-index: 2;
+      cursor: grab; user-select: none;
+      font-weight: 700; line-height: 1.2;
+      white-space: pre-wrap; word-break: break-word;
+      padding: 4px 6px; border-radius: 4px;
+      outline: none; border: 2px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .cb-el:active { cursor: grabbing; }
+    .cb-el.selected { border-color: rgba(255,255,255,0.35); }
+    .cb-el[contenteditable="true"] { cursor: text; user-select: text; caret-color: currentColor; }
+
+    /* ── Context menu ── */
+    #cb-ctx {
+      position: fixed; z-index: 9000;
+      display: none; flex-direction: column; gap: 4px;
+      padding: 6px; border-radius: 12px;
+      border: 1px solid transparent;
+    }
+
+    .ctx-row {
+      display: flex; gap: 4px; align-items: center;
+    }
+
+    .ctx-btn {
+      width: 36px; height: 36px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.15);
+      cursor: pointer; font-size: 13px; font-weight: 700;
+      font-family: inherit; background: rgba(0,0,0,0.3); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s; flex-shrink: 0;
+    }
+    .ctx-btn:hover { background: rgba(255,255,255,0.2); }
+    .ctx-btn.ctx-del { color: #ff7070; }
+    .ctx-btn.ctx-del:hover { background: rgba(255,80,80,0.2); }
+    .ctx-swatch { border: 2px solid transparent; }
+    .ctx-swatch.cur {
+      outline: 2px solid rgba(255,255,255,0.85);
+      outline-offset: 2px;
+    }
+
+    /* Whiteboard context menu overrides */
+    body.board-white .ctx-btn {
+      background: rgba(0,0,0,0.07);
+      color: #222;
+      border-color: rgba(0,0,0,0.13);
+    }
+    body.board-white .ctx-btn:hover { background: rgba(0,0,0,0.14); }
+    body.board-white .ctx-btn.ctx-del { color: #d93025; }
+    body.board-white .ctx-btn.ctx-del:hover { background: rgba(217,48,37,0.1); }
+    body.board-white .ctx-swatch.cur { outline-color: rgba(0,0,0,0.6); }
+    body.board-white .cb-el.selected { border-color: rgba(0,0,0,0.25) !important; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Home view ── */
+    #view-home { position: relative; z-index: 1; }
+    .cb-home-wrap {
+      max-width: 860px; margin: 0 auto;
+      padding: 68px 20px 80px;
+    }
+    .cb-section-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--fg-muted);
+      display: flex; align-items: center; gap: 8px; flex: 1; margin: 0;
+    }
+    .cb-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .home-top {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin-bottom: 20px;
+    }
+    .btn-new {
+      height: 36px; padding: 0 16px; border-radius: 10px;
+      background: var(--primary); color: #fff; border: none;
+      cursor: pointer; font-size: 13px; font-weight: 600;
+      font-family: inherit; display: flex; align-items: center; gap: 6px;
+      transition: background 0.15s; white-space: nowrap; flex-shrink: 0;
+    }
+    .btn-new:hover { background: var(--primary-h); }
+
+    /* 카드 그리드 (Flash Deck 스타일) */
+    .board-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 12px;
+    }
+    .board-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+      cursor: pointer; transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+      display: flex; flex-direction: column;
+      animation: fadeUp 0.22s ease both;
+    }
+    .board-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,111,238,0.1);
+    }
+
+    /* 썸네일 영역 — 보드 배경색 + 미리보기 텍스트 */
+    .board-thumb {
+      height: 88px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      padding: 10px 14px; overflow: hidden;
+      position: relative;
+    }
+    .board-thumb-placeholder {
+      font-size: 28px; opacity: 0.35;
+    }
+    .board-preview-text {
+      font-size: 20px; font-weight: 700; line-height: 1.25;
+      text-align: center; max-width: 100%;
+      overflow: hidden; display: -webkit-box;
+      -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      word-break: break-all;
+    }
+
+    /* 카드 하단 정보 */
+    .board-info-row {
+      padding: 12px 14px; display: flex;
+      align-items: center; gap: 8px; flex: 1;
+    }
+    .board-info { flex: 1; min-width: 0; }
+    .board-name { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .board-meta { font-size: 11px; color: var(--fg-muted); margin-top: 3px; }
+    .board-del {
+      width: 30px; height: 30px; border: none; background: none;
+      cursor: pointer; color: var(--fg-muted); border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: color 0.15s, background 0.15s;
+    }
+    .board-del:hover { color: var(--danger); background: rgba(255,0,0,0.06); }
+
+    .empty-state { grid-column: 1/-1; text-align: center; padding: 60px 0; color: var(--fg-muted); }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .empty-text { font-size: 14px; }
+
+    /* ── Modal ── */
+    .modal-bg {
+      position: fixed; inset: 0; z-index: 8000;
+      background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+      display: none; align-items: center; justify-content: center;
+    }
+    .modal-bg.active { display: flex; }
+    .modal-box {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 16px; padding: 24px; width: min(90vw, 380px);
+    }
+    .modal-title { font-size: 16px; font-weight: 700; margin: 0 0 16px; }
+    .modal-input {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; font-size: 15px;
+      color: var(--fg); outline: none; font-family: inherit; margin-bottom: 12px;
+    }
+    .modal-input:focus { border-color: var(--primary); }
+    .modal-type-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    .type-btn {
+      flex: 1; padding: 10px; border-radius: 10px;
+      border: 2px solid var(--border); cursor: pointer;
+      text-align: center; font-size: 13px; font-weight: 600;
+      font-family: inherit; background: var(--bg); color: var(--fg-muted);
+      transition: all 0.15s;
+    }
+    .type-btn.sel { border-color: var(--primary); background: rgba(0,111,238,0.08); color: var(--primary); }
+    .modal-actions { display: flex; gap: 8px; }
+    .btn-cancel {
+      flex: 1; padding: 10px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--fg-muted); cursor: pointer; font-size: 14px;
+      font-weight: 600; font-family: inherit;
+    }
+    .btn-confirm {
+      flex: 2; padding: 10px; border-radius: 8px;
+      border: none; background: var(--primary); color: #fff;
+      cursor: pointer; font-size: 14px; font-weight: 600;
+      font-family: inherit;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 홈 오버레이 (보드뷰에서 자동 숨김) -->
+  <div class="top-overlay-left">
+    <a href="/" class="overlay-btn" title="byeduin VIVES 홈">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span>Home</span>
+    </a>
+  </div>
+  <div class="top-overlay">
+    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+    <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+        <polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/>
+      </svg>
+      <span>공유</span>
+    </button>
+  </div>
+
+  <!-- 홈 뷰 -->
+  <div id="view-home" class="cb-view active">
+    <div class="cb-home-wrap">
+      <div class="app-header">
+        <div class="app-badge">◆ EDU</div>
+        <h1 class="app-title">Chalkboard</h1>
+        <p class="app-desc">칠판 &amp; 화이트보드 메모 앱</p>
+      </div>
+      <div class="home-top">
+        <div class="cb-section-title">내 보드</div>
+        <button class="btn-new" onclick="openNewModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          새 보드
+        </button>
+      </div>
+      <div id="board-list" class="board-list"></div>
+    </div>
+  </div>
+
+  <!-- 보드 뷰 -->
+  <div id="view-board">
+    <div id="cb-tb">
+      <!-- 왼쪽: 닫기 + 보드 이름 -->
+      <button id="btn-back" onclick="goHome()" title="목록으로">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+      <input id="tb-name" type="text" spellcheck="false" autocomplete="off" onchange="renameCurrent(this.value)">
+      <div class="tb-sep"></div>
+      <!-- 오른쪽: 기능 버튼들 -->
+      <button id="btn-type" class="tb-btn" onclick="switchBoardType()" title="칠판 / 화이트보드 전환">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+        <span id="type-label">칠판</span>
+      </button>
+      <button id="btn-add-text" class="tb-btn" onclick="activateTextMode()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/>
+        </svg>
+        텍스트
+      </button>
+      <button id="btn-draw" class="tb-btn" onclick="activateDrawMode()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="19" x2="19" y2="5"/>
+        </svg>
+        선
+      </button>
+      <button id="btn-save" class="tb-btn" onclick="toggleSaveMenu(event)">
+        <span class="btn-save-main">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
+          </svg>
+          저장
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><polyline points="6 9 12 15 18 9"/></svg>
+        </span>
+        <span class="btn-autosave" id="btn-autosave">자동저장</span>
+      </button>
+    </div>
+
+  <!-- 저장 드롭다운 -->
+  <div id="save-dropdown">
+    <button class="save-opt" onclick="doSaveTxt()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      TXT (텍스트만)
+    </button>
+    <button class="save-opt" onclick="doSaveJpg()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      JPG (화면 이미지)
+    </button>
+  </div>
+
+    <div id="cb-canvas">
+      <svg id="cb-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+  </div>
+
+  <!-- 컨텍스트 메뉴 -->
+  <div id="cb-ctx">
+    <div class="ctx-row" id="ctx-main"></div>
+    <div class="ctx-row" id="ctx-colors" style="display:none"></div>
+  </div>
+
+  <!-- 새 보드 모달 -->
+  <div id="modal-new" class="modal-bg">
+    <div class="modal-box">
+      <p class="modal-title">새 보드 만들기</p>
+      <input type="text" id="new-board-name" class="modal-input" placeholder="보드 이름 (선택)" maxlength="30">
+      <div class="modal-type-row">
+        <button class="type-btn sel" id="opt-chalk" onclick="selectNewType('chalkboard')">🟩 칠판</button>
+        <button class="type-btn" id="opt-white" onclick="selectNewType('whiteboard')">⬜ 화이트보드</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeNewModal()">취소</button>
+        <button class="btn-confirm" onclick="createBoard()">만들기</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ══════════════════════════════════════════
+       Chalkboard App — complete rewrite
+    ══════════════════════════════════════════ */
+
+    const SK = 'vives-chalkboard';
+    const SIZES = [32, 48, 64, 80, 96, 120, 160, 200];
+
+    // 보드 타입별 스타일
+    const BS = {
+      chalkboard: {
+        bg: '#1a3323', tb: '#122418',
+        border: 'rgba(255,255,255,0.07)',
+        btnColor: 'rgba(255,255,255,0.8)',
+        nameColor: '#c8ddd0',
+        ctxBg: 'rgba(8,18,12,0.88)',
+        ctxBorder: 'rgba(255,255,255,0.1)',
+        ctxShadow: '0 4px 20px rgba(0,0,0,0.55)',
+        tempStroke: 'rgba(255,255,255,0.45)',
+        selBorder: 'rgba(255,255,255,0.35)',
+        saveDdBg: 'rgba(12,26,18,0.96)',
+        saveDdColor: 'rgba(255,255,255,0.85)', saveDdHover: 'rgba(255,255,255,0.1)',
+      },
+      whiteboard: {
+        bg: '#f7f7f4', tb: '#ebebea',
+        border: 'rgba(0,0,0,0.07)',
+        btnColor: 'rgba(0,0,0,0.6)',
+        nameColor: '#444',
+        ctxBg: 'rgba(250,250,248,0.95)',
+        ctxBorder: 'rgba(0,0,0,0.09)',
+        saveDdBg: 'rgba(240,240,238,0.98)',
+        saveDdColor: '#222', saveDdHover: 'rgba(0,0,0,0.07)',
+        ctxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+        tempStroke: 'rgba(0,0,0,0.35)',
+        selBorder: 'rgba(0,0,0,0.25)',
+      },
+    };
+
+    // 4색 팔레트 — 기본색은 보드 타입에 따라 다름
+    function getPalette(type) {
+      return [type === 'whiteboard' ? '#111111' : '#ffffff', '#ffd60a', '#ff79c6', '#74d7ff'];
+    }
+
+    /* ── Data helpers ── */
+    const getData = () => JSON.parse(localStorage.getItem(SK) || '{"boards":[]}');
+    const saveData = d => localStorage.setItem(SK, JSON.stringify(d));
+    const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    function getBoard() { return getData().boards.find(b => b.id === currentBoardId) || null; }
+    function saveBoard(b) {
+      const d = getData();
+      const i = d.boards.findIndex(x => x.id === b.id);
+      if (i >= 0) d.boards[i] = b; else d.boards.push(b);
+      saveData(d);
+      // 자동저장 펄스 효과
+      const dot = document.getElementById('btn-autosave');
+      if (dot) {
+        dot.classList.add('flash');
+        clearTimeout(dot._flashTimer);
+        dot._flashTimer = setTimeout(() => dot.classList.remove('flash'), 600);
+      }
+    }
+    function fmtDate(ts) {
+      if (!ts) return '';
+      return new Date(ts).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+    function esc(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    /* ── State ── */
+    let currentBoardId = null;
+    let mode = 'select'; // 'select' | 'add-text' | 'draw-line'
+    let selectedId = null;
+    let selectedType = null; // 'text' | 'line'
+    let colorRowOpen = false;
+    let newBoardType = 'chalkboard';
+    // drag state
+    let didDrag = false;
+    let lineDidDrag = false;
+    // line drawing state
+    let drawingLine = false;
+    let lineStart = null;
+    let tempLine = null;
+
+    /* ── Views ── */
+    function showView(name) {
+      document.getElementById('view-home').classList.toggle('active', name === 'home');
+      const vb = document.getElementById('view-board');
+      if (name === 'board') {
+        vb.classList.add('active');
+        document.body.classList.add('in-board');
+      } else {
+        vb.classList.remove('active');
+        document.body.classList.remove('in-board');
+        document.body.classList.remove('board-white');
+      }
+    }
+
+    /* ── Home ── */
+    function renderHome() {
+      const d = getData();
+      const el = document.getElementById('board-list');
+      if (!d.boards.length) {
+        el.innerHTML = '<div class="empty-state"><div class="empty-icon">🖊</div><div class="empty-text">보드가 없습니다. 새 보드를 만들어 보세요.</div></div>';
+        return;
+      }
+      el.innerHTML = d.boards.slice().reverse().map(b => {
+        const type = (b.type && BS[b.type]) ? b.type : 'chalkboard';
+        const s = BS[type];
+        const firstText = b.elements && b.elements.find(e => e.type === 'text');
+        const thumbContent = firstText
+          ? `<span class="board-preview-text" style="color:${esc(firstText.color)}">${esc(firstText.text)}</span>`
+          : `<span class="board-thumb-placeholder">${type === 'chalkboard' ? '🖊' : '📋'}</span>`;
+        const typeLabel = type === 'chalkboard' ? '칠판' : '화이트보드';
+        return `
+        <div class="board-card" onclick="openBoard('${b.id}')">
+          <div class="board-thumb" style="background:${s.bg}">${thumbContent}</div>
+          <div class="board-info-row">
+            <div class="board-info">
+              <div class="board-name">${esc(b.name)}</div>
+              <div class="board-meta">${typeLabel} · ${fmtDate(b.lastEdited)} · 요소 ${(b.elements||[]).filter(e=>e.type).length}개</div>
+            </div>
+            <button class="board-del" onclick="deleteBoard(event,'${b.id}')" title="삭제">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+              </svg>
+            </button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    /* ── New board modal ── */
+    function openNewModal() {
+      newBoardType = 'chalkboard';
+      document.getElementById('new-board-name').value = '';
+      selectNewType('chalkboard');
+      document.getElementById('modal-new').classList.add('active');
+      setTimeout(() => document.getElementById('new-board-name').focus(), 80);
+    }
+    function closeNewModal() { document.getElementById('modal-new').classList.remove('active'); }
+    function selectNewType(t) {
+      newBoardType = t;
+      document.getElementById('opt-chalk').classList.toggle('sel', t === 'chalkboard');
+      document.getElementById('opt-white').classList.toggle('sel', t === 'whiteboard');
+    }
+    function createBoard() {
+      const nm = document.getElementById('new-board-name').value.trim() || (newBoardType === 'chalkboard' ? '새 칠판' : '새 화이트보드');
+      const board = { id: uid(), name: nm, type: newBoardType, createdAt: Date.now(), lastEdited: Date.now(), elements: [] };
+      const d = getData(); d.boards.push(board); saveData(d);
+      closeNewModal();
+      openBoard(board.id);
+    }
+    function deleteBoard(e, id) {
+      e.stopPropagation();
+      if (!confirm('이 보드를 삭제하시겠습니까?')) return;
+      const d = getData(); d.boards = d.boards.filter(b => b.id !== id); saveData(d);
+      renderHome();
+    }
+
+    /* ── Open board ── */
+    function openBoard(id) {
+      currentBoardId = id;
+      mode = 'select'; selectedId = null; selectedType = null;
+      colorRowOpen = false;
+      const board = getBoard();
+      if (!board) { showView('home'); renderHome(); return; }
+      if (!board.type || !BS[board.type]) board.type = 'chalkboard'; // 구형 데이터 보정
+      showView('board');
+      applyBoardStyle(board);
+      document.getElementById('tb-name').value = board.name;
+      renderAll();
+      updateTbState();
+      hideCtx();
+    }
+
+    function goHome() {
+      cancelDraw();
+      mode = 'select';
+      showView('home');
+      renderHome();
+    }
+
+    /* ── Board style ── */
+    function applyBoardStyle(board) {
+      const s = BS[board.type];
+      const tb = document.getElementById('cb-tb');
+      tb.style.background = s.tb;
+      tb.style.borderBottomColor = s.border;
+      document.getElementById('cb-canvas').style.background = s.bg;
+      document.querySelectorAll('#cb-tb .tb-btn, #btn-back').forEach(b => {
+        b.style.color = s.btnColor;
+        b.style.borderColor = s.border;
+      });
+      document.getElementById('tb-name').style.color = s.nameColor;
+      document.getElementById('btn-back').style.color = s.btnColor;
+      document.getElementById('btn-back').style.borderColor = s.border;
+      document.getElementById('type-label').textContent = board.type === 'chalkboard' ? '칠판' : '화이트보드';
+      document.body.classList.toggle('board-white', board.type === 'whiteboard');
+    }
+
+    /* ── Board type switch ── */
+    function switchBoardType() {
+      const board = getBoard(); if (!board) return;
+      const oldDef = getPalette(board.type)[0];
+      const newType = board.type === 'chalkboard' ? 'whiteboard' : 'chalkboard';
+      const newDef = getPalette(newType)[0];
+      board.elements = board.elements.map(el => ({ ...el, color: el.color === oldDef ? newDef : el.color }));
+      board.type = newType; board.lastEdited = Date.now();
+      saveBoard(board);
+      applyBoardStyle(board);
+      renderAll(); hideCtx();
+    }
+
+    function renameCurrent(name) {
+      const board = getBoard(); if (!board || !name.trim()) return;
+      board.name = name.trim(); board.lastEdited = Date.now();
+      saveBoard(board);
+    }
+
+    /* ── Render ── */
+    function renderAll() { renderLines(); renderTexts(); }
+
+    function renderLines() {
+      const svg = document.getElementById('cb-svg');
+      svg.querySelectorAll('.cb-line-g').forEach(g => g.remove());
+      const board = getBoard(); if (!board) return;
+      board.elements.filter(el => el.type === 'line').forEach(buildLineEl);
+    }
+
+    function buildLineEl(el) {
+      const svg = document.getElementById('cb-svg');
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('class', 'cb-line-g');
+      g.dataset.id = el.id;
+
+      // Selection glow
+      if (selectedId === el.id) {
+        const glow = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        ['x1','y1','x2','y2'].forEach(a => glow.setAttribute(a, el[a]));
+        glow.setAttribute('stroke', 'rgba(255,255,255,0.3)');
+        glow.setAttribute('stroke-width', '9');
+        glow.setAttribute('stroke-linecap', 'round');
+        g.appendChild(glow);
+      }
+
+      // Hit zone (transparent, wide)
+      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      ['x1','y1','x2','y2'].forEach(a => hit.setAttribute(a, el[a]));
+      hit.setAttribute('stroke', 'transparent');
+      hit.setAttribute('stroke-width', '22');
+      hit.setAttribute('stroke-linecap', 'round');
+      hit.style.cursor = selectedId === el.id ? 'grab' : 'pointer';
+
+      // Visible line
+      const vis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      ['x1','y1','x2','y2'].forEach(a => vis.setAttribute(a, el[a]));
+      vis.setAttribute('stroke', el.color);
+      vis.setAttribute('stroke-width', selectedId === el.id ? '5' : '3');
+      vis.setAttribute('stroke-linecap', 'round');
+
+      g.appendChild(hit);
+      g.appendChild(vis);
+      svg.appendChild(g);
+
+      hit.addEventListener('click', e => {
+        e.stopPropagation();
+        if (mode !== 'select') return;
+        if (!lineDidDrag) selectEl(el.id, 'line');
+      });
+
+      hit.addEventListener('mousedown', e => {
+        if (mode !== 'select') return;
+        e.stopPropagation(); e.preventDefault();
+        lineDidDrag = false;
+        const sx = e.clientX, sy = e.clientY;
+        const ox1 = el.x1, oy1 = el.y1, ox2 = el.x2, oy2 = el.y2;
+        hit.style.cursor = 'grabbing';
+        vis.style.cursor = 'grabbing';
+
+        const onMv = mv => {
+          const dx = mv.clientX - sx, dy = mv.clientY - sy;
+          if (!lineDidDrag && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+            lineDidDrag = true;
+            hideCtx();
+          }
+          if (lineDidDrag) {
+            vis.setAttribute('x1', ox1 + dx); vis.setAttribute('y1', oy1 + dy);
+            vis.setAttribute('x2', ox2 + dx); vis.setAttribute('y2', oy2 + dy);
+            hit.setAttribute('x1', ox1 + dx); hit.setAttribute('y1', oy1 + dy);
+            hit.setAttribute('x2', ox2 + dx); hit.setAttribute('y2', oy2 + dy);
+            const glow = g.querySelector('line:first-child');
+            if (glow && g.children.length > 2) {
+              glow.setAttribute('x1', ox1 + dx); glow.setAttribute('y1', oy1 + dy);
+              glow.setAttribute('x2', ox2 + dx); glow.setAttribute('y2', oy2 + dy);
+            }
+          }
+        };
+        const onUp = mu => {
+          document.removeEventListener('mousemove', onMv);
+          document.removeEventListener('mouseup', onUp);
+          hit.style.cursor = 'pointer'; vis.style.cursor = '';
+          if (lineDidDrag) {
+            const dx = mu.clientX - sx, dy = mu.clientY - sy;
+            el.x1 = ox1 + dx; el.y1 = oy1 + dy;
+            el.x2 = ox2 + dx; el.y2 = oy2 + dy;
+            const board = getBoard();
+            const saved = board.elements.find(e2 => e2.id === el.id);
+            if (saved) { saved.x1 = el.x1; saved.y1 = el.y1; saved.x2 = el.x2; saved.y2 = el.y2; }
+            board.lastEdited = Date.now();
+            saveBoard(board);
+            selectEl(el.id, 'line');
+          }
+        };
+        document.addEventListener('mousemove', onMv);
+        document.addEventListener('mouseup', onUp);
+      });
+    }
+
+    function renderTexts() {
+      const canvas = document.getElementById('cb-canvas');
+      canvas.querySelectorAll('.cb-el').forEach(d => d.remove());
+      const board = getBoard(); if (!board) return;
+      board.elements.filter(el => el.type === 'text').forEach(buildTextEl);
+    }
+
+    function buildTextEl(el) {
+      const canvas = document.getElementById('cb-canvas');
+      const div = document.createElement('div');
+      div.className = 'cb-el' + (selectedId === el.id ? ' selected' : '');
+      div.dataset.id = el.id;
+      div.style.left = el.x + 'px';
+      div.style.top = el.y + 'px';
+      div.style.fontSize = el.size + 'px';
+      div.style.color = el.color;
+      if (selectedId === el.id) {
+        const board = getBoard();
+        div.style.borderColor = BS[board.type].selBorder;
+      }
+      div.textContent = el.text;
+      div.addEventListener('mousedown', onElMouseDown);
+      div.addEventListener('click', e => { e.stopPropagation(); if (!didDrag) selectEl(el.id, 'text'); });
+      canvas.appendChild(div);
+    }
+
+    /* ── Selection ── */
+    function selectEl(id, type) {
+      selectedId = id; selectedType = type; colorRowOpen = false;
+      document.querySelectorAll('.cb-el').forEach(d => {
+        const sel = d.dataset.id === id;
+        d.classList.toggle('selected', sel);
+        if (sel) {
+          const board = getBoard();
+          d.style.borderColor = board ? BS[board.type].selBorder : 'rgba(255,255,255,0.35)';
+        } else {
+          d.style.borderColor = 'transparent';
+        }
+      });
+      // Re-render lines to show selection glow
+      renderLines();
+      showCtx(id, type);
+    }
+
+    function deselectAll() {
+      selectedId = null; selectedType = null; colorRowOpen = false;
+      document.querySelectorAll('.cb-el').forEach(d => {
+        d.classList.remove('selected');
+        d.style.borderColor = 'transparent';
+      });
+      renderLines();
+      hideCtx();
+    }
+
+    /* ── Context menu ── */
+    function showCtx(id, type) {
+      const board = getBoard();
+      const el = board.elements.find(e => e.id === id);
+      if (!el) return;
+      const s = BS[board.type];
+      const ctx = document.getElementById('cb-ctx');
+      ctx.style.background = s.ctxBg;
+      ctx.style.borderColor = s.ctxBorder;
+      ctx.style.boxShadow = s.ctxShadow;
+
+      const main = document.getElementById('ctx-main');
+      const colRow = document.getElementById('ctx-colors');
+      main.innerHTML = '';
+      colRow.style.display = 'none';
+      colRow.innerHTML = '';
+
+      function mkBtn(html, title, cls, fn) {
+        const b = document.createElement('button');
+        b.className = 'ctx-btn' + (cls ? ' ' + cls : '');
+        b.innerHTML = html;
+        b.title = title;
+        b.onclick = e => { e.stopPropagation(); fn(e); };
+        return b;
+      }
+
+      if (type === 'text') {
+        main.appendChild(mkBtn('A⁻', '글자 작게', '', () => changeSize(id, -1)));
+        main.appendChild(mkBtn('A⁺', '글자 크게', '', () => changeSize(id, 1)));
+      }
+
+      // Color button — dot colored with current element color
+      const colBtn = mkBtn('●', '색상', '', () => toggleColorRow(id, type));
+      colBtn.style.color = el.color;
+      colBtn.style.fontSize = '18px';
+      main.appendChild(colBtn);
+
+      if (type === 'text') {
+        main.appendChild(mkBtn(
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+          '편집', '', () => startEdit(id)));
+      }
+
+      main.appendChild(mkBtn(
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
+        '삭제', 'ctx-del', () => deleteEl(id)));
+
+      positionCtx(id, type);
+      ctx.style.display = 'flex';
+    }
+
+    function toggleColorRow(id, type) {
+      const colRow = document.getElementById('ctx-colors');
+      colorRowOpen = !colorRowOpen;
+      if (!colorRowOpen) { colRow.style.display = 'none'; return; }
+
+      const board = getBoard();
+      const el = board.elements.find(e => e.id === id);
+      const palette = getPalette(board.type);
+      colRow.innerHTML = '';
+
+      palette.forEach(color => {
+        const b = document.createElement('button');
+        b.className = 'ctx-btn ctx-swatch' + (el.color === color ? ' cur' : '');
+        b.style.cssText = `background:${color};width:32px;height:32px;border-radius:50%;font-size:0;`;
+        // Light swatches need a visible border
+        if (color === '#ffffff' || color === '#f7f7f4') b.style.border = '2px solid rgba(150,150,150,0.4)';
+        else if (color === '#111111') b.style.border = '2px solid rgba(80,80,80,0.3)';
+        b.onclick = e => { e.stopPropagation(); setElColor(id, color); };
+        colRow.appendChild(b);
+      });
+
+      colRow.style.display = 'flex';
+    }
+
+    function positionCtx(id, type) {
+      const ctx = document.getElementById('cb-ctx');
+      let x, y;
+      if (type === 'text') {
+        const div = document.querySelector(`.cb-el[data-id="${id}"]`);
+        if (!div) return;
+        const r = div.getBoundingClientRect();
+        x = r.left;
+        y = r.top - 56;
+        if (y < 60) y = r.bottom + 8;
+      } else {
+        const board = getBoard();
+        const el = board.elements.find(e => e.id === id);
+        if (!el) return;
+        const cr = document.getElementById('cb-canvas').getBoundingClientRect();
+        x = cr.left + (el.x1 + el.x2) / 2 - 40;
+        y = cr.top + Math.min(el.y1, el.y2) - 56;
+        if (y < 60) y = cr.top + Math.max(el.y1, el.y2) + 12;
+      }
+      x = Math.max(8, Math.min(x, window.innerWidth - 220));
+      ctx.style.left = x + 'px';
+      ctx.style.top = y + 'px';
+    }
+
+    function hideCtx() {
+      document.getElementById('cb-ctx').style.display = 'none';
+      colorRowOpen = false;
+    }
+
+    /* ── Element operations ── */
+    function changeSize(id, delta) {
+      const board = getBoard();
+      const el = board.elements.find(e => e.id === id);
+      if (!el || el.type !== 'text') return;
+      let idx = SIZES.indexOf(el.size);
+      if (idx < 0) idx = SIZES.findIndex(s => s >= el.size);
+      if (idx < 0) idx = 3;
+      idx = Math.max(0, Math.min(SIZES.length - 1, idx + delta));
+      el.size = SIZES[idx];
+      board.lastEdited = Date.now();
+      saveBoard(board);
+      const div = document.querySelector(`.cb-el[data-id="${id}"]`);
+      if (div) div.style.fontSize = el.size + 'px';
+      // Reposition ctx after size change
+      setTimeout(() => positionCtx(id, 'text'), 0);
+    }
+
+    function setElColor(id, color) {
+      const board = getBoard();
+      const el = board.elements.find(e => e.id === id);
+      if (!el) return;
+      el.color = color;
+      board.lastEdited = Date.now();
+      saveBoard(board);
+      if (el.type === 'text') {
+        const div = document.querySelector(`.cb-el[data-id="${id}"]`);
+        if (div) div.style.color = color;
+      } else {
+        renderLines();
+      }
+      // Update color dot and swatches
+      const colBtn = document.querySelector('#ctx-main .ctx-btn:not(.ctx-del)');
+      // Update main color dot
+      document.querySelectorAll('#ctx-main .ctx-btn').forEach(b => {
+        if (b.title === '색상') { b.style.color = color; }
+      });
+      document.querySelectorAll('#ctx-colors .ctx-swatch').forEach(s => {
+        const sc = s.style.background;
+        const matches = sc === color || sc.replace(/ /g,'') === color;
+        s.classList.toggle('cur', matches);
+      });
+    }
+
+    function deleteEl(id) {
+      const board = getBoard();
+      board.elements = board.elements.filter(e => e.id !== id);
+      board.lastEdited = Date.now();
+      saveBoard(board);
+      renderAll(); deselectAll();
+    }
+
+    /* ── Text editing ── */
+    function addText(x, y) {
+      const board = getBoard();
+      const el = { id: uid(), type: 'text', x, y, text: '텍스트', color: getPalette(board.type)[0], size: 80 };
+      board.elements.push(el);
+      board.lastEdited = Date.now();
+      saveBoard(board);
+      buildTextEl(el);
+      selectEl(el.id, 'text');
+      startEdit(el.id);
+    }
+
+    function startEdit(id) {
+      hideCtx();
+      const div = document.querySelector(`.cb-el[data-id="${id}"]`);
+      if (!div) return;
+      div.contentEditable = 'true';
+      div.style.cursor = 'text';
+      div.focus();
+      const range = document.createRange();
+      range.selectNodeContents(div);
+      const sel = window.getSelection();
+      sel.removeAllRanges(); sel.addRange(range);
+
+      const endFn = () => endEdit(id);
+      div.addEventListener('blur', endFn, { once: true });
+      div.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { e.preventDefault(); endEdit(id); }
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); endEdit(id); }
+      }, { once: true });
+    }
+
+    function endEdit(id) {
+      const div = document.querySelector(`.cb-el[data-id="${id}"]`);
+      if (!div || div.contentEditable !== 'true') return;
+      div.contentEditable = 'false';
+      div.style.cursor = '';
+      const board = getBoard();
+      const el = board.elements.find(e => e.id === id);
+      if (!el) return;
+      const txt = div.innerText.trim();
+      if (!txt) { deleteEl(id); return; }
+      el.text = txt;
+      board.lastEdited = Date.now();
+      saveBoard(board);
+      selectEl(id, 'text');
+    }
+
+    /* ── Drag text elements ── */
+    function onElMouseDown(e) {
+      if (e.target.contentEditable === 'true') return;
+      const div = e.currentTarget;
+      const id = div.dataset.id;
+      e.preventDefault(); e.stopPropagation();
+      didDrag = false;
+      const sx = e.clientX, sy = e.clientY;
+      const ox = parseInt(div.style.left) || 0;
+      const oy = parseInt(div.style.top) || 0;
+
+      const onMv = mv => {
+        const dx = mv.clientX - sx, dy = mv.clientY - sy;
+        if (!didDrag && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) { didDrag = true; hideCtx(); }
+        if (didDrag) { div.style.left = (ox + dx) + 'px'; div.style.top = (oy + dy) + 'px'; }
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMv);
+        document.removeEventListener('mouseup', onUp);
+        if (didDrag) {
+          const board = getBoard();
+          const el = board.elements.find(e => e.id === id);
+          if (el) { el.x = parseInt(div.style.left); el.y = parseInt(div.style.top); board.lastEdited = Date.now(); saveBoard(board); }
+          selectEl(id, 'text');
+        }
+      };
+      document.addEventListener('mousemove', onMv);
+      document.addEventListener('mouseup', onUp);
+    }
+
+    /* ── Toolbar modes ── */
+    function activateTextMode() {
+      mode = mode === 'add-text' ? 'select' : 'add-text';
+      if (mode !== 'add-text') cancelDraw();
+      updateTbState();
+    }
+    function activateDrawMode() {
+      mode = mode === 'draw-line' ? 'select' : 'draw-line';
+      if (mode === 'draw-line') deselectAll();
+      else cancelDraw();
+      updateTbState();
+    }
+
+    function updateTbState() {
+      document.getElementById('btn-add-text').classList.toggle('on', mode === 'add-text');
+      document.getElementById('btn-draw').classList.toggle('on', mode === 'draw-line');
+      const canvas = document.getElementById('cb-canvas');
+      canvas.className = mode === 'add-text' ? 'mode-text' : mode === 'draw-line' ? 'mode-line' : 'mode-select';
+      // Visual active state on buttons
+      const board = getBoard();
+      const s = board ? BS[board.type] : null;
+      const activeColor = board && board.type === 'whiteboard' ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.15)';
+      document.getElementById('btn-add-text').style.background = mode === 'add-text' ? activeColor : '';
+      document.getElementById('btn-draw').style.background = mode === 'draw-line' ? activeColor : '';
+    }
+
+    /* ── Canvas events ── */
+    const canvas = document.getElementById('cb-canvas');
+
+    canvas.addEventListener('click', e => {
+      // Only handle clicks directly on canvas or SVG background (not on elements)
+      if (e.target !== canvas && e.target !== document.getElementById('cb-svg')) return;
+      if (mode === 'add-text') {
+        const r = canvas.getBoundingClientRect();
+        addText(e.clientX - r.left - 60, e.clientY - r.top - 30);
+        mode = 'select'; updateTbState();
+      } else if (mode === 'select') {
+        deselectAll();
+      }
+    });
+
+    // Line drawing: mousedown → mousemove → mouseup (document level for reliability)
+    canvas.addEventListener('mousedown', e => {
+      if (mode !== 'draw-line') return;
+      if (e.target !== canvas && e.target !== document.getElementById('cb-svg')) return;
+      const r = canvas.getBoundingClientRect();
+      lineStart = { x: e.clientX - r.left, y: e.clientY - r.top };
+      drawingLine = true;
+      // Temp rubber-band line
+      const svg = document.getElementById('cb-svg');
+      tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      tempLine.id = 'cb-temp-line';
+      tempLine.setAttribute('x1', lineStart.x); tempLine.setAttribute('y1', lineStart.y);
+      tempLine.setAttribute('x2', lineStart.x); tempLine.setAttribute('y2', lineStart.y);
+      const board = getBoard();
+      tempLine.setAttribute('stroke', BS[board.type].tempStroke);
+      tempLine.setAttribute('stroke-width', '3');
+      tempLine.setAttribute('stroke-linecap', 'round');
+      tempLine.setAttribute('stroke-dasharray', '7 5');
+      svg.appendChild(tempLine);
+    });
+
+    document.addEventListener('mousemove', e => {
+      if (!drawingLine || !tempLine) return;
+      const r = canvas.getBoundingClientRect();
+      tempLine.setAttribute('x2', e.clientX - r.left);
+      tempLine.setAttribute('y2', e.clientY - r.top);
+    });
+
+    document.addEventListener('mouseup', e => {
+      if (!drawingLine || !lineStart) return;
+      drawingLine = false;
+      const r = canvas.getBoundingClientRect();
+      const x2 = Math.max(0, Math.min(e.clientX - r.left, r.width));
+      const y2 = Math.max(0, Math.min(e.clientY - r.top, r.height));
+      if (tempLine) { tempLine.remove(); tempLine = null; }
+      const len = Math.hypot(x2 - lineStart.x, y2 - lineStart.y);
+      if (len < 8) { lineStart = null; return; }
+      const board = getBoard();
+      const el = { id: uid(), type: 'line', x1: lineStart.x, y1: lineStart.y, x2, y2, color: getPalette(board.type)[0] };
+      board.elements.push(el);
+      board.lastEdited = Date.now();
+      saveBoard(board);
+      buildLineEl(el);
+      lineStart = null;
+    });
+
+    function cancelDraw() {
+      drawingLine = false; lineStart = null;
+      if (tempLine) { tempLine.remove(); tempLine = null; }
+    }
+
+    /* ── Save dropdown ── */
+    let saveMenuOpen = false;
+
+    function toggleSaveMenu(e) {
+      e.stopPropagation();
+      saveMenuOpen = !saveMenuOpen;
+      const dd = document.getElementById('save-dropdown');
+      if (!saveMenuOpen) { dd.classList.remove('open'); return; }
+      // Style by board type
+      const board = getBoard();
+      const s = board ? BS[board.type] : BS.chalkboard;
+      dd.style.background = s.saveDdBg;
+      dd.style.borderColor = s.ctxBorder;
+      dd.style.boxShadow = s.ctxShadow;
+      dd.querySelectorAll('.save-opt').forEach(b => {
+        b.style.color = s.saveDdColor;
+        b.onmouseenter = () => b.style.background = s.saveDdHover;
+        b.onmouseleave = () => b.style.background = 'transparent';
+      });
+      // Position below btn-save
+      const btn = document.getElementById('btn-save');
+      const r = btn.getBoundingClientRect();
+      dd.style.left = Math.max(8, r.right - 160) + 'px';
+      dd.style.top = (r.bottom + 4) + 'px';
+      dd.classList.add('open');
+    }
+
+    function closeSaveMenu() {
+      saveMenuOpen = false;
+      document.getElementById('save-dropdown').classList.remove('open');
+    }
+
+    function doSaveTxt() {
+      closeSaveMenu();
+      const board = getBoard(); if (!board) return;
+      let content = `[${board.type === 'chalkboard' ? '칠판' : '화이트보드'}] ${board.name}\n${'='.repeat(40)}\n\n`;
+      board.elements.filter(e => e.type === 'text').forEach(el => { content += el.text + '\n'; });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([content], { type: 'text/plain;charset=utf-8' }));
+      a.download = board.name.replace(/[^\w가-힣]/g, '_') + '.txt';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+
+    function doSaveJpg() {
+      closeSaveMenu();
+      const board = getBoard(); if (!board) return;
+      const s = BS[board.type];
+      const canvasEl = document.getElementById('cb-canvas');
+      const W = canvasEl.offsetWidth, H = canvasEl.offsetHeight;
+      const c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      const ctx = c.getContext('2d');
+
+      // Background
+      ctx.fillStyle = s.bg;
+      ctx.fillRect(0, 0, W, H);
+
+      // Lines (drawn before text so text appears on top)
+      board.elements.filter(e => e.type === 'line').forEach(el => {
+        ctx.beginPath();
+        ctx.moveTo(el.x1, el.y1);
+        ctx.lineTo(el.x2, el.y2);
+        ctx.strokeStyle = el.color;
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      });
+
+      // Text
+      board.elements.filter(e => e.type === 'text').forEach(el => {
+        ctx.font = `700 ${el.size}px -apple-system, BlinkMacSystemFont, Pretendard, sans-serif`;
+        ctx.fillStyle = el.color;
+        ctx.textBaseline = 'top';
+        // el.x/y is the top-left of the div; +6/+4 is the div's padding
+        (el.text || '').split('\n').forEach((line, i) => {
+          ctx.fillText(line, el.x + 6, el.y + 4 + i * el.size * 1.2);
+        });
+      });
+
+      const a = document.createElement('a');
+      a.href = c.toDataURL('image/jpeg', 0.92);
+      a.download = board.name.replace(/[^\w가-힣]/g, '_') + '.jpg';
+      a.click();
+    }
+
+    /* ── Outside click closes ctx + save menu ── */
+    document.addEventListener('click', e => {
+      // Close save dropdown
+      if (saveMenuOpen && !e.target.closest('#save-dropdown') && !e.target.closest('#btn-save')) {
+        closeSaveMenu();
+      }
+      // Close context menu
+      if (document.getElementById('cb-ctx').style.display === 'none') return;
+      if (!e.target.closest('#cb-ctx') && !e.target.closest('.cb-el') && !e.target.closest('.cb-line-g')) {
+        hideCtx();
+        deselectAll();
+      }
+    });
+
+    /* ── Keyboard ── */
+    document.addEventListener('keydown', e => {
+      if (document.activeElement.contentEditable === 'true') return;
+      if (document.activeElement.tagName === 'INPUT') return;
+      if (!document.getElementById('view-board').classList.contains('active')) return;
+      if (e.key === 'Escape') {
+        if (mode !== 'select') { mode = 'select'; cancelDraw(); updateTbState(); }
+        else deselectAll();
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+        deleteEl(selectedId);
+      }
+    });
+
+    /* ── Modal keyboard ── */
+    document.getElementById('new-board-name').addEventListener('keydown', e => {
+      if (e.key === 'Enter') createBoard();
+      if (e.key === 'Escape') closeNewModal();
+    });
+    document.getElementById('modal-new').addEventListener('click', e => {
+      if (e.target === document.getElementById('modal-new')) closeNewModal();
+    });
+
+    /* ── Init ── */
+    showView('home');
+    renderHome();
+  </script>
+</body>
+</html>

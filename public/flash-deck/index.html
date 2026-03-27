@@ -122,7 +122,17 @@
       cursor: pointer; transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
       display: flex; flex-direction: column; gap: 10px;
       animation: fadeUp 0.25s ease both;
+      position: relative;
     }
+    .deck-item-del {
+      position: absolute; top: 10px; right: 10px;
+      width: 26px; height: 26px; border-radius: 7px;
+      background: none; border: none; cursor: pointer;
+      color: var(--fg-muted); display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.15s, color 0.15s, background 0.15s;
+    }
+    .deck-item:hover .deck-item-del { opacity: 1; }
+    .deck-item-del:hover { color: var(--danger); background: rgba(243,18,96,0.08); }
     .deck-item:hover {
       border-color: var(--primary);
       transform: translateY(-2px);
@@ -139,6 +149,52 @@
       display: flex; gap: 6px; margin-top: 4px;
     }
     .deck-item-actions .fd-btn { flex: 1; }
+    /* ── AI 프롬프트 카드 ── */
+    .deck-item-ai {
+      border-style: dashed;
+      border-color: rgba(124,106,247,0.45);
+      background: rgba(124,106,247,0.04);
+      cursor: pointer;
+    }
+    .deck-item-ai:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(124,106,247,0.12);
+    }
+    .deck-item-ai .deck-item-emoji { font-size: 28px; }
+    .deck-item-ai .deck-item-name  { color: var(--primary); }
+
+    /* ── AI 프롬프트 모달 ── */
+    #ai-prompt-modal .fd-modal { max-width: 540px; }
+    .ai-prompt-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+    .ai-prompt-block {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      position: relative;
+    }
+    .ai-prompt-block-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--fg-muted); margin-bottom: 6px;
+    }
+    .ai-prompt-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px; color: var(--fg);
+      white-space: pre-wrap; line-height: 1.6;
+    }
+    .btn-copy-prompt {
+      position: absolute; top: 10px; right: 10px;
+      background: none; border: 1px solid var(--border);
+      border-radius: 7px; cursor: pointer;
+      color: var(--fg-muted); font-size: 11px; padding: 3px 8px;
+      font-family: inherit; font-weight: 600; transition: all 0.15s;
+    }
+    .btn-copy-prompt:hover { border-color: var(--primary); color: var(--primary); }
+    .ai-modal-note {
+      margin-top: 12px; font-size: 11px; color: var(--fg-muted); line-height: 1.6;
+    }
+
     .deck-empty {
       grid-column: 1 / -1; text-align: center;
       padding: 48px 20px; color: var(--fg-muted); font-size: 14px;
@@ -420,7 +476,7 @@
 
   <!-- 앱 헤더 -->
   <header class="app-header">
-    <span class="app-badge">EDU</span>
+    <span class="app-badge">◆ EDU</span>
     <h1 class="app-title">Flash Deck</h1>
     <p class="app-desc">플래시카드 덱을 만들고 반복 학습하세요</p>
   </header>
@@ -622,6 +678,62 @@
   </div>
 </div>
 
+<!-- AI 프롬프트 모달 -->
+<div class="fd-modal-overlay" id="ai-prompt-modal" onclick="closeAiPromptModal(event)">
+  <div class="fd-modal">
+    <div class="fd-modal-title">✨ AI로 카드 만들기</div>
+    <p style="font-size:12px;color:var(--fg-muted);margin:0 0 4px">아래 프롬프트를 복사해 Gemini나 ChatGPT에 붙여넣으세요.<br>결과물을 <strong>일괄 입력</strong> 탭에 그대로 붙여넣으면 카드가 생성됩니다.</p>
+    <div class="ai-prompt-list">
+
+      <div class="ai-prompt-block">
+        <div class="ai-prompt-block-label">기본 형식 (주제 지정)</div>
+        <button class="btn-copy-prompt" onclick="copyPrompt(this)">복사</button>
+        <div class="ai-prompt-text">아래 형식으로 [주제]에 관한 플래시카드 20장을 만들어줘.
+각 줄은 반드시 다음 형식이어야 해:
+앞면 내용 :: 뒷면 내용
+예)
+광합성 :: 식물이 빛 에너지로 포도당을 합성하는 과정
+미토콘드리아 :: 세포 호흡(ATP 생성)이 일어나는 세포소기관</div>
+      </div>
+
+      <div class="ai-prompt-block">
+        <div class="ai-prompt-block-label">영단어 (단어 → 뜻)</div>
+        <button class="btn-copy-prompt" onclick="copyPrompt(this)">복사</button>
+        <div class="ai-prompt-text">고등학교 수준 영단어 중 [주제/파트명] 관련 단어 20개를 다음 형식으로 작성해줘.
+영단어 :: 한국어 뜻 (예문 한 줄)
+
+예)
+ambiguous :: 모호한 (His answer was ambiguous.)</div>
+      </div>
+
+      <div class="ai-prompt-block">
+        <div class="ai-prompt-block-label">역사·연대기 (사건 → 연도·내용)</div>
+        <button class="btn-copy-prompt" onclick="copyPrompt(this)">복사</button>
+        <div class="ai-prompt-text">[한국사/세계사] 중 [시대/단원] 핵심 사건 20개를 다음 형식으로 만들어줘.
+사건 이름 :: 연도 — 핵심 내용 한 줄
+
+예)
+임진왜란 :: 1592년 — 일본의 조선 침략, 이순신 활약</div>
+      </div>
+
+      <div class="ai-prompt-block">
+        <div class="ai-prompt-block-label">수식·공식 (공식명 → 식)</div>
+        <button class="btn-copy-prompt" onclick="copyPrompt(this)">복사</button>
+        <div class="ai-prompt-text">[수학/물리/화학] [단원명] 공식 15개를 다음 형식으로 작성해줘.
+공식 이름 :: 공식 (변수 설명)
+
+예)
+운동에너지 :: Ek = ½mv² (m: 질량, v: 속도)</div>
+      </div>
+
+    </div>
+    <p class="ai-modal-note">💡 일괄 입력 탭에서 생성된 카드를 <code>::</code> 구분자로 붙여넣기 하면 한번에 여러 장을 추가할 수 있습니다.</p>
+    <div class="fd-modal-actions">
+      <button class="fd-btn fd-btn-ghost" onclick="closeAiPromptModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════════════════
 //  STORAGE
@@ -660,10 +772,15 @@ function renderHome() {
     grid.innerHTML = `<div class="deck-empty">
       <div class="deck-empty-icon">🗂️</div>
       아직 덱이 없어요.<br>새 덱을 만들어 시작하세요!
+      <div style="margin-top:16px">
+        <button class="fd-btn fd-btn-ghost fd-btn-sm" onclick="openAiPromptModal()" style="gap:6px">
+          ✨ AI 프롬프트로 카드 만들기
+        </button>
+      </div>
     </div>`;
     return;
   }
-  grid.innerHTML = data.decks.map((deck, i) => {
+  const deckCards = data.decks.map((deck, i) => {
     const total = deck.cards.length;
     const mastered = deck.cards.filter(c => c.mastered).length;
     const pct = total ? Math.round(mastered / total * 100) : 0;
@@ -671,7 +788,10 @@ function renderHome() {
       ? new Date(deck.lastStudied).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
       : '미학습';
     const studyCount = deck.studyCount || 0;
-    return `<div class="deck-item" style="animation-delay:${i * 0.05}s">
+    return `<div class="deck-item" style="animation-delay:${i * 0.05}s" onclick="openDeck('${deck.id}')">
+      <button class="deck-item-del" title="덱 삭제" onclick="event.stopPropagation();deleteDeck('${deck.id}')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
       <div class="deck-item-emoji">🗂️</div>
       <div class="deck-item-name" title="${esc(deck.name)}">${esc(deck.name)}</div>
       <div class="deck-item-meta">카드 ${total}장 · 학습 ${studyCount}회 · 마지막 ${lastStudied}</div>
@@ -686,10 +806,32 @@ function renderHome() {
         <button class="fd-btn fd-btn-primary fd-btn-sm" onclick="event.stopPropagation();openDeckAndStudy('${deck.id}')">학습</button>
       </div>
     </div>`;
-  }).join('');
+  });
+
+  const aiCard = `<div class="deck-item deck-item-ai" style="animation-delay:${data.decks.length * 0.05}s" onclick="openAiPromptModal()">
+    <div class="deck-item-emoji">✨</div>
+    <div class="deck-item-name">AI로 카드 만들기</div>
+    <div class="deck-item-meta">Gemini · ChatGPT 프롬프트 예시</div>
+    <div style="flex:1"></div>
+    <div class="deck-item-actions">
+      <button class="fd-btn fd-btn-ghost fd-btn-sm" style="flex:1" onclick="event.stopPropagation();openAiPromptModal()">프롬프트 보기</button>
+    </div>
+  </div>`;
+
+  grid.innerHTML = deckCards.join('') + aiCard;
 }
 
 function goHome() { renderHome(); }
+
+function deleteDeck(id) {
+  const data = getData();
+  const deck = data.decks.find(d => d.id === id);
+  if (!deck) return;
+  if (!confirm(`"${deck.name}" 덱을 삭제할까요?\n카드 ${deck.cards.length}장이 모두 사라집니다.`)) return;
+  data.decks = data.decks.filter(d => d.id !== id);
+  saveData(data);
+  renderHome();
+}
 
 // ══════════════════════════════════════════════════════
 //  새 덱 모달
@@ -702,6 +844,28 @@ function closeNewDeckModal(e) {
   if (e && e.target !== document.getElementById('new-deck-modal')) return;
   document.getElementById('new-deck-modal').classList.remove('open');
   document.getElementById('new-deck-name').value = '';
+}
+
+function openAiPromptModal() {
+  document.getElementById('ai-prompt-modal').classList.add('open');
+}
+function closeAiPromptModal(e) {
+  if (e && e.target !== document.getElementById('ai-prompt-modal')) return;
+  document.getElementById('ai-prompt-modal').classList.remove('open');
+}
+function copyPrompt(btn) {
+  const text = btn.closest('.ai-prompt-block').querySelector('.ai-prompt-text').textContent;
+  navigator.clipboard.writeText(text.trim()).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '복사됨 ✓';
+    btn.style.borderColor = 'var(--success)';
+    btn.style.color = 'var(--success)';
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 1600);
+  }).catch(() => alert('복사 실패'));
 }
 function confirmNewDeck() {
   const name = document.getElementById('new-deck-name').value.trim();
