@@ -14,6 +14,7 @@
 |---|---|---|
 | **QR Master** | `/qr/` | QR 코드 생성 및 카메라/이미지 스캔. 히스토리 저장. |
 | **Smart Timer** | `/timer/` | 반복 알람 타이머. 세션 종료 알림 지원. |
+| **도서 정보 나눔** | `/book-share/` | ISBN 목록으로 알라딘 도서 정보 자동 조회. 엑셀 내려받기 및 링크 공유. |
 
 ### 크리에이티브
 | 앱 | 경로 | 설명 |
@@ -33,6 +34,7 @@
 | **Flash Deck** | `/flash-deck/` | 플래시카드 덱 제작 및 학습. 단건/일괄 입력, 3D 플립, 전체화면 모드. |
 | **Chalkboard** | `/chalkboard/` | 칠판·화이트보드 메모 앱. 텍스트·선 추가, 4색 팔레트, 자동저장. |
 | **Numberblocks** | `/numberblocks/` | 넘버블록스 에피소드 파인더. 숫자·시즌별 검색 + 유튜브 연동. |
+| **Step Squad** | `/numberblocks/step-squad.html` | 계단수(Step Squad) 블록 시각화. 슬라이더·비교·퀴즈 모드. |
 | **Moon Phase** | `/moon-phase/` | 달의 위상 시뮬레이터. 날짜별 달 모양 시각화. |
 
 ---
@@ -53,6 +55,3 @@ public/common/
 
 - [`docs/DEVPLAN.md`](docs/DEVPLAN.md) — 전체 개발 계획 및 앱별 구현 현황
 - [`docs/PLAN.md`](docs/PLAN.md) — 진행 중 / 완료 / 대기 작업 플랜
-- [`docs/PLAN-flashcard.md`](docs/PLAN-flashcard.md) — Flash Deck 상세 계획 및 구현 현황
-- [`docs/PLAN-chalkboard.md`](docs/PLAN-chalkboard.md) — Chalkboard 상세 계획 및 구현 현황
-- [`docs/numberblocks-readme.md`](docs/numberblocks-readme.md) — Numberblocks 앱 상세 문서

@@ -1,10 +1,26 @@
 # byeduin VIVES — 작업 플랜
 
-> 업데이트: 2026-03-28
+> 업데이트: 2026-03-29
 
 ---
 
 ## 진행 중인 작업
+
+### 9. 도서 정보 나눔 앱 개선 — 2026-03-29
+- [x] 폴더명 `book-finder` → `book-share`, 앱명 `도서 정보 정리` → `도서 정보 나눔`
+- [x] app-desc에 링크 공유 기능 소개 문구 추가
+- [x] `엑셀 내보내기` → `내려받기` 버튼 텍스트 간소화
+- [x] 세 액션 버튼(내려받기·링크로 공유·전체 초기화) 1/3씩 동일 폭 적용
+- [x] `buildShareURL()` 경로 `/book-share/` 업데이트
+
+### 8. Short.io 공유 기능 (book-share) — 2026-03-29
+- [x] `netlify/functions/shorten.js` — Short.io API 프록시 (API 키 서버 환경변수)
+- [x] `.env` 로컬 환경변수 파일 + `.gitignore` 등록
+- [x] book-finder 앱에 `링크로 공유` 버튼 추가
+- [x] `buildShareURL()` — base64url 인코딩으로 목록 데이터 URL 해시 삽입
+- [x] `decodeShareData()` — 3가지 디코딩 전략 폴백 (base64url / 표준 base64 / URL 디코딩 후 재시도)
+- [x] 단축 URL 실패 시 원본 URL로 폴백 공유
+- [x] moon-phase 앱에 우상단 공유 버튼 추가
 
 ### 6. 도서 정보 정리 앱 (book-finder) 신규 — 2026-03-28
 - [x] ISBN-13 일괄 입력 → 알라딘 OpenAPI(JSONP) 조회 → 표 구성
@@ -18,6 +34,13 @@
 - [x] Netlify 빌드 커맨드로 환경변수 → `config.js` 자동 생성 (`netlify.toml`)
 - [x] 레이아웃: max-width 580px, body 중앙 정렬 (notion-image-downloader 스타일)
 - [x] 폴더명 `book-wishlist` → `book-finder`, 앱명 `희망도서 목록` → `도서 정보 정리`
+
+### 8. Step Squad 신규 앱 — 2026-03-28
+- [x] `/numberblocks/step-squad.html` — Numberblocks 폴더 하위 배치
+- [x] 계단수(Step Squad) 블록 시각화 (슬라이더로 1~15 범위 설정)
+- [x] 다중 계단 Squad 비교 뷰
+- [x] 계단수 퀴즈 모드
+- [x] 홈 교육 섹션 Numberblocks 카드 바로 다음에 추가 (🪜 Step Squad)
 
 ### 7. 기존 앱 세부 개선 — 2026-03-28
 - [x] Chalkboard: 홈 카드 앱 이름 `칠판` → `Chalkboard`, 설명 문구 개선
@@ -53,6 +76,14 @@
 - [x] 배경/글자색 변경 팝오버 작동 검증 완료 필요 — 색상 스와치 `data-color` 비교 버그 수정
 - [x] 텍스트 크기 조정 컨텍스트 메뉴 UX 검토 — 코드 정상 확인
 - [x] 선 선택·이동 안정성 확인 — 코드 정상 확인
+
+---
+
+## 다음 작업 예정
+
+### Netlify 배포 후 검증 필요
+- [ ] `netlify dev`로 로컬 Short.io 함수 테스트
+- [ ] Netlify 환경변수 등록 확인 (`SHORT_IO_API_KEY`, `SHORT_IO_DOMAIN`, `ALADIN_TTB_KEY`)
 
 ---
 
@@ -169,9 +200,14 @@
 
 ### 각 앱 (2026-03-28 추가)
 - [x] 도서 정보 정리 (book-finder): 신규 앱 완성
+- [x] Step Squad: 신규 앱 추가 (`/numberblocks/step-squad.html`)
 - [x] Chalkboard: 홈 카드 이름·설명 변경
 - [x] Notion Styler: UI 세부 개선 다수
 - [x] Grid Maker: 상단 여백 수정
+
+### 각 앱 (2026-03-29 추가)
+- [x] 도서 정보 나눔 (book-share): 공유 기능 완성, 폴더·앱명 변경, UI 버튼 개선
+- [x] Moon Phase: 우상단 공유 버튼 추가
 
 ### 문서
 - [x] `DEVPLAN.md` → `docs/DEVPLAN.md` 이동 및 최신화

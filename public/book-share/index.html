@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>도서 정보 정리 — byeduin</title>
+  <title>도서 정보 나눔 — byeduin</title>
   <link rel="stylesheet" href="/common/hero-theme.css">
   <script src="/common/theme.js"></script>
   <script src="config.js"></script>
@@ -178,8 +178,11 @@
       flex-wrap: wrap;
     }
 
-    .action-row .hero-btn { flex: 1; min-width: 140px; }
-    .action-row .hero-btn-ghost { flex: 0 0 auto; }
+    .action-row .hero-btn,
+    .action-row .hero-btn-ghost { flex: 1; min-width: 0; }
+
+    /* 공유 버튼 로딩 상태 */
+    .share-btn.loading { opacity: 0.6; pointer-events: none; }
 
     /* 빈 상태 */
     .empty-state {
@@ -271,8 +274,8 @@
     <!-- 앱 헤더 -->
     <div class="app-header">
       <div class="app-badge">◆ Utility</div>
-      <h1 class="app-title">도서 정보 <span>정리</span></h1>
-      <p class="app-desc">ISBN 목록을 붙여넣으면 알라딘에서 도서 정보를 가져와 표로 정리하고 엑셀로 내려받을 수 있습니다. <span style="opacity:0.45;font-size:0.85em">(알라딘 OpenAPI)</span></p>
+      <h1 class="app-title">도서 정보 <span>나눔</span></h1>
+      <p class="app-desc">ISBN 목록을 붙여넣으면 알라딘에서 도서 정보를 가져와 표로 정리하고, 파일로 내려받거나 링크로 다른 사용자에게 쉽게 전달할 수 있습니다. <span style="opacity:0.45;font-size:0.85em">(알라딘 OpenAPI)</span></p>
     </div>
 
     <!-- ISBN 입력 -->
@@ -328,7 +331,14 @@
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
             <polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
           </svg>
-          엑셀 내보내기
+          내려받기
+        </button>
+        <button class="hero-btn hero-btn-ghost share-btn" id="shareBtn" onclick="shareList()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          링크로 공유
         </button>
         <button class="hero-btn hero-btn-ghost" onclick="confirmReset()">전체 초기화</button>
       </div>
@@ -352,8 +362,56 @@
 
     const LS_ITEMS = 'bookwishlist_items';
 
+    /* ── 공유 데이터 디코딩 (여러 방식 시도) ── */
+    function decodeShareData(encoded) {
+      // 1. base64url 방식 (현재 인코딩)
+      try {
+        const raw = encoded.replace(/-/g, '+').replace(/_/g, '/');
+        const pad = (4 - raw.length % 4) % 4;
+        const payload = decodeURIComponent(atob(raw + '='.repeat(pad)));
+        const data = JSON.parse(payload);
+        if (Array.isArray(data)) return data;
+      } catch {}
+
+      // 2. 표준 base64 방식 (구버전 링크 호환)
+      try {
+        const payload = decodeURIComponent(atob(encoded));
+        const data = JSON.parse(payload);
+        if (Array.isArray(data)) return data;
+      } catch {}
+
+      // 3. URL이 브라우저에서 %2B 등으로 인코딩된 경우 먼저 디코딩
+      try {
+        const decoded = decodeURIComponent(encoded);
+        const raw = decoded.replace(/-/g, '+').replace(/_/g, '/');
+        const pad = (4 - raw.length % 4) % 4;
+        const payload = decodeURIComponent(atob(raw + '='.repeat(pad)));
+        const data = JSON.parse(payload);
+        if (Array.isArray(data)) return data;
+      } catch {}
+
+      return null;
+    }
+
     /* ── 초기화 ── */
     (function init() {
+      // 공유 링크로 접근한 경우 해시에서 목록 로드
+      const hash = location.hash;
+      if (hash.startsWith('#share=')) {
+        const encoded = hash.slice(7);
+        const shared = decodeShareData(encoded);
+        if (shared && shared.length > 0) {
+          list = shared;
+          saveList();
+          history.replaceState(null, '', location.pathname);
+          try { renderTable(); } catch {}
+          showToast(`📚 ${shared.length}권의 목록이 로드되었습니다.`);
+          return;
+        }
+        showToast('공유 링크를 읽을 수 없습니다.');
+      }
+
+      // 일반 접근: localStorage 복원
       const saved = localStorage.getItem(LS_ITEMS);
       if (saved) {
         try { list = JSON.parse(saved); } catch { list = []; }
@@ -613,10 +671,64 @@
       toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
     }
 
-    /* ── 공유 ── */
+    /* ── 목록 공유 ── */
+    function buildShareURL() {
+      const valid = list.filter(b => !b.error);
+      const payload = JSON.stringify(valid);
+      // base64url: +→- /→_ =제거 → 브라우저/단축URL에서 변형 없음
+      const encoded = btoa(encodeURIComponent(payload))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+      return `${location.origin}/book-share/#share=${encoded}`;
+    }
+
+    async function shareList() {
+      const valid = list.filter(b => !b.error);
+      if (valid.length === 0) { showToast('공유할 목록이 없습니다.'); return; }
+
+      const btn = document.getElementById('shareBtn');
+      btn.classList.add('loading');
+      btn.querySelector('svg').style.display = 'none';
+      const origText = btn.childNodes[btn.childNodes.length - 1].textContent;
+      btn.childNodes[btn.childNodes.length - 1].textContent = ' 생성 중…';
+
+      const longURL = buildShareURL();
+
+      try {
+        const res = await fetch('/.netlify/functions/shorten', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: longURL }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.shortURL) throw new Error(data.error || '단축 실패');
+
+        await navigator.clipboard.writeText(data.shortURL);
+        showToast('단축 링크가 복사되었습니다 ✓');
+      } catch {
+        // 단축 실패 시 — 원본 URL로 공유 시도
+        try {
+          if (navigator.share) {
+            await navigator.share({ title: '도서 정보 나눔', url: longURL });
+          } else {
+            await navigator.clipboard.writeText(longURL);
+            showToast('링크가 복사되었습니다 (단축 미적용)');
+          }
+        } catch {
+          showToast('공유에 실패했습니다.');
+        }
+      } finally {
+        btn.classList.remove('loading');
+        btn.querySelector('svg').style.display = '';
+        btn.childNodes[btn.childNodes.length - 1].textContent = origText;
+      }
+    }
+
+    /* ── 페이지 공유 ── */
     function shareCurrentPage() {
       if (navigator.share) {
-        navigator.share({ title: '도서 정보 정리', url: location.href });
+        navigator.share({ title: '도서 정보 나눔', url: location.href });
       } else {
         navigator.clipboard.writeText(location.href)
           .then(() => showToast('링크가 복사되었습니다.'))
