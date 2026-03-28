@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>도서 정보 정리 — byeduin</title>
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <script src="/common/theme.js"></script>
+  <script src="config.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 64px 16px 80px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .page-wrap {
+      max-width: 580px;
+      width: 100%;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ISBN 입력 영역 */
+    .section-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--fg-muted);
+      letter-spacing: 0.03em;
+      margin-bottom: 0.4rem;
+    }
+
+    textarea.hero-input {
+      resize: vertical;
+      min-height: 150px;
+      font-size: 0.875rem;
+      line-height: 1.7;
+    }
+
+    /* ISBN → 버튼 사이 화살표 */
+    .fetch-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.4rem 0;
+      color: var(--border);
+    }
+    .fetch-arrow svg {
+      opacity: 0.5;
+    }
+
+    /* 진행 상태 바 */
+    .progress-wrap {
+      margin-top: 0.75rem;
+      display: none;
+    }
+    .progress-wrap.visible { display: block; }
+
+    .progress-bar-bg {
+      height: 4px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 0.35rem;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 99px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .progress-text {
+      font-size: 0.75rem;
+      color: var(--fg-muted);
+    }
+
+    /* 테이블 */
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 1.5rem;
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      min-width: 560px;
+    }
+
+    thead th {
+      background: var(--card-bg);
+      color: var(--fg-muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.7rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr:last-child { border-bottom: none; }
+
+    tbody tr:hover { background: var(--bg-sec); }
+
+    tbody tr.error-row td { color: var(--danger); }
+
+    td {
+      padding: 0.7rem 1rem;
+      vertical-align: middle;
+      color: var(--fg);
+    }
+
+    td.num { color: var(--fg-muted); font-size: 0.75rem; width: 36px; text-align: center; }
+    td.title { font-weight: 500; }
+    td.price { white-space: nowrap; }
+    td.qty { width: 90px; }
+    td.del { width: 44px; text-align: center; }
+
+    .qty-input {
+      width: 64px;
+      padding: 0.3rem 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      background: var(--input-bg);
+      color: var(--fg);
+      font-size: 0.875rem;
+      font-family: inherit;
+      text-align: center;
+    }
+    .qty-input:focus { outline: none; border-color: var(--primary); }
+
+    .del-btn {
+      background: none;
+      border: none;
+      color: var(--fg-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 6px;
+      line-height: 1;
+      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .del-btn:hover { color: var(--danger); background: rgba(243,18,96,0.07); }
+
+    /* 하단 액션 버튼 */
+    .action-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .action-row .hero-btn { flex: 1; min-width: 140px; }
+    .action-row .hero-btn-ghost { flex: 0 0 auto; }
+
+    /* 빈 상태 */
+    .empty-state {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: var(--fg-muted);
+      font-size: 0.875rem;
+      line-height: 1.7;
+    }
+
+    /* 통계 */
+    .stats-row {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.75rem;
+      font-size: 0.78rem;
+      color: var(--fg-muted);
+      flex-wrap: wrap;
+    }
+
+    .stats-row span { white-space: nowrap; }
+    .stats-row strong { color: var(--fg); }
+
+    /* 알라딘 출처 */
+    .api-credit {
+      font-size: 0.72rem;
+      color: var(--fg-muted);
+      opacity: 0.55;
+      text-align: right;
+      margin-top: 0.5rem;
+    }
+
+    /* 토스트 */
+    #toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(1rem);
+      background: var(--fg);
+      color: var(--bg);
+      padding: 0.65rem 1.25rem;
+      border-radius: 99px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 9000;
+      white-space: nowrap;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 540px) {
+      .page-wrap { padding-top: 56px; }
+      .overlay-btn span { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 상단 좌측: 홈 -->
+  <div class="top-overlay-left">
+    <a href="/" class="overlay-btn" title="byeduin VIVES 홈">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span>Home</span>
+    </a>
+  </div>
+
+  <!-- 상단 우측: 테마·공유 -->
+  <div class="top-overlay">
+    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+    <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+        <polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/>
+      </svg>
+      <span>공유</span>
+    </button>
+  </div>
+
+  <div class="page-wrap">
+
+    <!-- 앱 헤더 -->
+    <div class="app-header">
+      <div class="app-badge">◆ Utility</div>
+      <h1 class="app-title">도서 정보 <span>정리</span></h1>
+      <p class="app-desc">ISBN 목록을 붙여넣으면 알라딘에서 도서 정보를 가져와 표로 정리하고 엑셀로 내려받을 수 있습니다. <span style="opacity:0.45;font-size:0.85em">(알라딘 OpenAPI)</span></p>
+    </div>
+
+    <!-- ISBN 입력 -->
+    <div style="margin-bottom:1rem">
+      <div class="section-label">ISBN 목록</div>
+      <textarea class="hero-input" id="isbnInput"
+        placeholder="ISBN-13 코드를 붙여넣으세요. 줄바꿈·공백·쉼표 모두 OK.&#10;&#10;예)&#10;9791173325878&#10;9788936434267"></textarea>
+    </div>
+
+    <!-- 조회 버튼 + 진행 상태 -->
+    <button class="hero-btn" id="fetchBtn" onclick="startFetch()" style="width:100%">
+      목록에 추가
+    </button>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-text" id="progressText"></div>
+    </div>
+
+    <!-- 화살표 (조회 후 표시) -->
+    <div class="fetch-arrow" id="fetchArrow" style="display:none">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="3" x2="12" y2="20"/><polyline points="6 14 12 20 18 14"/>
+      </svg>
+    </div>
+
+    <!-- 결과 테이블 -->
+    <div id="tableSection" style="display:none">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="num">#</th>
+              <th>도서명</th>
+              <th>저자</th>
+              <th>출판사</th>
+              <th>정가</th>
+              <th>주문수량</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="stats-row" id="statsRow"></div>
+
+      <div class="action-row">
+        <button class="hero-btn" onclick="exportExcel()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
+          </svg>
+          엑셀 내보내기
+        </button>
+        <button class="hero-btn hero-btn-ghost" onclick="confirmReset()">전체 초기화</button>
+      </div>
+    </div>
+
+    <div id="emptyState"></div>
+
+  </div>
+
+  <!-- 토스트 -->
+  <div id="toast"></div>
+
+  <!-- SheetJS -->
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+  <script>
+    /* ── 상태 ── */
+    let list = [];          // { isbn13, title, author, publisher, priceStandard, qty, error? }
+    const ttbkey = typeof ALADIN_TTB_KEY !== 'undefined' ? ALADIN_TTB_KEY : '';
+    let fetching = false;
+
+    const LS_ITEMS = 'bookwishlist_items';
+
+    /* ── 초기화 ── */
+    (function init() {
+      const saved = localStorage.getItem(LS_ITEMS);
+      if (saved) {
+        try { list = JSON.parse(saved); } catch { list = []; }
+      }
+      renderTable();
+    })();
+
+    /* ── ISBN 파싱 ── */
+    function parseISBNs(text) {
+      const all = text.split(/[\s,;]+/)
+        .map(s => s.replace(/\D/g, ''))
+        .filter(s => s.length === 13);
+      return [...new Set(all)];
+    }
+
+    /* ── JSONP 조회 ── */
+    function lookupISBN(isbn) {
+      return new Promise((resolve, reject) => {
+        const cbName = 'aladinCb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+        const script = document.createElement('script');
+        const timeout = setTimeout(() => {
+          cleanup(); reject('시간 초과');
+        }, 8000);
+
+        function cleanup() {
+          clearTimeout(timeout);
+          delete window[cbName];
+          if (script.parentNode) script.remove();
+        }
+
+        window[cbName] = (data) => {
+          cleanup();
+          if (data && data.item && data.item.length > 0) {
+            resolve(data.item[0]);
+          } else {
+            reject('도서를 찾을 수 없습니다');
+          }
+        };
+
+        script.onerror = () => { cleanup(); reject('API 연결 실패'); };
+        script.src = 'https://www.aladin.co.kr/ttb/api/ItemLookUp.aspx'
+          + '?ttbkey=' + encodeURIComponent(ttbkey)
+          + '&itemId=' + encodeURIComponent(isbn)
+          + '&itemIdType=ISBN13'
+          + '&output=js'
+          + '&Version=20131101'
+          + '&callback=' + cbName;
+        document.head.appendChild(script);
+      });
+    }
+
+    /* ── 전체 조회 ── */
+    async function startFetch() {
+      if (fetching) return;
+      if (!ttbkey) {
+        showToast('API 키가 설정되지 않았습니다.');
+        return;
+      }
+
+      const text = document.getElementById('isbnInput').value;
+      const isbns = parseISBNs(text);
+
+      if (isbns.length === 0) {
+        showToast('유효한 ISBN-13 코드가 없습니다.');
+        return;
+      }
+
+      // 중복 제거 (이미 목록에 있는 ISBN)
+      const existing = new Set(list.map(b => b.isbn13));
+      const toFetch = isbns.filter(isbn => !existing.has(isbn));
+      const skipped = isbns.length - toFetch.length;
+
+      if (toFetch.length === 0) {
+        showToast(`${skipped}개 모두 이미 목록에 있습니다.`);
+        return;
+      }
+
+      fetching = true;
+      document.getElementById('fetchBtn').disabled = true;
+      const pw = document.getElementById('progressWrap');
+      pw.classList.add('visible');
+      setProgress(0, toFetch.length);
+
+      let added = 0, errors = 0;
+
+      for (let i = 0; i < toFetch.length; i++) {
+        setProgress(i + 1, toFetch.length);
+        try {
+          const book = await lookupISBN(toFetch[i]);
+          list.push({
+            isbn13: book.isbn13 || toFetch[i],
+            title: book.title || '(제목 없음)',
+            author: book.author || '',
+            publisher: book.publisher || '',
+            priceStandard: book.priceStandard || 0,
+            qty: 1,
+          });
+          added++;
+        } catch (e) {
+          list.push({ isbn13: toFetch[i], title: '(' + e + ')', publisher: '-', priceStandard: 0, qty: 0, error: true });
+          errors++;
+        }
+        renderTable();
+        saveList();
+        if (i < toFetch.length - 1) {
+          await sleep(300);
+        }
+      }
+
+      fetching = false;
+      document.getElementById('fetchBtn').disabled = false;
+      pw.classList.remove('visible');
+
+      let msg = `${added}권 추가 완료.`;
+      if (skipped) msg += ` (중복 ${skipped}건 제외)`;
+      if (errors) msg += ` 조회 실패 ${errors}건.`;
+      showToast(msg);
+    }
+
+    /* ── 진행 상태 ── */
+    function setProgress(cur, total) {
+      document.getElementById('progressFill').style.width = (cur / total * 100) + '%';
+      document.getElementById('progressText').textContent = `조회 중… ${cur} / ${total}`;
+    }
+
+    /* ── 테이블 렌더 ── */
+    function renderTable() {
+      const tbody = document.getElementById('tableBody');
+      const section = document.getElementById('tableSection');
+      const empty = document.getElementById('emptyState');
+
+      const validList = list.filter(b => !b.error);
+      const errorList = list.filter(b => b.error);
+
+      const arrow = document.getElementById('fetchArrow');
+
+      if (list.length === 0) {
+        section.style.display = 'none';
+        empty.style.display = '';
+        arrow.style.display = 'none';
+        return;
+      }
+
+      section.style.display = '';
+      empty.style.display = 'none';
+      arrow.style.display = '';
+
+      // 행 렌더링
+      let num = 0;
+      tbody.innerHTML = list.map((b, idx) => {
+        if (!b.error) num++;
+        return `<tr class="${b.error ? 'error-row' : ''}">
+          <td class="num">${b.error ? '–' : num}</td>
+          <td class="title">${escHtml(b.title)}</td>
+          <td>${escHtml(b.author || '')}</td>
+          <td>${escHtml(b.publisher)}</td>
+          <td class="price">${b.priceStandard ? b.priceStandard.toLocaleString() + '원' : '–'}</td>
+          <td class="qty">${b.error ? '' : `<input class="qty-input" type="number" min="0" max="999" value="${b.qty}" data-idx="${idx}" onchange="updateQty(this)">`}</td>
+          <td class="del"><button class="del-btn" title="삭제" onclick="deleteRow(${idx})">✕</button></td>
+        </tr>`;
+      }).join('');
+
+      // 통계 (표 아래)
+      const totalQty = validList.reduce((s, b) => s + (b.qty || 0), 0);
+      const totalPrice = validList.reduce((s, b) => s + (b.priceStandard || 0) * (b.qty || 0), 0);
+      document.getElementById('statsRow').innerHTML =
+        `<span>총 <strong>${validList.length}종</strong></span>` +
+        `<span>주문수량 <strong>${totalQty}권</strong></span>` +
+        `<span>합계 <strong>${totalPrice.toLocaleString()}원</strong></span>` +
+        (errorList.length ? `<span style="color:var(--danger)">조회 실패 <strong>${errorList.length}건</strong></span>` : '');
+    }
+
+    /* ── 수량 업데이트 ── */
+    function updateQty(input) {
+      const idx = parseInt(input.dataset.idx, 10);
+      const val = Math.max(0, parseInt(input.value, 10) || 0);
+      input.value = val;
+      list[idx].qty = val;
+      saveList();
+      renderTable(); // 통계 갱신
+    }
+
+    /* ── 행 삭제 ── */
+    function deleteRow(idx) {
+      list.splice(idx, 1);
+      saveList();
+      renderTable();
+    }
+
+    /* ── 전체 초기화 ── */
+    function confirmReset() {
+      if (!confirm('목록을 모두 삭제할까요?')) return;
+      list = [];
+      saveList();
+      renderTable();
+      showToast('목록이 초기화되었습니다.');
+    }
+
+    /* ── localStorage 저장 ── */
+    function saveList() {
+      localStorage.setItem(LS_ITEMS, JSON.stringify(list));
+    }
+
+    /* ── 엑셀 내보내기 ── */
+    function exportExcel() {
+      if (typeof XLSX === 'undefined') { showToast('SheetJS 로딩 중...'); return; }
+      const valid = list.filter(b => !b.error);
+      if (valid.length === 0) { showToast('내보낼 항목이 없습니다.'); return; }
+
+      const rows = valid.map((b, i) => ({
+        '순번': i + 1,
+        '도서명': b.title,
+        '저자': b.author || '',
+        '출판사': b.publisher,
+        '정가': b.priceStandard,
+        '주문수량': b.qty,
+        'ISBN': b.isbn13,
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+
+      // 열 너비 설정
+      ws['!cols'] = [
+        { wch: 5 },   // 순번
+        { wch: 40 },  // 도서명
+        { wch: 20 },  // 저자
+        { wch: 16 },  // 출판사
+        { wch: 10 },  // 정가
+        { wch: 10 },  // 주문수량
+        { wch: 16 },  // ISBN
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '도서 정보');
+      const today = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `도서 정보_${today}.xlsx`);
+      showToast('엑셀 파일을 내려받았습니다.');
+    }
+
+    /* ── 유틸 ── */
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    let toastTimer;
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+    }
+
+    /* ── 공유 ── */
+    function shareCurrentPage() {
+      if (navigator.share) {
+        navigator.share({ title: '도서 정보 정리', url: location.href });
+      } else {
+        navigator.clipboard.writeText(location.href)
+          .then(() => showToast('링크가 복사되었습니다.'))
+          .catch(() => showToast('복사에 실패했습니다.'));
+      }
+    }
+  </script>
+</body>
+</html>

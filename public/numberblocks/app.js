@@ -125,12 +125,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // 토글 버튼으로만 확장/축소
+        // 토글 버튼으로 확장/축소
         const toggleBtn = card.querySelector('.card-toggle-btn');
         toggleBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const isExpanded = card.classList.contains('expanded');
-
             if (!isExpanded) {
                 const currentExpanded = document.querySelector('.resource-card.expanded');
                 if (currentExpanded && currentExpanded !== card) {
@@ -139,7 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (prevBtn) prevBtn.textContent = '▼';
                 }
             }
-
             card.classList.toggle('expanded');
             toggleBtn.textContent = card.classList.contains('expanded') ? '▲' : '▼';
         });
