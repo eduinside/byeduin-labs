@@ -1,6 +1,6 @@
 # byeduin VIVES — 개발 계획
 
-> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-03-27 (2차)
+> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-03-29
 
 ---
 
@@ -21,12 +21,14 @@
 |---|---|---|---|
 | QR Master | `/qr/` | utility | QR 생성 + 스캔, 히스토리 |
 | Smart Timer | `/timer/` | utility | 반복 알람 타이머 |
+| 도서 정보 나눔 | `/book-share/` | utility | ISBN → 알라딘 조회 + 엑셀 + 링크 공유 |
 | Grid Maker | `/grid-maker/` | creative | 이미지 그리드 분할, 드래그 업로드 |
 | Moon Phase | `/moon-phase/` | edu | 달 위상 시뮬레이터 |
 | YT Thumbnail | `/yt-thumb/` | creative | 유튜브 썸네일 추출 |
 | Notion Image DL | `/notion-image-downloader/` | notion | 노션 이미지 일괄 다운로드 |
 | Notion Styler | `/notion-styler/` | notion | LaTeX 수식 스타일러 |
 | Numberblocks | `/numberblocks/` | edu | 넘버블록스 에피소드 파인더 |
+| Step Squad | `/numberblocks/step-squad.html` | edu | 계단수 블록 시각화 + 퀴즈 |
 | Flash Deck | `/flash-deck/` | edu | 플래시카드 덱 제작 및 학습 |
 | Chalkboard | `/chalkboard/` | edu | 칠판·화이트보드 메모 앱 |
 | Login Helper | (모달) | utility | 에듀나비 교원업무지원 안내 |
@@ -86,7 +88,7 @@
 </div>
 ```
 
-예외: Moon Phase는 자체 다크 테마 유지, 홈 버튼 인라인 스타일 사용.
+예외: Moon Phase는 자체 다크 테마 유지, 인라인 `shareMoonPhase()` 함수 사용.
 
 ---
 
@@ -99,58 +101,245 @@
 - 파비콘: `logo.jpg`
 - 우상단 테마 전환 + 공유 버튼
 
+---
+
 ### QR Master (`/qr/`)
 - 생성하기 / 스캔하기 2탭, `.qr-card` 래퍼
 - 스캔 히스토리 로컬스토리지 저장
-- **TODO**: 두 탭 패널 고정 높이 통일
+- 두 탭 패널 고정 높이 통일 완료
+
+---
 
 ### Smart Timer (`/timer/`)
 - 반복 알람 + 세션 종료 알림
 
+---
+
+### 도서 정보 나눔 (`/book-share/`)
+
+#### 개요
+| 항목 | 내용 |
+|---|---|
+| 앱 이름 | **도서 정보 나눔** |
+| 배지 | `◆ Utility` |
+| 경로 | `/book-share/` |
+| API 키 | `config.js` (gitignore, `ALADIN_TTB_KEY` 상수) |
+
+#### 주요 기능
+- ISBN-13 일괄 입력 → 알라딘 ItemLookUp API (JSONP) 순차 조회
+- 결과 테이블: 순번·도서명·저자·출판사·정가·주문수량·삭제
+- 주문수량 인라인 편집, 행 삭제, 전체 초기화
+- 엑셀 내보내기 (SheetJS) — 파일명 `도서 정보_날짜.xlsx`
+- 통계 (종수·주문수량·합계) — 표 하단 표시
+- **링크 공유**: base64url 인코딩 해시 URL → Short.io 단축 URL
+
+#### 공유 기능 구조
+```
+[공유 버튼 클릭]
+  → list[] → JSON → base64url 인코딩 → URL 해시 생성
+  → POST /.netlify/functions/shorten → Short.io API → 단축 URL
+  → 클립보드 복사
+  → 실패 시: navigator.share 또는 긴 URL 클립보드 복사
+
+[수신자 접속 #share=...]
+  → decodeShareData() (3가지 폴백 디코딩)
+  → list 복원 → saveList() → renderTable()
+```
+
+#### Netlify Function (`netlify/functions/shorten.js`)
+- POST 전용, `process.env.SHORT_IO_API_KEY` / `SHORT_IO_DOMAIN` 읽기
+- `https://api.short.io/links` 호출, `{ shortURL }` 반환
+
+#### 환경변수
+| 키 | 위치 | 용도 |
+|---|---|---|
+| `ALADIN_TTB_KEY` | Netlify 환경변수 + `config.js` (빌드 생성) | 알라딘 OpenAPI |
+| `SHORT_IO_API_KEY` | Netlify 환경변수 + `.env` (로컬) | Short.io 단축 URL |
+| `SHORT_IO_DOMAIN` | 동일 | Short.io 도메인 |
+
+#### localStorage 키
+- `bookwishlist_items` — JSON 배열 (isbn13, title, author, publisher, priceStandard, qty)
+
+---
+
 ### Grid Maker (`/grid-maker/`)
 - 이미지 드래그 업로드, HeroUI CSS 변수 전면 적용
-- **TODO**: 2단 레이아웃, 버튼 가시성 개선
+- 상단 여백 `pt-16` (홈 버튼 중첩 해소)
+
+---
 
 ### YT Thumbnail (`/yt-thumb/`)
 - 유튜브 URL → 썸네일 추출
 
+---
+
 ### Notion Image DL (`/notion-image-downloader/`)
 - Notion API 프록시 연동, 오류 메시지 실제 응답 노출
 
+---
+
 ### Notion Styler (`/notion-styler/`)
 - React + Babel + KaTeX, 2단 레이아웃, 4열 폰트 그리드
-- **TODO**: 텍스트 입력 ↔ 미리보기 높이 맞춤, 색상 스와치 컴팩트
+- 텍스트 입력·미리보기 높이 동기화 완료
+- 정렬 버튼 → 스타일 설정 카드로 이동
+- 생성된 코드 영역 배경 `#242b3d` / 테두리 `#3a4460`
+
+---
 
 ### Moon Phase (`/moon-phase/`)
-- 자체 다크 테마 유지, 홈 버튼 좌상단
+- 자체 다크 테마 유지
+- 인라인 `shareMoonPhase()` + `#mpToast` 요소로 공유 기능 독립 구현
+- 우상단 공유 버튼 (다크 오버레이 스타일)
+
+---
 
 ### Numberblocks (`/numberblocks/`)
+
+#### 기능
 - 에피소드 파인더 + 유튜브 연동
-- **TODO**: 애니메이션 축소, HeroUI 전면 적용, 모바일 접근성, 홈 버튼 간섭 해결
+- 필터: 3단계 분류 (단계별/학년별/영역별) + 동적 하위 필터
+- 검색: 데스크톱 확장형 / 모바일 전체화면 오버레이
+- 그리드 → 무한 스크롤 (Intersection Observer)
+- 항목 클릭 시 토글 버튼 방식 (버튼 클릭 → 링크 버튼 노출)
+
+#### 파일 구조
+```
+public/numberblocks/
+├── index.html
+├── style.css
+├── app.js
+├── data-content.json
+└── step-squad.html   ← Step Squad 앱
+```
+
+---
+
+### Step Squad (`/numberblocks/step-squad.html`)
+
+#### 개요
+| 항목 | 내용 |
+|---|---|
+| 앱 이름 | **Step Squad** |
+| 배지 | `◆ EDU` |
+| 경로 | `/numberblocks/step-squad.html` |
+| 폰트 | Dongle (어린이 가독성, `font-size: 200%`) |
+
+#### 주요 기능
+- **설명 탭**: 계단수(Step Squad) 개념 소개, 만들기/퀴즈 CTA 버튼
+- **만들기 탭**: 슬라이더로 1~20 계단수 블록 시각화, 다중 Squad 비교
+- **퀴즈 탭**: 인트로 화면 → 시작하기 → 퀴즈 게임 → 점수 표시 → 처음부터
+- 홈·공유 오버레이 버튼, `execCommand('copy')` 폴백 포함
+
+---
 
 ### Flash Deck (`/flash-deck/`)
-- 덱 관리, 카드 단건/일괄 입력, CSS 3D 플립 학습 모드
-- 전체화면 모드 (F키), 학습 통계 (studyCount, passCount, mastered)
-- **버그 수정**: 전체화면에서 마지막 카드 완료 시 결과 화면 미전환 → `showResult()` 진입 시 `exitFullscreen()` 먼저 호출
-- AI 프롬프트 카드: 덱 그리드 맨 끝 점선 카드, 빈 상태 시 버튼으로 대체 — Gemini/ChatGPT 프롬프트 모달 (기본·영단어·역사·수식 4종)
-- 덱 카드 삭제 아이콘: hover 시 우상단 노출, confirm 후 삭제
-- localStorage: `vives-flashdeck`
-- 상세 내용: `docs/PLAN-flashcard.md` 참고
+
+#### 개요
+| 항목 | 내용 |
+|---|---|
+| 앱 이름 | **Flash Deck** |
+| 배지 | `◆ EDU` |
+| 경로 | `/flash-deck/` |
+| localStorage | `vives-flashdeck` |
+
+#### 주요 기능
+
+**덱 관리**
+- 여러 덱 생성·삭제
+- 덱 카드: 카드 수 / 마스터 수 / 학습 횟수 / 마지막 학습일 / 진행률 바
+- AI 프롬프트 카드: 덱 그리드 맨 끝 점선 카드 (기본·영단어·역사·수식 4종 모달)
+- 덱 삭제: hover 시 우상단 아이콘, confirm 후 삭제
+
+**카드 입력**
+- 단건 입력 (앞면/뒷면 필드, Enter 지원)
+- 일괄 입력 (`앞면 :: 뒷면` 형식, 토글 패널)
+- 카드 삭제
+
+**학습 모드**
+- CSS 3D 플립 (perspective 1200px, 높이 340px)
+- 플립 전 결과 버튼 숨김 → 플립 후 fade-in
+- ✓ 알아요 / ✗ 모르겠어요 (passCount ≥ 2 → mastered)
+- 학습 범위: 전체 / 모르는 것만, 섞기 ON/OFF
+- **전체화면 모드** (버튼 + F키, Esc 해제)
+
+**결과 화면**
+- 정확도별 이모지 메시지 (100% 🎉 / 70%+ 😊 / 40%+ 💪 / 미만 📚)
+- 세션 완료 시 `studyCount` 증가
+
+**키보드 단축키**
+- `Space` / `↑` — 뒤집기, `→` — 알아요, `←` — 모르겠어요, `F` — 전체화면
+
+**버그 수정 이력**
+- 전체화면 마지막 카드 → 결과 화면 미전환: `showResult()` 진입 시 `exitFullscreen()` 먼저 호출
+- 재학습 시 카드 뒤집기 불가: 학습 시작 시 flip 상태 초기화
+
+#### 데이터 구조
+```json
+{
+  "decks": [{
+    "id": "uid", "name": "생물 용어",
+    "createdAt": 0, "lastStudied": 0, "studyCount": 3,
+    "cards": [{ "id": "uid", "front": "photosynthesis", "back": "광합성",
+      "mastered": false, "failCount": 2, "passCount": 1 }]
+  }]
+}
+```
+
+---
 
 ### Chalkboard (`/chalkboard/`)
-- 칠판 모드(진한 초록 배경·흰 글씨) ↔ 화이트보드 모드(흰 배경·검정 글씨) 전환
-- 텍스트 추가 (기본 80px, SIZES: 32~200px 범위), 드래그 이동
-- 선 그리기 모드 추가, 선 드래그 이동 지원
-- 4색 팔레트: 기본(칠판=흰/화이트보드=검정) · 노랑 · 분홍 · 파랑
-- 컨텍스트 메뉴: 텍스트/선 클릭 시 크기 조정·색상 변경·편집·삭제 (마우스오버)
-- 툴바: 칠판·화이트보드 전환 / 텍스트 추가 / 선 추가 / 저장 — 우측 배치
-- 저장 버튼 → 드롭다운 (TXT / JPG 내보내기), 자동저장 펄스 효과
+
+#### 개요
+| 항목 | 내용 |
+|---|---|
+| 앱 이름 | **Chalkboard** |
+| 배지 | `◆ EDU` |
+| 경로 | `/chalkboard/` |
+| localStorage | `vives-chalkboard` |
+
+#### 주요 기능
+
+**보드 관리**
+- 여러 보드 생성·삭제
 - 목록 화면: Flash Deck 스타일 그리드 카드 (배경색 썸네일 + 첫 텍스트 미리보기)
-- 목록 화면 "내 보드" 섹션 타이틀 + 새 보드 버튼 Flash Deck 패턴으로 통일
-- 홈 화면 padding-top 68px (상단 오버레이 버튼 간섭 해소)
-- localStorage 자동저장 (`vives-chalkboard`), 구형 데이터 type 필드 보정
-- 다크/라이트 모드 미적용 (전용 배경색 사용)
-- 상세 내용: `docs/PLAN-chalkboard.md` 참고
+- 구형 localStorage 데이터 `type` 필드 없을 때 자동 보정
+
+**보드 타입 전환**
+- **칠판 모드**: 배경 `#1b4332`, 기본 글자색 흰색
+- **화이트보드 모드**: 배경 `#ffffff`, 기본 글자색 검정
+- 전환 시 기존 요소 색상 자동 반전
+
+**텍스트 추가**
+- 더블클릭으로 추가, 기본 80px (SIZES: 32·48·64·80·96·120·160·200px)
+- 드래그 이동, contenteditable 인라인 편집
+- 컨텍스트 메뉴: 크기 조정·색상 변경·편집·삭제
+
+**선 그리기**
+- 드래그로 직선, 드래그 이동, 두께 기본 3px
+- 컨텍스트 메뉴: 색상 변경·삭제
+
+**색상 팔레트 (4색)**
+- 기본색 / 노랑 `#fde68a` / 분홍 `#fca5a5` / 파랑 `#93c5fd`
+
+**저장**
+- 드롭다운: TXT (텍스트만) / JPG (Canvas API)
+- 자동저장 펄스 효과
+
+#### 데이터 구조
+```json
+{
+  "boards": [{
+    "id": "uid", "name": "수업 보드", "type": "chalkboard",
+    "createdAt": 0, "lastEdited": 0,
+    "elements": [
+      { "id": "uid", "type": "text", "x": 100, "y": 200,
+        "text": "안녕하세요", "color": "#ffffff", "size": 80 },
+      { "id": "uid", "type": "line", "x1": 50, "y1": 100,
+        "x2": 300, "y2": 150, "color": "#fde68a", "width": 3 }
+    ]
+  }]
+}
+```
 
 ---
 
@@ -196,32 +385,36 @@
 ```
 byeduin-labs/
 ├── README.md
+├── netlify.toml                    ← Netlify 빌드·Functions 설정
+├── .env                            ← 로컬 환경변수 (gitignore)
 ├── docs/
-│   ├── DEVPLAN.md              ← 이 파일
-│   ├── PLAN.md                 ← 작업 플랜 (진행/완료/대기)
-│   ├── PLAN-flashcard.md       ← Flash Deck 상세 계획
-│   ├── PLAN-chalkboard.md      ← Chalkboard 상세 계획
-│   └── numberblocks-readme.md
-├── public/
-│   ├── index.html
-│   ├── logo.jpg
-│   ├── common/
-│   │   ├── hero-theme.css
-│   │   └── theme.js
-│   ├── qr/index.html
-│   ├── timer/index.html
-│   ├── grid-maker/index.html
-│   ├── moon-phase/index.html
-│   ├── yt-thumb/index.html
-│   ├── notion-image-downloader/index.html
-│   ├── notion-styler/index.html
-│   ├── flash-deck/index.html
-│   ├── chalkboard/index.html
-│   └── numberblocks/
-│       ├── index.html
-│       ├── app.js
-│       ├── style.css
-│       └── data-content.json
+│   ├── DEVPLAN.md                  ← 이 파일 (전체 개발 현황)
+│   └── PLAN.md                     ← 작업 플랜 (진행/완료/대기)
 ├── netlify/
-└── netlify.toml
+│   └── functions/
+│       └── shorten.js              ← Short.io API 프록시
+└── public/
+    ├── index.html
+    ├── logo.jpg
+    ├── common/
+    │   ├── hero-theme.css
+    │   └── theme.js
+    ├── qr/index.html
+    ├── timer/index.html
+    ├── book-share/
+    │   ├── index.html
+    │   └── config.js               ← gitignore (ALADIN_TTB_KEY)
+    ├── grid-maker/index.html
+    ├── moon-phase/index.html
+    ├── yt-thumb/index.html
+    ├── notion-image-downloader/index.html
+    ├── notion-styler/index.html
+    ├── flash-deck/index.html
+    ├── chalkboard/index.html
+    └── numberblocks/
+        ├── index.html
+        ├── app.js
+        ├── style.css
+        ├── data-content.json
+        └── step-squad.html
 ```

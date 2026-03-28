@@ -788,5 +788,69 @@
       </svg>
       <span>Home</span>
     </a>
+
+    <!-- 우상단 공유 버튼 -->
+    <button onclick="shareMoonPhase()"
+       style="position:fixed;top:12px;right:12px;z-index:9999;
+              background:rgba(21,25,43,0.85);backdrop-filter:blur(8px);
+              -webkit-backdrop-filter:blur(8px);
+              border:1px solid rgba(76,201,240,0.25);border-radius:9999px;
+              padding:6px 14px;font-size:13px;color:#a0aec0;
+              cursor:pointer;display:flex;align-items:center;gap:6px;
+              transition:color 0.2s,border-color 0.2s;font-family:sans-serif;"
+       onmouseover="this.style.color='#4cc9f0';this.style.borderColor='rgba(76,201,240,0.5)'"
+       onmouseout="this.style.color='#a0aec0';this.style.borderColor='rgba(76,201,240,0.25)'"
+       title="공유">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+        <polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/>
+      </svg>
+      <span>공유</span>
+    </button>
+
+    <!-- 토스트 -->
+    <div id="mpToast" style="position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(1rem);
+         background:#e0e6ed;color:#030509;padding:0.6rem 1.2rem;border-radius:999px;
+         font-size:0.85rem;font-weight:600;opacity:0;pointer-events:none;
+         transition:opacity 0.2s,transform 0.2s;z-index:9000;white-space:nowrap;font-family:sans-serif;"></div>
+
+    <script>
+    (function() {
+      let _mpTimer;
+      function mpToast(msg) {
+        const el = document.getElementById('mpToast');
+        el.textContent = msg;
+        el.style.opacity = '1';
+        el.style.transform = 'translateX(-50%) translateY(0)';
+        clearTimeout(_mpTimer);
+        _mpTimer = setTimeout(() => {
+          el.style.opacity = '0';
+          el.style.transform = 'translateX(-50%) translateY(1rem)';
+        }, 2500);
+      }
+      window.shareMoonPhase = function() {
+        const url = location.href;
+        if (navigator.share) {
+          navigator.share({ title: '달의 위상 관찰 시뮬레이터', url });
+        } else if (navigator.clipboard) {
+          navigator.clipboard.writeText(url)
+            .then(() => mpToast('링크가 복사되었습니다 ✓'))
+            .catch(() => fallback(url));
+        } else {
+          fallback(url);
+        }
+      };
+      function fallback(url) {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select();
+        try { document.execCommand('copy'); mpToast('링크가 복사되었습니다 ✓'); }
+        catch { mpToast('복사에 실패했습니다.'); }
+        document.body.removeChild(ta);
+      }
+    })();
+    </script>
 </body>
 </html>
