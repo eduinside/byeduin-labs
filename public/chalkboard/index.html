@@ -881,6 +881,7 @@
       palette.forEach(color => {
         const b = document.createElement('button');
         b.className = 'ctx-btn ctx-swatch' + (el.color === color ? ' cur' : '');
+        b.dataset.color = color;
         b.style.cssText = `background:${color};width:32px;height:32px;border-radius:50%;font-size:0;`;
         // Light swatches need a visible border
         if (color === '#ffffff' || color === '#f7f7f4') b.style.border = '2px solid rgba(150,150,150,0.4)';
@@ -959,9 +960,7 @@
         if (b.title === '색상') { b.style.color = color; }
       });
       document.querySelectorAll('#ctx-colors .ctx-swatch').forEach(s => {
-        const sc = s.style.background;
-        const matches = sc === color || sc.replace(/ /g,'') === color;
-        s.classList.toggle('cur', matches);
+        s.classList.toggle('cur', s.dataset.color === color);
       });
     }
 

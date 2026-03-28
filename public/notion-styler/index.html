@@ -46,45 +46,66 @@
         /* ── Notion Styler 전용 클래스 ── */
         .ns-wrap {
             width: 100%; max-width: 1080px;
-            margin: 0 auto; padding: 48px 20px 80px;
+            margin: 0 auto; padding: 64px 20px 80px;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            grid-template-rows: auto 1fr;
-            column-gap: 20px;
+            grid-template-rows: auto auto;
+            gap: 16px 20px;
             align-items: stretch;
         }
         .ns-full {
             grid-column: 1 / -1;
         }
-        .ns-col-left,
-        .ns-col-right {
+        .ns-col-left {
             display: flex;
             flex-direction: column;
             gap: 16px;
         }
-        /* 텍스트 입력 카드 = 높이 유동 확장 */
+        .ns-col-right {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        /* 텍스트 입력 카드 — 컨텐츠 높이에 맞춤 */
         .ns-col-left > .ns-card:first-child {
-            flex: 1;
             display: flex;
             flex-direction: column;
         }
         .ns-col-left > .ns-card:first-child .ns-textarea {
-            flex: 1;
-            min-height: 120px;
+            height: 160px;
+            min-height: unset;
+            flex: none;
+            resize: none;
         }
-        /* 미리보기 카드 = 높이 맞춤 확장 */
+        /* 미리보기 카드 — 컨텐츠 높이에 맞춤 */
         .ns-col-right > .ns-card:first-child {
-            flex: 1;
             display: flex;
             flex-direction: column;
         }
         .ns-col-right > .ns-card:first-child .ns-preview {
+            height: 160px;
+            min-height: unset;
+            flex: none;
+        }
+        /* 생성된 코드 카드 — 남은 공간 채우기 */
+        .ns-col-right > .ns-card:nth-child(2) {
             flex: 1;
-            min-height: 160px;
+            display: flex;
+            flex-direction: column;
+        }
+        .ns-col-right > .ns-card:nth-child(2) .ns-code-wrap {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .ns-col-right > .ns-card:nth-child(2) .ns-code {
+            flex: 1;
         }
         @media (max-width: 760px) {
-            .ns-wrap { grid-template-columns: 1fr; }
+            .ns-wrap { grid-template-columns: 1fr; gap: 16px; }
             .ns-full { grid-column: 1; }
+            .ns-col-right { justify-content: flex-start; }
         }
         .ns-card {
             background: var(--card-bg); border: 1px solid var(--border);
@@ -117,7 +138,7 @@
             display: flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap;
         }
         .ns-tab.active { background: rgba(0,111,238,0.1); border-color: var(--primary); color: var(--primary); font-weight: 700; }
-        .ns-color-grid { display: flex; flex-wrap: wrap; gap: 5px; padding: 6px 0; align-content: flex-start; }
+        .ns-color-grid { display: grid; grid-template-columns: repeat(11, 1fr); gap: 5px; padding: 6px 0; }
         .ns-swatch {
             width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
@@ -146,10 +167,11 @@
         .ns-code-wrap { position: relative; margin-bottom: 10px; }
         .ns-code {
             width: 100%; padding: 14px 48px 14px 14px;
-            background: #12121e; color: #e2e8f0;
-            border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+            background: #242b3d; color: #c9d8f0;
+            border-radius: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px;
             overflow-x: auto; white-space: pre-wrap; word-break: break-all;
-            border: 1px solid #252535; margin: 0;
+            border: 1px solid #3a4460; margin: 0;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
         }
         .ns-copy-btn {
             position: absolute; right: 8px; top: 8px;
@@ -528,14 +550,6 @@
                         {/* 텍스트 입력 카드 */}
                         <div className="ns-card">
                             <div className="ns-card-title">텍스트 입력</div>
-                            <div className="ns-label-row">
-                                <label className="ns-label" style={{margin:0}}>입력</label>
-                                <div className="ns-align-btns">
-                                    <button onClick={() => setAlignment('l')} className={`ns-align-btn ${alignment === 'l' ? 'active' : ''}`} title="왼쪽"><AlignLeft size={14}/></button>
-                                    <button onClick={() => setAlignment('c')} className={`ns-align-btn ${alignment === 'c' ? 'active' : ''}`} title="가운데"><AlignCenter size={14}/></button>
-                                    <button onClick={() => setAlignment('r')} className={`ns-align-btn ${alignment === 'r' ? 'active' : ''}`} title="오른쪽"><AlignRight size={14}/></button>
-                                </div>
-                            </div>
                             <textarea
                                 value={text}
                                 onChange={(e) => setText(e.target.value)}
@@ -547,6 +561,16 @@
                         {/* 스타일 설정 카드 */}
                         <div className="ns-card">
                             <div className="ns-card-title">스타일 설정</div>
+
+                            {/* 정렬 */}
+                            <div className="ns-label-row" style={{marginBottom:'16px'}}>
+                                <label className="ns-label" style={{margin:0}}>정렬</label>
+                                <div className="ns-align-btns">
+                                    <button onClick={() => setAlignment('l')} className={`ns-align-btn ${alignment === 'l' ? 'active' : ''}`} title="왼쪽"><AlignLeft size={14}/></button>
+                                    <button onClick={() => setAlignment('c')} className={`ns-align-btn ${alignment === 'c' ? 'active' : ''}`} title="가운데"><AlignCenter size={14}/></button>
+                                    <button onClick={() => setAlignment('r')} className={`ns-align-btn ${alignment === 'r' ? 'active' : ''}`} title="오른쪽"><AlignRight size={14}/></button>
+                                </div>
+                            </div>
 
                             {/* 색상 */}
                             <label className="ns-label">색상</label>
@@ -619,7 +643,9 @@
                         {/* 미리보기 카드 */}
                         <div className="ns-card">
                             <div className="ns-card-title">미리보기</div>
-                            <div className="ns-preview">
+                            <div className="ns-preview" style={{
+                                justifyContent: alignment === 'l' ? 'flex-start' : alignment === 'r' ? 'flex-end' : 'center'
+                            }}>
                                 <div ref={previewRef}></div>
                             </div>
                         </div>
