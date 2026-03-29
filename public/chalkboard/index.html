@@ -82,9 +82,7 @@
     body.board-white #tb-name:focus { border-color: rgba(0,0,0,0.45); background: rgba(0,0,0,0.04); }
 
     /* 저장 버튼 */
-    #btn-save { flex-direction: column; height: auto; padding: 5px 12px; gap: 0; align-items: center; }
-    .btn-save-main { display: flex; align-items: center; gap: 6px; }
-    .btn-autosave { font-size: 9px; font-weight: 600; opacity: 0.55; letter-spacing: 0.04em; display: flex; align-items: center; gap: 3px; margin-top: 2px; transition: opacity 0.2s; }
+    .btn-autosave { display: inline-flex; align-items: center; transition: opacity 0.2s; }
     .btn-autosave::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #4ade80; display: inline-block; flex-shrink: 0; transition: box-shadow 0.3s; }
     .btn-autosave.flash::before { box-shadow: 0 0 0 3px rgba(74,222,128,0.4); }
 
@@ -102,6 +100,8 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.45);
     }
     #save-dropdown.open { display: flex; }
+    #share-dropdown { position: fixed; display: none; flex-direction: column; gap: 3px; padding: 6px; border-radius: 10px; border: 1px solid transparent; z-index: 9500; min-width: 150px; box-shadow: 0 4px 20px rgba(0,0,0,0.45); }
+    #share-dropdown.open { display: flex; }
     .save-opt {
       height: 36px; padding: 0 12px;
       border-radius: 7px; border: none;
@@ -317,6 +317,59 @@
       cursor: pointer; font-size: 14px; font-weight: 600;
       font-family: inherit;
     }
+    /* ── Mobile more menu ── */
+    #btn-more { display: none; }
+    #more-dropdown {
+      position: fixed; display: none; flex-direction: column;
+      gap: 3px; padding: 6px; border-radius: 10px;
+      border: 1px solid transparent; z-index: 9500;
+      min-width: 160px; box-shadow: 0 4px 20px rgba(0,0,0,0.45);
+    }
+    #more-dropdown.open { display: flex; }
+    .more-sep { height: 1px; background: currentColor; opacity: 0.12; margin: 3px 4px; }
+    @media (max-width: 600px) {
+      #btn-save, #btn-share { display: none !important; }
+      #btn-more { display: flex; }
+      #btn-type, #btn-add-text, #btn-draw { font-size: 0; padding: 0 8px; }
+      #btn-more { padding: 0 10px; }
+    }
+
+    /* ── View-only mode ── */
+    .is-view-only #btn-type,
+    .is-view-only #btn-add-text,
+    .is-view-only #btn-draw,
+    .is-view-only #btn-save,
+    .is-view-only #btn-share,
+    .is-view-only #btn-more,
+    .is-view-only #tb-name { opacity: 0.3; pointer-events: none; }
+    #btn-view-badge {
+      display: none; align-items: center; gap: 4px;
+      height: 36px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+      padding: 0 10px; border-radius: 6px; border: 1px solid currentColor;
+      opacity: 0.7; white-space: nowrap;
+    }
+    .is-view-only #btn-view-badge { display: flex; }
+    #btn-clone { display: none; }
+    .is-view-only #btn-clone { display: flex; }
+    /* Share-mode modal name */
+    .modal-share-name {
+      font-size: 15px; font-weight: 700; color: var(--fg);
+      margin: -0.5rem 0 1rem; text-align: center;
+    }
+
+    /* ── Toast ── */
+    #cb-toast {
+      position: fixed; bottom: 2rem; left: 50%;
+      transform: translateX(-50%) translateY(1rem);
+      background: rgba(20,20,20,0.92); color: #fff;
+      padding: 0.6rem 1.2rem; border-radius: 99px;
+      font-size: 13px; font-weight: 600;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 9999; white-space: nowrap;
+    }
+    #cb-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body>
@@ -394,16 +447,66 @@
         선
       </button>
       <button id="btn-save" class="tb-btn" onclick="toggleSaveMenu(event)">
-        <span class="btn-save-main">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
-          </svg>
-          저장
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><polyline points="6 9 12 15 18 9"/></svg>
-        </span>
-        <span class="btn-autosave" id="btn-autosave">자동저장</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
+        </svg>
+        저장
+        <span class="btn-autosave" id="btn-autosave"></span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <span id="btn-view-badge">👁 보기 전용</span>
+      <button id="btn-clone" class="tb-btn" onclick="cloneSharedBoard()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        복제하기
+      </button>
+      <button id="btn-more" class="tb-btn" onclick="toggleMoreMenu(event)" title="더보기">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+      </button>
+      <button id="btn-share" class="tb-btn" onclick="toggleShareMenu(event)" title="공유">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+        공유
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
     </div>
+
+  <!-- 공유 드롭다운 -->
+  <div id="share-dropdown">
+    <button class="save-opt" onclick="doShare('view')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      보기 전용
+    </button>
+    <button class="save-opt" onclick="doShare('clone')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      복제 허용
+    </button>
+  </div>
+
+  <!-- 더보기 드롭다운 (모바일) -->
+  <div id="more-dropdown">
+    <button class="save-opt" onclick="closeMoreMenu(); doSaveTxt()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      TXT (텍스트만)
+    </button>
+    <button class="save-opt" onclick="closeMoreMenu(); doSaveJpg()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      JPG (화면 이미지)
+    </button>
+    <div class="more-sep"></div>
+    <button class="save-opt" onclick="closeMoreMenu(); doShare('view')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      공유 - 보기 전용
+    </button>
+    <button class="save-opt" onclick="closeMoreMenu(); doShare('clone')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      공유 - 복제 허용
+    </button>
+  </div>
 
   <!-- 저장 드롭다운 -->
   <div id="save-dropdown">
@@ -426,6 +529,21 @@
   <div id="cb-ctx">
     <div class="ctx-row" id="ctx-main"></div>
     <div class="ctx-row" id="ctx-colors" style="display:none"></div>
+  </div>
+
+  <div id="cb-toast"></div>
+
+  <!-- 공유 링크 모달 -->
+  <div id="modal-share" class="modal-bg">
+    <div class="modal-box">
+      <p class="modal-title">공유된 칠판</p>
+      <p id="modal-share-name" class="modal-share-name"></p>
+      <p style="font-size:13px;color:var(--fg-muted);margin-bottom:1.2rem;text-align:center">이 칠판을 어떻게 열겠습니까?</p>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="enterViewOnly()">👁 보기 전용</button>
+        <button class="btn-confirm" onclick="cloneAndOpen()">복제하기</button>
+      </div>
+    </div>
   </div>
 
   <!-- 새 보드 모달 -->
@@ -491,8 +609,12 @@
     const getData = () => JSON.parse(localStorage.getItem(SK) || '{"boards":[]}');
     const saveData = d => localStorage.setItem(SK, JSON.stringify(d));
     const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    function getBoard() { return getData().boards.find(b => b.id === currentBoardId) || null; }
+    function getBoard() {
+      if (viewOnlyBoard) return viewOnlyBoard;
+      return getData().boards.find(b => b.id === currentBoardId) || null;
+    }
     function saveBoard(b) {
+      if (viewOnlyBoard) return;
       const d = getData();
       const i = d.boards.findIndex(x => x.id === b.id);
       if (i >= 0) d.boards[i] = b; else d.boards.push(b);
@@ -527,6 +649,34 @@
     let drawingLine = false;
     let lineStart = null;
     let tempLine = null;
+    // undo history
+    let undoStack = [];
+    // copy-paste clipboard
+    let clipboard = null;
+    // view-only share mode
+    let viewOnlyBoard = null;
+    let _pendingShared = null;
+    const UNDO_MAX = 50;
+
+    function pushHistory() {
+      const board = getBoard();
+      if (!board) return;
+      undoStack.push(JSON.parse(JSON.stringify(board.elements)));
+      if (undoStack.length > UNDO_MAX) undoStack.shift();
+    }
+
+    function undoLast() {
+      if (!undoStack.length) { showToast('더 이상 되돌릴 수 없습니다'); return; }
+      const snapshot = undoStack.pop();
+      const board = getBoard();
+      if (!board) return;
+      board.elements = snapshot;
+      board.lastEdited = Date.now();
+      saveBoard(board);
+      deselectAll();
+      renderAll();
+      showToast('취소했습니다');
+    }
 
     /* ── Views ── */
     function showView(name) {
@@ -553,10 +703,11 @@
       el.innerHTML = d.boards.slice().reverse().map(b => {
         const type = (b.type && BS[b.type]) ? b.type : 'chalkboard';
         const s = BS[type];
-        const firstText = b.elements && b.elements.find(e => e.type === 'text');
-        const thumbContent = firstText
-          ? `<span class="board-preview-text" style="color:${esc(firstText.color)}">${esc(firstText.text)}</span>`
-          : `<span class="board-thumb-placeholder">${type === 'chalkboard' ? '🖊' : '📋'}</span>`;
+        const texts = b.elements ? b.elements.filter(e => e.type === 'text') : [];
+        const topLeftText = texts.slice().sort((a, b2) => a.y !== b2.y ? a.y - b2.y : a.x - b2.x)[0];
+        const thumbContent = topLeftText
+          ? `<span class="board-preview-text" style="color:${esc(topLeftText.color)}">${esc(topLeftText.text)}</span>`
+          : `<span class="board-preview-text" style="opacity:0.4;color:${type === 'chalkboard' ? '#c8ddd0' : '#888'}">${esc(b.name)}</span>`;
         const typeLabel = type === 'chalkboard' ? '칠판' : '화이트보드';
         return `
         <div class="board-card" onclick="openBoard('${b.id}')">
@@ -607,12 +758,14 @@
     /* ── Open board ── */
     function openBoard(id) {
       currentBoardId = id;
+      undoStack = [];
       mode = 'select'; selectedId = null; selectedType = null;
       colorRowOpen = false;
       const board = getBoard();
       if (!board) { showView('home'); renderHome(); return; }
       if (!board.type || !BS[board.type]) board.type = 'chalkboard'; // 구형 데이터 보정
       showView('board');
+      document.body.classList.toggle('is-view-only', !!viewOnlyBoard);
       applyBoardStyle(board);
       document.getElementById('tb-name').value = board.name;
       renderAll();
@@ -621,6 +774,9 @@
     }
 
     function goHome() {
+      viewOnlyBoard = null;
+      document.body.classList.remove('is-view-only');
+      undoStack = [];
       cancelDraw();
       mode = 'select';
       showView('home');
@@ -647,10 +803,12 @@
 
     /* ── Board type switch ── */
     function switchBoardType() {
+      if (viewOnlyBoard) return;
       const board = getBoard(); if (!board) return;
       const oldDef = getPalette(board.type)[0];
       const newType = board.type === 'chalkboard' ? 'whiteboard' : 'chalkboard';
       const newDef = getPalette(newType)[0];
+      pushHistory();
       board.elements = board.elements.map(el => ({ ...el, color: el.color === oldDef ? newDef : el.color }));
       board.type = newType; board.lastEdited = Date.now();
       saveBoard(board);
@@ -659,6 +817,7 @@
     }
 
     function renameCurrent(name) {
+      if (viewOnlyBoard) return;
       const board = getBoard(); if (!board || !name.trim()) return;
       board.name = name.trim(); board.lastEdited = Date.now();
       saveBoard(board);
@@ -716,6 +875,7 @@
       });
 
       hit.addEventListener('mousedown', e => {
+        if (viewOnlyBoard) return;
         if (mode !== 'select') return;
         e.stopPropagation(); e.preventDefault();
         lineDidDrag = false;
@@ -748,6 +908,7 @@
           hit.style.cursor = 'pointer'; vis.style.cursor = '';
           if (lineDidDrag) {
             const dx = mu.clientX - sx, dy = mu.clientY - sy;
+            pushHistory();
             el.x1 = ox1 + dx; el.y1 = oy1 + dy;
             el.x2 = ox2 + dx; el.y2 = oy2 + dy;
             const board = getBoard();
@@ -819,6 +980,7 @@
 
     /* ── Context menu ── */
     function showCtx(id, type) {
+      if (viewOnlyBoard) return;
       const board = getBoard();
       const el = board.elements.find(e => e.id === id);
       if (!el) return;
@@ -931,6 +1093,7 @@
       if (idx < 0) idx = SIZES.findIndex(s => s >= el.size);
       if (idx < 0) idx = 3;
       idx = Math.max(0, Math.min(SIZES.length - 1, idx + delta));
+      pushHistory();
       el.size = SIZES[idx];
       board.lastEdited = Date.now();
       saveBoard(board);
@@ -944,6 +1107,7 @@
       const board = getBoard();
       const el = board.elements.find(e => e.id === id);
       if (!el) return;
+      pushHistory();
       el.color = color;
       board.lastEdited = Date.now();
       saveBoard(board);
@@ -966,6 +1130,7 @@
 
     function deleteEl(id) {
       const board = getBoard();
+      pushHistory();
       board.elements = board.elements.filter(e => e.id !== id);
       board.lastEdited = Date.now();
       saveBoard(board);
@@ -974,8 +1139,10 @@
 
     /* ── Text editing ── */
     function addText(x, y) {
+      if (viewOnlyBoard) return;
       const board = getBoard();
       const el = { id: uid(), type: 'text', x, y, text: '텍스트', color: getPalette(board.type)[0], size: 80 };
+      pushHistory();
       board.elements.push(el);
       board.lastEdited = Date.now();
       saveBoard(board);
@@ -1014,6 +1181,7 @@
       if (!el) return;
       const txt = div.innerText.trim();
       if (!txt) { deleteEl(id); return; }
+      pushHistory();
       el.text = txt;
       board.lastEdited = Date.now();
       saveBoard(board);
@@ -1022,6 +1190,7 @@
 
     /* ── Drag text elements ── */
     function onElMouseDown(e) {
+      if (viewOnlyBoard) return;
       if (e.target.contentEditable === 'true') return;
       const div = e.currentTarget;
       const id = div.dataset.id;
@@ -1042,7 +1211,7 @@
         if (didDrag) {
           const board = getBoard();
           const el = board.elements.find(e => e.id === id);
-          if (el) { el.x = parseInt(div.style.left); el.y = parseInt(div.style.top); board.lastEdited = Date.now(); saveBoard(board); }
+          if (el) { pushHistory(); el.x = parseInt(div.style.left); el.y = parseInt(div.style.top); board.lastEdited = Date.now(); saveBoard(board); }
           selectEl(id, 'text');
         }
       };
@@ -1130,6 +1299,7 @@
       if (len < 8) { lineStart = null; return; }
       const board = getBoard();
       const el = { id: uid(), type: 'line', x1: lineStart.x, y1: lineStart.y, x2, y2, color: getPalette(board.type)[0] };
+      pushHistory();
       board.elements.push(el);
       board.lastEdited = Date.now();
       saveBoard(board);
@@ -1144,6 +1314,34 @@
 
     /* ── Save dropdown ── */
     let saveMenuOpen = false;
+
+    let moreMenuOpen = false;
+    function toggleMoreMenu(e) {
+      e.stopPropagation();
+      if (!getBoard()) return;
+      moreMenuOpen = !moreMenuOpen;
+      const dd = document.getElementById('more-dropdown');
+      if (!moreMenuOpen) { dd.classList.remove('open'); return; }
+      const board = getBoard();
+      const s = board ? BS[board.type] : BS.chalkboard;
+      dd.style.background = s.saveDdBg;
+      dd.style.borderColor = s.ctxBorder;
+      dd.style.boxShadow = s.ctxShadow;
+      dd.querySelectorAll('.save-opt').forEach(b => {
+        b.style.color = s.saveDdColor;
+        b.onmouseenter = () => b.style.background = s.saveDdHover;
+        b.onmouseleave = () => b.style.background = 'transparent';
+      });
+      const btn = document.getElementById('btn-more');
+      const r = btn.getBoundingClientRect();
+      dd.style.left = Math.max(8, r.right - 170) + 'px';
+      dd.style.top = (r.bottom + 4) + 'px';
+      dd.classList.add('open');
+    }
+    function closeMoreMenu() {
+      moreMenuOpen = false;
+      document.getElementById('more-dropdown').classList.remove('open');
+    }
 
     function toggleSaveMenu(e) {
       e.stopPropagation();
@@ -1172,6 +1370,129 @@
     function closeSaveMenu() {
       saveMenuOpen = false;
       document.getElementById('save-dropdown').classList.remove('open');
+    }
+
+    /* ── Share modal ── */
+    function openShareModal(board) {
+      _pendingShared = board;
+      document.getElementById('modal-share-name').textContent = board.name;
+      document.getElementById('modal-share').classList.add('active');
+    }
+
+    function enterViewOnly() {
+      document.getElementById('modal-share').classList.remove('active');
+      viewOnlyBoard = _pendingShared;
+      _pendingShared = null;
+      history.replaceState(null, '', location.pathname);
+      showView('home'); renderHome();
+      openBoard('__view_only__');
+    }
+
+    function cloneAndOpen() {
+      document.getElementById('modal-share').classList.remove('active');
+      const shared = _pendingShared;
+      _pendingShared = null;
+      const board = {
+        id: uid(), name: shared.name || '공유된 보드',
+        type: BS[shared.type] ? shared.type : 'chalkboard',
+        elements: JSON.parse(JSON.stringify(shared.elements)),
+        createdAt: Date.now(), lastEdited: Date.now(),
+      };
+      const d = getData(); d.boards.push(board); saveData(d);
+      history.replaceState(null, '', location.pathname);
+      showView('home'); renderHome();
+      openBoard(board.id);
+      showToast('복제했습니다');
+    }
+
+    function cloneSharedBoard() {
+      const shared = viewOnlyBoard;
+      viewOnlyBoard = null;
+      const board = {
+        id: uid(), name: shared.name || '복제된 보드',
+        type: shared.type,
+        elements: JSON.parse(JSON.stringify(shared.elements)),
+        createdAt: Date.now(), lastEdited: Date.now(),
+      };
+      const d = getData(); d.boards.push(board); saveData(d);
+      undoStack = [];
+      document.body.classList.remove('is-view-only');
+      openBoard(board.id);
+      showToast('복제했습니다');
+    }
+
+    /* ── Toast ── */
+    let _toastTimer;
+    function showToast(msg) {
+      const el = document.getElementById('cb-toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+    }
+
+    /* ── Share ── */
+    function buildShareURL(permission) {
+      const board = getBoard();
+      if (!board) return null;
+      const payload = JSON.stringify({ elements: board.elements, type: board.type, name: board.name, permission });
+      const encoded = btoa(encodeURIComponent(payload))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      return `${location.origin}/chalkboard/#share=${encoded}`;
+    }
+
+    let shareMenuOpen = false;
+
+    function toggleShareMenu(e) {
+      e.stopPropagation();
+      if (!getBoard()) return;
+      shareMenuOpen = !shareMenuOpen;
+      const dd = document.getElementById('share-dropdown');
+      if (!shareMenuOpen) { dd.classList.remove('open'); return; }
+      const board = getBoard();
+      const s = board ? BS[board.type] : BS.chalkboard;
+      dd.style.background = s.saveDdBg;
+      dd.style.borderColor = s.ctxBorder;
+      dd.style.boxShadow = s.ctxShadow;
+      dd.querySelectorAll('.save-opt').forEach(b => {
+        b.style.color = s.saveDdColor;
+        b.onmouseenter = () => b.style.background = s.saveDdHover;
+        b.onmouseleave = () => b.style.background = 'transparent';
+      });
+      const btn = document.getElementById('btn-share');
+      const r = btn.getBoundingClientRect();
+      dd.style.left = Math.max(8, r.right - 160) + 'px';
+      dd.style.top = (r.bottom + 4) + 'px';
+      dd.classList.add('open');
+    }
+
+    function closeShareMenu() {
+      shareMenuOpen = false;
+      document.getElementById('share-dropdown').classList.remove('open');
+    }
+
+    async function doShare(permission) {
+      closeShareMenu();
+      const btn = document.getElementById('btn-share');
+      btn.disabled = true;
+      const longURL = buildShareURL(permission);
+      if (!longURL) { btn.disabled = false; return; }
+      try {
+        const res = await fetch('/.netlify/functions/shorten', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: longURL }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.shortURL) throw new Error();
+        await navigator.clipboard.writeText(data.shortURL);
+        showToast('링크가 복사되었습니다 ✓');
+      } catch {
+        try {
+          await navigator.clipboard.writeText(longURL);
+          showToast('링크가 복사되었습니다 (단축 미적용)');
+        } catch { showToast('공유에 실패했습니다.'); }
+      } finally { btn.disabled = false; }
     }
 
     function doSaveTxt() {
@@ -1230,9 +1551,17 @@
 
     /* ── Outside click closes ctx + save menu ── */
     document.addEventListener('click', e => {
+      // Close more dropdown
+      if (moreMenuOpen && !e.target.closest('#more-dropdown') && !e.target.closest('#btn-more')) {
+        closeMoreMenu();
+      }
       // Close save dropdown
       if (saveMenuOpen && !e.target.closest('#save-dropdown') && !e.target.closest('#btn-save')) {
         closeSaveMenu();
+      }
+      // Close share dropdown
+      if (shareMenuOpen && !e.target.closest('#share-dropdown') && !e.target.closest('#btn-share')) {
+        closeShareMenu();
       }
       // Close context menu
       if (document.getElementById('cb-ctx').style.display === 'none') return;
@@ -1254,6 +1583,31 @@
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
         deleteEl(selectedId);
       }
+      if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        undoLast();
+      }
+      if ((e.key === 'c' || e.key === 'C') && (e.ctrlKey || e.metaKey) && selectedId) {
+        e.preventDefault();
+        const board = getBoard();
+        const el = board.elements.find(e2 => e2.id === selectedId);
+        if (el) { clipboard = JSON.parse(JSON.stringify(el)); showToast('복사했습니다'); }
+      }
+      if ((e.key === 'v' || e.key === 'V') && (e.ctrlKey || e.metaKey) && clipboard) {
+        e.preventDefault();
+        const board = getBoard();
+        const el = JSON.parse(JSON.stringify(clipboard));
+        el.id = uid();
+        if (el.type === 'text') { el.x += 20; el.y += 20; }
+        else { el.x1 += 20; el.y1 += 20; el.x2 += 20; el.y2 += 20; }
+        pushHistory();
+        board.elements.push(el);
+        board.lastEdited = Date.now();
+        saveBoard(board);
+        if (el.type === 'text') buildTextEl(el); else buildLineEl(el);
+        selectEl(el.id, el.type);
+        showToast('붙여넣었습니다');
+      }
     });
 
     /* ── Modal keyboard ── */
@@ -1266,8 +1620,38 @@
     });
 
     /* ── Init ── */
-    showView('home');
-    renderHome();
+    (function init() {
+      const hash = location.hash;
+      if (hash.startsWith('#share=')) {
+        const encoded = hash.slice(7);
+        try {
+          const raw = encoded.replace(/-/g, '+').replace(/_/g, '/');
+          const pad = (4 - raw.length % 4) % 4;
+          const payload = decodeURIComponent(atob(raw + '='.repeat(pad)));
+          const shared = JSON.parse(payload);
+          if (shared && shared.elements && shared.type) {
+            const boardData = {
+              name: shared.name || '공유된 보드',
+              type: BS[shared.type] ? shared.type : 'chalkboard',
+              elements: shared.elements,
+            };
+            history.replaceState(null, '', location.pathname);
+            showView('home'); renderHome();
+            if (shared.permission === 'view') {
+              viewOnlyBoard = boardData;
+              openBoard('__view_only__');
+              showToast('보기 전용으로 열립니다');
+            } else {
+              openShareModal(boardData);
+            }
+            return;
+          }
+        } catch {}
+        showToast('공유 링크를 읽을 수 없습니다.');
+      }
+      showView('home');
+      renderHome();
+    })();
   </script>
 </body>
 </html>

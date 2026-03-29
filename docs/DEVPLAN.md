@@ -1,6 +1,6 @@
 # byeduin VIVES — 개발 계획
 
-> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-03-29
+> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-03-30
 
 ---
 
@@ -312,7 +312,7 @@ public/numberblocks/
 
 **보드 관리**
 - 여러 보드 생성·삭제
-- 목록 화면: Flash Deck 스타일 그리드 카드 (배경색 썸네일 + 첫 텍스트 미리보기)
+- 목록 화면: 그리드 카드 — 썸네일은 좌상단 텍스트 (y→x 정렬), 텍스트 없으면 보드 이름
 - 구형 localStorage 데이터 `type` 필드 없을 때 자동 보정
 
 **보드 타입 전환**
@@ -334,7 +334,35 @@ public/numberblocks/
 
 **저장**
 - 드롭다운: TXT (텍스트만) / JPG (Canvas API)
-- 자동저장 펄스 효과
+- 자동저장 펄스 점 — "저장" 텍스트 우측 인라인 배치
+
+**실행취소 (Ctrl+Z)**
+- 최대 50단계 히스토리 스택 (`JSON.parse/stringify` 깊은 복사)
+- 변경 지점: 타입 전환·크기·색상·삭제·텍스트 추가·편집 완료·드래그 완료·선 그리기
+- 취소 시 토스트 "취소했습니다"
+
+**복사·붙여넣기 (Ctrl+C / Ctrl+V)**
+- 선택 요소를 인메모리 클립보드에 복사
+- 붙여넣기 시 +20px(가로) / +20px(세로) 오프셋으로 새 요소 생성
+- 토스트: "복사했습니다" / "붙여넣었습니다"
+
+**공유**
+- 툴바 "공유 ▼" 드롭다운 — 권한 선택: 보기 전용 / 복제 허용
+- 공유 payload: `{ elements, type, name, permission }` → base64url 인코딩 → `#share=` 해시
+- Short.io(`/.netlify/functions/shorten`) 단축 URL → 클립보드 복사, 실패 시 원본 URL 폴백
+
+**보기 전용 모드 (수신 측)**
+- `#share=` 해시 감지 → `history.replaceState`로 즉시 제거
+- `permission === 'view'` → 바로 보기 전용 진입 + 토스트
+- `permission === 'clone'` → "보기 전용 / 복제하기" 선택 모달
+- `viewOnlyBoard` 변수: `getBoard()` 오버라이드, `saveBoard()` no-op
+- 모든 mutation 함수에 `if (viewOnlyBoard) return;` 가드
+- `.is-view-only` CSS: 편집 컨트롤 비활성(opacity 0.3), 보기전용 배지·복제 버튼 표시
+
+**모바일 더보기 메뉴 (≤600px)**
+- 저장·공유 버튼 숨기고 ··· 버튼으로 통합
+- btn-type·btn-add-text·btn-draw: `font-size: 0`으로 텍스트 숨기고 아이콘만 표시
+- 더보기 드롭다운: TXT / JPG / 공유-보기전용 / 공유-복제허용 4개 항목
 
 #### 데이터 구조
 ```json
