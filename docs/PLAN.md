@@ -1,6 +1,6 @@
 # byeduin VIVES — 작업 플랜
 
-> 업데이트: 2026-03-29
+> 업데이트: 2026-03-30
 
 ---
 
@@ -118,9 +118,7 @@
 
 ### Chalkboard
 - 텍스트 정렬 기능 (좌/중/우)
-- 보드 전체 이미지로 내보내기
 - 보드 간 복사/붙여넣기
-- 실행 취소 (Ctrl+Z) 지원
 
 ### 신규 앱 후보 (2026-03-27 제안)
 
@@ -208,6 +206,16 @@
 ### 각 앱 (2026-03-29 추가)
 - [x] 도서 정보 나눔 (book-share): 공유 기능 완성, 폴더·앱명 변경, UI 버튼 개선
 - [x] Moon Phase: 우상단 공유 버튼 추가
+
+### 각 앱 (2026-03-30 추가)
+- [x] Chalkboard: 실행취소 (Ctrl+Z, 최대 50단계)
+- [x] Chalkboard: 복사·붙여넣기 (Ctrl+C/V, +20px 오프셋)
+- [x] Chalkboard: 공유 기능 (base64url + Short.io, 보기전용/복제허용 권한)
+- [x] Chalkboard: 보기 전용 모드 (viewOnlyBoard, .is-view-only CSS, 복제 버튼)
+- [x] Chalkboard: 썸네일 — 좌상단 텍스트(y→x 정렬), 없으면 보드 이름
+- [x] Chalkboard: 저장 버튼 — 자동저장 텍스트 제거, 펄스 점 인라인
+- [x] Chalkboard: 보기전용 배지 높이 36px 통일
+- [x] Chalkboard: 모바일 더보기(···) 메뉴 — 저장·공유 통합 (≤600px)
 
 ### 문서
 - [x] `DEVPLAN.md` → `docs/DEVPLAN.md` 이동 및 최신화
