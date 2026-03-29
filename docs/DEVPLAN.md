@@ -249,11 +249,22 @@ public/numberblocks/
 - 덱 카드: 카드 수 / 마스터 수 / 학습 횟수 / 마지막 학습일 / 진행률 바
 - AI 프롬프트 카드: 덱 그리드 맨 끝 점선 카드 (기본·영단어·역사·수식 4종 모달)
 - 덱 삭제: hover 시 우상단 아이콘, confirm 후 삭제
+- **덱 이름 변경**: 덱 뷰 헤더 연필 버튼 → 인라인 입력, Enter 저장 / Esc 취소 (자동저장 토스트)
 
 **카드 입력**
 - 단건 입력 (앞면/뒷면 필드, Enter 지원)
 - 일괄 입력 (`앞면 :: 뒷면` 형식, 토글 패널)
 - 카드 삭제
+- **카드 순서 변경**: 각 카드 행 ↑ / ↓ 버튼, 첫/마지막 카드는 해당 방향 비활성화
+
+**덱 공유** (vives-share 스킬 패턴)
+- 덱 뷰 헤더 공유 버튼 → 드롭다운: **보기 전용** / **복제 허용** 선택
+- payload: `{ data: { name, cards }, permission: 'view' | 'clone' }` → base64url → Short.io 단축
+- `view` 링크 수신: 모달 없이 바로 보기 전용 진입 (`is-view-only` CSS 클래스)
+- `clone` 링크 수신: "보기 전용 | 복제하기" 선택 모달
+- 보기 전용 중 localStorage 쓰기 완전 차단 (mutation guard × 3 + markCard / showResult 분기)
+- 복제 시 `[사본] 덱이름` → localStorage → 일반 덱으로 열림
+- 우상단 공유 버튼은 현재 페이지 URL 복사 (덱 공유와 별개)
 
 **학습 모드**
 - CSS 3D 플립 (perspective 1200px, 높이 340px)
