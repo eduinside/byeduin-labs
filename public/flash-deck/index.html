@@ -259,6 +259,8 @@
       border-radius: 10px; padding: 10px 12px;
       animation: fadeUp 0.2s ease both;
     }
+    .card-row-actions { display: flex; gap: 4px; align-items: center; }
+    .fd-btn-icon:disabled { opacity: 0.25; cursor: default; pointer-events: none; }
     .card-row-front, .card-row-back {
       font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
@@ -270,7 +272,7 @@
 
     /* 학습 옵션 */
     .study-opts {
-      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 0;
     }
     .study-opt {
       display: flex; align-items: center; gap: 6px;
@@ -444,6 +446,88 @@
       100% { transform: scale(1); opacity: 1; }
     }
     .result-icon { animation: popIn 0.5s cubic-bezier(0.4,0,0.2,1) both; }
+
+    /* ── 토스트 ── */
+    #fd-toast {
+      position: fixed; bottom: 2rem; left: 50%;
+      transform: translateX(-50%) translateY(1rem);
+      background: var(--fg); color: var(--bg);
+      padding: 10px 18px; border-radius: 10px;
+      font-size: 13px; font-weight: 600;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s; z-index: 9999; white-space: nowrap;
+    }
+    #fd-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── 공유 드롭다운 ── */
+    #share-dropdown {
+      position: fixed; display: none; flex-direction: column;
+      gap: 3px; padding: 6px; border-radius: 10px;
+      background: var(--card-bg); border: 1px solid var(--border);
+      z-index: 9500; min-width: 150px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    #share-dropdown.open { display: flex; }
+    .share-opt {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 7px; border: none;
+      background: none; color: var(--fg); font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit; text-align: left;
+      transition: background 0.12s;
+    }
+    .share-opt:hover { background: rgba(0,111,238,0.08); color: var(--primary); }
+
+    /* ── 보기 전용 모드 (is-view-only CSS 클래스) ── */
+    #badge-readonly { display: none; }
+    .is-view-only #badge-readonly { display: inline-flex; }
+    #btn-clone-deck { display: none; }
+    .is-view-only #btn-clone-deck { display: inline-flex; }
+    .is-view-only #card-add-section { display: none; }
+    .is-view-only .card-row .fd-btn-icon { display: none; }
+    .is-view-only #shareBtn { opacity: 0.35; pointer-events: none; }
+    /* 덱 내부 아이콘 버튼 (이름 변경, 덱 공유) */
+    #btn-deck-rename, #btn-deck-share {
+      width: 28px; height: 28px; padding: 0; border-radius: 7px;
+      background: none; border: 1px solid var(--border); color: var(--fg-muted);
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+    }
+    #btn-deck-rename:hover { border-color: var(--primary); color: var(--primary); }
+    #btn-deck-share:hover  { border-color: var(--primary); color: var(--primary); }
+    .is-view-only #btn-deck-rename,
+    .is-view-only #btn-deck-share { display: none; }
+    /* 덱 이름 인라인 편집 입력 */
+    #deck-name-input {
+      flex: 1; min-width: 60px;
+      padding: 3px 8px; font-size: 14px; font-weight: 700;
+      height: 30px; font-family: inherit;
+    }
+
+    /* 보기 전용 배지 */
+    #badge-readonly {
+      align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700;
+      background: rgba(0,111,238,0.1); color: var(--primary);
+      border: 1px solid rgba(0,111,238,0.25); white-space: nowrap; flex-shrink: 0;
+    }
+
+    /* ── 복제 허용 모달 ── */
+    .share-import-info {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
+    }
+    .share-import-deck-name { font-size: 15px; font-weight: 700; color: var(--fg); margin-bottom: 4px; }
+    .share-import-meta { font-size: 12px; color: var(--fg-muted); }
+    .share-import-choices { display: flex; flex-direction: column; gap: 8px; }
+    .share-import-choice {
+      display: flex; flex-direction: column; gap: 3px; padding: 12px 14px;
+      border: 1px solid var(--border); border-radius: 10px; cursor: pointer;
+      background: var(--card-bg); transition: border-color 0.15s, background 0.15s;
+      text-align: left; font-family: inherit;
+    }
+    .share-import-choice:hover { border-color: var(--primary); background: rgba(0,111,238,0.04); }
+    .share-import-choice-title { font-size: 13px; font-weight: 700; color: var(--fg); }
+    .share-import-choice-desc { font-size: 11px; color: var(--fg-muted); line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -469,6 +553,18 @@
       <line x1="12" x2="12" y1="2" y2="15"/>
     </svg>
     <span>공유</span>
+  </button>
+</div>
+
+<!-- 공유 드롭다운 -->
+<div id="share-dropdown">
+  <button class="share-opt" onclick="doShare('view')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    보기 전용
+  </button>
+  <button class="share-opt" onclick="doShare('clone')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    복제 허용
   </button>
 </div>
 
@@ -501,6 +597,16 @@
         목록
       </button>
       <span id="deck-view-title" class="deck-top-title"></span>
+      <input id="deck-name-input" class="fd-input" style="display:none"
+             onblur="saveDeckName()" onkeydown="handleDeckNameKey(event)">
+      <button id="btn-deck-rename" title="이름 변경" onclick="startRenameDeck()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+      <button id="btn-deck-share" title="덱 공유" onclick="toggleShareMenu(event)">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      </button>
+      <span id="badge-readonly">보기 전용</span>
+      <button id="btn-clone-deck" class="fd-btn fd-btn-ghost fd-btn-sm" onclick="cloneAndOpen()">복제하기</button>
       <button id="btn-start-study" class="fd-btn fd-btn-primary fd-btn-sm" onclick="startStudy()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         학습 시작
@@ -508,7 +614,7 @@
     </div>
 
     <!-- 카드 입력 -->
-    <div class="fd-card" style="margin-bottom:12px">
+    <div id="card-add-section" class="fd-card" style="margin-bottom:12px">
       <div class="fd-section-title">카드 추가</div>
 
       <!-- 단건 입력 -->
@@ -734,6 +840,33 @@ ambiguous :: 모호한 (His answer was ambiguous.)</div>
   </div>
 </div>
 
+<!-- 토스트 -->
+<div id="fd-toast"></div>
+
+<!-- 복제 허용 모달 (permission='clone' 링크 열 때) -->
+<div class="fd-modal-overlay" id="share-clone-modal">
+  <div class="fd-modal" style="max-width:420px">
+    <div class="fd-modal-title">공유된 덱</div>
+    <div class="share-import-info">
+      <div id="share-clone-deck-name" class="share-import-deck-name"></div>
+      <div id="share-clone-meta" class="share-import-meta"></div>
+    </div>
+    <div class="share-import-choices">
+      <button class="share-import-choice" onclick="enterViewOnly(_pendingShared)">
+        <span class="share-import-choice-title">👁 보기 전용</span>
+        <span class="share-import-choice-desc">저장하지 않고 학습합니다. 앱을 나가면 사라집니다.</span>
+      </button>
+      <button class="share-import-choice" onclick="cloneAndOpen()">
+        <span class="share-import-choice-title">📋 복제하기</span>
+        <span class="share-import-choice-desc">내 덱 목록에 [사본] 이름으로 저장합니다.</span>
+      </button>
+    </div>
+    <div class="fd-modal-actions">
+      <button class="fd-btn fd-btn-ghost" onclick="closeShareCloneModal()">취소</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════════════════
 //  STORAGE
@@ -748,6 +881,16 @@ function saveData(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 function getData() { return loadData(); }
+
+// ── 공유/보기 전용 상태 (vives-share 스킬 패턴) ──
+let viewOnlyData = null;   // 보기 전용 덱 (메모리 전용, localStorage 저장 안 함)
+let _pendingShared = null; // 복제 허용 모달 대기 중인 데이터
+
+function getActiveDeck() {
+  if (viewOnlyData) return viewOnlyData;
+  const data = getData();
+  return data.decks.find(d => d.id === currentDeckId) || null;
+}
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
@@ -821,7 +964,7 @@ function renderHome() {
   grid.innerHTML = deckCards.join('') + aiCard;
 }
 
-function goHome() { renderHome(); }
+function goHome() { exitViewOnly(); renderHome(); }
 
 function deleteDeck(id) {
   const data = getData();
@@ -887,6 +1030,7 @@ let studyOpt = 'all';
 let shuffleOn = false;
 
 function openDeck(deckId) {
+  exitViewOnly();
   currentDeckId = deckId;
   studyOpt = 'all';
   shuffleOn = false;
@@ -902,8 +1046,7 @@ function openDeckAndStudy(deckId) {
 
 function renderDeckView() {
   showView('deck');
-  const data = getData();
-  const deck = data.decks.find(d => d.id === currentDeckId);
+  const deck = getActiveDeck();
   if (!deck) { goHome(); return; }
 
   document.getElementById('deck-view-title').textContent = deck.name;
@@ -917,17 +1060,27 @@ function renderDeckView() {
     listEl.innerHTML = '<div class="card-list-empty">카드가 없어요. 위에서 추가해 보세요.</div>';
     return;
   }
+  const n = deck.cards.length;
   listEl.innerHTML = deck.cards.map((c, i) => `
     <div class="card-row" style="animation-delay:${i * 0.03}s">
       <div class="card-row-front">${esc(c.front)}</div>
       <div class="card-row-back">${esc(c.back)}</div>
-      <button class="fd-btn-icon" onclick="deleteCard('${c.id}')" title="삭제">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-      </button>
+      <div class="card-row-actions">
+        <button class="fd-btn-icon" onclick="moveCard('${c.id}',-1)" title="위로" ${i === 0 ? 'disabled' : ''}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        </button>
+        <button class="fd-btn-icon" onclick="moveCard('${c.id}',1)" title="아래로" ${i === n - 1 ? 'disabled' : ''}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <button class="fd-btn-icon" onclick="deleteCard('${c.id}')" title="삭제">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
     </div>`).join('');
 }
 
 function addSingleCard() {
+  if (viewOnlyData) return;
   const front = document.getElementById('inp-front').value.trim();
   const back  = document.getElementById('inp-back').value.trim();
   if (!front || !back) return;
@@ -946,6 +1099,7 @@ function handleCardInputKey(e) {
 }
 
 function deleteCard(cardId) {
+  if (viewOnlyData) return;
   const data = getData();
   const deck = data.decks.find(d => d.id === currentDeckId);
   deck.cards = deck.cards.filter(c => c.id !== cardId);
@@ -964,6 +1118,7 @@ function toggleBulk() {
 function clearBulk() { document.getElementById('bulk-input').value = ''; }
 
 function addBulkCards() {
+  if (viewOnlyData) return;
   const raw = document.getElementById('bulk-input').value;
   const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
   const pairs = lines.map(l => {
@@ -1005,8 +1160,7 @@ let studyResults = { pass: 0, fail: 0 };
 let isFlipped = false;
 
 function startStudy() {
-  const data = getData();
-  const deck = data.decks.find(d => d.id === currentDeckId);
+  const deck = getActiveDeck();
   if (!deck || !deck.cards.length) return;
 
   let cards = [...deck.cards];
@@ -1055,14 +1209,16 @@ function flipCard() {
 
 function markCard(pass) {
   if (!isFlipped) return;
-  const data = getData();
-  const deck = data.decks.find(d => d.id === currentDeckId);
-  const card = deck.cards.find(c => c.id === studyQueue[studyIndex].id);
-  if (card) {
-    if (pass) { card.passCount = (card.passCount || 0) + 1; card.mastered = card.passCount >= 2; }
-    else       { card.failCount = (card.failCount || 0) + 1; card.mastered = false; }
-    deck.lastStudied = Date.now();
-    saveData(data); // studyCount는 showResult()에서 세션 완료 시 증가
+  if (!viewOnlyData) {
+    const data = getData();
+    const deck = data.decks.find(d => d.id === currentDeckId);
+    const card = deck.cards.find(c => c.id === studyQueue[studyIndex].id);
+    if (card) {
+      if (pass) { card.passCount = (card.passCount || 0) + 1; card.mastered = card.passCount >= 2; }
+      else       { card.failCount = (card.failCount || 0) + 1; card.mastered = false; }
+      deck.lastStudied = Date.now();
+      saveData(data);
+    }
   }
   if (pass) studyResults.pass++; else studyResults.fail++;
   studyIndex++;
@@ -1118,12 +1274,14 @@ function showResult() {
   // 전체화면이면 해제 후 결과 화면 표시
   exitFullscreen();
 
-  // 학습 세션 완료 횟수 증가
-  const data = getData();
-  const deck = data.decks.find(d => d.id === currentDeckId);
-  if (deck) {
-    deck.studyCount = (deck.studyCount || 0) + 1;
-    saveData(data);
+  // 학습 세션 완료 횟수 증가 (보기 전용 모드에서는 저장 안 함)
+  if (!viewOnlyData) {
+    const data = getData();
+    const deck = data.decks.find(d => d.id === currentDeckId);
+    if (deck) {
+      deck.studyCount = (deck.studyCount || 0) + 1;
+      saveData(data);
+    }
   }
 
   const total = studyQueue.length;
@@ -1168,10 +1326,236 @@ function esc(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── 페이지 링크 공유 (우상단 공유 버튼) ──
+function shareCurrentPage() {
+  if (navigator.share) {
+    navigator.share({ title: 'Flash Deck', url: location.href });
+  } else {
+    navigator.clipboard.writeText(location.href)
+      .then(() => showToast('링크가 복사되었습니다.'))
+      .catch(() => showToast('복사에 실패했습니다.'));
+  }
+}
+
+// ── 덱 이름 변경 ──
+function _setRenameMode(on) {
+  const titleEl    = document.getElementById('deck-view-title');
+  const inputEl    = document.getElementById('deck-name-input');
+  const renameBtn  = document.getElementById('btn-deck-rename');
+  const shareBtn   = document.getElementById('btn-deck-share');
+  const studyBtn   = document.getElementById('btn-start-study');
+  if (on) {
+    titleEl.style.display  = 'none';
+    renameBtn.style.display = 'none';
+    shareBtn.style.display  = 'none';
+    studyBtn.style.display  = 'none';
+    inputEl.style.display   = '';
+  } else {
+    inputEl.style.display   = 'none';
+    titleEl.style.display   = '';
+    renameBtn.style.display = '';
+    shareBtn.style.display  = '';
+    studyBtn.style.display  = '';
+  }
+}
+
+function startRenameDeck() {
+  const inputEl = document.getElementById('deck-name-input');
+  inputEl.value = document.getElementById('deck-view-title').textContent;
+  _setRenameMode(true);
+  showToast('변경하면 자동으로 저장됩니다');
+  inputEl.select();
+  inputEl.focus();
+}
+
+function saveDeckName() {
+  const inputEl = document.getElementById('deck-name-input');
+  const titleEl = document.getElementById('deck-view-title');
+  const newName = inputEl.value.trim();
+  if (newName && newName !== titleEl.textContent) {
+    const data = getData();
+    const deck = data.decks.find(d => d.id === currentDeckId);
+    if (deck) { deck.name = newName; saveData(data); }
+    titleEl.textContent = newName;
+  }
+  _setRenameMode(false);
+}
+
+function handleDeckNameKey(e) {
+  if (e.key === 'Enter')  { e.preventDefault(); saveDeckName(); }
+  if (e.key === 'Escape') { _setRenameMode(false); }
+}
+
+// ── 카드 순서 변경 ──
+function moveCard(cardId, direction) {
+  if (viewOnlyData) return;
+  const data = getData();
+  const deck = data.decks.find(d => d.id === currentDeckId);
+  if (!deck) return;
+  const idx = deck.cards.findIndex(c => c.id === cardId);
+  const newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= deck.cards.length) return;
+  [deck.cards[idx], deck.cards[newIdx]] = [deck.cards[newIdx], deck.cards[idx]];
+  saveData(data);
+  renderDeckView();
+}
+
+// ── 토스트 ──
+let _toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('fd-toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── 공유 인코딩/디코딩 (vives-share Step 2) ──
+function buildShareURL(deck, permission) {
+  const payload = JSON.stringify({
+    data: { name: deck.name, cards: deck.cards.map(c => ({ front: c.front, back: c.back })) },
+    permission,
+  });
+  const encoded = btoa(encodeURIComponent(payload))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  return `${location.origin}/flash-deck/#share=${encoded}`;
+}
+
+function decodeSharePayload(encoded) {
+  try {
+    const raw = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = (4 - raw.length % 4) % 4;
+    const p = JSON.parse(decodeURIComponent(atob(raw + '='.repeat(pad))));
+    if (p && p.data && Array.isArray(p.data.cards)) return p;
+  } catch {}
+  try {
+    const raw = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = (4 - raw.length % 4) % 4;
+    const p = JSON.parse(atob(raw + '='.repeat(pad)));
+    if (p && p.data && Array.isArray(p.data.cards)) return p;
+  } catch {}
+  return null;
+}
+
+// ── 공유 드롭다운 토글 (vives-share Step 4) ──
+let _shareMenuOpen = false;
+function toggleShareMenu(e) {
+  if (currentView !== 'deck') { showToast('덱 뷰에서만 공유할 수 있어요.'); return; }
+  const deck = getActiveDeck();
+  if (!deck || !deck.cards.length) { showToast('카드가 없는 덱은 공유할 수 없어요.'); return; }
+  e.stopPropagation();
+  const dd = document.getElementById('share-dropdown');
+  const rect = e.currentTarget.getBoundingClientRect();
+  dd.style.top = (rect.bottom + 6) + 'px';
+  dd.style.right = (window.innerWidth - rect.right) + 'px';
+  _shareMenuOpen = !_shareMenuOpen;
+  dd.classList.toggle('open', _shareMenuOpen);
+  if (_shareMenuOpen) {
+    setTimeout(() => document.addEventListener('click', _closeShareMenu, { once: true }), 0);
+  }
+}
+function _closeShareMenu() {
+  document.getElementById('share-dropdown').classList.remove('open');
+  _shareMenuOpen = false;
+}
+
+// ── doShare — Short.io 단축 + 클립보드 복사 (vives-share Step 3) ──
+async function doShare(permission) {
+  _closeShareMenu();
+  const deck = getActiveDeck();
+  const longURL = buildShareURL(deck, permission);
+  const btn = document.getElementById('shareBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/.netlify/functions/shorten', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: longURL }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.shortURL) throw new Error();
+    await navigator.clipboard.writeText(data.shortURL);
+    showToast('링크가 복사되었습니다 ✓');
+  } catch {
+    try {
+      await navigator.clipboard.writeText(longURL);
+      showToast('링크가 복사되었습니다 (단축 미적용)');
+    } catch { showToast('공유에 실패했습니다.'); }
+  } finally { btn.disabled = false; }
+}
+
+// ── 보기 전용 진입/종료 (vives-share Step 6) ──
+function enterViewOnly(data) {
+  if (!data) return;
+  viewOnlyData = {
+    id: '__shared__', name: data.name,
+    createdAt: Date.now(), lastStudied: null, studyCount: 0,
+    cards: data.cards.map(c => ({ id: uid(), front: c.front, back: c.back, mastered: false, passCount: 0, failCount: 0 }))
+  };
+  document.body.classList.add('is-view-only');
+  document.getElementById('share-clone-modal').classList.remove('open');
+  _pendingShared = null;
+  currentDeckId = '__shared__';
+  renderDeckView();
+}
+
+function exitViewOnly() {
+  viewOnlyData = null;
+  document.body.classList.remove('is-view-only');
+}
+
+// ── 복제 허용 모달 (vives-share Step 7) ──
+function openShareCloneModal(data) {
+  _pendingShared = data;
+  document.getElementById('share-clone-deck-name').textContent = data.name;
+  document.getElementById('share-clone-meta').textContent = `카드 ${data.cards.length}장`;
+  document.getElementById('share-clone-modal').classList.add('open');
+}
+
+function closeShareCloneModal() {
+  document.getElementById('share-clone-modal').classList.remove('open');
+  _pendingShared = null;
+}
+
+function cloneAndOpen() {
+  const src = _pendingShared || viewOnlyData;
+  if (!src) return;
+  exitViewOnly();
+  _pendingShared = null;
+  document.getElementById('share-clone-modal').classList.remove('open');
+  const data = getData();
+  const copy = {
+    id: uid(), name: `[사본] ${src.name}`,
+    createdAt: Date.now(), lastStudied: null, studyCount: 0,
+    cards: src.cards.map(c => ({ id: uid(), front: c.front, back: c.back, mastered: false, passCount: 0, failCount: 0 }))
+  };
+  data.decks.push(copy); saveData(data);
+  openDeck(copy.id);
+  showToast(`"${copy.name}"이 저장되었습니다.`);
+}
+
 // ══════════════════════════════════════════════════════
-//  INIT
+//  INIT (vives-share Step 5)
 // ══════════════════════════════════════════════════════
-renderHome();
+(function init() {
+  const hash = location.hash;
+  if (hash.startsWith('#share=')) {
+    const payload = decodeSharePayload(hash.slice(7));
+    history.replaceState(null, '', location.pathname);
+    renderHome();
+    if (payload && payload.data && Array.isArray(payload.data.cards) && payload.data.cards.length > 0) {
+      if (payload.permission === 'view') {
+        enterViewOnly(payload.data);
+        showToast('보기 전용으로 열립니다');
+      } else {
+        openShareCloneModal(payload.data);
+      }
+      return;
+    }
+    showToast('공유 링크를 읽을 수 없습니다.');
+    return;
+  }
+  renderHome();
+})();
 </script>
 </body>
 </html>
