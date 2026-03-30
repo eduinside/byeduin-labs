@@ -726,7 +726,7 @@
         switchTab('scan');
         // 붚여넣기로 추가된 항목을 멀티스캔 목록에 추가
         if (!multiScans.some(item => item.url === text)) {
-          multiScans.push({ url: text, desc: '', scannedAt: new Date().toISOString() });
+          multiScans.push({ url: text, desc: '', tool: 'clipboard', scannedAt: new Date().toISOString() });
           addToHistory(text, 'clipboard');
           renderMultiList();
           document.getElementById('scanResultText').textContent = text;
@@ -780,7 +780,7 @@
       if (multiScans.some(item => item.url === code)) return;
 
       // 목록에 추가
-      multiScans.push({ url: code, desc: '', scannedAt: new Date().toISOString() });
+      multiScans.push({ url: code, desc: '', tool, scannedAt: new Date().toISOString() });
       addedCount++;
       lastAddedCode = code;
 
@@ -887,12 +887,21 @@
     listArea.style.display = 'block';
     document.getElementById('multiListCount').textContent = multiScans.length + '개 항목';
     ul.innerHTML = '';
+
+    const toolIcons = {
+      'camera': '📷',
+      'file': '📁',
+      'clipboard': '📋',
+      'generate': '✏️'
+    };
+
     multiScans.forEach((item, idx) => {
       const display = item.url.length > 44 ? item.url.slice(0, 44) + '...' : item.url;
+      const icon = toolIcons[item.tool] || '📷';
       const li = document.createElement('li');
       li.className = 'history-item';
       li.innerHTML = `
-        <div class="history-icon">📷</div>
+        <div class="history-icon">${icon}</div>
         <div class="history-text">
           <div class="main">${display}</div>
         </div>
