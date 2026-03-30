@@ -727,12 +727,14 @@
 
     /* ── 페이지 공유 ── */
     function shareCurrentPage() {
+      const url = location.href;
+      const copy = () => navigator.clipboard.writeText(url)
+        .then(() => showToast('링크가 복사되었습니다.'))
+        .catch(() => showToast('복사에 실패했습니다.'));
       if (navigator.share) {
-        navigator.share({ title: '도서 정보 나눔', url: location.href });
+        navigator.share({ title: '도서 정보 나눔', url }).catch(copy);
       } else {
-        navigator.clipboard.writeText(location.href)
-          .then(() => showToast('링크가 복사되었습니다.'))
-          .catch(() => showToast('복사에 실패했습니다.'));
+        copy();
       }
     }
   </script>

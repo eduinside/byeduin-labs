@@ -103,10 +103,63 @@
 
 ---
 
+### MD Editor (`/md-editor/`)
+
+#### 개요
+| 항목 | 내용 |
+|---|---|
+| 앱 이름 | **MD Editor** |
+| 배지 | `◆ Utility` |
+| 경로 | `/md-editor/` |
+| CDN | marked.js (cdn.jsdelivr.net) |
+| localStorage | 없음 (세션 전용) |
+
+#### 주요 기능
+- 마크다운 텍스트 편집 (JetBrains Mono 에디터)
+- 실시간 HTML 미리보기 (marked.js, GFM + breaks)
+- 로컬 `.md` 파일 불러오기 (FileReader API)
+- `.md` 파일 다운로드 (Blob)
+- **도움말 모달**: 앱 설명 우측 버튼 → 마크다운 빠른 참조 (헤더/굵기/코드/목록/표 등)
+- **공유** (vives-share 패턴): payload `{ data: { content, filename }, permission }` → base64url → Short.io 단축
+  - payload > 8KB면 단축 URL 생략 + 경고 토스트
+  - `view`: 보기 전용 진입 (textarea readonly, `.is-view-only`)
+  - `clone`: "보기 전용 / 내 편집기로 가져오기" 선택 모달
+
+#### 레이아웃
+- **데스크톱** (≥768px): CSS Grid `1fr 1fr` — 좌 편집 / 우 미리보기
+- **모바일** (<768px): 탭 전환 (편집 / 미리보기)
+
+---
+
 ### QR Master (`/qr/`)
-- 생성하기 / 스캔하기 2탭, `.qr-card` 래퍼
+- 생성하기 / 스캔하기 2탭 → **생성하기 / 스캔하기 / 멀티 스캔** 3탭으로 확장
 - 스캔 히스토리 로컬스토리지 저장
 - 두 탭 패널 고정 높이 통일 완료
+
+#### 추가 기능
+**PWA (오프라인 캐시)**
+- `manifest.json` + `sw.js` (서비스워커, cache-first 전략)
+- 첫 로드 후 오프라인/재방문 시 캐시에서 즉시 로드
+
+**생성하기 탭 — Short.io 단축 URL**
+- QR 생성 결과 아래 "🔗 단축 URL 생성" 버튼
+- 입력 URL을 `/.netlify/functions/shorten`으로 단축 후 클립보드 복사
+- URL이 아닌 텍스트면 버튼 비표시
+
+**멀티 스캔 탭**
+- 카메라로 QR 코드를 연속 스캔 (기존 html5-qrcode 재사용, 별도 인스턴스 `#reader-multi`)
+- 각 스캔 후: URL 확인 + 설명 입력 → "다음 스캔" or "완료"
+- 누적 목록 표시 (URL + 설명, 개별 삭제 가능)
+- "📄 MD 저장" — 아래 형식으로 `.md` 파일 다운로드:
+  ```markdown
+  # QR 스캔 결과
+  > YYYY-MM-DD · N개 항목
+
+  ## 1. [URL 앞 40자...]
+  - 링크: https://...
+  - 설명: 사용자 입력
+  ```
+- 탭 전환 시 각 카메라 자동 정지 (충돌 방지)
 
 ---
 

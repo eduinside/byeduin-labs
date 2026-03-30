@@ -1328,12 +1328,14 @@ function esc(str) {
 
 // ── 페이지 링크 공유 (우상단 공유 버튼) ──
 function shareCurrentPage() {
+  const url = location.href;
+  const copy = () => navigator.clipboard.writeText(url)
+    .then(() => showToast('링크가 복사되었습니다.'))
+    .catch(() => showToast('복사에 실패했습니다.'));
   if (navigator.share) {
-    navigator.share({ title: 'Flash Deck', url: location.href });
+    navigator.share({ title: 'Flash Deck', url }).catch(copy);
   } else {
-    navigator.clipboard.writeText(location.href)
-      .then(() => showToast('링크가 복사되었습니다.'))
-      .catch(() => showToast('복사에 실패했습니다.'));
+    copy();
   }
 }
 
