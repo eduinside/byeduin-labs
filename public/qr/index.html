@@ -710,7 +710,7 @@
   function handlePasteEvent(e) {
     e.preventDefault();
 
-    // 이미지 처리
+    // 이미지 처리 (모든 탭에서 이미지는 스캔하기로)
     for (const item of e.clipboardData.items) {
       if (item.type.startsWith('image/')) {
         scanImageFile(new File([item.getAsFile()], 'paste.png', { type: item.type }), 'clipboard');
@@ -718,13 +718,20 @@
       }
     }
 
-    // 텍스트 링크 붙여넣기 처리
+    // 텍스트 처리
     const text = e.clipboardData.getData('text/plain').trim();
-    if (text && text.length > 0) {
+    if (!text || text.length === 0) return;
+
+    // 현재 활성 탭 확인
+    const isGenerateTabActive = document.getElementById('tabBtnGenerate').classList.contains('active');
+
+    if (isGenerateTabActive) {
+      // 생성하기 탭: 텍스트를 입력 필드에 추가
+      document.getElementById('urlInput').value = text;
+    } else {
+      // 스캔하기 탭: URL이면 멀티스캔 목록에 추가
       try {
         new URL(text);
-        switchTab('scan');
-        // 붚여넣기로 추가된 항목을 멀티스캔 목록에 추가
         if (!multiScans.some(item => item.url === text)) {
           multiScans.push({ url: text, desc: '', tool: 'clipboard', scannedAt: new Date().toISOString() });
           addToHistory(text, 'clipboard');
