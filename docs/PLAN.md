@@ -6,6 +6,19 @@
 
 ## 진행 중인 작업
 
+### 10. YT Thumbnail 플레이리스트 기능 추가 — 2026-03-30
+- [x] Netlify Function `yt-playlist.js` — YouTube Data API v3 프록시
+- [x] Netlify Function `yt-thumb-img.js` — 썸네일 이미지 프록시 (CORS 우회)
+- [x] 탭 UI 추가: "단일 영상" | "플레이리스트"
+- [x] 플레이리스트 폼: URL 입력 → 불러오기 / 초기화 버튼
+- [x] 영상 목록 렌더링: 미리보기 + 제목 + 설명
+- [x] MD 편집기 연동: URL 해시로 md-editor 전송
+- [x] ZIP 다운로드: JSZip + 썸네일 이미지 + playlist.md
+- [x] 페이지네이션: 50개 초과 플레이리스트 자동 처리
+- [x] `.env` 설정: `YOUTUBE_API_KEY` (Netlify 환경변수)
+- [x] 앱 설명 업데이트: "유튜브 썸네일 추출 및 플레이리스트 아카이빙 도구"
+- [x] 박스 높이 정렬: `min-height: 380px` 적용
+
 ### 9. 도서 정보 나눔 앱 개선 — 2026-03-29
 - [x] 폴더명 `book-finder` → `book-share`, 앱명 `도서 정보 정리` → `도서 정보 나눔`
 - [x] app-desc에 링크 공유 기능 소개 문구 추가

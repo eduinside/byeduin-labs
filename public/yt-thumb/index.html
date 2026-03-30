@@ -6,6 +6,7 @@
   <title>YT Thumbnail — byeduin</title>
   <link rel="stylesheet" href="/common/hero-theme.css">
   <script src="/common/theme.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
 
@@ -31,7 +32,7 @@
 
     .wrap {
       width: 100%;
-      max-width: 480px;
+      max-width: 520px;
       position: relative;
       z-index: 1;
     }
@@ -41,28 +42,51 @@
       border: 1px solid var(--border);
       border-radius: 1.25rem;
       padding: 1.75rem;
+      min-height: 380px;
     }
+
+    /* ── 탭 ── */
+    .tab-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.375rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 0.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--fg-muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .tab-btn.active {
+      background: var(--card-bg);
+      color: var(--fg);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
 
     .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; margin-top: 0.75rem; }
 
-    /* 결과 영역 */
-    #result {
-      margin-top: 1.25rem;
-      display: none;
-    }
+    /* ── 결과 영역 (단일) ── */
+    #result { margin-top: 1.25rem; display: none; }
 
-    .thumb-item {
-      margin-bottom: 1rem;
-    }
+    .thumb-item { margin-bottom: 1rem; }
+    .thumb-label { font-size: 0.75rem; font-weight: 600; color: var(--fg-muted); margin-bottom: 0.375rem; }
 
-    .thumb-label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--fg-muted);
-      margin-bottom: 0.375rem;
-    }
-
-    /* 썸네일 미리보기 */
     .thumb-preview {
       width: 100%;
       border-radius: 0.625rem;
@@ -76,12 +100,7 @@
       justify-content: center;
     }
 
-    .thumb-preview img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
+    .thumb-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
     .thumb-url-row {
       display: flex;
@@ -105,24 +124,16 @@
     .thumb-url:hover { text-decoration: underline; }
 
     .btn-copy {
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--fg-muted);
-      padding: 4px;
-      border-radius: 0.375rem;
-      transition: color 0.15s, background 0.15s;
-      flex-shrink: 0;
-      min-width: 28px;
-      min-height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      background: none; border: none; cursor: pointer;
+      color: var(--fg-muted); padding: 4px; border-radius: 0.375rem;
+      transition: color 0.15s, background 0.15s; flex-shrink: 0;
+      min-width: 28px; min-height: 28px;
+      display: flex; align-items: center; justify-content: center;
     }
 
     .btn-copy:hover { color: var(--primary); background: var(--border); }
 
-    /* 에러 */
+    /* ── 에러 ── */
     .error-box {
       background: rgba(243,18,96,0.08);
       border: 1px solid rgba(243,18,96,0.3);
@@ -132,7 +143,7 @@
       color: var(--danger);
     }
 
-    /* 히스토리 */
+    /* ── 히스토리 ── */
     .history-section {
       margin-top: 1.25rem;
       padding-top: 1.25rem;
@@ -174,16 +185,13 @@
     .history-item:hover { border-color: var(--primary); }
 
     .history-thumb {
-      width: 64px;
-      height: 40px;
-      object-fit: cover;
-      border-radius: 0.375rem;
-      flex-shrink: 0;
-      background: #000;
+      width: 64px; height: 40px;
+      object-fit: cover; border-radius: 0.375rem;
+      flex-shrink: 0; background: #000;
     }
 
     .history-info { flex: 1; min-width: 0; }
-    .history-vid  { font-size: 0.78rem; font-family: monospace; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-vid { font-size: 0.78rem; font-family: monospace; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .history-links { display: flex; gap: 0.625rem; margin-top: 2px; }
     .history-links a { font-size: 0.7rem; color: var(--fg-muted); text-decoration: none; }
     .history-links a:hover { color: var(--primary); text-decoration: underline; }
@@ -191,10 +199,158 @@
     .btn-del-h {
       background: none; border: none; color: var(--fg-muted);
       cursor: pointer; padding: 4px; font-size: 0.875rem;
-      min-width: 24px; min-height: 24px; display: flex;
-      align-items: center; justify-content: center; flex-shrink: 0;
+      min-width: 24px; min-height: 24px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
     .btn-del-h:hover { color: var(--danger); }
+
+    /* ── 플레이리스트 탭 ── */
+    .pl-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--fg-muted);
+      margin-bottom: 0.375rem;
+      display: block;
+    }
+
+    #plResult { margin-top: 1.25rem; }
+
+    .pl-header {
+      margin-bottom: 1rem;
+    }
+
+    .pl-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+      word-break: break-word;
+    }
+
+    .pl-meta {
+      font-size: 0.78rem;
+      color: var(--fg-muted);
+    }
+
+    .pl-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .pl-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.625rem;
+      max-height: 420px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .pl-item {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 0.625rem 0.75rem;
+    }
+
+    .pl-num {
+      font-size: 0.7rem;
+      font-family: monospace;
+      font-weight: 700;
+      color: var(--fg-muted);
+      flex-shrink: 0;
+      min-width: 24px;
+      padding-top: 2px;
+    }
+
+    .pl-thumb {
+      width: 96px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 0.375rem;
+      flex-shrink: 0;
+      background: #000;
+    }
+
+    .pl-info { flex: 1; min-width: 0; }
+
+    .pl-vtitle {
+      font-size: 0.82rem;
+      font-weight: 600;
+      line-height: 1.3;
+      margin-bottom: 0.25rem;
+      word-break: break-word;
+    }
+
+    .pl-vdesc {
+      font-size: 0.72rem;
+      color: var(--fg-muted);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .pl-vlink {
+      font-size: 0.7rem;
+      color: var(--primary);
+      text-decoration: none;
+      margin-top: 0.25rem;
+      display: inline-block;
+    }
+
+    .pl-vlink:hover { text-decoration: underline; }
+
+    /* 로딩 */
+    .loading-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 2rem 1rem;
+      color: var(--fg-muted);
+      font-size: 0.85rem;
+    }
+
+    .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 프로그레스 */
+    .progress-wrap {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.625rem;
+      padding: 0.75rem 1rem;
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    .progress-bar-bg {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
   </style>
 </head>
 <body>
@@ -203,33 +359,55 @@
   <div class="app-header">
     <div class="app-badge">◆ Creative</div>
     <h1 class="app-title">YT <span>Thumbnail</span></h1>
-    <p class="app-desc">유튜브 URL을 입력하면 썸네일을 미리보기하고 링크를 복사할 수 있습니다.</p>
+    <p class="app-desc">유튜브 썸네일 추출 및 플레이리스트 아카이빙 도구</p>
   </div>
 
   <div class="app-card">
 
-    <label style="display:block;font-size:0.78rem;font-weight:600;color:var(--fg-muted);margin-bottom:0.375rem;">
-      유튜브 URL
-    </label>
-    <input type="url" id="youtubeUrl" class="hero-input"
-           placeholder="https://www.youtube.com/watch?v=..."
-           onkeyup="if(event.key==='Enter')extractThumbnail()">
-
-    <div class="btn-row">
-      <button onclick="extractThumbnail()" class="hero-btn">추출하기</button>
-      <button onclick="toggleHistory()" class="hero-btn hero-btn-ghost">히스토리</button>
+    <!-- 탭 -->
+    <div class="tab-row">
+      <button class="tab-btn active" id="tab-single" onclick="switchTab('single')">단일 영상</button>
+      <button class="tab-btn" id="tab-playlist" onclick="switchTab('playlist')">플레이리스트</button>
     </div>
 
-    <!-- 결과 -->
-    <div id="result"></div>
+    <!-- 단일 영상 탭 -->
+    <div class="tab-pane active" id="pane-single">
+      <label style="display:block;font-size:0.78rem;font-weight:600;color:var(--fg-muted);margin-bottom:0.375rem;">
+        유튜브 URL
+      </label>
+      <input type="url" id="youtubeUrl" class="hero-input"
+             placeholder="https://www.youtube.com/watch?v=..."
+             onkeyup="if(event.key==='Enter')extractThumbnail()">
 
-    <!-- 히스토리 -->
-    <div class="history-section" id="historySection">
-      <div class="history-header">
-        <span>검색 히스토리</span>
-        <button class="btn-clear-h" onclick="clearHistory()">전체 삭제</button>
+      <div class="btn-row">
+        <button onclick="extractThumbnail()" class="hero-btn">추출하기</button>
+        <button onclick="toggleHistory()" class="hero-btn hero-btn-ghost">히스토리</button>
       </div>
-      <div class="history-list" id="historyList"></div>
+
+      <div id="result"></div>
+
+      <div class="history-section" id="historySection">
+        <div class="history-header">
+          <span>검색 히스토리</span>
+          <button class="btn-clear-h" onclick="clearHistory()">전체 삭제</button>
+        </div>
+        <div class="history-list" id="historyList"></div>
+      </div>
+    </div>
+
+    <!-- 플레이리스트 탭 -->
+    <div class="tab-pane" id="pane-playlist">
+      <label class="pl-label">플레이리스트 URL</label>
+      <input type="url" id="plUrl" class="hero-input"
+             placeholder="https://www.youtube.com/playlist?list=PL..."
+             onkeyup="if(event.key==='Enter')fetchPlaylist()">
+
+      <div class="btn-row">
+        <button onclick="fetchPlaylist()" class="hero-btn" id="plFetchBtn">불러오기</button>
+        <button onclick="clearPlaylist()" class="hero-btn hero-btn-ghost">초기화</button>
+      </div>
+
+      <div id="plResult"></div>
     </div>
 
   </div>
@@ -259,6 +437,15 @@
 </div>
 
 <script>
+  /* ───────────────────────────── 탭 ───────────────────────────── */
+  function switchTab(tab) {
+    document.getElementById('pane-single').classList.toggle('active', tab === 'single');
+    document.getElementById('pane-playlist').classList.toggle('active', tab === 'playlist');
+    document.getElementById('tab-single').classList.toggle('active', tab === 'single');
+    document.getElementById('tab-playlist').classList.toggle('active', tab === 'playlist');
+  }
+
+  /* ───────────────────────── 단일 영상 ───────────────────────── */
   const HISTORY_KEY = 'youtube_thumbnail_history_v2';
   const YT_REGEX = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?|shorts|live)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
 
@@ -270,9 +457,7 @@
     if (match && match[1]) {
       saveToHistory(match[1]);
       displayResult(match[1]);
-      if (!document.getElementById('historySection').style.display || document.getElementById('historySection').style.display !== 'none') {
-        renderHistory();
-      }
+      if (document.getElementById('historySection').style.display === 'block') renderHistory();
     } else {
       showError('유효하지 않은 유튜브 URL입니다.');
     }
@@ -349,7 +534,10 @@
   function renderHistory() {
     const list = document.getElementById('historyList');
     const h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-    if (!h.length) { list.innerHTML = '<p style="text-align:center;color:var(--fg-muted);font-size:0.8rem;padding:1rem">기록이 없습니다.</p>'; return; }
+    if (!h.length) {
+      list.innerHTML = '<p style="text-align:center;color:var(--fg-muted);font-size:0.8rem;padding:1rem">기록이 없습니다.</p>';
+      return;
+    }
     list.innerHTML = h.map(id => `
       <div class="history-item" onclick="applyFromHistory('${id}')">
         <img class="history-thumb" src="https://img.youtube.com/vi/${id}/mqdefault.jpg" alt="">
@@ -381,6 +569,222 @@
       localStorage.removeItem(HISTORY_KEY);
       renderHistory();
     }
+  }
+
+  /* ───────────────────────── 플레이리스트 ───────────────────────── */
+  const PL_REGEX = /[?&]list=([A-Za-z0-9_-]+)/;
+
+  let plItems = [];       // 전체 영상 목록
+  let plTitle = '';       // 플레이리스트 제목
+  let plUrl = '';         // 원본 URL
+
+  async function fetchPlaylist() {
+    const url = document.getElementById('plUrl').value.trim();
+    if (!url) { showPlError('URL을 입력해주세요.'); return; }
+
+    const match = url.match(PL_REGEX);
+    if (!match) { showPlError('유효하지 않은 플레이리스트 URL입니다.'); return; }
+
+    const playlistId = match[1];
+    plUrl = url;
+    plItems = [];
+    plTitle = '';
+
+    document.getElementById('plFetchBtn').disabled = true;
+    showPlLoading('플레이리스트 불러오는 중…');
+
+    try {
+      let pageToken = null;
+      let isFirst = true;
+      let totalFetched = 0;
+
+      do {
+        const body = { playlistId };
+        if (pageToken) body.pageToken = pageToken;
+
+        const res = await fetch('/.netlify/functions/yt-playlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showPlError(data.error ?? '불러오기 실패');
+          return;
+        }
+
+        if (isFirst && data.playlistTitle) plTitle = data.playlistTitle;
+        plItems = plItems.concat(data.items ?? []);
+        totalFetched = plItems.length;
+        pageToken = data.nextPageToken;
+        isFirst = false;
+
+        if (pageToken) {
+          showPlLoading(`불러오는 중… (${totalFetched}개 완료)`);
+        }
+      } while (pageToken);
+
+      renderPlaylist();
+    } catch {
+      showPlError('네트워크 오류가 발생했습니다.');
+    } finally {
+      document.getElementById('plFetchBtn').disabled = false;
+    }
+  }
+
+  function renderPlaylist() {
+    if (!plItems.length) {
+      showPlError('영상이 없는 플레이리스트입니다.');
+      return;
+    }
+
+    const container = document.getElementById('plResult');
+    container.innerHTML = `
+      <div class="pl-header">
+        <div class="pl-title">${escHtml(plTitle)}</div>
+        <div class="pl-meta">총 ${plItems.length}개 영상</div>
+      </div>
+      <div class="pl-actions">
+        <button class="hero-btn" onclick="openInMdEditor()">MD 편집기로 열기</button>
+        <button class="hero-btn hero-btn-ghost" id="zipBtn" onclick="downloadZip()">ZIP 다운로드</button>
+      </div>
+      <div class="pl-list">
+        ${plItems.map((item, i) => `
+          <div class="pl-item">
+            <div class="pl-num">${String(i + 1).padStart(2, '0')}</div>
+            <img class="pl-thumb"
+                 src="/.netlify/functions/yt-thumb-img?id=${item.videoId}&q=mq"
+                 onerror="this.src='https://img.youtube.com/vi/${item.videoId}/mqdefault.jpg'"
+                 alt="">
+            <div class="pl-info">
+              <div class="pl-vtitle">${escHtml(item.title)}</div>
+              ${item.description ? `<div class="pl-vdesc">${escHtml(item.description)}</div>` : ''}
+              <a class="pl-vlink" href="https://youtu.be/${item.videoId}" target="_blank" rel="noopener">youtu.be/${item.videoId}</a>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function openInMdEditor() {
+    const md = buildMarkdown();
+    const payload = JSON.stringify({
+      data: { content: md, filename: `${plTitle || 'playlist'}.md` },
+      permission: 'clone',
+    });
+    const encoded = btoa(encodeURIComponent(payload))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    window.open(`/md-editor/#share=${encoded}`, '_blank');
+  }
+
+  async function downloadZip() {
+    const btn = document.getElementById('zipBtn');
+    btn.disabled = true;
+
+    const zip = new JSZip();
+    const folder = zip.folder(sanitizeFilename(plTitle || 'playlist'));
+
+    // MD 파일 포함
+    folder.file('playlist.md', buildMarkdown());
+
+    // 썸네일 이미지 다운로드
+    const progress = document.createElement('div');
+    progress.className = 'progress-wrap';
+    progress.innerHTML = `
+      <div id="zipProgressText">썸네일 다운로드 중 (0 / ${plItems.length})</div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="zipProgressBar" style="width:0%"></div>
+      </div>
+    `;
+    document.getElementById('plResult').appendChild(progress);
+
+    let done = 0;
+    await Promise.all(plItems.map(async (item, i) => {
+      try {
+        const res = await fetch(
+          `/.netlify/functions/yt-thumb-img?id=${item.videoId}&q=hq`
+        );
+        if (res.ok) {
+          const blob = await res.blob();
+          const num = String(i + 1).padStart(2, '0');
+          folder.file(`${num}_${item.videoId}.jpg`, blob);
+        }
+      } catch { /* 개별 실패는 무시 */ }
+      done++;
+      const pct = Math.round((done / plItems.length) * 100);
+      const el = document.getElementById('zipProgressText');
+      const bar = document.getElementById('zipProgressBar');
+      if (el) el.textContent = `썸네일 다운로드 중 (${done} / ${plItems.length})`;
+      if (bar) bar.style.width = `${pct}%`;
+    }));
+
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${sanitizeFilename(plTitle || 'playlist')}.zip`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+
+    progress.remove();
+    btn.disabled = false;
+  }
+
+  function buildMarkdown() {
+    const lines = [
+      `# ${plTitle || '플레이리스트'}`,
+      `> 총 ${plItems.length}개 영상 | [플레이리스트 열기](${plUrl})`,
+      '',
+      '---',
+      '',
+    ];
+
+    plItems.forEach((item, i) => {
+      lines.push(`## ${i + 1}. ${item.title}`);
+      lines.push('');
+      lines.push(`[![thumbnail](https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg)](https://youtu.be/${item.videoId})`);
+      lines.push('');
+      if (item.description && item.description.trim()) {
+        lines.push(item.description.trim());
+        lines.push('');
+      }
+      lines.push('---');
+      lines.push('');
+    });
+
+    return lines.join('\n');
+  }
+
+  function clearPlaylist() {
+    plItems = [];
+    plTitle = '';
+    plUrl = '';
+    document.getElementById('plUrl').value = '';
+    document.getElementById('plResult').innerHTML = '';
+  }
+
+  function showPlLoading(msg) {
+    document.getElementById('plResult').innerHTML = `
+      <div class="loading-box">
+        <div class="spinner"></div>
+        <span>${msg}</span>
+      </div>
+    `;
+  }
+
+  function showPlError(msg) {
+    document.getElementById('plResult').innerHTML = `<div class="error-box">${escHtml(msg)}</div>`;
+  }
+
+  /* ───────────────────────── 유틸 ───────────────────────── */
+  function escHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function sanitizeFilename(name) {
+    return name.replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 60) || 'playlist';
   }
 </script>
 </body>
