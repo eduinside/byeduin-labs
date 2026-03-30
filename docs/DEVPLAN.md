@@ -169,7 +169,74 @@
 ---
 
 ### YT Thumbnail (`/yt-thumb/`)
-- 유튜브 URL → 썸네일 추출
+
+#### 개요
+| 항목 | 내용 |
+|---|---|
+| 앱 이름 | **YT Thumbnail** |
+| 배지 | `◆ Creative` |
+| 경로 | `/yt-thumb/` |
+| 설명 | 유튜브 썸네일 추출 및 플레이리스트 아카이빙 도구 |
+| API | YouTube Data API v3 |
+
+#### 기능
+
+**탭 1: 단일 영상**
+- 유튜브 URL 입력 → 정규식 추출 (`videoId`)
+- 썸네일 2종 표시: maxresdefault (1080p) + hqdefault (720p, 필수)
+- URL 복사 버튼 (피드백: 체크마크 표시)
+- 검색 히스토리: localStorage에 최근 30개 저장
+
+**탭 2: 플레이리스트** (신규)
+- 플레이리스트 URL 입력 → `list=PLxxxxx` 추출
+- [불러오기] 버튼 → Netlify Function 호출
+  - 페이지네이션 자동 처리 (50개/페이지)
+  - 플레이리스트 제목 + 총 영상 수 표시
+- 영상 목록: 순번·썸네일·제목·설명 일부·링크
+- 두 액션 버튼:
+  1. **[MD 편집기로 열기]** → md-editor에 URL 해시로 전송
+     - 형식: 마크다운 (제목·링크·설명·썸네일 이미지 참조)
+  2. **[ZIP 다운로드]** → JSZip 생성
+     - 내용: 썸네일 이미지 + `playlist.md` 파일
+     - 파일명 형식: `playlist-{title}.zip`
+
+#### Netlify Function 1: `yt-playlist.js`
+```
+POST /.netlify/functions/yt-playlist
+Body: { playlistId, pageToken? }
+
+1. process.env.YOUTUBE_API_KEY 읽기
+2. playlists.list → 플레이리스트 제목
+3. playlistItems.list (50개/페이지) → 영상 정보
+4. Response: { playlistTitle, items[], nextPageToken }
+```
+
+#### Netlify Function 2: `yt-thumb-img.js`
+```
+GET /.netlify/functions/yt-thumb-img?id={videoId}&q={quality}
+
+1. videoId 검증 (11자리 정규식)
+2. quality 검증 (maxres|hq|mq|sd)
+3. img.youtube.com 이미지 fetch → 반환 (image/jpeg, Cache-Control)
+4. CORS 우회용 서버 프록시
+```
+
+#### md-editor 연동
+```javascript
+const encoded = btoa(encodeURIComponent(JSON.stringify({
+  data: { content: mdContent, filename: '플레이리스트명.md' },
+  permission: 'clone'
+}))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+window.open(`/md-editor/#share=${encoded}`, '_blank');
+```
+
+#### 환경변수
+| 키 | 위치 | 용도 |
+|---|---|---|
+| `YOUTUBE_API_KEY` | Netlify 환경변수 + `.env` (로컬) | YouTube Data API v3 |
+
+#### localStorage 키
+- `youtube_thumbnail_history_v2` — 최근 검색 동영상 ID 배열
 
 ---
 
