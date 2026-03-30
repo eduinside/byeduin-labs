@@ -20,13 +20,18 @@
 | 앱 | 경로 | 설명 |
 |---|---|---|
 | **Grid Maker** | `/grid-maker/` | 이미지를 N×M 그리드로 분할. 드래그 업로드 지원. |
-| **YT Thumbnail** | `/yt-thumb/` | 유튜브 URL로 썸네일 이미지 추출. |
+| **YT Thumbnail** | `/yt-thumb/` | 유튜브 단일 영상 썸네일 추출 및 플레이리스트 아카이빙. |
 
 ### 노션 도구
 | 앱 | 경로 | 설명 |
 |---|---|---|
 | **Notion Image DL** | `/notion-image-downloader/` | Notion DB의 이미지를 일괄 다운로드. |
 | **Notion Styler** | `/notion-styler/` | LaTeX 수식에 색상·폰트·크기 스타일을 적용하고 HTML 코드를 생성. |
+
+### 유틸리티 (고급)
+| 앱 | 경로 | 설명 |
+|---|---|---|
+| **MD Editor** | `/md-editor/` | 마크다운 편집·실시간 미리보기·파일 저장·링크 공유. |
 
 ### 교육
 | 앱 | 경로 | 설명 |
