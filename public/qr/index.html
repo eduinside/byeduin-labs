@@ -195,6 +195,24 @@
       font-weight: 700;
       color: var(--success);
       margin-bottom: 0.5rem;
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn-close-scan {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 0;
+      color: var(--fg-muted);
+      transition: color 0.2s;
+    }
+
+    .btn-close-scan:hover {
+      color: var(--fg);
     }
 
     #scanResultText {
@@ -397,8 +415,8 @@
 
       <div id="scanResultArea">
         <div class="scan-result-header">
-          ✓ 스캔 성공!
-          <button class="btn-close-scan" onclick="closeScanResult()" style="position:absolute;right:0;top:0;background:none;border:none;font-size:1.5rem;cursor:pointer;padding:0 0.5rem;">✕</button>
+          <span>✓ 스캔 성공!</span>
+          <button class="btn-close-scan" onclick="closeScanResult()">✕</button>
         </div>
         <div id="scanResultText"></div>
         <div class="scan-actions">
@@ -772,11 +790,12 @@
   function onScanSuccess(results, tool = 'camera') {
     if (!results || results.length === 0) return;
 
-    // 중복 감지 방지 (같은 프레임에서의 중복)
+    // 같은 결과 내에서의 중복 제거
+    const seenInFrame = new Set();
     const uniqueResults = results.filter(r => {
       const key = r.rawData;
-      if (lastScannedCodes.has(key)) return false;
-      lastScannedCodes.add(key);
+      if (seenInFrame.has(key)) return false;
+      seenInFrame.add(key);
       return true;
     });
 
@@ -785,11 +804,15 @@
     // 모든 감지된 QR을 자동으로 목록에 추가
     let addedCount = 0;
     let lastAddedCode = null;
+    let hasNewCode = false;
     uniqueResults.forEach(result => {
       const code = result.rawData;
 
-      // 목록에서 중복 확인
-      if (multiScans.some(item => item.url === code)) return;
+      // 목록에서 중복 확인 (새로운 코드인지 확인)
+      const isDuplicate = multiScans.some(item => item.url === code);
+      if (isDuplicate) return;
+
+      hasNewCode = true;
 
       // 목록에 추가
       multiScans.push({ url: code, desc: '', tool, scannedAt: new Date().toISOString() });
