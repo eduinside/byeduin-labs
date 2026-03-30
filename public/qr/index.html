@@ -441,7 +441,7 @@
       <div id="multiListArea">
         <div class="history-header">
           <span id="multiListCount"></span>
-          <button onclick="clearMultiScans()" class="btn-clear">초기화</button>
+          <button onclick="clearMultiScans()" class="btn-clear">지우기</button>
         </div>
         <ul id="multiScanList" style="list-style:none;padding:0;margin:0;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:0.5rem;"></ul>
         <button onclick="exportMultiMd()" class="hero-btn w-full mt-2" style="font-size:0.9rem;">
@@ -942,7 +942,9 @@
       'generate': '✏️'
     };
 
-    multiScans.forEach((item, idx) => {
+    // 역순으로 (최근 항목이 맨 위)
+    for (let idx = multiScans.length - 1; idx >= 0; idx--) {
+      const item = multiScans[idx];
       const display = item.url.length > 44 ? item.url.slice(0, 44) + '...' : item.url;
       const icon = toolIcons[item.tool] || '📷';
       const li = document.createElement('li');
@@ -960,7 +962,7 @@
         <button class="history-del" onclick="event.stopPropagation();deleteMultiScan(${idx})">✕</button>
       `;
       ul.appendChild(li);
-    });
+    }
   }
 
   function deleteMultiScan(idx) {
