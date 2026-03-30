@@ -524,7 +524,7 @@
     document.getElementById('genResultText').textContent = val;
     document.getElementById('genResultArea').classList.add('show');
     if (!text) document.getElementById('urlInput').value = val;
-    addToHistory(val, 'gen');
+    addToHistory(val, 'generate');
     const isUrl = (() => { try { new URL(val); return true; } catch { return false; } })();
     document.getElementById('btnShortenUrl').style.display = isUrl ? '' : 'none';
   }
@@ -617,7 +617,7 @@
       const result = window.jsQR(imageData.data, imageData.width, imageData.height);
 
       if (result) {
-        onScanSuccess([{ rawData: result.data }]);
+        onScanSuccess([{ rawData: result.data }], 'camera');
         return;
       }
     }
@@ -631,7 +631,7 @@
     input.value = '';
   }
 
-  function scanImageFile(file) {
+  function scanImageFile(file, tool = 'file') {
     if (typeof window.jsQR === 'undefined') {
       showToast('QR 스캔 라이브러리를 로드할 수 없습니다.');
       return;
@@ -651,7 +651,7 @@
       const result = window.jsQR(imageData.data, imageData.width, imageData.height);
 
       if (result) {
-        onScanSuccess([{ rawData: result.data }]);
+        onScanSuccess([{ rawData: result.data }], tool);
       } else {
         showToast('QR 코드를 찾을 수 없습니다.');
       }
@@ -675,7 +675,7 @@
       const items = await navigator.clipboard.read();
       for (const item of items) {
         const t = item.types.find(t => t.startsWith('image/'));
-        if (t) { scanImageFile(new File([await item.getType(t)], 'clip.png', { type: t })); return; }
+        if (t) { scanImageFile(new File([await item.getType(t)], 'clip.png', { type: t }), 'clipboard'); return; }
       }
       showToast('클립보드에 이미지가 없습니다.');
     } catch {
@@ -683,7 +683,7 @@
     }
   }
 
-  function onScanSuccess(results) {
+  function onScanSuccess(results, tool = 'camera') {
     if (!results || results.length === 0) return;
 
     // 중복 감지 방지 (같은 프레임에서의 중복)
@@ -698,6 +698,7 @@
 
     // 모든 감지된 QR을 자동으로 목록에 추가
     let addedCount = 0;
+    let lastAddedCode = null;
     uniqueResults.forEach(result => {
       const code = result.rawData;
 
@@ -707,94 +708,32 @@
       // 목록에 추가
       multiScans.push({ url: code, desc: '', scannedAt: new Date().toISOString() });
       addedCount++;
+      lastAddedCode = code;
 
-      // URL이면 히스토리에 추가 (URL이 아니면 히스토리 추가 안 함)
+      // URL이면 히스토리에 추가
       try {
         new URL(code);
-        addToHistory(code, 'scan');
+        addToHistory(code, tool);
       } catch {
         // URL이 아닌 데이터는 히스토리에 추가 안 함
       }
+    });
 
-      // 각 감지된 QR마다 초록색 영역을 동적으로 생성해서 추가
-      const newResultArea = document.createElement('div');
-      newResultArea.style.cssText = `
-        background: linear-gradient(135deg, rgba(76, 175, 80, 0.05) 0%, rgba(76, 175, 80, 0.02) 100%);
-        border: 1px solid rgba(76, 175, 80, 0.3);
-        border-radius: 0.75rem;
-        padding: 1rem;
-        margin-bottom: 0.75rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-      `;
+    // 스캔 성공 상자 업데이트 (마지막 감지된 QR)
+    if (lastAddedCode) {
+      document.getElementById('scanResultText').textContent = lastAddedCode;
 
-      const header = document.createElement('div');
-      header.textContent = '✓ 스캔 성공!';
-      header.style.cssText = 'font-weight: 600; color: var(--fg);';
-
-      const text = document.createElement('div');
-      text.textContent = code;
-      text.style.cssText = 'font-size: 0.85rem; word-break: break-all; color: var(--fg-muted);';
-
-      const actions = document.createElement('div');
-      actions.style.cssText = 'display: flex; gap: 0.5rem;';
-
-      const copyBtn = document.createElement('button');
-      copyBtn.textContent = '복사';
-      copyBtn.style.cssText = `
-        flex: 1;
-        padding: 0.5rem 1rem;
-        background: var(--primary);
-        color: white;
-        border: none;
-        border-radius: 0.5rem;
-        cursor: pointer;
-        font-size: 0.85rem;
-        font-weight: 600;
-      `;
-      copyBtn.onclick = () => {
-        navigator.clipboard.writeText(code);
-        showToast('복사되었습니다 ✓');
-      };
-
-      const linkBtn = document.createElement('a');
-      linkBtn.textContent = '↗ 이동';
-      linkBtn.style.cssText = `
-        flex: 1;
-        padding: 0.5rem 1rem;
-        background: none;
-        color: var(--primary);
-        border: 1px solid var(--primary);
-        border-radius: 0.5rem;
-        text-decoration: none;
-        cursor: pointer;
-        font-size: 0.85rem;
-        font-weight: 600;
-        text-align: center;
-        display: inline-block;
-      `;
-
+      const link = document.getElementById('scanResultLink');
       try {
-        new URL(code);
-        linkBtn.href = code;
-        linkBtn.target = '_blank';
-        linkBtn.rel = 'noopener';
-        actions.appendChild(copyBtn);
-        actions.appendChild(linkBtn);
+        new URL(lastAddedCode);
+        link.href = lastAddedCode;
+        link.classList.add('show');
       } catch {
-        // URL이 아니면 복사 버튼만 추가
-        copyBtn.style.flex = '1';
-        actions.appendChild(copyBtn);
+        link.classList.remove('show');
       }
 
-      newResultArea.appendChild(header);
-      newResultArea.appendChild(text);
-      newResultArea.appendChild(actions);
-
-      const scanResultArea = document.getElementById('scanResultArea');
-      scanResultArea.parentNode.insertBefore(newResultArea, scanResultArea.nextSibling);
-    });
+      document.getElementById('scanResultArea').classList.add('show');
+    }
 
     renderMultiList();
     if (addedCount > 0) {
@@ -882,7 +821,6 @@
         <div class="history-icon">📷</div>
         <div class="history-text">
           <div class="main">${display}</div>
-          <div class="sub">${item.desc || '설명 없음'}</div>
         </div>
         <button class="history-del" onclick="deleteMultiScan(${idx})">✕</button>
       `;
@@ -919,10 +857,10 @@
   }
 
   /* ---- 히스토리 ---- */
-  function addToHistory(text, type) {
+  function addToHistory(text, tool) {
     let h = JSON.parse(localStorage.getItem('qr_history') || '[]');
     h = h.filter(i => i.text !== text);
-    h.unshift({ text, type, date: new Date().toLocaleDateString() });
+    h.unshift({ text, tool, date: new Date().toLocaleDateString() });
     if (h.length > 30) h.pop();
     localStorage.setItem('qr_history', JSON.stringify(h));
     renderHistory(h);
@@ -931,6 +869,16 @@
   function loadHistory() { renderHistory(JSON.parse(localStorage.getItem('qr_history') || '[]')); }
 
   function renderHistory(h) {
+    const getToolInfo = (tool) => {
+      const toolMap = {
+        'camera': { icon: '📷', label: '카메라' },
+        'file': { icon: '📁', label: '파일' },
+        'clipboard': { icon: '📋', label: '붙여넣기' },
+        'generate': { icon: '✏️', label: '생성하기' }
+      };
+      return toolMap[tool] || { icon: '❓', label: tool };
+    };
+
     const list = document.getElementById('historyList');
     list.innerHTML = '';
     if (!h.length) {
@@ -941,11 +889,12 @@
       const li = document.createElement('li');
       li.className = 'history-item';
       li.onclick = () => { switchTab('generate'); generateQR(item.text); };
+      const toolInfo = getToolInfo(item.tool);
       li.innerHTML = `
-        <div class="history-icon">${item.type === 'scan' ? '📷' : '⬜'}</div>
+        <div class="history-icon">${toolInfo.icon}</div>
         <div class="history-text">
           <div class="main">${item.text}</div>
-          <div class="sub">${item.type === 'scan' ? '스캔됨' : '생성됨'} · ${item.date}</div>
+          <div class="sub">${toolInfo.label} · ${item.date}</div>
         </div>
         <button class="history-del" onclick="event.stopPropagation();deleteHistoryItem('${item.text.replace(/'/g,"\\'")}')">✕</button>
       `;
