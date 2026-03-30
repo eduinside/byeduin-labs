@@ -396,7 +396,10 @@
       </div>
 
       <div id="scanResultArea">
-        <div class="scan-result-header">✓ 스캔 성공!</div>
+        <div class="scan-result-header">
+          ✓ 스캔 성공!
+          <button class="btn-close-scan" onclick="closeScanResult()" style="position:absolute;right:0;top:0;background:none;border:none;font-size:1.5rem;cursor:pointer;padding:0 0.5rem;">✕</button>
+        </div>
         <div id="scanResultText"></div>
         <div class="scan-actions">
           <button class="btn-copy-scan" onclick="copyScanResult()">복사</button>
@@ -484,6 +487,7 @@
   let canvasContext = null;
   let scannerAnimationId = null;
   let lastScannedCodes = new Set();
+  let scanResultCloseTimer = null;
 
   // ── 멀티스캔 상태 ──
   let multiScans = [];
@@ -741,6 +745,7 @@
           link.href = text;
           link.classList.add('show');
           document.getElementById('scanResultArea').classList.add('show');
+          autoCloseScanResult();
           showToast('✓ 링크가 추가되었습니다.');
         } else {
           showToast('이미 추가된 링크입니다.');
@@ -814,6 +819,7 @@
       }
 
       document.getElementById('scanResultArea').classList.add('show');
+      autoCloseScanResult();
     }
 
     renderMultiList();
@@ -828,6 +834,18 @@
     navigator.clipboard.writeText(text)
       .then(() => showToast('복사되었습니다 ✓'))
       .catch(() => showToast('복사 실패'));
+  }
+
+  function closeScanResult() {
+    clearTimeout(scanResultCloseTimer);
+    document.getElementById('scanResultArea').classList.remove('show');
+  }
+
+  function autoCloseScanResult() {
+    clearTimeout(scanResultCloseTimer);
+    scanResultCloseTimer = setTimeout(() => {
+      document.getElementById('scanResultArea').classList.remove('show');
+    }, 5000); // 5초 후 자동 닫기
   }
 
   /* ---- Short.io 단축 URL ---- */
@@ -907,12 +925,17 @@
       const icon = toolIcons[item.tool] || '📷';
       const li = document.createElement('li');
       li.className = 'history-item';
+      li.style.cursor = 'pointer';
+      li.onclick = (e) => {
+        if (e.target.classList.contains('history-del')) return;
+        window.open(item.url, '_blank');
+      };
       li.innerHTML = `
         <div class="history-icon">${icon}</div>
         <div class="history-text">
           <div class="main">${display}</div>
         </div>
-        <button class="history-del" onclick="deleteMultiScan(${idx})">✕</button>
+        <button class="history-del" onclick="event.stopPropagation();deleteMultiScan(${idx})">✕</button>
       `;
       ul.appendChild(li);
     });
@@ -980,7 +1003,14 @@
     h.forEach(item => {
       const li = document.createElement('li');
       li.className = 'history-item';
-      li.onclick = () => { switchTab('generate'); generateQR(item.text); };
+      li.style.cursor = 'pointer';
+      // tool에 따라 다른 동작
+      if (item.tool === 'generate') {
+        li.onclick = () => { switchTab('generate'); generateQR(item.text); };
+      } else {
+        // camera, file, clipboard: 새 창에서 열기
+        li.onclick = () => { window.open(item.text, '_blank'); };
+      }
       const toolInfo = getToolInfo(item.tool);
       li.innerHTML = `
         <div class="history-icon">${toolInfo.icon}</div>
