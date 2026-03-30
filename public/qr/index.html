@@ -686,7 +686,7 @@
   function onScanSuccess(results) {
     if (!results || results.length === 0) return;
 
-    // 중복 감지 방지
+    // 중복 감지 방지 (같은 프레임에서의 중복)
     const uniqueResults = results.filter(r => {
       const key = r.rawData;
       if (lastScannedCodes.has(key)) return false;
@@ -696,15 +696,40 @@
 
     if (uniqueResults.length === 0) return;
 
-    // 모든 감지된 QR을 자동으로 목록과 히스토리에 추가
+    // 모든 감지된 QR을 자동으로 목록에 추가
+    let addedCount = 0;
     uniqueResults.forEach(result => {
       const code = result.rawData;
+
+      // 목록에서 중복 확인
+      if (multiScans.some(item => item.url === code)) return;
+
+      // 목록에 추가
       multiScans.push({ url: code, desc: '', scannedAt: new Date().toISOString() });
-      addToHistory(code, 'scan');
+      addedCount++;
+
+      // URL이면 히스토리에 추가 (URL이 아니면 히스토리 추가 안 함)
+      try {
+        new URL(code);
+        addToHistory(code, 'scan');
+      } catch {
+        // URL이 아닌 데이터는 히스토리에 추가 안 함
+      }
     });
 
+    // 첫 번째 QR을 결과 영역에 표시 (초록색 영역)
+    currentScanText = uniqueResults[0].rawData;
+    document.getElementById('scanResultText').textContent = currentScanText;
+    document.getElementById('scanResultArea').classList.add('show');
+
+    const link = document.getElementById('scanResultLink');
+    try { new URL(currentScanText); link.href = currentScanText; link.classList.add('show'); }
+    catch { link.classList.remove('show'); }
+
     renderMultiList();
-    showToast(`✓ ${uniqueResults.length}개 QR 코드가 추가되었습니다.`);
+    if (addedCount > 0) {
+      showToast(`✓ ${addedCount}개 QR 코드가 추가되었습니다.`);
+    }
   }
 
 
