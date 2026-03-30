@@ -710,8 +710,32 @@
   function handlePasteEvent(e) {
     for (const item of e.clipboardData.items) {
       if (item.type.startsWith('image/')) {
-        scanImageFile(new File([item.getAsFile()], 'paste.png', { type: item.type }));
+        scanImageFile(new File([item.getAsFile()], 'paste.png', { type: item.type }), 'clipboard');
         return;
+      }
+    }
+    // 텍스트 링크 붙여넣기 처리
+    const text = e.clipboardData.getData('text/plain');
+    if (text) {
+      try {
+        new URL(text);
+        switchTab('scan');
+        // 붚여넣기로 추가된 항목을 멀티스캔 목록에 추가
+        if (!multiScans.some(item => item.url === text)) {
+          multiScans.push({ url: text, desc: '', scannedAt: new Date().toISOString() });
+          addToHistory(text, 'clipboard');
+          renderMultiList();
+          document.getElementById('scanResultText').textContent = text;
+          const link = document.getElementById('scanResultLink');
+          link.href = text;
+          link.classList.add('show');
+          document.getElementById('scanResultArea').classList.add('show');
+          showToast('✓ 링크가 추가되었습니다.');
+        } else {
+          showToast('이미 추가된 링크입니다.');
+        }
+      } catch {
+        // URL이 아니면 무시
       }
     }
   }
