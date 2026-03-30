@@ -72,21 +72,66 @@
     updateIcon(getStoredTheme());
   }
 
+  // 공유 피드백 토스트 (앱 자체 토스트 없을 때 직접 생성)
+  function _shareToast(msg) {
+    var existing = document.getElementById('qr-toast') ||
+                   document.getElementById('md-toast') ||
+                   document.getElementById('fd-toast') ||
+                   document.getElementById('mpToast') ||
+                   document.getElementById('ssToast');
+    if (existing) {
+      existing.textContent = msg;
+      existing.classList.add('show');
+      setTimeout(function() { existing.classList.remove('show'); }, 2500);
+      return;
+    }
+    // 없으면 임시 생성
+    var t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);' +
+      'background:var(--fg,#11181c);color:var(--bg,#fff);padding:0.55rem 1.25rem;' +
+      'border-radius:2rem;font-size:0.85rem;font-weight:600;z-index:9999;' +
+      'white-space:nowrap;pointer-events:none;';
+    document.body.appendChild(t);
+    setTimeout(function() { t.remove(); }, 2500);
+  }
+
+  // 클립보드 복사 + 피드백
+  function _copyWithFallback(url) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url)
+        .then(function() { _shareToast('링크가 복사되었습니다 ✓'); })
+        .catch(function() { _execCopy(url); });
+    } else {
+      _execCopy(url);
+    }
+  }
+
+  function _execCopy(url) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = url;
+      ta.style.cssText = 'position:fixed;opacity:0;';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      _shareToast('링크가 복사되었습니다 ✓');
+    } catch (e) {
+      _shareToast('URL: ' + url);
+    }
+  }
+
   // 공유 함수
   function shareCurrentPage() {
     var url = window.location.href;
     var title = document.title;
     if (navigator.share) {
-      navigator.share({ title: title, url: url }).catch(function() {});
+      navigator.share({ title: title, url: url }).catch(function() {
+        _copyWithFallback(url);
+      });
     } else {
-      navigator.clipboard.writeText(url).then(function() {
-        var btn = document.getElementById('shareBtn');
-        if (btn) {
-          var prev = btn.innerHTML;
-          btn.innerHTML = '<span>✓ 복사됨</span>';
-          setTimeout(function() { btn.innerHTML = prev; }, 1500);
-        }
-      }).catch(function() { alert('URL: ' + url); });
+      _copyWithFallback(url);
     }
   }
 

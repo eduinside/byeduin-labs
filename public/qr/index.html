@@ -4,12 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QR Master — byeduin</title>
+  <link rel="manifest" href="/qr/manifest.json">
   <link rel="stylesheet" href="/common/hero-theme.css">
   <script src="/common/theme.js"></script>
   <!-- QRCode.js (생성용) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <!-- html5-qrcode (스캔용) -->
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <!-- jsQR (스캔용) -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
 
@@ -131,8 +132,8 @@
       background: #000;
       margin-bottom: 1rem;
     }
-    #reader { width: 100%; height: 240px; }
-    #reader video { object-fit: cover; border-radius: 0; }
+    #reader { width: 100%; height: 240px; display: flex; align-items: center; justify-content: center; }
+    #qr-video { width: 100%; height: 100%; object-fit: cover; display: block; }
     .camera-close {
       position: absolute;
       top: 8px;
@@ -194,6 +195,24 @@
       font-weight: 700;
       color: var(--success);
       margin-bottom: 0.5rem;
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn-close-scan {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 0;
+      color: var(--fg-muted);
+      transition: color 0.2s;
+    }
+
+    .btn-close-scan:hover {
+      color: var(--fg);
     }
 
     #scanResultText {
@@ -268,8 +287,8 @@
     }
 
     .history-text { flex: 1; min-width: 0; }
-    .history-text .main { font-size: 0.8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .history-text .sub  { font-size: 0.7rem; color: var(--fg-muted); }
+    .history-text .main { font-size: 0.8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+    .history-text .sub  { font-size: 0.7rem; color: var(--fg-muted); margin: 0; }
 
     .history-del {
       background: none;
@@ -287,11 +306,40 @@
 
     .history-empty { text-align: center; font-size: 0.8rem; color: var(--fg-muted); padding: 1.5rem 0; }
 
+    /* 멀티 스캔 누적 목록 */
+    #multiListArea {
+      display: none;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+
     /* 유틸 */
     .mt-1 { margin-top: 0.5rem; }
     .mt-2 { margin-top: 0.75rem; }
     .w-full { width: 100%; }
     .hint { font-size: 0.72rem; color: var(--fg-muted); text-align: center; margin-top: 0.375rem; }
+
+    /* 토스트 */
+    #qr-toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      background: var(--fg);
+      color: var(--bg);
+      padding: 0.5rem 1.25rem;
+      border-radius: 2rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 9999;
+      white-space: nowrap;
+    }
+    #qr-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
   </style>
 </head>
 <body>
@@ -328,6 +376,9 @@
         <button onclick="downloadQR()" class="hero-btn hero-btn-ghost w-full" style="font-size:0.9rem;">
           ⬇ 이미지 저장
         </button>
+        <button id="btnShortenUrl" onclick="shortenGeneratedUrl()" class="hero-btn hero-btn-ghost w-full mt-1" style="font-size:0.9rem;display:none;">
+          🔗 단축 URL 생성
+        </button>
       </div>
     </div>
 
@@ -363,14 +414,42 @@
       </div>
 
       <div id="scanResultArea">
-        <div class="scan-result-header">✓ 스캔 성공!</div>
+        <div class="scan-result-header">
+          <span>✓ 스캔 성공!</span>
+          <button class="btn-close-scan" onclick="closeScanResult()">✕</button>
+        </div>
         <div id="scanResultText"></div>
         <div class="scan-actions">
           <button class="btn-copy-scan" onclick="copyScanResult()">복사</button>
           <a id="scanResultLink" class="btn-open-link" href="#" target="_blank" rel="noopener">↗ 이동</a>
         </div>
+        <!-- 이어서 스캔 유도 (단일 모드) -->
+        <button id="btnStartMulti" onclick="startMultiMode()" class="hero-btn hero-btn-ghost w-full mt-1" style="font-size:0.85rem;display:none;">
+          📷+ 이어서 스캔하기
+        </button>
+        <!-- 멀티 모드: 설명 입력 -->
+        <div id="multiInputArea" style="display:none">
+          <input type="text" id="multiDescInput" class="hero-input mt-1" placeholder="설명 추가 (선택)">
+          <div class="scan-actions mt-1">
+            <button onclick="addAndContinue()" class="hero-btn" style="flex:1;font-size:0.8rem;">📷+ 추가 후 계속</button>
+            <button onclick="addAndFinish()" class="hero-btn hero-btn-ghost" style="flex:1;font-size:0.8rem;">✓ 완료</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 멀티 스캔 누적 목록 -->
+      <div id="multiListArea">
+        <div class="history-header">
+          <span id="multiListCount"></span>
+          <button onclick="clearMultiScans()" class="btn-clear">지우기</button>
+        </div>
+        <ul id="multiScanList" style="list-style:none;padding:0;margin:0;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:0.5rem;"></ul>
+        <button onclick="exportMultiMd()" class="hero-btn w-full mt-2" style="font-size:0.9rem;">
+          📄 링크 정리 (MD Editor로)
+        </button>
       </div>
     </div>
+
   </div><!-- /.tab-panels-wrap -->
 
     <!-- 공통 히스토리 -->
@@ -385,6 +464,9 @@
   </div><!-- /.qr-card -->
 
 </div>
+
+<!-- 토스트 -->
+<div id="qr-toast"></div>
 
 <!-- 좌상단: 홈 -->
 <div class="top-overlay-left">
@@ -410,35 +492,63 @@
 </div>
 
 <script>
-  let html5QrCode = null;
+  // ── Service Worker 등록 (PWA) ──
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/qr/sw.js').catch(() => {});
+    });
+  }
+
+  // ── jsQR 글로벌 상태 ──
   let isCameraRunning = false;
+  let videoElement = null;
+  let canvasContext = null;
+  let scannerAnimationId = null;
+  let lastScannedCodes = new Set();
+  let scanResultCloseTimer = null;
+
+  // ── 멀티스캔 상태 ──
+  let multiScans = [];
+  let isMultiMode = false;
+  let currentScanText = '';
 
   document.addEventListener('DOMContentLoaded', () => {
     loadHistory();
     document.addEventListener('paste', handlePasteEvent);
   });
 
+  // ── 탭 전환 ──
   function switchTab(tab) {
-    const panels = { generate: document.getElementById('generateTab'), scan: document.getElementById('scanTab') };
-    const btns   = { generate: document.getElementById('tabBtnGenerate'), scan: document.getElementById('tabBtnScan') };
-    Object.keys(panels).forEach(k => {
-      panels[k].classList.toggle('active', k === tab);
-      btns[k].classList.toggle('active', k === tab);
+    ['generate', 'scan'].forEach(k => {
+      document.getElementById(k === 'generate' ? 'generateTab' : 'scanTab').classList.toggle('active', k === tab);
+      document.getElementById(k === 'generate' ? 'tabBtnGenerate' : 'tabBtnScan').classList.toggle('active', k === tab);
     });
     if (tab !== 'scan') stopCamera();
+  }
+
+  // ── 토스트 ──
+  let _toastTimer;
+  function showToast(msg) {
+    const el = document.getElementById('qr-toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
   }
 
   /* ---- 생성 ---- */
   function generateQR(text) {
     const val = text || document.getElementById('urlInput').value.trim();
-    if (!val) return alert('내용을 입력해주세요.');
+    if (!val) return showToast('내용을 입력해주세요.');
     const container = document.getElementById('qrcode');
     container.innerHTML = '';
     new QRCode(container, { text: val, width: 180, height: 180, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.H });
     document.getElementById('genResultText').textContent = val;
     document.getElementById('genResultArea').classList.add('show');
     if (!text) document.getElementById('urlInput').value = val;
-    addToHistory(val, 'gen');
+    addToHistory(val, 'generate');
+    const isUrl = (() => { try { new URL(val); return true; } catch { return false; } })();
+    document.getElementById('btnShortenUrl').style.display = isUrl ? '' : 'none';
   }
 
   function downloadQR() {
@@ -452,30 +562,132 @@
     a.click();
   }
 
-  /* ---- 스캔 ---- */
-  function startCamera() {
+  /* ---- 스캔 (jsQR) ---- */
+  async function startCamera() {
     if (isCameraRunning) return;
     document.getElementById('cameraArea').style.display = 'block';
     document.getElementById('scanResultArea').classList.remove('show');
-    if (!html5QrCode) html5QrCode = new Html5Qrcode('reader');
-    html5QrCode.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 220, height: 220 } }, onScanSuccess, () => {})
-      .then(() => { isCameraRunning = true; })
-      .catch(() => {
-        alert('카메라를 시작할 수 없습니다. 권한을 확인해주세요.');
-        document.getElementById('cameraArea').style.display = 'none';
+
+    if (typeof window.jsQR === 'undefined') {
+      showToast('QR 스캔 라이브러리를 로드할 수 없습니다.');
+      document.getElementById('cameraArea').style.display = 'none';
+      return;
+    }
+
+    if (!videoElement) {
+      videoElement = document.createElement('video');
+      videoElement.id = 'qr-video';
+      videoElement.style.cssText = 'width: 100%; height: 100%; object-fit: cover; display: block;';
+      document.getElementById('reader').appendChild(videoElement);
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
       });
+      videoElement.srcObject = stream;
+      videoElement.play();
+      isCameraRunning = true;
+      lastScannedCodes.clear();
+      showToast('카메라가 시작되었습니다.');
+      startScanLoop();
+    } catch (err) {
+      showToast('카메라를 시작할 수 없습니다. 권한을 확인해주세요.');
+      document.getElementById('cameraArea').style.display = 'none';
+    }
   }
 
   function stopCamera() {
-    if (html5QrCode && isCameraRunning) {
-      html5QrCode.stop().then(() => {
-        isCameraRunning = false;
-        document.getElementById('cameraArea').style.display = 'none';
-        html5QrCode.clear();
-      }).catch(() => {});
-    } else {
-      document.getElementById('cameraArea').style.display = 'none';
+    if (scannerAnimationId) {
+      cancelAnimationFrame(scannerAnimationId);
+      scannerAnimationId = null;
     }
+
+    if (videoElement && videoElement.srcObject) {
+      videoElement.srcObject.getTracks().forEach(track => track.stop());
+    }
+
+    isCameraRunning = false;
+    document.getElementById('cameraArea').style.display = 'none';
+    if (videoElement && videoElement.parentNode) {
+      videoElement.remove();
+      videoElement = null;
+      canvasContext = null;
+    }
+  }
+
+  function startScanLoop() {
+    scanFrame();
+  }
+
+  function scanMultipleQRs(imageData) {
+    const results = [];
+    const { data, width, height } = imageData;
+    const scanned = new Set();
+
+    // 전체 이미지 스캔
+    const result = window.jsQR(data, width, height);
+    if (result && !scanned.has(result.data)) {
+      results.push({ rawData: result.data });
+      scanned.add(result.data);
+    }
+
+    // 그리드로 나누어 추가 스캔 (4개 영역)
+    const regions = [
+      { x: 0, y: 0, w: width/2, h: height/2 },
+      { x: width/2, y: 0, w: width/2, h: height/2 },
+      { x: 0, y: height/2, w: width/2, h: height/2 },
+      { x: width/2, y: height/2, w: width/2, h: height/2 }
+    ];
+
+    regions.forEach(region => {
+      const regionData = new Uint8ClampedArray(region.w * region.h * 4);
+      for (let y = 0; y < region.h; y++) {
+        for (let x = 0; x < region.w; x++) {
+          const srcIdx = ((region.y + y) * width + (region.x + x)) * 4;
+          const dstIdx = (y * region.w + x) * 4;
+          regionData[dstIdx] = data[srcIdx];
+          regionData[dstIdx + 1] = data[srcIdx + 1];
+          regionData[dstIdx + 2] = data[srcIdx + 2];
+          regionData[dstIdx + 3] = data[srcIdx + 3];
+        }
+      }
+
+      const regionImageData = new ImageData(regionData, region.w, region.h);
+      const r = window.jsQR(regionImageData.data, regionImageData.width, regionImageData.height);
+      if (r && !scanned.has(r.data)) {
+        results.push({ rawData: r.data });
+        scanned.add(r.data);
+      }
+    });
+
+    return results;
+  }
+
+  function scanFrame() {
+    if (!isCameraRunning || !videoElement) return;
+
+    if (!canvasContext) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoElement.videoWidth;
+      canvas.height = videoElement.videoHeight;
+      canvasContext = canvas.getContext('2d');
+    }
+
+    if (videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
+      canvasContext.canvas.width = videoElement.videoWidth;
+      canvasContext.canvas.height = videoElement.videoHeight;
+      canvasContext.drawImage(videoElement, 0, 0);
+
+      const imageData = canvasContext.getImageData(0, 0, canvasContext.canvas.width, canvasContext.canvas.height);
+      const results = scanMultipleQRs(imageData);
+
+      if (results && results.length > 0) {
+        onScanSuccess(results, 'camera');
+      }
+    }
+
+    scannerAnimationId = requestAnimationFrame(scanFrame);
   }
 
   function handleFileUpload(input) {
@@ -484,19 +696,79 @@
     input.value = '';
   }
 
-  function scanImageFile(file) {
-    if (!html5QrCode) html5QrCode = new Html5Qrcode('reader');
+  function scanImageFile(file, tool = 'file') {
+    stopCamera();
+
+    if (typeof window.jsQR === 'undefined') {
+      showToast('QR 스캔 라이브러리를 로드할 수 없습니다.');
+      return;
+    }
+
     switchTab('scan');
-    html5QrCode.scanFile(file, true)
-      .then(onScanSuccess)
-      .catch(() => alert('QR 코드를 찾을 수 없습니다.'));
+
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const results = scanMultipleQRs(imageData);
+
+      if (results && results.length > 0) {
+        onScanSuccess(results, tool);
+      } else {
+        showToast('QR 코드를 찾을 수 없습니다.');
+      }
+    };
+
+    img.onerror = () => showToast('이미지를 불러올 수 없습니다.');
+    img.src = URL.createObjectURL(file);
   }
 
   function handlePasteEvent(e) {
+    e.preventDefault();
+
+    // 이미지 처리 (모든 탭에서 이미지는 스캔하기로)
     for (const item of e.clipboardData.items) {
       if (item.type.startsWith('image/')) {
-        scanImageFile(new File([item.getAsFile()], 'paste.png', { type: item.type }));
+        scanImageFile(new File([item.getAsFile()], 'paste.png', { type: item.type }), 'clipboard');
         return;
+      }
+    }
+
+    // 텍스트 처리
+    const text = e.clipboardData.getData('text/plain').trim();
+    if (!text || text.length === 0) return;
+
+    // 현재 활성 탭 확인
+    const isGenerateTabActive = document.getElementById('tabBtnGenerate').classList.contains('active');
+
+    if (isGenerateTabActive) {
+      // 생성하기 탭: 텍스트를 입력 필드에 추가
+      document.getElementById('urlInput').value = text;
+    } else {
+      // 스캔하기 탭: URL이면 멀티스캔 목록에 추가
+      try {
+        new URL(text);
+        if (!multiScans.some(item => item.url === text)) {
+          multiScans.push({ url: text, desc: '', tool: 'clipboard', scannedAt: new Date().toISOString() });
+          addToHistory(text, 'clipboard');
+          renderMultiList();
+          document.getElementById('scanResultText').textContent = text;
+          const link = document.getElementById('scanResultLink');
+          link.href = text;
+          link.classList.add('show');
+          document.getElementById('scanResultArea').classList.add('show');
+          autoCloseScanResult();
+          showToast('✓ 링크가 추가되었습니다.');
+        } else {
+          showToast('이미 추가된 링크입니다.');
+        }
+      } catch {
+        // URL이 아니면 무시
       }
     }
   }
@@ -506,34 +778,228 @@
       const items = await navigator.clipboard.read();
       for (const item of items) {
         const t = item.types.find(t => t.startsWith('image/'));
-        if (t) { scanImageFile(new File([await item.getType(t)], 'clip.png', { type: t })); return; }
+        if (t) { scanImageFile(new File([await item.getType(t)], 'clip.png', { type: t }), 'clipboard'); return; }
       }
-      alert('클립보드에 이미지가 없습니다.');
+      showToast('클립보드에 이미지가 없습니다.');
     } catch {
-      alert('Ctrl+V (또는 Cmd+V)로 이미지를 붙여넣어 주세요.');
+      showToast('Ctrl+V (또는 Cmd+V)로 이미지를 붙여넣어 주세요.');
     }
   }
 
-  function onScanSuccess(text) {
-    if (isCameraRunning) stopCamera();
-    document.getElementById('scanResultText').textContent = text;
-    document.getElementById('scanResultArea').classList.add('show');
-    const link = document.getElementById('scanResultLink');
-    try { new URL(text); link.href = text; link.classList.add('show'); }
-    catch { link.classList.remove('show'); }
-    addToHistory(text, 'scan');
+  function onScanSuccess(results, tool = 'camera') {
+    if (!results || results.length === 0) return;
+
+    // 같은 결과 내에서의 중복 제거
+    const seenInFrame = new Set();
+    const uniqueResults = results.filter(r => {
+      const key = r.rawData;
+      if (seenInFrame.has(key)) return false;
+      seenInFrame.add(key);
+      return true;
+    });
+
+    if (uniqueResults.length === 0) return;
+
+    // 모든 감지된 QR을 자동으로 목록에 추가
+    let addedCount = 0;
+    let lastAddedCode = null;
+    let hasNewCode = false;
+    uniqueResults.forEach(result => {
+      const code = result.rawData;
+
+      // 목록에서 중복 확인 (새로운 코드인지 확인)
+      const isDuplicate = multiScans.some(item => item.url === code);
+      if (isDuplicate) return;
+
+      hasNewCode = true;
+
+      // 목록에 추가
+      multiScans.push({ url: code, desc: '', tool, scannedAt: new Date().toISOString() });
+      addedCount++;
+      lastAddedCode = code;
+
+      // URL이면 히스토리에 추가
+      try {
+        new URL(code);
+        addToHistory(code, tool);
+      } catch {
+        // URL이 아닌 데이터는 히스토리에 추가 안 함
+      }
+    });
+
+    // 스캔 성공 상자 업데이트 (마지막 감지된 QR)
+    if (lastAddedCode) {
+      document.getElementById('scanResultText').textContent = lastAddedCode;
+
+      const link = document.getElementById('scanResultLink');
+      try {
+        new URL(lastAddedCode);
+        link.href = lastAddedCode;
+        link.classList.add('show');
+      } catch {
+        link.classList.remove('show');
+      }
+
+      document.getElementById('scanResultArea').classList.add('show');
+      autoCloseScanResult();
+    }
+
+    renderMultiList();
+    if (addedCount > 0) {
+      showToast(`✓ ${addedCount}개 QR 코드가 추가되었습니다.`);
+    }
   }
+
 
   function copyScanResult() {
     const text = document.getElementById('scanResultText').textContent;
-    navigator.clipboard.writeText(text).then(() => alert('복사되었습니다.')).catch(() => alert('복사 실패'));
+    navigator.clipboard.writeText(text)
+      .then(() => showToast('복사되었습니다 ✓'))
+      .catch(() => showToast('복사 실패'));
+  }
+
+  function closeScanResult() {
+    clearTimeout(scanResultCloseTimer);
+    document.getElementById('scanResultArea').classList.remove('show');
+  }
+
+  function autoCloseScanResult() {
+    clearTimeout(scanResultCloseTimer);
+    scanResultCloseTimer = setTimeout(() => {
+      document.getElementById('scanResultArea').classList.remove('show');
+    }, 5000); // 5초 후 자동 닫기
+  }
+
+  /* ---- Short.io 단축 URL ---- */
+  async function shortenGeneratedUrl() {
+    const text = document.getElementById('genResultText').textContent;
+    if (!text) return;
+    const btn = document.getElementById('btnShortenUrl');
+    btn.disabled = true;
+    btn.textContent = '처리 중...';
+    try {
+      const res = await fetch('/.netlify/functions/shorten', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: text }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.shortURL) throw new Error();
+      await navigator.clipboard.writeText(data.shortURL);
+      showToast('단축 URL 복사됨 ✓ ' + data.shortURL);
+    } catch {
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast('단축 실패 — 원본 URL 복사됨');
+      } catch { showToast('복사에 실패했습니다.'); }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔗 단축 URL 생성';
+    }
+  }
+
+  // ── 멀티스캔 함수 ──
+  function startMultiMode() {
+    isMultiMode = true;
+    document.getElementById('btnStartMulti').style.display = 'none';
+    document.getElementById('multiDescInput').value = '';
+    document.getElementById('multiInputArea').style.display = 'block';
+  }
+
+  function addAndContinue() {
+    const desc = document.getElementById('multiDescInput').value.trim();
+    multiScans.push({ url: currentScanText, desc, scannedAt: new Date().toISOString() });
+    document.getElementById('multiInputArea').style.display = 'none';
+    document.getElementById('scanResultArea').classList.remove('show');
+    renderMultiList();
+    showToast('✓ 추가되었습니다. 다음 QR을 스캔해주세요.');
+    setTimeout(() => startCamera(), 200);
+  }
+
+  function addAndFinish() {
+    const desc = document.getElementById('multiDescInput').value.trim();
+    multiScans.push({ url: currentScanText, desc, scannedAt: new Date().toISOString() });
+    isMultiMode = false;
+    document.getElementById('multiInputArea').style.display = 'none';
+    document.getElementById('scanResultArea').classList.remove('show');
+    document.getElementById('btnStartMulti').style.display = 'none';
+    renderMultiList();
+    showToast('✓ ' + multiScans.length + '개 항목 수집됨');
+  }
+
+  function renderMultiList() {
+    const listArea = document.getElementById('multiListArea');
+    const ul = document.getElementById('multiScanList');
+    if (!multiScans.length) { listArea.style.display = 'none'; return; }
+    listArea.style.display = 'block';
+    document.getElementById('multiListCount').textContent = multiScans.length + '개 항목';
+    ul.innerHTML = '';
+
+    const toolIcons = {
+      'camera': '📷',
+      'file': '📁',
+      'clipboard': '📋',
+      'generate': '✏️'
+    };
+
+    // 역순으로 (최근 항목이 맨 위)
+    for (let idx = multiScans.length - 1; idx >= 0; idx--) {
+      const item = multiScans[idx];
+      const display = item.url.length > 44 ? item.url.slice(0, 44) + '...' : item.url;
+      const icon = toolIcons[item.tool] || '📷';
+      const li = document.createElement('li');
+      li.className = 'history-item';
+      li.style.cursor = 'pointer';
+      li.onclick = (e) => {
+        if (e.target.classList.contains('history-del')) return;
+        window.open(item.url, '_blank');
+      };
+      li.innerHTML = `
+        <div class="history-icon">${icon}</div>
+        <div class="history-text">
+          <div class="main">${display}</div>
+        </div>
+        <button class="history-del" onclick="event.stopPropagation();deleteMultiScan(${idx})">✕</button>
+      `;
+      ul.appendChild(li);
+    }
+  }
+
+  function deleteMultiScan(idx) {
+    multiScans.splice(idx, 1);
+    renderMultiList();
+  }
+
+  function clearMultiScans() {
+    if (!confirm('멀티 스캔 목록을 모두 삭제하시겠습니까?')) return;
+    multiScans = [];
+    lastScannedCodes.clear();
+    document.getElementById('scanResultArea').classList.remove('show');
+    renderMultiList();
+  }
+
+  function exportMultiMd() {
+    if (!multiScans.length) return;
+    const today = new Date().toISOString().slice(0, 10);
+    let md = `# QR 스캔 결과\n> ${today} · ${multiScans.length}개 항목\n\n`;
+    multiScans.forEach((item, idx) => {
+      const isUrl = (() => { try { new URL(item.url); return true; } catch { return false; } })();
+      const title = item.url.length > 40 ? item.url.slice(0, 40) + '...' : item.url;
+      const linkText = item.desc || title;
+      md += `${idx + 1}. [${linkText}](${item.url})\n`;
+    });
+
+    const payload = JSON.stringify({ data: { content: md, filename: `qr-scan-${today}.md` }, permission: 'clone' });
+    const encoded = btoa(encodeURIComponent(payload))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    location.href = `/md-editor/#share=${encoded}`;
   }
 
   /* ---- 히스토리 ---- */
-  function addToHistory(text, type) {
+  function addToHistory(text, tool) {
     let h = JSON.parse(localStorage.getItem('qr_history') || '[]');
     h = h.filter(i => i.text !== text);
-    h.unshift({ text, type, date: new Date().toLocaleDateString() });
+    h.unshift({ text, tool, date: new Date().toLocaleDateString() });
     if (h.length > 30) h.pop();
     localStorage.setItem('qr_history', JSON.stringify(h));
     renderHistory(h);
@@ -542,6 +1008,16 @@
   function loadHistory() { renderHistory(JSON.parse(localStorage.getItem('qr_history') || '[]')); }
 
   function renderHistory(h) {
+    const getToolInfo = (tool) => {
+      const toolMap = {
+        'camera': { icon: '📷', label: '카메라' },
+        'file': { icon: '📁', label: '파일' },
+        'clipboard': { icon: '📋', label: '붙여넣기' },
+        'generate': { icon: '✏️', label: '생성하기' }
+      };
+      return toolMap[tool] || { icon: '❓', label: tool };
+    };
+
     const list = document.getElementById('historyList');
     list.innerHTML = '';
     if (!h.length) {
@@ -551,12 +1027,20 @@
     h.forEach(item => {
       const li = document.createElement('li');
       li.className = 'history-item';
-      li.onclick = () => { switchTab('generate'); generateQR(item.text); };
+      li.style.cursor = 'pointer';
+      // tool에 따라 다른 동작
+      if (item.tool === 'generate') {
+        li.onclick = () => { switchTab('generate'); generateQR(item.text); };
+      } else {
+        // camera, file, clipboard: 새 창에서 열기
+        li.onclick = () => { window.open(item.text, '_blank'); };
+      }
+      const toolInfo = getToolInfo(item.tool);
       li.innerHTML = `
-        <div class="history-icon">${item.type === 'scan' ? '📷' : '⬜'}</div>
+        <div class="history-icon">${toolInfo.icon}</div>
         <div class="history-text">
           <div class="main">${item.text}</div>
-          <div class="sub">${item.type === 'scan' ? '스캔됨' : '생성됨'} · ${item.date}</div>
+          <div class="sub">${toolInfo.label} · ${item.date}</div>
         </div>
         <button class="history-del" onclick="event.stopPropagation();deleteHistoryItem('${item.text.replace(/'/g,"\\'")}')">✕</button>
       `;

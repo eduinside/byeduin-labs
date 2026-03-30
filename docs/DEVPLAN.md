@@ -1,6 +1,6 @@
 # byeduin VIVES — 개발 계획
 
-> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-03-30 (MD Editor 추가)
+> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-03-30 (QR 스캔 연속 루프 + UI 개선)
 
 ---
 
@@ -31,7 +31,6 @@
 | Step Squad | `/numberblocks/step-squad.html` | edu | 계단수 블록 시각화 + 퀴즈 |
 | Flash Deck | `/flash-deck/` | edu | 플래시카드 덱 제작 및 학습 |
 | Chalkboard | `/chalkboard/` | edu | 칠판·화이트보드 메모 앱 |
-| MD Editor | `/md-editor/` | utility | 마크다운 편집·미리보기·저장·공유 |
 | Login Helper | (모달) | utility | 에듀나비 교원업무지원 안내 |
 | Content ID Viewer | (모달) | utility | 에듀나비 아카이브 안내 |
 
@@ -104,10 +103,67 @@
 
 ---
 
+### MD Editor (`/md-editor/`)
+
+#### 개요
+| 항목 | 내용 |
+|---|---|
+| 앱 이름 | **MD Editor** |
+| 배지 | `◆ Utility` |
+| 경로 | `/md-editor/` |
+| CDN | marked.js (cdn.jsdelivr.net) |
+| localStorage | 없음 (세션 전용) |
+
+#### 주요 기능
+- 마크다운 텍스트 편집 (JetBrains Mono 에디터)
+- 실시간 HTML 미리보기 (marked.js, GFM + breaks)
+- 로컬 `.md` 파일 불러오기 (FileReader API)
+- `.md` 파일 다운로드 (Blob)
+- **도움말 모달**: 앱 설명 우측 버튼 → 마크다운 빠른 참조 (헤더/굵기/코드/목록/표 등)
+- **공유** (vives-share 패턴): payload `{ data: { content, filename }, permission }` → base64url → Short.io 단축
+  - payload > 8KB면 단축 URL 생략 + 경고 토스트
+  - `view`: 보기 전용 진입 (textarea readonly, `.is-view-only`)
+  - `clone`: "보기 전용 / 내 편집기로 가져오기" 선택 모달
+
+#### 레이아웃
+- **데스크톱** (≥768px): CSS Grid `1fr 1fr` — 좌 편집 / 우 미리보기
+- **모바일** (<768px): 탭 전환 (편집 / 미리보기)
+
+---
+
 ### QR Master (`/qr/`)
-- 생성하기 / 스캔하기 2탭, `.qr-card` 래퍼
+- 생성하기 / 스캔하기 2탭 → **생성하기 / 스캔하기 / 멀티 스캔** 3탭으로 확장
 - 스캔 히스토리 로컬스토리지 저장
 - 두 탭 패널 고정 높이 통일 완료
+
+#### 추가 기능
+**PWA (오프라인 캐시)**
+- `manifest.json` + `sw.js` (서비스워커, cache-first 전략)
+- 첫 로드 후 오프라인/재방문 시 캐시에서 즉시 로드
+
+**생성하기 탭 — Short.io 단축 URL**
+- QR 생성 결과 아래 "🔗 단축 URL 생성" 버튼
+- 입력 URL을 `/.netlify/functions/shorten`으로 단축 후 클립보드 복사
+- URL이 아닌 텍스트면 버튼 비표시
+
+**멀티 스캔 탭**
+- 카메라로 QR 코드를 연속 스캔 (jsQR + 그리드 기반 다중 감지, requestAnimationFrame 루프)
+- 스캔 성공 상자: 5초 또는 X 버튼으로 닫음 → 새 QR 감지 시 다시 표시
+- 각 스캔 후: URL 확인 + 설명 입력 → "다음 스캔" or "완료"
+- 누적 목록 표시
+  - 최근 발견한 항목이 맨 위에 (역순 렌더링)
+  - URL + 설명, 개별 삭제 가능
+  - 목록 옆 "지우기" 버튼으로 전체 초기화
+- "📄 링크 정리 (MD Editor로)" — 스캔 결과를 마크다운으로 변환해 MD Editor로 전송:
+  ```markdown
+  # QR 스캔 결과
+  > YYYY-MM-DD · N개 항목
+
+  1. [URL]
+  - 링크: https://...
+  - 설명: 사용자 입력
+  ```
+- 탭 전환 시 각 카메라 자동 정지 (충돌 방지)
 
 ---
 
@@ -299,40 +355,6 @@ public/numberblocks/
 
 ---
 
-### MD Editor (`/md-editor/`)
-
-#### 개요
-| 항목 | 내용 |
-|---|---|
-| 앱 이름 | **MD Editor** |
-| 배지 | `◆ Utility` |
-| 경로 | `/md-editor/` |
-| 폰트 | JetBrains Mono (에디터 영역) |
-
-#### 주요 기능
-- **새 문서**: 내용 있을 시 confirm 후 초기화
-- **파일 열기**: `.md` / `.txt` / `.markdown` 로컬 파일 로드
-- **실시간 미리보기**: marked.js (GFM + breaks), 좌우 스플릿 패널
-- **저장 드롭다운**: 내용 없을 때 비활성화, 선택지 2종
-  - `.md 파일` — 마크다운 원본 다운로드
-  - `.html 파일` — 스타일 내장 standalone HTML (다크모드 지원)
-- **공유 드롭다운**: base64url 인코딩 → Short.io 단축 URL → 클립보드
-  - 보기 전용 (`permission: 'view'`) — 편집 불가 모드 진입
-  - 복제 허용 (`permission: 'clone'`) — 선택 모달 표시
-- **보기 전용 모드**: `is-view-only` CSS 클래스, 편집 컨트롤 비활성
-
-#### 모바일
-- 편집 / 미리보기 탭 전환 (≤767px)
-- 스플릿 → 단일 패널
-
-#### 데이터 흐름
-```
-새 문서 / 파일 열기 / URL 해시
-  → mdContent 갱신 → renderPreview() → updateSaveBtn()
-```
-
----
-
 ### Chalkboard (`/chalkboard/`)
 
 #### 개요
@@ -485,7 +507,6 @@ byeduin-labs/
     ├── notion-styler/index.html
     ├── flash-deck/index.html
     ├── chalkboard/index.html
-    ├── md-editor/index.html
     └── numberblocks/
         ├── index.html
         ├── app.js

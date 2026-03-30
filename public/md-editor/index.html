@@ -71,11 +71,6 @@
       text-decoration: none;
     }
     .toolbar-btn:hover { border-color: var(--primary); color: var(--primary); }
-    .toolbar-btn:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-      pointer-events: none;
-    }
 
     /* ── 보기 전용 배지 / 복제 버튼 ── */
     #view-badge {
@@ -110,9 +105,8 @@
     body.is-view-only #editor { pointer-events: none; opacity: 0.7; background: var(--bg); }
     body.is-view-only .view-only-hide { opacity: 0.3; pointer-events: none; }
 
-    /* ── 공유·저장 드롭다운 ── */
-    #share-dropdown,
-    #save-dropdown {
+    /* ── 공유 드롭다운 ── */
+    #share-dropdown {
       position: fixed;
       display: none;
       flex-direction: column;
@@ -125,8 +119,7 @@
       min-width: 150px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     }
-    #share-dropdown.open,
-    #save-dropdown.open { display: flex; }
+    #share-dropdown.open { display: flex; }
     .share-opt {
       display: flex;
       align-items: center;
@@ -403,12 +396,11 @@
   <!-- 툴바 -->
   <div class="md-toolbar">
     <input type="text" id="filenameInput" class="hero-input" value="untitled.md" placeholder="파일명.md">
-    <button class="toolbar-btn view-only-hide" onclick="newDocument()" title="새 문서">✨ 새 문서</button>
     <label class="toolbar-btn view-only-hide" for="fileInput" style="cursor:pointer">
       📂 열기
       <input type="file" id="fileInput" accept=".md,.txt,.markdown" style="display:none" onchange="handleFileLoad(this)">
     </label>
-    <button id="btn-save" class="toolbar-btn view-only-hide" onclick="toggleSaveMenu(event)" disabled>💾 저장 ▾</button>
+    <button class="toolbar-btn view-only-hide" onclick="downloadMd()">💾 저장</button>
     <div id="view-badge">👁 보기 전용</div>
     <button id="btn-clone-content" onclick="cloneContent()">📋 복제</button>
     <button class="toolbar-btn view-only-hide" onclick="toggleShareMenu(event)">
@@ -438,24 +430,6 @@
       <div id="preview" class="markdown-body"></div>
     </div>
   </div>
-</div>
-
-<!-- 저장 드롭다운 -->
-<div id="save-dropdown">
-  <button class="share-opt" onclick="downloadMd()">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/>
-    </svg>
-    .md 파일
-  </button>
-  <button class="share-opt" onclick="downloadHtml()">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="16 18 22 12 16 6"/>
-      <polyline points="8 6 2 12 8 18"/>
-    </svg>
-    .html 파일
-  </button>
 </div>
 
 <!-- 공유 드롭다운 -->
@@ -535,7 +509,6 @@
   let currentFilename = 'untitled.md';
   let isViewOnly = false;
   let _shareMenuOpen = false;
-  let _saveMenuOpen = false;
 
   // ── 모바일 탭 ──
   function switchMobileTab(tab) {
@@ -545,28 +518,11 @@
     document.getElementById('mTabPreview').classList.toggle('active', tab === 'preview');
   }
 
-  // ── 새 문서 ──
-  function newDocument() {
-    if (mdContent.trim() && !confirm('현재 내용이 사라집니다. 새 문서를 만들까요?')) return;
-    mdContent = '';
-    currentFilename = 'untitled.md';
-    document.getElementById('editor').value = '';
-    document.getElementById('filenameInput').value = 'untitled.md';
-    renderPreview();
-    updateSaveBtn();
-  }
-
-  // ── 저장 버튼 활성화 상태 ──
-  function updateSaveBtn() {
-    document.getElementById('btn-save').disabled = !mdContent.trim();
-  }
-
   // ── 에디터 입력 ──
   function onEditorInput(el) {
     if (isViewOnly) return;
     mdContent = el.value;
     renderPreview();
-    updateSaveBtn();
   }
 
   function renderPreview() {
@@ -584,124 +540,19 @@
       mdContent = e.target.result;
       document.getElementById('editor').value = mdContent;
       renderPreview();
-      updateSaveBtn();
     };
     reader.readAsText(file, 'UTF-8');
     input.value = '';
   }
 
-  // ── 저장 드롭다운 ──
-  function toggleSaveMenu(e) {
-    e.stopPropagation();
-    const dd = document.getElementById('save-dropdown');
-    const rect = e.currentTarget.getBoundingClientRect();
-    dd.style.top = (rect.bottom + 6) + 'px';
-    dd.style.left = rect.left + 'px';
-    _saveMenuOpen = !_saveMenuOpen;
-    dd.classList.toggle('open', _saveMenuOpen);
-    if (_saveMenuOpen) {
-      setTimeout(() => document.addEventListener('click', _closeSaveMenu, { once: true }), 0);
-    }
-  }
-
-  function _closeSaveMenu() {
-    document.getElementById('save-dropdown').classList.remove('open');
-    _saveMenuOpen = false;
-  }
-
-  // ── .md 저장 ──
+  // ── 저장 ──
   function downloadMd() {
-    _closeSaveMenu();
     const filename = document.getElementById('filenameInput').value.trim() || 'untitled.md';
     const fname = /\.(md|txt|markdown)$/i.test(filename) ? filename : filename + '.md';
     const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = fname;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  }
-
-  // ── .html 저장 ──
-  function downloadHtml() {
-    _closeSaveMenu();
-    const filename = document.getElementById('filenameInput').value.trim() || 'untitled';
-    const base = filename.replace(/\.(md|txt|markdown)$/i, '');
-    const htmlBody = marked.parse(mdContent);
-    const html = `<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${base.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</title>
-  <style>
-    body {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 2rem 1.5rem 4rem;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 1rem;
-      line-height: 1.75;
-      color: #1a1a2e;
-      background: #ffffff;
-    }
-    h1, h2, h3, h4, h5, h6 { font-weight: 700; margin: 1.25em 0 0.5em; line-height: 1.3; }
-    h1 { font-size: 1.8em; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3em; }
-    h2 { font-size: 1.4em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.2em; }
-    h3 { font-size: 1.15em; }
-    p { margin: 0.75em 0; }
-    a { color: #7c6af7; text-decoration: underline; }
-    code {
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
-      font-size: 0.875em;
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
-      border-radius: 4px;
-      padding: 0.15em 0.4em;
-    }
-    pre {
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
-      border-radius: 0.5rem;
-      padding: 1rem;
-      overflow-x: auto;
-      margin: 1em 0;
-    }
-    pre code { background: none; border: none; padding: 0; }
-    blockquote {
-      border-left: 4px solid #7c6af7;
-      margin: 0.75em 0;
-      padding: 0.25em 1em;
-      color: #64748b;
-    }
-    ul, ol { padding-left: 1.5em; margin: 0.75em 0; }
-    li { margin: 0.25em 0; }
-    table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-    th, td { border: 1px solid #e2e8f0; padding: 0.4em 0.75em; text-align: left; }
-    th { background: #f8fafc; font-weight: 700; }
-    hr { border: none; border-top: 1px solid #e2e8f0; margin: 1.5em 0; }
-    img { max-width: 100%; border-radius: 0.5rem; }
-    @media (prefers-color-scheme: dark) {
-      body { color: #e2e8f0; background: #0f0f1a; }
-      h1 { border-color: #2d2d4e; }
-      h2 { border-color: #2d2d4e; }
-      code { background: #1e1e3a; border-color: #2d2d4e; }
-      pre { background: #1e1e3a; border-color: #2d2d4e; }
-      blockquote { color: #94a3b8; }
-      th { background: #1e1e3a; }
-      th, td { border-color: #2d2d4e; }
-      hr { border-color: #2d2d4e; }
-    }
-  </style>
-</head>
-<body>
-${htmlBody}
-</body>
-</html>`;
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = base + '.html';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
@@ -829,7 +680,6 @@ ${htmlBody}
         document.getElementById('filenameInput').value = currentFilename;
         document.getElementById('editor').value = mdContent;
         renderPreview();
-        updateSaveBtn();
         if (payload.permission === 'view') {
           enterViewOnly();
         } else {
