@@ -715,16 +715,86 @@
       } catch {
         // URL이 아닌 데이터는 히스토리에 추가 안 함
       }
+
+      // 각 감지된 QR마다 초록색 영역을 동적으로 생성해서 추가
+      const newResultArea = document.createElement('div');
+      newResultArea.style.cssText = `
+        background: linear-gradient(135deg, rgba(76, 175, 80, 0.05) 0%, rgba(76, 175, 80, 0.02) 100%);
+        border: 1px solid rgba(76, 175, 80, 0.3);
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      `;
+
+      const header = document.createElement('div');
+      header.textContent = '✓ 스캔 성공!';
+      header.style.cssText = 'font-weight: 600; color: var(--fg);';
+
+      const text = document.createElement('div');
+      text.textContent = code;
+      text.style.cssText = 'font-size: 0.85rem; word-break: break-all; color: var(--fg-muted);';
+
+      const actions = document.createElement('div');
+      actions.style.cssText = 'display: flex; gap: 0.5rem;';
+
+      const copyBtn = document.createElement('button');
+      copyBtn.textContent = '복사';
+      copyBtn.style.cssText = `
+        flex: 1;
+        padding: 0.5rem 1rem;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+      `;
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(code);
+        showToast('복사되었습니다 ✓');
+      };
+
+      const linkBtn = document.createElement('a');
+      linkBtn.textContent = '↗ 이동';
+      linkBtn.style.cssText = `
+        flex: 1;
+        padding: 0.5rem 1rem;
+        background: none;
+        color: var(--primary);
+        border: 1px solid var(--primary);
+        border-radius: 0.5rem;
+        text-decoration: none;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-align: center;
+        display: inline-block;
+      `;
+
+      try {
+        new URL(code);
+        linkBtn.href = code;
+        linkBtn.target = '_blank';
+        linkBtn.rel = 'noopener';
+        actions.appendChild(copyBtn);
+        actions.appendChild(linkBtn);
+      } catch {
+        // URL이 아니면 복사 버튼만 추가
+        copyBtn.style.flex = '1';
+        actions.appendChild(copyBtn);
+      }
+
+      newResultArea.appendChild(header);
+      newResultArea.appendChild(text);
+      newResultArea.appendChild(actions);
+
+      const scanResultArea = document.getElementById('scanResultArea');
+      scanResultArea.parentNode.insertBefore(newResultArea, scanResultArea.nextSibling);
     });
-
-    // 첫 번째 QR을 결과 영역에 표시 (초록색 영역)
-    currentScanText = uniqueResults[0].rawData;
-    document.getElementById('scanResultText').textContent = currentScanText;
-    document.getElementById('scanResultArea').classList.add('show');
-
-    const link = document.getElementById('scanResultLink');
-    try { new URL(currentScanText); link.href = currentScanText; link.classList.add('show'); }
-    catch { link.classList.remove('show'); }
 
     renderMultiList();
     if (addedCount > 0) {
