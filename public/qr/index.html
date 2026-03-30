@@ -9,7 +9,7 @@
   <script src="/common/theme.js"></script>
   <!-- QRCode.js (생성용) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <!-- jsQR (스캔용 - 멀티 QR 지원) -->
+  <!-- jsQR (스캔용) -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
@@ -598,6 +598,50 @@
     scanFrame();
   }
 
+  function scanMultipleQRs(imageData) {
+    const results = [];
+    const { data, width, height } = imageData;
+    const scanned = new Set();
+
+    // 전체 이미지 스캔
+    const result = window.jsQR(data, width, height);
+    if (result && !scanned.has(result.data)) {
+      results.push({ rawData: result.data });
+      scanned.add(result.data);
+    }
+
+    // 그리드로 나누어 추가 스캔 (4개 영역)
+    const regions = [
+      { x: 0, y: 0, w: width/2, h: height/2 },
+      { x: width/2, y: 0, w: width/2, h: height/2 },
+      { x: 0, y: height/2, w: width/2, h: height/2 },
+      { x: width/2, y: height/2, w: width/2, h: height/2 }
+    ];
+
+    regions.forEach(region => {
+      const regionData = new Uint8ClampedArray(region.w * region.h * 4);
+      for (let y = 0; y < region.h; y++) {
+        for (let x = 0; x < region.w; x++) {
+          const srcIdx = ((region.y + y) * width + (region.x + x)) * 4;
+          const dstIdx = (y * region.w + x) * 4;
+          regionData[dstIdx] = data[srcIdx];
+          regionData[dstIdx + 1] = data[srcIdx + 1];
+          regionData[dstIdx + 2] = data[srcIdx + 2];
+          regionData[dstIdx + 3] = data[srcIdx + 3];
+        }
+      }
+
+      const regionImageData = new ImageData(regionData, region.w, region.h);
+      const r = window.jsQR(regionImageData.data, regionImageData.width, regionImageData.height);
+      if (r && !scanned.has(r.data)) {
+        results.push({ rawData: r.data });
+        scanned.add(r.data);
+      }
+    });
+
+    return results;
+  }
+
   function scanFrame() {
     if (!isCameraRunning || !videoElement) return;
 
@@ -614,10 +658,10 @@
       canvasContext.drawImage(videoElement, 0, 0);
 
       const imageData = canvasContext.getImageData(0, 0, canvasContext.canvas.width, canvasContext.canvas.height);
-      const result = window.jsQR(imageData.data, imageData.width, imageData.height);
+      const results = scanMultipleQRs(imageData);
 
-      if (result) {
-        onScanSuccess([{ rawData: result.data }], 'camera');
+      if (results && results.length > 0) {
+        onScanSuccess(results, 'camera');
         return;
       }
     }
@@ -632,6 +676,8 @@
   }
 
   function scanImageFile(file, tool = 'file') {
+    stopCamera();
+
     if (typeof window.jsQR === 'undefined') {
       showToast('QR 스캔 라이브러리를 로드할 수 없습니다.');
       return;
@@ -648,10 +694,10 @@
       ctx.drawImage(img, 0, 0);
 
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const result = window.jsQR(imageData.data, imageData.width, imageData.height);
+      const results = scanMultipleQRs(imageData);
 
-      if (result) {
-        onScanSuccess([{ rawData: result.data }], tool);
+      if (results && results.length > 0) {
+        onScanSuccess(results, tool);
       } else {
         showToast('QR 코드를 찾을 수 없습니다.');
       }
@@ -836,6 +882,8 @@
   function clearMultiScans() {
     if (!confirm('멀티 스캔 목록을 모두 삭제하시겠습니까?')) return;
     multiScans = [];
+    lastScannedCodes.clear();
+    document.getElementById('scanResultArea').classList.remove('show');
     renderMultiList();
   }
 
