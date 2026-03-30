@@ -1,6 +1,6 @@
 # byeduin VIVES — 개발 계획
 
-> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-03-30
+> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-03-30 (MD Editor 추가)
 
 ---
 
@@ -31,6 +31,7 @@
 | Step Squad | `/numberblocks/step-squad.html` | edu | 계단수 블록 시각화 + 퀴즈 |
 | Flash Deck | `/flash-deck/` | edu | 플래시카드 덱 제작 및 학습 |
 | Chalkboard | `/chalkboard/` | edu | 칠판·화이트보드 메모 앱 |
+| MD Editor | `/md-editor/` | utility | 마크다운 편집·미리보기·저장·공유 |
 | Login Helper | (모달) | utility | 에듀나비 교원업무지원 안내 |
 | Content ID Viewer | (모달) | utility | 에듀나비 아카이브 안내 |
 
@@ -298,6 +299,40 @@ public/numberblocks/
 
 ---
 
+### MD Editor (`/md-editor/`)
+
+#### 개요
+| 항목 | 내용 |
+|---|---|
+| 앱 이름 | **MD Editor** |
+| 배지 | `◆ Utility` |
+| 경로 | `/md-editor/` |
+| 폰트 | JetBrains Mono (에디터 영역) |
+
+#### 주요 기능
+- **새 문서**: 내용 있을 시 confirm 후 초기화
+- **파일 열기**: `.md` / `.txt` / `.markdown` 로컬 파일 로드
+- **실시간 미리보기**: marked.js (GFM + breaks), 좌우 스플릿 패널
+- **저장 드롭다운**: 내용 없을 때 비활성화, 선택지 2종
+  - `.md 파일` — 마크다운 원본 다운로드
+  - `.html 파일` — 스타일 내장 standalone HTML (다크모드 지원)
+- **공유 드롭다운**: base64url 인코딩 → Short.io 단축 URL → 클립보드
+  - 보기 전용 (`permission: 'view'`) — 편집 불가 모드 진입
+  - 복제 허용 (`permission: 'clone'`) — 선택 모달 표시
+- **보기 전용 모드**: `is-view-only` CSS 클래스, 편집 컨트롤 비활성
+
+#### 모바일
+- 편집 / 미리보기 탭 전환 (≤767px)
+- 스플릿 → 단일 패널
+
+#### 데이터 흐름
+```
+새 문서 / 파일 열기 / URL 해시
+  → mdContent 갱신 → renderPreview() → updateSaveBtn()
+```
+
+---
+
 ### Chalkboard (`/chalkboard/`)
 
 #### 개요
@@ -450,6 +485,7 @@ byeduin-labs/
     ├── notion-styler/index.html
     ├── flash-deck/index.html
     ├── chalkboard/index.html
+    ├── md-editor/index.html
     └── numberblocks/
         ├── index.html
         ├── app.js

@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MD Editor — byeduin</title>
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <script src="/common/theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 1rem 5rem;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 1200px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── 툴바 ── */
+    .md-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    #filenameInput {
+      flex: 1;
+      min-width: 120px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+    }
+
+    .toolbar-btn {
+      padding: 0.45rem 0.875rem;
+      border-radius: 0.5rem;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--fg);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+      transition: border-color 0.15s, color 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      text-decoration: none;
+    }
+    .toolbar-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .toolbar-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* ── 보기 전용 배지 / 복제 버튼 ── */
+    #view-badge {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(249,115,22,0.12);
+      border: 1px solid rgba(249,115,22,0.4);
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #f97316;
+      white-space: nowrap;
+    }
+    #btn-clone-content {
+      display: none;
+      padding: 0.45rem 0.875rem;
+      border-radius: 0.5rem;
+      border: 1px solid var(--primary);
+      background: transparent;
+      color: var(--primary);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+
+    body.is-view-only #view-badge { display: flex; }
+    body.is-view-only #btn-clone-content { display: inline-flex; align-items: center; }
+    body.is-view-only #editor { pointer-events: none; opacity: 0.7; background: var(--bg); }
+    body.is-view-only .view-only-hide { opacity: 0.3; pointer-events: none; }
+
+    /* ── 공유·저장 드롭다운 ── */
+    #share-dropdown,
+    #save-dropdown {
+      position: fixed;
+      display: none;
+      flex-direction: column;
+      gap: 3px;
+      padding: 6px;
+      border-radius: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      z-index: 9500;
+      min-width: 150px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    #share-dropdown.open,
+    #save-dropdown.open { display: flex; }
+    .share-opt {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 7px;
+      border: none;
+      background: none;
+      color: var(--fg);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
+    }
+    .share-opt:hover { background: var(--bg); }
+
+    /* ── 모바일 탭 (hidden on desktop) ── */
+    .mobile-tabs {
+      display: none;
+      border-bottom: 1px solid var(--border);
+      background: var(--card-bg);
+      border-radius: 1rem 1rem 0 0;
+      overflow: hidden;
+    }
+    .mobile-tab-btn {
+      flex: 1;
+      padding: 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--fg-muted);
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      font-family: inherit;
+    }
+    .mobile-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* ── 스플릿 에디터 ── */
+    .md-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      overflow: hidden;
+      background: var(--card-bg);
+      height: calc(100vh - 240px);
+      min-height: 400px;
+    }
+
+    .md-pane {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .md-pane + .md-pane {
+      border-left: 1px solid var(--border);
+    }
+
+    .pane-label {
+      padding: 0.4rem 1rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--fg-muted);
+      border-bottom: 1px solid var(--border);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: var(--bg);
+      flex-shrink: 0;
+    }
+
+    #editor {
+      flex: 1;
+      resize: none;
+      border: none;
+      outline: none;
+      padding: 1.25rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+      line-height: 1.75;
+      background: var(--card-bg);
+      color: var(--fg);
+      tab-size: 2;
+    }
+    #editor::placeholder { color: var(--fg-muted); }
+
+    #preview {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.25rem 1.5rem;
+      background: var(--card-bg);
+    }
+
+    /* ── 마크다운 렌더링 스타일 ── */
+    .markdown-body { line-height: 1.75; color: var(--fg); }
+    .markdown-body h1, .markdown-body h2, .markdown-body h3,
+    .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+      font-weight: 700;
+      margin: 1.25em 0 0.5em;
+      line-height: 1.3;
+    }
+    .markdown-body h1 {
+      font-size: 1.8em;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0.3em;
+    }
+    .markdown-body h2 {
+      font-size: 1.4em;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.2em;
+    }
+    .markdown-body h3 { font-size: 1.15em; }
+    .markdown-body p { margin: 0.75em 0; }
+    .markdown-body a { color: var(--primary); text-decoration: underline; }
+    .markdown-body code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875em;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.15em 0.4em;
+    }
+    .markdown-body pre {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 1em 0;
+    }
+    .markdown-body pre code { background: none; border: none; padding: 0; }
+    .markdown-body blockquote {
+      border-left: 4px solid var(--primary);
+      margin: 0.75em 0;
+      padding: 0.25em 1em;
+      color: var(--fg-muted);
+    }
+    .markdown-body ul, .markdown-body ol { padding-left: 1.5em; margin: 0.75em 0; }
+    .markdown-body li { margin: 0.25em 0; }
+    .markdown-body table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+    .markdown-body th, .markdown-body td {
+      border: 1px solid var(--border);
+      padding: 0.4em 0.75em;
+      text-align: left;
+    }
+    .markdown-body th { background: var(--bg); font-weight: 700; }
+    .markdown-body hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+    .markdown-body img { max-width: 100%; border-radius: 0.5rem; }
+    .markdown-body input[type="checkbox"] { margin-right: 0.4em; }
+
+    /* ── 복제 모달 ── */
+    .md-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+    .md-modal-overlay.open { display: flex; }
+    .md-modal {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.75rem;
+      max-width: 380px;
+      width: 90%;
+    }
+    .md-modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .md-modal-desc { font-size: 0.85rem; color: var(--fg-muted); margin-bottom: 1.25rem; }
+    .share-import-choices { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+    .share-import-choice {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 0.875rem 1rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      text-align: left;
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    .share-import-choice:hover { border-color: var(--primary); }
+    .share-import-choice-title { font-size: 0.9rem; font-weight: 700; color: var(--fg); }
+    .share-import-choice-desc { font-size: 0.75rem; color: var(--fg-muted); }
+    .md-modal-cancel {
+      width: 100%;
+      padding: 0.6rem;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      color: var(--fg-muted);
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .md-modal-cancel:hover { border-color: var(--fg-muted); }
+
+    /* ── 토스트 ── */
+    #md-toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      background: var(--fg);
+      color: var(--bg);
+      padding: 0.6rem 1.25rem;
+      border-radius: 2rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 9999;
+      white-space: nowrap;
+    }
+    #md-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── 반응형 (모바일) ── */
+    @media (max-width: 767px) {
+      body { padding: 48px 0.5rem 4rem; }
+      .mobile-tabs { display: flex; }
+      .md-split {
+        grid-template-columns: 1fr;
+        height: calc(100vh - 260px);
+        border-radius: 0 0 1rem 1rem;
+      }
+      .md-pane { display: none; }
+      .md-pane.mobile-active { display: flex; }
+      .md-pane + .md-pane { border-left: none; }
+      .pane-label { display: none; }
+      #filenameInput { min-width: 80px; font-size: 0.8rem; }
+      .md-toolbar { gap: 0.35rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 좌상단: 홈 -->
+<div class="top-overlay-left">
+  <a href="/" class="overlay-btn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    <span>Home</span>
+  </a>
+</div>
+<!-- 우상단: 테마 전환 + 페이지 링크 공유 -->
+<div class="top-overlay">
+  <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+  <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+      <polyline points="16 6 12 2 8 6"/>
+      <line x1="12" x2="12" y1="2" y2="15"/>
+    </svg>
+    <span>공유</span>
+  </button>
+</div>
+
+<div class="wrap">
+  <div class="app-header">
+    <div class="app-badge">◆ Utility</div>
+    <h1 class="app-title">MD <span>Editor</span></h1>
+    <p class="app-desc">마크다운 파일 열기·편집·미리보기·공유 <button onclick="openHelpModal()" style="margin-left:0.5rem;padding:2px 8px;font-size:0.72rem;font-weight:700;border:1px solid var(--border);border-radius:10px;background:var(--card-bg);color:var(--fg-muted);cursor:pointer;font-family:inherit;">마크다운 더 알아보기</button></p>
+  </div>
+
+  <!-- 툴바 -->
+  <div class="md-toolbar">
+    <input type="text" id="filenameInput" class="hero-input" value="untitled.md" placeholder="파일명.md">
+    <button class="toolbar-btn view-only-hide" onclick="newDocument()" title="새 문서">✨ 새 문서</button>
+    <label class="toolbar-btn view-only-hide" for="fileInput" style="cursor:pointer">
+      📂 열기
+      <input type="file" id="fileInput" accept=".md,.txt,.markdown" style="display:none" onchange="handleFileLoad(this)">
+    </label>
+    <button id="btn-save" class="toolbar-btn view-only-hide" onclick="toggleSaveMenu(event)" disabled>💾 저장 ▾</button>
+    <div id="view-badge">👁 보기 전용</div>
+    <button id="btn-clone-content" onclick="cloneContent()">📋 복제</button>
+    <button class="toolbar-btn view-only-hide" onclick="toggleShareMenu(event)">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+      </svg>
+      공유 ▾
+    </button>
+  </div>
+
+  <!-- 모바일 탭 -->
+  <div class="mobile-tabs">
+    <button class="mobile-tab-btn active" id="mTabEdit" onclick="switchMobileTab('edit')">편집</button>
+    <button class="mobile-tab-btn" id="mTabPreview" onclick="switchMobileTab('preview')">미리보기</button>
+  </div>
+
+  <!-- 스플릿 에디터 -->
+  <div class="md-split">
+    <div class="md-pane mobile-active" id="paneEdit">
+      <div class="pane-label">편집</div>
+      <textarea id="editor" placeholder="마크다운을 입력하세요...&#10;&#10;# 제목&#10;## 소제목&#10;**굵게** / *기울기* / `코드`" oninput="onEditorInput(this)"></textarea>
+    </div>
+    <div class="md-pane mobile-active" id="panePreview">
+      <div class="pane-label">미리보기</div>
+      <div id="preview" class="markdown-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 저장 드롭다운 -->
+<div id="save-dropdown">
+  <button class="share-opt" onclick="downloadMd()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+    </svg>
+    .md 파일
+  </button>
+  <button class="share-opt" onclick="downloadHtml()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="16 18 22 12 16 6"/>
+      <polyline points="8 6 2 12 8 18"/>
+    </svg>
+    .html 파일
+  </button>
+</div>
+
+<!-- 공유 드롭다운 -->
+<div id="share-dropdown">
+  <button class="share-opt" onclick="doShare('view')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+    </svg>
+    보기 전용
+  </button>
+  <button class="share-opt" onclick="doShare('clone')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+    </svg>
+    복제 허용
+  </button>
+</div>
+
+<!-- 마크다운 도움말 모달 -->
+<div class="md-modal-overlay" id="help-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="md-modal" style="max-width:480px;max-height:80vh;overflow-y:auto;">
+    <div class="md-modal-title">📖 마크다운 더 알아보기</div>
+    <div style="font-size:0.82rem;line-height:1.8;color:var(--fg);">
+      <table style="width:100%;border-collapse:collapse;margin-bottom:0.75rem;">
+        <thead><tr style="border-bottom:1px solid var(--border);">
+          <th style="padding:4px 8px;text-align:left;color:var(--fg-muted);font-size:0.72rem;font-weight:700;">입력</th>
+          <th style="padding:4px 8px;text-align:left;color:var(--fg-muted);font-size:0.72rem;font-weight:700;">결과</th>
+        </tr></thead>
+        <tbody style="font-family:'JetBrains Mono',monospace;">
+          <tr><td style="padding:3px 8px;"># 제목 1</td><td style="padding:3px 8px;font-family:inherit;"><strong style="font-size:1.1em;">제목 1</strong></td></tr>
+          <tr><td style="padding:3px 8px;">## 제목 2</td><td style="padding:3px 8px;font-family:inherit;"><strong>제목 2</strong></td></tr>
+          <tr><td style="padding:3px 8px;">**굵게**</td><td style="padding:3px 8px;font-family:inherit;"><strong>굵게</strong></td></tr>
+          <tr><td style="padding:3px 8px;">*기울기*</td><td style="padding:3px 8px;font-family:inherit;"><em>기울기</em></td></tr>
+          <tr><td style="padding:3px 8px;">`인라인 코드`</td><td style="padding:3px 8px;font-family:inherit;"><code style="background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:0 4px;">코드</code></td></tr>
+          <tr><td style="padding:3px 8px;">```<br>코드 블록<br>```</td><td style="padding:3px 8px;font-family:inherit;">코드 블록</td></tr>
+          <tr><td style="padding:3px 8px;">- 항목<br>- 항목</td><td style="padding:3px 8px;font-family:inherit;">• 목록</td></tr>
+          <tr><td style="padding:3px 8px;">1. 항목</td><td style="padding:3px 8px;font-family:inherit;">1. 순서 목록</td></tr>
+          <tr><td style="padding:3px 8px;">> 인용구</td><td style="padding:3px 8px;font-family:inherit;border-left:3px solid var(--primary);padding-left:8px;">인용구</td></tr>
+          <tr><td style="padding:3px 8px;">[링크](https://...)</td><td style="padding:3px 8px;font-family:inherit;"><a style="color:var(--primary);">링크</a></td></tr>
+          <tr><td style="padding:3px 8px;">![이미지](url)</td><td style="padding:3px 8px;font-family:inherit;">이미지 삽입</td></tr>
+          <tr><td style="padding:3px 8px;">---</td><td style="padding:3px 8px;font-family:inherit;">수평선</td></tr>
+          <tr><td style="padding:3px 8px;">| 열1 | 열2 |<br>|---|---|<br>| 값1 | 값2 |</td><td style="padding:3px 8px;font-family:inherit;">표</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.72rem;color:var(--fg-muted);margin:0;">빈 줄로 단락을 구분합니다. 줄 끝에 공백 2개를 추가하면 줄바꿈이 됩니다.</p>
+    </div>
+    <button class="md-modal-cancel" style="margin-top:1rem;" onclick="document.getElementById('help-modal').classList.remove('open')">닫기</button>
+  </div>
+</div>
+
+<!-- 복제 허용 모달 -->
+<div class="md-modal-overlay" id="clone-modal">
+  <div class="md-modal">
+    <div class="md-modal-title">공유된 마크다운</div>
+    <div class="md-modal-desc" id="clone-modal-desc">파일을 어떻게 열까요?</div>
+    <div class="share-import-choices">
+      <button class="share-import-choice" onclick="enterViewOnly()">
+        <span class="share-import-choice-title">👁 보기 전용</span>
+        <span class="share-import-choice-desc">편집 없이 미리보기만 합니다.</span>
+      </button>
+      <button class="share-import-choice" onclick="cloneContent()">
+        <span class="share-import-choice-title">📋 내 편집기로 가져오기</span>
+        <span class="share-import-choice-desc">편집 가능하게 불러옵니다.</span>
+      </button>
+    </div>
+    <button class="md-modal-cancel" onclick="closeCloneModal()">취소</button>
+  </div>
+</div>
+
+<!-- 토스트 -->
+<div id="md-toast"></div>
+
+<script>
+  marked.setOptions({ breaks: true, gfm: true });
+
+  let mdContent = '';
+  let currentFilename = 'untitled.md';
+  let isViewOnly = false;
+  let _shareMenuOpen = false;
+  let _saveMenuOpen = false;
+
+  // ── 모바일 탭 ──
+  function switchMobileTab(tab) {
+    document.getElementById('paneEdit').classList.toggle('mobile-active', tab === 'edit');
+    document.getElementById('panePreview').classList.toggle('mobile-active', tab === 'preview');
+    document.getElementById('mTabEdit').classList.toggle('active', tab === 'edit');
+    document.getElementById('mTabPreview').classList.toggle('active', tab === 'preview');
+  }
+
+  // ── 새 문서 ──
+  function newDocument() {
+    if (mdContent.trim() && !confirm('현재 내용이 사라집니다. 새 문서를 만들까요?')) return;
+    mdContent = '';
+    currentFilename = 'untitled.md';
+    document.getElementById('editor').value = '';
+    document.getElementById('filenameInput').value = 'untitled.md';
+    renderPreview();
+    updateSaveBtn();
+  }
+
+  // ── 저장 버튼 활성화 상태 ──
+  function updateSaveBtn() {
+    document.getElementById('btn-save').disabled = !mdContent.trim();
+  }
+
+  // ── 에디터 입력 ──
+  function onEditorInput(el) {
+    if (isViewOnly) return;
+    mdContent = el.value;
+    renderPreview();
+    updateSaveBtn();
+  }
+
+  function renderPreview() {
+    document.getElementById('preview').innerHTML = marked.parse(mdContent);
+  }
+
+  // ── 파일 열기 ──
+  function handleFileLoad(input) {
+    const file = input.files[0];
+    if (!file) return;
+    currentFilename = file.name;
+    document.getElementById('filenameInput').value = file.name;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      mdContent = e.target.result;
+      document.getElementById('editor').value = mdContent;
+      renderPreview();
+      updateSaveBtn();
+    };
+    reader.readAsText(file, 'UTF-8');
+    input.value = '';
+  }
+
+  // ── 저장 드롭다운 ──
+  function toggleSaveMenu(e) {
+    e.stopPropagation();
+    const dd = document.getElementById('save-dropdown');
+    const rect = e.currentTarget.getBoundingClientRect();
+    dd.style.top = (rect.bottom + 6) + 'px';
+    dd.style.left = rect.left + 'px';
+    _saveMenuOpen = !_saveMenuOpen;
+    dd.classList.toggle('open', _saveMenuOpen);
+    if (_saveMenuOpen) {
+      setTimeout(() => document.addEventListener('click', _closeSaveMenu, { once: true }), 0);
+    }
+  }
+
+  function _closeSaveMenu() {
+    document.getElementById('save-dropdown').classList.remove('open');
+    _saveMenuOpen = false;
+  }
+
+  // ── .md 저장 ──
+  function downloadMd() {
+    _closeSaveMenu();
+    const filename = document.getElementById('filenameInput').value.trim() || 'untitled.md';
+    const fname = /\.(md|txt|markdown)$/i.test(filename) ? filename : filename + '.md';
+    const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  // ── .html 저장 ──
+  function downloadHtml() {
+    _closeSaveMenu();
+    const filename = document.getElementById('filenameInput').value.trim() || 'untitled';
+    const base = filename.replace(/\.(md|txt|markdown)$/i, '');
+    const htmlBody = marked.parse(mdContent);
+    const html = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${base.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</title>
+  <style>
+    body {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 1rem;
+      line-height: 1.75;
+      color: #1a1a2e;
+      background: #ffffff;
+    }
+    h1, h2, h3, h4, h5, h6 { font-weight: 700; margin: 1.25em 0 0.5em; line-height: 1.3; }
+    h1 { font-size: 1.8em; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3em; }
+    h2 { font-size: 1.4em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.2em; }
+    h3 { font-size: 1.15em; }
+    p { margin: 0.75em 0; }
+    a { color: #7c6af7; text-decoration: underline; }
+    code {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.875em;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      padding: 0.15em 0.4em;
+    }
+    pre {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 1em 0;
+    }
+    pre code { background: none; border: none; padding: 0; }
+    blockquote {
+      border-left: 4px solid #7c6af7;
+      margin: 0.75em 0;
+      padding: 0.25em 1em;
+      color: #64748b;
+    }
+    ul, ol { padding-left: 1.5em; margin: 0.75em 0; }
+    li { margin: 0.25em 0; }
+    table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+    th, td { border: 1px solid #e2e8f0; padding: 0.4em 0.75em; text-align: left; }
+    th { background: #f8fafc; font-weight: 700; }
+    hr { border: none; border-top: 1px solid #e2e8f0; margin: 1.5em 0; }
+    img { max-width: 100%; border-radius: 0.5rem; }
+    @media (prefers-color-scheme: dark) {
+      body { color: #e2e8f0; background: #0f0f1a; }
+      h1 { border-color: #2d2d4e; }
+      h2 { border-color: #2d2d4e; }
+      code { background: #1e1e3a; border-color: #2d2d4e; }
+      pre { background: #1e1e3a; border-color: #2d2d4e; }
+      blockquote { color: #94a3b8; }
+      th { background: #1e1e3a; }
+      th, td { border-color: #2d2d4e; }
+      hr { border-color: #2d2d4e; }
+    }
+  </style>
+</head>
+<body>
+${htmlBody}
+</body>
+</html>`;
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = base + '.html';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  // ── 공유 인코딩/디코딩 ──
+  function buildShareURL(permission) {
+    const payload = JSON.stringify({
+      data: { content: mdContent, filename: currentFilename },
+      permission,
+    });
+    if (payload.length > 8000) return { url: null, tooLarge: true };
+    const encoded = btoa(encodeURIComponent(payload))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    return { url: `${location.origin}/md-editor/#share=${encoded}`, tooLarge: false };
+  }
+
+  function decodeSharePayload(encoded) {
+    try {
+      const raw = encoded.replace(/-/g, '+').replace(/_/g, '/');
+      const pad = (4 - raw.length % 4) % 4;
+      const p = JSON.parse(decodeURIComponent(atob(raw + '='.repeat(pad))));
+      if (p && p.data && typeof p.data.content === 'string') return p;
+    } catch {}
+    return null;
+  }
+
+  // ── 공유 드롭다운 ──
+  function toggleShareMenu(e) {
+    if (!mdContent.trim()) { showToast('내용이 없어 공유할 수 없습니다.'); return; }
+    e.stopPropagation();
+    const dd = document.getElementById('share-dropdown');
+    const rect = e.currentTarget.getBoundingClientRect();
+    dd.style.top = (rect.bottom + 6) + 'px';
+    dd.style.right = (window.innerWidth - rect.right) + 'px';
+    _shareMenuOpen = !_shareMenuOpen;
+    dd.classList.toggle('open', _shareMenuOpen);
+    if (_shareMenuOpen) {
+      setTimeout(() => document.addEventListener('click', _closeShareMenu, { once: true }), 0);
+    }
+  }
+
+  function _closeShareMenu() {
+    document.getElementById('share-dropdown').classList.remove('open');
+    _shareMenuOpen = false;
+  }
+
+  // ── 공유 실행 ──
+  async function doShare(permission) {
+    _closeShareMenu();
+    const result = buildShareURL(permission);
+    if (result.tooLarge) {
+      showToast('내용이 너무 많습니다. 파일로 저장 후 직접 전달해주세요.');
+      return;
+    }
+    const longURL = result.url;
+    try {
+      const res = await fetch('/.netlify/functions/shorten', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: longURL }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.shortURL) throw new Error();
+      await navigator.clipboard.writeText(data.shortURL);
+      showToast('링크가 복사되었습니다 ✓');
+    } catch {
+      try {
+        await navigator.clipboard.writeText(longURL);
+        showToast('링크가 복사되었습니다 (단축 미적용)');
+      } catch { showToast('공유에 실패했습니다.'); }
+    }
+  }
+
+  // ── 보기 전용 진입 ──
+  function enterViewOnly() {
+    isViewOnly = true;
+    document.body.classList.add('is-view-only');
+    document.getElementById('editor').setAttribute('readonly', '');
+    closeCloneModal();
+    showToast('보기 전용으로 열립니다');
+  }
+
+  // ── 복제 (편집 가능으로 전환) ──
+  function cloneContent() {
+    isViewOnly = false;
+    document.body.classList.remove('is-view-only');
+    document.getElementById('editor').removeAttribute('readonly');
+    closeCloneModal();
+    showToast('편집 가능 모드로 가져왔습니다');
+  }
+
+  // ── 복제 모달 ──
+  function openCloneModal(filename) {
+    document.getElementById('clone-modal-desc').textContent = `"${filename}"을 어떻게 열까요?`;
+    document.getElementById('clone-modal').classList.add('open');
+  }
+
+  function closeCloneModal() {
+    document.getElementById('clone-modal').classList.remove('open');
+  }
+
+  // ── 도움말 모달 ──
+  function openHelpModal() {
+    document.getElementById('help-modal').classList.add('open');
+  }
+
+  // ── 토스트 ──
+  let _toastTimer;
+  function showToast(msg) {
+    const el = document.getElementById('md-toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  // ── 초기화 (URL 해시 처리) ──
+  (function init() {
+    const hash = location.hash;
+    if (hash.startsWith('#share=')) {
+      const payload = decodeSharePayload(hash.slice(7));
+      history.replaceState(null, '', location.pathname);
+      if (payload && payload.data) {
+        mdContent = payload.data.content || '';
+        currentFilename = payload.data.filename || 'shared.md';
+        document.getElementById('filenameInput').value = currentFilename;
+        document.getElementById('editor').value = mdContent;
+        renderPreview();
+        updateSaveBtn();
+        if (payload.permission === 'view') {
+          enterViewOnly();
+        } else {
+          openCloneModal(currentFilename);
+        }
+        return;
+      }
+      showToast('공유 링크를 읽을 수 없습니다.');
+    }
+  })();
+</script>
+</body>
+</html>
