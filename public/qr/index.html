@@ -708,15 +708,19 @@
   }
 
   function handlePasteEvent(e) {
+    e.preventDefault();
+
+    // 이미지 처리
     for (const item of e.clipboardData.items) {
       if (item.type.startsWith('image/')) {
         scanImageFile(new File([item.getAsFile()], 'paste.png', { type: item.type }), 'clipboard');
         return;
       }
     }
+
     // 텍스트 링크 붙여넣기 처리
-    const text = e.clipboardData.getData('text/plain');
-    if (text) {
+    const text = e.clipboardData.getData('text/plain').trim();
+    if (text && text.length > 0) {
       try {
         new URL(text);
         switchTab('scan');
