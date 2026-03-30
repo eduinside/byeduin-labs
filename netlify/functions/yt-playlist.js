@@ -33,7 +33,8 @@ exports.handler = async (event) => {
     let playlistTitle = null;
     if (!pageToken) {
       const plRes = await fetch(
-        `${BASE}/playlists?part=snippet&id=${playlistId}&key=${apiKey}`
+        `${BASE}/playlists?part=snippet&id=${playlistId}&key=${apiKey}`,
+        { headers: { 'Referer': 'https://byeduin-labs.netlify.app/' } }
       );
       const plData = await plRes.json();
       playlistTitle = plData.items?.[0]?.snippet?.title ?? '플레이리스트';
@@ -43,14 +44,21 @@ exports.handler = async (event) => {
     let itemsUrl = `${BASE}/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&key=${apiKey}`;
     if (pageToken) itemsUrl += `&pageToken=${encodeURIComponent(pageToken)}`;
 
-    const itemsRes = await fetch(itemsUrl);
+    const itemsRes = await fetch(itemsUrl, {
+      headers: { 'Referer': 'https://byeduin-labs.netlify.app/' }
+    });
     const itemsData = await itemsRes.json();
 
     if (!itemsRes.ok) {
+      const errMsg = itemsData.error?.message ?? 'YouTube API error';
+      // referer 관련 에러일 경우 안내 메시지 추가
+      const displayMsg = errMsg.includes('referer')
+        ? 'API 키 설정을 확인하세요. YouTube API 콘솔에서 API 키의 "HTTP referrers" 제한을 제거하거나 https://byeduin-labs.netlify.app 을 추가해주세요.'
+        : errMsg;
       return {
         statusCode: itemsRes.status,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: itemsData.error?.message ?? 'YouTube API error' }),
+        body: JSON.stringify({ error: displayMsg }),
       };
     }
 

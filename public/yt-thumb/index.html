@@ -406,6 +406,7 @@
         <button onclick="fetchPlaylist()" class="hero-btn" id="plFetchBtn">불러오기</button>
         <button onclick="clearPlaylist()" class="hero-btn hero-btn-ghost">초기화</button>
       </div>
+      <button onclick="showApiKeyModal()" class="hero-btn hero-btn-ghost" id="plApiKeyBtn" style="display:none;width:100%;margin-top:0.5rem;font-size:0.8rem;">⚙️ API 키 설정</button>
 
       <div id="plResult"></div>
     </div>
@@ -573,6 +574,7 @@
 
   /* ───────────────────────── 플레이리스트 ───────────────────────── */
   const PL_REGEX = /[?&]list=([A-Za-z0-9_-]+)/;
+  const API_KEY_STORAGE = 'yt_api_key_custom';
 
   let plItems = [];       // 전체 영상 목록
   let plTitle = '';       // 플레이리스트 제목
@@ -597,21 +599,48 @@
       let pageToken = null;
       let isFirst = true;
       let totalFetched = 0;
+      let usingCustomKey = false;
 
+      // 먼저 Netlify Function으로 시도
+      let useCustomKey = false;
       do {
         const body = { playlistId };
         if (pageToken) body.pageToken = pageToken;
 
-        const res = await fetch('/.netlify/functions/yt-playlist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
+        let res, data;
 
-        const data = await res.json();
+        if (useCustomKey) {
+          // 사용자 정의 API 키 사용
+          const customKey = localStorage.getItem(API_KEY_STORAGE);
+          if (!customKey) { showPlError('API 키가 설정되지 않았습니다.'); return; }
+          res = await fetchWithCustomKey(playlistId, pageToken, customKey);
+          data = res;
+          usingCustomKey = true;
+        } else {
+          // Netlify Function 사용
+          res = await fetch('/.netlify/functions/yt-playlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          data = await res.json();
+        }
 
-        if (!res.ok) {
-          showPlError(data.error ?? '불러오기 실패');
+        // Netlify Function 실패 시 API 키 설정 안내
+        if (!useCustomKey && (res?.status === 403 || res?.status === 400) && data?.error?.includes?.('referer')) {
+          const saved = localStorage.getItem(API_KEY_STORAGE);
+          if (saved) {
+            useCustomKey = true;
+            continue;
+          } else {
+            showPlError('API 키 설정이 필요합니다. ⚙️ 설정 버튼을 클릭해주세요.');
+            document.getElementById('plApiKeyBtn').style.display = 'inline-flex';
+            return;
+          }
+        }
+
+        if (!useCustomKey && !res?.ok) {
+          showPlError(data?.error ?? '불러오기 실패');
           return;
         }
 
@@ -627,10 +656,53 @@
       } while (pageToken);
 
       renderPlaylist();
-    } catch {
-      showPlError('네트워크 오류가 발생했습니다.');
+    } catch (e) {
+      showPlError('네트워크 오류가 발생했습니다. API 키 설정을 확인해주세요.');
     } finally {
       document.getElementById('plFetchBtn').disabled = false;
+    }
+  }
+
+  async function fetchWithCustomKey(playlistId, pageToken, apiKey) {
+    const BASE = 'https://www.googleapis.com/youtube/v3';
+
+    let playlistTitle = null;
+    if (!pageToken) {
+      const plRes = await fetch(
+        `${BASE}/playlists?part=snippet&id=${playlistId}&key=${apiKey}`
+      );
+      const plData = await plRes.json();
+      playlistTitle = plData.items?.[0]?.snippet?.title ?? '플레이리스트';
+    }
+
+    let itemsUrl = `${BASE}/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&key=${apiKey}`;
+    if (pageToken) itemsUrl += `&pageToken=${encodeURIComponent(pageToken)}`;
+
+    const itemsRes = await fetch(itemsUrl);
+    const itemsData = await itemsRes.json();
+
+    return {
+      playlistTitle,
+      items: (itemsData.items ?? [])
+        .filter(it => it.snippet?.resourceId?.videoId)
+        .map(it => ({
+          videoId: it.snippet.resourceId.videoId,
+          title: it.snippet.title ?? '',
+          description: it.snippet.description ?? '',
+          thumbnailUrl: it.snippet.thumbnails?.high?.url ??
+            it.snippet.thumbnails?.medium?.url ??
+            `https://img.youtube.com/vi/${it.snippet.resourceId.videoId}/hqdefault.jpg`,
+        })),
+      nextPageToken: itemsData.nextPageToken ?? null,
+    };
+  }
+
+  function showApiKeyModal() {
+    const saved = localStorage.getItem(API_KEY_STORAGE) || '';
+    const key = prompt('YouTube API 키를 입력해주세요:\n(Google Cloud Console에서 생성할 수 있습니다)', saved);
+    if (key !== null) {
+      localStorage.setItem(API_KEY_STORAGE, key.trim());
+      showPlError('API 키가 저장되었습니다. 다시 시도해주세요.');
     }
   }
 
