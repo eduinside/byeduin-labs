@@ -6,6 +6,7 @@
   <title>YT Thumbnail — byeduin</title>
   <link rel="stylesheet" href="/common/hero-theme.css">
   <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
@@ -32,54 +33,45 @@
 
     .wrap {
       width: 100%;
-      max-width: 520px;
+      max-width: 440px;
       position: relative;
       z-index: 1;
     }
 
     .app-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 1.25rem;
-      padding: 1.75rem;
-      min-height: 380px;
-    }
-
-    /* ── 탭 ── */
-    .tab-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.375rem;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 0.75rem;
-      padding: 0.25rem;
-      margin-bottom: 1.25rem;
-    }
-
-    .tab-btn {
-      background: none;
+      background: transparent;
       border: none;
-      border-radius: 0.5rem;
-      padding: 0.5rem 1rem;
-      font-size: 0.85rem;
-      font-weight: 600;
-      font-family: inherit;
-      color: var(--fg-muted);
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s;
+      border-radius: 0;
+      padding: 0;
+      min-height: auto;
     }
 
-    .tab-btn.active {
-      background: var(--card-bg);
-      color: var(--fg);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-
+    /* ── 탭 (숨김) ── */
+    .tab-row { display: none; }
+    .tab-btn { display: none; }
     .tab-pane { display: none; }
-    .tab-pane.active { display: block; }
 
     .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; margin-top: 0.75rem; }
+
+    /* ── 듀얼 모드 탭 ── */
+    .dual-tab-btn {
+      transition: all 0.2s;
+    }
+    .dual-tab-btn:hover {
+      border-color: var(--primary);
+      opacity: 0.9;
+    }
+    .dual-tab-active {
+      background: var(--primary) !important;
+      color: #fff !important;
+      border-color: var(--primary) !important;
+    }
+
+    /* ── 단일/재생목록 UI ── */
+    #single-ui,
+    #playlist-ui {
+      margin-top: 1.5rem;
+    }
 
     /* ── 결과 영역 (단일) ── */
     #result { margin-top: 1.25rem; display: none; }
@@ -148,7 +140,7 @@
       margin-top: 1.25rem;
       padding-top: 1.25rem;
       border-top: 1px solid var(--border);
-      display: none;
+      display: block;
     }
 
     .history-header {
@@ -179,10 +171,10 @@
       border-radius: 0.75rem;
       padding: 0.5rem 0.625rem;
       cursor: pointer;
-      transition: border-color 0.15s;
+      transition: border-color 0.15s, background 0.15s;
     }
 
-    .history-item:hover { border-color: var(--primary); }
+    .history-item:hover { border-color: var(--primary); background: var(--bg-hover); }
 
     .history-thumb {
       width: 64px; height: 40px;
@@ -191,10 +183,20 @@
     }
 
     .history-info { flex: 1; min-width: 0; }
-    .history-vid { font-size: 0.78rem; font-family: monospace; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-title { font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-time { font-size: 0.75rem; color: var(--fg-muted); margin-top: 2px; }
     .history-links { display: flex; gap: 0.625rem; margin-top: 2px; }
     .history-links a { font-size: 0.7rem; color: var(--fg-muted); text-decoration: none; }
     .history-links a:hover { color: var(--primary); text-decoration: underline; }
+
+    /* 히스토리 펄스 애니메이션 */
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .history-section.pulse {
+      animation: pulse-subtle 0.6s ease-in-out 2;
+    }
 
     .btn-del-h {
       background: none; border: none; color: var(--fg-muted);
@@ -214,6 +216,17 @@
     }
 
     #plResult { margin-top: 1.25rem; }
+
+    /* ── 플레이리스트 결과 확장 ── */
+    #playlist-ui {
+      display: flex;
+      flex-direction: column;
+    }
+    #plResult {
+      max-width: 800px;
+      align-self: center;
+      width: 100%;
+    }
 
     .pl-header {
       margin-bottom: 1rem;
@@ -327,6 +340,29 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── 통합 URL 입력 ── */
+    .url-input-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .url-input-row .hero-input { flex: 1; }
+    .btn-analyze {
+      width: 42px; height: 42px;
+      border-radius: 0.625rem;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: opacity 0.15s;
+    }
+    .btn-analyze:hover { opacity: 0.85; }
+
     /* 프로그레스 */
     .progress-wrap {
       background: var(--bg);
@@ -359,56 +395,51 @@
   <div class="app-header">
     <div class="app-badge">◆ Creative</div>
     <h1 class="app-title">YT <span>Thumbnail</span></h1>
-    <p class="app-desc">유튜브 썸네일 추출 및 플레이리스트 아카이빙 도구</p>
+    <p class="app-desc">영상 주소를 입력하면 썸네일을 추출하고, 재생목록 주소를 입력하면 전체 영상 정보와 썸네일을 수집합니다.</p>
   </div>
 
   <div class="app-card">
 
-    <!-- 탭 -->
-    <div class="tab-row">
-      <button class="tab-btn active" id="tab-single" onclick="switchTab('single')">단일 영상</button>
-      <button class="tab-btn" id="tab-playlist" onclick="switchTab('playlist')">플레이리스트</button>
-    </div>
-
-    <!-- 단일 영상 탭 -->
-    <div class="tab-pane active" id="pane-single">
-      <label style="display:block;font-size:0.78rem;font-weight:600;color:var(--fg-muted);margin-bottom:0.375rem;">
-        유튜브 URL
-      </label>
+    <!-- 통합 URL 입력 -->
+    <div class="url-input-row">
       <input type="url" id="youtubeUrl" class="hero-input"
-             placeholder="https://www.youtube.com/watch?v=..."
-             onkeyup="if(event.key==='Enter')extractThumbnail()">
+             placeholder="YouTube 영상 또는 재생목록 URL"
+             onkeyup="if(event.key==='Enter')analyzeUrl()">
+      <button class="btn-analyze" onclick="analyzeUrl()" title="분석 시작">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"/>
+          <polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </button>
+    </div>
 
-      <div class="btn-row">
-        <button onclick="extractThumbnail()" class="hero-btn">추출하기</button>
-        <button onclick="toggleHistory()" class="hero-btn hero-btn-ghost">히스토리</button>
-      </div>
-
-      <div id="result"></div>
-
-      <div class="history-section" id="historySection">
-        <div class="history-header">
-          <span>검색 히스토리</span>
-          <button class="btn-clear-h" onclick="clearHistory()">전체 삭제</button>
-        </div>
-        <div class="history-list" id="historyList"></div>
+    <!-- 듀얼 모드 탭 (영상+재생목록 동시) -->
+    <div id="dual-mode-tabs" style="display:none; margin-top:1rem; margin-bottom:1rem;">
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:0.5rem;">
+        <button onclick="switchDualModeTab('thumbnail')" id="tab-thumbnail" class="dual-tab-btn dual-tab-active" style="padding:0.5rem; border-radius:0.5rem; border:1px solid var(--border); background:var(--primary); color:#fff; cursor:pointer; font-weight:600; font-size:0.875rem; transition:all 0.2s;">썸네일</button>
+        <button onclick="switchDualModeTab('playlist')" id="tab-playlist" class="dual-tab-btn" style="padding:0.5rem; border-radius:0.5rem; border:1px solid var(--border); background:transparent; color:var(--fg); cursor:pointer; font-weight:600; font-size:0.875rem; transition:all 0.2s;">재생목록</button>
+        <button onclick="switchDualModeTab('history')" id="tab-history" class="dual-tab-btn" style="padding:0.5rem; border-radius:0.5rem; border:1px solid var(--border); background:transparent; color:var(--fg); cursor:pointer; font-weight:600; font-size:0.875rem; transition:all 0.2s;">히스토리</button>
       </div>
     </div>
 
-    <!-- 플레이리스트 탭 -->
-    <div class="tab-pane" id="pane-playlist">
-      <label class="pl-label">플레이리스트 URL</label>
-      <input type="url" id="plUrl" class="hero-input"
-             placeholder="https://www.youtube.com/playlist?list=PL..."
-             onkeyup="if(event.key==='Enter')fetchPlaylist()">
+    <!-- 단일영상 UI -->
+    <div id="single-ui" style="display:none; margin-top:1rem;">
+      <div id="result"></div>
+    </div>
 
-      <div class="btn-row">
-        <button onclick="fetchPlaylist()" class="hero-btn" id="plFetchBtn">불러오기</button>
-        <button onclick="clearPlaylist()" class="hero-btn hero-btn-ghost">초기화</button>
-      </div>
+    <!-- 재생목록 UI -->
+    <div id="playlist-ui" style="display:none; margin-top:1rem;">
       <button onclick="showApiKeyModal()" class="hero-btn hero-btn-ghost" id="plApiKeyBtn" style="display:none;width:100%;margin-top:0.5rem;font-size:0.8rem;">⚙️ API 키 설정</button>
+      <div id="plResult" class="pl-result-wide"></div>
+    </div>
 
-      <div id="plResult"></div>
+    <!-- 통합 히스토리 -->
+    <div class="history-section" id="historySection" style="margin-top:1.5rem;">
+      <div class="history-header">
+        <span>최근 검색</span>
+        <button class="btn-clear-h" onclick="clearAllHistory()">전체 삭제</button>
+      </div>
+      <div class="history-list" id="historyList"></div>
     </div>
 
   </div>
@@ -438,12 +469,121 @@
 </div>
 
 <script>
-  /* ───────────────────────────── 탭 ───────────────────────────── */
-  function switchTab(tab) {
-    document.getElementById('pane-single').classList.toggle('active', tab === 'single');
-    document.getElementById('pane-playlist').classList.toggle('active', tab === 'playlist');
-    document.getElementById('tab-single').classList.toggle('active', tab === 'single');
-    document.getElementById('tab-playlist').classList.toggle('active', tab === 'playlist');
+  // ── 초기화 ──
+  let currentMode = null; // 'video', 'playlist', 'dual'
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderUnifiedHistory();
+  });
+
+  /* ─────────────────────── URL 분석 + 모드 전환 ─────────────────────── */
+  function analyzeUrl() {
+    const url = document.getElementById('youtubeUrl').value.trim();
+    if (!url) { showError('URL을 입력해주세요.'); return; }
+    const isVideo = YT_REGEX.test(url);
+    const isList = PL_REGEX.test(url);
+
+    if (!isVideo && !isList) {
+      showError('유효하지 않은 유튜브 URL입니다.');
+      document.getElementById('dual-mode-tabs').style.display = 'none';
+      return;
+    }
+
+    // 모든 탭 활성화 상태 초기화
+    const playlistBtn = document.getElementById('tab-playlist');
+    const thumbnailBtn = document.getElementById('tab-thumbnail');
+
+    // 듀얼 URL 처리: 영상과 재생목록 ID가 모두 있는 경우 (탭 모드)
+    if (isVideo && isList) {
+      currentMode = 'dual';
+      document.getElementById('dual-mode-tabs').style.display = 'block';
+      playlistBtn.disabled = false;
+      playlistBtn.style.opacity = '1';
+      playlistBtn.style.cursor = 'pointer';
+      thumbnailBtn.disabled = false;
+      thumbnailBtn.style.opacity = '1';
+      thumbnailBtn.style.cursor = 'pointer';
+      switchDualModeTab('thumbnail');
+      renderUnifiedHistory();
+    } else if (isVideo) {
+      currentMode = 'video';
+      document.getElementById('dual-mode-tabs').style.display = 'block';
+      thumbnailBtn.disabled = false;
+      thumbnailBtn.style.opacity = '1';
+      thumbnailBtn.style.cursor = 'pointer';
+      playlistBtn.disabled = true;
+      playlistBtn.style.opacity = '0.5';
+      playlistBtn.style.cursor = 'not-allowed';
+      switchDualModeTab('thumbnail');
+      renderUnifiedHistory();
+    } else if (isList) {
+      currentMode = 'playlist';
+      document.getElementById('dual-mode-tabs').style.display = 'block';
+      playlistBtn.disabled = false;
+      playlistBtn.style.opacity = '1';
+      playlistBtn.style.cursor = 'pointer';
+      thumbnailBtn.disabled = true;
+      thumbnailBtn.style.opacity = '0.5';
+      thumbnailBtn.style.cursor = 'not-allowed';
+      switchDualModeTab('playlist');
+      renderUnifiedHistory();
+    }
+  }
+
+  // 듀얼 모드 탭 전환
+  function switchDualModeTab(tab) {
+    const thumbnailBtn = document.getElementById('tab-thumbnail');
+    const playlistBtn = document.getElementById('tab-playlist');
+    const historyBtn = document.getElementById('tab-history');
+    const singleUi = document.getElementById('single-ui');
+    const playlistUi = document.getElementById('playlist-ui');
+    const historySection = document.getElementById('historySection');
+
+    // 모든 탭 버튼 비활성화 상태 초기화 (disabled 상태는 유지)
+    thumbnailBtn.classList.remove('dual-tab-active');
+    playlistBtn.classList.remove('dual-tab-active');
+    historyBtn.classList.remove('dual-tab-active');
+    if (!thumbnailBtn.disabled) {
+      thumbnailBtn.style.background = 'transparent';
+      thumbnailBtn.style.color = 'var(--fg)';
+      thumbnailBtn.style.borderColor = 'var(--border)';
+    }
+    if (!playlistBtn.disabled) {
+      playlistBtn.style.background = 'transparent';
+      playlistBtn.style.color = 'var(--fg)';
+      playlistBtn.style.borderColor = 'var(--border)';
+    }
+    historyBtn.style.background = 'transparent';
+    historyBtn.style.color = 'var(--fg)';
+    historyBtn.style.borderColor = 'var(--border)';
+
+    // 모든 콘텐츠 숨김
+    singleUi.style.display = 'none';
+    playlistUi.style.display = 'none';
+    historySection.style.display = 'none';
+
+    // 선택된 탭 활성화
+    if (tab === 'thumbnail' && !thumbnailBtn.disabled) {
+      thumbnailBtn.classList.add('dual-tab-active');
+      thumbnailBtn.style.background = 'var(--primary)';
+      thumbnailBtn.style.color = '#fff';
+      thumbnailBtn.style.borderColor = 'var(--primary)';
+      singleUi.style.display = 'block';
+      extractThumbnail();
+    } else if (tab === 'playlist' && !playlistBtn.disabled) {
+      playlistBtn.classList.add('dual-tab-active');
+      playlistBtn.style.background = 'var(--primary)';
+      playlistBtn.style.color = '#fff';
+      playlistBtn.style.borderColor = 'var(--primary)';
+      playlistUi.style.display = 'block';
+      fetchPlaylist();
+    } else if (tab === 'history') {
+      historyBtn.classList.add('dual-tab-active');
+      historyBtn.style.background = 'var(--primary)';
+      historyBtn.style.color = '#fff';
+      historyBtn.style.borderColor = 'var(--primary)';
+      historySection.style.display = 'block';
+    }
   }
 
   /* ───────────────────────── 단일 영상 ───────────────────────── */
@@ -457,8 +597,9 @@
     const match = url.match(YT_REGEX);
     if (match && match[1]) {
       saveToHistory(match[1]);
+      saveToUnifiedHistory('video', match[1]);
       displayResult(match[1]);
-      if (document.getElementById('historySection').style.display === 'block') renderHistory();
+      renderUnifiedHistory();
     } else {
       showError('유효하지 않은 유튜브 URL입니다.');
     }
@@ -572,8 +713,96 @@
     }
   }
 
+  // ── 통합 히스토리 ──
+  const UNIFIED_HISTORY_KEY = 'youtube_unified_history';
+
+  function saveToUnifiedHistory(type, data) {
+    let hist = JSON.parse(localStorage.getItem(UNIFIED_HISTORY_KEY) || '[]');
+    const item = { type, data, timestamp: new Date().toISOString() };
+    // 중복 제거
+    hist = hist.filter(h => !(h.type === type && h.data === data));
+    hist.unshift(item);
+    localStorage.setItem(UNIFIED_HISTORY_KEY, JSON.stringify(hist.slice(0, 30)));
+  }
+
+  function renderUnifiedHistory() {
+    const list = document.getElementById('historyList');
+    const hist = JSON.parse(localStorage.getItem(UNIFIED_HISTORY_KEY) || '[]');
+    if (!hist.length) {
+      list.innerHTML = '<p style="text-align:center;color:var(--fg-muted);font-size:0.8rem;padding:1rem">기록이 없습니다.</p>';
+      return;
+    }
+    list.innerHTML = hist.map((item, idx) => {
+      if (item.type === 'video') {
+        const id = item.data;
+        const dateStr = new Date(item.timestamp).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return `
+          <div class="history-item" onclick="applyFromUnifiedHistory('video', '${id}')">
+            <img class="history-thumb" src="https://img.youtube.com/vi/${id}/mqdefault.jpg" alt="">
+            <div class="history-info">
+              <div class="history-title">영상 - ${id}</div>
+              <div class="history-time">${dateStr}</div>
+            </div>
+            <button class="btn-del-h" onclick="event.stopPropagation(); deleteFromUnifiedHistory('${item.type}', '${id}')">✕</button>
+          </div>
+        `;
+      } else if (item.type === 'playlist') {
+        const url = item.data;
+        const dateStr = new Date(item.timestamp).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return `
+          <div class="history-item" onclick="applyFromUnifiedHistory('playlist', '${url}')">
+            <img class="history-thumb" src="https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg" alt="">
+            <div class="history-info">
+              <div class="history-title">📺 재생목록</div>
+              <div class="history-time">${dateStr}</div>
+            </div>
+            <button class="btn-del-h" onclick="event.stopPropagation(); deleteFromUnifiedHistory('${item.type}', '${url}')">✕</button>
+          </div>
+        `;
+      }
+    }).join('');
+  }
+
+  function applyFromUnifiedHistory(type, data) {
+    if (type === 'video') {
+      document.getElementById('youtubeUrl').value = `https://www.youtube.com/watch?v=${data}`;
+      displayResult(data);
+    } else if (type === 'playlist') {
+      document.getElementById('youtubeUrl').value = data;
+      analyzeUrl();
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function deleteFromUnifiedHistory(type, data) {
+    let hist = JSON.parse(localStorage.getItem(UNIFIED_HISTORY_KEY) || '[]');
+    hist = hist.filter(h => !(h.type === type && h.data === data));
+    localStorage.setItem(UNIFIED_HISTORY_KEY, JSON.stringify(hist));
+    renderUnifiedHistory();
+  }
+
+  function clearAllHistory() {
+    if (confirm('모든 기록을 삭제하시겠습니까?')) {
+      localStorage.removeItem(UNIFIED_HISTORY_KEY);
+      renderUnifiedHistory();
+    }
+  }
+
+  function scrollToHistory() {
+    const section = document.getElementById('historySection');
+    if (!section) return;
+
+    // 펄스 애니메이션 추가
+    section.classList.add('pulse');
+    setTimeout(() => section.classList.remove('pulse'), 1200);
+
+    // 히스토리 섹션으로 부드럽게 스크롤
+    section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   /* ───────────────────────── 플레이리스트 ───────────────────────── */
   const PL_REGEX = /[?&]list=([A-Za-z0-9_-]+)/;
+  const PL_HISTORY_KEY = 'youtube_playlist_history';
   const API_KEY_STORAGE = 'yt_api_key_custom';
 
   let plItems = [];       // 전체 영상 목록
@@ -581,7 +810,7 @@
   let plUrl = '';         // 원본 URL
 
   async function fetchPlaylist() {
-    const url = document.getElementById('plUrl').value.trim();
+    const url = document.getElementById('youtubeUrl').value.trim();
     if (!url) { showPlError('URL을 입력해주세요.'); return; }
 
     const match = url.match(PL_REGEX);
@@ -656,6 +885,10 @@
       } while (pageToken);
 
       renderPlaylist();
+      savePLToHistory(plUrl);
+      saveToUnifiedHistory('playlist', plUrl);
+      renderPLHistory();
+      renderUnifiedHistory();
     } catch (e) {
       showPlError('네트워크 오류가 발생했습니다. API 키 설정을 확인해주세요.');
     } finally {
@@ -719,8 +952,8 @@
         <div class="pl-meta">총 ${plItems.length}개 영상</div>
       </div>
       <div class="pl-actions">
-        <button class="hero-btn" onclick="openInMdEditor()">MD 편집기로 열기</button>
-        <button class="hero-btn hero-btn-ghost" id="zipBtn" onclick="downloadZip()">ZIP 다운로드</button>
+        <button class="hero-btn" onclick="openInMdEditor()">📋 링크 정리 (MD Editor로)</button>
+        <button class="hero-btn hero-btn-ghost" id="zipBtn" onclick="downloadZip()">📦 다운로드(ZIP)</button>
       </div>
       <div class="pl-list">
         ${plItems.map((item, i) => `
@@ -829,12 +1062,84 @@
     return lines.join('\n');
   }
 
-  function clearPlaylist() {
-    plItems = [];
-    plTitle = '';
-    plUrl = '';
-    document.getElementById('plUrl').value = '';
-    document.getElementById('plResult').innerHTML = '';
+  function savePLToHistory(url) {
+    let plHistory = [];
+    try {
+      const raw = localStorage.getItem(PL_HISTORY_KEY);
+      if (raw) plHistory = JSON.parse(raw);
+    } catch { plHistory = []; }
+
+    // 중복 제거 및 최신순으로 정렬
+    plHistory = plHistory.filter(u => u !== url);
+    plHistory.unshift(url);
+
+    // 최대 30개만 유지
+    plHistory = plHistory.slice(0, 30);
+
+    localStorage.setItem(PL_HISTORY_KEY, JSON.stringify(plHistory));
+  }
+
+  function renderPLHistory() {
+    let plHistory = [];
+    try {
+      const raw = localStorage.getItem(PL_HISTORY_KEY);
+      if (raw) plHistory = JSON.parse(raw);
+    } catch { plHistory = []; }
+
+    if (plHistory.length === 0) return;
+
+    let historySection = document.getElementById('plHistorySection');
+    if (!historySection) {
+      historySection = document.createElement('div');
+      historySection.id = 'plHistorySection';
+      historySection.style.marginTop = '1.5rem';
+      const plResult = document.getElementById('plResult');
+      if (plResult.parentNode) {
+        plResult.parentNode.insertBefore(historySection, plResult.nextSibling);
+      }
+    }
+
+    historySection.innerHTML = `
+      <div style="margin-bottom:0.75rem; font-size:0.85rem; font-weight:600; color:var(--fg-muted); text-transform:uppercase;">히스토리</div>
+      <ul style="list-style:none; padding:0; margin:0;">
+        ${plHistory.map(url => `
+          <li style="padding:0.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+            <button onclick="applyFromPLHistory('${url.replace(/'/g, "\\'")}')"
+              title="${url}"
+              style="flex:1; text-align:left; background:none; border:none; color:var(--primary); cursor:pointer; padding:0; font-size:0.875rem;">
+              ${escHtml(url.substring(0, 50))}${url.length > 50 ? '...' : ''}
+            </button>
+            <button class="del-btn" onclick="deleteFromPLHistory('${url.replace(/'/g, "\\'")}')"
+              style="padding:0.25rem 0.5rem; font-size:0.75rem; background:none; border:1px solid var(--border); cursor:pointer; border-radius:0.25rem;">×</button>
+          </li>
+        `).join('')}
+      </ul>
+    `;
+  }
+
+  function applyFromPLHistory(url) {
+    document.getElementById('youtubeUrl').value = url;
+    fetchPlaylist();
+  }
+
+  function deleteFromPLHistory(url) {
+    let plHistory = [];
+    try {
+      const raw = localStorage.getItem(PL_HISTORY_KEY);
+      if (raw) plHistory = JSON.parse(raw);
+    } catch { plHistory = []; }
+
+    plHistory = plHistory.filter(u => u !== url);
+    localStorage.setItem(PL_HISTORY_KEY, JSON.stringify(plHistory));
+
+    renderPLHistory();
+  }
+
+  function togglePLHistory() {
+    const historySection = document.getElementById('plHistorySection');
+    if (historySection) {
+      historySection.style.display = historySection.style.display === 'none' ? 'block' : 'none';
+    }
   }
 
   function showPlLoading(msg) {
