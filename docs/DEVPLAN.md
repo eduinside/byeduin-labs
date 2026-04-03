@@ -1,6 +1,69 @@
 # byeduin VIVES — 개발 계획
 
-> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-04-04 (전체 앱 UX 개선 완료)
+> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-04-04 (배포 후 오류 수정 완료)
+
+---
+
+## 배포 후 오류 수정 (2026-04-04)
+
+### QR Master — 탭 상태 저장 기능 개선
+**문제**: 저장된 탭이 'scan'이어도 카메라가 자동으로 시작되지 않음
+**해결**:
+```javascript
+function switchTab(tab) {
+  // ... 탭 전환 로직
+  if (tab === 'scan') {
+    setTimeout(() => startCamera(), 100);  // 탭이 scan일 때 카메라 자동 시작
+  } else {
+    stopCamera();
+  }
+  localStorage.setItem(QR_TAB_KEY, tab);
+}
+```
+**결과**: 페이지 새로고침 후 이전 탭 복원 시 카메라가 올바르게 시작됨
+
+### YT Thumbnail — 재생목록 링크 처리 안정성 개선
+**문제**: 재생목록 URL 입력 후 탭이 제대로 활성화되지 않을 수 있음
+**해결**: `switchDualModeTab('playlist')` 호출 전 50ms 지연 추가
+```javascript
+setTimeout(() => switchDualModeTab('playlist'), 50);
+```
+**특징**: DOM 업데이트를 충분히 시간을 주어 더 안정적인 재생목록 로드 보장
+
+### Book Share — 입력/데이터 영역 너비 분리
+**문제**: ISBN 입력 영역과 표 영역이 함께 확대됨 (모두 800px로 확대)
+**해결**:
+```css
+.page-wrap {
+  max-width: 440px;  /* 입력 영역은 항상 440px */
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+#tableSection {
+  margin: 0 auto;
+  max-width: 800px;  /* 표 영역만 800px로 확대 */
+  width: 100%;
+  padding: 0 16px;
+}
+```
+**결과**: 입력 영역은 좁고 집중적으로, 표 영역은 데이터를 편하게 볼 수 있도록 분리됨
+
+### MD Editor — 스크롤바 다크모드 스타일링
+**추가 기능**: 스크롤바에 테마 기반 스타일링 적용
+```css
+#editor::-webkit-scrollbar { width: 8px; }
+#editor::-webkit-scrollbar-track { background: transparent; }
+#editor::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+#editor::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
+
+#preview::-webkit-scrollbar { width: 8px; }
+#preview::-webkit-scrollbar-track { background: transparent; }
+#preview::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+#preview::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
+```
+**특징**: HeroUI 테마 변수 (`var(--border)`, `var(--fg-muted)`) 사용으로 라이트/다크 모드 자동 적응
 
 ---
 
