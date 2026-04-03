@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bubble Chat — byeduin</title>
+  <link rel="icon" href="/logo.jpg" type="image/jpeg">
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <script src="/common/theme.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      padding: 56px 1rem 5rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+
+    /* Hide overlays when in chat (like Chalkboard) */
+    body.in-chat .top-overlay,
+    body.in-chat .top-overlay-left { display: none !important; }
+
+    /* 오버레이 버튼 색상 조정 */
+    .overlay-btn {
+      color: var(--primary);
+      border-color: rgba(0, 111, 238, 0.3);
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+
+    .overlay-btn:hover {
+      color: var(--primary);
+      border-color: var(--primary);
+      background: rgba(0, 111, 238, 0.08) !important;
+    }
+
+    /* 모달 열려있을 때 오버레이 버튼 비활성화 스타일 */
+    body.has-modal-open .top-overlay .overlay-btn,
+    body.has-modal-open .top-overlay-left .overlay-btn {
+      color: var(--fg-muted);
+      border-color: rgba(0, 0, 0, 0.1);
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    .bc-root { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; }
+
+    /* ══════════════════════════════════
+       View Switching
+    ══════════════════════════════════ */
+    .fd-view { display: none; }
+    .fd-view.active { display: block; }
+
+    #view-chat {
+      position: fixed; inset: 0;
+      display: none !important; flex-direction: column;
+      overflow: hidden; z-index: 500;
+      padding: 0;
+    }
+    #view-chat.active { display: flex !important; }
+
+    /* ══════════════════════════════════
+       Home View (Flash Deck Style)
+    ══════════════════════════════════ */
+    /* ── Flash Deck 버튼 스타일 ── */
+    .fd-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px 18px; border-radius: 10px; border: none;
+      font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: all 0.15s; min-height: 40px; white-space: nowrap;
+    }
+    .fd-btn-primary { background: var(--primary); color: #fff; }
+    .fd-btn-primary:hover { background: var(--primary-h); }
+    .fd-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .fd-btn-ghost {
+      background: var(--card-bg); color: var(--fg-muted);
+      border: 1px solid var(--border);
+    }
+    .fd-btn-ghost:hover { border-color: var(--primary); color: var(--primary); background: rgba(0,111,238,0.06); }
+
+    /* ── 홈 뷰 섹션 제목 ── */
+    #view-home .home-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      gap: 12px;
+    }
+
+    .fd-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+      margin-bottom: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .fd-section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── 홈 뷰 그리드 (Flash Deck 패턴 그대로) ── */
+    .deck-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .deck-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      animation: fadeUp 0.25s ease both;
+      position: relative;
+    }
+
+    .deck-item:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,111,238,0.1);
+    }
+
+    .deck-item-emoji {
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .deck-item-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--fg);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .deck-item-meta {
+      font-size: 11px;
+      color: var(--fg-muted);
+      line-height: 1.5;
+    }
+
+    .deck-item-del {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--fg-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.15s, color 0.15s, background 0.15s;
+      font-size: 16px;
+    }
+
+    .deck-item:hover .deck-item-del {
+      opacity: 1;
+    }
+
+    .deck-item-del:hover {
+      color: var(--danger);
+      background: rgba(243,18,96,0.08);
+    }
+
+    .deck-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--fg-muted);
+      font-size: 14px;
+    }
+
+    /* ══════════════════════════════════
+       Chat View Header (like Chalkboard)
+    ══════════════════════════════════ */
+    .bc-chat-header {
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 100;
+      background: var(--card-bg);
+    }
+
+    .bc-header-code {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--fg);
+      font-family: monospace;
+      letter-spacing: 0.1em;
+    }
+
+    .bc-header-sep {
+      flex: 1;
+    }
+
+    .bc-header-btn {
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+      background: transparent;
+      color: var(--fg-muted);
+    }
+
+    .bc-header-btn:hover {
+      background: var(--bg-sec);
+      color: var(--fg);
+    }
+
+    .bc-header-btn-danger {
+      color: var(--danger);
+    }
+
+    .bc-header-btn-danger:hover {
+      background: rgba(243,18,96,0.1);
+    }
+
+    /* ══════════════════════════════════
+       Chat Body
+    ══════════════════════════════════ */
+    .bc-chat-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .bc-sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      background: var(--card-bg);
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    @media (max-width: 860px) {
+      .bc-sidebar {
+        display: none;
+      }
+    }
+
+    .bc-sidebar-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .bc-sidebar-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+    }
+
+    .bc-participant-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .bc-participant {
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      background: var(--bg);
+      border: 1px solid transparent;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .bc-participant-name {
+      font-weight: 600;
+      color: var(--fg);
+    }
+
+    .bc-participant-time {
+      font-size: 10px;
+      color: var(--fg-muted);
+    }
+
+    /* ══════════════════════════════════
+       Messages Area
+    ══════════════════════════════════ */
+    .bc-messages-wrap {
+      flex: 1;
+      min-width: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      gap: 8px;
+    }
+
+    .bc-msg {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      animation: fadeUp 0.2s ease both;
+      max-width: 75%;
+    }
+
+    .bc-msg--self {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .bc-msg--other {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+
+    .bc-msg--system {
+      align-self: center;
+      align-items: center;
+    }
+
+    .bc-msg-meta {
+      font-size: 10px;
+      color: var(--fg-muted);
+    }
+
+    .bc-msg-bubble {
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .bc-msg--self .bc-msg-bubble {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .bc-msg--other .bc-msg-bubble {
+      background: var(--bg-sec);
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
+
+    .bc-msg--system .bc-msg-bubble {
+      background: transparent;
+      color: var(--fg-muted);
+      font-size: 11px;
+      font-style: italic;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ══════════════════════════════════
+       Input Area
+    ══════════════════════════════════ */
+    .bc-input-area {
+      flex-shrink: 0;
+      display: flex;
+      gap: 8px;
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--card-bg);
+      align-items: flex-end;
+    }
+
+    .bc-dm-select {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--fg);
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      min-width: 140px;
+    }
+
+    .bc-dm-select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .bc-msg-input {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--fg);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      resize: none;
+      max-height: 120px;
+      min-height: 40px;
+      line-height: 1.5;
+      transition: border-color 0.2s;
+    }
+
+    .bc-msg-input:focus {
+      border-color: var(--primary);
+    }
+
+    .bc-send-btn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+      font-family: inherit;
+      min-height: 40px;
+    }
+
+    .bc-send-btn:hover {
+      background: var(--primary-h);
+    }
+
+    /* ══════════════════════════════════
+       Dropdown Menu
+    ══════════════════════════════════ */
+    #chat-menu-dropdown {
+      position: absolute;
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      z-index: 9500;
+      min-width: 160px;
+      top: 100%;
+      right: 0;
+      margin-top: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      animation: scaleIn 0.15s ease;
+    }
+
+    #chat-menu-dropdown.open {
+      display: flex;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: none;
+      background: none;
+      color: var(--fg);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.12s;
+      text-align: left;
+    }
+
+    .menu-item:hover {
+      background: rgba(0,111,238,0.08);
+      color: var(--primary);
+    }
+
+    /* ══════════════════════════════════
+       Modal (Flash Deck Style)
+    ══════════════════════════════════ */
+    .bc-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .bc-modal-overlay.open {
+      display: flex;
+    }
+
+    .bc-modal {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      width: 100%;
+      max-width: 420px;
+      animation: scaleIn 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+
+    .bc-modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--fg);
+      margin: 0;
+    }
+
+    .bc-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .bc-modal-close {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--fg-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: color 0.2s;
+    }
+
+    .bc-modal-close:hover {
+      color: var(--fg);
+    }
+
+    #host-setup-form,
+    #guest-setup-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .bc-modal-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .bc-modal-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .bc-modal-input {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--fg);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .bc-modal-input:focus {
+      border-color: var(--primary);
+    }
+
+    .bc-modal-code-display {
+      padding: 16px;
+      background: var(--bg-sec);
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .bc-modal-code-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .bc-modal-code-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--primary);
+      font-family: monospace;
+      letter-spacing: 0.2em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .bc-modal-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      justify-content: flex-end;
+    }
+
+    .bc-modal-btn {
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+      min-height: 40px;
+    }
+
+    .bc-modal-btn-primary {
+      background: var(--primary);
+      color: #fff;
+      flex: 1;
+    }
+
+    .bc-modal-btn-primary:hover {
+      background: var(--primary-h);
+    }
+
+    .bc-modal-btn-ghost {
+      background: var(--bg);
+      color: var(--fg-muted);
+      border: 1px solid var(--border);
+      flex: 1;
+    }
+
+    .bc-modal-btn-ghost:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    @keyframes scaleIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* ══════════════════════════════════
+       Toast
+    ══════════════════════════════════ */
+    #bc-toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(1rem);
+      background: var(--fg);
+      color: var(--bg);
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 9999;
+      white-space: nowrap;
+    }
+
+    #bc-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ══════════════════════════════════
+       Animations
+    ══════════════════════════════════ */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 56px 12px 4rem;
+      }
+
+      .bc-chat-cards {
+        grid-template-columns: 1fr;
+      }
+
+      .bc-modal {
+        padding: 24px;
+        border-radius: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Fixed overlays (will be hidden in chat view) -->
+  <div class="top-overlay-left">
+    <a href="/" class="overlay-btn" title="Home">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      </svg>
+      <span>Home</span>
+    </a>
+  </div>
+  <div class="top-overlay">
+    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="Theme">💻</button>
+    <button class="overlay-btn" onclick="shareCurrentPage()" title="Share">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="18" cy="5" r="3"></circle>
+        <circle cx="6" cy="12" r="3"></circle>
+        <circle cx="18" cy="19" r="3"></circle>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+      </svg>
+      <span>공유</span>
+    </button>
+  </div>
+
+  <!-- Main app -->
+  <div class="bc-root">
+    <!-- App Header (공통 스타일) -->
+    <header class="app-header">
+      <span class="app-badge">◆ EDU</span>
+      <h1 class="app-title">Bubble Chat</h1>
+      <p class="app-desc">PeerJS 기반 P2P 실시간 채팅</p>
+    </header>
+
+    <!-- View: Home (Flash Deck style) -->
+    <div id="view-home" class="fd-view active">
+      <div class="home-top">
+        <div class="fd-section-title" style="margin:0;flex:1">참여 중인 대화</div>
+        <div style="position: relative;">
+          <button class="fd-btn fd-btn-primary" id="new-chat-btn" onclick="toggleChatMenu(event)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            새 대화
+          </button>
+          <div id="chat-menu-dropdown">
+            <button class="menu-item" onclick="showHostSetup()">
+              <span>🏠</span> 방 만들기
+            </button>
+            <button class="menu-item" onclick="showGuestSetup()">
+              <span>🚪</span> 참여하기
+            </button>
+          </div>
+        </div>
+      </div>
+      <div id="deck-grid" class="deck-grid"></div>
+    </div>
+
+    <!-- View: Chat (Chalkboard full-screen style) -->
+    <div id="view-chat" class="bc-view">
+      <!-- Header -->
+      <div class="bc-chat-header">
+        <div class="bc-header-code" id="chat-header-code">bubble-000000</div>
+        <button class="bc-header-btn" onclick="copyChatCode()" title="코드 복사">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+          </svg>
+        </button>
+        <div class="bc-header-sep"></div>
+        <button class="bc-header-btn" id="bc-sidebar-toggle" onclick="toggleSidebar()" style="display: none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <button class="bc-header-btn bc-header-btn-danger" onclick="endChatSession()">
+          대화 종료
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="bc-chat-body">
+        <!-- Sidebar -->
+        <div class="bc-sidebar">
+          <div class="bc-sidebar-section">
+            <div class="bc-sidebar-title">참여자</div>
+            <ul id="bc-participant-list" class="bc-participant-list"></ul>
+          </div>
+        </div>
+
+        <!-- Messages -->
+        <div class="bc-messages-wrap" id="bc-messages-wrap"></div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="bc-input-area">
+        <select id="bc-dm-select" class="bc-dm-select">
+          <option value="">→ 전체</option>
+        </select>
+        <textarea id="bc-msg-input" class="bc-msg-input" placeholder="메시지를 입력하세요..." onkeydown="handleInputKey(event)"></textarea>
+        <button class="bc-send-btn" onclick="sendMessage()">전송</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: New Chat -->
+  <div class="bc-modal-overlay" id="new-chat-modal" onclick="closeNewChatModal(event)">
+    <div class="bc-modal">
+      <div class="bc-modal-title">새 대화</div>
+      <div style="display: flex; gap: 12px;">
+        <button class="bc-modal-btn bc-modal-btn-primary" onclick="showHostSetup()">🏠 호스트</button>
+        <button class="bc-modal-btn bc-modal-btn-primary" onclick="showGuestSetup()">🚪 게스트</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Host Setup -->
+  <div class="bc-modal-overlay" id="host-setup-modal" onclick="closeHostSetupModal(event)">
+    <div class="bc-modal">
+      <div class="bc-modal-header">
+        <div class="bc-modal-title">🏠 방 만들기</div>
+        <button class="bc-modal-close" onclick="closeHostSetupModal()">✕</button>
+      </div>
+      <div id="host-setup-form">
+        <div class="bc-modal-group">
+          <label class="bc-modal-label">방 이름</label>
+          <input id="host-room-name" type="text" class="bc-modal-input" placeholder="방 이름" maxlength="30">
+        </div>
+        <div class="bc-modal-group">
+          <label class="bc-modal-label">호스트 닉네임</label>
+          <input id="host-nickname" type="text" class="bc-modal-input" placeholder="닉네임" maxlength="20">
+        </div>
+        <div class="bc-modal-actions">
+          <button class="bc-modal-btn bc-modal-btn-ghost" onclick="closeHostSetupModal()">취소</button>
+          <button class="bc-modal-btn bc-modal-btn-primary" onclick="createRoomAsHost()">만들기</button>
+        </div>
+      </div>
+      <div id="host-code-display" style="display: none;">
+        <div class="bc-modal-code-display">
+          <label class="bc-modal-code-label">접속 코드</label>
+          <div class="bc-modal-code-value" id="host-code-value">------</div>
+        </div>
+        <div class="bc-modal-actions">
+          <button class="bc-modal-btn bc-modal-btn-primary" onclick="startHostChat()">대화 시작</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Guest Setup -->
+  <div class="bc-modal-overlay" id="guest-setup-modal" onclick="closeGuestSetupModal(event)">
+    <div class="bc-modal">
+      <div class="bc-modal-header">
+        <div class="bc-modal-title">🚪 방 참여</div>
+        <button class="bc-modal-close" onclick="closeGuestSetupModal()">✕</button>
+      </div>
+      <div class="bc-modal-group">
+        <label class="bc-modal-label">접속 코드 (6자리)</label>
+        <input id="guest-code" type="tel" class="bc-modal-input" placeholder="000000" maxlength="6" inputmode="numeric">
+      </div>
+      <div class="bc-modal-group">
+        <label class="bc-modal-label">게스트 닉네임</label>
+        <input id="guest-nickname" type="text" class="bc-modal-input" placeholder="닉네임" maxlength="20">
+      </div>
+      <div class="bc-modal-actions">
+        <button class="bc-modal-btn bc-modal-btn-ghost" onclick="closeGuestSetupModal()">취소</button>
+        <button class="bc-modal-btn bc-modal-btn-primary" onclick="joinChatAsGuest()">참여</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="bc-toast"></div>
+
+  <script>
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Global State                                                    */
+    /* ═══════════════════════════════════════════════════════════════ */
+    const STATE = {
+      role: null,          // 'host' | 'guest'
+      roomCode: '',
+      roomName: '',
+      nickname: '',
+      peer: null,
+      hostConn: null,      // guest -> host
+      guestConns: {},      // host: { nickname: DataConnection }
+      participants: [],    // [{ nickname, isHost, joinTime, leaveTime }]
+      messages: [],
+      dmTarget: '',        // '' = broadcast, else nickname
+      sessionStart: null,
+      currentChatCard: null,  // { code, roomName, role }
+    };
+
+    let _toastTimer = null;
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* View Management                                                 */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function showView(id) {
+      // Hide all views
+      document.querySelectorAll('.fd-view').forEach(v => v.classList.remove('active'));
+      document.getElementById('view-chat').classList.remove('active');
+
+      // Show selected view
+      const view = document.getElementById('view-' + id);
+      if (view) {
+        view.classList.add('active');
+      }
+
+      if (id === 'chat') {
+        document.body.classList.add('in-chat');
+      } else {
+        document.body.classList.remove('in-chat');
+      }
+    }
+
+    function showToast(msg, duration = 2500) {
+      clearTimeout(_toastTimer);
+      const t = document.getElementById('bc-toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      _toastTimer = setTimeout(() => t.classList.remove('show'), duration);
+    }
+
+    function copyChatCode() {
+      navigator.clipboard.writeText(STATE.roomCode).then(() => {
+        showToast('코드가 복사되었습니다 ✓');
+      }).catch(() => {
+        showToast('복사 실패');
+      });
+    }
+
+    function toggleSidebar() {
+      document.getElementById('bc-sidebar-toggle').style.display = window.innerWidth <= 860 ? 'flex' : 'none';
+    }
+
+    function handleInputKey(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Dropdown Menu Management                                        */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function toggleChatMenu(event) {
+      event.stopPropagation();
+      const dropdown = document.getElementById('chat-menu-dropdown');
+      dropdown.classList.toggle('open');
+    }
+
+    function closeChatMenu() {
+      document.getElementById('chat-menu-dropdown').classList.remove('open');
+    }
+
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('chat-menu-dropdown');
+      const newChatBtn = document.getElementById('new-chat-btn');
+      if (!dropdown.contains(e.target) && e.target !== newChatBtn && !newChatBtn.contains(e.target)) {
+        closeChatMenu();
+      }
+    });
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Modal Management                                                */
+    /* ═══════════════════════════════════════════════════════════════ */
+
+    function showHostSetup() {
+      closeChatMenu();
+      document.getElementById('host-setup-modal').classList.add('open');
+      document.body.classList.add('has-modal-open');
+      document.getElementById('host-setup-form').style.display = '';
+      document.getElementById('host-code-display').style.display = 'none';
+      document.getElementById('host-room-name').value = '';
+      document.getElementById('host-nickname').value = '';
+    }
+
+    function closeHostSetupModal(event) {
+      if (event && event.target.id !== 'host-setup-modal' && !event.currentTarget.classList.contains('bc-modal-close')) return;
+      document.getElementById('host-setup-modal').classList.remove('open');
+      document.body.classList.remove('has-modal-open');
+    }
+
+    function showGuestSetup() {
+      closeChatMenu();
+      document.getElementById('guest-setup-modal').classList.add('open');
+      document.body.classList.add('has-modal-open');
+      document.getElementById('guest-code').value = '';
+      document.getElementById('guest-nickname').value = '';
+    }
+
+    function closeGuestSetupModal(event) {
+      if (event && event.target.id !== 'guest-setup-modal' && !event.currentTarget.classList.contains('bc-modal-close')) return;
+      document.getElementById('guest-setup-modal').classList.remove('open');
+      document.body.classList.remove('has-modal-open');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Chat Card Management (Home List)                                */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function renderChatCards() {
+      const key = 'bubbleChat_activeSessions';
+      let sessions = [];
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          sessions = JSON.parse(stored);
+        }
+      } catch (e) {
+        console.error('Error reading sessions:', e);
+      }
+
+      const container = document.getElementById('deck-grid');
+      container.innerHTML = '';
+
+      if (sessions.length === 0) {
+        container.innerHTML = '<div class="deck-empty">참여 중인 대화가 없습니다</div>';
+        return;
+      }
+
+      sessions.forEach(session => {
+        const card = document.createElement('div');
+        card.className = 'deck-item';
+        card.onclick = () => openChatSession(session.code);
+
+        const emoji = document.createElement('div');
+        emoji.className = 'deck-item-emoji';
+        emoji.textContent = '💬';
+
+        const name = document.createElement('div');
+        name.className = 'deck-item-name';
+        name.textContent = session.roomName || '(이름 없음)';
+
+        const meta = document.createElement('div');
+        meta.className = 'deck-item-meta';
+        meta.innerHTML = `<div>코드: bubble-${session.code}</div>
+                          <div>역할: ${session.role === 'host' ? '호스트' : '게스트'}</div>
+                          <div>참여자: ${session.participants ? session.participants.join(', ') : '-'}</div>
+                          <div>메시지: ${session.messageCount || 0}개</div>`;
+
+        const del = document.createElement('button');
+        del.className = 'deck-item-del';
+        del.textContent = '✕';
+        del.onclick = (e) => {
+          e.stopPropagation();
+          deleteSession(session.code);
+        };
+
+        card.appendChild(emoji);
+        card.appendChild(name);
+        card.appendChild(meta);
+        card.appendChild(del);
+        container.appendChild(card);
+      });
+    }
+
+    function saveActiveSession() {
+      const key = 'bubbleChat_activeSessions';
+      let sessions = [];
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          sessions = JSON.parse(stored);
+        }
+      } catch (e) {}
+
+      // Remove if already exists
+      sessions = sessions.filter(s => s.code !== STATE.roomCode);
+
+      // Add new
+      sessions.unshift({
+        code: STATE.roomCode,
+        roomName: STATE.roomName,
+        role: STATE.role,
+        participants: STATE.participants.map(p => p.nickname),
+        messageCount: STATE.messages.length,
+        startedAt: new Date(STATE.sessionStart).toISOString(),
+      });
+
+      sessions = sessions.slice(0, 20);
+
+      try {
+        localStorage.setItem(key, JSON.stringify(sessions));
+      } catch (e) {
+        console.error('Error saving sessions:', e);
+      }
+
+      renderChatCards();
+    }
+
+    function deleteSession(code) {
+      const key = 'bubbleChat_activeSessions';
+      let sessions = [];
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          sessions = JSON.parse(stored);
+        }
+      } catch (e) {}
+
+      sessions = sessions.filter(s => s.code !== code);
+      try {
+        localStorage.setItem(key, JSON.stringify(sessions));
+      } catch (e) {}
+
+      renderChatCards();
+    }
+
+    function openChatSession(code) {
+      // TODO: Reopen a saved session
+      showToast('세션 재개는 아직 미구현입니다');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Host Flow                                                       */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function generateCode() {
+      return String(Math.floor(Math.random() * 900000) + 100000);
+    }
+
+    async function createRoomAsHost() {
+      const roomName = document.getElementById('host-room-name').value.trim();
+      const nickname = document.getElementById('host-nickname').value.trim();
+
+      if (!roomName || !nickname) {
+        showToast('모든 항목을 입력해주세요');
+        return;
+      }
+
+      STATE.role = 'host';
+      STATE.roomName = roomName;
+      STATE.nickname = nickname;
+      STATE.roomCode = generateCode();
+      STATE.sessionStart = Date.now();
+      STATE.participants = [{ nickname, isHost: true, joinTime: Date.now(), leaveTime: null }];
+
+      document.getElementById('host-code-value').textContent = STATE.roomCode;
+      document.getElementById('host-setup-form').style.display = 'none';
+      document.getElementById('host-code-display').style.display = 'block';
+
+      // Initialize PeerJS
+      try {
+        await initPeer('bubble-' + STATE.roomCode);
+        setupHostPeer();
+      } catch (e) {
+        showToast('방 생성 실패: ' + e.message);
+        closeHostSetupModal();
+      }
+    }
+
+    function startHostChat() {
+      closeHostSetupModal();
+      saveActiveSession();
+      setupChatUI();
+      showView('chat');
+    }
+
+    function initPeer(peerId) {
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Peer initialization timeout'));
+        }, 8000);
+
+        try {
+          const peer = new Peer(peerId, { debug: 0 });
+
+          peer.on('open', () => {
+            clearTimeout(timeout);
+            STATE.peer = peer;
+            resolve(peer);
+          });
+
+          peer.on('error', (err) => {
+            clearTimeout(timeout);
+            console.error('Peer error:', err);
+            showToast('PeerJS 오류: ' + err.type);
+            if (err.type === 'unavailable-id') {
+              createRoomAsHost();
+            }
+          });
+        } catch (e) {
+          clearTimeout(timeout);
+          reject(e);
+        }
+      });
+    }
+
+    function setupHostPeer() {
+      STATE.peer.on('connection', handleNewGuestConnection);
+    }
+
+    function handleNewGuestConnection(conn) {
+      conn.on('open', () => {
+        console.log('Guest connection opened:', conn.label);
+      });
+
+      conn.on('data', (raw) => {
+        const msg = JSON.parse(raw);
+        if (msg.type === 'handshake') {
+          const guestNickname = msg.nickname;
+
+          // Check for duplicate nickname
+          if (STATE.guestConns[guestNickname]) {
+            conn.send(JSON.stringify({ type: 'error', content: 'nickname_taken' }));
+            conn.close();
+            return;
+          }
+
+          STATE.guestConns[guestNickname] = conn;
+          STATE.participants.push({ nickname: guestNickname, isHost: false, joinTime: Date.now(), leaveTime: null });
+          updateParticipantList();
+          addSystemMessage(guestNickname + '님이 입장했습니다');
+        } else {
+          handleIncomingMessage(msg, conn);
+        }
+      });
+
+      conn.on('close', () => {
+        for (const [nickname, c] of Object.entries(STATE.guestConns)) {
+          if (c === conn) {
+            delete STATE.guestConns[nickname];
+            const participant = STATE.participants.find(p => p.nickname === nickname);
+            if (participant) {
+              participant.leaveTime = Date.now();
+            }
+            updateParticipantList();
+            addSystemMessage(nickname + '님이 나갔습니다');
+            break;
+          }
+        }
+      });
+
+      conn.on('error', (err) => {
+        console.error('Connection error:', err);
+      });
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Guest Flow                                                      */
+    /* ═══════════════════════════════════════════════════════════════ */
+    async function joinChatAsGuest() {
+      const code = document.getElementById('guest-code').value.trim();
+      const nickname = document.getElementById('guest-nickname').value.trim();
+
+      if (!code || !nickname || code.length !== 6 || !/^\d{6}$/.test(code)) {
+        showToast('코드는 6자리 숫자여야 합니다');
+        return;
+      }
+
+      STATE.role = 'guest';
+      STATE.roomCode = code;
+      STATE.nickname = nickname;
+      STATE.sessionStart = Date.now();
+      STATE.participants = [{ nickname, isHost: false, joinTime: Date.now(), leaveTime: null }];
+
+      closeGuestSetupModal();
+      showToast('연결 중...');
+
+      try {
+        const peerId = 'bubble-guest-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+        await initPeer(peerId);
+
+        const conn = STATE.peer.connect('bubble-' + code, { reliable: true });
+        setupGuestConnection(conn);
+      } catch (e) {
+        showToast('연결 실패: ' + e.message);
+      }
+    }
+
+    function setupGuestConnection(conn) {
+      STATE.hostConn = conn;
+
+      conn.on('open', () => {
+        STATE.hostConn.send(JSON.stringify({ type: 'handshake', nickname: STATE.nickname }));
+        showToast('연결되었습니다');
+      });
+
+      conn.on('data', (raw) => {
+        const msg = JSON.parse(raw);
+        if (msg.type === 'start') {
+          saveActiveSession();
+          setupChatUI();
+          showView('chat');
+        } else if (msg.type === 'end') {
+          showToast('호스트가 대화를 종료했습니다');
+          setTimeout(() => {
+            endChatSession();
+          }, 1000);
+        } else {
+          handleIncomingMessage(msg, null);
+        }
+      });
+
+      conn.on('close', () => {
+        showToast('연결이 끊어졌습니다');
+        endChatSession();
+      });
+
+      conn.on('error', (err) => {
+        console.error('Connection error:', err);
+        showToast('연결 오류');
+      });
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Chat UI Setup                                                   */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function setupChatUI() {
+      document.getElementById('chat-header-code').textContent = 'bubble-' + STATE.roomCode;
+      updateParticipantList();
+
+      // Reset input
+      document.getElementById('bc-msg-input').value = '';
+      document.getElementById('bc-messages-wrap').innerHTML = '';
+      document.getElementById('bc-dm-select').innerHTML = '<option value="">→ 전체</option>';
+
+      // For host, broadcast start signal
+      if (STATE.role === 'host') {
+        const startMsg = { type: 'start' };
+        for (const conn of Object.values(STATE.guestConns)) {
+          if (conn.open) {
+            conn.send(JSON.stringify(startMsg));
+          }
+        }
+      }
+
+      // Show sidebar toggle on mobile
+      if (window.innerWidth <= 860) {
+        document.getElementById('bc-sidebar-toggle').style.display = 'flex';
+      }
+    }
+
+    function updateParticipantList() {
+      const list = document.getElementById('bc-participant-list');
+      const dmSelect = document.getElementById('bc-dm-select');
+
+      list.innerHTML = '';
+      dmSelect.innerHTML = '<option value="">→ 전체</option>';
+
+      STATE.participants.forEach(p => {
+        if (!p) return;
+
+        const li = document.createElement('li');
+        li.className = 'bc-participant';
+
+        const name = document.createElement('div');
+        name.className = 'bc-participant-name';
+        name.textContent = p.nickname + (p.isHost ? ' (호스트)' : '');
+
+        const time = document.createElement('div');
+        time.className = 'bc-participant-time';
+        const joined = new Date(p.joinTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+        time.textContent = '입장: ' + joined;
+
+        li.appendChild(name);
+        li.appendChild(time);
+        list.appendChild(li);
+
+        // Add to DM select (not self, not host if guest)
+        if (p.nickname !== STATE.nickname) {
+          const opt = document.createElement('option');
+          opt.value = p.nickname;
+          opt.textContent = '→ ' + p.nickname;
+          dmSelect.appendChild(opt);
+        }
+      });
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Messaging                                                       */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function sendMessage() {
+      const textarea = document.getElementById('bc-msg-input');
+      const content = textarea.value.trim();
+
+      if (!content) return;
+
+      const dmTarget = document.getElementById('bc-dm-select').value;
+      const msgObj = {
+        type: dmTarget ? 'dm' : 'chat',
+        from: STATE.nickname,
+        to: dmTarget || null,
+        content: content,
+        timestamp: Date.now()
+      };
+
+      addMessageToUI(msgObj);
+      STATE.messages.push(msgObj);
+
+      if (STATE.role === 'host') {
+        if (dmTarget) {
+          const targetConn = STATE.guestConns[dmTarget];
+          if (targetConn && targetConn.open) {
+            targetConn.send(JSON.stringify(msgObj));
+          }
+        } else {
+          broadcastMessage(msgObj);
+        }
+      } else {
+        if (STATE.hostConn && STATE.hostConn.open) {
+          STATE.hostConn.send(JSON.stringify(msgObj));
+        }
+      }
+
+      textarea.value = '';
+    }
+
+    function broadcastMessage(msgObj) {
+      for (const conn of Object.values(STATE.guestConns)) {
+        if (conn.open) {
+          conn.send(JSON.stringify(msgObj));
+        }
+      }
+    }
+
+    function handleIncomingMessage(msgObj, fromConn) {
+      if (msgObj.type === 'chat' || msgObj.type === 'dm') {
+        // Guest: relay chat from other guest to all
+        if (STATE.role === 'host' && msgObj.type === 'chat' && fromConn) {
+          broadcastMessage(msgObj);
+        }
+
+        // Check if DM is for us
+        if (msgObj.type === 'dm' && msgObj.to !== STATE.nickname) {
+          return;
+        }
+
+        addMessageToUI(msgObj);
+        STATE.messages.push(msgObj);
+      }
+    }
+
+    function addMessageToUI(msgObj) {
+      const wrap = document.getElementById('bc-messages-wrap');
+      const msg = document.createElement('div');
+      msg.className = 'bc-msg';
+
+      if (msgObj.from === STATE.nickname) {
+        msg.classList.add('bc-msg--self');
+      } else {
+        msg.classList.add('bc-msg--other');
+      }
+
+      const meta = document.createElement('div');
+      meta.className = 'bc-msg-meta';
+      const time = new Date(msgObj.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+      meta.textContent = msgObj.from + ' ' + time;
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bc-msg-bubble';
+      bubble.textContent = msgObj.content;
+
+      msg.appendChild(meta);
+      msg.appendChild(bubble);
+      wrap.appendChild(msg);
+
+      // Auto scroll to bottom
+      wrap.scrollTop = wrap.scrollHeight;
+    }
+
+    function addSystemMessage(content) {
+      const msgObj = {
+        type: 'system',
+        from: 'system',
+        to: null,
+        content: content,
+        timestamp: Date.now()
+      };
+
+      const wrap = document.getElementById('bc-messages-wrap');
+      if (!wrap) return;
+
+      const msg = document.createElement('div');
+      msg.className = 'bc-msg bc-msg--system';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bc-msg-bubble';
+      bubble.textContent = content;
+
+      msg.appendChild(bubble);
+      wrap.appendChild(msg);
+
+      wrap.scrollTop = wrap.scrollHeight;
+
+      STATE.messages.push(msgObj);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Session End                                                     */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function endChatSession() {
+      // Host: notify all guests
+      if (STATE.role === 'host') {
+        const endMsg = { type: 'end' };
+        for (const conn of Object.values(STATE.guestConns)) {
+          if (conn.open) {
+            conn.send(JSON.stringify(endMsg));
+          }
+        }
+      }
+
+      // Close all connections
+      if (STATE.hostConn) {
+        STATE.hostConn.close();
+      }
+      for (const conn of Object.values(STATE.guestConns)) {
+        if (conn.open) {
+          conn.close();
+        }
+      }
+
+      // Destroy peer
+      if (STATE.peer) {
+        STATE.peer.destroy();
+      }
+
+      // Save final session
+      const key = 'bubbleChat_completedSessions';
+      let sessions = [];
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          sessions = JSON.parse(stored);
+        }
+      } catch (e) {}
+
+      sessions.unshift({
+        code: STATE.roomCode,
+        roomName: STATE.roomName,
+        role: STATE.role,
+        hostNickname: STATE.participants.find(p => p.isHost)?.nickname,
+        participants: STATE.participants,
+        messageCount: STATE.messages.length,
+        messages: STATE.messages,
+        startedAt: new Date(STATE.sessionStart).toISOString(),
+        endedAt: new Date().toISOString(),
+      });
+
+      sessions = sessions.slice(0, 20);
+
+      try {
+        localStorage.setItem(key, JSON.stringify(sessions));
+      } catch (e) {
+        console.error('Error saving completed sessions:', e);
+      }
+
+      // Reset state
+      STATE.role = null;
+      STATE.roomCode = '';
+      STATE.roomName = '';
+      STATE.nickname = '';
+      STATE.peer = null;
+      STATE.hostConn = null;
+      STATE.guestConns = {};
+      STATE.participants = [];
+      STATE.messages = [];
+      STATE.dmTarget = '';
+
+      // Return to home
+      renderChatCards();
+      showView('home');
+      showToast('대화가 종료되었습니다');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Init                                                            */
+    /* ═══════════════════════════════════════════════════════════════ */
+    document.addEventListener('DOMContentLoaded', () => {
+      renderChatCards();
+
+      const textarea = document.getElementById('bc-msg-input');
+      if (textarea) {
+        textarea.addEventListener('input', function() {
+          this.style.height = 'auto';
+          this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+      }
+
+      window.addEventListener('resize', () => {
+        if (document.getElementById('view-chat').classList.contains('active')) {
+          if (window.innerWidth <= 860) {
+            document.getElementById('bc-sidebar-toggle').style.display = 'flex';
+          } else {
+            document.getElementById('bc-sidebar-toggle').style.display = 'none';
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>
