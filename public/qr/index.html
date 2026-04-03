@@ -7,6 +7,7 @@
   <link rel="manifest" href="/qr/manifest.json">
   <link rel="stylesheet" href="/common/hero-theme.css">
   <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
   <!-- QRCode.js (생성용) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <!-- jsQR (스캔용) -->
@@ -512,9 +513,13 @@
   let isMultiMode = false;
   let currentScanText = '';
 
+  const QR_TAB_KEY = 'qr-last-tab';
+
   document.addEventListener('DOMContentLoaded', () => {
     loadHistory();
     document.addEventListener('paste', handlePasteEvent);
+    const savedTab = localStorage.getItem(QR_TAB_KEY);
+    if (savedTab === 'scan' || savedTab === 'generate') switchTab(savedTab);
   });
 
   // ── 탭 전환 ──
@@ -524,6 +529,7 @@
       document.getElementById(k === 'generate' ? 'tabBtnGenerate' : 'tabBtnScan').classList.toggle('active', k === tab);
     });
     if (tab !== 'scan') stopCamera();
+    localStorage.setItem(QR_TAB_KEY, tab);
   }
 
   // ── 토스트 ──
@@ -756,6 +762,7 @@
         if (!multiScans.some(item => item.url === text)) {
           multiScans.push({ url: text, desc: '', tool: 'clipboard', scannedAt: new Date().toISOString() });
           addToHistory(text, 'clipboard');
+          fetchPageTitle(text);
           renderMultiList();
           document.getElementById('scanResultText').textContent = text;
           const link = document.getElementById('scanResultLink');
@@ -807,6 +814,9 @@
     uniqueResults.forEach(result => {
       const code = result.rawData;
 
+      // 빈 코드는 추가하지 않음
+      if (!code || !code.trim()) return;
+
       // 목록에서 중복 확인 (새로운 코드인지 확인)
       const isDuplicate = multiScans.some(item => item.url === code);
       if (isDuplicate) return;
@@ -818,10 +828,11 @@
       addedCount++;
       lastAddedCode = code;
 
-      // URL이면 히스토리에 추가
+      // URL이면 히스토리에 추가 + 백그라운드 제목 fetch
       try {
         new URL(code);
         addToHistory(code, tool);
+        fetchPageTitle(code);
       } catch {
         // URL이 아닌 데이터는 히스토리에 추가 안 함
       }
@@ -907,6 +918,10 @@
   }
 
   function addAndContinue() {
+    if (!currentScanText || !currentScanText.trim()) {
+      showToast('빈 링크는 추가할 수 없습니다.');
+      return;
+    }
     const desc = document.getElementById('multiDescInput').value.trim();
     multiScans.push({ url: currentScanText, desc, scannedAt: new Date().toISOString() });
     document.getElementById('multiInputArea').style.display = 'none';
@@ -917,6 +932,10 @@
   }
 
   function addAndFinish() {
+    if (!currentScanText || !currentScanText.trim()) {
+      showToast('빈 링크는 추가할 수 없습니다.');
+      return;
+    }
     const desc = document.getElementById('multiDescInput').value.trim();
     multiScans.push({ url: currentScanText, desc, scannedAt: new Date().toISOString() });
     isMultiMode = false;
@@ -978,14 +997,29 @@
     renderMultiList();
   }
 
+  // ── 페이지 제목 캐시 (URL → title|null) ──
+  const pageTitleCache = {};
+
+  async function fetchPageTitle(url) {
+    if (url in pageTitleCache) return pageTitleCache[url];
+    try {
+      const res = await fetch('/.netlify/functions/get-page-title', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      pageTitleCache[url] = (await res.json()).title || null;
+    } catch { pageTitleCache[url] = null; }
+    return pageTitleCache[url];
+  }
+
   function exportMultiMd() {
     if (!multiScans.length) return;
     const today = new Date().toISOString().slice(0, 10);
     let md = `# QR 스캔 결과\n> ${today} · ${multiScans.length}개 항목\n\n`;
     multiScans.forEach((item, idx) => {
-      const isUrl = (() => { try { new URL(item.url); return true; } catch { return false; } })();
-      const title = item.url.length > 40 ? item.url.slice(0, 40) + '...' : item.url;
-      const linkText = item.desc || title;
+      const title = pageTitleCache[item.url];
+      const linkText = item.desc || title || (item.url.length > 40 ? item.url.slice(0, 40) + '...' : item.url);
       md += `${idx + 1}. [${linkText}](${item.url})\n`;
     });
 

@@ -6,6 +6,7 @@
   <title>MD Editor — byeduin</title>
   <link rel="stylesheet" href="/common/hero-theme.css">
   <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
@@ -67,6 +68,7 @@
       transition: border-color 0.15s, color 0.15s;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.3rem;
       text-decoration: none;
     }
@@ -120,6 +122,38 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     }
     #save-dropdown.open { display: flex; }
+
+    /* ── 열기 드롭다운 ── */
+    #open-dropdown {
+      position: fixed;
+      display: none;
+      flex-direction: column;
+      gap: 3px;
+      padding: 6px;
+      border-radius: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      z-index: 9500;
+      min-width: 140px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    #open-dropdown.open { display: flex; }
+
+    /* ── 보기 드롭다운 ── */
+    #view-dropdown {
+      position: fixed;
+      display: none;
+      flex-direction: column;
+      gap: 3px;
+      padding: 6px;
+      border-radius: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      z-index: 9500;
+      min-width: 120px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    #view-dropdown.open { display: flex; }
 
     /* ── 공유 드롭다운 ── */
     #share-dropdown {
@@ -364,6 +398,47 @@
     }
     #md-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+    /* ── 로드 모달 리스트 ── */
+    #docsList li {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #docsList li:last-child { border-bottom: none; }
+    #docsList li > div {
+      flex: 1;
+      cursor: pointer;
+    }
+    #docsList li > div > div:first-child {
+      font-weight: 500;
+      margin-bottom: 0.2rem;
+    }
+    #docsList li > div > div:last-child {
+      font-size: 0.85rem;
+      color: var(--fg-muted);
+    }
+    #docsList li button {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.8rem;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      border-radius: 0.375rem;
+      color: var(--fg);
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    #docsList li button:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── 모달 열릴 때 상단 오버레이 어둡게 ── */
+    body.modal-open .top-overlay-left,
+    body.modal-open .top-overlay {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
     /* ── 반응형 (모바일) ── */
     @media (max-width: 767px) {
       body { padding: 48px 0.5rem 4rem; }
@@ -377,8 +452,26 @@
       .md-pane.mobile-active { display: flex; }
       .md-pane + .md-pane { border-left: none; }
       .pane-label { display: none; }
-      #filenameInput { min-width: 80px; font-size: 0.8rem; }
-      .md-toolbar { gap: 0.35rem; }
+
+      /* 제목줄 + 버튼줄 분리 */
+      .md-toolbar {
+        gap: 0.35rem;
+        flex-wrap: wrap;
+      }
+      #filenameInput {
+        flex-basis: 100%;
+        min-width: 80px;
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+      }
+      .toolbar-btn, #btn-clone-content {
+        flex: 1 1 auto;
+        min-width: fit-content;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.7rem;
+      }
+      /* 모바일에서 텍스트 숨기고 아이콘만 표시 (필요시) */
+      .toolbar-btn span { display: inline; }
     }
   </style>
 </head>
@@ -411,18 +504,17 @@
   <div class="app-header">
     <div class="app-badge">◆ Utility</div>
     <h1 class="app-title">MD <span>Editor</span></h1>
-    <p class="app-desc">마크다운 파일 열기·편집·미리보기·공유 <button onclick="openHelpModal()" style="margin-left:0.5rem;padding:2px 8px;font-size:0.72rem;font-weight:700;border:1px solid var(--border);border-radius:10px;background:var(--card-bg);color:var(--fg-muted);cursor:pointer;font-family:inherit;">마크다운 더 알아보기</button></p>
+    <p class="app-desc">간편한 마크다운 문서 편집기 <button onclick="openHelpModal()" style="margin-left:0.5rem;padding:2px 8px;font-size:0.72rem;font-weight:700;border:1px solid var(--border);border-radius:10px;background:var(--card-bg);color:var(--fg-muted);cursor:pointer;font-family:inherit;">마크다운 더 알아보기</button></p>
   </div>
 
   <!-- 툴바 -->
   <div class="md-toolbar">
     <input type="text" id="filenameInput" class="hero-input" value="untitled.md" placeholder="파일명.md">
     <button class="toolbar-btn view-only-hide" onclick="newDocument()">📄 새 문서</button>
-    <label class="toolbar-btn view-only-hide" for="fileInput" style="cursor:pointer">
-      📂 열기
-      <input type="file" id="fileInput" accept=".md,.txt,.markdown" style="display:none" onchange="handleFileLoad(this)">
-    </label>
+    <button class="toolbar-btn view-only-hide" onclick="toggleOpenMenu(event)">📂 열기 ▾</button>
+    <input type="file" id="fileInput" accept=".md,.txt,.markdown" style="display:none" onchange="handleFileLoad(this)">
     <button class="toolbar-btn view-only-hide" id="saveBtn" onclick="toggleSaveMenu(event)">💾 저장 ▾</button>
+    <button class="toolbar-btn view-only-hide" id="viewBtn" onclick="toggleViewMenu(event)">👁 보기 ▾</button>
     <div id="view-badge">👁 보기 전용</div>
     <button id="btn-clone-content" onclick="cloneContent()">📋 복제</button>
     <button class="toolbar-btn view-only-hide" onclick="toggleShareMenu(event)">
@@ -447,7 +539,7 @@
       <div class="pane-label">편집</div>
       <textarea id="editor" placeholder="마크다운을 입력하세요...&#10;&#10;# 제목&#10;## 소제목&#10;**굵게** / *기울기* / `코드`" oninput="onEditorInput(this)"></textarea>
     </div>
-    <div class="md-pane mobile-active" id="panePreview">
+    <div class="md-pane" id="panePreview">
       <div class="pane-label">미리보기</div>
       <div id="preview" class="markdown-body"></div>
     </div>
@@ -467,6 +559,50 @@
       <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 5 7 3 12 3"/>
     </svg>
     HTML 저장
+  </button>
+  <button class="dropdown-opt" id="saveLsOpt" onclick="saveToLocalStorage()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+    </svg>
+    브라우저에 저장
+  </button>
+</div>
+
+<!-- 열기 드롭다운 -->
+<div id="open-dropdown">
+  <button class="dropdown-opt" onclick="openFileInput()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+    </svg>
+    파일 열기
+  </button>
+  <button class="dropdown-opt" id="openLsOpt" onclick="openLoadModal()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+    </svg>
+    브라우저에서 열기
+  </button>
+</div>
+
+<!-- 보기 드롭다운 -->
+<div id="view-dropdown">
+  <button class="dropdown-opt" onclick="setViewMode('edit-only')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="14 2 14 8 20 8"/><path d="M17 21H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
+    </svg>
+    편집만
+  </button>
+  <button class="dropdown-opt" onclick="setViewMode('preview-only')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+    </svg>
+    미리보기만
+  </button>
+  <button class="dropdown-opt" onclick="setViewMode('both')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/>
+    </svg>
+    둘 다
   </button>
 </div>
 
@@ -537,6 +673,14 @@
   </div>
 </div>
 
+<!-- 저장된 파일 로드 모달 -->
+<div id="loadModalBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000;" onclick="if(event.target === this) closeLoadModal()"></div>
+<div id="loadModal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:var(--bg); border:1px solid var(--border); border-radius:1rem; padding:2rem; z-index:1001; width:90%; max-width:400px; max-height:80vh; overflow-y:auto;">
+  <div style="font-weight:600; margin-bottom:1rem; font-size:1.1rem;">저장된 파일 목록</div>
+  <ul id="docsList" style="list-style:none; padding:0; margin:0;"></ul>
+  <button onclick="closeLoadModal()" style="width:100%; margin-top:1rem; padding:0.5rem; border:1px solid var(--border); background:var(--card-bg); border-radius:0.5rem; cursor:pointer; font-family:inherit; font-weight:600; color:var(--fg);">닫기</button>
+</div>
+
 <!-- 토스트 -->
 <div id="md-toast"></div>
 
@@ -546,8 +690,11 @@
   let mdContent = '';
   let currentFilename = 'untitled.md';
   let isViewOnly = false;
+  let viewMode = 'both';  // 'edit-only', 'preview-only', 'both'
   let _shareMenuOpen = false;
   let _saveMenuOpen = false;
+  let _viewMenuOpen = false;
+  let _openMenuOpen = false;
 
   // ── 모바일 탭 ──
   function switchMobileTab(tab) {
@@ -579,13 +726,13 @@
 
   // ── 저장 버튼 상태 업데이트 ──
   function updateSaveButtonState() {
-    const isEmpty = !mdContent.trim();
-    const saveBtn = document.getElementById('saveBtn');
+    // 저장 버튼은 항상 활성화 (클릭 시 내용 확인)
     const saveMdOpt = document.getElementById('saveMdOpt');
     const saveHtmlOpt = document.getElementById('saveHtmlOpt');
-    saveBtn.disabled = isEmpty;
-    saveMdOpt.disabled = isEmpty;
-    saveHtmlOpt.disabled = isEmpty;
+    const saveLsOpt = document.getElementById('saveLsOpt');
+    saveMdOpt.disabled = false;
+    saveHtmlOpt.disabled = false;
+    saveLsOpt.disabled = false;
   }
 
   function renderPreview() {
@@ -608,10 +755,19 @@
     input.value = '';
   }
 
+  // ── 모든 드롭다운 닫기 헬퍼 ──
+  function closeAllMenus() {
+    _closeSaveMenu();
+    _closeOpenMenu();
+    _closeViewMenu();
+    _closeShareMenu();
+  }
+
   // ── 저장 드롭다운 ──
   function toggleSaveMenu(e) {
-    if (!mdContent.trim()) return;
+    if (!mdContent.trim()) { showToast('저장할 내용이 없습니다'); return; }
     e.stopPropagation();
+    closeAllMenus();  // 다른 메뉴 먼저 닫기
     const dd = document.getElementById('save-dropdown');
     const rect = e.currentTarget.getBoundingClientRect();
     dd.style.top = (rect.bottom + 6) + 'px';
@@ -626,6 +782,236 @@
   function _closeSaveMenu() {
     document.getElementById('save-dropdown').classList.remove('open');
     _saveMenuOpen = false;
+  }
+
+  // ── 열기 드롭다운 ──
+  function toggleOpenMenu(e) {
+    e.stopPropagation();
+    closeAllMenus();  // 다른 메뉴 먼저 닫기
+    const dd = document.getElementById('open-dropdown');
+    const rect = e.currentTarget.getBoundingClientRect();
+    dd.style.top = (rect.bottom + 6) + 'px';
+    dd.style.left = rect.left + 'px';
+    _openMenuOpen = !_openMenuOpen;
+    dd.classList.toggle('open', _openMenuOpen);
+    if (_openMenuOpen) {
+      setTimeout(() => document.addEventListener('click', _closeOpenMenu, { once: true }), 0);
+    }
+  }
+
+  function _closeOpenMenu() {
+    document.getElementById('open-dropdown').classList.remove('open');
+    _openMenuOpen = false;
+  }
+
+  function openFileInput() {
+    _closeOpenMenu();
+    document.getElementById('fileInput').click();
+  }
+
+  // ── 보기 모드 드롭다운 ──
+  function toggleViewMenu(e) {
+    e.stopPropagation();
+    closeAllMenus();  // 다른 메뉴 먼저 닫기
+    const dd = document.getElementById('view-dropdown');
+    const rect = e.currentTarget.getBoundingClientRect();
+    dd.style.top = (rect.bottom + 6) + 'px';
+    dd.style.left = rect.left + 'px';
+    _viewMenuOpen = !_viewMenuOpen;
+    dd.classList.toggle('open', _viewMenuOpen);
+    if (_viewMenuOpen) {
+      setTimeout(() => document.addEventListener('click', _closeViewMenu, { once: true }), 0);
+    }
+  }
+
+  function _closeViewMenu() {
+    document.getElementById('view-dropdown').classList.remove('open');
+    _viewMenuOpen = false;
+  }
+
+  function setViewMode(mode) {
+    _closeViewMenu();
+    if (mode === viewMode) return;  // 같은 모드면 무시
+
+    viewMode = mode;
+    const paneEdit = document.getElementById('paneEdit');
+    const panePreview = document.getElementById('panePreview');
+    const mTabEdit = document.getElementById('mTabEdit');
+    const mTabPreview = document.getElementById('mTabPreview');
+    const mdSplit = document.querySelector('.md-split');
+
+    if (mode === 'edit-only') {
+      paneEdit.style.display = 'flex';
+      panePreview.style.display = 'none';
+      mTabEdit.style.display = 'block';
+      mTabPreview.style.display = 'none';
+      paneEdit.classList.add('mobile-active');
+      mTabEdit.classList.add('active');
+      mdSplit.style.gridTemplateColumns = '1fr';  // 전체 폭
+    } else if (mode === 'preview-only') {
+      paneEdit.style.display = 'none';
+      panePreview.style.display = 'flex';
+      mTabEdit.style.display = 'none';
+      mTabPreview.style.display = 'block';
+      panePreview.classList.add('mobile-active');
+      mTabPreview.classList.add('active');
+      mdSplit.style.gridTemplateColumns = '1fr';  // 전체 폭
+    } else {  // 'both'
+      paneEdit.style.display = 'flex';
+      panePreview.style.display = 'flex';
+      mTabEdit.style.display = 'block';
+      mTabPreview.style.display = 'block';
+      paneEdit.classList.add('mobile-active');
+      mTabEdit.classList.add('active');
+      panePreview.classList.remove('mobile-active');
+      mTabPreview.classList.remove('active');
+      mdSplit.style.gridTemplateColumns = '1fr 1fr';  // 원래 너비로 복구
+    }
+    showToast(`보기: ${mode === 'edit-only' ? '편집만' : mode === 'preview-only' ? '미리보기만' : '둘 다'}`);
+  }
+
+  // ── 브라우저 저장 / 불러오기 ──
+  const LS_DOC_KEY = 'md-editor-local-doc';
+  const LS_ALL_DOCS_KEY = 'md-editor-all-docs';
+
+  function saveToLocalStorage() {
+    _closeSaveMenu();
+    if (!mdContent.trim()) { showToast('저장할 내용이 없습니다'); return; }
+
+    let filename = document.getElementById('filenameInput').value.trim() || 'untitled.md';
+
+    // localStorage의 모든 문서 확인
+    let allDocs = [];
+    try {
+      const raw = localStorage.getItem(LS_ALL_DOCS_KEY);
+      if (raw) allDocs = JSON.parse(raw);
+    } catch { allDocs = []; }
+
+    // 같은 이름 파일 있는지 확인
+    const existingNames = allDocs.map(doc => doc.filename);
+    if (existingNames.includes(filename)) {
+      let counter = 1;
+      const nameParts = filename.split('.');
+      const baseName = nameParts.slice(0, -1).join('.');
+      const ext = nameParts.length > 1 ? '.' + nameParts[nameParts.length - 1] : '';
+
+      while (existingNames.includes(`${baseName}(${counter})${ext}`)) {
+        counter++;
+      }
+      filename = `${baseName}(${counter})${ext}`;
+    }
+
+    // 새 문서 객체 생성
+    const newDoc = {
+      id: Date.now().toString(),
+      content: mdContent,
+      filename: filename,
+      savedAt: new Date().toISOString()
+    };
+
+    allDocs.push(newDoc);
+    localStorage.setItem(LS_ALL_DOCS_KEY, JSON.stringify(allDocs));
+
+    currentFilename = filename;
+    document.getElementById('filenameInput').value = filename;
+
+    showToast(`"${filename}"으로 저장되었습니다 ✓`);
+  }
+
+  function loadFromLocalStorage() {
+    _closeOpenMenu();
+    const raw = localStorage.getItem(LS_DOC_KEY);
+    if (!raw) { showToast('저장된 문서가 없습니다'); return; }
+    try {
+      const doc = JSON.parse(raw);
+      if (mdContent.trim() && !confirm('현재 문서를 버릴까요? (저장하지 않은 내용이 사라집니다)')) return;
+      mdContent = doc.content || '';
+      currentFilename = doc.filename || 'untitled.md';
+      document.getElementById('filenameInput').value = currentFilename;
+      document.getElementById('editor').value = mdContent;
+      renderPreview();
+      updateSaveButtonState();
+      showToast(`"${currentFilename}" 불러왔습니다`);
+    } catch { showToast('저장된 문서를 불러오지 못했습니다'); }
+  }
+
+  function openLoadModal() {
+    _closeOpenMenu();
+
+    let allDocs = [];
+    try {
+      const raw = localStorage.getItem(LS_ALL_DOCS_KEY);
+      if (raw) allDocs = JSON.parse(raw);
+    } catch { allDocs = []; }
+
+    if (allDocs.length === 0) {
+      showToast('저장된 파일이 없습니다');
+      return;
+    }
+
+    const docsList = document.getElementById('docsList');
+    docsList.innerHTML = allDocs
+      .sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt))
+      .map(doc => `
+        <li style="padding:0.75rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+          <div style="flex:1; cursor:pointer;" onclick="loadDocById('${doc.id}')">
+            <div style="font-weight:500;">${doc.filename}</div>
+            <div style="font-size:0.85rem; color:var(--fg-muted);">${new Date(doc.savedAt).toLocaleString('ko-KR')}</div>
+          </div>
+          <button onclick="deleteDocById('${doc.id}')" style="padding:0.25rem 0.5rem; font-size:0.85rem; background:none; border:1px solid var(--border); cursor:pointer; border-radius:0.25rem;">삭제</button>
+        </li>
+      `).join('');
+
+    document.getElementById('loadModalBackdrop').style.display = 'block';
+    document.getElementById('loadModal').style.display = 'block';
+    document.body.classList.add('modal-open');
+  }
+
+  function closeLoadModal() {
+    document.getElementById('loadModalBackdrop').style.display = 'none';
+    document.getElementById('loadModal').style.display = 'none';
+    document.body.classList.remove('modal-open');
+  }
+
+  function loadDocById(id) {
+    let allDocs = [];
+    try {
+      const raw = localStorage.getItem(LS_ALL_DOCS_KEY);
+      if (raw) allDocs = JSON.parse(raw);
+    } catch { allDocs = []; }
+
+    const doc = allDocs.find(d => d.id === id);
+    if (!doc) {
+      showToast('문서를 찾을 수 없습니다');
+      return;
+    }
+
+    if (mdContent.trim() && !confirm('현재 문서를 버릴까요?')) return;
+
+    mdContent = doc.content;
+    currentFilename = doc.filename;
+    document.getElementById('filenameInput').value = currentFilename;
+    document.getElementById('editor').value = mdContent;
+    renderPreview();
+    updateSaveButtonState();
+
+    closeLoadModal();
+    showToast(`"${doc.filename}"을(를) 불러왔습니다`);
+  }
+
+  function deleteDocById(id) {
+    if (!confirm('이 파일을 삭제하시겠습니까?')) return;
+
+    let allDocs = [];
+    try {
+      const raw = localStorage.getItem(LS_ALL_DOCS_KEY);
+      if (raw) allDocs = JSON.parse(raw);
+    } catch { allDocs = []; }
+
+    allDocs = allDocs.filter(d => d.id !== id);
+    localStorage.setItem(LS_ALL_DOCS_KEY, JSON.stringify(allDocs));
+
+    openLoadModal(); // 모달 새로고침
   }
 
   // ── Markdown 저장 ──
@@ -705,6 +1091,7 @@
   function toggleShareMenu(e) {
     if (!mdContent.trim()) { showToast('내용이 없어 공유할 수 없습니다.'); return; }
     e.stopPropagation();
+    closeAllMenus();  // 다른 메뉴 먼저 닫기
     const dd = document.getElementById('share-dropdown');
     const rect = e.currentTarget.getBoundingClientRect();
     dd.style.top = (rect.bottom + 6) + 'px';
@@ -805,8 +1192,10 @@
         renderPreview();
         if (payload.permission === 'view') {
           enterViewOnly();
+          switchMobileTab('preview');
         } else {
           openCloneModal(currentFilename);
+          switchMobileTab('preview');
         }
         return;
       }

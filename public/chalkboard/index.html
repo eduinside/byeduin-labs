@@ -6,6 +6,7 @@
   <title>Chalkboard — byeduin</title>
   <link rel="stylesheet" href="/common/hero-theme.css">
   <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
 
@@ -874,6 +875,13 @@
         if (!lineDidDrag) selectEl(el.id, 'line');
       });
 
+      hit.addEventListener('dblclick', e => {
+        e.stopPropagation();
+        if (viewOnlyBoard) return;
+        selectEl(el.id, 'line');
+        showCtx(el.id, 'line');
+      });
+
       hit.addEventListener('mousedown', e => {
         if (viewOnlyBoard) return;
         if (mode !== 'select') return;
@@ -947,6 +955,12 @@
       div.textContent = el.text;
       div.addEventListener('mousedown', onElMouseDown);
       div.addEventListener('click', e => { e.stopPropagation(); if (!didDrag) selectEl(el.id, 'text'); });
+      div.addEventListener('dblclick', e => {
+        e.stopPropagation();
+        if (viewOnlyBoard) return;
+        selectEl(el.id, 'text');
+        startEdit(el.id);
+      });
       canvas.appendChild(div);
     }
 

@@ -1,6 +1,6 @@
 # byeduin VIVES — 개발 계획
 
-> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-04-04 (YT Thumbnail UI 개선 - 탭 기반 인터페이스)
+> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-04-04 (전체 앱 UX 개선 완료)
 
 ---
 
@@ -115,7 +115,7 @@
 | localStorage | 없음 (세션 전용) |
 
 #### 주요 기능
-- 마크다운 텍스트 편집 (JetBrains Mono 에디터)
+- **간편한 마크다운 편집** (JetBrains Mono 에디터 + 편집/미리보기 모드 전환)
 - 실시간 HTML 미리보기 (marked.js, GFM + breaks)
 - 로컬 `.md` 파일 불러오기 (FileReader API)
 - `.md` 파일 다운로드 (Blob)
@@ -310,6 +310,561 @@ window.open(`/md-editor/#share=${encoded}`, '_blank');
 - `youtube_unified_history` — 통합 히스토리 (영상 + 재생목록)
   - 구조: `[{ type: 'video'|'playlist', data: 'id'|'url', timestamp }]`
   - 최대 30개 항목 저장
+
+---
+
+## YT Thumbnail 탭 기반 UI 최종 개선 (2026-04-04)
+
+### 개요
+기존의 듀얼 URL 처리에서 두 개의 UI가 나란히 표시되는 구조를 개선하여, **항상 3탭 인터페이스**로 통합.
+- 탭 아래의 모든 버튼 제거 (자동 로드)
+- 화살표 버튼만으로 모든 작동 제어
+- URL 타입에 따른 탭 활성화/비활성화
+
+### 구현 내용
+
+**변경 구조:**
+
+| URL 타입 | 탭 상태 | 동작 |
+|---|---|---|
+| **듀얼** (영상+재생목록) | 모두 활성화 | 썸네일 탭이 기본값, 탭 클릭 시 자동 로드 |
+| **영상만** | 썸네일만 활성, 재생목록 비활성 | 썸네일 자동 추출 |
+| **재생목록만** | 재생목록만 활성, 썸네일 비활성 | 탭 클릭 시 재생목록 로드 |
+
+**HTML 변경:**
+```html
+<!-- 3탭만 표시, 버튼 제거 -->
+<div id="dual-mode-tabs" style="display:none;">
+  <button onclick="switchDualModeTab('thumbnail')">썸네일</button>
+  <button onclick="switchDualModeTab('playlist')">재생목록</button>
+  <button onclick="switchDualModeTab('history')">히스토리</button>
+</div>
+
+<!-- #single-ui와 #playlist-ui는 버튼 없이 콘텐츠만 표시 -->
+<div id="single-ui" style="display:none; margin-top:1rem;">
+  <div id="result"></div>
+</div>
+
+<div id="playlist-ui" style="display:none; margin-top:1rem;">
+  <div id="plResult"></div>
+</div>
+```
+
+**JavaScript 변경:**
+```js
+let currentMode = null; // 'video', 'playlist', 'dual'
+
+function analyzeUrl() {
+  const url = document.getElementById('youtubeUrl').value.trim();
+  const isVideo = YT_REGEX.test(url);
+  const isList = PL_REGEX.test(url);
+
+  if (isVideo && isList) {
+    currentMode = 'dual';
+    document.getElementById('dual-mode-tabs').style.display = 'block';
+    // 모든 탭 활성화
+    playlistBtn.disabled = false;
+    playlistBtn.style.opacity = '1';
+    thumbnailBtn.disabled = false;
+    thumbnailBtn.style.opacity = '1';
+    switchDualModeTab('thumbnail');
+  } else if (isVideo) {
+    currentMode = 'video';
+    document.getElementById('dual-mode-tabs').style.display = 'block';
+    // 썸네일만 활성화
+    thumbnailBtn.disabled = false;
+    thumbnailBtn.style.opacity = '1';
+    playlistBtn.disabled = true;
+    playlistBtn.style.opacity = '0.5';
+    playlistBtn.style.cursor = 'not-allowed';
+    switchDualModeTab('thumbnail');
+  } else if (isList) {
+    currentMode = 'playlist';
+    document.getElementById('dual-mode-tabs').style.display = 'block';
+    // 재생목록만 활성화
+    playlistBtn.disabled = false;
+    playlistBtn.style.opacity = '1';
+    thumbnailBtn.disabled = true;
+    thumbnailBtn.style.opacity = '0.5';
+    thumbnailBtn.style.cursor = 'not-allowed';
+    switchDualModeTab('playlist');
+  }
+}
+
+function switchDualModeTab(tab) {
+  // 탭 활성화 상태 유지하면서 클릭된 탭 활성화
+  if (tab === 'thumbnail' && !thumbnailBtn.disabled) {
+    singleUi.style.display = 'block';
+    playlistUi.style.display = 'none';
+    extractThumbnail();  // 자동 로드
+  } else if (tab === 'playlist' && !playlistBtn.disabled) {
+    playlistUi.style.display = 'block';
+    singleUi.style.display = 'none';
+    fetchPlaylist();  // 자동 로드
+  } else if (tab === 'history') {
+    historySection.style.display = 'block';
+    singleUi.style.display = 'none';
+    playlistUi.style.display = 'none';
+  }
+}
+```
+
+### 주요 특징
+
+1. **통합 인터페이스**
+   - 항상 3탭만 표시
+   - 탭 아래에 버튼 없음 (UI 단순화)
+   - 화살표 버튼이 URL 분석의 유일한 제어 요소
+
+2. **스마트 탭 활성화**
+   - URL 타입 자동 감지
+   - 불필요한 탭은 비활성화 (disabled, 회색 표시)
+   - 클릭 방지로 UX 혼란 최소화
+
+3. **자동 콘텐츠 로드**
+   - 탭 클릭 시 자동으로 `extractThumbnail()` 또는 `fetchPlaylist()` 호출
+   - 추가 버튼 클릭 불필요
+
+4. **히스토리 통합**
+   - 세 번째 탭에서 영상+재생목록 통합 히스토리 표시
+   - 항목 클릭 시 URL 복원 및 해당 탭 자동 활성화
+
+### 검증 결과
+
+✅ **듀얼 URL** — 3탭 모두 활성화, 썸네일 자동 추출
+✅ **영상 URL** — 썸네일 탭만 활성화, 재생목록 탭 비활성화 (회색)
+✅ **재생목록 URL** — 재생목록 탭만 활성화, 썸네일 탭 비활성화 (회색)
+✅ **버튼 제거** — 탭 아래에 버튼 없음
+✅ **자동 로드** — 탭 클릭 시 콘텐츠 자동 로드
+
+---
+
+## MD Editor 개선사항 (2026-04-04)
+
+### 보기(View) 드롭다운 및 UI/UX 개선
+
+#### 개요
+- **보기 드롭다운**: 편집만 / 미리보기만 / 둘 다 (3가지 모드)
+- **모바일 레이아웃 개선**: 제목 영역과 버튼을 별도 줄로 분리
+- **드롭다운 상태 관리**: 여러 드롭다운 동시 열림 방지
+- **단일 창 모드 전체 폭 표시**: 편집만/미리보기만 선택 시 하단 영역 전체 폭 차지
+- **버튼 텍스트 가운데 정렬**: toolbar-btn 글자 정렬 개선
+- **저장 버튼 항상 활성화**: 초기 페이지 로드 시에도 저장 버튼 클릭 가능
+
+#### 구현 내용
+
+**HTML 변경:**
+```html
+<!-- 보기 드롭다운 메뉴 -->
+<button class="toolbar-btn" onclick="toggleViewMenu()" title="보기">
+  보기 ▾
+</button>
+
+<div id="view-dropdown" class="toolbar-dropdown">
+  <button onclick="setViewMode('edit-only')">편집만</button>
+  <button onclick="setViewMode('preview-only')">미리보기만</button>
+  <button onclick="setViewMode('both')">둘 다</button>
+</div>
+```
+
+**CSS 변경:**
+```css
+/* 보기 드롭다운 스타일링 */
+#view-dropdown {
+  position: fixed;
+  display: none;
+  flex-direction: column;
+  z-index: 9500;
+  min-width: 120px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+#view-dropdown.open {
+  display: flex;
+}
+
+/* 모바일 레이아웃: 제목과 버튼을 별도 줄로 */
+@media (max-width: 767px) {
+  .md-toolbar {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.5rem;
+  }
+
+  .md-title {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .toolbar-btn {
+    flex: 1;
+    min-width: 60px;
+  }
+}
+
+/* 버튼 텍스트 가운데 정렬 */
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;  /* 추가됨 */
+}
+
+/* 단일 창 모드: 그리드 동적 조정 */
+.md-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;  /* 기본값: 둘 다 모드 */
+  gap: 1rem;
+}
+
+/* 편집만/미리보기만 모드: 1fr로 조정 */
+.md-split.single-pane {
+  grid-template-columns: 1fr;
+}
+```
+
+**JavaScript 변경:**
+```javascript
+let viewMode = 'both';  // 기본값: 둘 다
+
+function setViewMode(mode) {
+  viewMode = mode;
+  const paneEdit = document.getElementById('paneEdit');
+  const panePreview = document.getElementById('panePreview');
+  const mdSplit = document.querySelector('.md-split');
+
+  _closeViewMenu();
+
+  if (mode === 'edit-only') {
+    paneEdit.style.display = 'block';
+    panePreview.style.display = 'none';
+    mdSplit.classList.add('single-pane');
+    mdSplit.style.gridTemplateColumns = '1fr';
+  } else if (mode === 'preview-only') {
+    paneEdit.style.display = 'none';
+    panePreview.style.display = 'block';
+    mdSplit.classList.add('single-pane');
+    mdSplit.style.gridTemplateColumns = '1fr';
+  } else {
+    paneEdit.style.display = 'block';
+    panePreview.style.display = 'block';
+    mdSplit.classList.remove('single-pane');
+    mdSplit.style.gridTemplateColumns = '1fr 1fr';
+  }
+
+  // localStorage에 선택된 모드 저장
+  localStorage.setItem('md-editor-view-mode', mode);
+}
+
+function toggleViewMenu() {
+  closeAllMenus();  // 다른 드롭다운 먼저 닫기
+  const dropdown = document.getElementById('view-dropdown');
+  dropdown.classList.toggle('open');
+  _viewMenuOpen = dropdown.classList.contains('open');
+}
+
+function _closeViewMenu() {
+  const dropdown = document.getElementById('view-dropdown');
+  dropdown.classList.remove('open');
+  _viewMenuOpen = false;
+}
+
+// 드롭다운 상태 통합 관리
+function closeAllMenus() {
+  document.getElementById('open-dropdown')?.classList.remove('open');
+  document.getElementById('save-dropdown')?.classList.remove('open');
+  document.getElementById('view-dropdown')?.classList.remove('open');
+  document.getElementById('share-dropdown')?.classList.remove('open');
+  _openMenuOpen = false;
+  _saveMenuOpen = false;
+  _viewMenuOpen = false;
+  _shareMenuOpen = false;
+}
+
+// 저장 버튼 항상 활성화
+function updateSaveButtonState() {
+  const saveMdOpt = document.getElementById('saveMdOpt');
+  const saveHtmlOpt = document.getElementById('saveHtmlOpt');
+  const saveLsOpt = document.getElementById('saveLsOpt');
+
+  // 저장 버튼은 항상 활성화 (클릭 시 내용 확인)
+  saveMdOpt.disabled = false;
+  saveHtmlOpt.disabled = false;
+  saveLsOpt.disabled = false;
+}
+```
+
+#### 특징
+1. **보기 모드 선택**: 사용자가 편집 또는 미리보기에만 집중 가능
+2. **모바일 최적화**: 제목과 버튼이 명확하게 분리되어 터치하기 쉬움
+3. **드롭다운 충돌 방지**: `closeAllMenus()` 함수로 중복 열림 방지
+4. **전체 폭 활용**: 단일 창 모드에서 grid 동적 조정으로 화면 최대 활용
+5. **버튼 텍스트 정렬**: `justify-content: center`로 모든 버튼 텍스트 균등 정렬
+6. **저장 버튼 항상 활성화**: 초기 로드 상태에서도 사용자가 저장할 수 있음 (내용 유효성은 저장 함수에서 검증)
+
+---
+
+### 브라우저 로컬 저장 모드
+
+#### 개요
+- **열기 드롭다운**: 기존 단순 파일 열기 → 드롭다운 (파일 열기 / 브라우저에서 열기)
+- **저장 옵션**: 저장 드롭다운에 "브라우저에 저장" 옵션 추가
+- **다중 문서 관리**: localStorage에서 여러 문서 저장/관리
+- **중복 파일명 처리**: 동일한 파일명 입력 시 자동 번호 붙이기 (예: `파일.md` → `파일(1).md`)
+
+#### localStorage 구조
+```js
+// 새 키: md-editor-all-docs
+// 형식: 배열 구조
+[
+  {
+    id: "1712211000000",  // timestamp ID
+    filename: "파일.md",
+    content: "마크다운 내용...",
+    savedAt: "2026-04-04T12:30:00.000Z"
+  },
+  ...
+]
+```
+
+#### 기능 명세
+- **`saveToLocalStorage()`**: 파일명 입력 후 저장
+  - 같은 이름 파일 확인 → 있으면 `(1)`, `(2)` 등 자동 번호
+  - 저장 성공 토스트: `"파일명"으로 저장되었습니다 ✓`
+
+- **`openLoadModal()`**: 저장된 파일 목록 모달 표시
+  - 모달 배경 어두운 오버레이 (`rgba(0,0,0,0.5)`)
+  - 파일 목록: 이름 / 저장 시간 / 삭제 버튼
+  - 시간순 역정렬 (최신 먼저)
+
+- **`loadDocById(id)`**: 파일 클릭 시 문서 로드
+  - 현재 내용 있으면 `confirm()` 후 로드
+
+- **`deleteDocById(id)`**: 확인 후 삭제, 모달 새로고침
+
+### 공유 링크 모바일 뷰 수정
+
+#### 문제
+- 모바일에서 공유 링크 열기 시 편집 탭과 미리보기 탭이 동시 표시됨
+
+#### 해결
+- HTML 수정: `#panePreview`에서 기본값 `mobile-active` 클래스 제거
+- JS 수정: 공유 링크 로드 후 `switchMobileTab('preview')` 호출
+  ```js
+  if (payload.permission === 'view') {
+    enterViewOnly();
+    switchMobileTab('preview');  // 미리보기 탭 기본값
+  } else {
+    openCloneModal(currentFilename);
+    switchMobileTab('preview');  // 미리보기 탭 기본값
+  }
+  ```
+
+---
+
+## QR Master 개선사항 (2026-04-04)
+
+### 마지막 탭 상태 저장/복환
+
+#### 기능
+- 사용자가 마지막으로 선택한 탭 (생성/스캔) 저장
+- 페이지 새로고침 시 이전 탭 상태 복원
+
+#### 구현
+```js
+const QR_TAB_KEY = 'qr-last-tab';
+
+function switchTab(tab) {
+  // ... 기존 탭 전환 로직
+  localStorage.setItem(QR_TAB_KEY, tab);
+}
+
+// DOMContentLoaded 이후
+const savedTab = localStorage.getItem(QR_TAB_KEY);
+if (savedTab === 'scan' || savedTab === 'generate') {
+  switchTab(savedTab);
+}
+```
+
+### 스캔 URL 페이지 제목 추출 + MD Editor 전송
+
+#### 개요
+- 스캔된 URL이 유효할 때 백그라운드에서 페이지 제목 추출
+- 제목을 다중 마크다운 내보내기 시 링크 텍스트로 사용
+
+#### 새로운 Netlify 함수: `get-page-title.js`
+```js
+// POST /.netlify/functions/get-page-title
+// Body: { url: "https://..." }
+// Response: { title: "페이지 제목" | null }
+
+exports.handler = async (event) => {
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: 'Method Not Allowed' };
+  }
+
+  let url;
+  try {
+    ({ url } = JSON.parse(event.body));
+    new URL(url);
+  } catch {
+    return { statusCode: 400, body: JSON.stringify({ error: 'url 필드 필요' }) };
+  }
+
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);  // 5초 타임아웃
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; byeduin-bot/1.0)' },
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    const html = await res.text();
+    const m = html.match(/<title[^>]*>([^<]{1,200})<\/title>/i);
+    const title = m ? m[1].trim().replace(/\s+/g, ' ') : null;
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    };
+  } catch {
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: null }),
+    };
+  }
+};
+```
+
+#### QR Master 클라이언트 구현
+```js
+const pageTitleCache = {};  // 인메모리 캐시
+
+async function fetchPageTitle(url) {
+  if (url in pageTitleCache) return pageTitleCache[url];
+  try {
+    const res = await fetch('/.netlify/functions/get-page-title', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    pageTitleCache[url] = (await res.json()).title || null;
+  } catch {
+    pageTitleCache[url] = null;
+  }
+  return pageTitleCache[url];
+}
+
+// 스캔 성공 후 백그라운드 fetch (fire-and-forget)
+try {
+  new URL(code);
+  fetchPageTitle(code);  // 비동기, 기다리지 않음
+} catch {}
+
+// 다중 마크다운 내보내기 시
+function exportMultiMd() {
+  // ...
+  const title = pageTitleCache[item.url];
+  const linkText = item.desc || title || item.url;
+  md += `${idx + 1}. [${linkText}](${item.url})\n`;
+}
+```
+
+#### 특징
+- **백그라운드 제목 추출**: 화면 변화 없음, 페이지 간섭 없음
+- **인메모리 캐시**: 세션 내에서 중복 요청 방지
+- **제목 폴백**: 제목 없으면 기존 URL 텍스트 사용
+- **타임아웃**: 5초 이상 응답 없으면 null 처리
+
+---
+
+## Chalkboard 개선사항 (2026-04-04)
+
+### 더블클릭으로 편집
+
+#### 텍스트 더블클릭
+- 기존: 단일 클릭 후 선택 → 컨텍스트 메뉴에서 편집 선택
+- 개선: **더블클릭** → 즉시 편집 모드 진입 (contentEditable 활성화)
+
+```js
+// buildTextEl() 함수 내 추가
+div.addEventListener('dblclick', e => {
+  e.stopPropagation();
+  if (viewOnlyBoard) return;
+  selectEl(el.id, 'text');
+  startEdit(el.id);  // 기존 편집 함수 재활용
+});
+```
+
+#### 선 더블클릭
+- 기존: 선 클릭 후 컨텍스트 메뉴에서 색상 변경
+- 개선: **더블클릭** → 즉시 컨텍스트 메뉴 표시
+
+```js
+// buildLineEl() 함수 내 hit 영역에 추가
+hit.addEventListener('dblclick', e => {
+  e.stopPropagation();
+  if (viewOnlyBoard) return;
+  selectEl(el.id, 'line');
+  showCtx(el.id, 'line');  // 컨텍스트 메뉴 즉시 표시
+});
+```
+
+#### 특징
+- 모바일에서 더블클릭은 미지원 (데스크톱 중심)
+- 보기 전용 모드 (`viewOnlyBoard`) 체크로 권한 보호
+- 기존 `startEdit()`, `showCtx()` 함수 재활용
+
+---
+
+## Book Share 개선사항 (2026-04-04)
+
+### 반응형 너비 조정
+
+#### 문제
+- ISBN 입력 전: 빈 화면이 매우 넓게 보임
+- 데이터 로드 후: 테이블 때문에 더 넓은 공간 필요
+
+#### 해결
+```css
+.page-wrap {
+  max-width: 440px;   /* 기존: 580px → 440px (QR Master 수준) */
+  width: 100%;
+  transition: max-width 0.3s ease;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.page-wrap.wide {
+  max-width: 800px;   /* 테이블 표시 시 확장 */
+}
+```
+
+```js
+// renderTable() 함수 내 수정
+function renderTable() {
+  const pageWrap = document.querySelector('.page-wrap');
+
+  if (list.length === 0) {
+    section.style.display = 'none';
+    pageWrap.classList.remove('wide');
+    return;
+  }
+
+  section.style.display = '';
+  pageWrap.classList.add('wide');
+  // ... 테이블 렌더링
+}
+```
+
+#### 특징
+- **초기 상태**: 440px (단순하고 깔끔)
+- **데이터 있을 때**: 800px (테이블 충분한 공간)
+- **전환 애니메이션**: `max-width` transition 0.3s
+- **모바일**: 테이블의 기존 `overflow-x: auto` 가로 스크롤로 대응
 
 ---
 
