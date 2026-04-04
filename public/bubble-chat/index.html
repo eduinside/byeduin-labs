@@ -1050,7 +1050,7 @@
         </button>
         <div class="bc-header-sep"></div>
         <button class="bc-header-btn" id="themeToggleBtn-chat" onclick="cycleTheme()" title="Theme">💻</button>
-        <button class="bc-header-btn bc-header-btn-danger" onclick="endChatSession()">
+        <button class="bc-header-btn bc-header-btn-danger" id="bc-end-chat-btn" onclick="endChatSession()">
           대화 종료
         </button>
       </div>
@@ -1917,6 +1917,12 @@
         saveBtn.style.display = 'none';
       }
 
+      // Update end chat button text based on role
+      const endBtn = document.getElementById('bc-end-chat-btn');
+      if (endBtn) {
+        endBtn.textContent = STATE.role === 'guest' ? '대화에서 나가기' : '대화 종료';
+      }
+
       // Show sidebar toggle on mobile
       if (window.innerWidth <= 860) {
         document.getElementById('bc-sidebar-toggle').style.display = 'flex';
@@ -2196,8 +2202,8 @@
       if (STATE.role === 'host') {
         showEndChatModal();
       } else {
-        // Guest: end immediately
-        _endChatSession('complete');
+        // Guest: pause (don't remove from active sessions)
+        _endChatSession('pause');
       }
     }
 
