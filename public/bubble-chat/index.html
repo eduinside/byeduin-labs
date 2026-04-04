@@ -260,6 +260,15 @@
       min-height: 0;
       display: flex;
       overflow: hidden;
+      gap: 0;
+    }
+
+    .bc-chat-right {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
     .bc-sidebar {
@@ -967,7 +976,7 @@
     <header class="app-header">
       <span class="app-badge">◆ EDU</span>
       <h1 class="app-title">Bubble Chat</h1>
-      <p class="app-desc">PeerJS 기반 P2P 실시간 채팅</p>
+      <p class="app-desc">접속 코드로 누구와나 즉시 연결하는 실시간 채팅</p>
     </header>
 
     <!-- View: Home (Flash Deck style) -->
@@ -1004,11 +1013,7 @@
           </svg>
         </button>
         <div class="bc-header-sep"></div>
-        <button class="bc-header-btn" id="themeToggleBtn-chat" onclick="cycleTheme()" title="Theme">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-          </svg>
-        </button>
+        <button class="bc-header-btn" id="themeToggleBtn-chat" onclick="cycleTheme()" title="Theme">💻</button>
         <button class="bc-header-btn bc-header-btn-danger" onclick="endChatSession()">
           대화 종료
         </button>
@@ -1033,17 +1038,20 @@
           </div>
         </div>
 
-        <!-- Messages -->
-        <div class="bc-messages-wrap" id="bc-messages-wrap"></div>
-      </div>
+        <!-- Right Column: Messages + Input -->
+        <div class="bc-chat-right">
+          <!-- Messages -->
+          <div class="bc-messages-wrap" id="bc-messages-wrap"></div>
 
-      <!-- Input Area -->
-      <div class="bc-input-area">
+          <!-- Input Area -->
+          <div class="bc-input-area">
         <select id="bc-dm-select" class="bc-dm-select">
           <option value="">📢 전체</option>
         </select>
         <textarea id="bc-msg-input" class="bc-msg-input" placeholder="메시지를 입력하세요..." onkeydown="handleInputKey(event)"></textarea>
         <button class="bc-send-btn" onclick="sendMessage()">전송</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1133,6 +1141,7 @@
       messages: [],
       dmTarget: '',        // '' = broadcast, else nickname
       sessionStart: null,
+      chatStarted: false,  // Track if host has started the chat
       currentChatCard: null,  // { code, roomName, role }
     };
 
@@ -1301,7 +1310,7 @@
 
         const meta = document.createElement('div');
         meta.className = 'deck-item-meta';
-        meta.innerHTML = `<div>코드: bubble-${session.code}</div>
+        meta.innerHTML = `<div>코드: ${session.code}</div>
                           <div>역할: ${session.role === 'host' ? '호스트' : '게스트'}</div>
                           <div>참여자: ${session.participants ? session.participants.join(', ') : '-'}</div>
                           <div>메시지: ${session.messageCount || 0}개</div>`;
@@ -1341,6 +1350,7 @@
         roomName: STATE.roomName,
         role: STATE.role,
         participants: STATE.participants.map(p => p.nickname),
+        messages: STATE.messages,  // Save full message history
         messageCount: STATE.messages.length,
         startedAt: new Date(STATE.sessionStart).toISOString(),
       });
@@ -1408,8 +1418,25 @@
         leaveTime: null
       })) || [];
 
+      // Restore messages
+      if (session.messages && Array.isArray(session.messages)) {
+        STATE.messages = session.messages;
+      }
+
       // Open chat view
       setupChatUI();
+
+      // Display restored messages (for guests, only show messages after their join time)
+      if (STATE.messages && STATE.messages.length > 0) {
+        const myJoinTime = STATE.sessionStart;
+        STATE.messages.forEach(msg => {
+          // Show all messages for host, or messages after join for guest
+          if (STATE.role === 'host' || !msg.timestamp || msg.timestamp >= myJoinTime) {
+            addMessageToUI(msg);
+          }
+        });
+      }
+
       showView('chat');
       showToast('세션이 재개되었습니다');
     }
@@ -1511,8 +1538,22 @@
 
           STATE.guestConns[guestNickname] = conn;
           STATE.participants.push({ nickname: guestNickname, isHost: false, joinTime: Date.now(), leaveTime: null });
+
+          // Send acknowledgment with room name
+          conn.send(JSON.stringify({
+            type: 'handshake',
+            status: 'accepted',
+            roomName: STATE.roomName,
+            participants: STATE.participants.map(p => p.nickname)
+          }));
+
           updateParticipantList();
           addSystemMessage(guestNickname + '님이 입장했습니다');
+
+          // If chat is already active, send start signal to new guest
+          if (STATE.chatStarted) {
+            conn.send(JSON.stringify({ type: 'start' }));
+          }
         } else {
           handleIncomingMessage(msg, conn);
         }
@@ -1580,7 +1621,19 @@
 
       conn.on('data', (raw) => {
         const msg = JSON.parse(raw);
-        if (msg.type === 'start') {
+        if (msg.type === 'handshake' && msg.status === 'accepted') {
+          // Receive room info and participant list from host
+          STATE.roomName = msg.roomName;
+          if (msg.participants) {
+            // Update participant list with those from host
+            STATE.participants = msg.participants.map(nickname => ({
+              nickname,
+              isHost: nickname !== STATE.nickname,
+              joinTime: Date.now(),
+              leaveTime: null
+            }));
+          }
+        } else if (msg.type === 'start') {
           saveActiveSession();
           setupChatUI();
           showView('chat');
@@ -1619,6 +1672,7 @@
 
       // For host, broadcast start signal
       if (STATE.role === 'host') {
+        STATE.chatStarted = true;
         const startMsg = { type: 'start' };
         for (const conn of Object.values(STATE.guestConns)) {
           if (conn.open) {
@@ -1638,7 +1692,7 @@
       const dmSelect = document.getElementById('bc-dm-select');
 
       list.innerHTML = '';
-      dmSelect.innerHTML = '<option value="">📢 전체</option>';
+      dmSelect.innerHTML = '<option value="">📢 전체</option>';  // Broadcast emoji
 
       STATE.participants.forEach(p => {
         if (!p) return;
@@ -1659,12 +1713,20 @@
         li.appendChild(time);
         list.appendChild(li);
 
-        // Add to DM select (not self, not host if guest)
+        // Add to DM select
         if (p.nickname !== STATE.nickname) {
           const opt = document.createElement('option');
           opt.value = p.nickname;
-          opt.textContent = '💬 ' + p.nickname;
-          dmSelect.appendChild(opt);
+
+          // Guests can only DM host, format: ➡️ Host
+          // Hosts can DM guests, format: 💬 nickname
+          if (STATE.role === 'guest' && p.isHost) {
+            opt.textContent = '➡️ Host';
+            dmSelect.appendChild(opt);
+          } else if (STATE.role === 'host' && !p.isHost) {
+            opt.textContent = '💬 ' + p.nickname;
+            dmSelect.appendChild(opt);
+          }
         }
       });
     }
@@ -1728,8 +1790,17 @@
           return;
         }
 
-        addMessageToUI(msgObj);
-        STATE.messages.push(msgObj);
+        // Prevent duplicate messages (for guest's own messages that are relayed back)
+        const isDuplicate = STATE.messages.some(m =>
+          m.from === msgObj.from &&
+          m.content === msgObj.content &&
+          m.timestamp === msgObj.timestamp
+        );
+
+        if (!isDuplicate) {
+          addMessageToUI(msgObj);
+          STATE.messages.push(msgObj);
+        }
       }
     }
 
@@ -1763,7 +1834,8 @@
       if (msgObj.type === 'dm') {
         const dmLabel = document.createElement('div');
         dmLabel.className = 'bc-msg-dm-indicator';
-        dmLabel.textContent = '🔒 DM: ' + (msgObj.to || 'N/A');
+        const dmTarget = msgObj.to || 'Unknown';
+        dmLabel.textContent = '➡️ ' + dmTarget;
         msg.appendChild(dmLabel);
       }
 
@@ -1887,8 +1959,22 @@
     /* ═══════════════════════════════════════════════════════════════ */
     /* Init                                                            */
     /* ═══════════════════════════════════════════════════════════════ */
+    // Theme icon update
+    const THEME_ICONS = { auto: '💻', light: '☀️', dark: '🌙' };
+    function updateThemeButtonChat() {
+      const storedTheme = localStorage.getItem('vives-theme') || 'auto';
+      const btn = document.getElementById('themeToggleBtn-chat');
+      if (btn) btn.textContent = THEME_ICONS[storedTheme] || '💻';
+    }
+    const originalCycleTheme = window.cycleTheme;
+    window.cycleTheme = function() {
+      originalCycleTheme();
+      updateThemeButtonChat();
+    };
+
     document.addEventListener('DOMContentLoaded', () => {
       renderChatCards();
+      updateThemeButtonChat();
 
       const textarea = document.getElementById('bc-msg-input');
       if (textarea) {
