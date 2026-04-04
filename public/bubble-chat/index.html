@@ -573,6 +573,17 @@
       margin-bottom: 2px;
     }
 
+    /* Link visibility in messages */
+    .bc-msg--self a {
+      color: #fff !important;
+      font-weight: 600;
+    }
+
+    .bc-msg--other a {
+      color: var(--primary) !important;
+      font-weight: 600;
+    }
+
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
@@ -1504,6 +1515,14 @@
       STATE.role = session.role;
       STATE.sessionStart = new Date(session.startedAt).getTime();
 
+      // For guest, restore nickname from localStorage
+      if (session.role === 'guest') {
+        try {
+          const guestNicks = JSON.parse(localStorage.getItem('bubbleChat_guestNicknames')) || {};
+          STATE.nickname = guestNicks[code] || '';
+        } catch (e) {}
+      }
+
       // Initialize participants
       STATE.participants = session.participants.map((nickname, idx) => ({
         nickname: nickname,
@@ -1724,6 +1743,13 @@
       STATE.nickname = nickname;
       STATE.sessionStart = Date.now();
       STATE.participants = [{ nickname, isHost: false, joinTime: Date.now(), leaveTime: null }];
+
+      // Save guest nickname for session restoration
+      try {
+        const guestNicks = JSON.parse(localStorage.getItem('bubbleChat_guestNicknames')) || {};
+        guestNicks[code] = nickname;
+        localStorage.setItem('bubbleChat_guestNicknames', JSON.stringify(guestNicks));
+      } catch (e) {}
 
       closeGuestSetupModal();
       showToast('연결 중...');
@@ -1974,7 +2000,7 @@
           // Create preview box
           const preview = document.createElement('div');
           preview.className = 'bc-msg-link-preview';
-          preview.style.cssText = 'margin-top: 8px; padding: 10px; border-left: 3px solid var(--primary); background: var(--card-bg); border-radius: 4px; font-size: 13px;';
+          preview.style.cssText = 'margin-top: 8px; padding: 10px; border-left: 3px solid var(--primary); background: var(--card-bg); border-radius: 4px; font-size: 13px; max-width: 280px;';
 
           if (image && image.url) {
             const img = document.createElement('img');
