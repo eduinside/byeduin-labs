@@ -1467,6 +1467,24 @@
         STATE.messages = session.messages;
       }
 
+      // Re-initialize peer for both host and guest
+      try {
+        if (STATE.role === 'host') {
+          // Host: recreate peer and setup connection handler
+          await initPeer('bubble-' + STATE.roomCode);
+          setupHostPeer();
+        } else {
+          // Guest: recreate peer and connect to host
+          const peerId = 'bubble-guest-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+          await initPeer(peerId);
+          const conn = STATE.peer.connect('bubble-' + STATE.roomCode, { reliable: true });
+          setupGuestConnection(conn);
+        }
+      } catch (e) {
+        showToast('연결 복구 실패: ' + e.message);
+        return;
+      }
+
       // Open chat view
       setupChatUI();
 
