@@ -1804,6 +1804,76 @@
       }
     }
 
+    /* Link handling in messages */
+    function renderMessageContent(content, bubbleElement) {
+      const urlRegex = /(https?:\/\/[^\s)]+)/g;
+      const parts = content.split(urlRegex);
+
+      bubbleElement.innerHTML = ''; // Clear
+      parts.forEach((part, i) => {
+        if (part && part.match(urlRegex)) {
+          // This is a URL
+          const a = document.createElement('a');
+          a.href = part;
+          a.textContent = part;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.style.cssText = 'color: var(--primary); text-decoration: underline; word-break: break-all;';
+          bubbleElement.appendChild(a);
+
+          // Try to load preview from URL (async)
+          loadLinkPreview(part, bubbleElement);
+        } else if (part) {
+          // Regular text
+          bubbleElement.appendChild(document.createTextNode(part));
+        }
+      });
+    }
+
+    function loadLinkPreview(url, bubbleElement) {
+      // Use microlink.io API to get link preview
+      // This is optional and non-blocking
+      fetch('https://api.microlink.io?url=' + encodeURIComponent(url))
+        .then(r => r.json())
+        .then(data => {
+          if (!data.data) return;
+
+          const { title, description, image } = data.data;
+          if (!title && !image) return;
+
+          // Create preview box
+          const preview = document.createElement('div');
+          preview.className = 'bc-msg-link-preview';
+          preview.style.cssText = 'margin-top: 8px; padding: 10px; border-left: 3px solid var(--primary); background: var(--card-bg); border-radius: 4px; font-size: 13px;';
+
+          if (image && image.url) {
+            const img = document.createElement('img');
+            img.src = image.url;
+            img.style.cssText = 'width: 100%; height: auto; border-radius: 4px; margin-bottom: 8px; max-height: 200px; object-fit: cover;';
+            preview.appendChild(img);
+          }
+
+          if (title) {
+            const titleEl = document.createElement('div');
+            titleEl.style.cssText = 'font-weight: 600; margin-bottom: 4px; color: var(--fg);';
+            titleEl.textContent = title;
+            preview.appendChild(titleEl);
+          }
+
+          if (description) {
+            const descEl = document.createElement('div');
+            descEl.style.cssText = 'color: var(--fg-muted); line-height: 1.4;';
+            descEl.textContent = description.substring(0, 150) + (description.length > 150 ? '...' : '');
+            preview.appendChild(descEl);
+          }
+
+          bubbleElement.appendChild(preview);
+        })
+        .catch(() => {
+          // Silently fail - preview is optional
+        });
+    }
+
     function addMessageToUI(msgObj) {
       const wrap = document.getElementById('bc-messages-wrap');
       const msg = document.createElement('div');
@@ -1843,7 +1913,7 @@
 
       const bubble = document.createElement('div');
       bubble.className = 'bc-msg-bubble';
-      bubble.textContent = msgObj.content;
+      renderMessageContent(msgObj.content, bubble);
 
       msg.appendChild(bubble);
       wrap.appendChild(msg);
