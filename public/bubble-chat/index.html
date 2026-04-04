@@ -1704,6 +1704,11 @@
       STATE.roomCode = generateCode();
       STATE.sessionStart = Date.now();
       STATE.participants = [{ nickname, isHost: true, joinTime: Date.now(), leaveTime: null }];
+      STATE.messages = [];  // Clear any previous messages
+      STATE.guestConns = {};  // Clear previous guest connections
+      STATE.chatStarted = false;
+      STATE.chatEnded = false;
+      STATE.isClosing = false;
 
       document.getElementById('host-code-value').textContent = STATE.roomCode;
       document.getElementById('host-setup-form').style.display = 'none';
@@ -1769,8 +1774,16 @@
         const msg = JSON.parse(raw);
         if (msg.type === 'handshake') {
           const guestNickname = msg.nickname;
+          const hostNickname = STATE.participants.find(p => p.isHost)?.nickname;
 
-          // Check for duplicate nickname - allow reconnection if old conn is closed
+          // Check if guest nickname matches host nickname
+          if (guestNickname === hostNickname) {
+            conn.send(JSON.stringify({ type: 'error', content: 'nickname_taken' }));
+            conn.close();
+            return;
+          }
+
+          // Check for duplicate nickname among other guests - allow reconnection if old conn is closed
           if (STATE.guestConns[guestNickname]) {
             const oldConn = STATE.guestConns[guestNickname];
             if (oldConn.open) {
@@ -1852,9 +1865,13 @@
 
       STATE.role = 'guest';
       STATE.roomCode = code;
+      STATE.roomName = '';  // Will be set by host handshake
       STATE.nickname = nickname;
       STATE.sessionStart = Date.now();
-      STATE.participants = [{ nickname, isHost: false, joinTime: Date.now(), leaveTime: null }];
+      STATE.participants = [];  // Will be set by host handshake
+      STATE.messages = [];  // Clear messages from previous session
+      STATE.chatStarted = false;
+      STATE.chatEnded = false;
 
       // Save guest nickname for session restoration
       try {
@@ -1887,7 +1904,27 @@
 
       conn.on('data', (raw) => {
         const msg = JSON.parse(raw);
-        if (msg.type === 'handshake' && msg.status === 'accepted') {
+        if (msg.type === 'error') {
+          // Handle error from host
+          const errorMsg = msg.content;
+          if (errorMsg === 'nickname_taken') {
+            showToast('이름은 중복될 수 없습니다');
+            STATE.hostConn.close();
+            // Remove from active sessions
+            try {
+              const key = 'bubbleChat_activeSessions';
+              let sessions = JSON.parse(localStorage.getItem(key) || '[]');
+              sessions = sessions.filter(s => s.code !== STATE.roomCode);
+              localStorage.setItem(key, JSON.stringify(sessions));
+            } catch (e) {}
+            renderChatCards();
+            showView('home');
+            return;
+          } else {
+            showToast('오류: ' + errorMsg);
+            STATE.hostConn.close();
+          }
+        } else if (msg.type === 'handshake' && msg.status === 'accepted') {
           // Receive room info and participant list from host
           STATE.roomName = msg.roomName;
           if (msg.participants) {
