@@ -1792,8 +1792,44 @@
           setupChatUI();
           showView('chat');
         } else if (msg.type === 'end') {
-          showToast('호스트가 대화를 종료했습니다');
+          // Guest receives end status from host
+          const status = msg.status || 'complete';  // 'pause' or 'complete'
+
+          // Save guest session with status
+          if (status === 'pause') {
+            const key = 'bubbleChat_activeSessions';
+            let sessions = [];
+            try {
+              const stored = localStorage.getItem(key);
+              if (stored) sessions = JSON.parse(stored);
+            } catch (e) {}
+
+            sessions = sessions.filter(s => s.code !== STATE.roomCode);
+            sessions.unshift({
+              code: STATE.roomCode,
+              roomName: msg.roomName || STATE.roomName,
+              role: STATE.role,
+              status: 'paused',
+              participants: STATE.participants.map(p => p.nickname),
+              messageCount: STATE.messages.length,
+              messages: STATE.messages,
+              startedAt: new Date(STATE.sessionStart).toISOString(),
+              pausedAt: new Date().toISOString(),
+            });
+
+            sessions = sessions.slice(0, 20);
+
+            try {
+              localStorage.setItem(key, JSON.stringify(sessions));
+            } catch (e) {}
+
+            showToast('호스트가 대화를 일시 중단했습니다');
+          } else {
+            showToast('호스트가 대화를 종료했습니다');
+          }
+
           setTimeout(() => {
+            renderChatCards();  // Update home screen with new status
             endChatSession();
           }, 1000);
         } else {
@@ -2092,12 +2128,13 @@
 
       const msg = document.createElement('div');
       msg.className = 'bc-msg bc-msg--system';
+      msg.style.cssText = 'text-align: center; padding: 12px 0; display: flex; align-items: center; justify-content: center;';
 
-      const bubble = document.createElement('div');
-      bubble.className = 'bc-msg-bubble';
-      bubble.textContent = content;
+      const text = document.createElement('span');
+      text.textContent = content;
+      text.style.cssText = 'font-size: 12px; color: var(--fg-muted); font-style: italic; padding: 0 16px;';
 
-      msg.appendChild(bubble);
+      msg.appendChild(text);
       wrap.appendChild(msg);
 
       wrap.scrollTop = wrap.scrollHeight;
@@ -2119,9 +2156,13 @@
     }
 
     function _endChatSession(choice = 'complete') {
-      // Host: notify all guests
+      // Host: notify all guests with status
       if (STATE.role === 'host') {
-        const endMsg = { type: 'end' };
+        const endMsg = {
+          type: 'end',
+          status: choice,  // 'pause' or 'complete'
+          roomName: STATE.roomName
+        };
         for (const conn of Object.values(STATE.guestConns)) {
           if (conn.open) {
             conn.send(JSON.stringify(endMsg));
@@ -2180,6 +2221,9 @@
         }
 
         showToast('대화가 일시 중단되었습니다');
+
+        // Render updated cards with pause status
+        renderChatCards();
       } else {
         // Save as completed - guest cannot rejoin
         const key = 'bubbleChat_completedSessions';
@@ -2211,6 +2255,9 @@
         }
 
         showToast('대화가 종료되었습니다');
+
+        // Render updated cards with completed status
+        renderChatCards();
       }
 
       // Reset state
