@@ -245,10 +245,11 @@
 
     .bc-header-btn-danger {
       color: var(--danger);
+      border: 1.5px solid var(--danger);
     }
 
     .bc-header-btn-danger:hover {
-      background: rgba(243,18,96,0.1);
+      background: rgba(243,18,96,0.15);
     }
 
     /* ══════════════════════════════════
@@ -535,6 +536,32 @@
       color: var(--fg-muted);
       font-size: 11px;
       font-style: italic;
+    }
+
+    /* DM 메시지 스타일 */
+    .bc-msg--dm {
+      opacity: 0.95;
+    }
+
+    .bc-msg--dm .bc-msg-bubble {
+      border: 2px solid rgba(0, 111, 238, 0.4);
+      box-shadow: 0 2px 8px rgba(0, 111, 238, 0.15);
+    }
+
+    .bc-msg--dm--self .bc-msg-bubble {
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .bc-msg--dm--other .bc-msg-bubble {
+      border: 2px solid rgba(0, 111, 238, 0.4);
+      background: rgba(0, 111, 238, 0.08);
+    }
+
+    .bc-msg-dm-indicator {
+      font-size: 11px;
+      color: var(--primary);
+      font-weight: 600;
+      margin-bottom: 2px;
     }
 
     @keyframes fadeUp {
@@ -1007,7 +1034,7 @@
       <!-- Input Area -->
       <div class="bc-input-area">
         <select id="bc-dm-select" class="bc-dm-select">
-          <option value="">→ 전체</option>
+          <option value="">📢 전체</option>
         </select>
         <textarea id="bc-msg-input" class="bc-msg-input" placeholder="메시지를 입력하세요..." onkeydown="handleInputKey(event)"></textarea>
         <button class="bc-send-btn" onclick="sendMessage()">전송</button>
@@ -1631,7 +1658,7 @@
       const dmSelect = document.getElementById('bc-dm-select');
 
       list.innerHTML = '';
-      dmSelect.innerHTML = '<option value="">→ 전체</option>';
+      dmSelect.innerHTML = '<option value="">📢 전체</option>';
 
       STATE.participants.forEach(p => {
         if (!p) return;
@@ -1656,7 +1683,7 @@
         if (p.nickname !== STATE.nickname) {
           const opt = document.createElement('option');
           opt.value = p.nickname;
-          opt.textContent = '→ ' + p.nickname;
+          opt.textContent = '💬 ' + p.nickname;
           dmSelect.appendChild(opt);
         }
       });
@@ -1737,16 +1764,35 @@
         msg.classList.add('bc-msg--other');
       }
 
+      // Add DM indicator
+      if (msgObj.type === 'dm') {
+        msg.classList.add('bc-msg--dm');
+        if (msgObj.from === STATE.nickname) {
+          msg.classList.add('bc-msg--dm--self');
+        } else {
+          msg.classList.add('bc-msg--dm--other');
+        }
+      }
+
       const meta = document.createElement('div');
       meta.className = 'bc-msg-meta';
       const time = new Date(msgObj.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
       meta.textContent = msgObj.from + ' ' + time;
 
+      // Add DM label if it's a direct message
+      if (msgObj.type === 'dm') {
+        const dmLabel = document.createElement('div');
+        dmLabel.className = 'bc-msg-dm-indicator';
+        dmLabel.textContent = '🔒 DM: ' + (msgObj.to || 'N/A');
+        msg.appendChild(dmLabel);
+      }
+
+      msg.appendChild(meta);
+
       const bubble = document.createElement('div');
       bubble.className = 'bc-msg-bubble';
       bubble.textContent = msgObj.content;
 
-      msg.appendChild(meta);
       msg.appendChild(bubble);
       wrap.appendChild(msg);
 
