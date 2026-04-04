@@ -352,6 +352,31 @@
       color: var(--fg-muted);
     }
 
+    .bc-save-chat-btn {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--fg);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .bc-save-chat-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(0, 111, 238, 0.06);
+    }
+
+    .bc-save-chat-btn:active {
+      transform: scale(0.98);
+    }
+
     .bc-sidebar-code-container {
       display: flex;
       flex-direction: column;
@@ -995,7 +1020,7 @@
       <div class="home-top">
         <div class="fd-section-title" style="margin:0;flex:1">참여 중인 대화</div>
         <div style="position: relative;">
-          <button class="fd-btn fd-btn-primary" id="new-chat-btn" onclick="toggleChatMenu(event)">
+          <button class="fd-btn fd-btn-primary" id="new-chat-btn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             새 대화
           </button>
@@ -1046,6 +1071,9 @@
           <div class="bc-sidebar-section">
             <div class="bc-sidebar-title">참여자</div>
             <ul id="bc-participant-list" class="bc-participant-list"></ul>
+            <button id="bc-save-chat-btn" class="bc-save-chat-btn" onclick="saveChatAsText()" style="display: none;">
+              📥 대화 내용 저장
+            </button>
           </div>
         </div>
 
@@ -1277,7 +1305,7 @@
       }
     });
 
-    // Add event listener for new chat button (fallback for environments where inline onclick doesn't work)
+    // Add event listeners for menu
     const attachButtonListener = () => {
       const newChatBtn = document.getElementById('new-chat-btn');
       if (newChatBtn) {
@@ -1881,6 +1909,14 @@
         }
       }
 
+      // Show save button for host
+      const saveBtn = document.getElementById('bc-save-chat-btn');
+      if (STATE.role === 'host' && saveBtn) {
+        saveBtn.style.display = 'block';
+      } else if (saveBtn) {
+        saveBtn.style.display = 'none';
+      }
+
       // Show sidebar toggle on mobile
       if (window.innerWidth <= 860) {
         document.getElementById('bc-sidebar-toggle').style.display = 'flex';
@@ -2297,6 +2333,73 @@
       // Return to home
       renderChatCards();
       showView('home');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Save Chat as Text                                              */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function saveChatAsText() {
+      if (STATE.messages.length === 0) {
+        showToast('저장할 메시지가 없습니다');
+        return;
+      }
+
+      let text = '';
+
+      // Header with metadata
+      text += '═══════════════════════════════════════════\n';
+      text += 'Bubble Chat 대화 기록\n';
+      text += '═══════════════════════════════════════════\n\n';
+
+      text += `방 이름: ${STATE.roomName || '(이름 없음)'}\n`;
+      text += `코드: ${STATE.roomCode}\n`;
+      text += `역할: ${STATE.role === 'host' ? '호스트' : '게스트'}\n`;
+      text += `시작: ${new Date(STATE.sessionStart).toLocaleString('ko-KR')}\n\n`;
+
+      // Participants
+      text += '참여자 목록:\n';
+      STATE.participants.forEach(p => {
+        const host = p.isHost ? ' (호스트)' : '';
+        const joinTime = new Date(p.joinTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+        const leaveTime = p.leaveTime ? new Date(p.leaveTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '-';
+        text += `  - ${p.nickname}${host} (참여: ${joinTime}, 퇴장: ${leaveTime})\n`;
+      });
+
+      text += '\n───────────────────────────────────────────\n';
+      text += '대화 내용\n';
+      text += '───────────────────────────────────────────\n\n';
+
+      // Messages
+      STATE.messages.forEach(msg => {
+        const time = new Date(msg.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+
+        if (msg.type === 'system') {
+          text += `[${time}] [시스템] ${msg.content}\n`;
+        } else if (msg.type === 'dm') {
+          const target = msg.to ? `➡️ ${msg.to}` : 'Unknown';
+          text += `[${time}] ${msg.from} ${target}: ${msg.content}\n`;
+        } else {
+          text += `[${time}] ${msg.from}: ${msg.content}\n`;
+        }
+      });
+
+      text += '\n═══════════════════════════════════════════\n';
+      text += `저장 날짜: ${new Date().toLocaleString('ko-KR')}\n`;
+      text += '═══════════════════════════════════════════\n';
+
+      // Create blob and download
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const filename = `bubble-chat-${STATE.roomCode}-${new Date().toISOString().split('T')[0]}.txt`;
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      showToast('대화 내용이 저장되었습니다');
     }
 
     /* ═══════════════════════════════════════════════════════════════ */
