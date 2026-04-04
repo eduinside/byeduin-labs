@@ -1620,9 +1620,12 @@
       // Guest: reuse existing connection if already connected
       try {
         if (STATE.role === 'host') {
-          // Host: recreate peer and setup connection handler
-          await initPeer('bubble-' + STATE.roomCode);
-          setupHostPeer();
+          // Host: only recreate peer if not already running (paused session rejoin)
+          if (!STATE.peer || !STATE.peer.open) {
+            await initPeer('bubble-' + STATE.roomCode);
+            setupHostPeer();
+          }
+          // else: peer still running from pause, just reuse it
         } else {
           // Guest: only initialize peer if not already connected
           if (!STATE.hostConn || !STATE.peer || !STATE.peer.open) {
@@ -2496,20 +2499,23 @@
         }
       }
 
-      // Close all connections
-      if (STATE.hostConn) {
-        STATE.hostConn.close();
-      }
-      for (const conn of Object.values(STATE.guestConns)) {
-        if (conn.open) {
-          conn.close();
+      // For pause: close connections but keep peer alive for guest rejoin
+      // For complete: close connections and destroy peer
+      setTimeout(() => {
+        if (STATE.hostConn) {
+          STATE.hostConn.close();
         }
-      }
+        for (const conn of Object.values(STATE.guestConns)) {
+          if (conn.open) {
+            conn.close();
+          }
+        }
 
-      // Destroy peer
-      if (STATE.peer) {
-        STATE.peer.destroy();
-      }
+        // Only destroy peer on complete, not on pause
+        if (choice === 'complete' && STATE.peer) {
+          STATE.peer.destroy();
+        }
+      }, 100);
 
       // Save session based on choice
       if (choice === 'pause') {
@@ -2600,18 +2606,21 @@
         renderChatCards();
       }
 
-      // Reset state
-      STATE.role = null;
-      STATE.roomCode = '';
-      STATE.roomName = '';
-      STATE.nickname = '';
-      STATE.peer = null;
-      STATE.hostConn = null;
-      STATE.guestConns = {};
-      STATE.participants = [];
-      STATE.messages = [];
-      STATE.dmTarget = '';
-      STATE.chatStarted = false;
+      // Only reset STATE on complete, not on pause
+      // (On pause, host peer stays alive for guest rejoin)
+      if (choice === 'complete') {
+        STATE.role = null;
+        STATE.roomCode = '';
+        STATE.roomName = '';
+        STATE.nickname = '';
+        STATE.peer = null;
+        STATE.hostConn = null;
+        STATE.guestConns = {};
+        STATE.participants = [];
+        STATE.messages = [];
+        STATE.dmTarget = '';
+        STATE.chatStarted = false;
+      }
 
       // Return to home
       renderChatCards();
