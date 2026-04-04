@@ -1122,6 +1122,34 @@
     </div>
   </div>
 
+  <!-- Modal: End Chat Choice -->
+  <div class="bc-modal-overlay" id="end-chat-modal" onclick="closeEndChatModal(event)">
+    <div class="bc-modal">
+      <div class="bc-modal-title">대화 종료 선택</div>
+      <div style="padding: 20px 0;">
+        <p style="color: var(--fg-muted); font-size: 14px; margin-bottom: 16px;">
+          어떻게 종료하시겠습니까?
+        </p>
+      </div>
+      <div class="bc-modal-actions">
+        <button class="bc-modal-btn bc-modal-btn-primary" onclick="endChatWithChoice('pause')" style="background: var(--primary);">
+          ⏸️ 일시 중단
+        </button>
+        <button class="bc-modal-btn bc-modal-btn-primary" onclick="endChatWithChoice('complete')" style="background: var(--danger);">
+          🔒 완전 종료
+        </button>
+      </div>
+      <div style="padding: 16px 0; border-top: 1px solid var(--border);">
+        <div style="font-size: 12px; color: var(--fg-muted); margin-bottom: 8px;">
+          <strong>일시 중단:</strong> 게스트가 언제든 재입장 가능, 메시지 유지
+        </div>
+        <div style="font-size: 12px; color: var(--fg-muted);">
+          <strong>완전 종료:</strong> 게스트 재입장 불가, 세션 보관
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div id="bc-toast"></div>
 
@@ -1237,6 +1265,22 @@
         closeChatMenu();
       }
     });
+
+    /* End Chat Modal */
+    function showEndChatModal() {
+      document.getElementById('end-chat-modal').classList.add('open');
+    }
+
+    function closeEndChatModal(event) {
+      if (!event || event.target.id === 'end-chat-modal') {
+        document.getElementById('end-chat-modal').classList.remove('open');
+      }
+    }
+
+    function endChatWithChoice(choice) {
+      closeEndChatModal();
+      _endChatSession(choice);
+    }
 
     /* ═══════════════════════════════════════════════════════════════ */
     /* Modal Management                                                */
@@ -1971,6 +2015,16 @@
     /* Session End                                                     */
     /* ═══════════════════════════════════════════════════════════════ */
     function endChatSession() {
+      // Host: show choice modal
+      if (STATE.role === 'host') {
+        showEndChatModal();
+      } else {
+        // Guest: end immediately
+        _endChatSession('complete');
+      }
+    }
+
+    function _endChatSession(choice = 'complete') {
       // Host: notify all guests
       if (STATE.role === 'host') {
         const endMsg = { type: 'end' };
@@ -1996,34 +2050,73 @@
         STATE.peer.destroy();
       }
 
-      // Save final session
-      const key = 'bubbleChat_completedSessions';
-      let sessions = [];
-      try {
-        const stored = localStorage.getItem(key);
-        if (stored) {
-          sessions = JSON.parse(stored);
+      // Save session based on choice
+      if (choice === 'pause') {
+        // Save as active (paused) - guest can rejoin
+        const key = 'bubbleChat_activeSessions';
+        let sessions = [];
+        try {
+          const stored = localStorage.getItem(key);
+          if (stored) sessions = JSON.parse(stored);
+        } catch (e) {}
+
+        // Remove if already exists
+        sessions = sessions.filter(s => s.code !== STATE.roomCode);
+
+        // Add as paused
+        sessions.unshift({
+          code: STATE.roomCode,
+          roomName: STATE.roomName,
+          role: STATE.role,
+          status: 'paused',
+          hostNickname: STATE.participants.find(p => p.isHost)?.nickname,
+          participants: STATE.participants.map(p => p.nickname),
+          messageCount: STATE.messages.length,
+          messages: STATE.messages,
+          startedAt: new Date(STATE.sessionStart).toISOString(),
+          pausedAt: new Date().toISOString(),
+        });
+
+        sessions = sessions.slice(0, 20);
+
+        try {
+          localStorage.setItem(key, JSON.stringify(sessions));
+        } catch (e) {
+          console.error('Error saving sessions:', e);
         }
-      } catch (e) {}
 
-      sessions.unshift({
-        code: STATE.roomCode,
-        roomName: STATE.roomName,
-        role: STATE.role,
-        hostNickname: STATE.participants.find(p => p.isHost)?.nickname,
-        participants: STATE.participants,
-        messageCount: STATE.messages.length,
-        messages: STATE.messages,
-        startedAt: new Date(STATE.sessionStart).toISOString(),
-        endedAt: new Date().toISOString(),
-      });
+        showToast('대화가 일시 중단되었습니다');
+      } else {
+        // Save as completed - guest cannot rejoin
+        const key = 'bubbleChat_completedSessions';
+        let sessions = [];
+        try {
+          const stored = localStorage.getItem(key);
+          if (stored) sessions = JSON.parse(stored);
+        } catch (e) {}
 
-      sessions = sessions.slice(0, 20);
+        sessions.unshift({
+          code: STATE.roomCode,
+          roomName: STATE.roomName,
+          role: STATE.role,
+          status: 'completed',
+          hostNickname: STATE.participants.find(p => p.isHost)?.nickname,
+          participants: STATE.participants,
+          messageCount: STATE.messages.length,
+          messages: STATE.messages,
+          startedAt: new Date(STATE.sessionStart).toISOString(),
+          endedAt: new Date().toISOString(),
+        });
 
-      try {
-        localStorage.setItem(key, JSON.stringify(sessions));
-      } catch (e) {
-        console.error('Error saving completed sessions:', e);
+        sessions = sessions.slice(0, 20);
+
+        try {
+          localStorage.setItem(key, JSON.stringify(sessions));
+        } catch (e) {
+          console.error('Error saving completed sessions:', e);
+        }
+
+        showToast('대화가 종료되었습니다');
       }
 
       // Reset state
@@ -2042,7 +2135,6 @@
       // Return to home
       renderChatCards();
       showView('home');
-      showToast('대화가 종료되었습니다');
     }
 
     /* ═══════════════════════════════════════════════════════════════ */
