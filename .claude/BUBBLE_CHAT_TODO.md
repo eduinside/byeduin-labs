@@ -17,6 +17,7 @@
 - [x] DM 드롭다운 리셋 순서 수정
 - [x] 호스트 종료 대화 완전 종료 vs 일시중단 분리
 - [x] **CRITICAL FIX**: 일시중단 세션 재진입 시 peer-unavailable 에러 (host peer 생존 유지)
+- [x] **UI FIX**: 드롭다운 메뉴 표시 문제 ("새 대화" 클릭 후 메뉴가 안 보임)
 
 ## 필수 수정사항 (Priority: HIGH) — ✓ 모두 완료
 

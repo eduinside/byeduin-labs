@@ -1049,7 +1049,7 @@
       <div class="home-top">
         <div class="fd-section-title" style="margin:0;flex:1">참여 중인 대화</div>
         <div style="position: relative;">
-          <button class="fd-btn fd-btn-primary" id="new-chat-btn">
+          <button class="fd-btn fd-btn-primary" id="new-chat-btn" onclick="document.getElementById('chat-menu-dropdown').classList.toggle('open'); event.stopPropagation();">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             새 대화
           </button>
@@ -1360,37 +1360,8 @@
       }
     });
 
-    // Add event listeners for menu
-    const attachButtonListener = () => {
-      const newChatBtn = document.getElementById('new-chat-btn');
-      if (newChatBtn) {
-        newChatBtn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          const dropdown = document.getElementById('chat-menu-dropdown');
-          dropdown.classList.toggle('open');
-        });
-      }
-
-      // Add event listeners to menu items
-      const menuItems = document.querySelectorAll('.menu-item');
-      menuItems.forEach(item => {
-        item.addEventListener('click', function(e) {
-          e.stopPropagation();
-          const action = this.getAttribute('onclick');
-          if (action === 'showHostSetup()') {
-            showHostSetup();
-          } else if (action === 'showGuestSetup()') {
-            showGuestSetup();
-          }
-        });
-      });
-    };
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', attachButtonListener);
-    } else {
-      attachButtonListener();
-    }
+    // Close dropdown when clicking outside (menu items have onclick handlers)
+    // Dropdown toggle is handled by button's inline onclick
 
     /* End Chat Modal */
     function showEndChatModal() {
