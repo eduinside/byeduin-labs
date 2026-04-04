@@ -1825,6 +1825,16 @@
 
             showToast('호스트가 대화를 일시 중단했습니다');
           } else {
+            // Remove from active sessions when complete
+            try {
+              const key = 'bubbleChat_activeSessions';
+              let sessions = [];
+              const stored = localStorage.getItem(key);
+              if (stored) sessions = JSON.parse(stored);
+              sessions = sessions.filter(s => s.code !== STATE.roomCode);
+              localStorage.setItem(key, JSON.stringify(sessions));
+            } catch (e) {}
+
             showToast('호스트가 대화를 종료했습니다');
           }
 
@@ -2226,6 +2236,17 @@
         renderChatCards();
       } else {
         // Save as completed - guest cannot rejoin
+        // Remove from active sessions
+        try {
+          const activeKey = 'bubbleChat_activeSessions';
+          let activeSessions = [];
+          const stored = localStorage.getItem(activeKey);
+          if (stored) activeSessions = JSON.parse(stored);
+          activeSessions = activeSessions.filter(s => s.code !== STATE.roomCode);
+          localStorage.setItem(activeKey, JSON.stringify(activeSessions));
+        } catch (e) {}
+
+        // Save as completed
         const key = 'bubbleChat_completedSessions';
         let sessions = [];
         try {
@@ -2256,7 +2277,7 @@
 
         showToast('대화가 종료되었습니다');
 
-        // Render updated cards with completed status
+        // Render updated cards with completed status removed
         renderChatCards();
       }
 
