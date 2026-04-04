@@ -18,40 +18,31 @@
 - [x] 호스트 종료 대화 완전 종료 vs 일시중단 분리
 - [x] **CRITICAL FIX**: 일시중단 세션 재진입 시 peer-unavailable 에러 (host peer 생존 유지)
 
-## 필수 수정사항 (Priority: HIGH)
+## 필수 수정사항 (Priority: HIGH) — ✓ 모두 완료
 
-### 1. 호스트 관점 - 종료된 대화 표시
-- **요구사항**: 호스트는 종료한 대화도 카드에서 볼 수 있어야 함 (다운로드 용)
-- **현재**: 'completed' 상태 세션이 있지만 화면에 표시 안 됨
-- **작업**:
-  - renderChatCards()에서 'completed' 상태 세션도 표시하되, role이 'host'일 때만
-  - 카드에 "🔒 완전 종료" 상태 표시
+### 1. ✓ 호스트 관점 - 종료된 대화 표시
+- **상태**: COMPLETE ✓ (commit 9b0d38c 포함)
+- 호스트는 'completed' 세션을 카드에서 볼 수 있음
+- 카드에 "🔒 완전 종료" 상태 표시
 
-### 2. 게스트 관점 - 종료된 대화 카드 삭제
-- **요구사항**: 호스트가 대화 종료('complete')하면 게스트는 카드에서 볼 수 없어야 함
-- **현재**: 게스트도 'completed' 세션이 남아있을 수 있음
-- **작업**:
-  - 호스트의 'complete' 메시지 받을 때 게스트는 activeSessions에서 완전히 삭제
+### 2. ✓ 게스트 관점 - 종료된 대화 카드 삭제
+- **상태**: COMPLETE ✓ (line 1962-1970)
+- 호스트의 'complete' 메시지 받을 때 게스트는 activeSessions에서 완전히 삭제
 
-### 3. 참여자 표시 [object Object] 버그
-- **요구사항**: 종료된 대화 카드에 참여자가 정상 표시되어야 함
-- **현재**: [object Object], [object Object]로 표시됨
-- **원인**: participants 필드가 객체 배열로 저장될 수 있음
-- **작업**: 모든 저장 지점에서 `participants.map(p => typeof p === 'string' ? p : p.nickname)` 사용
+### 3. ✓ 참여자 표시 [object Object] 버그
+- **상태**: COMPLETE ✓ (line 1482, 1525, 1787 등)
+- 모든 저장 지점에서 participants를 nickname 배열로 변환
+- renderChatCards에서 정규화 처리
 
-### 4. 완전 종료된 방에 게스트 입장 시 처리
-- **요구사항**: 게스트가 완전 종료된 방에 들어가면 "peer-unavailable" 에러 발생
-- **현재**: 에러 메시지만 표시
-- **작업**:
-  - peer connection error 시 게스트의 activeSessions에서 해당 카드 삭제
-  - 홈으로 자동 이동
+### 4. ✓ 완전 종료된 방에 게스트 입장 시 처리
+- **상태**: COMPLETE ✓ (line 2082-2105)
+- peer-unavailable 에러 시 게스트 카드 자동 삭제
+- 홈으로 자동 이동 및 토스트 메시지 표시
 
-### 5. 게스트 닉네임 중복 검증
-- **요구사항**: 게스트가 호스트와 동일한 닉네임 사용 방지
-- **현재**: 검증 없음
-- **작업**:
-  - joinChatAsGuest() 단계에서 호스트 닉네임 확인
-  - 핸드셰이크 응답 받을 때 구분 가능
+### 5. ✓ 게스트 닉네임 중복 검증
+- **상태**: COMPLETE ✓ (line 1879-1892)
+- 게스트가 호스트와 동일 닉네임 사용 불가
+- 에러 메시지 표시 및 세션 제거
 
 ## 기능 추가 (Priority: MEDIUM)
 
