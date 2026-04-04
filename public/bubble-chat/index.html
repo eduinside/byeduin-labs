@@ -1354,7 +1354,20 @@
 
         const meta = document.createElement('div');
         meta.className = 'deck-item-meta';
-        meta.innerHTML = `<div>코드: ${session.code}</div>
+
+        // Status indicator
+        let statusText = '진행 중';
+        let statusEmoji = '🟢';
+        if (session.status === 'paused') {
+          statusText = '일시 중단';
+          statusEmoji = '⏸️';
+        } else if (session.status === 'completed') {
+          statusText = '완전 종료';
+          statusEmoji = '🔒';
+        }
+
+        meta.innerHTML = `<div>${statusEmoji} 상태: ${statusText}</div>
+                          <div>코드: ${session.code}</div>
                           <div>역할: ${session.role === 'host' ? '호스트' : '게스트'}</div>
                           <div>참여자: ${session.participants ? session.participants.join(', ') : '-'}</div>
                           <div>메시지: ${session.messageCount || 0}개</div>`;
@@ -1411,6 +1424,10 @@
     }
 
     function deleteSession(code) {
+      if (!confirm('이 대화를 삭제하시겠습니까?\n(삭제된 대화는 복구되지 않습니다)')) {
+        return;
+      }
+
       const key = 'bubbleChat_activeSessions';
       let sessions = [];
       try {
@@ -1425,6 +1442,7 @@
         localStorage.setItem(key, JSON.stringify(sessions));
       } catch (e) {}
 
+      showToast('대화가 삭제되었습니다');
       renderChatCards();
     }
 
