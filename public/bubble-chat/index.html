@@ -1342,8 +1342,43 @@
     }
 
     function openChatSession(code) {
-      // TODO: Reopen a saved session
-      showToast('세션 재개는 아직 미구현입니다');
+      // Load active session from localStorage
+      const key = 'bubbleChat_activeSessions';
+      let sessions = [];
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          sessions = JSON.parse(stored);
+        }
+      } catch (e) {
+        showToast('세션 로드 실패');
+        return;
+      }
+
+      const session = sessions.find(s => s.code === code);
+      if (!session) {
+        showToast('세션을 찾을 수 없습니다');
+        return;
+      }
+
+      // Restore STATE
+      STATE.roomCode = session.code;
+      STATE.roomName = session.roomName;
+      STATE.role = session.role;
+      STATE.sessionStart = new Date(session.startedAt).getTime();
+
+      // Initialize participants
+      STATE.participants = session.participants.map((nickname, idx) => ({
+        nickname: nickname,
+        isHost: idx === 0,
+        joinTime: Date.now(),
+        leaveTime: null
+      })) || [];
+
+      // Open chat view
+      setupChatUI();
+      showView('chat');
+      showToast('세션이 재개되었습니다');
     }
 
     /* ═══════════════════════════════════════════════════════════════ */
