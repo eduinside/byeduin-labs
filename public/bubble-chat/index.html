@@ -353,13 +353,13 @@
     }
 
     .bc-sidebar-code {
-      font-size: 16px;
-      font-weight: 800;
-      font-family: monospace;
-      letter-spacing: 0.15em;
+      font-size: 18px;
+      font-weight: 900;
+      font-family: 'Courier New', 'JetBrains Mono', monospace;
+      letter-spacing: 0.2em;
       color: var(--primary);
       text-align: center;
-      padding: 8px;
+      padding: 12px;
       background: rgba(0, 111, 238, 0.08);
       border-radius: 6px;
       cursor: pointer;
@@ -434,18 +434,18 @@
     }
 
     .bc-code-modal-display {
-      font-size: 32px;
+      font-size: 36px;
       font-weight: 900;
-      font-family: 'Courier New', monospace;
-      letter-spacing: 0.15em;
+      font-family: 'Courier New', 'JetBrains Mono', monospace;
+      letter-spacing: 0.2em;
       color: var(--primary);
-      padding: 20px;
+      padding: 24px;
       background: rgba(0, 111, 238, 0.08);
       border-radius: 12px;
       border: 2px solid var(--primary);
       user-select: all;
       text-align: center;
-      min-width: 240px;
+      min-width: 280px;
     }
 
     .bc-code-modal-copy {
@@ -512,10 +512,10 @@
     }
 
     .bc-msg-bubble {
-      padding: 10px 12px;
+      padding: 14px 16px;
       border-radius: 12px;
-      font-size: 13px;
-      line-height: 1.5;
+      font-size: 19px;
+      line-height: 1.6;
       word-break: break-word;
     }
 
@@ -549,11 +549,11 @@
       flex-shrink: 0;
       display: flex;
       gap: 8px;
-      padding: 8px 14px;
+      padding: 12px 14px;
       border-top: 1px solid var(--border);
       background: transparent;
       align-items: center;
-      height: 44px;
+      height: 68px;
     }
 
     .bc-dm-select {
@@ -576,18 +576,18 @@
 
     .bc-msg-input {
       flex: 1;
-      padding: 8px 12px;
+      padding: 12px 14px;
       border-radius: 6px;
       border: none;
       background: transparent;
       color: var(--fg);
-      font-size: 13px;
+      font-size: 16px;
       font-family: inherit;
       outline: none;
       resize: none;
-      max-height: 40px;
-      min-height: 36px;
-      line-height: 1.4;
+      max-height: 48px;
+      min-height: 44px;
+      line-height: 1.5;
       transition: background 0.2s;
     }
 
@@ -801,10 +801,10 @@
     }
 
     .bc-modal-code-value {
-      font-size: 32px;
-      font-weight: 700;
+      font-size: 36px;
+      font-weight: 900;
       color: var(--primary);
-      font-family: monospace;
+      font-family: 'Courier New', 'JetBrains Mono', monospace;
       letter-spacing: 0.2em;
       font-variant-numeric: tabular-nums;
     }
@@ -965,7 +965,6 @@
     <div id="view-chat" class="bc-view">
       <!-- Header -->
       <div class="bc-chat-header">
-        <div class="bc-header-sep"></div>
         <button class="bc-header-btn" id="bc-sidebar-toggle" onclick="toggleSidebar()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -973,8 +972,9 @@
             <line x1="3" y1="18" x2="21" y2="18"></line>
           </svg>
         </button>
+        <div class="bc-header-sep"></div>
         <button class="bc-header-btn" id="themeToggleBtn-chat" onclick="cycleTheme()" title="다크모드">
-          💻
+          ☀️
         </button>
         <button class="bc-header-btn bc-header-btn-danger" onclick="endChatSession()">
           대화 종료
@@ -989,7 +989,7 @@
           <div class="bc-sidebar-section">
             <div class="bc-sidebar-code-container">
               <div class="bc-sidebar-title">접속 코드</div>
-              <div class="bc-sidebar-code" id="chat-header-code" onclick="showCodeModal()">bubble-000000</div>
+              <div class="bc-sidebar-code" id="chat-header-code" onclick="showCodeModal()">000000</div>
             </div>
           </div>
 
@@ -1105,6 +1105,32 @@
 
     let _toastTimer = null;
 
+    function updateThemeIcon() {
+      const theme = document.documentElement.getAttribute('data-theme');
+      const homeBtn = document.getElementById('themeToggleBtn');
+      const chatBtn = document.getElementById('themeToggleBtn-chat');
+
+      const icons = { light: '☀️', dark: '🌙', auto: '🔄' };
+      const icon = icons[theme] || '☀️';
+
+      if (homeBtn) homeBtn.textContent = icon;
+      if (chatBtn) chatBtn.textContent = icon;
+    }
+
+    // Observer for theme changes
+    new MutationObserver(updateThemeIcon).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    });
+
+    // Set initial theme icon on page load
+    document.addEventListener('DOMContentLoaded', updateThemeIcon);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', updateThemeIcon);
+    } else {
+      updateThemeIcon();
+    }
+
     /* ═══════════════════════════════════════════════════════════════ */
     /* View Management                                                 */
     /* ═══════════════════════════════════════════════════════════════ */
@@ -1157,8 +1183,8 @@
             <button class="bc-code-modal-close" onclick="this.closest('.bc-code-modal-overlay').remove()">✕</button>
           </div>
           <div class="bc-code-modal-content">
-            <div class="bc-code-modal-display">bubble-${code}</div>
-            <button class="bc-code-modal-copy" onclick="navigator.clipboard.writeText('bubble-${code}'); showToast('복사되었습니다'); this.closest('.bc-code-modal-overlay').remove();">복사</button>
+            <div class="bc-code-modal-display">${code}</div>
+            <button class="bc-code-modal-copy" onclick="navigator.clipboard.writeText('${code}'); showToast('복사되었습니다'); this.closest('.bc-code-modal-overlay').remove();">복사</button>
           </div>
         </div>
       `;
@@ -1576,7 +1602,7 @@
     /* Chat UI Setup                                                   */
     /* ═══════════════════════════════════════════════════════════════ */
     function setupChatUI() {
-      document.getElementById('chat-header-code').textContent = 'bubble-' + STATE.roomCode;
+      document.getElementById('chat-header-code').textContent = STATE.roomCode;
       updateParticipantList();
 
       // Reset input
