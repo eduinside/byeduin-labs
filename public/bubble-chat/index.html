@@ -1616,18 +1616,22 @@
         STATE.messages = session.messages;
       }
 
-      // Re-initialize peer for both host and guest
+      // Re-initialize peer for host only
+      // Guest: reuse existing connection if already connected
       try {
         if (STATE.role === 'host') {
           // Host: recreate peer and setup connection handler
           await initPeer('bubble-' + STATE.roomCode);
           setupHostPeer();
         } else {
-          // Guest: recreate peer and connect to host
-          const peerId = 'bubble-guest-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-          await initPeer(peerId);
-          const conn = STATE.peer.connect('bubble-' + STATE.roomCode, { reliable: true });
-          setupGuestConnection(conn);
+          // Guest: only initialize peer if not already connected
+          if (!STATE.hostConn || !STATE.peer || !STATE.peer.open) {
+            const peerId = 'bubble-guest-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+            await initPeer(peerId);
+            const conn = STATE.peer.connect('bubble-' + STATE.roomCode, { reliable: true });
+            setupGuestConnection(conn);
+          }
+          // else: reuse existing connection, just open chat view
         }
       } catch (e) {
         showToast('연결 복구 실패: ' + e.message);
