@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/common/hero-theme.css">
   <script src="/common/theme.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; }
 
@@ -395,16 +396,28 @@
       color: var(--primary);
       text-align: center;
       padding: 12px;
-      background: rgba(0, 111, 238, 0.08);
+      background: rgba(0, 111, 238, 0.12);
+      border: 2px solid var(--primary);
       border-radius: 6px;
       cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
+      transition: background 0.2s, transform 0.1s, border-color 0.2s;
       user-select: all;
     }
 
     .bc-sidebar-code:hover {
-      background: rgba(0, 111, 238, 0.12);
+      background: rgba(0, 111, 238, 0.2);
       transform: scale(1.02);
+    }
+
+    /* 다크모드에서 코드 가시성 향상 */
+    [data-theme="dark"] .bc-sidebar-code {
+      background: rgba(51, 142, 247, 0.15);
+      border: 2px solid rgba(51, 142, 247, 0.8);
+    }
+
+    [data-theme="dark"] .bc-sidebar-code:hover {
+      background: rgba(51, 142, 247, 0.25);
+      border-color: rgba(51, 142, 247, 1);
     }
 
     /* 코드 모달 */
@@ -1210,6 +1223,8 @@
       sessionStart: null,
       chatStarted: false,  // Track if host has started the chat
       currentChatCard: null,  // { code, roomName, role }
+      isClosing: false,    // Flag to prevent duplicate session saves on close
+      chatEnded: false     // Flag for host: chat is completely ended
     };
 
     let _toastTimer = null;
@@ -1267,11 +1282,30 @@
           </div>
           <div class="bc-code-modal-content">
             <div class="bc-code-modal-display">${code}</div>
+            <div id="qrcode-container" style="display: flex; justify-content: center; margin: 16px 0;"></div>
             <button class="bc-code-modal-copy" onclick="navigator.clipboard.writeText('${code}'); showToast('복사되었습니다'); this.closest('.bc-code-modal-overlay').remove();">복사</button>
           </div>
         </div>
       `;
       document.body.appendChild(modal);
+
+      // Generate QR code
+      setTimeout(() => {
+        const qrcodeContainer = document.getElementById('qrcode-container');
+        if (qrcodeContainer) {
+          // Generate URL for guest to join
+          const joinUrl = window.location.origin + window.location.pathname + '?code=' + code;
+          new QRCode(qrcodeContainer, {
+            text: joinUrl,
+            width: 200,
+            height: 200,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+          });
+        }
+      }, 0);
+
       modal.addEventListener('click', (e) => {
         if (e.target === modal) modal.remove();
       });
@@ -1405,12 +1439,18 @@
       const container = document.getElementById('deck-grid');
       container.innerHTML = '';
 
-      if (sessions.length === 0) {
+      // Filter sessions: guests cannot see completed sessions
+      let visibleSessions = sessions;
+      if (STATE.role === 'guest') {
+        visibleSessions = sessions.filter(s => s.status !== 'completed');
+      }
+
+      if (visibleSessions.length === 0) {
         container.innerHTML = '<div class="deck-empty">참여 중인 대화가 없습니다</div>';
         return;
       }
 
-      sessions.forEach(session => {
+      visibleSessions.forEach(session => {
         const card = document.createElement('div');
         card.className = 'deck-item';
         card.onclick = () => openChatSession(session.code);
@@ -1437,10 +1477,15 @@
           statusEmoji = '🔒';
         }
 
+        // Normalize participants to string array
+        const participants = session.participants
+          ? session.participants.map(p => typeof p === 'string' ? p : p.nickname).filter(p => p)
+          : [];
+
         meta.innerHTML = `<div>${statusEmoji} 상태: ${statusText}</div>
                           <div>코드: ${session.code}</div>
                           <div>역할: ${session.role === 'host' ? '호스트' : '게스트'}</div>
-                          <div>참여자: ${session.participants ? session.participants.join(', ') : '-'}</div>
+                          <div>참여자: ${participants.length > 0 ? participants.join(', ') : '-'}</div>
                           <div>메시지: ${session.messageCount || 0}개</div>`;
 
         const del = document.createElement('button');
@@ -1537,6 +1582,12 @@
         return;
       }
 
+      // Prevent reopening completed sessions
+      if (session.status === 'completed') {
+        showToast('종료된 대화입니다. 다시 열 수 없습니다');
+        return;
+      }
+
       // Restore STATE
       STATE.roomCode = session.code;
       STATE.roomName = session.roomName;
@@ -1552,9 +1603,10 @@
       }
 
       // Initialize participants
-      STATE.participants = session.participants.map((nickname, idx) => ({
-        nickname: nickname,
-        isHost: idx === 0,
+      const hostNickname = session.role === 'guest' ? session.hostNickname : session.nickname;
+      STATE.participants = (session.participants || []).map((nickname) => ({
+        nickname: typeof nickname === 'string' ? nickname : nickname.nickname,
+        isHost: (typeof nickname === 'string' ? nickname : nickname.nickname) === hostNickname,
         joinTime: Date.now(),
         leaveTime: null
       })) || [];
@@ -1581,6 +1633,10 @@
         showToast('연결 복구 실패: ' + e.message);
         return;
       }
+
+      // Reset ending flag for resumed sessions
+      STATE.chatEnded = false;
+      STATE.isClosing = false;
 
       // Open chat view
       setupChatUI();
@@ -1715,10 +1771,12 @@
           }
 
           // Send acknowledgment with room name
+          const hostNickname = STATE.participants.find(p => p.isHost)?.nickname;
           conn.send(JSON.stringify({
             type: 'handshake',
             status: 'accepted',
             roomName: STATE.roomName,
+            hostNickname: hostNickname,
             participants: STATE.participants.map(p => p.nickname)
           }));
 
@@ -1808,9 +1866,27 @@
           STATE.roomName = msg.roomName;
           if (msg.participants) {
             // Update participant list with those from host
+            const hostNickname = msg.hostNickname;
+
+            // Check for duplicate nickname with host
+            if (STATE.nickname === hostNickname) {
+              showToast('호스트와 동일한 닉네임은 사용할 수 없습니다');
+              STATE.hostConn.close();
+              // Remove from active sessions
+              try {
+                const key = 'bubbleChat_activeSessions';
+                let sessions = JSON.parse(localStorage.getItem(key) || '[]');
+                sessions = sessions.filter(s => s.code !== STATE.roomCode);
+                localStorage.setItem(key, JSON.stringify(sessions));
+              } catch (e) {}
+              renderChatCards();
+              showView('home');
+              return;
+            }
+
             STATE.participants = msg.participants.map(nickname => ({
               nickname,
-              isHost: nickname !== STATE.nickname,
+              isHost: nickname === hostNickname,
               joinTime: Date.now(),
               leaveTime: null
             }));
@@ -1852,6 +1928,32 @@
             } catch (e) {}
 
             showToast('호스트가 대화를 일시 중단했습니다');
+
+            // Close connection and reset state
+            if (STATE.hostConn) {
+              STATE.hostConn.close();
+            }
+            if (STATE.peer) {
+              STATE.peer.destroy();
+            }
+
+            // Reset state variables
+            STATE.role = null;
+            STATE.roomCode = '';
+            STATE.roomName = '';
+            STATE.nickname = '';
+            STATE.peer = null;
+            STATE.hostConn = null;
+            STATE.guestConns = {};
+            STATE.participants = [];
+            STATE.messages = [];
+            STATE.dmTarget = '';
+            STATE.chatStarted = false;
+
+            setTimeout(() => {
+              renderChatCards();  // Update home screen with new status
+              showView('home');
+            }, 1000);
           } else {
             // Remove from active sessions when complete
             try {
@@ -1864,12 +1966,33 @@
             } catch (e) {}
 
             showToast('호스트가 대화를 종료했습니다');
-          }
 
-          setTimeout(() => {
-            renderChatCards();  // Update home screen with new status
-            endChatSession();
-          }, 1000);
+            // Close connection and reset state
+            if (STATE.hostConn) {
+              STATE.hostConn.close();
+            }
+            if (STATE.peer) {
+              STATE.peer.destroy();
+            }
+
+            // Reset state variables
+            STATE.role = null;
+            STATE.roomCode = '';
+            STATE.roomName = '';
+            STATE.nickname = '';
+            STATE.peer = null;
+            STATE.hostConn = null;
+            STATE.guestConns = {};
+            STATE.participants = [];
+            STATE.messages = [];
+            STATE.dmTarget = '';
+            STATE.chatStarted = false;
+
+            setTimeout(() => {
+              renderChatCards();
+              showView('home');
+            }, 1000);
+          }
         } else {
           handleIncomingMessage(msg, null);
         }
@@ -1877,12 +2000,104 @@
 
       conn.on('close', () => {
         showToast('연결이 끊어졌습니다');
-        endChatSession();
+
+        // Guest temporarily disconnected - save session as active (not paused)
+        // Skip if already closing (to prevent duplicate saves)
+        if (STATE.role === 'guest' && !STATE.isClosing) {
+          const key = 'bubbleChat_activeSessions';
+          let sessions = [];
+          try {
+            const stored = localStorage.getItem(key);
+            if (stored) sessions = JSON.parse(stored);
+          } catch (e) {}
+
+          // Get existing room name if STATE.roomName is empty
+          let roomName = STATE.roomName;
+          if (!roomName) {
+            const existingSession = sessions.find(s => s.code === STATE.roomCode);
+            roomName = existingSession?.roomName || '(이름 없음)';
+          }
+
+          // Remove if already exists
+          sessions = sessions.filter(s => s.code !== STATE.roomCode);
+
+          // Add as active (without paused status) so guest can rejoin
+          sessions.unshift({
+            code: STATE.roomCode,
+            roomName: roomName,
+            role: STATE.role,
+            status: 'active',  // Keep as active, not paused
+            participants: STATE.participants.map(p => p.nickname),
+            messageCount: STATE.messages.length,
+            messages: STATE.messages,
+            startedAt: new Date(STATE.sessionStart).toISOString(),
+          });
+
+          sessions = sessions.slice(0, 20);
+
+          try {
+            localStorage.setItem(key, JSON.stringify(sessions));
+          } catch (e) {}
+
+          // Close peer and reset state
+          if (STATE.hostConn) {
+            STATE.hostConn.close();
+          }
+          if (STATE.peer) {
+            STATE.peer.destroy();
+          }
+
+          // Reset state variables
+          STATE.role = null;
+          STATE.roomCode = '';
+          STATE.roomName = '';
+          STATE.nickname = '';
+          STATE.peer = null;
+          STATE.hostConn = null;
+          STATE.guestConns = {};
+          STATE.participants = [];
+          STATE.messages = [];
+          STATE.dmTarget = '';
+          STATE.chatStarted = false;
+
+          renderChatCards();
+          showView('home');
+        } else {
+          endChatSession();
+        }
       });
 
       conn.on('error', (err) => {
         console.error('Connection error:', err);
-        showToast('연결 오류');
+
+        // Handle peer-unavailable error (host closed the room)
+        if (STATE.role === 'guest' && err.type === 'peer-unavailable') {
+          showToast('호스트가 종료한 방입니다');
+
+          // Remove from active sessions
+          try {
+            const key = 'bubbleChat_activeSessions';
+            let sessions = JSON.parse(localStorage.getItem(key) || '[]');
+            sessions = sessions.filter(s => s.code !== STATE.roomCode);
+            localStorage.setItem(key, JSON.stringify(sessions));
+          } catch (e) {}
+
+          // Reset state and return to home
+          STATE.role = null;
+          STATE.roomCode = '';
+          STATE.roomName = '';
+          STATE.nickname = '';
+          STATE.peer = null;
+          STATE.hostConn = null;
+          STATE.participants = [];
+          STATE.messages = [];
+          STATE.chatStarted = false;
+
+          renderChatCards();
+          showView('home');
+        } else {
+          showToast('연결 오류');
+        }
       });
     }
 
@@ -1891,12 +2106,20 @@
     /* ═══════════════════════════════════════════════════════════════ */
     function setupChatUI() {
       document.getElementById('chat-header-code').textContent = STATE.roomCode;
-      updateParticipantList();
 
-      // Reset input
+      // Reset input and message wrap
       document.getElementById('bc-msg-input').value = '';
       document.getElementById('bc-messages-wrap').innerHTML = '';
-      document.getElementById('bc-dm-select').innerHTML = '<option value="">📢 전체</option>';
+
+      // updateParticipantList() 호출 (DM select 리셋 포함)
+      updateParticipantList();
+
+      // Restore saved messages
+      if (STATE.messages && STATE.messages.length > 0) {
+        STATE.messages.forEach(msgObj => {
+          addMessageToUI(msgObj);
+        });
+      }
 
       // For host, broadcast start signal
       if (STATE.role === 'host') {
@@ -1923,9 +2146,15 @@
         endBtn.textContent = STATE.role === 'guest' ? '대화에서 나가기' : '대화 종료';
       }
 
-      // Show sidebar toggle on mobile
+      // Mobile view: hide sidebar by default, show toggle button
+      const sidebar = document.getElementById('bc-sidebar');
+      const sidebarToggle = document.getElementById('bc-sidebar-toggle');
       if (window.innerWidth <= 860) {
-        document.getElementById('bc-sidebar-toggle').style.display = 'flex';
+        sidebar.style.display = 'none';
+        sidebarToggle.style.display = 'flex';
+      } else {
+        sidebar.style.display = 'block';
+        sidebarToggle.style.display = 'none';
       }
     }
 
@@ -1942,6 +2171,11 @@
         const li = document.createElement('li');
         li.className = 'bc-participant';
 
+        // Add left status if participant has left
+        if (p.leaveTime) {
+          li.style.opacity = '0.6';
+        }
+
         const name = document.createElement('div');
         name.className = 'bc-participant-name';
         name.textContent = p.nickname + (p.isHost ? ' (호스트)' : '');
@@ -1949,14 +2183,20 @@
         const time = document.createElement('div');
         time.className = 'bc-participant-time';
         const joined = new Date(p.joinTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-        time.textContent = '입장: ' + joined;
+        let timeText = '입장: ' + joined;
+
+        if (p.leaveTime) {
+          const left = new Date(p.leaveTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+          timeText += ' / 퇴장: ' + left;
+        }
+        time.textContent = timeText;
 
         li.appendChild(name);
         li.appendChild(time);
         list.appendChild(li);
 
-        // Add to DM select
-        if (p.nickname !== STATE.nickname) {
+        // Add to DM select (only active participants)
+        if (!p.leaveTime && p.nickname !== STATE.nickname) {
           const opt = document.createElement('option');
           opt.value = p.nickname;
 
@@ -2022,6 +2262,11 @@
     }
 
     function handleIncomingMessage(msgObj, fromConn) {
+      // Ignore messages if host has ended the chat completely
+      if (STATE.role === 'host' && STATE.chatEnded) {
+        return;
+      }
+
       if (msgObj.type === 'chat' || msgObj.type === 'dm') {
         // Guest: relay chat from other guest to all
         if (STATE.role === 'host' && msgObj.type === 'chat' && fromConn) {
@@ -2226,6 +2471,9 @@
     }
 
     function _endChatSession(choice = 'complete') {
+      // Set flag to prevent duplicate saves in close handler
+      STATE.isClosing = true;
+
       // Host: notify all guests with status
       if (STATE.role === 'host') {
         const endMsg = {
@@ -2257,7 +2505,55 @@
 
       // Save session based on choice
       if (choice === 'pause') {
-        // Save as active (paused) - guest can rejoin
+        // For HOST: save as paused
+        // For GUEST: don't save here, let conn.on('close') handle it as 'active'
+        if (STATE.role === 'host') {
+          // Save as active (paused) - guest can rejoin
+          const key = 'bubbleChat_activeSessions';
+          let sessions = [];
+          try {
+            const stored = localStorage.getItem(key);
+            if (stored) sessions = JSON.parse(stored);
+          } catch (e) {}
+
+          // Remove if already exists
+          sessions = sessions.filter(s => s.code !== STATE.roomCode);
+
+          // Add as paused
+          sessions.unshift({
+            code: STATE.roomCode,
+            roomName: STATE.roomName,
+            role: STATE.role,
+            status: 'paused',
+            hostNickname: STATE.participants.find(p => p.isHost)?.nickname,
+            participants: STATE.participants.map(p => p.nickname),
+            messageCount: STATE.messages.length,
+            messages: STATE.messages,
+            startedAt: new Date(STATE.sessionStart).toISOString(),
+            pausedAt: new Date().toISOString(),
+          });
+
+          sessions = sessions.slice(0, 20);
+
+          try {
+            localStorage.setItem(key, JSON.stringify(sessions));
+          } catch (e) {
+            console.error('Error saving sessions:', e);
+          }
+
+          showToast('대화가 일시 중단되었습니다');
+
+          // Render updated cards with pause status
+          renderChatCards();
+        } else {
+          // For GUEST: just show message, actual save happens in conn.on('close')
+          showToast('대화에서 나갔습니다');
+        }
+      } else {
+        // Save as completed - keep in activeSessions for host to see, but guests cannot rejoin
+        // Host keeps card visible with 'completed' status
+        STATE.chatEnded = true;  // Don't relay any more messages from guests
+
         const key = 'bubbleChat_activeSessions';
         let sessions = [];
         try {
@@ -2268,59 +2564,14 @@
         // Remove if already exists
         sessions = sessions.filter(s => s.code !== STATE.roomCode);
 
-        // Add as paused
-        sessions.unshift({
-          code: STATE.roomCode,
-          roomName: STATE.roomName,
-          role: STATE.role,
-          status: 'paused',
-          hostNickname: STATE.participants.find(p => p.isHost)?.nickname,
-          participants: STATE.participants.map(p => p.nickname),
-          messageCount: STATE.messages.length,
-          messages: STATE.messages,
-          startedAt: new Date(STATE.sessionStart).toISOString(),
-          pausedAt: new Date().toISOString(),
-        });
-
-        sessions = sessions.slice(0, 20);
-
-        try {
-          localStorage.setItem(key, JSON.stringify(sessions));
-        } catch (e) {
-          console.error('Error saving sessions:', e);
-        }
-
-        showToast('대화가 일시 중단되었습니다');
-
-        // Render updated cards with pause status
-        renderChatCards();
-      } else {
-        // Save as completed - guest cannot rejoin
-        // Remove from active sessions
-        try {
-          const activeKey = 'bubbleChat_activeSessions';
-          let activeSessions = [];
-          const stored = localStorage.getItem(activeKey);
-          if (stored) activeSessions = JSON.parse(stored);
-          activeSessions = activeSessions.filter(s => s.code !== STATE.roomCode);
-          localStorage.setItem(activeKey, JSON.stringify(activeSessions));
-        } catch (e) {}
-
-        // Save as completed
-        const key = 'bubbleChat_completedSessions';
-        let sessions = [];
-        try {
-          const stored = localStorage.getItem(key);
-          if (stored) sessions = JSON.parse(stored);
-        } catch (e) {}
-
+        // Add as completed
         sessions.unshift({
           code: STATE.roomCode,
           roomName: STATE.roomName,
           role: STATE.role,
           status: 'completed',
           hostNickname: STATE.participants.find(p => p.isHost)?.nickname,
-          participants: STATE.participants,
+          participants: STATE.participants.map(p => p.nickname),
           messageCount: STATE.messages.length,
           messages: STATE.messages,
           startedAt: new Date(STATE.sessionStart).toISOString(),
@@ -2337,7 +2588,7 @@
 
         showToast('대화가 종료되었습니다');
 
-        // Render updated cards with completed status removed
+        // Render updated cards with completed status
         renderChatCards();
       }
 
@@ -2445,6 +2696,30 @@
     document.addEventListener('DOMContentLoaded', () => {
       renderChatCards();
       updateThemeButtonChat();
+
+      // Check for QR code join (URL parameter: ?code=123456)
+      const urlParams = new URLSearchParams(window.location.search);
+      const codeParam = urlParams.get('code');
+      if (codeParam && /^\d{6}$/.test(codeParam)) {
+        // Auto-fill guest code and open modal
+        setTimeout(() => {
+          const codeInput = document.getElementById('guest-code');
+          if (codeInput) {
+            codeInput.value = codeParam;
+            // Open guest setup modal
+            const guestModal = document.querySelector('[style*="display: none"]');
+            if (guestModal && guestModal.querySelector('.fd-modal')) {
+              guestModal.style.display = 'flex';
+              document.body.classList.add('has-modal-open');
+              // Focus on nickname input
+              setTimeout(() => {
+                const nicknameInput = document.getElementById('guest-nickname');
+                if (nicknameInput) nicknameInput.focus();
+              }, 100);
+            }
+          }
+        }, 500);
+      }
 
       const textarea = document.getElementById('bc-msg-input');
       if (textarea) {
