@@ -1266,6 +1266,8 @@
         document.body.classList.add('in-chat');
       } else {
         document.body.classList.remove('in-chat');
+        // Close dropdown when returning to home
+        closeChatMenu();
       }
     }
 
@@ -2573,6 +2575,9 @@
         }
       }, 100);
 
+      // Prevent further messages from guests (for both pause and complete)
+      STATE.chatEnded = true;
+
       // Save session based on choice
       if (choice === 'pause') {
         // For HOST: save as paused
@@ -2622,7 +2627,6 @@
       } else {
         // Save as completed - keep in activeSessions for host to see, but guests cannot rejoin
         // Host keeps card visible with 'completed' status
-        STATE.chatEnded = true;  // Don't relay any more messages from guests
 
         const key = 'bubbleChat_activeSessions';
         let sessions = [];
