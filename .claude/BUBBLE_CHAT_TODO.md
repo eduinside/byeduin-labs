@@ -16,6 +16,7 @@
 - [x] 게스트 나갈 때 roomName 복구
 - [x] DM 드롭다운 리셋 순서 수정
 - [x] 호스트 종료 대화 완전 종료 vs 일시중단 분리
+- [x] **CRITICAL FIX**: 일시중단 세션 재진입 시 peer-unavailable 에러 (host peer 생존 유지)
 
 ## 필수 수정사항 (Priority: HIGH)
 
