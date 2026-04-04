@@ -1529,15 +1529,31 @@
         if (msg.type === 'handshake') {
           const guestNickname = msg.nickname;
 
-          // Check for duplicate nickname
+          // Check for duplicate nickname - allow reconnection if old conn is closed
           if (STATE.guestConns[guestNickname]) {
-            conn.send(JSON.stringify({ type: 'error', content: 'nickname_taken' }));
-            conn.close();
-            return;
+            const oldConn = STATE.guestConns[guestNickname];
+            if (oldConn.open) {
+              // Old connection still active, reject
+              conn.send(JSON.stringify({ type: 'error', content: 'nickname_taken' }));
+              conn.close();
+              return;
+            } else {
+              // Old connection closed, clean up and allow reconnection
+              delete STATE.guestConns[guestNickname];
+            }
           }
 
           STATE.guestConns[guestNickname] = conn;
-          STATE.participants.push({ nickname: guestNickname, isHost: false, joinTime: Date.now(), leaveTime: null });
+
+          // Update or add participant
+          const existingParticipant = STATE.participants.find(p => p.nickname === guestNickname);
+          if (existingParticipant) {
+            // Reconnection: clear leaveTime
+            existingParticipant.leaveTime = null;
+          } else {
+            // New participant
+            STATE.participants.push({ nickname: guestNickname, isHost: false, joinTime: Date.now(), leaveTime: null });
+          }
 
           // Send acknowledgment with room name
           conn.send(JSON.stringify({
