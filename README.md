@@ -40,6 +40,7 @@
 | **Chalkboard** | `/chalkboard/` | 칠판·화이트보드 메모 앱. 텍스트·선 더블클릭 편집, 4색 팔레트, 자동저장. |
 | **Numberblocks** | `/numberblocks/` | 넘버블록스 에피소드 파인더. 숫자·시즌별 검색 + 유튜브 연동. |
 | **Step Squad** | `/numberblocks/step-squad.html` | 계단수(Step Squad) 블록 시각화. 슬라이더·비교·퀴즈 모드. |
+| **Club Badge** | `/numberblocks/clubs.html` | 넘버블록스 클럽 배지. 16개 수학 클럽 소개·탐색·퀴즈. 3탭 UI. |
 | **Moon Phase** | `/moon-phase/` | 달의 위상 시뮬레이터. 날짜별 달 모양 시각화. |
 
 ---

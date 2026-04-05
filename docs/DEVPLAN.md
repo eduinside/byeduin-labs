@@ -1356,3 +1356,65 @@ byeduin-labs/
 1. 사용자 계정 & 팀 관리
 2. 네이티브 앱 래퍼
 3. API 공개
+
+---
+
+## 🏅 Club Badge (`/numberblocks/clubs.html`)
+
+> 추가: 2026-04-05
+
+### 개요
+
+| 항목 | 내용 |
+|---|---|
+| 앱 이름 | **Club Badge** |
+| 경로 | `/numberblocks/clubs.html` |
+| 데이터 | `clubs-data.js` (별도 파일 — 새 클럽 추가 시 이 파일만 수정) |
+| 폰트 | Dongle (Google Fonts) |
+| 스타일 | 네오모르피즘 — step-squad.html과 동일 패턴 |
+
+### 탭 구성
+
+1. **📖 클럽 소개** — CSS Grid 2열 카드, 클릭 시 확장 (lazy 렌더링)
+2. **🔢 숫자 탐색** — 넘패드 입력(최대 5자리), 클럽 배지 결과 표시
+3. **🎯 퀴즈** — 4지선다, 점수 카운터, 초기화
+
+### 클럽 목록 (16개, clubs-data.js)
+
+| id | 한국어명 | 조건 |
+|---|---|---|
+| `made-of-ones` | 1로 이루어진 클럽 | n ≥ 1 |
+| `even-tops` | 짝수 탑 클럽 | n % 2 === 0 |
+| `odd-tops` | 홀수 탑 클럽 | n % 2 !== 0 |
+| `three-club` | 3 클럽 | n > 0, n % 3 === 0 |
+| `rainbow-sevens` | 무지개 7 클럽 | n > 0, n % 7 === 0 |
+| `football-club` | 축구 클럽 | n > 0, n % 11 === 0 |
+| `falling-apart` | 분리되는 클럽 | n > 0, n % 13 === 0 |
+| `square-club` | 정사각형 클럽 | 완전제곱수 (n > 0) |
+| `step-squad` | 계단 분대 클럽 | 삼각수 k*(k+1)/2 |
+| `cube-club` | 큐브 클럽 | 완전세제곱수 (n > 0) |
+| `squares-holes` | 구멍있는 정사각형 클럽 | a²-b² 형태 (a>b≥1) |
+| `super-rect` | 슈퍼 직사각형 클럽 | 약수 6개 이상 |
+| `super-duper` | 슈퍼 초특급 직사각형 클럽 | 약수 8개 이상 |
+| `prime-club` | 프라임 클럽 | 소수 (약수 2개) |
+| `roaring-twenties` | 20대 클럽 | 20 ~ 29 |
+| `nine-enders` | 9로 끝나는 클럽 | n > 0, n % 10 === 9 |
+
+### 새 클럽 추가 방법
+
+`clubs-data.js`의 `CLUBS` 배열에 항목 추가:
+```js
+{
+  id: 'new-club',
+  color: '#색상코드',
+  textColor: '#fff',
+  emoji: '🆕',
+  nameKo: '클럽 이름',
+  nameEn: 'Club Name',
+  shortKo: '짧은 이름',
+  descKo: '한국어 설명',
+  descEn: 'English description.',
+  check: (n) => /* 판별 함수 */,
+  examples: (max) => { /* 0~max 예시 배열 반환 */ },
+},
+```
