@@ -253,6 +253,17 @@
       background: rgba(243,18,96,0.15);
     }
 
+    .bc-header-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--fg);
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 0 12px;
+    }
+
     .bc-header-info {
       display: flex;
       gap: 16px;
@@ -1136,6 +1147,9 @@
         </button>
         <div class="bc-header-sep"></div>
 
+        <!-- Room Title -->
+        <div class="bc-header-title" id="bc-header-room-title">대화</div>
+
         <!-- Session Info -->
         <div class="bc-header-info">
           <div class="bc-header-info-item">
@@ -1157,7 +1171,7 @@
       <!-- Body -->
       <div class="bc-chat-body">
         <!-- Sidebar -->
-        <div class="bc-sidebar">
+        <div class="bc-sidebar" id="bc-sidebar">
           <!-- Room Code Section -->
           <div class="bc-sidebar-section">
             <div class="bc-sidebar-code-container">
@@ -2373,6 +2387,13 @@
     }
 
     function updateSessionInfo() {
+      // Update room title
+      const titleEl = document.getElementById('bc-header-room-title');
+      if (titleEl && STATE.roomName) {
+        titleEl.textContent = STATE.roomName;
+        titleEl.title = STATE.roomName;  // tooltip for long names
+      }
+
       // Format start time
       const startTimeEl = document.getElementById('bc-session-start-time');
       if (startTimeEl && STATE.sessionStart) {
