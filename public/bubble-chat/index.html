@@ -47,7 +47,7 @@
 
     /* 배지 마진 조정 (홈 버튼과의 간격) */
     .app-badge {
-      margin-bottom: 6px;
+      margin-bottom: 12px;
     }
 
     /* ══════════════════════════════════
@@ -85,7 +85,7 @@
 
     /* ── 홈 뷰 패딩 ── */
     #view-home {
-      padding: 56px 1rem 5rem;
+      padding: 80px 1rem 5rem;
       overflow-y: auto;
       overflow-x: hidden;
     }
@@ -732,6 +732,69 @@
     }
 
     .bc-save-chat-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* ── 사이드바 액션 버튼 ── */
+    .bc-sidebar-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    #bc-host-actions {
+      display: flex !important;
+      flex-direction: column;
+    }
+
+    .bc-action-btn {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--fg);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .bc-action-btn-primary {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(0, 111, 238, 0.08);
+    }
+
+    .bc-action-btn-primary:hover {
+      background: rgba(0, 111, 238, 0.15);
+    }
+
+    .bc-action-btn-warning {
+      border-color: #f5a623;
+      color: #f5a623;
+      background: rgba(245, 166, 35, 0.08);
+    }
+
+    .bc-action-btn-warning:hover {
+      background: rgba(245, 166, 35, 0.15);
+    }
+
+    .bc-action-btn-danger {
+      border-color: var(--danger);
+      color: var(--danger);
+      background: rgba(243, 18, 96, 0.08);
+    }
+
+    .bc-action-btn-danger:hover {
+      background: rgba(243, 18, 96, 0.15);
+    }
+
+    .bc-action-btn:active {
       transform: scale(0.98);
     }
 
@@ -1528,9 +1591,6 @@
         <div class="bc-header-title" id="bc-header-room-title">대화</div>
 
         <button class="bc-header-btn" id="themeToggleBtn-chat" onclick="cycleTheme()" title="Theme">💻</button>
-        <button class="bc-header-btn bc-header-btn-danger" id="bc-end-chat-btn" onclick="endChatSession()">
-          대화 종료
-        </button>
       </div>
 
       <!-- Body -->
@@ -1562,6 +1622,24 @@
             <button id="bc-save-chat-btn" class="bc-save-chat-btn" onclick="saveChatAsText()" style="display: none;">
               📥 대화 내용 저장
             </button>
+          </div>
+
+          <!-- Action Buttons Section (Guest or Host) -->
+          <div class="bc-sidebar-section bc-sidebar-actions" id="bc-sidebar-actions">
+            <!-- Guest: Leave button -->
+            <button id="bc-guest-leave-btn" class="bc-action-btn bc-action-btn-primary" onclick="confirmLeaveChat()" style="display: none;">
+              🚪 대화에서 나가기
+            </button>
+
+            <!-- Host: Pause and Complete buttons -->
+            <div id="bc-host-actions" style="display: none; gap: 8px;">
+              <button class="bc-action-btn bc-action-btn-warning" onclick="confirmPauseChat()">
+                ⏸️ 대화 일시 중단
+              </button>
+              <button class="bc-action-btn bc-action-btn-danger" onclick="confirmCompleteChat()">
+                🔒 대화 완전 종료
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1655,30 +1733,19 @@
     </div>
   </div>
 
-  <!-- Modal: End Chat Choice -->
-  <div class="bc-modal-overlay" id="end-chat-modal" onclick="closeEndChatModal(event)">
+  <!-- Modal: Confirm Chat Action -->
+  <div class="bc-modal-overlay" id="confirm-chat-action-modal" onclick="closeConfirmChatActionModal(event)">
     <div class="bc-modal">
-      <div class="bc-modal-title">대화 종료 선택</div>
+      <div class="bc-modal-title" id="confirm-modal-title">작업 확인</div>
       <div style="padding: 8px 0;">
-        <p style="color: var(--fg-muted); font-size: 14px; margin-bottom: 12px;">
-          어떻게 종료하시겠습니까?
+        <p id="confirm-modal-message" style="color: var(--fg-muted); font-size: 14px; margin-bottom: 12px;">
+          정말 진행하시겠습니까?
         </p>
       </div>
+      <div id="confirm-modal-info" style="padding: 8px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 12px;"></div>
       <div class="bc-modal-actions">
-        <button class="bc-modal-btn bc-modal-btn-primary" onclick="endChatWithChoice('pause')" style="background: var(--primary);">
-          ⏸️ 일시 중단
-        </button>
-        <button class="bc-modal-btn bc-modal-btn-primary" onclick="endChatWithChoice('complete')" style="background: var(--danger);">
-          🔒 완전 종료
-        </button>
-      </div>
-      <div style="padding: 8px 0; border-top: 1px solid var(--border);">
-        <div style="font-size: 12px; color: var(--fg-muted); margin-bottom: 6px;">
-          <strong>일시 중단:</strong> 게스트가 언제든 재입장 가능, 메시지 유지
-        </div>
-        <div style="font-size: 12px; color: var(--fg-muted);">
-          <strong>완전 종료:</strong> 게스트 재입장 불가, 세션 보관
-        </div>
+        <button class="bc-modal-btn bc-modal-btn-ghost" onclick="closeConfirmChatActionModal()">취소</button>
+        <button class="bc-modal-btn bc-modal-btn-primary" id="confirm-modal-confirm-btn" onclick="executeConfirmedAction()">확인</button>
       </div>
     </div>
   </div>
@@ -1902,15 +1969,77 @@
       document.getElementById('end-chat-modal').classList.add('open');
     }
 
-    function closeEndChatModal(event) {
-      if (!event || event.target.id === 'end-chat-modal') {
-        document.getElementById('end-chat-modal').classList.remove('open');
+    let _pendingChatAction = null;
+
+    function closeConfirmChatActionModal(event) {
+      if (!event || event.target.id === 'confirm-chat-action-modal') {
+        document.getElementById('confirm-chat-action-modal').classList.remove('open');
+        _pendingChatAction = null;
       }
     }
 
-    function endChatWithChoice(choice) {
-      closeEndChatModal();
-      _endChatSession(choice);
+    function showConfirmChatActionModal(title, message, infoHTML, actionType) {
+      _pendingChatAction = actionType;
+      document.getElementById('confirm-modal-title').textContent = title;
+      document.getElementById('confirm-modal-message').textContent = message;
+      document.getElementById('confirm-modal-info').innerHTML = infoHTML;
+      document.getElementById('confirm-chat-action-modal').classList.add('open');
+      document.body.classList.add('has-modal-open');
+    }
+
+    function executeConfirmedAction() {
+      if (!_pendingChatAction) return;
+      closeConfirmChatActionModal();
+
+      if (_pendingChatAction === 'leave') {
+        _endChatSession('pause');
+      } else if (_pendingChatAction === 'pause') {
+        _endChatSession('pause');
+      } else if (_pendingChatAction === 'complete') {
+        _endChatSession('complete');
+      }
+    }
+
+    function confirmLeaveChat() {
+      const infoHTML = `
+        <div style="font-size: 12px; color: var(--fg-muted);">
+          <p>대화창을 나가면:</p>
+          <ul style="margin: 6px 0; padding-left: 16px;">
+            <li>캐드에서 "진행 중"으로 표시됩니다</li>
+            <li>언제든 다시 입장할 수 있습니다</li>
+            <li>메시지는 저장됩니다</li>
+          </ul>
+        </div>
+      `;
+      showConfirmChatActionModal('대화에서 나가기', '정말 나가시겠습니까?', infoHTML, 'leave');
+    }
+
+    function confirmPauseChat() {
+      const infoHTML = `
+        <div style="font-size: 12px; color: var(--fg-muted);">
+          <p><strong>일시 중단:</strong></p>
+          <ul style="margin: 6px 0; padding-left: 16px;">
+            <li>게스트가 언제든 재입장 가능</li>
+            <li>메시지는 유지됩니다</li>
+            <li>대화는 계속 진행할 수 있습니다</li>
+          </ul>
+        </div>
+      `;
+      showConfirmChatActionModal('대화 일시 중단', '대화를 일시 중단하시겠습니까?', infoHTML, 'pause');
+    }
+
+    function confirmCompleteChat() {
+      const infoHTML = `
+        <div style="font-size: 12px; color: var(--fg-muted);">
+          <p><strong>완전 종료:</strong></p>
+          <ul style="margin: 6px 0; padding-left: 16px;">
+            <li>게스트 재입장 불가</li>
+            <li>메시지는 저장됩니다</li>
+            <li>새로운 대화만 가능합니다</li>
+          </ul>
+        </div>
+      `;
+      showConfirmChatActionModal('대화 완전 종료', '정말 완전 종료하시겠습니까?', infoHTML, 'complete');
     }
 
     /* ═══════════════════════════════════════════════════════════════ */
@@ -2942,9 +3071,16 @@
       }
 
       // Update end chat button text based on role
-      const endBtn = document.getElementById('bc-end-chat-btn');
-      if (endBtn) {
-        endBtn.textContent = STATE.role === 'guest' ? '대화에서 나가기' : '대화 종료';
+      // Update sidebar action buttons based on role
+      const guestLeaveBtn = document.getElementById('bc-guest-leave-btn');
+      const hostActionsDiv = document.getElementById('bc-host-actions');
+
+      if (STATE.role === 'guest') {
+        if (guestLeaveBtn) guestLeaveBtn.style.display = '';
+        if (hostActionsDiv) hostActionsDiv.style.display = 'none';
+      } else if (STATE.role === 'host') {
+        if (guestLeaveBtn) guestLeaveBtn.style.display = 'none';
+        if (hostActionsDiv) hostActionsDiv.style.display = 'flex';
       }
 
       // Update session info in header
@@ -3444,7 +3580,7 @@
           renderChatCards();
         } else {
           // For GUEST: just show message, actual save happens in conn.on('close')
-          showToast('대화창을 다시 열면 대화를 계속할 수 있습니다(대화창을 닫는 동안 메시지는 수신되지 않습니다)');
+          showToast('대화창을 다시 열면 대화를 계속할 수 있습니다\n(대화창을 닫는 동안 메시지는 수신되지 않습니다)');
         }
       } else {
         // Save as completed - keep in activeSessions for host to see, but guests cannot rejoin
