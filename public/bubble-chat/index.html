@@ -2302,14 +2302,13 @@
       updateSessionInfo();
 
       // Mobile view: hide sidebar by default, show toggle button
-      const sidebar = document.getElementById('bc-sidebar');
       const sidebarToggle = document.getElementById('bc-sidebar-toggle');
-      if (sidebar && sidebarToggle) {
+      if (sidebarToggle) {
         if (window.innerWidth <= 860) {
-          sidebar.style.display = 'none';
           sidebarToggle.style.display = 'flex';
+          // Reset sidebar collapsed state for mobile
+          document.body.classList.remove('sidebar-collapsed');
         } else {
-          sidebar.style.display = 'block';
           sidebarToggle.style.display = 'none';
         }
       }
@@ -2917,15 +2916,16 @@
 
       window.addEventListener('resize', () => {
         if (document.getElementById('view-chat').classList.contains('active')) {
-          const sidebar = document.getElementById('bc-sidebar');
           const toggleBtn = document.getElementById('bc-sidebar-toggle');
-          if (sidebar && toggleBtn) {
+          if (toggleBtn) {
             if (window.innerWidth <= 860) {
               toggleBtn.style.display = 'flex';
-              sidebar.style.display = 'none';  // Auto-hide sidebar on narrow screens
+              // Reset sidebar state when resizing to mobile
+              document.body.classList.remove('sidebar-collapsed');
             } else {
               toggleBtn.style.display = 'none';
-              sidebar.style.display = 'block';  // Show sidebar on wide screens
+              // Ensure sidebar is visible on desktop
+              document.body.classList.remove('sidebar-collapsed');
             }
           }
         }
