@@ -1054,10 +1054,10 @@
             새 대화
           </button>
           <div id="chat-menu-dropdown">
-            <button class="menu-item" onclick="showHostSetup()">
+            <button class="menu-item" data-action="host">
               <span>🏠</span> 방 만들기
             </button>
-            <button class="menu-item" onclick="showGuestSetup()">
+            <button class="menu-item" data-action="guest">
               <span>🚪</span> 참여하기
             </button>
           </div>
@@ -1186,6 +1186,9 @@
         <label class="bc-modal-label">게스트 닉네임</label>
         <input id="guest-nickname" type="text" class="bc-modal-input" placeholder="닉네임" maxlength="20">
       </div>
+      <div class="bc-modal-notice">
+        <p>본 시스템은 교육적인 목적으로만 사용할 수 있습니다.</p>
+      </div>
       <div class="bc-modal-actions">
         <button class="bc-modal-btn bc-modal-btn-ghost" onclick="closeGuestSetupModal()">취소</button>
         <button class="bc-modal-btn bc-modal-btn-primary" onclick="joinChatAsGuest()">참여</button>
@@ -1197,8 +1200,8 @@
   <div class="bc-modal-overlay" id="end-chat-modal" onclick="closeEndChatModal(event)">
     <div class="bc-modal">
       <div class="bc-modal-title">대화 종료 선택</div>
-      <div style="padding: 20px 0;">
-        <p style="color: var(--fg-muted); font-size: 14px; margin-bottom: 16px;">
+      <div style="padding: 8px 0;">
+        <p style="color: var(--fg-muted); font-size: 14px; margin-bottom: 12px;">
           어떻게 종료하시겠습니까?
         </p>
       </div>
@@ -1210,8 +1213,8 @@
           🔒 완전 종료
         </button>
       </div>
-      <div style="padding: 16px 0; border-top: 1px solid var(--border);">
-        <div style="font-size: 12px; color: var(--fg-muted); margin-bottom: 8px;">
+      <div style="padding: 8px 0; border-top: 1px solid var(--border);">
+        <div style="font-size: 12px; color: var(--fg-muted); margin-bottom: 6px;">
           <strong>일시 중단:</strong> 게스트가 언제든 재입장 가능, 메시지 유지
         </div>
         <div style="font-size: 12px; color: var(--fg-muted);">
@@ -1360,8 +1363,30 @@
       }
     });
 
-    // Close dropdown when clicking outside (menu items have onclick handlers)
-    // Dropdown toggle is handled by button's inline onclick
+    // Setup menu item click handlers
+    function attachMenuListeners() {
+      const menuItems = document.querySelectorAll('.menu-item');
+      menuItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+          e.stopPropagation();
+          const action = this.getAttribute('data-action');
+          if (action === 'host') {
+            showHostSetup();
+          } else if (action === 'guest') {
+            showGuestSetup();
+          }
+        });
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', attachMenuListeners);
+    } else {
+      attachMenuListeners();
+    }
+
+    // Also attach immediately with a small delay to ensure it works
+    setTimeout(attachMenuListeners, 0);
 
     /* End Chat Modal */
     function showEndChatModal() {
@@ -1497,6 +1522,12 @@
     }
 
     function saveActiveSession() {
+      // Don't save if roomName is empty to avoid creating blank cards
+      if (!STATE.roomName || STATE.roomName.trim() === '') {
+        console.warn('Cannot save session: roomName is empty');
+        return;
+      }
+
       const key = 'bubbleChat_activeSessions';
       let sessions = [];
       try {
@@ -1745,8 +1776,10 @@
 
       conn.on('data', (raw) => {
         const msg = JSON.parse(raw);
+        console.log('[Host] Received message from guest:', msg);
         if (msg.type === 'handshake') {
           const guestNickname = msg.nickname;
+          console.log('[Host] Processing guest handshake, nickname:', guestNickname);
           const hostNickname = STATE.participants.find(p => p.isHost)?.nickname;
 
           // Check if guest nickname matches host nickname
@@ -1783,7 +1816,7 @@
           }
 
           // Send acknowledgment with room name
-          const hostNickname = STATE.participants.find(p => p.isHost)?.nickname;
+          hostNickname = STATE.participants.find(p => p.isHost)?.nickname;
           conn.send(JSON.stringify({
             type: 'handshake',
             status: 'accepted',
@@ -1795,10 +1828,10 @@
           updateParticipantList();
           addSystemMessage(guestNickname + '님이 입장했습니다');
 
-          // If chat is already active, send start signal to new guest
-          if (STATE.chatStarted) {
-            conn.send(JSON.stringify({ type: 'start' }));
-          }
+          // Send start signal to the guest so chat view opens
+          STATE.chatStarted = true;
+          console.log('[Host] Sending start signal to guest:', guestNickname);
+          conn.send(JSON.stringify({ type: 'start' }));
         } else {
           handleIncomingMessage(msg, conn);
         }
@@ -1871,12 +1904,14 @@
       STATE.hostConn = conn;
 
       conn.on('open', () => {
+        console.log('[Guest] Connection opened, sending handshake with nickname:', STATE.nickname);
         STATE.hostConn.send(JSON.stringify({ type: 'handshake', nickname: STATE.nickname }));
         showToast('연결되었습니다');
       });
 
       conn.on('data', (raw) => {
         const msg = JSON.parse(raw);
+        console.log('[Guest] Received message:', msg);
         if (msg.type === 'error') {
           // Handle error from host
           const errorMsg = msg.content;
@@ -1928,6 +1963,7 @@
             }));
           }
         } else if (msg.type === 'start') {
+          console.log('[Guest] Start signal received, opening chat view');
           saveActiveSession();
           setupChatUI();
           showView('chat');
@@ -1937,32 +1973,36 @@
 
           // Save guest session with status
           if (status === 'pause') {
-            const key = 'bubbleChat_activeSessions';
-            let sessions = [];
-            try {
-              const stored = localStorage.getItem(key);
-              if (stored) sessions = JSON.parse(stored);
-            } catch (e) {}
+            // Don't save if roomName is empty to avoid creating blank cards
+            const roomNameToSave = msg.roomName || STATE.roomName;
+            if (roomNameToSave && roomNameToSave.trim() !== '') {
+              const key = 'bubbleChat_activeSessions';
+              let sessions = [];
+              try {
+                const stored = localStorage.getItem(key);
+                if (stored) sessions = JSON.parse(stored);
+              } catch (e) {}
 
-            sessions = sessions.filter(s => s.code !== STATE.roomCode);
-            sessions.unshift({
-              code: STATE.roomCode,
-              roomName: msg.roomName || STATE.roomName,
-              role: STATE.role,
-              status: 'paused',
-              hostNickname: msg.hostNickname || STATE.nickname,
-              participants: STATE.participants.map(p => p.nickname),
-              messageCount: STATE.messages.length,
-              messages: STATE.messages,
-              startedAt: new Date(STATE.sessionStart).toISOString(),
-              pausedAt: new Date().toISOString(),
-            });
+              sessions = sessions.filter(s => s.code !== STATE.roomCode);
+              sessions.unshift({
+                code: STATE.roomCode,
+                roomName: roomNameToSave,
+                role: STATE.role,
+                status: 'paused',
+                hostNickname: msg.hostNickname || STATE.nickname,
+                participants: STATE.participants.map(p => p.nickname),
+                messageCount: STATE.messages.length,
+                messages: STATE.messages,
+                startedAt: new Date(STATE.sessionStart).toISOString(),
+                pausedAt: new Date().toISOString(),
+              });
 
-            sessions = sessions.slice(0, 20);
+              sessions = sessions.slice(0, 20);
 
-            try {
-              localStorage.setItem(key, JSON.stringify(sessions));
-            } catch (e) {}
+              try {
+                localStorage.setItem(key, JSON.stringify(sessions));
+              } catch (e) {}
+            }
 
             showToast('호스트가 대화를 일시 중단했습니다');
 
@@ -2052,29 +2092,32 @@
           let roomName = STATE.roomName;
           if (!roomName) {
             const existingSession = sessions.find(s => s.code === STATE.roomCode);
-            roomName = existingSession?.roomName || '(이름 없음)';
+            roomName = existingSession?.roomName;
           }
 
-          // Remove if already exists
-          sessions = sessions.filter(s => s.code !== STATE.roomCode);
+          // Don't save if roomName is empty to avoid creating blank cards
+          if (roomName && roomName.trim() !== '') {
+            // Remove if already exists
+            sessions = sessions.filter(s => s.code !== STATE.roomCode);
 
-          // Add as active (without paused status) so guest can rejoin
-          sessions.unshift({
-            code: STATE.roomCode,
-            roomName: roomName,
-            role: STATE.role,
-            status: 'active',  // Keep as active, not paused
-            participants: STATE.participants.map(p => p.nickname),
-            messageCount: STATE.messages.length,
-            messages: STATE.messages,
-            startedAt: new Date(STATE.sessionStart).toISOString(),
-          });
+            // Add as active (without paused status) so guest can rejoin
+            sessions.unshift({
+              code: STATE.roomCode,
+              roomName: roomName,
+              role: STATE.role,
+              status: 'active',  // Keep as active, not paused
+              participants: STATE.participants.map(p => p.nickname),
+              messageCount: STATE.messages.length,
+              messages: STATE.messages,
+              startedAt: new Date(STATE.sessionStart).toISOString(),
+            });
 
-          sessions = sessions.slice(0, 20);
+            sessions = sessions.slice(0, 20);
 
-          try {
-            localStorage.setItem(key, JSON.stringify(sessions));
-          } catch (e) {}
+            try {
+              localStorage.setItem(key, JSON.stringify(sessions));
+            } catch (e) {}
+          }
 
           // Close peer and reset state
           if (STATE.hostConn) {
