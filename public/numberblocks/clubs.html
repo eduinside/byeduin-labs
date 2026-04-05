@@ -612,7 +612,7 @@
   .choice-btn:disabled { cursor: not-allowed; }
   .choice-btn.correct-ans { background: var(--green) !important; }
   .choice-btn.wrong-ans   { background: var(--red) !important; color: white; }
-  .choice-emoji { font-size: 1.2rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+  .choice-emoji { font-size: 1.5rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
 
   .quiz-feedback {
     font-family: 'Dongle', sans-serif;
@@ -1065,9 +1065,16 @@ function selectChoice(club, btnEl) {
   fb.className = 'quiz-feedback ' + (isCorrect ? 'correct' : 'wrong');
   fb.style.display = 'block';
   const reason = getClubReason(qzCorrectClub, qzCurrentN);
+
+  // 다른 클럽들 찾기
+  const otherClubs = CLUBS.filter(c => c.id !== qzCorrectClub.id && c.check(qzCurrentN));
+  const otherClubsText = otherClubs.length > 0
+    ? `<div style="font-size:0.85rem; margin-top:12px; padding-top:12px; border-top:1px solid currentColor; opacity:0.9;">📌 다른 클럽: ${otherClubs.map(c => c.nameKo).join(', ')}</div>`
+    : '';
+
   fb.innerHTML = isCorrect
-    ? `🎉 정답! <b>${qzCurrentN}</b>은(는) <b>${qzCorrectClub.nameKo}</b>의 멤버예요!<div style="font-size:0.9rem; margin-top:8px; opacity:0.8;">${reason}</div>`
-    : `😅 틀렸어요! <b>${qzCurrentN}</b>은(는) <b>${qzCorrectClub.nameKo}</b>의 멤버예요.<div style="font-size:0.9rem; margin-top:8px; opacity:0.8;">${reason}</div>`;
+    ? `🎉 정답! <b>${qzCurrentN}</b>은(는) <b>${qzCorrectClub.nameKo}</b>의 멤버예요!<div style="font-size:0.9rem; margin-top:8px; opacity:0.8;">${reason}</div>${otherClubsText}`
+    : `😅 틀렸어요! <b>${qzCurrentN}</b>은(는) <b>${qzCorrectClub.nameKo}</b>의 멤버예요.<div style="font-size:0.9rem; margin-top:8px; opacity:0.8;">${reason}</div>${otherClubsText}`;
 
   document.getElementById('quizNextWrap').style.display = 'block';
 }
