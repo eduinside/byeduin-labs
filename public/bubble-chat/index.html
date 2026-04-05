@@ -2766,6 +2766,23 @@
         await initPeer(peerId);
 
         const conn = STATE.peer.connect('bubble-' + code, { reliable: true });
+
+        // Set timeout for connection attempt (10 seconds)
+        const connectionTimeout = setTimeout(() => {
+          if (!conn.open) {
+            console.warn('[Guest] Connection timeout - host not responding');
+            showToast('운영중이 아닌 대화 코드입니다.');
+            if (STATE.hostConn) {
+              STATE.hostConn.close();
+              STATE.hostConn = null;
+            }
+            showView('home');
+          }
+        }, 10000);
+
+        // Store timeout ID for cleanup
+        conn._connectionTimeout = connectionTimeout;
+
         setupGuestConnection(conn);
       } catch (e) {
         console.error('[Guest] Connection error:', e);
@@ -2784,6 +2801,11 @@
       STATE.hostConn = conn;
 
       conn.on('open', () => {
+        // Clear connection timeout since connection succeeded
+        if (conn._connectionTimeout) {
+          clearTimeout(conn._connectionTimeout);
+          conn._connectionTimeout = null;
+        }
         console.log('[Guest] Connection opened, sending handshake with nickname:', STATE.nickname);
         STATE.hostConn.send(JSON.stringify({ type: 'handshake', nickname: STATE.nickname }));
         showToast('연결되었습니다');
