@@ -198,12 +198,11 @@
        Chat View Header (like Chalkboard)
     ══════════════════════════════════ */
     .bc-chat-header {
-      height: auto;
-      min-height: 52px;
+      height: 52px;
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       gap: 6px;
-      padding: 8px 14px;
+      padding: 0 14px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
       z-index: 100;
@@ -238,8 +237,6 @@
       white-space: nowrap;
       background: transparent;
       color: var(--fg-muted);
-      align-self: flex-start;
-      margin-top: 4px;
     }
 
     .bc-header-btn:hover {
@@ -256,50 +253,16 @@
       background: rgba(243,18,96,0.15);
     }
 
-    .bc-header-content {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      flex: 1;
-      min-width: 0;
-      padding: 4px 0;
-    }
-
     .bc-header-title {
-      font-size: 16px;
+      font-size: 17px;
       font-weight: 700;
       color: var(--fg);
-      max-width: 300px;
+      flex: 1;
+      max-width: 400px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-
-    .bc-header-info {
-      display: flex;
-      gap: 24px;
-      font-size: 11px;
-      color: var(--fg-muted);
-    }
-
-    .bc-header-info-item {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      white-space: nowrap;
-    }
-
-    .bc-header-info-item-label {
-      font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-      opacity: 0.6;
-    }
-
-    .bc-header-info-item-value {
-      font-weight: 600;
-      color: var(--fg);
-      font-size: 12px;
+      padding: 0 12px;
     }
 
     /* Hide info on very small screens */
@@ -484,6 +447,36 @@
     [data-theme="dark"] .bc-sidebar-code:hover {
       background: rgba(51, 142, 247, 0.25);
       border-color: rgba(51, 142, 247, 1);
+    }
+
+    .bc-sidebar-session-info {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      margin-top: 8px;
+    }
+
+    .bc-session-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .bc-session-info-label {
+      color: var(--fg-muted);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .bc-session-info-value {
+      color: var(--fg);
+      font-weight: 600;
+      font-size: 13px;
     }
 
     /* 코드 모달 */
@@ -1157,20 +1150,8 @@
         </button>
         <div class="bc-header-sep"></div>
 
-        <!-- Room Title & Session Info Group -->
-        <div class="bc-header-content">
-          <div class="bc-header-title" id="bc-header-room-title">대화</div>
-          <div class="bc-header-info">
-            <div class="bc-header-info-item">
-              <span class="bc-header-info-item-label">시작</span>
-              <span class="bc-header-info-item-value" id="bc-session-start-time">--:--</span>
-            </div>
-            <div class="bc-header-info-item">
-              <span class="bc-header-info-item-label">참여</span>
-              <span class="bc-header-info-item-value" id="bc-session-participant-count">0명</span>
-            </div>
-          </div>
-        </div>
+        <!-- Room Title -->
+        <div class="bc-header-title" id="bc-header-room-title">대화</div>
 
         <button class="bc-header-btn" id="themeToggleBtn-chat" onclick="cycleTheme()" title="Theme">💻</button>
         <button class="bc-header-btn bc-header-btn-danger" id="bc-end-chat-btn" onclick="endChatSession()">
@@ -1187,6 +1168,18 @@
             <div class="bc-sidebar-code-container">
               <div class="bc-sidebar-title">접속 코드</div>
               <div class="bc-sidebar-code" id="chat-header-code" onclick="showCodeModal()">000000</div>
+            </div>
+
+            <!-- Session Info Section -->
+            <div class="bc-sidebar-session-info">
+              <div class="bc-session-info-row">
+                <span class="bc-session-info-label">시작</span>
+                <span class="bc-session-info-value" id="bc-sidebar-start-time">--:--</span>
+              </div>
+              <div class="bc-session-info-row">
+                <span class="bc-session-info-label">참여</span>
+                <span class="bc-session-info-value" id="bc-sidebar-participant-count">0명</span>
+              </div>
             </div>
           </div>
 
@@ -2397,23 +2390,23 @@
     }
 
     function updateSessionInfo() {
-      // Update room title
+      // Update room title in header
       const titleEl = document.getElementById('bc-header-room-title');
       if (titleEl && STATE.roomName) {
         titleEl.textContent = STATE.roomName;
-        titleEl.title = STATE.roomName;  // tooltip for long names
+        titleEl.title = STATE.roomName;
       }
 
-      // Format start time
-      const startTimeEl = document.getElementById('bc-session-start-time');
+      // Update start time in sidebar
+      const startTimeEl = document.getElementById('bc-sidebar-start-time');
       if (startTimeEl && STATE.sessionStart) {
         const startTime = new Date(STATE.sessionStart);
         const timeStr = startTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
         startTimeEl.textContent = timeStr;
       }
 
-      // Update participant count
-      const countEl = document.getElementById('bc-session-participant-count');
+      // Update participant count in sidebar
+      const countEl = document.getElementById('bc-sidebar-participant-count');
       if (countEl && STATE.participants) {
         const activeCount = STATE.participants.filter(p => !p.leaveTime).length;
         countEl.textContent = activeCount + '명';
