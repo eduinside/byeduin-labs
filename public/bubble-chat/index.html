@@ -2436,6 +2436,7 @@
       saveActiveSession();  // Update message count on card
 
       if (STATE.role === 'host') {
+        // Host sends to specific guest or broadcasts to all
         if (dmTarget) {
           const targetConn = STATE.guestConns[dmTarget];
           if (targetConn && targetConn.open) {
@@ -2445,6 +2446,8 @@
           broadcastMessage(msgObj);
         }
       } else {
+        // Guest sends to host (dmTarget should be the host's nickname or empty)
+        // If dmTarget is host nickname or empty, send it
         if (STATE.hostConn && STATE.hostConn.open) {
           STATE.hostConn.send(JSON.stringify(msgObj));
         }
