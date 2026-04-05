@@ -1,0 +1,4092 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bubble Chat — byeduin</title>
+  <link rel="icon" href="/logo.jpg" type="image/jpeg">
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <script src="/common/theme.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      height: 100vh;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+
+    /* Hide overlays and app header when in chat (like Chalkboard) */
+    body.in-chat .top-overlay,
+    body.in-chat .top-overlay-left { display: none !important; }
+    body.in-chat .app-header { display: none !important; }
+
+    /* 모달 열려있을 때 오버레이 버튼 비활성화 스타일 */
+    body.has-modal-open .top-overlay .overlay-btn,
+    body.has-modal-open .top-overlay-left .overlay-btn {
+      color: var(--fg-muted);
+      border-color: var(--border);
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    .bc-root { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; }
+
+    /* ── App Header ── */
+    .app-header {
+      text-align: left;
+      padding: 48px 1rem 12px;
+      margin-bottom: 8px;
+    }
+
+    .app-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--primary);
+      margin-bottom: 8px;
+      opacity: 0.8;
+    }
+
+    .app-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--fg);
+      margin: 0 0 4px 0;
+      line-height: 1.2;
+    }
+
+    .app-desc {
+      font-size: 12px;
+      color: var(--fg-muted);
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    /* ══════════════════════════════════
+       View Switching
+    ══════════════════════════════════ */
+    .fd-view { display: none; }
+    .fd-view.active { display: block; }
+
+    #view-chat {
+      position: fixed; inset: 0;
+      display: none !important; flex-direction: column;
+      overflow: hidden; z-index: 500;
+      padding: 0;
+    }
+    #view-chat.active { display: flex !important; }
+
+    /* ══════════════════════════════════
+       Home View (Flash Deck Style)
+    ══════════════════════════════════ */
+    /* ── Flash Deck 버튼 스타일 ── */
+    .fd-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px 18px; border-radius: 10px; border: none;
+      font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: all 0.15s; min-height: 40px; white-space: nowrap;
+    }
+    .fd-btn-primary { background: var(--primary); color: #fff; }
+    .fd-btn-primary:hover { background: var(--primary-h); }
+    .fd-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .fd-btn-ghost {
+      background: var(--card-bg); color: var(--fg-muted);
+      border: 1px solid var(--border);
+    }
+    .fd-btn-ghost:hover { border-color: var(--primary); color: var(--primary); background: rgba(0,111,238,0.06); }
+
+    /* ── 홈 뷰 패딩 ── */
+    #view-home {
+      padding: 0 1rem 5rem;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    /* ── 스크롤바 스타일 ── */
+    #view-home::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #view-home::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #view-home::-webkit-scrollbar-thumb {
+      background: var(--fg-muted);
+      border-radius: 4px;
+      opacity: 0.3;
+    }
+
+    #view-home::-webkit-scrollbar-thumb:hover {
+      opacity: 0.5;
+    }
+
+    /* ── 다크모드 스크롤바 ── */
+    [data-theme="dark"] #view-home::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    [data-theme="dark"] #view-home::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Firefox 스크롤바 */
+    #view-home {
+      scrollbar-color: var(--fg-muted) transparent;
+      scrollbar-width: thin;
+    }
+
+    [data-theme="dark"] #view-home {
+      scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    }
+
+    /* ── 홈 뷰 섹션 제목 ── */
+    #view-home .home-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      gap: 12px;
+    }
+
+    .fd-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+      margin-bottom: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .fd-section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── 홈 뷰 그리드 (Flash Deck 패턴 그대로) ── */
+    .deck-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .deck-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      animation: fadeUp 0.25s ease both;
+      position: relative;
+    }
+
+    .deck-item:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,111,238,0.1);
+    }
+
+    .deck-item-emoji {
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .deck-item-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--fg);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .deck-item-meta {
+      font-size: 11px;
+      color: var(--fg-muted);
+      line-height: 1.5;
+    }
+
+    .deck-item-del {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--fg-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.15s, color 0.15s, background 0.15s;
+      font-size: 16px;
+    }
+
+    .deck-item:hover .deck-item-del {
+      opacity: 1;
+    }
+
+    .deck-item-del:hover {
+      color: var(--danger);
+      background: rgba(243,18,96,0.08);
+    }
+
+    .deck-empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--fg-muted);
+      font-size: 14px;
+    }
+
+    /* ═══════════════════════════════════════
+       HeroUI 기반 개선된 카드 컴포넌트
+    ═══════════════════════════════════════ */
+    .deck-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0;
+      cursor: pointer;
+      animation: fadeUp 0.25s ease both;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .deck-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,111,238,0.15);
+    }
+
+    /* 카드 헤더: 이모지 + 제목 + 뱃지 */
+    .deck-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 14px 14px 10px 14px;
+      gap: 8px;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+    [data-theme="dark"] .deck-card-header {
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .deck-card-title {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .deck-card-emoji {
+      font-size: 24px;
+      line-height: 1.2;
+      flex-shrink: 0;
+    }
+
+    .deck-card-title h3 {
+      margin: 0;
+      padding: 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--fg);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      line-height: 1.3;
+    }
+
+    /* 상태 뱃지 */
+    .deck-card-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .badge-active {
+      background: rgba(34, 197, 94, 0.2);
+      color: #16a34a;
+    }
+
+    [data-theme="dark"] .badge-active {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+    }
+
+    .badge-paused {
+      background: rgba(255, 184, 0, 0.15);
+      color: #f5a623;
+    }
+
+    .badge-completed {
+      background: rgba(0,0,0,0.08);
+      color: var(--fg-muted);
+    }
+
+    [data-theme="dark"] .badge-completed {
+      background: rgba(255,255,255,0.08);
+    }
+
+    /* 메뉴 버튼 */
+    .deck-card-menu {
+      background: none;
+      border: none;
+      color: var(--fg-muted);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 6px;
+      flex-shrink: 0;
+      transition: color 0.15s, transform 0.15s;
+    }
+
+    .deck-card-menu:hover {
+      color: var(--fg);
+      transform: scale(1.15);
+    }
+
+    /* 카드 본문: 시작일시 + 참여자 + 메시지 수 */
+    .deck-card-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      padding: 12px 14px;
+    }
+
+    .deck-card-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .deck-card-stat .label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--fg-muted);
+    }
+
+    .deck-card-stat .value {
+      font-size: 13px;
+      color: var(--fg);
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* 카드 푸터: 코드 + 역할 */
+    .deck-card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 10px 14px;
+      border-top: 1px solid rgba(0,0,0,0.05);
+      background: rgba(0,0,0,0.02);
+      flex-wrap: wrap;
+    }
+
+    [data-theme="dark"] .deck-card-footer {
+      border-top: 1px solid rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .code-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      background: rgba(0,111,238,0.1);
+      color: var(--primary);
+    }
+
+    /* 헤더의 역할 뱃지 */
+    .role-badge-header {
+      background: rgba(0,0,0,0.06);
+      color: var(--fg-muted);
+      font-size: 11px;
+    }
+
+    [data-theme="dark"] .role-badge-header {
+      background: rgba(255,255,255,0.08);
+    }
+
+    /* 푸터의 상태 뱃지 */
+    .status-badge-footer {
+      font-size: 11px;
+    }
+
+    /* 메뉴 드롭다운 */
+    .deck-card-dropdown {
+      position: absolute;
+      top: 42px;
+      right: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+      min-width: 120px;
+      animation: slideDown 0.15s ease;
+      overflow: hidden;
+    }
+
+    [data-theme="dark"] .deck-card-dropdown {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .deck-card-dropdown button {
+      display: block;
+      width: 100%;
+      background: none;
+      border: none;
+      text-align: left;
+      padding: 10px 12px;
+      color: var(--fg);
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.1s;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+    [data-theme="dark"] .deck-card-dropdown button {
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .deck-card-dropdown button:last-child {
+      border-bottom: none;
+    }
+
+    .deck-card-dropdown button:hover {
+      background: var(--bg-sec);
+    }
+
+    .deck-card-dropdown button.danger {
+      color: var(--danger);
+    }
+
+    .deck-card-dropdown button.danger:hover {
+      background: rgba(243,18,96,0.1);
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 반응형: 태블릿 이상 */
+    @media (min-width: 541px) {
+      .deck-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      }
+    }
+
+    /* 반응형: 모바일 */
+    @media (max-width: 540px) {
+      .deck-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      }
+
+      .deck-card-body {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .deck-card-stat {
+        grid-column: span 1;
+      }
+
+      .deck-card-stat:first-child {
+        grid-column: 1 / -1;
+      }
+
+      .deck-card-stat .value {
+        font-size: 12px;
+      }
+    }
+
+    /* ══════════════════════════════════
+       Chat View Header (like Chalkboard)
+    ══════════════════════════════════ */
+    .bc-chat-header {
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 100;
+      background: var(--card-bg);
+    }
+
+    .bc-header-code {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--fg);
+      font-family: monospace;
+      letter-spacing: 0.1em;
+    }
+
+    .bc-header-sep {
+      flex: 1;
+    }
+
+    .bc-header-btn {
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+      background: transparent;
+      color: var(--fg-muted);
+    }
+
+    .bc-header-btn:hover {
+      background: var(--bg-sec);
+      color: var(--fg);
+    }
+
+    .bc-header-btn-danger {
+      color: var(--danger);
+      border: 1.5px solid var(--danger);
+    }
+
+    .bc-header-btn-danger:hover {
+      background: rgba(243,18,96,0.15);
+    }
+
+    .bc-header-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--fg);
+      flex: 1;
+      max-width: 400px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 0 12px;
+    }
+
+    /* Hide info on very small screens */
+    @media (max-width: 600px) {
+      .bc-header-info {
+        gap: 8px;
+        font-size: 11px;
+      }
+      .bc-header-info-item-value {
+        font-size: 12px;
+      }
+    }
+
+    /* ══════════════════════════════════
+       Chat Body
+    ══════════════════════════════════ */
+    .bc-chat-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      overflow: hidden;
+      gap: 0;
+    }
+
+    .bc-chat-right {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .bc-sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      background: var(--card-bg);
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: transform 0.3s ease;
+      position: relative;
+    }
+
+    /* Desktop: sidebar always visible */
+    @media (min-width: 861px) {
+      .bc-sidebar {
+        position: relative !important;
+        transform: none !important;
+        display: flex !important;
+      }
+    }
+
+    /* Mobile: sidebar hidden by default */
+    @media (max-width: 860px) {
+      .bc-sidebar {
+        position: absolute !important;
+        left: 0 !important;
+        top: 52px !important;
+        height: calc(100% - 52px - 60px) !important;
+        width: 280px !important;
+        z-index: 400 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        transform: translateX(-100%) !important;
+      }
+
+      /* Mobile: show sidebar when class is removed */
+      .bc-sidebar.sidebar-visible {
+        transform: translateX(0) !important;
+      }
+    }
+
+    .bc-sidebar-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .bc-sidebar-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+    }
+
+    .bc-participant-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .bc-participant {
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      background: var(--bg);
+      border: 1px solid transparent;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .bc-participant-name {
+      font-weight: 600;
+      color: var(--fg);
+    }
+
+    .bc-participant-time {
+      font-size: 10px;
+      color: var(--fg-muted);
+    }
+
+    .bc-save-chat-btn {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--fg);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .bc-save-chat-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(0, 111, 238, 0.06);
+    }
+
+    .bc-save-chat-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* ── 사이드바 액션 버튼 ── */
+    .bc-sidebar-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    #bc-host-actions {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    #bc-host-actions.show {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .bc-action-btn {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--fg);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .bc-action-btn-primary {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(0, 111, 238, 0.08);
+    }
+
+    .bc-action-btn-primary:hover {
+      background: rgba(0, 111, 238, 0.15);
+    }
+
+    .bc-action-btn-warning {
+      border-color: #f5a623;
+      color: #f5a623;
+      background: rgba(245, 166, 35, 0.08);
+    }
+
+    .bc-action-btn-warning:hover {
+      background: rgba(245, 166, 35, 0.15);
+    }
+
+    .bc-action-btn-danger {
+      border-color: var(--danger);
+      color: var(--danger);
+      background: rgba(243, 18, 96, 0.08);
+    }
+
+    .bc-action-btn-danger:hover {
+      background: rgba(243, 18, 96, 0.15);
+    }
+
+    .bc-action-btn:active {
+      transform: scale(0.98);
+    }
+
+    .bc-sidebar-code-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 10px;
+      background: var(--bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .bc-sidebar-code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .bc-sidebar-code {
+      font-size: 16px;
+      font-weight: 900;
+      font-family: 'Courier New', 'JetBrains Mono', monospace;
+      letter-spacing: 0.2em;
+      color: var(--primary);
+      padding: 8px 12px;
+      background: rgba(0, 111, 238, 0.12);
+      border: 2px solid var(--primary);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s, border-color 0.2s;
+      user-select: all;
+    }
+
+    .bc-sidebar-code:hover {
+      background: rgba(0, 111, 238, 0.2);
+      transform: scale(1.02);
+    }
+
+    /* 다크모드에서 코드 가시성 향상 */
+    [data-theme="dark"] .bc-sidebar-code {
+      background: rgba(51, 142, 247, 0.15);
+      border: 2px solid rgba(51, 142, 247, 0.8);
+    }
+
+    [data-theme="dark"] .bc-sidebar-code:hover {
+      background: rgba(51, 142, 247, 0.25);
+      border-color: rgba(51, 142, 247, 1);
+    }
+
+    .bc-sidebar-session-info {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-top: 8px;
+      font-size: 12px;
+    }
+
+    .bc-session-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .bc-session-info-label {
+      color: var(--fg-muted);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .bc-session-info-value {
+      color: var(--fg);
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    /* 코드 모달 */
+    .bc-code-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+
+    .bc-code-modal {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 24px;
+      min-width: 280px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: scaleIn 0.3s ease;
+    }
+
+    .bc-code-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .bc-code-modal-header h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--fg);
+    }
+
+    .bc-code-modal-close {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--fg-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      transition: color 0.2s;
+    }
+
+    .bc-code-modal-close:hover {
+      color: var(--fg);
+    }
+
+    .bc-code-modal-content {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .bc-code-modal-display {
+      font-size: 36px;
+      font-weight: 900;
+      font-family: 'Courier New', 'JetBrains Mono', monospace;
+      letter-spacing: 0.2em;
+      color: var(--primary);
+      padding: 24px;
+      background: rgba(0, 111, 238, 0.08);
+      border-radius: 12px;
+      border: 2px solid var(--primary);
+      user-select: all;
+      text-align: center;
+      min-width: 280px;
+      cursor: pointer;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+
+    .bc-code-modal-display:hover {
+      background: rgba(0, 111, 238, 0.15);
+      box-shadow: 0 0 0 3px rgba(0, 111, 238, 0.2);
+    }
+
+    .bc-code-modal-display:active {
+      transform: scale(0.98);
+    }
+
+    .bc-code-modal-copy {
+      padding: 10px 24px;
+      border-radius: 8px;
+      border: none;
+      background: var(--primary);
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+
+    .bc-code-modal-copy:hover {
+      background: var(--primary-h);
+    }
+
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* ══════════════════════════════════
+       Messages Area
+    ══════════════════════════════════ */
+    .bc-messages-wrap {
+      flex: 1;
+      min-width: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      gap: 8px;
+    }
+
+    .bc-msg {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      animation: fadeUp 0.2s ease both;
+      max-width: 75%;
+    }
+
+    .bc-msg--self {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .bc-msg--other {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+
+    .bc-msg--system {
+      align-self: center;
+      align-items: center;
+    }
+
+    .bc-msg-meta {
+      font-size: 10px;
+      color: var(--fg-muted);
+    }
+
+    .bc-msg-bubble {
+      padding: 14px 16px;
+      border-radius: 12px;
+      font-size: 19px;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .bc-msg--self .bc-msg-bubble {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .bc-msg--other .bc-msg-bubble {
+      background: var(--bg-sec);
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
+
+    .bc-msg--system .bc-msg-bubble {
+      background: transparent;
+      color: var(--fg-muted);
+      font-size: 11px;
+      font-style: italic;
+    }
+
+    /* DM 메시지 스타일 */
+    .bc-msg--dm {
+      opacity: 0.95;
+    }
+
+    .bc-msg--dm .bc-msg-bubble {
+      border: 2px solid rgba(0, 111, 238, 0.4);
+      box-shadow: 0 2px 8px rgba(0, 111, 238, 0.15);
+    }
+
+    .bc-msg--dm--self .bc-msg-bubble {
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .bc-msg--dm--other .bc-msg-bubble {
+      border: 2px solid rgba(0, 111, 238, 0.4);
+      background: rgba(0, 111, 238, 0.08);
+    }
+
+    /* Dark mode adjustments for better visibility */
+    [data-theme="dark"] .bc-msg--other .bc-msg-bubble {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    [data-theme="dark"] .bc-msg--dm--other .bc-msg-bubble {
+      border: 2px solid rgba(0, 111, 238, 0.5);
+      background: rgba(0, 111, 238, 0.15);
+      color: #fff;
+    }
+
+    .bc-msg-dm-indicator {
+      font-size: 11px;
+      color: var(--primary);
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    /* Link visibility in messages */
+    .bc-msg--self a {
+      color: #fff !important;
+      font-weight: 600;
+    }
+
+    .bc-msg--other a {
+      color: var(--primary) !important;
+      font-weight: 600;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ══════════════════════════════════
+       Input Area
+    ══════════════════════════════════ */
+    .bc-input-area {
+      flex-shrink: 0;
+      display: flex;
+      gap: 8px;
+      padding: 12px 14px;
+      border-top: 1px solid var(--border);
+      background: transparent;
+      align-items: center;
+      height: 68px;
+    }
+
+    .bc-dm-select {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--fg);
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      min-width: 100px;
+      outline: none;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .bc-dm-select:focus {
+      outline: none;
+      background: var(--bg-sec);
+      border-color: var(--primary);
+    }
+
+    /* Option 스타일 (드롭다운 항목) */
+    .bc-dm-select option {
+      color: #11181c;
+      background: #ffffff;
+      padding: 8px 4px;
+    }
+
+    /* Dark mode improvements */
+    [data-theme="dark"] .bc-dm-select {
+      background: var(--card-bg);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
+    [data-theme="dark"] .bc-dm-select:focus {
+      background: var(--bg-sec);
+      border-color: rgba(0, 111, 238, 0.8);
+    }
+
+    /* Dark mode: option 드롭다운 항목 */
+    [data-theme="dark"] .bc-dm-select option {
+      color: #ffffff;
+      background: #1a1a1a;
+      padding: 8px 4px;
+    }
+
+    .bc-msg-input {
+      flex: 1;
+      padding: 12px 14px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--fg);
+      font-size: 16px;
+      font-family: inherit;
+      outline: none;
+      resize: none;
+      max-height: 48px;
+      min-height: 44px;
+      line-height: 1.5;
+      transition: background 0.2s;
+    }
+
+    .bc-msg-input::placeholder {
+      color: var(--fg-muted);
+    }
+
+    .bc-msg-input:focus {
+      background: rgba(0,111,238,0.05);
+    }
+
+    .bc-send-btn {
+      padding: 6px 16px;
+      border-radius: 6px;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      min-height: 36px;
+      white-space: nowrap;
+      white-space: nowrap;
+      font-family: inherit;
+      min-height: 40px;
+    }
+
+    .bc-send-btn:hover {
+      background: var(--primary-h);
+    }
+
+    /* ══════════════════════════════════
+       Dropdown Menu
+    ══════════════════════════════════ */
+    #chat-menu-dropdown {
+      position: absolute;
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      z-index: 9500;
+      min-width: 160px;
+      top: 100%;
+      right: 0;
+      margin-top: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      animation: scaleIn 0.15s ease;
+    }
+
+    #chat-menu-dropdown.open {
+      display: flex;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: none;
+      background: none;
+      color: var(--fg);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.12s;
+      text-align: left;
+    }
+
+    .menu-item:hover {
+      background: rgba(0,111,238,0.08);
+      color: var(--primary);
+    }
+
+    /* ══════════════════════════════════
+       Modal (Flash Deck Style)
+    ══════════════════════════════════ */
+    .bc-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .bc-modal-overlay.open {
+      display: flex;
+    }
+
+    .bc-modal {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      width: 100%;
+      max-width: 420px;
+      animation: scaleIn 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+
+    .bc-modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--fg);
+      margin: 0;
+    }
+
+    .bc-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .bc-modal-close {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--fg-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: color 0.2s;
+    }
+
+    .bc-modal-close:hover {
+      color: var(--fg);
+    }
+
+    #host-setup-form,
+    #guest-setup-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .bc-modal-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .bc-modal-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .bc-modal-input {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--fg);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .bc-modal-input:focus {
+      border-color: var(--primary);
+    }
+
+    /* 6자리 코드 입력 필드 강조 */
+    #guest-code {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 0.3em;
+      text-align: center;
+      font-family: 'Courier New', monospace;
+      padding: 14px 12px;
+      background: rgba(0, 111, 238, 0.06);
+    }
+
+    #guest-code:focus {
+      background: rgba(0, 111, 238, 0.12);
+    }
+
+    .bc-modal-code-display {
+      padding: 16px;
+      background: var(--bg-sec);
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .bc-modal-code-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .bc-modal-code-value {
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--primary);
+      font-family: 'Courier New', 'JetBrains Mono', monospace;
+      letter-spacing: 0.2em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .bc-modal-notice {
+      margin-top: 14px;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      background: var(--bg-sec);
+      border-radius: 8px;
+      border-left: 3px solid var(--primary);
+    }
+
+    .bc-modal-notice p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--fg-muted);
+      line-height: 1.5;
+    }
+
+    .bc-modal-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      justify-content: flex-end;
+    }
+
+    .bc-modal-btn {
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+      min-height: 40px;
+    }
+
+    .bc-modal-btn-primary {
+      background: var(--primary);
+      color: #fff;
+      flex: 1;
+    }
+
+    .bc-modal-btn-primary:hover {
+      background: var(--primary-h);
+    }
+
+    .bc-modal-btn-ghost {
+      background: var(--bg);
+      color: var(--fg-muted);
+      border: 1px solid var(--border);
+      flex: 1;
+    }
+
+    .bc-modal-btn-ghost:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    @keyframes scaleIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* ══════════════════════════════════
+       Toast
+    ══════════════════════════════════ */
+    #bc-toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(1rem);
+      background: var(--fg);
+      color: var(--bg);
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 9999;
+      white-space: normal;
+      max-width: 85vw;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    #bc-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ══════════════════════════════════
+       Animations
+    ══════════════════════════════════ */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 56px 12px 4rem;
+      }
+
+      .bc-chat-cards {
+        grid-template-columns: 1fr;
+      }
+
+      .bc-modal {
+        padding: 24px;
+        border-radius: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Fixed overlays (will be hidden in chat view) -->
+  <div class="top-overlay-left">
+    <a href="/" class="overlay-btn" title="Home">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      </svg>
+      <span>Home</span>
+    </a>
+  </div>
+  <div class="top-overlay">
+    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="Theme">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+      </svg>
+    </button>
+    <button class="overlay-btn" onclick="shareCurrentPage()" title="Share">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="18" cy="5" r="3"></circle>
+        <circle cx="6" cy="12" r="3"></circle>
+        <circle cx="18" cy="19" r="3"></circle>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+      </svg>
+      <span>공유</span>
+    </button>
+  </div>
+
+  <!-- Main app -->
+  <div class="bc-root">
+    <!-- App Header (공통 스타일) -->
+    <header class="app-header">
+      <span class="app-badge">◆ SOCIAL</span>
+      <h1 class="app-title">Bubble Chat</h1>
+      <p class="app-desc">접속 코드로 누구와나 즉시 연결하는 실시간 채팅</p>
+    </header>
+
+    <!-- View: Home (Flash Deck style) -->
+    <div id="view-home" class="fd-view active">
+      <div class="home-top">
+        <div class="fd-section-title" style="margin:0;flex:1">참여 중인 대화</div>
+        <div style="position: relative;">
+          <button class="fd-btn fd-btn-primary" id="new-chat-btn" onclick="document.getElementById('chat-menu-dropdown').classList.toggle('open'); event.stopPropagation();">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            새 대화
+          </button>
+          <div id="chat-menu-dropdown">
+            <button class="menu-item" data-action="host">
+              <span>🏠</span> 방 만들기
+            </button>
+            <button class="menu-item" data-action="guest">
+              <span>🚪</span> 참여하기
+            </button>
+          </div>
+        </div>
+      </div>
+      <div id="deck-grid" class="deck-grid"></div>
+    </div>
+
+    <!-- View: Chat (Chalkboard full-screen style) -->
+    <div id="view-chat" class="bc-view">
+      <!-- Header -->
+      <div class="bc-chat-header">
+        <!-- Room Title (Left aligned) -->
+        <div class="bc-header-title" id="bc-header-room-title">대화</div>
+
+        <!-- Spacer -->
+        <div style="flex: 1;"></div>
+
+        <!-- Right aligned buttons -->
+        <button class="bc-header-btn" id="themeToggleBtn-chat" onclick="cycleTheme()" title="Theme">💻</button>
+        <button class="bc-header-btn" id="bc-sidebar-toggle" onclick="toggleSidebar()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="bc-chat-body">
+        <!-- Sidebar -->
+        <div class="bc-sidebar" id="bc-sidebar">
+          <!-- Room Code Section -->
+          <div class="bc-sidebar-section">
+            <div class="bc-sidebar-code-container">
+              <div class="bc-sidebar-code-header">
+                <div class="bc-sidebar-title">접속 코드</div>
+                <div class="bc-sidebar-code" id="chat-header-code" onclick="showCodeModal()">000000</div>
+              </div>
+
+              <!-- Session Info Section -->
+              <div class="bc-sidebar-session-info">
+                <div class="bc-session-info-row">
+                  <span class="bc-session-info-label">시작</span>
+                  <span class="bc-session-info-value" id="bc-sidebar-start-time">--:--</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Participants Section -->
+          <div class="bc-sidebar-section">
+            <div class="bc-sidebar-title">참여자 <span id="bc-participant-count-badge">(0명)</span></div>
+            <ul id="bc-participant-list" class="bc-participant-list"></ul>
+            <button id="bc-save-chat-btn" class="bc-save-chat-btn" onclick="saveChatAsText()" style="display: none;">
+              📥 대화 내용 저장
+            </button>
+          </div>
+
+          <!-- Action Buttons Section (Guest or Host) -->
+          <div class="bc-sidebar-section bc-sidebar-actions" id="bc-sidebar-actions">
+            <!-- Guest: Leave button -->
+            <button id="bc-guest-leave-btn" class="bc-action-btn bc-action-btn-primary" onclick="confirmLeaveChat()" style="display: none;">
+              🚪 대화에서 나가기
+            </button>
+
+            <!-- Host: Pause and Complete buttons -->
+            <div id="bc-host-actions">
+              <button class="bc-action-btn bc-action-btn-warning" onclick="confirmPauseChat()">
+                ⏸️ 대화 일시 중단
+              </button>
+              <button class="bc-action-btn bc-action-btn-danger" onclick="confirmCompleteChat()">
+                🔒 대화 완전 종료
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Messages + Input -->
+        <div class="bc-chat-right">
+          <!-- Messages -->
+          <div class="bc-messages-wrap" id="bc-messages-wrap"></div>
+
+          <!-- Input Area -->
+          <div class="bc-input-area">
+        <select id="bc-dm-select" class="bc-dm-select">
+          <option value="">📢 전체</option>
+        </select>
+        <textarea id="bc-msg-input" class="bc-msg-input" placeholder="메시지를 입력하세요..." onkeydown="handleInputKey(event)"></textarea>
+        <button class="bc-send-btn" onclick="sendMessage()">전송</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: New Chat -->
+  <div class="bc-modal-overlay" id="new-chat-modal" onclick="closeNewChatModal(event)">
+    <div class="bc-modal">
+      <div class="bc-modal-title">새 대화</div>
+      <div style="display: flex; gap: 12px;">
+        <button class="bc-modal-btn bc-modal-btn-primary" onclick="showHostSetup()">🏠 호스트</button>
+        <button class="bc-modal-btn bc-modal-btn-primary" onclick="showGuestSetup()">🚪 방 참여하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Host Setup -->
+  <div class="bc-modal-overlay" id="host-setup-modal" onclick="closeHostSetupModal(event)">
+    <div class="bc-modal">
+      <div class="bc-modal-header">
+        <div class="bc-modal-title">🏠 방 만들기</div>
+        <button class="bc-modal-close" onclick="closeHostSetupModal()">✕</button>
+      </div>
+      <div id="host-setup-form">
+        <div class="bc-modal-group">
+          <label class="bc-modal-label">방 이름</label>
+          <input id="host-room-name" type="text" class="bc-modal-input" placeholder="방 이름" maxlength="30">
+        </div>
+        <div class="bc-modal-group">
+          <label class="bc-modal-label">호스트 닉네임</label>
+          <input id="host-nickname" type="text" class="bc-modal-input" placeholder="닉네임" maxlength="20">
+        </div>
+        <div class="bc-modal-notice">
+          <p>본 시스템은 교육적인 목적으로만 사용할 수 있습니다.</p>
+        </div>
+        <div class="bc-modal-actions">
+          <button class="bc-modal-btn bc-modal-btn-ghost" onclick="closeHostSetupModal()">취소</button>
+          <button class="bc-modal-btn bc-modal-btn-primary" onclick="createRoomAsHost()">만들기</button>
+        </div>
+      </div>
+      <div id="host-code-display" style="display: none;">
+        <div class="bc-modal-code-display">
+          <label class="bc-modal-code-label">접속 코드</label>
+          <div class="bc-modal-code-value" id="host-code-value">------</div>
+        </div>
+        <div class="bc-modal-actions">
+          <button class="bc-modal-btn bc-modal-btn-primary" onclick="startHostChat()">대화 시작</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Guest Setup -->
+  <div class="bc-modal-overlay" id="guest-setup-modal" onclick="closeGuestSetupModal(event)">
+    <div class="bc-modal">
+      <div class="bc-modal-header">
+        <div class="bc-modal-title">🚪 방 참여하기</div>
+        <button class="bc-modal-close" onclick="closeGuestSetupModal()">✕</button>
+      </div>
+      <div class="bc-modal-group">
+        <label class="bc-modal-label">접속 코드 (6자리)</label>
+        <input id="guest-code" type="tel" class="bc-modal-input" placeholder="000000" maxlength="6" inputmode="numeric">
+      </div>
+      <div class="bc-modal-group">
+        <label class="bc-modal-label">게스트 닉네임</label>
+        <input id="guest-nickname" type="text" class="bc-modal-input" placeholder="닉네임" maxlength="20">
+      </div>
+      <div class="bc-modal-notice">
+        <p>본 시스템은 교육적인 목적으로만 사용할 수 있습니다.</p>
+      </div>
+      <div class="bc-modal-actions">
+        <button class="bc-modal-btn bc-modal-btn-ghost" onclick="closeGuestSetupModal()">취소</button>
+        <button class="bc-modal-btn bc-modal-btn-primary" onclick="joinChatAsGuest()">참여</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Confirm Chat Action -->
+  <div class="bc-modal-overlay" id="confirm-chat-action-modal" onclick="closeConfirmChatActionModal(event)">
+    <div class="bc-modal">
+      <div class="bc-modal-title" id="confirm-modal-title">작업 확인</div>
+      <div style="padding: 8px 0;">
+        <p id="confirm-modal-message" style="color: var(--fg-muted); font-size: 14px; margin-bottom: 12px;">
+          정말 진행하시겠습니까?
+        </p>
+      </div>
+      <div id="confirm-modal-info" style="padding: 8px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 12px;"></div>
+      <div class="bc-modal-actions">
+        <button class="bc-modal-btn bc-modal-btn-ghost" onclick="closeConfirmChatActionModal()">취소</button>
+        <button class="bc-modal-btn bc-modal-btn-primary" id="confirm-modal-confirm-btn" onclick="executeConfirmedAction()">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="bc-toast"></div>
+
+  <script>
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Global State                                                    */
+    /* ═══════════════════════════════════════════════════════════════ */
+    const STATE = {
+      role: null,          // 'host' | 'guest'
+      roomCode: '',
+      roomName: '',
+      nickname: '',
+      peer: null,
+      hostConn: null,      // guest -> host
+      guestConns: {},      // host: { nickname: DataConnection }
+      participants: [],    // [{ nickname, isHost, joinTime, leaveTime }]
+      messages: [],
+      dmTarget: '',        // '' = broadcast, else nickname
+      sessionStart: null,
+      chatStarted: false,  // Track if host has started the chat
+      currentChatCard: null,  // { code, roomName, role }
+      isClosing: false,    // Flag to prevent duplicate session saves on close
+      chatEnded: false     // Flag for host: chat is completely ended
+    };
+
+    let _toastTimer = null;
+    let _sessionInfoInterval = null;
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* View Management                                                 */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function showView(id) {
+      // Hide all views
+      document.querySelectorAll('.fd-view').forEach(v => v.classList.remove('active'));
+      document.getElementById('view-chat').classList.remove('active');
+
+      // Show selected view
+      const view = document.getElementById('view-' + id);
+      if (view) {
+        view.classList.add('active');
+      }
+
+      if (id === 'chat') {
+        document.body.classList.add('in-chat');
+        // Update session info periodically (every 30 seconds for relative time updates)
+        if (_sessionInfoInterval) clearInterval(_sessionInfoInterval);
+        _sessionInfoInterval = setInterval(updateSessionInfo, 30000);
+      } else {
+        document.body.classList.remove('in-chat');
+        // Close dropdown when returning to home
+        closeChatMenu();
+        // Stop periodic session info updates
+        if (_sessionInfoInterval) clearInterval(_sessionInfoInterval);
+        _sessionInfoInterval = null;
+      }
+    }
+
+    function showToast(msg, duration = 2500) {
+      clearTimeout(_toastTimer);
+      const t = document.getElementById('bc-toast');
+      // Convert \n to <br> for multi-line messages
+      // Use textContent first to escape HTML, then convert newlines
+      const div = document.createElement('div');
+      div.textContent = msg;
+      const escapedMsg = div.innerHTML;
+      t.innerHTML = escapedMsg.replace(/\n/g, '<br>');
+      t.classList.add('show');
+      _toastTimer = setTimeout(() => t.classList.remove('show'), duration);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* localStorage 모니터링                                           */
+    /* ═══════════════════════════════════════════════════════════════ */
+
+    let _storageWarningShown = false;  // 경고 토스트를 한 번만 표시
+
+    function getStorageUsage() {
+      // localStorage 사용량 계산 (Bytes)
+      let total = 0;
+      for (let key in localStorage) {
+        if (localStorage.hasOwnProperty(key)) {
+          const value = localStorage.getItem(key);
+          total += new Blob([value]).size;
+        }
+      }
+      return total;
+    }
+
+    function getStorageUsagePercent() {
+      // 보수적 추정: 5MB 한계 기준
+      const limit = 5 * 1024 * 1024;  // 5 MB
+      const usage = getStorageUsage();
+      return (usage / limit) * 100;
+    }
+
+    function checkStorageWarning() {
+      // 80% 이상 사용 시 경고
+      const percent = getStorageUsagePercent();
+      if (percent >= 80 && !_storageWarningShown) {
+        _storageWarningShown = true;
+        const usedMB = (getStorageUsage() / 1024 / 1024).toFixed(1);
+        showToast(`⚠️ 저장소 부족 (${usedMB}MB 사용 중)\n오래된 대화를 삭제해주세요`, 5000);
+        console.warn(`[Storage] Usage: ${percent.toFixed(1)}% (${usedMB}MB)`);
+      } else if (percent < 70) {
+        // 70% 아래로 내려가면 경고 리셋
+        _storageWarningShown = false;
+      }
+    }
+
+    // localStorage 저장 시 사용량 체크 래퍼
+    function safeLocalStorageSet(key, value) {
+      try {
+        localStorage.setItem(key, value);
+        checkStorageWarning();
+        return true;
+      } catch (e) {
+        if (e.name === 'QuotaExceededError' || e.code === 22) {
+          showToast('❌ 저장소 가득 참!\n오래된 대화를 삭제해주세요', 4000);
+          console.error('[Storage] Quota exceeded');
+          return false;
+        }
+        throw e;
+      }
+    }
+
+    // 주기적으로 저장소 상태 확인 (30초마다)
+    setInterval(() => {
+      checkStorageWarning();
+    }, 30000);
+
+    function copyChatCode() {
+      navigator.clipboard.writeText(STATE.roomCode).then(() => {
+        showToast('코드가 복사되었습니다 ✓');
+      }).catch(() => {
+        showToast('복사 실패');
+      });
+    }
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('bc-sidebar');
+      if (sidebar) {
+        sidebar.classList.toggle('sidebar-visible');
+      }
+    }
+
+    function showCodeModal() {
+      const code = STATE.roomCode || '------';
+      // Generate URL for guest to join
+      const joinUrl = window.location.origin + window.location.pathname + '?code=' + code;
+
+      const modal = document.createElement('div');
+      modal.className = 'bc-code-modal-overlay';
+      modal.innerHTML = `
+        <div class="bc-code-modal">
+          <div class="bc-code-modal-header">
+            <h3>접속 코드</h3>
+            <button class="bc-code-modal-close" onclick="this.closest('.bc-code-modal-overlay').remove()">✕</button>
+          </div>
+          <div class="bc-code-modal-content">
+            <div class="bc-code-modal-display" id="code-display-click" title="클릭하면 복사됩니다">${code}</div>
+            <div id="qrcode-container" style="display: flex; justify-content: center; margin: 16px 0;"></div>
+            <button class="bc-code-modal-copy" id="qr-link-copy">🔗 대화창 바로 접속 링크 복사</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      // Code display click handler - copy code to clipboard
+      const codeDisplay = document.getElementById('code-display-click');
+      codeDisplay.addEventListener('click', (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(code).then(() => {
+          showToast('접속 코드가 복사되었습니다');
+          // Visual feedback
+          const originalBg = codeDisplay.style.background;
+          codeDisplay.style.background = 'rgba(23, 201, 100, 0.15)';
+          setTimeout(() => {
+            codeDisplay.style.background = originalBg;
+          }, 300);
+        }).catch(err => {
+          console.error('Copy failed:', err);
+          showToast('복사 실패');
+        });
+      });
+
+      // QR link copy button handler - copy QR URL to clipboard
+      const qrCopyBtn = document.getElementById('qr-link-copy');
+      qrCopyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(joinUrl).then(() => {
+          showToast('대화창 바로 접속 링크가 복사되었습니다');
+          // Visual feedback on button
+          const originalText = qrCopyBtn.textContent;
+          const originalBg = qrCopyBtn.style.background;
+          qrCopyBtn.textContent = '✅ 복사됨';
+          qrCopyBtn.style.background = 'var(--success)';
+          setTimeout(() => {
+            qrCopyBtn.textContent = originalText;
+            qrCopyBtn.style.background = originalBg;
+          }, 1500);
+        }).catch(err => {
+          console.error('Copy failed:', err);
+          showToast('복사 실패');
+        });
+      });
+
+      // Generate QR code
+      setTimeout(() => {
+        const qrcodeContainer = document.getElementById('qrcode-container');
+        if (qrcodeContainer) {
+          new QRCode(qrcodeContainer, {
+            text: joinUrl,
+            width: 200,
+            height: 200,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+          });
+        }
+      }, 0);
+
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+      });
+    }
+
+    function handleInputKey(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Dropdown Menu Management                                        */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function toggleChatMenu(event) {
+      event.stopPropagation();
+      const dropdown = document.getElementById('chat-menu-dropdown');
+      dropdown.classList.toggle('open');
+    }
+
+    function closeChatMenu() {
+      document.getElementById('chat-menu-dropdown').classList.remove('open');
+    }
+
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('chat-menu-dropdown');
+      const newChatBtn = document.getElementById('new-chat-btn');
+      if (!dropdown.contains(e.target) && e.target !== newChatBtn && !newChatBtn.contains(e.target)) {
+        closeChatMenu();
+      }
+    });
+
+    // Setup menu item click handlers
+    function attachMenuListeners() {
+      const menuItems = document.querySelectorAll('.menu-item');
+      menuItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+          e.stopPropagation();
+          const action = this.getAttribute('data-action');
+          if (action === 'host') {
+            showHostSetup();
+          } else if (action === 'guest') {
+            showGuestSetup();
+          }
+        });
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', attachMenuListeners);
+    } else {
+      attachMenuListeners();
+    }
+
+    // Also attach immediately with a small delay to ensure it works
+    setTimeout(attachMenuListeners, 0);
+
+    /* End Chat Modal */
+    function showEndChatModal() {
+      document.getElementById('end-chat-modal').classList.add('open');
+    }
+
+    let _pendingChatAction = null;
+
+    function closeConfirmChatActionModal(event) {
+      if (!event || event.target.id === 'confirm-chat-action-modal') {
+        document.getElementById('confirm-chat-action-modal').classList.remove('open');
+        _pendingChatAction = null;
+      }
+    }
+
+    function showConfirmChatActionModal(title, message, infoHTML, actionType) {
+      _pendingChatAction = actionType;
+      document.getElementById('confirm-modal-title').textContent = title;
+      document.getElementById('confirm-modal-message').textContent = message;
+      document.getElementById('confirm-modal-info').innerHTML = infoHTML;
+      document.getElementById('confirm-chat-action-modal').classList.add('open');
+      document.body.classList.add('has-modal-open');
+    }
+
+    function executeConfirmedAction() {
+      if (!_pendingChatAction) return;
+
+      // Save action type before closing modal (which clears _pendingChatAction)
+      const actionType = _pendingChatAction;
+      closeConfirmChatActionModal();
+
+      if (actionType === 'leave') {
+        _endChatSession('pause');
+      } else if (actionType === 'pause') {
+        _endChatSession('pause');
+      } else if (actionType === 'complete') {
+        _endChatSession('complete');
+      }
+    }
+
+    function confirmLeaveChat() {
+      const infoHTML = `
+        <div style="font-size: 12px; color: var(--fg-muted);">
+          <p>대화창을 나가면:</p>
+          <ul style="margin: 6px 0; padding-left: 16px;">
+            <li>카드에서 "진행 중"으로 표시됩니다</li>
+            <li>언제든 다시 입장할 수 있습니다</li>
+            <li>메시지는 저장됩니다</li>
+          </ul>
+        </div>
+      `;
+      showConfirmChatActionModal('대화에서 나가기', '정말 나가시겠습니까?', infoHTML, 'leave');
+    }
+
+    function confirmPauseChat() {
+      const infoHTML = `
+        <div style="font-size: 12px; color: var(--fg-muted);">
+          <p><strong>일시 중단:</strong></p>
+          <ul style="margin: 6px 0; padding-left: 16px;">
+            <li>게스트가 언제든 재입장 가능</li>
+            <li>메시지는 유지됩니다</li>
+            <li>대화는 계속 진행할 수 있습니다</li>
+          </ul>
+        </div>
+      `;
+      showConfirmChatActionModal('대화 일시 중단', '대화를 일시 중단하시겠습니까?', infoHTML, 'pause');
+    }
+
+    function confirmCompleteChat() {
+      const infoHTML = `
+        <div style="font-size: 12px; color: var(--fg-muted);">
+          <p><strong>완전 종료:</strong></p>
+          <ul style="margin: 6px 0; padding-left: 16px;">
+            <li>더 이상 참여할 수 없습니다</li>
+            <li>주고받은 대화 내용을 호스트가 저장할 수 있습니다</li>
+            <li>새로운 방에서 대화를 시작해야 합니다</li>
+          </ul>
+        </div>
+      `;
+      showConfirmChatActionModal('대화 완전 종료', '정말 완전 종료하시겠습니까?', infoHTML, 'complete');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Modal Management                                                */
+    /* ═══════════════════════════════════════════════════════════════ */
+
+    function showHostSetup() {
+      closeChatMenu();
+      document.getElementById('host-setup-modal').classList.add('open');
+      document.body.classList.add('has-modal-open');
+      document.getElementById('host-setup-form').style.display = '';
+      document.getElementById('host-code-display').style.display = 'none';
+      document.getElementById('host-room-name').value = '';
+      document.getElementById('host-nickname').value = '';
+    }
+
+    function closeHostSetupModal(event) {
+      if (event && event.target.id !== 'host-setup-modal' && !event.currentTarget.classList.contains('bc-modal-close')) return;
+      document.getElementById('host-setup-modal').classList.remove('open');
+      document.body.classList.remove('has-modal-open');
+    }
+
+    function showGuestSetup() {
+      closeChatMenu();
+      document.getElementById('guest-setup-modal').classList.add('open');
+      document.body.classList.add('has-modal-open');
+      document.getElementById('guest-code').value = '';
+      document.getElementById('guest-nickname').value = '';
+    }
+
+    function closeGuestSetupModal(event) {
+      if (event && event.target.id !== 'guest-setup-modal' && !event.currentTarget.classList.contains('bc-modal-close')) return;
+      document.getElementById('guest-setup-modal').classList.remove('open');
+      document.body.classList.remove('has-modal-open');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Utility: Relative time formatting                               */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function getRelativeTime(isoString) {
+      if (!isoString) return '-';
+      const date = new Date(isoString);
+      const now = new Date();
+      const diff = now.getTime() - date.getTime();
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(diff / 3600000);
+      const days = Math.floor(diff / 86400000);
+
+      if (minutes < 1) return '방금';
+      if (minutes < 60) return `${minutes}분 전`;
+      if (hours < 24) return `${hours}시간 전`;
+      if (days < 7) return `${days}일 전`;
+
+      // Show date for older sessions
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const dateNum = String(date.getDate()).padStart(2, '0');
+      const hour = String(date.getHours()).padStart(2, '0');
+      const min = String(date.getMinutes()).padStart(2, '0');
+      return `${month}/${dateNum} ${hour}:${min}`;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Chat Card Management (Home List)                                */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function renderChatCards() {
+      const key = 'bubbleChat_activeSessions';
+      let sessions = [];
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          sessions = JSON.parse(stored);
+        }
+      } catch (e) {
+        console.error('Error reading sessions:', e);
+      }
+
+      const container = document.getElementById('deck-grid');
+      container.innerHTML = '';
+
+      // Filter sessions: guests cannot see completed sessions
+      let visibleSessions = sessions;
+      if (STATE.role === 'guest') {
+        visibleSessions = sessions.filter(s => s.status !== 'completed');
+      }
+
+      if (visibleSessions.length === 0) {
+        container.innerHTML = '<div class="deck-empty">참여 중인 대화가 없습니다</div>';
+        return;
+      }
+
+      visibleSessions.forEach(session => {
+        const card = document.createElement('div');
+        card.className = 'deck-card';
+        card.onclick = (e) => {
+          if (!e.target.closest('.deck-card-menu')) {
+            openChatSession(session.code);
+          }
+        };
+
+        // Status indicator
+        let statusText = '진행 중';
+        let statusEmoji = '🟢';
+        let badgeClass = 'badge-active';
+        if (session.status === 'paused') {
+          statusText = '일시 중단';
+          statusEmoji = '⏸️';
+          badgeClass = 'badge-paused';
+        } else if (session.status === 'completed') {
+          statusText = '완전 종료';
+          statusEmoji = '🔒';
+          badgeClass = 'badge-completed';
+        }
+
+        // Normalize participants to string array
+        const participants = session.participants
+          ? session.participants.map(p => typeof p === 'string' ? p : p.nickname).filter(p => p)
+          : [];
+
+        // 카드 헤더 생성
+        const header = document.createElement('div');
+        header.className = 'deck-card-header';
+
+        const title = document.createElement('div');
+        title.className = 'deck-card-title';
+
+        const emoji = document.createElement('span');
+        emoji.className = 'deck-card-emoji';
+        emoji.textContent = '💬';
+
+        const titleH3 = document.createElement('h3');
+        titleH3.textContent = session.roomName || '(이름 없음)';
+
+        title.appendChild(emoji);
+        title.appendChild(titleH3);
+
+        // 역할 뱃지 (헤더에)
+        const roleStr = session.role === 'host' ? '호스트' : '게스트';
+        const roleBadge = document.createElement('div');
+        roleBadge.className = 'deck-card-badge role-badge-header';
+        roleBadge.textContent = roleStr;
+
+        const menuBtn = document.createElement('button');
+        menuBtn.className = 'deck-card-menu';
+        menuBtn.textContent = '⋯';
+        menuBtn.onclick = (e) => {
+          e.stopPropagation();
+          toggleCardMenu(card, session.code);
+        };
+
+        header.appendChild(title);
+        header.appendChild(roleBadge);
+        header.appendChild(menuBtn);
+
+        // 카드 본문 생성
+        const body = document.createElement('div');
+        body.className = 'deck-card-body';
+
+        // 시작일시 추가 (상대 시간 사용)
+        const relativeTime = getRelativeTime(session.startedAt);
+
+        const statStartTime = document.createElement('div');
+        statStartTime.className = 'deck-card-stat';
+        statStartTime.innerHTML = `
+          <span class="label">시작</span>
+          <span class="value">${relativeTime}</span>
+        `;
+
+        // 호스트 닉네임 표시
+        const hostNickname = session.hostNickname || (participants.length > 0 ? participants[0] : '-');
+
+        const statHost = document.createElement('div');
+        statHost.className = 'deck-card-stat';
+        statHost.innerHTML = `
+          <span class="label">호스트</span>
+          <span class="value" title="${hostNickname}">${hostNickname}</span>
+        `;
+
+        const statMessages = document.createElement('div');
+        statMessages.className = 'deck-card-stat';
+        statMessages.innerHTML = `
+          <span class="label">메시지</span>
+          <span class="value">${session.messageCount || 0}개</span>
+        `;
+
+        body.appendChild(statStartTime);
+        body.appendChild(statHost);
+        body.appendChild(statMessages);
+
+        // 카드 푸터 생성
+        const footer = document.createElement('div');
+        footer.className = 'deck-card-footer';
+
+        const codeBadge = document.createElement('span');
+        codeBadge.className = 'code-badge';
+        codeBadge.textContent = `CODE: ${session.code}`;
+
+        // 상태 뱃지 (푸터에)
+        const statusBadge = document.createElement('span');
+        statusBadge.className = `deck-card-badge ${badgeClass} status-badge-footer`;
+        statusBadge.innerHTML = `${statusEmoji} <span>${statusText}</span>`;
+
+        footer.appendChild(codeBadge);
+        footer.appendChild(statusBadge);
+
+        // 카드 조립
+        card.appendChild(header);
+        card.appendChild(body);
+        card.appendChild(footer);
+        container.appendChild(card);
+      });
+    }
+
+    function saveActiveSession() {
+      // Don't save if roomName is empty to avoid creating blank cards
+      if (!STATE.roomName || STATE.roomName.trim() === '') {
+        console.warn('Cannot save session: roomName is empty');
+        return;
+      }
+
+      const key = 'bubbleChat_activeSessions';
+      let sessions = [];
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          sessions = JSON.parse(stored);
+        }
+      } catch (e) {}
+
+      // Remove if already exists
+      sessions = sessions.filter(s => s.code !== STATE.roomCode);
+
+      // Add new
+      // For hostNickname: use STATE.nickname directly for consistency (not derived from participants)
+      const hostNickname = STATE.role === 'host' ? STATE.nickname : (STATE.participants.find(p => p.isHost)?.nickname || STATE.nickname);
+
+      sessions.unshift({
+        code: STATE.roomCode,
+        roomName: STATE.roomName,
+        role: STATE.role,
+        status: 'active',  // Add explicit status field
+        participants: STATE.participants.map(p => p.nickname),
+        hostNickname: hostNickname,
+        messages: STATE.messages,  // Save full message history
+        messageCount: STATE.messages.length,
+        startedAt: new Date(STATE.sessionStart).toISOString(),
+      });
+
+      sessions = sessions.slice(0, 20);
+
+      try {
+        safeLocalStorageSet(key, JSON.stringify(sessions));
+      } catch (e) {
+        console.error('Error saving sessions:', e);
+      }
+
+      renderChatCards();
+    }
+
+    function toggleCardMenu(card, code) {
+      // 기존 드롭다운 닫기
+      document.querySelectorAll('.deck-card-dropdown').forEach(dropdown => {
+        if (!dropdown.closest('.deck-card').isSameNode(card)) {
+          dropdown.remove();
+        }
+      });
+
+      // 현재 카드의 드롭다운 토글
+      let dropdown = card.querySelector('.deck-card-dropdown');
+      if (dropdown) {
+        dropdown.remove();
+        return;
+      }
+
+      // 세션 정보 조회
+      let session = null;
+      const key = 'bubbleChat_activeSessions';
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          const sessions = JSON.parse(stored);
+          session = sessions.find(s => s.code === code);
+        }
+      } catch (e) {}
+
+      // 새 드롭다운 생성
+      dropdown = document.createElement('div');
+      dropdown.className = 'deck-card-dropdown';
+
+      // 완전 종료된 대화 & 호스트인 경우: "대화 저장하기" 표시
+      if (session && session.status === 'completed' && session.role === 'host') {
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = '💾 대화 저장하기';
+        saveBtn.onclick = (e) => {
+          e.stopPropagation();
+          downloadSessionHistory(code);
+        };
+        dropdown.appendChild(saveBtn);
+      } else {
+        // 진행 중/일시중단 대화: "열기" 버튼 표시
+        const viewBtn = document.createElement('button');
+        viewBtn.textContent = '📂 열기';
+        viewBtn.onclick = (e) => {
+          e.stopPropagation();
+          openChatSession(code);
+        };
+        dropdown.appendChild(viewBtn);
+      }
+
+      // 삭제 버튼 (항상 표시)
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'danger';
+      deleteBtn.textContent = '🗑️ 삭제';
+      deleteBtn.onclick = (e) => {
+        e.stopPropagation();
+        deleteSession(code);
+      };
+      dropdown.appendChild(deleteBtn);
+
+      card.appendChild(dropdown);
+    }
+
+    function deleteSession(code) {
+      if (!confirm('이 대화를 삭제하시겠습니까?\n(삭제된 대화는 복구되지 않습니다)')) {
+        return;
+      }
+
+      const key = 'bubbleChat_activeSessions';
+      let sessions = [];
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          sessions = JSON.parse(stored);
+        }
+      } catch (e) {}
+
+      sessions = sessions.filter(s => s.code !== code);
+      try {
+        localStorage.setItem(key, JSON.stringify(sessions));
+      } catch (e) {}
+
+      showToast('대화가 삭제되었습니다');
+      renderChatCards();
+    }
+
+    async function openChatSession(code) {
+      // Load active session from localStorage
+      const key = 'bubbleChat_activeSessions';
+      let sessions = [];
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          sessions = JSON.parse(stored);
+        }
+      } catch (e) {
+        showToast('세션 로드 실패');
+        return;
+      }
+
+      const session = sessions.find(s => s.code === code);
+      if (!session) {
+        showToast('세션을 찾을 수 없습니다');
+        return;
+      }
+
+      // Prevent reopening completed sessions
+      if (session.status === 'completed') {
+        showToast('종료된 대화입니다. 다시 열 수 없습니다');
+        return;
+      }
+
+      // Restore STATE
+      STATE.roomCode = session.code;
+      STATE.roomName = session.roomName;
+      STATE.role = session.role;
+      STATE.sessionStart = new Date(session.startedAt).getTime();
+
+      // Restore nickname based on role
+      if (session.role === 'guest') {
+        // Guest: restore from localStorage
+        try {
+          const guestNicks = JSON.parse(localStorage.getItem('bubbleChat_guestNicknames')) || {};
+          STATE.nickname = guestNicks[code] || '';
+        } catch (e) {}
+      } else if (session.role === 'host') {
+        // Host: restore from hostNickname in session (newly added field)
+        STATE.nickname = session.hostNickname || '';
+      }
+
+      // Initialize participants
+      // Get host nickname - for guests, it's from session.hostNickname; for hosts, from hostNickname field (newly saved)
+      const hostNickname = session.hostNickname || (session.role === 'host' ? session.participants?.[0] : '');
+      STATE.participants = (session.participants || []).map((nickname) => ({
+        nickname: typeof nickname === 'string' ? nickname : nickname.nickname,
+        isHost: (typeof nickname === 'string' ? nickname : nickname.nickname) === hostNickname,
+        joinTime: Date.now(),
+        leaveTime: null
+      })) || [];
+
+      // Safety check: ensure host is in participants list with isHost flag
+      if (session.role === 'host' && hostNickname && !STATE.participants.find(p => p.isHost)) {
+        // Add host if missing
+        STATE.participants.unshift({ nickname: hostNickname, isHost: true, joinTime: Date.now(), leaveTime: null });
+      }
+
+      // Restore messages
+      if (session.messages && Array.isArray(session.messages)) {
+        STATE.messages = session.messages;
+      }
+
+      // Re-initialize peer for host only
+      // Guest: reuse existing connection if already connected
+      try {
+        if (STATE.role === 'host') {
+          // Host: only recreate peer if not already running (paused session rejoin)
+          if (!STATE.peer || !STATE.peer.open) {
+            await initPeer('bubble-' + STATE.roomCode);
+            setupHostPeer();
+          }
+          // else: peer still running from pause, just reuse it
+        } else {
+          // Guest: check if connection is actually open (not just exists)
+          const needsNewConnection = !STATE.hostConn ||
+                                    !STATE.hostConn.open ||
+                                    !STATE.peer ||
+                                    !STATE.peer.open;
+
+          if (needsNewConnection) {
+            console.log('[Guest] Creating new connection (old connection closed or missing)');
+            // Clean up old peer if it exists but is closed
+            if (STATE.peer && !STATE.peer.open) {
+              try {
+                STATE.peer.destroy();
+              } catch (e) {}
+              STATE.peer = null;
+            }
+
+            // Create fresh connection
+            const peerId = 'bubble-guest-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+            await initPeer(peerId);
+            const conn = STATE.peer.connect('bubble-' + STATE.roomCode, { reliable: true });
+            setupGuestConnection(conn);
+          } else {
+            console.log('[Guest] Reusing existing open connection');
+          }
+        }
+      } catch (e) {
+        showToast('연결 복구 실패: ' + e.message);
+        return;
+      }
+
+      // Reset ending flag for resumed sessions
+      STATE.chatEnded = false;
+      STATE.isClosing = false;
+
+      // Open chat view (don't clear messages for rejoining sessions)
+      setupChatUI(false);
+
+      // Display restored messages (for guests, only show messages after their join time)
+      if (STATE.messages && STATE.messages.length > 0) {
+        const myJoinTime = STATE.sessionStart;
+        STATE.messages.forEach(msg => {
+          // Show all messages for host, or messages after join for guest
+          if (STATE.role === 'host' || !msg.timestamp || msg.timestamp >= myJoinTime) {
+            addMessageToUI(msg);
+          }
+        });
+      }
+
+      showView('chat');
+      showToast('세션이 재개되었습니다');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Host Flow                                                       */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function generateCode() {
+      return String(Math.floor(Math.random() * 900000) + 100000);
+    }
+
+    async function createRoomAsHost() {
+      const roomName = document.getElementById('host-room-name').value.trim();
+      const nickname = document.getElementById('host-nickname').value.trim();
+
+      if (!roomName || !nickname) {
+        showToast('모든 항목을 입력해주세요');
+        return;
+      }
+
+      STATE.role = 'host';
+      STATE.roomName = roomName;
+      STATE.nickname = nickname;
+      STATE.roomCode = generateCode();
+      STATE.sessionStart = Date.now();
+      STATE.participants = [{ nickname, isHost: true, joinTime: Date.now(), leaveTime: null }];
+      STATE.messages = [];  // Clear any previous messages
+      STATE.guestConns = {};  // Clear previous guest connections
+      STATE.chatStarted = false;
+      STATE.chatEnded = false;
+      STATE.isClosing = false;
+
+      document.getElementById('host-code-value').textContent = STATE.roomCode;
+      document.getElementById('host-setup-form').style.display = 'none';
+      document.getElementById('host-code-display').style.display = 'block';
+
+      // Initialize PeerJS
+      try {
+        await initPeer('bubble-' + STATE.roomCode);
+        setupHostPeer();
+      } catch (e) {
+        showToast('방 생성 실패: ' + e.message);
+        closeHostSetupModal();
+      }
+    }
+
+    function startHostChat() {
+      closeHostSetupModal();
+      saveActiveSession();
+      setupChatUI(true);  // clearMessages=true for new sessions
+      showView('chat');
+    }
+
+    function initPeer(peerId) {
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Peer initialization timeout'));
+        }, 8000);
+
+        try {
+          const peer = new Peer(peerId, { debug: 0 });
+
+          peer.on('open', () => {
+            clearTimeout(timeout);
+            STATE.peer = peer;
+            resolve(peer);
+          });
+
+          peer.on('error', (err) => {
+            clearTimeout(timeout);
+            console.error('Peer error:', err);
+            // Only show error if not a guest connecting (guest errors are handled in setupGuestConnection)
+            if (STATE.role !== 'guest') {
+              showToast('PeerJS 오류: ' + err.type);
+              if (err.type === 'unavailable-id') {
+                createRoomAsHost();
+              }
+            }
+          });
+        } catch (e) {
+          clearTimeout(timeout);
+          reject(e);
+        }
+      });
+    }
+
+    function setupHostPeer() {
+      STATE.peer.on('connection', handleNewGuestConnection);
+    }
+
+    function handleNewGuestConnection(conn) {
+      conn.on('open', () => {
+        console.log('Guest connection opened:', conn.label);
+      });
+
+      conn.on('data', (raw) => {
+        try {
+          const msg = JSON.parse(raw);
+          console.log('[Host] Received message from guest:', msg);
+          if (msg.type === 'handshake') {
+          const guestNickname = msg.nickname;
+          console.log('[Host] Processing guest handshake, nickname:', guestNickname);
+          let hostNickname = STATE.participants.find(p => p.isHost)?.nickname;
+
+          // Check if guest nickname matches host nickname
+          if (guestNickname === hostNickname) {
+            conn.send(JSON.stringify({ type: 'error', content: 'nickname_taken' }));
+            conn.close();
+            return;
+          }
+
+          // Check for duplicate nickname among other guests - allow reconnection if old conn is closed
+          if (STATE.guestConns[guestNickname]) {
+            const oldConn = STATE.guestConns[guestNickname];
+            if (oldConn.open) {
+              // Old connection still active, reject
+              conn.send(JSON.stringify({ type: 'error', content: 'nickname_taken' }));
+              conn.close();
+              return;
+            } else {
+              // Old connection closed, clean up and allow reconnection
+              delete STATE.guestConns[guestNickname];
+            }
+          }
+
+          STATE.guestConns[guestNickname] = conn;
+
+          // Update or add participant
+          const existingParticipant = STATE.participants.find(p => p.nickname === guestNickname);
+          if (existingParticipant) {
+            // Reconnection: clear leaveTime
+            existingParticipant.leaveTime = null;
+          } else {
+            // New participant
+            STATE.participants.push({ nickname: guestNickname, isHost: false, joinTime: Date.now(), leaveTime: null });
+          }
+
+          // Send acknowledgment with room name
+          hostNickname = STATE.participants.find(p => p.isHost)?.nickname;
+          conn.send(JSON.stringify({
+            type: 'handshake',
+            status: 'accepted',
+            roomName: STATE.roomName,
+            hostNickname: hostNickname,
+            participants: STATE.participants.map(p => p.nickname)
+          }));
+
+          updateParticipantList();
+          addSystemMessage(guestNickname + '님이 입장했습니다');
+
+          // Send start signal to the guest so chat view opens
+          STATE.chatStarted = true;
+          console.log('[Host] Sending start signal to guest:', guestNickname);
+          conn.send(JSON.stringify({ type: 'start' }));
+        } else {
+          handleIncomingMessage(msg, conn);
+        }
+        } catch (e) {
+          console.error('[Host] Error processing message from guest:', e, 'raw data:', raw);
+        }
+      });
+
+      conn.on('close', () => {
+        for (const [nickname, c] of Object.entries(STATE.guestConns)) {
+          if (c === conn) {
+            delete STATE.guestConns[nickname];
+            const participant = STATE.participants.find(p => p.nickname === nickname);
+            if (participant) {
+              participant.leaveTime = Date.now();
+            }
+            updateParticipantList();
+            addSystemMessage(nickname + '님이 나갔습니다');
+            break;
+          }
+        }
+      });
+
+      conn.on('error', (err) => {
+        console.error('Connection error:', err);
+      });
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Guest Flow                                                      */
+    /* ═══════════════════════════════════════════════════════════════ */
+    async function joinChatAsGuest() {
+      const code = document.getElementById('guest-code').value.trim();
+      const nickname = document.getElementById('guest-nickname').value.trim();
+
+      if (!code || !nickname || code.length !== 6 || !/^\d{6}$/.test(code)) {
+        showToast('코드는 6자리 숫자여야 합니다');
+        return;
+      }
+
+      STATE.role = 'guest';
+      STATE.roomCode = code;
+      STATE.roomName = '';  // Will be set by host handshake
+      STATE.nickname = nickname;
+      STATE.sessionStart = Date.now();
+      STATE.participants = [];  // Will be set by host handshake
+      STATE.messages = [];  // Clear messages from previous session
+      STATE.chatStarted = false;
+      STATE.chatEnded = false;
+
+      // Save guest nickname for session restoration
+      try {
+        const guestNicks = JSON.parse(localStorage.getItem('bubbleChat_guestNicknames')) || {};
+        guestNicks[code] = nickname;
+        localStorage.setItem('bubbleChat_guestNicknames', JSON.stringify(guestNicks));
+      } catch (e) {}
+
+      closeGuestSetupModal();
+      showToast('연결 중...');
+
+      try {
+        const peerId = 'bubble-guest-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+        await initPeer(peerId);
+
+        const conn = STATE.peer.connect('bubble-' + code, { reliable: true });
+
+        // Set timeout for connection attempt (3 seconds)
+        const connectionTimeout = setTimeout(() => {
+          if (!conn.open) {
+            console.warn('[Guest] Connection timeout - host not responding');
+            showToast('운영중이 아닌 대화 코드입니다.');
+            if (STATE.hostConn) {
+              STATE.hostConn.close();
+              STATE.hostConn = null;
+            }
+            renderChatCards();
+            showView('home');
+          }
+        }, 3000);
+
+        // Store timeout ID for cleanup
+        conn._connectionTimeout = connectionTimeout;
+
+        setupGuestConnection(conn);
+      } catch (e) {
+        console.error('[Guest] Connection error:', e);
+        // Show user-friendly error message
+        if (e.message && e.message.includes('peer-unavailable')) {
+          showToast('운영중이 아닌 대화 코드입니다.');
+        } else if (e.message && e.message.includes('ERR_SOCKET_CLOSED')) {
+          showToast('호스트가 연결을 종료했습니다.');
+        } else {
+          showToast('방 연결에 실패했습니다. 코드를 다시 확인해주세요.');
+        }
+      }
+    }
+
+    function setupGuestConnection(conn) {
+      STATE.hostConn = conn;
+
+      conn.on('open', () => {
+        // Clear connection timeout since connection succeeded
+        if (conn._connectionTimeout) {
+          clearTimeout(conn._connectionTimeout);
+          conn._connectionTimeout = null;
+        }
+        console.log('[Guest] Connection opened, sending handshake with nickname:', STATE.nickname);
+        STATE.hostConn.send(JSON.stringify({ type: 'handshake', nickname: STATE.nickname }));
+        showToast('연결되었습니다');
+      });
+
+      conn.on('data', (raw) => {
+        try {
+          const msg = JSON.parse(raw);
+          console.log('[Guest] Received message:', msg);
+          if (msg.type === 'error') {
+          // Handle error from host
+          const errorMsg = msg.content;
+          if (errorMsg === 'nickname_taken') {
+            showToast('이름은 중복될 수 없습니다');
+            STATE.hostConn.close();
+            // Remove from active sessions
+            try {
+              const key = 'bubbleChat_activeSessions';
+              let sessions = JSON.parse(localStorage.getItem(key) || '[]');
+              sessions = sessions.filter(s => s.code !== STATE.roomCode);
+              localStorage.setItem(key, JSON.stringify(sessions));
+            } catch (e) {}
+            renderChatCards();
+            showView('home');
+            return;
+          } else {
+            showToast('오류: ' + errorMsg);
+            STATE.hostConn.close();
+          }
+        } else if (msg.type === 'handshake' && msg.status === 'accepted') {
+          // Receive room info and participant list from host
+          STATE.roomName = msg.roomName;
+          if (msg.participants) {
+            // Update participant list with those from host
+            const hostNickname = msg.hostNickname;
+
+            // Check for duplicate nickname with host
+            if (STATE.nickname === hostNickname) {
+              showToast('호스트와 동일한 닉네임은 사용할 수 없습니다');
+              STATE.hostConn.close();
+              // Remove from active sessions
+              try {
+                const key = 'bubbleChat_activeSessions';
+                let sessions = JSON.parse(localStorage.getItem(key) || '[]');
+                sessions = sessions.filter(s => s.code !== STATE.roomCode);
+                localStorage.setItem(key, JSON.stringify(sessions));
+              } catch (e) {}
+              renderChatCards();
+              showView('home');
+              return;
+            }
+
+            STATE.participants = msg.participants.map(nickname => ({
+              nickname,
+              isHost: nickname === hostNickname,
+              joinTime: Date.now(),
+              leaveTime: null
+            }));
+          }
+        } else if (msg.type === 'start') {
+          console.log('[Guest] Start signal received, opening chat view');
+          saveActiveSession();
+          setupChatUI();
+          showView('chat');
+          // Remove code parameter from URL to prevent reuse on refresh
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (msg.type === 'end') {
+          // Guest receives end status from host
+          const status = msg.status || 'complete';  // 'pause' or 'complete'
+          console.log('[Guest] Received end message - msg.status:', msg.status, 'final status:', status);
+
+          // Save guest session with status
+          if (status === 'pause') {
+            // Don't save if roomName is empty to avoid creating blank cards
+            const roomNameToSave = msg.roomName || STATE.roomName;
+            if (roomNameToSave && roomNameToSave.trim() !== '') {
+              const key = 'bubbleChat_activeSessions';
+              let sessions = [];
+              try {
+                const stored = localStorage.getItem(key);
+                if (stored) sessions = JSON.parse(stored);
+              } catch (e) {}
+
+              sessions = sessions.filter(s => s.code !== STATE.roomCode);
+              const sessionToSave = {
+                code: STATE.roomCode,
+                roomName: roomNameToSave,
+                role: STATE.role,
+                status: 'paused',
+                hostNickname: msg.hostNickname || STATE.nickname,
+                participants: STATE.participants.map(p => p.nickname),
+                messageCount: STATE.messages.length,
+                messages: STATE.messages,
+                startedAt: new Date(STATE.sessionStart).toISOString(),
+                pausedAt: new Date().toISOString(),
+              };
+              console.log('[Guest] Saving paused session:', sessionToSave);
+              sessions.unshift(sessionToSave);
+
+              sessions = sessions.slice(0, 20);
+
+              try {
+                safeLocalStorageSet(key, JSON.stringify(sessions));
+              } catch (e) {}
+            }
+
+            showToast('호스트가 대화를 일시 중단했습니다');
+
+            // Set flag to prevent close handler from overwriting the paused status
+            STATE.isClosing = true;
+
+            // Close connection and reset state
+            if (STATE.hostConn) {
+              STATE.hostConn.close();
+            }
+            if (STATE.peer) {
+              STATE.peer.destroy();
+            }
+
+            // Reset state variables
+            STATE.role = null;
+            STATE.roomCode = '';
+            STATE.roomName = '';
+            STATE.nickname = '';
+            STATE.peer = null;
+            STATE.hostConn = null;
+            STATE.guestConns = {};
+            STATE.participants = [];
+            STATE.messages = [];
+            STATE.dmTarget = '';
+            STATE.chatStarted = false;
+
+            setTimeout(() => {
+              renderChatCards();  // Update home screen with new status
+              showView('home');
+            }, 1000);
+          } else {
+            // Remove from active sessions when complete
+            try {
+              const key = 'bubbleChat_activeSessions';
+              let sessions = [];
+              const stored = localStorage.getItem(key);
+              if (stored) sessions = JSON.parse(stored);
+              sessions = sessions.filter(s => s.code !== STATE.roomCode);
+              safeLocalStorageSet(key, JSON.stringify(sessions));
+            } catch (e) {}
+
+            showToast('대화가 완전 종료되었습니다');
+
+            // Set flag to prevent close handler from overwriting the session removal
+            STATE.isClosing = true;
+
+            // Close connection and reset state
+            if (STATE.hostConn) {
+              STATE.hostConn.close();
+            }
+            if (STATE.peer) {
+              STATE.peer.destroy();
+            }
+
+            // Reset state variables
+            STATE.role = null;
+            STATE.roomCode = '';
+            STATE.roomName = '';
+            STATE.nickname = '';
+            STATE.peer = null;
+            STATE.hostConn = null;
+            STATE.guestConns = {};
+            STATE.participants = [];
+            STATE.messages = [];
+            STATE.dmTarget = '';
+            STATE.chatStarted = false;
+
+            setTimeout(() => {
+              renderChatCards();
+              showView('home');
+            }, 1000);
+          }
+        } else {
+          handleIncomingMessage(msg, null);
+        }
+        } catch (e) {
+          console.error('[Guest] Error processing message:', e, 'raw data:', raw);
+        }
+      });
+
+      conn.on('error', (err) => {
+        console.error('[Guest] Connection error:', err);
+        showToast('운영중이 아닌 대화 코드입니다.');
+
+        // Clean up
+        if (STATE.hostConn) {
+          STATE.hostConn.close();
+          STATE.hostConn = null;
+        }
+
+        // Return to home
+        try {
+          const key = 'bubbleChat_activeSessions';
+          let sessions = JSON.parse(localStorage.getItem(key) || '[]');
+          sessions = sessions.filter(s => s.code !== STATE.roomCode);
+          localStorage.setItem(key, JSON.stringify(sessions));
+        } catch (e) {}
+
+        renderChatCards();
+        showView('home');
+      });
+
+      conn.on('close', () => {
+        // Don't show disconnect toast if this was a deliberate close from 'end' message
+        if (!STATE.isClosing) {
+          showToast('연결이 끊어졌습니다');
+        }
+
+        // Clear connection reference
+        if (STATE.role === 'guest') {
+          STATE.hostConn = null;
+          console.log('[Guest] Connection closed - cleared hostConn');
+        }
+
+        // Guest temporarily disconnected - save session as active (not paused)
+        // Skip if already closing (to prevent duplicate saves)
+        if (STATE.role === 'guest' && !STATE.isClosing) {
+          const key = 'bubbleChat_activeSessions';
+          let sessions = [];
+          try {
+            const stored = localStorage.getItem(key);
+            if (stored) sessions = JSON.parse(stored);
+          } catch (e) {}
+
+          // Get existing room name if STATE.roomName is empty
+          let roomName = STATE.roomName;
+          if (!roomName) {
+            const existingSession = sessions.find(s => s.code === STATE.roomCode);
+            roomName = existingSession?.roomName;
+          }
+
+          // Don't save if roomName is empty to avoid creating blank cards
+          if (roomName && roomName.trim() !== '') {
+            // Remove if already exists
+            sessions = sessions.filter(s => s.code !== STATE.roomCode);
+
+            // Add as active (without paused status) so guest can rejoin
+            // Include hostNickname for consistency
+            const hostNick = STATE.participants.find(p => p.isHost)?.nickname || '';
+            sessions.unshift({
+              code: STATE.roomCode,
+              roomName: roomName,
+              role: STATE.role,
+              status: 'active',  // Keep as active, not paused
+              hostNickname: hostNick,
+              participants: STATE.participants.map(p => p.nickname),
+              messageCount: STATE.messages.length,
+              messages: STATE.messages,
+              startedAt: new Date(STATE.sessionStart).toISOString(),
+            });
+
+            sessions = sessions.slice(0, 20);
+
+            try {
+              safeLocalStorageSet(key, JSON.stringify(sessions));
+            } catch (e) {}
+          }
+
+          // Close peer and reset state
+          if (STATE.hostConn) {
+            STATE.hostConn.close();
+          }
+          if (STATE.peer) {
+            STATE.peer.destroy();
+          }
+
+          // Reset state variables
+          STATE.role = null;
+          STATE.roomCode = '';
+          STATE.roomName = '';
+          STATE.nickname = '';
+          STATE.peer = null;
+          STATE.hostConn = null;
+          STATE.guestConns = {};
+          STATE.participants = [];
+          STATE.messages = [];
+          STATE.dmTarget = '';
+          STATE.chatStarted = false;
+
+          renderChatCards();
+          showView('home');
+        } else if (!STATE.isClosing) {
+          // Only call endChatSession if not a deliberate close
+          endChatSession();
+        }
+      });
+
+      conn.on('error', (err) => {
+        console.error('Connection error:', err);
+
+        // Handle peer-unavailable error (host closed the room)
+        if (STATE.role === 'guest' && err.type === 'peer-unavailable') {
+          showToast('호스트가 종료한 방입니다');
+
+          // Remove from active sessions
+          try {
+            const key = 'bubbleChat_activeSessions';
+            let sessions = JSON.parse(localStorage.getItem(key) || '[]');
+            sessions = sessions.filter(s => s.code !== STATE.roomCode);
+            localStorage.setItem(key, JSON.stringify(sessions));
+          } catch (e) {}
+
+          // Reset state and return to home
+          STATE.role = null;
+          STATE.roomCode = '';
+          STATE.roomName = '';
+          STATE.nickname = '';
+          STATE.peer = null;
+          STATE.hostConn = null;
+          STATE.participants = [];
+          STATE.messages = [];
+          STATE.chatStarted = false;
+
+          renderChatCards();
+          showView('home');
+        } else {
+          showToast('연결 오류');
+        }
+      });
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Chat UI Setup                                                   */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function setupChatUI(clearMessages = false) {
+      document.getElementById('chat-header-code').textContent = STATE.roomCode;
+
+      // Reset input
+      document.getElementById('bc-msg-input').value = '';
+
+      // Only clear messages if explicitly requested (new session)
+      // For rejoining, let openChatSession handle message rendering
+      if (clearMessages) {
+        document.getElementById('bc-messages-wrap').innerHTML = '';
+      }
+
+      // updateParticipantList() 호출 (DM select 리셋 포함)
+      updateParticipantList();
+
+      // For host, broadcast start signal
+      if (STATE.role === 'host') {
+        STATE.chatStarted = true;
+        const startMsg = { type: 'start' };
+        for (const conn of Object.values(STATE.guestConns)) {
+          if (conn.open) {
+            conn.send(JSON.stringify(startMsg));
+          }
+        }
+      }
+
+      // Show save button for host
+      const saveBtn = document.getElementById('bc-save-chat-btn');
+      if (STATE.role === 'host' && saveBtn) {
+        saveBtn.style.display = 'block';
+      } else if (saveBtn) {
+        saveBtn.style.display = 'none';
+      }
+
+      // Update end chat button text based on role
+      // Update sidebar action buttons based on role
+      const guestLeaveBtn = document.getElementById('bc-guest-leave-btn');
+      const hostActionsDiv = document.getElementById('bc-host-actions');
+
+      if (STATE.role === 'guest') {
+        if (guestLeaveBtn) guestLeaveBtn.style.display = '';
+        if (hostActionsDiv) hostActionsDiv.classList.remove('show');
+      } else if (STATE.role === 'host') {
+        if (guestLeaveBtn) guestLeaveBtn.style.display = 'none';
+        if (hostActionsDiv) hostActionsDiv.classList.add('show');
+      }
+
+      // Update session info in header
+      updateSessionInfo();
+
+      // Initialize mobile sidebar state
+      initializeMobileSidebar();
+    }
+
+    function updateParticipantList() {
+      const list = document.getElementById('bc-participant-list');
+      const dmSelect = document.getElementById('bc-dm-select');
+
+      list.innerHTML = '';
+      dmSelect.innerHTML = '<option value="">📢 전체</option>';  // Broadcast emoji
+
+      STATE.participants.forEach(p => {
+        if (!p) return;
+
+        const li = document.createElement('li');
+        li.className = 'bc-participant';
+
+        // Add left status if participant has left
+        if (p.leaveTime) {
+          li.style.opacity = '0.6';
+        }
+
+        const name = document.createElement('div');
+        name.className = 'bc-participant-name';
+        name.textContent = p.nickname + (p.isHost ? ' (호스트)' : '');
+
+        const time = document.createElement('div');
+        time.className = 'bc-participant-time';
+        const joined = new Date(p.joinTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+        let timeText = '입장: ' + joined;
+
+        if (p.leaveTime) {
+          const left = new Date(p.leaveTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+          timeText += ' / 퇴장: ' + left;
+        }
+        time.textContent = timeText;
+
+        li.appendChild(name);
+        li.appendChild(time);
+        list.appendChild(li);
+
+        // Add to DM select (only active participants, excluding self)
+        // STATE.nickname must be set and match to filter out self
+        if (!p.leaveTime && STATE.nickname && p.nickname !== STATE.nickname) {
+          const opt = document.createElement('option');
+          opt.value = p.nickname;
+
+          // Guests can only DM host, format: ➡️ Host
+          // Hosts can DM guests, format: ➡️ nickname
+          if (STATE.role === 'guest' && p.isHost) {
+            opt.textContent = '➡️ Host';
+            dmSelect.appendChild(opt);
+          } else if (STATE.role === 'host' && !p.isHost) {
+            opt.textContent = '➡️ ' + p.nickname;
+            dmSelect.appendChild(opt);
+          }
+        }
+      });
+
+      // Update header session info
+      updateSessionInfo();
+    }
+
+    function getRelativeTime(timestamp) {
+      if (!timestamp) return '--:--';
+
+      // Handle both ISO strings and millisecond timestamps
+      let time;
+      if (typeof timestamp === 'string') {
+        // ISO string
+        time = new Date(timestamp).getTime();
+      } else {
+        // Millisecond timestamp
+        time = timestamp;
+      }
+
+      const now = Date.now();
+      const diff = now - time;
+      const seconds = Math.floor(diff / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+
+      if (seconds < 60) return '방금';
+      if (minutes < 60) return minutes + '분 전';
+      if (hours < 24) return hours + '시간 전';
+      if (days < 30) return days + '일 전';
+      return '한 달 이상 전';
+    }
+
+    function updateSessionInfo() {
+      // Update room title in header
+      const titleEl = document.getElementById('bc-header-room-title');
+      if (titleEl && STATE.roomName) {
+        titleEl.textContent = STATE.roomName;
+        titleEl.title = STATE.roomName;
+      }
+
+      // Update start time in sidebar with relative time
+      const startTimeEl = document.getElementById('bc-sidebar-start-time');
+      if (startTimeEl && STATE.sessionStart) {
+        const relativeTime = getRelativeTime(STATE.sessionStart);
+        startTimeEl.textContent = relativeTime;
+      }
+
+      // Update participant count in sidebar badge
+      const countBadgeEl = document.getElementById('bc-participant-count-badge');
+      if (countBadgeEl && STATE.participants) {
+        const activeCount = STATE.participants.filter(p => !p.leaveTime).length;
+        countBadgeEl.textContent = '(' + activeCount + '명)';
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Messaging                                                       */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function sendMessage() {
+      const textarea = document.getElementById('bc-msg-input');
+      const content = textarea.value.trim();
+
+      if (!content) return;
+
+      const dmTarget = document.getElementById('bc-dm-select').value;
+      const msgObj = {
+        type: dmTarget ? 'dm' : 'chat',
+        from: STATE.nickname,
+        to: dmTarget || null,
+        content: content,
+        timestamp: Date.now()
+      };
+
+      addMessageToUI(msgObj);
+      STATE.messages.push(msgObj);
+      saveActiveSession();  // Update message count on card
+
+      if (STATE.role === 'host') {
+        // Host sends to specific guest or broadcasts to all
+        if (dmTarget) {
+          const targetConn = STATE.guestConns[dmTarget];
+          if (targetConn && targetConn.open) {
+            targetConn.send(JSON.stringify(msgObj));
+          }
+        } else {
+          broadcastMessage(msgObj);
+        }
+      } else {
+        // Guest sends to host (dmTarget should be the host's nickname or empty)
+        // If dmTarget is host nickname or empty, send it
+        if (STATE.hostConn && STATE.hostConn.open) {
+          STATE.hostConn.send(JSON.stringify(msgObj));
+        }
+      }
+
+      textarea.value = '';
+    }
+
+    function broadcastMessage(msgObj) {
+      for (const conn of Object.values(STATE.guestConns)) {
+        if (conn.open) {
+          conn.send(JSON.stringify(msgObj));
+        }
+      }
+    }
+
+    function handleIncomingMessage(msgObj, fromConn) {
+      // Ignore messages if host has ended the chat completely
+      if (STATE.role === 'host' && STATE.chatEnded) {
+        return;
+      }
+
+      if (msgObj.type === 'chat' || msgObj.type === 'dm') {
+        // Guest: relay chat from other guest to all
+        if (STATE.role === 'host' && msgObj.type === 'chat' && fromConn) {
+          broadcastMessage(msgObj);
+        }
+
+        // Check if DM is for us
+        if (msgObj.type === 'dm' && msgObj.to !== STATE.nickname) {
+          return;
+        }
+
+        // Prevent duplicate messages (for guest's own messages that are relayed back)
+        const isDuplicate = STATE.messages.some(m =>
+          m.from === msgObj.from &&
+          m.content === msgObj.content &&
+          m.timestamp === msgObj.timestamp
+        );
+
+        if (!isDuplicate) {
+          addMessageToUI(msgObj);
+          STATE.messages.push(msgObj);
+          saveActiveSession();  // Update message count on card
+        }
+      }
+    }
+
+    /* Link handling in messages */
+    function renderMessageContent(content, bubbleElement) {
+      const urlRegex = /(https?:\/\/[^\s)]+)/g;
+      // Split by newlines first to preserve line breaks
+      const lines = content.split('\n');
+
+      bubbleElement.innerHTML = ''; // Clear
+      lines.forEach((line, lineIndex) => {
+        const parts = line.split(urlRegex);
+
+        parts.forEach((part, i) => {
+          if (part && part.match(urlRegex)) {
+            // This is a URL
+            const a = document.createElement('a');
+            a.href = part;
+            a.textContent = part;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.style.cssText = 'color: var(--primary); text-decoration: underline; word-break: break-all;';
+            bubbleElement.appendChild(a);
+
+            // Try to load preview from URL (async)
+            loadLinkPreview(part, bubbleElement);
+          } else if (part) {
+            // Regular text
+            bubbleElement.appendChild(document.createTextNode(part));
+          }
+        });
+
+        // Add line break if not the last line
+        if (lineIndex < lines.length - 1) {
+          bubbleElement.appendChild(document.createElement('br'));
+        }
+      });
+    }
+
+    function loadLinkPreview(url, bubbleElement) {
+      // Use microlink.io API to get link preview
+      // This is optional and non-blocking
+      fetch('https://api.microlink.io?url=' + encodeURIComponent(url))
+        .then(r => r.json())
+        .then(data => {
+          if (!data.data) return;
+
+          const { title, description, image } = data.data;
+          if (!title && !image) return;
+
+          // Create preview box
+          const preview = document.createElement('div');
+          preview.className = 'bc-msg-link-preview';
+          preview.style.cssText = 'margin-top: 8px; padding: 10px; border-left: 3px solid var(--primary); background: var(--card-bg); border-radius: 4px; font-size: 13px; max-width: 280px;';
+
+          if (image && image.url) {
+            const img = document.createElement('img');
+            img.src = image.url;
+            img.style.cssText = 'width: 100%; height: auto; border-radius: 4px; margin-bottom: 8px; max-height: 200px; object-fit: cover;';
+            preview.appendChild(img);
+          }
+
+          if (title) {
+            const titleEl = document.createElement('div');
+            titleEl.style.cssText = 'font-weight: 600; margin-bottom: 4px; color: var(--fg);';
+            titleEl.textContent = title;
+            preview.appendChild(titleEl);
+          }
+
+          if (description) {
+            const descEl = document.createElement('div');
+            descEl.style.cssText = 'color: var(--fg-muted); line-height: 1.4;';
+            descEl.textContent = description.substring(0, 150) + (description.length > 150 ? '...' : '');
+            preview.appendChild(descEl);
+          }
+
+          bubbleElement.appendChild(preview);
+        })
+        .catch(() => {
+          // Silently fail - preview is optional
+        });
+    }
+
+    function addMessageToUI(msgObj) {
+      const wrap = document.getElementById('bc-messages-wrap');
+      if (!wrap) return;
+
+      // Handle system messages separately
+      if (msgObj.type === 'system') {
+        const msg = document.createElement('div');
+        msg.className = 'bc-msg bc-msg--system';
+        msg.style.cssText = 'text-align: center; padding: 12px 0; display: flex; align-items: center; justify-content: center;';
+
+        const text = document.createElement('span');
+        text.textContent = msgObj.content;
+        text.style.cssText = 'font-size: 12px; color: var(--fg-muted); font-style: italic; padding: 0 16px;';
+
+        msg.appendChild(text);
+        wrap.appendChild(msg);
+        wrap.scrollTop = wrap.scrollHeight;
+        return;
+      }
+
+      const msg = document.createElement('div');
+      msg.className = 'bc-msg';
+
+      if (msgObj.from === STATE.nickname) {
+        msg.classList.add('bc-msg--self');
+      } else {
+        msg.classList.add('bc-msg--other');
+      }
+
+      // Add DM indicator
+      if (msgObj.type === 'dm') {
+        msg.classList.add('bc-msg--dm');
+        if (msgObj.from === STATE.nickname) {
+          msg.classList.add('bc-msg--dm--self');
+        } else {
+          msg.classList.add('bc-msg--dm--other');
+        }
+      }
+
+      const meta = document.createElement('div');
+      meta.className = 'bc-msg-meta';
+      const time = new Date(msgObj.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+      meta.textContent = msgObj.from + ' ' + time;
+
+      // Add DM label if it's a direct message
+      if (msgObj.type === 'dm') {
+        const dmLabel = document.createElement('div');
+        dmLabel.className = 'bc-msg-dm-indicator';
+        const dmTarget = msgObj.to || 'Unknown';
+        dmLabel.textContent = '➡️ ' + dmTarget;
+        msg.appendChild(dmLabel);
+      }
+
+      msg.appendChild(meta);
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bc-msg-bubble';
+      renderMessageContent(msgObj.content, bubble);
+
+      msg.appendChild(bubble);
+      wrap.appendChild(msg);
+
+      // Auto scroll to bottom
+      wrap.scrollTop = wrap.scrollHeight;
+    }
+
+    function addSystemMessage(content) {
+      const msgObj = {
+        type: 'system',
+        from: 'system',
+        to: null,
+        content: content,
+        timestamp: Date.now()
+      };
+
+      const wrap = document.getElementById('bc-messages-wrap');
+      if (!wrap) return;
+
+      const msg = document.createElement('div');
+      msg.className = 'bc-msg bc-msg--system';
+      msg.style.cssText = 'text-align: center; padding: 12px 0; display: flex; align-items: center; justify-content: center;';
+
+      const text = document.createElement('span');
+      text.textContent = content;
+      text.style.cssText = 'font-size: 12px; color: var(--fg-muted); font-style: italic; padding: 0 16px;';
+
+      msg.appendChild(text);
+      wrap.appendChild(msg);
+
+      wrap.scrollTop = wrap.scrollHeight;
+
+      STATE.messages.push(msgObj);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Session End                                                     */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function endChatSession() {
+      // Host: show choice modal
+      if (STATE.role === 'host') {
+        showEndChatModal();
+      } else {
+        // Guest: pause (don't remove from active sessions)
+        _endChatSession('pause');
+      }
+    }
+
+    function _endChatSession(choice = 'complete') {
+      // Set flag to prevent duplicate saves in close handler
+      STATE.isClosing = true;
+
+      // Host: notify all guests with status
+      if (STATE.role === 'host') {
+        const endMsg = {
+          type: 'end',
+          status: choice,  // 'pause' or 'complete'
+          roomName: STATE.roomName,
+          hostNickname: STATE.nickname
+        };
+        console.log('[Host] Sending end message to guests - choice:', choice, 'status in message:', endMsg.status, 'Guest connections:', Object.keys(STATE.guestConns).length);
+        let sentCount = 0;
+        for (const conn of Object.values(STATE.guestConns)) {
+          if (conn.open) {
+            conn.send(JSON.stringify(endMsg));
+            sentCount++;
+            console.log('[Host] Sent end message to guest, total sent:', sentCount);
+          }
+        }
+        console.log('[Host] End message sent to', sentCount, 'guests');
+      }
+
+      // For pause: close connections but keep peer alive for guest rejoin
+      // For complete: close connections and destroy peer
+      setTimeout(() => {
+        if (STATE.hostConn) {
+          STATE.hostConn.close();
+          // For guest: also set to null so we can reconnect with new peer
+          if (STATE.role === 'guest') {
+            STATE.hostConn = null;
+            console.log('[Guest] Cleared hostConn for potential rejoin');
+          }
+        }
+        for (const conn of Object.values(STATE.guestConns)) {
+          if (conn.open) {
+            conn.close();
+          }
+        }
+
+        // Only destroy peer on complete, not on pause
+        if (choice === 'complete' && STATE.peer) {
+          STATE.peer.destroy();
+          STATE.peer = null;
+        }
+        // For guest pause: also destroy peer so we can create fresh connection on rejoin
+        // This ensures clean reconnection with proper event listeners
+        if (choice === 'pause' && STATE.role === 'guest' && STATE.peer) {
+          try {
+            STATE.peer.destroy();
+            STATE.peer = null;
+            console.log('[Guest] Destroyed peer for clean rejoin');
+          } catch (e) {
+            console.error('[Guest] Error destroying peer:', e);
+          }
+        }
+      }, 500);  // Increased from 100ms to ensure messages are sent before closing connections
+
+      // Only prevent messages on complete, not on pause
+      // During pause, conversation can continue
+      if (choice === 'complete') {
+        STATE.chatEnded = true;
+        console.log('[Session] Chat ended (complete) - no more messages allowed');
+      } else {
+        STATE.chatEnded = false;
+        console.log('[Session] Chat paused - conversation can continue');
+      }
+
+      // Save session based on choice
+      if (choice === 'pause') {
+        // For HOST: save as paused
+        // For GUEST: don't save here, let conn.on('close') handle it as 'active'
+        if (STATE.role === 'host') {
+          // Save as active (paused) - guest can rejoin
+          const key = 'bubbleChat_activeSessions';
+          let sessions = [];
+          try {
+            const stored = localStorage.getItem(key);
+            if (stored) sessions = JSON.parse(stored);
+          } catch (e) {}
+
+          // Remove if already exists
+          sessions = sessions.filter(s => s.code !== STATE.roomCode);
+
+          // Add as paused
+          // Use STATE.nickname directly for host consistency
+          const hostNick = STATE.role === 'host' ? STATE.nickname : (STATE.participants.find(p => p.isHost)?.nickname || '');
+          sessions.unshift({
+            code: STATE.roomCode,
+            roomName: STATE.roomName,
+            role: STATE.role,
+            status: 'paused',
+            hostNickname: hostNick,
+            participants: STATE.participants.map(p => p.nickname),
+            messageCount: STATE.messages.length,
+            messages: STATE.messages,
+            startedAt: new Date(STATE.sessionStart).toISOString(),
+            pausedAt: new Date().toISOString(),
+          });
+
+          sessions = sessions.slice(0, 20);
+
+          try {
+            localStorage.setItem(key, JSON.stringify(sessions));
+          } catch (e) {
+            console.error('Error saving sessions:', e);
+          }
+
+          showToast('대화가 일시 중단되었습니다');
+
+          // Render updated cards with pause status
+          renderChatCards();
+        } else {
+          // For GUEST: just show message, actual save happens in conn.on('close')
+          showToast('대화창을 다시 열면 대화를 계속할 수 있습니다\n(대화창을 닫는 동안 메시지는 수신되지 않습니다)');
+        }
+      } else {
+        // Save as completed - keep in activeSessions for host to see, but guests cannot rejoin
+        // Host keeps card visible with 'completed' status
+
+        const key = 'bubbleChat_activeSessions';
+        let sessions = [];
+        try {
+          const stored = localStorage.getItem(key);
+          if (stored) sessions = JSON.parse(stored);
+        } catch (e) {}
+
+        // Remove if already exists
+        sessions = sessions.filter(s => s.code !== STATE.roomCode);
+
+        // Add as completed
+        // Use STATE.nickname directly for host consistency
+        const hostNick = STATE.role === 'host' ? STATE.nickname : (STATE.participants.find(p => p.isHost)?.nickname || '');
+        sessions.unshift({
+          code: STATE.roomCode,
+          roomName: STATE.roomName,
+          role: STATE.role,
+          status: 'completed',
+          hostNickname: hostNick,
+          participants: STATE.participants.map(p => p.nickname),
+          messageCount: STATE.messages.length,
+          messages: STATE.messages,
+          startedAt: new Date(STATE.sessionStart).toISOString(),
+          endedAt: new Date().toISOString(),
+        });
+
+        sessions = sessions.slice(0, 20);
+
+        try {
+          localStorage.setItem(key, JSON.stringify(sessions));
+        } catch (e) {
+          console.error('Error saving completed sessions:', e);
+        }
+
+        showToast('대화가 종료되었습니다');
+
+        // Render updated cards with completed status
+        renderChatCards();
+      }
+
+      // Only reset STATE on complete, not on pause
+      // (On pause, host peer stays alive for guest rejoin)
+      if (choice === 'complete') {
+        STATE.role = null;
+        STATE.roomCode = '';
+        STATE.roomName = '';
+        STATE.nickname = '';
+        STATE.peer = null;
+        STATE.hostConn = null;
+        STATE.guestConns = {};
+        STATE.participants = [];
+        STATE.messages = [];
+        STATE.dmTarget = '';
+        STATE.chatStarted = false;
+      }
+
+      // Return to home
+      renderChatCards();
+      showView('home');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Download Completed Session History                             */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function downloadSessionHistory(code) {
+      const key = 'bubbleChat_activeSessions';
+      let session = null;
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          const sessions = JSON.parse(stored);
+          session = sessions.find(s => s.code === code);
+        }
+      } catch (e) {
+        showToast('세션을 찾을 수 없습니다');
+        return;
+      }
+
+      if (!session) {
+        showToast('세션을 찾을 수 없습니다');
+        return;
+      }
+
+      if (!session.messages || session.messages.length === 0) {
+        showToast('저장할 메시지가 없습니다');
+        return;
+      }
+
+      let text = '';
+
+      // Header with metadata
+      text += '═══════════════════════════════════════════\n';
+      text += 'Bubble Chat 대화 기록\n';
+      text += '═══════════════════════════════════════════\n\n';
+
+      text += `방 이름: ${session.roomName || '(이름 없음)'}\n`;
+      text += `코드: ${session.code}\n`;
+      text += `역할: ${session.role === 'host' ? '호스트' : '게스트'}\n`;
+      text += `시작: ${new Date(session.startedAt).toLocaleString('ko-KR')}\n`;
+      text += `상태: ${session.status === 'completed' ? '완전 종료' : session.status === 'paused' ? '일시 중단' : '진행 중'}\n\n`;
+
+      // Participants
+      text += '참여자 목록:\n';
+      if (session.participants && session.participants.length > 0) {
+        session.participants.forEach(name => {
+          text += `  - ${name}\n`;
+        });
+      }
+
+      text += '\n───────────────────────────────────────────\n';
+      text += '대화 내용\n';
+      text += '───────────────────────────────────────────\n\n';
+
+      // Messages
+      session.messages.forEach(msg => {
+        const time = new Date(msg.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+
+        if (msg.type === 'system') {
+          text += `[${time}] [시스템] ${msg.content}\n`;
+        } else if (msg.type === 'dm') {
+          const target = msg.to ? `➡️ ${msg.to}` : 'Unknown';
+          text += `[${time}] ${msg.from} ${target}: ${msg.content}\n`;
+        } else {
+          text += `[${time}] ${msg.from}: ${msg.content}\n`;
+        }
+      });
+
+      text += '\n═══════════════════════════════════════════\n';
+      text += `저장 날짜: ${new Date().toLocaleString('ko-KR')}\n`;
+      text += '═══════════════════════════════════════════\n';
+
+      // Create blob and download
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const filename = `bubble-chat-${session.code}-${new Date().toISOString().split('T')[0]}.txt`;
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      showToast('대화 내용이 저장되었습니다');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Save Chat as Text                                              */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function saveChatAsText() {
+      if (STATE.messages.length === 0) {
+        showToast('저장할 메시지가 없습니다');
+        return;
+      }
+
+      let text = '';
+
+      // Header with metadata
+      text += '═══════════════════════════════════════════\n';
+      text += 'Bubble Chat 대화 기록\n';
+      text += '═══════════════════════════════════════════\n\n';
+
+      text += `방 이름: ${STATE.roomName || '(이름 없음)'}\n`;
+      text += `코드: ${STATE.roomCode}\n`;
+      text += `역할: ${STATE.role === 'host' ? '호스트' : '게스트'}\n`;
+      text += `시작: ${new Date(STATE.sessionStart).toLocaleString('ko-KR')}\n\n`;
+
+      // Participants
+      text += '참여자 목록:\n';
+      STATE.participants.forEach(p => {
+        const host = p.isHost ? ' (호스트)' : '';
+        const joinTime = new Date(p.joinTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+        const leaveTime = p.leaveTime ? new Date(p.leaveTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '-';
+        text += `  - ${p.nickname}${host} (참여: ${joinTime}, 퇴장: ${leaveTime})\n`;
+      });
+
+      text += '\n───────────────────────────────────────────\n';
+      text += '대화 내용\n';
+      text += '───────────────────────────────────────────\n\n';
+
+      // Messages
+      STATE.messages.forEach(msg => {
+        const time = new Date(msg.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+
+        if (msg.type === 'system') {
+          text += `[${time}] [시스템] ${msg.content}\n`;
+        } else if (msg.type === 'dm') {
+          const target = msg.to ? `➡️ ${msg.to}` : 'Unknown';
+          text += `[${time}] ${msg.from} ${target}: ${msg.content}\n`;
+        } else {
+          text += `[${time}] ${msg.from}: ${msg.content}\n`;
+        }
+      });
+
+      text += '\n═══════════════════════════════════════════\n';
+      text += `저장 날짜: ${new Date().toLocaleString('ko-KR')}\n`;
+      text += '═══════════════════════════════════════════\n';
+
+      // Create blob and download
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const filename = `bubble-chat-${STATE.roomCode}-${new Date().toISOString().split('T')[0]}.txt`;
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      showToast('대화 내용이 저장되었습니다');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Init                                                            */
+    /* ═══════════════════════════════════════════════════════════════ */
+    // Theme icon update
+    const THEME_ICONS = { auto: '💻', light: '☀️', dark: '🌙' };
+    function updateThemeButtonChat() {
+      const storedTheme = localStorage.getItem('vives-theme') || 'auto';
+      const btn = document.getElementById('themeToggleBtn-chat');
+      if (btn) btn.textContent = THEME_ICONS[storedTheme] || '💻';
+    }
+    const originalCycleTheme = window.cycleTheme;
+    window.cycleTheme = function() {
+      originalCycleTheme();
+      updateThemeButtonChat();
+    };
+
+    // Initialize mobile sidebar state
+    function initializeMobileSidebar() {
+      const isMobile = window.innerWidth <= 860;
+      const sidebar = document.getElementById('bc-sidebar');
+      const toggleBtn = document.getElementById('bc-sidebar-toggle');
+
+      if (toggleBtn) {
+        toggleBtn.style.display = isMobile ? 'flex' : 'none';
+      }
+
+      // Reset sidebar state for mobile
+      if (sidebar) {
+        if (isMobile) {
+          sidebar.classList.remove('sidebar-visible');  // Hide on mobile
+        } else {
+          sidebar.classList.remove('sidebar-visible');  // Always show on desktop (via CSS)
+        }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderChatCards();
+      updateThemeButtonChat();
+      initializeMobileSidebar();
+
+      // Auto-restore host session after refresh
+      const urlParams = new URLSearchParams(window.location.search);
+      if (!urlParams.has('code')) {
+        // Only auto-restore if not joining as guest via QR code
+        try {
+          const key = 'bubbleChat_activeSessions';
+          const sessions = JSON.parse(localStorage.getItem(key) || '[]');
+
+          // Find active host session
+          const hostSession = sessions.find(s =>
+            s.role === 'host' &&
+            (s.status === 'active' || s.status === 'paused')
+          );
+
+          if (hostSession) {
+            console.log('[Init] Auto-restoring host session:', hostSession.code);
+            setTimeout(() => {
+              openChatSession(hostSession.code);
+            }, 500);
+          }
+        } catch (e) {
+          console.error('[Init] Error auto-restoring host session:', e);
+        }
+      }
+
+      // Check for QR code join (URL parameter: ?code=123456)
+      // urlParams already declared above, reuse it
+      const codeParam = urlParams.get('code');
+      if (codeParam && /^\d{6}$/.test(codeParam)) {
+        // Auto-fill guest code and open modal
+        setTimeout(() => {
+          const codeInput = document.getElementById('guest-code');
+          if (codeInput) {
+            codeInput.value = codeParam;
+            console.log('[Init] Auto-filling guest code from URL:', codeParam);
+
+            // Open guest setup modal by adding 'open' class
+            const guestModal = document.getElementById('guest-setup-modal');
+            if (guestModal) {
+              guestModal.classList.add('open');
+              document.body.classList.add('has-modal-open');
+              console.log('[Init] Opened guest setup modal');
+
+              // Focus on nickname input
+              setTimeout(() => {
+                const nicknameInput = document.getElementById('guest-nickname');
+                if (nicknameInput) {
+                  nicknameInput.focus();
+                  console.log('[Init] Focused on nickname input');
+                }
+              }, 100);
+            }
+          }
+        }, 500);
+      }
+
+      const textarea = document.getElementById('bc-msg-input');
+      if (textarea) {
+        textarea.addEventListener('input', function() {
+          this.style.height = 'auto';
+          this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+      }
+
+      window.addEventListener('resize', () => {
+        if (document.getElementById('view-chat').classList.contains('active')) {
+          initializeMobileSidebar();
+        }
+      });
+
+      // Handle device orientation change on mobile
+      window.addEventListener('orientationchange', () => {
+        setTimeout(() => {
+          if (document.getElementById('view-chat').classList.contains('active')) {
+            initializeMobileSidebar();
+          }
+        }, 100);
+      });
+    });
+  </script>
+</body>
+</html>
