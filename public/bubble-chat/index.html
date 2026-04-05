@@ -253,6 +253,45 @@
       background: rgba(243,18,96,0.15);
     }
 
+    .bc-header-info {
+      display: flex;
+      gap: 16px;
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--fg-muted);
+    }
+
+    .bc-header-info-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+    }
+
+    .bc-header-info-item-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.7;
+    }
+
+    .bc-header-info-item-value {
+      font-weight: 600;
+      color: var(--fg);
+      font-size: 13px;
+    }
+
+    /* Hide info on very small screens */
+    @media (max-width: 600px) {
+      .bc-header-info {
+        gap: 8px;
+        font-size: 11px;
+      }
+      .bc-header-info-item-value {
+        font-size: 12px;
+      }
+    }
+
     /* ══════════════════════════════════
        Chat Body
     ══════════════════════════════════ */
@@ -1078,6 +1117,19 @@
           </svg>
         </button>
         <div class="bc-header-sep"></div>
+
+        <!-- Session Info -->
+        <div class="bc-header-info">
+          <div class="bc-header-info-item">
+            <span class="bc-header-info-item-label">시작</span>
+            <span class="bc-header-info-item-value" id="bc-session-start-time">--:--</span>
+          </div>
+          <div class="bc-header-info-item">
+            <span class="bc-header-info-item-label">참여</span>
+            <span class="bc-header-info-item-value" id="bc-session-participant-count">0명</span>
+          </div>
+        </div>
+
         <button class="bc-header-btn" id="themeToggleBtn-chat" onclick="cycleTheme()" title="Theme">💻</button>
         <button class="bc-header-btn bc-header-btn-danger" id="bc-end-chat-btn" onclick="endChatSession()">
           대화 종료
@@ -2234,6 +2286,9 @@
         endBtn.textContent = STATE.role === 'guest' ? '대화에서 나가기' : '대화 종료';
       }
 
+      // Update session info in header
+      updateSessionInfo();
+
       // Mobile view: hide sidebar by default, show toggle button
       const sidebar = document.getElementById('bc-sidebar');
       const sidebarToggle = document.getElementById('bc-sidebar-toggle');
@@ -2301,6 +2356,26 @@
           }
         }
       });
+
+      // Update header session info
+      updateSessionInfo();
+    }
+
+    function updateSessionInfo() {
+      // Format start time
+      const startTimeEl = document.getElementById('bc-session-start-time');
+      if (startTimeEl && STATE.sessionStart) {
+        const startTime = new Date(STATE.sessionStart);
+        const timeStr = startTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+        startTimeEl.textContent = timeStr;
+      }
+
+      // Update participant count
+      const countEl = document.getElementById('bc-session-participant-count');
+      if (countEl && STATE.participants) {
+        const activeCount = STATE.participants.filter(p => !p.leaveTime).length;
+        countEl.textContent = activeCount + '명';
+      }
     }
 
     /* ═══════════════════════════════════════════════════════════════ */
@@ -2830,10 +2905,14 @@
 
       window.addEventListener('resize', () => {
         if (document.getElementById('view-chat').classList.contains('active')) {
+          const sidebar = document.getElementById('bc-sidebar');
+          const toggleBtn = document.getElementById('bc-sidebar-toggle');
           if (window.innerWidth <= 860) {
-            document.getElementById('bc-sidebar-toggle').style.display = 'flex';
+            toggleBtn.style.display = 'flex';
+            sidebar.style.display = 'none';  // Auto-hide sidebar on narrow screens
           } else {
-            document.getElementById('bc-sidebar-toggle').style.display = 'none';
+            toggleBtn.style.display = 'none';
+            sidebar.style.display = 'block';  // Show sidebar on wide screens
           }
         }
       });
