@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Club Badge — Numberblocks</title>
+<link href="https://fonts.googleapis.com/css2?family=Dongle&display=swap" rel="stylesheet">
+<script src="/common/init.js"></script>
+<script src="clubs-data.js"></script>
+<style>
+  :root {
+    --bg: #FFF9F0;
+    --sky: #C8E6FF;
+    --yellow: #FFD93D;
+    --orange: #FF8C00;
+    --red: #FF4757;
+    --green: #2ED573;
+    --blue: #1E90FF;
+    --purple: #A855F7;
+    --dark: #2D2D2D;
+    --shadow: 4px 4px 0px #2D2D2D;
+  }
+
+  html { font-size: 200%; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Dongle', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(circle at 10% 20%, #FFE0B2 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, #C8E6FF 0%, transparent 40%);
+  }
+
+  /* ── Header ── */
+  header {
+    text-align: center;
+    padding: 28px 20px 12px;
+    position: relative;
+  }
+  header h1 {
+    font-family: 'Dongle', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.8rem);
+    color: var(--dark);
+    letter-spacing: 2px;
+    text-shadow: 4px 4px 0 var(--orange);
+    line-height: 1;
+  }
+  header p {
+    font-size: 1rem;
+    color: #666;
+    margin-top: 8px;
+    font-weight: 700;
+  }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px 20px;
+    flex-wrap: wrap;
+  }
+  .tab {
+    font-family: 'Dongle', sans-serif;
+    font-size: 1.1rem;
+    padding: 10px 28px;
+    border: 3px solid var(--dark);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s, background 0.2s;
+    box-shadow: var(--shadow);
+    background: white;
+    color: var(--dark);
+  }
+  .tab:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+  .tab.active { background: var(--yellow); transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+
+  /* ── Sections ── */
+  .section { display: none; padding: 10px 20px 60px; max-width: 900px; margin: 0 auto; }
+  .section.visible { display: block; }
+
+  /* ── Overlay buttons ── */
+  .overlay-left, .overlay-right {
+    position: fixed;
+    top: 12px;
+    z-index: 999;
+    display: flex;
+    gap: 8px;
+  }
+  .overlay-left { left: 12px; }
+  .overlay-right { right: 12px; }
+  .ov-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Dongle', sans-serif;
+    font-size: 0.8rem;
+    padding: 6px 14px;
+    border: 2.5px solid var(--dark);
+    border-radius: 999px;
+    cursor: pointer;
+    background: rgba(255,249,240,0.88);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--dark);
+    text-decoration: none;
+    box-shadow: 2px 2px 0 var(--dark);
+    transition: transform 0.1s, box-shadow 0.1s;
+    white-space: nowrap;
+  }
+  .ov-btn:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--dark); }
+  .ov-btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--dark); }
+
+  /* ── Toast ── */
+  #cbToast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(1rem);
+    background: var(--dark);
+    color: white;
+    padding: 0.45rem 1.2rem;
+    border-radius: 999px;
+    font-family: 'Dongle', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 9000;
+    white-space: nowrap;
+  }
+  #cbToast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Animations ── */
+  @keyframes popIn {
+    from { transform: scale(0) rotate(-8deg); opacity: 0; }
+    to   { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+  @keyframes bounce {
+    0%,100% { transform: translateY(0); }
+    40%     { transform: translateY(-16px); }
+    60%     { transform: translateY(-8px); }
+  }
+
+  /* ══════════════════════════════
+     화면 1: 클럽 소개 (Info) — 모달
+  ══════════════════════════════ */
+
+  .club-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  @media (max-width: 640px) {
+    .club-grid { grid-template-columns: 1fr; }
+  }
+
+  .club-card {
+    border: 3px solid var(--dark);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    background: white;
+  }
+  .club-card:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+
+  .club-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    user-select: none;
+  }
+  .club-emoji { font-size: 1.5rem; flex-shrink: 0; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+  .club-names { flex: 1; min-width: 0; }
+  .club-name-ko {
+    font-family: 'Dongle', sans-serif;
+    font-size: 1rem;
+    font-weight: 900;
+    color: white;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.25);
+    line-height: 1.2;
+    word-break: keep-all;
+  }
+  .club-name-en {
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.85);
+    font-weight: 700;
+    line-height: 1.2;
+    word-break: break-word;
+  }
+
+  /* 모달 배경 */
+  .club-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    z-index: 998;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .club-modal-backdrop.show { display: flex; }
+  .club-modal-backdrop.show { animation: fadeIn 0.2s ease; }
+
+  .club-modal {
+    background: white;
+    border: 3px solid var(--dark);
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    animation: modalPopIn 0.3s cubic-bezier(.36,1.56,.64,1);
+    width: 90%;
+    position: relative;
+  }
+
+  .club-modal::-webkit-scrollbar {
+    width: 8px;
+  }
+  .club-modal::-webkit-scrollbar-track {
+    background: transparent;
+    margin-top: 20px;
+  }
+  .club-modal::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+  }
+  .club-modal::-webkit-scrollbar-thumb:hover {
+    background: #999;
+  }
+
+  .club-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+    padding-right: 32px;
+  }
+  .club-modal-emoji { width: 60px; height: 60px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .club-modal-names h2 {
+    font-family: 'Dongle', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: var(--dark);
+    margin: 0 0 4px;
+  }
+  .club-modal-names p {
+    font-size: 0.8rem;
+    color: #666;
+    margin: 0;
+  }
+
+
+  .club-modal-footer {
+    position: sticky;
+    bottom: -28px;
+    left: -28px;
+    right: -28px;
+    margin-top: 20px;
+    padding: 16px 28px;
+    background: white;
+    border-top: 2px dashed rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .modal-close-bottom-btn {
+    font-family: 'Dongle', sans-serif;
+    font-size: 1rem;
+    padding: 10px 36px;
+    border: 3px solid var(--dark);
+    border-radius: 999px;
+    background: var(--red);
+    color: white;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .modal-close-bottom-btn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+  .modal-close-bottom-btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--dark); }
+
+  .club-desc-ko {
+    font-family: 'Dongle', sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.8;
+    color: var(--dark);
+    margin-bottom: 12px;
+    word-break: keep-all;
+  }
+  .club-desc-en {
+    font-size: 0.8rem;
+    color: #888;
+    line-height: 1.6;
+    margin-bottom: 16px;
+    word-break: break-word;
+  }
+  .examples-label {
+    font-family: 'Dongle', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 900;
+    color: #555;
+    margin-bottom: 10px;
+  }
+  .examples-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .num-chip {
+    font-family: 'Dongle', sans-serif;
+    font-size: 0.88rem;
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 2px solid var(--dark);
+    background: var(--sky);
+    box-shadow: 2px 2px 0 var(--dark);
+    color: var(--dark);
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes modalPopIn {
+    from { transform: scale(0.8) rotate(-5deg); opacity: 0; }
+    to   { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+
+  /* ══════════════════════════════
+     화면 2: 숫자 탐색 (Explorer) — 2열
+  ══════════════════════════════ */
+
+  .explorer-wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 700px) {
+    .explorer-wrap { grid-template-columns: 1fr; gap: 16px; }
+  }
+
+  .explorer-left {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    align-items: center;
+  }
+
+  .num-display-box {
+    background: white;
+    border: 3px solid var(--dark);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    padding: 16px 40px;
+    min-width: 200px;
+    text-align: center;
+    width: 100%;
+  }
+  .num-display-val {
+    font-family: 'Dongle', sans-serif;
+    font-size: clamp(2.5rem, 10vw, 4.5rem);
+    color: var(--orange);
+    text-shadow: 4px 4px 0 var(--dark);
+    line-height: 1;
+    min-height: 1.2em;
+    letter-spacing: 4px;
+  }
+
+  .numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: 300px;
+  }
+  .np-btn {
+    font-family: 'Dongle', sans-serif;
+    font-size: 1.5rem;
+    padding: 16px;
+    border: 3px solid var(--dark);
+    border-radius: 14px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    background: white;
+    color: var(--dark);
+    transition: transform 0.08s, box-shadow 0.08s;
+    line-height: 1;
+  }
+  .np-btn:hover  { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+  .np-btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--dark); }
+  .np-zero { background: var(--sky); }
+  .np-del  { background: var(--yellow); }
+  .np-clear { background: var(--red); color: white; }
+
+  .check-btn {
+    font-family: 'Dongle', sans-serif;
+    font-size: 1.1rem;
+    padding: 12px 36px;
+    border: 3px solid var(--dark);
+    border-radius: 999px;
+    background: var(--green);
+    color: var(--dark);
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .check-btn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+  .check-btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--dark); }
+
+  .explorer-right {
+    background: white;
+    border: 3px solid var(--dark);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .explorer-result {
+    width: 100%;
+  }
+  .explorer-result[style*="display: none"] {
+    display: none !important;
+  }
+
+  .result-headline {
+    font-family: 'Dongle', sans-serif;
+    font-size: 1rem;
+    text-align: center;
+    color: var(--dark);
+    margin-bottom: 12px;
+    font-weight: 900;
+  }
+
+  .badge-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .club-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 12px 14px;
+    border: 3px solid var(--dark);
+    border-radius: 14px;
+    box-shadow: 2px 2px 0 var(--dark);
+    text-align: left;
+    animation: popIn 0.4s cubic-bezier(.36,1.56,.64,1) both;
+  }
+
+  .badge-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .badge-emoji { font-size: 1.2rem; flex-shrink: 0; }
+
+  .badge-name {
+    font-family: 'Dongle', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .badge-reason {
+    font-family: 'Dongle', sans-serif;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: inherit;
+    word-break: keep-all;
+    margin-left: 2px;
+    opacity: 0.95;
+  }
+
+  .no-club-msg {
+    font-family: 'Dongle', sans-serif;
+    font-size: 0.95rem;
+    color: #999;
+    text-align: center;
+    padding: 20px;
+  }
+
+  /* ══════════════════════════════
+     화면 3: 퀴즈 (Quiz)
+  ══════════════════════════════ */
+
+  .score-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .score-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Dongle', sans-serif;
+    font-size: 1rem;
+    background: white;
+    border: 3px solid var(--dark);
+    border-radius: 999px;
+    padding: 6px 18px;
+    box-shadow: var(--shadow);
+  }
+  .dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--dark);
+  }
+  .dot.g { background: var(--green); }
+  .dot.r { background: var(--red); }
+
+  .reset-btn {
+    font-family: 'Dongle', sans-serif;
+    font-size: 0.85rem;
+    padding: 6px 18px;
+    border: 3px solid var(--dark);
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    background: var(--yellow);
+    color: var(--dark);
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .reset-btn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+
+  .quiz-card {
+    background: white;
+    border: 3px solid var(--dark);
+    border-radius: 22px;
+    padding: 28px 24px;
+    box-shadow: var(--shadow);
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .quiz-q {
+    font-family: 'Dongle', sans-serif;
+    font-size: clamp(0.9rem, 3vw, 1.3rem);
+    color: #666;
+    margin-bottom: 8px;
+  }
+
+  .quiz-number {
+    font-family: 'Dongle', sans-serif;
+    font-size: clamp(3rem, 10vw, 5rem);
+    color: var(--orange);
+    text-shadow: 4px 4px 0 var(--dark);
+    margin: 4px 0 24px;
+    display: block;
+    animation: bounce 0.6s ease;
+  }
+
+  .quiz-choices {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 500px) {
+    .quiz-choices { grid-template-columns: 1fr; }
+  }
+
+  .choice-btn {
+    font-family: 'Dongle', sans-serif;
+    font-size: 0.88rem;
+    padding: 14px 12px;
+    border: 3px solid var(--dark);
+    border-radius: 14px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    background: white;
+    color: var(--dark);
+    transition: transform 0.1s, box-shadow 0.1s;
+    line-height: 1.3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    word-break: keep-all;
+  }
+  .choice-btn:hover:not(:disabled) { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+  .choice-btn:active:not(:disabled) { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--dark); }
+  .choice-btn:disabled { cursor: not-allowed; }
+  .choice-btn.correct-ans { background: var(--green) !important; }
+  .choice-btn.wrong-ans   { background: var(--red) !important; color: white; }
+  .choice-emoji { font-size: 1.2rem; }
+
+  .quiz-feedback {
+    font-family: 'Dongle', sans-serif;
+    font-size: 1rem;
+    padding: 14px;
+    border-radius: 14px;
+    border: 3px solid var(--dark);
+    box-shadow: var(--shadow);
+    animation: popIn 0.4s cubic-bezier(.36,1.56,.64,1) both;
+    line-height: 1.6;
+    word-break: keep-all;
+  }
+  .quiz-feedback.correct { background: #D4EDDA; color: #155724; }
+  .quiz-feedback.wrong   { background: #F8D7DA; color: #721C24; }
+
+  .next-btn {
+    font-family: 'Dongle', sans-serif;
+    font-size: 1.1rem;
+    padding: 12px 36px;
+    border: 3px solid var(--dark);
+    border-radius: 999px;
+    background: var(--blue);
+    color: white;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform 0.1s, box-shadow 0.1s;
+    margin-top: 16px;
+  }
+  .next-btn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+  .next-btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--dark); }
+
+  /* 반응형 */
+  @media (max-width: 480px) {
+    .section { padding-left: 12px; padding-right: 12px; }
+    .tabs { gap: 8px; }
+    .tab { padding: 8px 18px; font-size: 1rem; }
+    .quiz-card { padding: 20px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 홈 버튼 -->
+<div class="overlay-left">
+  <a href="/" class="ov-btn" title="홈으로">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    <span>Home</span>
+  </a>
+</div>
+
+<!-- 공유 버튼 -->
+<div class="overlay-right">
+  <button class="ov-btn" onclick="shareApp()" title="공유">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+      <polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/>
+    </svg>
+    <span>공유</span>
+  </button>
+</div>
+
+<div id="cbToast"></div>
+
+<header>
+  <h1>🏅 Club Badge</h1>
+  <p>넘버블록스 클럽 멤버십 탐색기</p>
+</header>
+
+<!-- 탭 -->
+<div class="tabs">
+  <button class="tab active" id="tab-info" onclick="showTab('info')">📖 클럽 소개</button>
+  <button class="tab" id="tab-explorer" onclick="showTab('explorer')">🔢 숫자 탐색</button>
+  <button class="tab" id="tab-quiz" onclick="showTab('quiz')">🎯 퀴즈</button>
+</div>
+
+<!-- ═══════════════════════════════════════
+     화면 1: 클럽 소개 (모달)
+══════════════════════════════════════════ -->
+<div id="info" class="section visible">
+  <div class="club-grid" id="clubGrid"></div>
+  <div class="club-modal-backdrop" id="clubModalBg" onclick="closeClubModal(event)">
+    <div class="club-modal" id="clubModal" onclick="event.stopPropagation()">
+      <div class="club-modal-header">
+        <div class="club-modal-emoji" id="clubModalEmoji"></div>
+        <div class="club-modal-names">
+          <h2 id="clubModalNameKo"></h2>
+          <p id="clubModalNameEn"></p>
+        </div>
+      </div>
+      <p class="club-desc-ko" id="clubModalDescKo"></p>
+      <p class="club-desc-en" id="clubModalDescEn"></p>
+      <div class="examples-label">1~100 멤버 예시:</div>
+      <div class="examples-chips" id="clubModalChips"></div>
+      <div class="club-modal-footer">
+        <button class="modal-close-bottom-btn" onclick="closeClubModal()">✕ 닫기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     화면 2: 숫자 탐색 (2열 좌우)
+══════════════════════════════════════════ -->
+<div id="explorer" class="section">
+  <div class="explorer-wrap">
+
+    <div class="explorer-left">
+      <div class="num-display-box">
+        <div class="num-display-val" id="explorerDisplay">—</div>
+      </div>
+
+      <div class="numpad">
+        <button class="np-btn" onclick="npInput('7')">7</button>
+        <button class="np-btn" onclick="npInput('8')">8</button>
+        <button class="np-btn" onclick="npInput('9')">9</button>
+        <button class="np-btn" onclick="npInput('4')">4</button>
+        <button class="np-btn" onclick="npInput('5')">5</button>
+        <button class="np-btn" onclick="npInput('6')">6</button>
+        <button class="np-btn" onclick="npInput('1')">1</button>
+        <button class="np-btn" onclick="npInput('2')">2</button>
+        <button class="np-btn" onclick="npInput('3')">3</button>
+        <button class="np-btn np-zero" onclick="npInput('0')">0</button>
+        <button class="np-btn np-del" onclick="npBackspace()">⌫</button>
+        <button class="np-btn np-clear" onclick="npClear()">C</button>
+      </div>
+
+      <button class="check-btn" onclick="checkClubs()">🔍 확인</button>
+    </div>
+
+    <div class="explorer-right">
+      <div id="explorerResult" class="explorer-result" style="display:none;">
+        <div class="result-headline" id="resultHeadline"></div>
+        <div class="badge-grid" id="badgeGrid"></div>
+      </div>
+      <div id="explorerEmpty" style="color:#aaa;font-size:0.9rem;text-align:center;padding:40px 20px;">숫자를 입력하고 확인을 눌러주세요</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     화면 3: 퀴즈
+══════════════════════════════════════════ -->
+<div id="quiz" class="section">
+
+  <div class="score-bar">
+    <div class="score-chip">
+      <div class="dot g"></div>
+      <span id="quizScoreOk">0</span>&nbsp;정답
+    </div>
+    <div class="score-chip">
+      <div class="dot r"></div>
+      <span id="quizScoreNo">0</span>&nbsp;오답
+    </div>
+    <button class="reset-btn" onclick="resetQuiz()">🔄 초기화</button>
+  </div>
+
+  <div class="quiz-card" id="quizCard">
+    <div class="quiz-q">다음 중에서 <span id="quizNumDisplay" style="color:var(--orange);font-weight:900;">?</span>이(가) 멤버인 클럽을 고르세요!</div>
+    <span class="quiz-number" id="quizNum">?</span>
+    <div class="quiz-choices" id="quizChoices"></div>
+    <div class="quiz-feedback" id="quizFeedback" style="display:none;"></div>
+    <div id="quizNextWrap" style="display:none; text-align:center;">
+      <button class="next-btn" onclick="nextQuizQuestion()">➡️ 다음 문제</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ──────────────────────── 탭 전환 ──────────────────────── */
+
+function showTab(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('visible');
+  const tabBtn = document.getElementById('tab-' + id);
+  if (tabBtn) tabBtn.classList.add('active');
+  if (id === 'quiz' && qzCurrentN === null) nextQuizQuestion();
+}
+
+/* ──────────────────────── 클럽 아이콘 SVG ──────────────────────── */
+
+function getClubIcon(clubId, color = 'white') {
+  const icons = {
+    'made-of-ones': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="${color}" stroke-width="6"/><rect x="42" y="25" width="16" height="25" fill="none" stroke="${color}" stroke-width="5" rx="2"/><rect x="42" y="58" width="16" height="15" fill="none" stroke="${color}" stroke-width="5" rx="2"/></svg>`,
+    'even-tops': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="20" y="50" width="60" height="30" fill="${color}" stroke="#333" stroke-width="2" stroke-linejoin="round"/><rect x="20" y="30" width="60" height="20" fill="${color}" stroke="#333" stroke-width="2" stroke-linejoin="round"/></svg>`,
+    'odd-tops': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M20,50 L80,50 L80,80 L20,80 Z" fill="${color}" stroke="#333" stroke-width="2" stroke-linejoin="round"/><path d="M20,20 L50,20 L50,50 L20,50 Z" fill="${color}" stroke="#333" stroke-width="2" stroke-linejoin="round"/></svg>`,
+    'three-club': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="55" r="35" fill="${color}" stroke="#333" stroke-width="2"/><path d="M25,45 L35,20 L50,35 L65,20 L75,45 Z" fill="${color}" stroke="#333" stroke-width="2" stroke-linejoin="round"/><text x="50" y="75" font-family="sans-serif" font-weight="900" font-size="32" text-anchor="middle" fill="#333">3</text></svg>`,
+    'rainbow-sevens': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="rainbow" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#e74c3c" /><stop offset="25%" stop-color="#f1c40f" /><stop offset="50%" stop-color="#2ecc71" /><stop offset="75%" stop-color="#3498db" /><stop offset="100%" stop-color="#9b59b6" /></linearGradient></defs><circle cx="50" cy="50" r="40" fill="none" stroke="url(#rainbow)" stroke-width="10"/><text x="50" y="68" font-family="sans-serif" font-weight="900" font-size="42" text-anchor="middle" fill="#333">7</text></svg>`,
+    'football-club': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="${color}" stroke-width="4"/><circle cx="50" cy="50" r="34" fill="none" stroke="${color}" stroke-width="4" stroke-dasharray="10 10"/><text x="50" y="68" font-family="sans-serif" font-weight="900" font-size="38" text-anchor="middle" fill="#333">11</text></svg>`,
+    'falling-apart': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#fcf3cf" stroke="#909497" stroke-width="3"/><path d="M48,10 L55,30 L45,50 L55,70 L48,90" fill="none" stroke="#333" stroke-width="2" stroke-linejoin="round"/><text x="35" y="68" font-family="sans-serif" font-weight="900" font-size="38" text-anchor="middle" fill="#333">1</text><text x="68" y="68" font-family="sans-serif" font-weight="900" font-size="38" text-anchor="middle" fill="#333">3</text></svg>`,
+    'square-club': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="15" y="15" width="70" height="70" rx="15" fill="none" stroke="${color}" stroke-width="3"/><rect x="30" y="30" width="40" height="40" fill="none" stroke="#27ae60" stroke-width="6" stroke-linejoin="round"/></svg>`,
+    'step-squad': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M15,85 L85,85 L85,60 L60,60 L60,35 L35,35 L35,15 L15,15 Z" fill="#9b59b6" stroke="#333" stroke-width="3" stroke-linejoin="round"/></svg>`,
+    'cube-club': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,15 L85,35 L85,65 L50,85 L15,65 L15,35 Z" fill="none" stroke="${color}" stroke-width="4" stroke-linejoin="round"/><path d="M15,35 L50,55 L85,35" fill="none" stroke="${color}" stroke-width="4" stroke-linejoin="round"/><path d="M50,55 L50,85" fill="none" stroke="${color}" stroke-width="4" stroke-linejoin="round"/></svg>`,
+    'squares-holes': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="20" y="20" width="60" height="60" fill="none" stroke="#f5b7b1" stroke-width="12" stroke-linejoin="round"/><rect x="20" y="20" width="60" height="60" fill="none" stroke="#333" stroke-width="2" stroke-linejoin="round"/><rect x="36" y="36" width="28" height="28" fill="none" stroke="#333" stroke-width="2" stroke-linejoin="round"/></svg>`,
+    'super-rect': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="20" y="20" width="60" height="60" fill="#d4e6f1" stroke="#2980b9" stroke-width="3" rx="3"/><line x1="40" y1="20" x2="40" y2="80" stroke="#2980b9" stroke-width="2"/><line x1="60" y1="20" x2="60" y2="80" stroke="#2980b9" stroke-width="2"/><line x1="20" y1="50" x2="80" y2="50" stroke="#2980b9" stroke-width="2"/></svg>`,
+    'super-duper': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="15" y="15" width="70" height="70" fill="#fcf3cf" stroke="#f39c12" stroke-width="3" rx="3"/><line x1="32.5" y1="15" x2="32.5" y2="85" stroke="#f39c12" stroke-width="2"/><line x1="50" y1="15" x2="50" y2="85" stroke="#f39c12" stroke-width="2"/><line x1="67.5" y1="15" x2="67.5" y2="85" stroke="#f39c12" stroke-width="2"/><line x1="15" y1="38.3" x2="85" y2="38.3" stroke="#f39c12" stroke-width="2"/><line x1="15" y1="61.6" x2="85" y2="61.6" stroke="#f39c12" stroke-width="2"/></svg>`,
+    'prime-club': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="35" y="10" width="30" height="80" fill="none" stroke="#d35400" stroke-width="4" rx="3"/><rect x="45" y="25" width="10" height="35" fill="#d35400" rx="2"/><circle cx="50" cy="75" r="4" fill="#d35400"/></svg>`,
+    'roaring-twenties': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="15" y="25" width="70" height="50" fill="#f5e1c0" stroke="#333" stroke-width="3" rx="5"/><line x1="30" y1="25" x2="30" y2="75" stroke="#333" stroke-width="1.5" stroke-dasharray="3 3"/><line x1="70" y1="25" x2="70" y2="75" stroke="#333" stroke-width="1.5" stroke-dasharray="3 3"/><text x="50" y="62" font-family="sans-serif" font-weight="900" font-size="34" text-anchor="middle" fill="#333">20</text></svg>`,
+    'nine-enders': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="25" y="25" width="50" height="50" fill="#d5d8dc" stroke="#333" stroke-width="3" rx="3"/><rect x="65" y="25" width="10" height="50" fill="#333"/><text x="45" y="62" font-family="sans-serif" font-weight="900" font-size="34" text-anchor="middle" fill="#333">9</text></svg>`,
+  };
+  return icons[clubId] || icons['made-of-ones'];
+}
+
+/* ──────────────────────── 화면 1: 클럽 소개 — 모달 ──────────────────────── */
+
+function renderInfoCards() {
+  const grid = document.getElementById('clubGrid');
+  grid.innerHTML = '';
+  CLUBS.forEach(club => {
+    const card = document.createElement('div');
+    card.className = 'club-card';
+    card.style.background = club.color;
+    card.style.color = club.textColor;
+    card.onclick = () => openClubModal(club);
+    card.innerHTML = `
+      <div class="club-card-header" style="background:${club.color};">
+        <div class="club-emoji">${getClubIcon(club.id, club.textColor)}</div>
+        <div class="club-names">
+          <div class="club-name-ko">${club.nameKo}</div>
+          <div class="club-name-en">${club.nameEn}</div>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function openClubModal(club) {
+  document.getElementById('clubModalEmoji').innerHTML = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">${getClubIcon(club.id, club.color)}</div>`;
+  document.getElementById('clubModalNameKo').textContent = club.nameKo;
+  document.getElementById('clubModalNameEn').textContent = club.nameEn;
+  document.getElementById('clubModalDescKo').textContent = club.descKo;
+  document.getElementById('clubModalDescEn').textContent = club.descEn;
+
+  const chipsEl = document.getElementById('clubModalChips');
+  const nums = club.examples(100);
+  if (nums.length === 0) {
+    chipsEl.innerHTML = '<span style="color:#aaa;">해당 없음</span>';
+  } else {
+    chipsEl.innerHTML = nums.map(n => `<span class="num-chip">${n}</span>`).join('');
+  }
+
+  document.getElementById('clubModalBg').classList.add('show');
+}
+
+function closeClubModal(e) {
+  if (e && e.target !== document.getElementById('clubModalBg')) return;
+  document.getElementById('clubModalBg').classList.remove('show');
+}
+
+/* ──────────────────────── 화면 2: 숫자 탐색 ──────────────────────── */
+
+let explorerVal = '';
+
+function npInput(digit) {
+  if (explorerVal.length >= 5) return;
+  if (explorerVal === '0') explorerVal = digit;
+  else explorerVal += digit;
+  updateExplorerDisplay();
+  hideExplorerResult();
+}
+
+function npBackspace() {
+  explorerVal = explorerVal.slice(0, -1);
+  updateExplorerDisplay();
+  hideExplorerResult();
+}
+
+function npClear() {
+  explorerVal = '';
+  updateExplorerDisplay();
+  hideExplorerResult();
+}
+
+function updateExplorerDisplay() {
+  document.getElementById('explorerDisplay').textContent = explorerVal === '' ? '—' : explorerVal;
+}
+
+function hideExplorerResult() {
+  document.getElementById('explorerResult').style.display = 'none';
+  document.getElementById('explorerEmpty').style.display = 'block';
+}
+
+function getClubReason(club, n) {
+  // 클럽별 설명 생성
+  if (club.id === 'made-of-ones') return '1 이상의 모든 수예요.';
+  if (club.id === 'even-tops') return `${n} ÷ 2 = ${n/2} (나누어떨어짐)`;
+  if (club.id === 'odd-tops') return `${n}은 홀수예요!`;
+  if (club.id === 'three-club') return `${n} ÷ 3 = ${n/3} (나누어떨어짐)`;
+  if (club.id === 'rainbow-sevens') return `${n} ÷ 7 = ${n/7} (나누어떨어짐)`;
+  if (club.id === 'football-club') return `${n} ÷ 11 = ${n/11} (나누어떨어짐)`;
+  if (club.id === 'falling-apart') return `${n} ÷ 13 = ${n/13} (나누어떨어짐)`;
+  if (club.id === 'square-club') {
+    const sqrt = Math.sqrt(n);
+    return `√${n} = ${sqrt} (완전제곱수)`;
+  }
+  if (club.id === 'step-squad') {
+    for (let k = 1; k * (k+1) / 2 <= n; k++) {
+      if (k * (k+1) / 2 === n) return `1+2+...+${k} = ${n} (삼각수)`;
+    }
+  }
+  if (club.id === 'cube-club') {
+    const cbrt = Math.round(Math.cbrt(n));
+    return `∛${n} = ${cbrt} (완전세제곱수)`;
+  }
+  if (club.id === 'squares-holes') return `${n} = a²-b² 형태`;
+  if (club.id === 'super-rect') {
+    let count = 0;
+    for (let i = 1; i * i <= n; i++) {
+      if (n % i === 0) count += (i === n/i) ? 1 : 2;
+    }
+    return `약수 ${count}개`;
+  }
+  if (club.id === 'super-duper') {
+    let count = 0;
+    for (let i = 1; i * i <= n; i++) {
+      if (n % i === 0) count += (i === n/i) ? 1 : 2;
+    }
+    return `약수 ${count}개`;
+  }
+  if (club.id === 'prime-club') return '1과 자기 자신으로만 나누어떨어지는 수예요. (소수)';
+  if (club.id === 'roaring-twenties') return '20 ≤ ' + n + ' ≤ 29';
+  if (club.id === 'nine-enders') return `${n}의 일의 자리는 9예요.`;
+  return '';
+}
+
+function checkClubs() {
+  if (explorerVal === '') {
+    cbToast('숫자를 먼저 입력해주세요!');
+    return;
+  }
+  const n = parseInt(explorerVal, 10);
+  const matches = CLUBS.filter(c => c.check(n));
+
+  const resEl = document.getElementById('explorerResult');
+  const emptyEl = document.getElementById('explorerEmpty');
+  const headEl = document.getElementById('resultHeadline');
+  const gridEl = document.getElementById('badgeGrid');
+
+  const numStr = n.toLocaleString('ko-KR');
+  if (matches.length === 0) {
+    headEl.innerHTML = `<b>${numStr}</b>은(는) 어떤 클럽에도 속하지 않아요!`;
+    gridEl.innerHTML = '<div class="no-club-msg">😔</div>';
+  } else {
+    headEl.innerHTML = `<b>${numStr}</b> → <b>${matches.length}</b>개 클럽`;
+    gridEl.innerHTML = '';
+    matches.forEach((club, i) => {
+      const badge = document.createElement('div');
+      badge.className = 'club-badge';
+      badge.style.cssText = `background:${club.color}; color:${club.textColor}; animation-delay:${i * 0.06}s;`;
+      const reason = getClubReason(club, n);
+      badge.innerHTML = `
+        <div class="badge-header">
+          <div class="badge-emoji">${getClubIcon(club.id, club.color)}</div>
+          <div class="badge-name">${club.nameKo}</div>
+        </div>
+        <div class="badge-reason">${reason}</div>
+      `;
+      gridEl.appendChild(badge);
+    });
+  }
+
+  resEl.style.display = 'block';
+  emptyEl.style.display = 'none';
+}
+
+/* ──────────────────────── 화면 3: 퀴즈 ──────────────────────── */
+
+let qzScoreOk = 0, qzScoreNo = 0;
+let qzCurrentN = null;
+let qzCorrectClub = null;
+let qzAnswered = false;
+
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function nextQuizQuestion() {
+  qzAnswered = false;
+  qzCurrentN = Math.floor(Math.random() * 101); // 0~100
+
+  const numEl = document.getElementById('quizNum');
+  const numDispEl = document.getElementById('quizNumDisplay');
+  numEl.textContent = qzCurrentN;
+  numDispEl.textContent = qzCurrentN;
+  numEl.style.animation = 'none';
+  void numEl.offsetWidth;
+  numEl.style.animation = 'bounce 0.6s ease';
+
+  // 정답 클럽 선정
+  const correctCandidates = CLUBS.filter(c => c.check(qzCurrentN));
+  // 어떤 수든 made-of-ones(n>=1) 또는 even-tops(n=0)로 최소 1개 보장
+  qzCorrectClub = correctCandidates[Math.floor(Math.random() * correctCandidates.length)];
+
+  // 오답 2개
+  const wrongPool = shuffleArray(CLUBS.filter(c => c.id !== qzCorrectClub.id));
+  const choices = shuffleArray([qzCorrectClub, ...wrongPool.slice(0, 2)]);
+
+  const choicesEl = document.getElementById('quizChoices');
+  choicesEl.innerHTML = '';
+  choices.forEach(club => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.style.background = club.color + '22'; // 옅은 클럽 색
+    btn.innerHTML = `<div class="choice-emoji">${getClubIcon(club.id, club.textColor)}</div><span>${club.nameKo}</span>`;
+    btn.addEventListener('click', () => selectChoice(club, btn));
+    choicesEl.appendChild(btn);
+  });
+
+  document.getElementById('quizFeedback').style.display = 'none';
+  document.getElementById('quizNextWrap').style.display = 'none';
+}
+
+function selectChoice(club, btnEl) {
+  if (qzAnswered) return;
+  qzAnswered = true;
+
+  const isCorrect = (club.id === qzCorrectClub.id);
+
+  // 모든 버튼 비활성화 + 정답 표시
+  document.querySelectorAll('.choice-btn').forEach(b => {
+    b.disabled = true;
+    if (b.textContent.includes(qzCorrectClub.nameKo)) {
+      b.classList.add('correct-ans');
+      b.style.background = '';
+    }
+  });
+
+  if (!isCorrect) {
+    btnEl.classList.add('wrong-ans');
+    btnEl.style.background = '';
+    qzScoreNo++;
+    document.getElementById('quizScoreNo').textContent = qzScoreNo;
+  } else {
+    qzScoreOk++;
+    document.getElementById('quizScoreOk').textContent = qzScoreOk;
+  }
+
+  const fb = document.getElementById('quizFeedback');
+  fb.className = 'quiz-feedback ' + (isCorrect ? 'correct' : 'wrong');
+  fb.style.display = 'block';
+  const reason = getClubReason(qzCorrectClub, qzCurrentN);
+  fb.innerHTML = isCorrect
+    ? `🎉 정답! <b>${qzCurrentN}</b>은(는) <b>${qzCorrectClub.nameKo}</b>의 멤버예요!<div style="font-size:0.9rem; margin-top:8px; opacity:0.8;">${reason}</div>`
+    : `😅 틀렸어요! <b>${qzCurrentN}</b>은(는) <b>${qzCorrectClub.nameKo}</b>의 멤버예요.<div style="font-size:0.9rem; margin-top:8px; opacity:0.8;">${reason}</div>`;
+
+  document.getElementById('quizNextWrap').style.display = 'block';
+}
+
+function resetQuiz() {
+  qzScoreOk = 0; qzScoreNo = 0;
+  document.getElementById('quizScoreOk').textContent = '0';
+  document.getElementById('quizScoreNo').textContent = '0';
+  nextQuizQuestion();
+}
+
+/* ──────────────────────── Toast & Share ──────────────────────── */
+
+let cbToastTimer;
+function cbToast(msg) {
+  const el = document.getElementById('cbToast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(cbToastTimer);
+  cbToastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try {
+    document.execCommand('copy');
+    cbToast('링크가 복사되었습니다 ✓');
+  } catch {
+    cbToast('복사에 실패했습니다.');
+  }
+  document.body.removeChild(ta);
+}
+
+function shareApp() {
+  const url = location.href;
+  if (navigator.share) {
+    navigator.share({ title: '🏅 Club Badge — Numberblocks', url });
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(url)
+      .then(() => cbToast('링크가 복사되었습니다 ✓'))
+      .catch(() => fallbackCopy(url));
+  } else {
+    fallbackCopy(url);
+  }
+}
+
+/* ──────────────────────── 초기화 ──────────────────────── */
+renderInfoCards();
+</script>
+</body>
+</html>
