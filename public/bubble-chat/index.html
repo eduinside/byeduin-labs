@@ -335,16 +335,18 @@
 
     @media (max-width: 860px) {
       .bc-sidebar {
-        position: absolute;
-        left: 0;
-        top: 52px;
-        height: calc(100% - 52px - 60px);
-        transform: translateX(-100%);
-        z-index: 400;
+        position: absolute !important;
+        left: 0 !important;
+        top: 52px !important;
+        height: calc(100% - 52px - 60px) !important;
+        transform: translateX(-100%) !important;
+        z-index: 400 !important;
+        display: flex !important;
+        flex-direction: column !important;
       }
 
       body:not(.sidebar-collapsed) .bc-sidebar {
-        transform: translateX(0);
+        transform: translateX(0) !important;
       }
     }
 
@@ -2301,17 +2303,8 @@
       // Update session info in header
       updateSessionInfo();
 
-      // Mobile view: hide sidebar by default, show toggle button
-      const sidebarToggle = document.getElementById('bc-sidebar-toggle');
-      if (sidebarToggle) {
-        if (window.innerWidth <= 860) {
-          sidebarToggle.style.display = 'flex';
-          // Reset sidebar collapsed state for mobile
-          document.body.classList.remove('sidebar-collapsed');
-        } else {
-          sidebarToggle.style.display = 'none';
-        }
-      }
+      // Initialize mobile sidebar state
+      initializeMobileSidebar();
     }
 
     function updateParticipantList() {
@@ -2878,9 +2871,23 @@
       updateThemeButtonChat();
     };
 
+    // Initialize mobile sidebar state
+    function initializeMobileSidebar() {
+      const isMobile = window.innerWidth <= 860;
+      const toggleBtn = document.getElementById('bc-sidebar-toggle');
+      if (toggleBtn) {
+        toggleBtn.style.display = isMobile ? 'flex' : 'none';
+      }
+      // Reset sidebar collapsed state
+      if (isMobile) {
+        document.body.classList.remove('sidebar-collapsed');
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       renderChatCards();
       updateThemeButtonChat();
+      initializeMobileSidebar();
 
       // Check for QR code join (URL parameter: ?code=123456)
       const urlParams = new URLSearchParams(window.location.search);
@@ -2916,19 +2923,17 @@
 
       window.addEventListener('resize', () => {
         if (document.getElementById('view-chat').classList.contains('active')) {
-          const toggleBtn = document.getElementById('bc-sidebar-toggle');
-          if (toggleBtn) {
-            if (window.innerWidth <= 860) {
-              toggleBtn.style.display = 'flex';
-              // Reset sidebar state when resizing to mobile
-              document.body.classList.remove('sidebar-collapsed');
-            } else {
-              toggleBtn.style.display = 'none';
-              // Ensure sidebar is visible on desktop
-              document.body.classList.remove('sidebar-collapsed');
-            }
-          }
+          initializeMobileSidebar();
         }
+      });
+
+      // Handle device orientation change on mobile
+      window.addEventListener('orientationchange', () => {
+        setTimeout(() => {
+          if (document.getElementById('view-chat').classList.contains('active')) {
+            initializeMobileSidebar();
+          }
+        }, 100);
       });
     });
   </script>
