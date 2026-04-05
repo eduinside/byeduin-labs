@@ -321,31 +321,35 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      transition: transform 0.3s ease, width 0.3s ease;
+      transition: transform 0.3s ease;
+      position: relative;
     }
 
-    body.sidebar-collapsed .bc-sidebar {
-      transform: translateX(-100%);
-      position: absolute;
-      width: 280px;
-      height: 100%;
-      z-index: 400;
-      border-right: 1px solid var(--border);
+    /* Desktop: sidebar always visible */
+    @media (min-width: 861px) {
+      .bc-sidebar {
+        position: relative !important;
+        transform: none !important;
+        display: flex !important;
+      }
     }
 
+    /* Mobile: sidebar hidden by default */
     @media (max-width: 860px) {
       .bc-sidebar {
         position: absolute !important;
         left: 0 !important;
         top: 52px !important;
         height: calc(100% - 52px - 60px) !important;
-        transform: translateX(-100%) !important;
+        width: 280px !important;
         z-index: 400 !important;
         display: flex !important;
         flex-direction: column !important;
+        transform: translateX(-100%) !important;
       }
 
-      body:not(.sidebar-collapsed) .bc-sidebar {
+      /* Mobile: show sidebar when class is removed */
+      .bc-sidebar.sidebar-visible {
         transform: translateX(0) !important;
       }
     }
@@ -1357,7 +1361,10 @@
     }
 
     function toggleSidebar() {
-      document.body.classList.toggle('sidebar-collapsed');
+      const sidebar = document.getElementById('bc-sidebar');
+      if (sidebar) {
+        sidebar.classList.toggle('sidebar-visible');
+      }
     }
 
     function showCodeModal() {
@@ -2874,13 +2881,20 @@
     // Initialize mobile sidebar state
     function initializeMobileSidebar() {
       const isMobile = window.innerWidth <= 860;
+      const sidebar = document.getElementById('bc-sidebar');
       const toggleBtn = document.getElementById('bc-sidebar-toggle');
+
       if (toggleBtn) {
         toggleBtn.style.display = isMobile ? 'flex' : 'none';
       }
-      // Reset sidebar collapsed state
-      if (isMobile) {
-        document.body.classList.remove('sidebar-collapsed');
+
+      // Reset sidebar state for mobile
+      if (sidebar) {
+        if (isMobile) {
+          sidebar.classList.remove('sidebar-visible');  // Hide on mobile
+        } else {
+          sidebar.classList.remove('sidebar-visible');  // Always show on desktop (via CSS)
+        }
       }
     }
 
