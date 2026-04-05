@@ -3019,7 +3019,10 @@
       });
 
       conn.on('close', () => {
-        showToast('연결이 끊어졌습니다');
+        // Don't show disconnect toast if this was a deliberate close from 'end' message
+        if (!STATE.isClosing) {
+          showToast('연결이 끊어졌습니다');
+        }
 
         // Clear connection reference
         if (STATE.role === 'guest') {
@@ -3094,7 +3097,8 @@
 
           renderChatCards();
           showView('home');
-        } else {
+        } else if (!STATE.isClosing) {
+          // Only call endChatSession if not a deliberate close
           endChatSession();
         }
       });
