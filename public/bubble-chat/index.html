@@ -248,7 +248,7 @@
     .deck-card-title h3 {
       margin: 0;
       padding: 0;
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 700;
       color: var(--fg);
       overflow: hidden;
@@ -308,10 +308,10 @@
       transform: scale(1.15);
     }
 
-    /* 카드 본문: 참여자 + 메시지 수 */
+    /* 카드 본문: 시작일시 + 참여자 + 메시지 수 */
     .deck-card-body {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 12px;
       padding: 12px 14px;
     }
@@ -355,7 +355,7 @@
       background: rgba(255,255,255,0.02);
     }
 
-    .code-badge, .role-badge {
+    .code-badge {
       display: inline-flex;
       align-items: center;
       padding: 4px 8px;
@@ -366,13 +366,20 @@
       color: var(--primary);
     }
 
-    .role-badge {
+    /* 헤더의 역할 뱃지 */
+    .role-badge-header {
       background: rgba(0,0,0,0.06);
       color: var(--fg-muted);
+      font-size: 11px;
     }
 
-    [data-theme="dark"] .role-badge {
+    [data-theme="dark"] .role-badge-header {
       background: rgba(255,255,255,0.08);
+    }
+
+    /* 푸터의 상태 뱃지 */
+    .status-badge-footer {
+      font-size: 11px;
     }
 
     /* 메뉴 드롭다운 */
@@ -447,7 +454,15 @@
       }
 
       .deck-card-body {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .deck-card-stat {
+        grid-column: span 1;
+      }
+
+      .deck-card-stat:first-child {
+        grid-column: 1 / -1;
       }
 
       .deck-card-stat .value {
@@ -1894,9 +1909,11 @@
         title.appendChild(emoji);
         title.appendChild(titleH3);
 
-        const badge = document.createElement('div');
-        badge.className = `deck-card-badge ${badgeClass}`;
-        badge.innerHTML = `${statusEmoji} <span>${statusText}</span>`;
+        // 역할 뱃지 (헤더에)
+        const roleStr = session.role === 'host' ? '호스트' : '게스트';
+        const roleBadge = document.createElement('div');
+        roleBadge.className = 'deck-card-badge role-badge-header';
+        roleBadge.textContent = roleStr;
 
         const menuBtn = document.createElement('button');
         menuBtn.className = 'deck-card-menu';
@@ -1907,12 +1924,30 @@
         };
 
         header.appendChild(title);
-        header.appendChild(badge);
+        header.appendChild(roleBadge);
         header.appendChild(menuBtn);
 
         // 카드 본문 생성
         const body = document.createElement('div');
         body.className = 'deck-card-body';
+
+        // 시작일시 추가
+        let startTimeStr = '-';
+        if (session.startedAt) {
+          const startDate = new Date(session.startedAt);
+          const month = String(startDate.getMonth() + 1).padStart(2, '0');
+          const date = String(startDate.getDate()).padStart(2, '0');
+          const hours = String(startDate.getHours()).padStart(2, '0');
+          const minutes = String(startDate.getMinutes()).padStart(2, '0');
+          startTimeStr = `${month}/${date} ${hours}:${minutes}`;
+        }
+
+        const statStartTime = document.createElement('div');
+        statStartTime.className = 'deck-card-stat';
+        statStartTime.innerHTML = `
+          <span class="label">시작</span>
+          <span class="value">${startTimeStr}</span>
+        `;
 
         const statParticipants = document.createElement('div');
         statParticipants.className = 'deck-card-stat';
@@ -1928,6 +1963,7 @@
           <span class="value">${session.messageCount || 0}개</span>
         `;
 
+        body.appendChild(statStartTime);
         body.appendChild(statParticipants);
         body.appendChild(statMessages);
 
@@ -1939,13 +1975,13 @@
         codeBadge.className = 'code-badge';
         codeBadge.textContent = `CODE: ${session.code}`;
 
-        const roleStr = session.role === 'host' ? '호스트' : '게스트';
-        const roleBadge = document.createElement('span');
-        roleBadge.className = 'role-badge';
-        roleBadge.textContent = roleStr;
+        // 상태 뱃지 (푸터에)
+        const statusBadge = document.createElement('span');
+        statusBadge.className = `deck-card-badge ${badgeClass} status-badge-footer`;
+        statusBadge.innerHTML = `${statusEmoji} <span>${statusText}</span>`;
 
         footer.appendChild(codeBadge);
-        footer.appendChild(roleBadge);
+        footer.appendChild(statusBadge);
 
         // 카드 조립
         card.appendChild(header);
