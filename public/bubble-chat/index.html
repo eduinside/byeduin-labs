@@ -832,6 +832,17 @@
       user-select: all;
       text-align: center;
       min-width: 280px;
+      cursor: pointer;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+
+    .bc-code-modal-display:hover {
+      background: rgba(0, 111, 238, 0.15);
+      box-shadow: 0 0 0 3px rgba(0, 111, 238, 0.2);
+    }
+
+    .bc-code-modal-display:active {
+      transform: scale(0.98);
     }
 
     .bc-code-modal-copy {
@@ -1693,6 +1704,9 @@
 
     function showCodeModal() {
       const code = STATE.roomCode || '------';
+      // Generate URL for guest to join
+      const joinUrl = window.location.origin + window.location.pathname + '?code=' + code;
+
       const modal = document.createElement('div');
       modal.className = 'bc-code-modal-overlay';
       modal.innerHTML = `
@@ -1702,20 +1716,57 @@
             <button class="bc-code-modal-close" onclick="this.closest('.bc-code-modal-overlay').remove()">✕</button>
           </div>
           <div class="bc-code-modal-content">
-            <div class="bc-code-modal-display">${code}</div>
+            <div class="bc-code-modal-display" id="code-display-click" title="클릭하면 복사됩니다">${code}</div>
             <div id="qrcode-container" style="display: flex; justify-content: center; margin: 16px 0;"></div>
-            <button class="bc-code-modal-copy" onclick="navigator.clipboard.writeText('${code}'); showToast('복사되었습니다'); this.closest('.bc-code-modal-overlay').remove();">복사</button>
+            <button class="bc-code-modal-copy" id="qr-link-copy">🔗 대화창 바로 접속 링크 복사</button>
           </div>
         </div>
       `;
       document.body.appendChild(modal);
 
+      // Code display click handler - copy code to clipboard
+      const codeDisplay = document.getElementById('code-display-click');
+      codeDisplay.addEventListener('click', (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(code).then(() => {
+          showToast('접속 코드가 복사되었습니다');
+          // Visual feedback
+          const originalBg = codeDisplay.style.background;
+          codeDisplay.style.background = 'rgba(23, 201, 100, 0.15)';
+          setTimeout(() => {
+            codeDisplay.style.background = originalBg;
+          }, 300);
+        }).catch(err => {
+          console.error('Copy failed:', err);
+          showToast('복사 실패');
+        });
+      });
+
+      // QR link copy button handler - copy QR URL to clipboard
+      const qrCopyBtn = document.getElementById('qr-link-copy');
+      qrCopyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(joinUrl).then(() => {
+          showToast('대화창 바로 접속 링크가 복사되었습니다');
+          // Visual feedback on button
+          const originalText = qrCopyBtn.textContent;
+          const originalBg = qrCopyBtn.style.background;
+          qrCopyBtn.textContent = '✅ 복사됨';
+          qrCopyBtn.style.background = 'var(--success)';
+          setTimeout(() => {
+            qrCopyBtn.textContent = originalText;
+            qrCopyBtn.style.background = originalBg;
+          }, 1500);
+        }).catch(err => {
+          console.error('Copy failed:', err);
+          showToast('복사 실패');
+        });
+      });
+
       // Generate QR code
       setTimeout(() => {
         const qrcodeContainer = document.getElementById('qrcode-container');
         if (qrcodeContainer) {
-          // Generate URL for guest to join
-          const joinUrl = window.location.origin + window.location.pathname + '?code=' + code;
           new QRCode(qrcodeContainer, {
             text: joinUrl,
             width: 200,
