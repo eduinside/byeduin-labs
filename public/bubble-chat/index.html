@@ -13,9 +13,10 @@
     * { box-sizing: border-box; }
 
     body {
-      min-height: 100vh;
-      padding: 56px 1rem 5rem;
+      height: 100vh;
+      padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      overflow: hidden;
     }
 
     body::before {
@@ -81,6 +82,51 @@
       border: 1px solid var(--border);
     }
     .fd-btn-ghost:hover { border-color: var(--primary); color: var(--primary); background: rgba(0,111,238,0.06); }
+
+    /* ── 홈 뷰 패딩 ── */
+    #view-home {
+      padding: 56px 1rem 5rem;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    /* ── 스크롤바 스타일 ── */
+    #view-home::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #view-home::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #view-home::-webkit-scrollbar-thumb {
+      background: var(--fg-muted);
+      border-radius: 4px;
+      opacity: 0.3;
+    }
+
+    #view-home::-webkit-scrollbar-thumb:hover {
+      opacity: 0.5;
+    }
+
+    /* ── 다크모드 스크롤바 ── */
+    [data-theme="dark"] #view-home::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    [data-theme="dark"] #view-home::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Firefox 스크롤바 */
+    #view-home {
+      scrollbar-color: var(--fg-muted) transparent;
+      scrollbar-width: thin;
+    }
+
+    [data-theme="dark"] #view-home {
+      scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    }
 
     /* ── 홈 뷰 섹션 제목 ── */
     #view-home .home-top {
@@ -273,8 +319,13 @@
     }
 
     .badge-active {
-      background: rgba(23, 201, 100, 0.15);
-      color: var(--success);
+      background: rgba(34, 197, 94, 0.2);
+      color: #16a34a;
+    }
+
+    [data-theme="dark"] .badge-active {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
     }
 
     .badge-paused {
@@ -343,6 +394,7 @@
     .deck-card-footer {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 6px;
       padding: 10px 14px;
       border-top: 1px solid rgba(0,0,0,0.05);
@@ -686,21 +738,26 @@
     .bc-sidebar-code-container {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 10px;
       padding: 10px;
       background: var(--bg);
       border-radius: 8px;
       border: 1px solid var(--border);
     }
 
+    .bc-sidebar-code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
     .bc-sidebar-code {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 900;
       font-family: 'Courier New', 'JetBrains Mono', monospace;
       letter-spacing: 0.2em;
       color: var(--primary);
-      text-align: center;
-      padding: 12px;
+      padding: 8px 12px;
       background: rgba(0, 111, 238, 0.12);
       border: 2px solid var(--primary);
       border-radius: 6px;
@@ -730,11 +787,7 @@
       flex-direction: column;
       gap: 8px;
       padding-top: 8px;
-      padding-bottom: 8px;
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      margin-top: 8px;
-      margin-bottom: 8px;
+      font-size: 12px;
     }
 
     .bc-session-info-row {
@@ -1355,7 +1408,7 @@
       transform: translateX(-50%) translateY(1rem);
       background: var(--fg);
       color: var(--bg);
-      padding: 10px 16px;
+      padding: 12px 16px;
       border-radius: 10px;
       font-size: 12px;
       font-weight: 600;
@@ -1363,7 +1416,10 @@
       pointer-events: none;
       transition: opacity 0.2s, transform 0.2s;
       z-index: 9999;
-      white-space: nowrap;
+      white-space: normal;
+      max-width: 85vw;
+      text-align: center;
+      line-height: 1.4;
     }
 
     #bc-toast.show {
@@ -1484,26 +1540,24 @@
           <!-- Room Code Section -->
           <div class="bc-sidebar-section">
             <div class="bc-sidebar-code-container">
-              <div class="bc-sidebar-title">접속 코드</div>
-              <div class="bc-sidebar-code" id="chat-header-code" onclick="showCodeModal()">000000</div>
-            </div>
-
-            <!-- Session Info Section -->
-            <div class="bc-sidebar-session-info">
-              <div class="bc-session-info-row">
-                <span class="bc-session-info-label">시작</span>
-                <span class="bc-session-info-value" id="bc-sidebar-start-time">--:--</span>
+              <div class="bc-sidebar-code-header">
+                <div class="bc-sidebar-title">접속 코드</div>
+                <div class="bc-sidebar-code" id="chat-header-code" onclick="showCodeModal()">000000</div>
               </div>
-              <div class="bc-session-info-row">
-                <span class="bc-session-info-label">참여</span>
-                <span class="bc-session-info-value" id="bc-sidebar-participant-count">0명</span>
+
+              <!-- Session Info Section -->
+              <div class="bc-sidebar-session-info">
+                <div class="bc-session-info-row">
+                  <span class="bc-session-info-label">시작</span>
+                  <span class="bc-session-info-value" id="bc-sidebar-start-time">--:--</span>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- Participants Section -->
           <div class="bc-sidebar-section">
-            <div class="bc-sidebar-title">참여자</div>
+            <div class="bc-sidebar-title">참여자 <span id="bc-participant-count-badge">(0명)</span></div>
             <ul id="bc-participant-list" class="bc-participant-list"></ul>
             <button id="bc-save-chat-btn" class="bc-save-chat-btn" onclick="saveChatAsText()" style="display: none;">
               📥 대화 내용 저장
@@ -1655,6 +1709,7 @@
     };
 
     let _toastTimer = null;
+    let _sessionInfoInterval = null;
 
     /* ═══════════════════════════════════════════════════════════════ */
     /* View Management                                                 */
@@ -1672,10 +1727,16 @@
 
       if (id === 'chat') {
         document.body.classList.add('in-chat');
+        // Update session info periodically (every 30 seconds for relative time updates)
+        if (_sessionInfoInterval) clearInterval(_sessionInfoInterval);
+        _sessionInfoInterval = setInterval(updateSessionInfo, 30000);
       } else {
         document.body.classList.remove('in-chat');
         // Close dropdown when returning to home
         closeChatMenu();
+        // Stop periodic session info updates
+        if (_sessionInfoInterval) clearInterval(_sessionInfoInterval);
+        _sessionInfoInterval = null;
       }
     }
 
@@ -2952,6 +3013,33 @@
       updateSessionInfo();
     }
 
+    function getRelativeTime(timestamp) {
+      if (!timestamp) return '--:--';
+
+      // Handle both ISO strings and millisecond timestamps
+      let time;
+      if (typeof timestamp === 'string') {
+        // ISO string
+        time = new Date(timestamp).getTime();
+      } else {
+        // Millisecond timestamp
+        time = timestamp;
+      }
+
+      const now = Date.now();
+      const diff = now - time;
+      const seconds = Math.floor(diff / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+
+      if (seconds < 60) return '방금';
+      if (minutes < 60) return minutes + '분 전';
+      if (hours < 24) return hours + '시간 전';
+      if (days < 30) return days + '일 전';
+      return '한 달 이상 전';
+    }
+
     function updateSessionInfo() {
       // Update room title in header
       const titleEl = document.getElementById('bc-header-room-title');
@@ -2960,19 +3048,18 @@
         titleEl.title = STATE.roomName;
       }
 
-      // Update start time in sidebar
+      // Update start time in sidebar with relative time
       const startTimeEl = document.getElementById('bc-sidebar-start-time');
       if (startTimeEl && STATE.sessionStart) {
-        const startTime = new Date(STATE.sessionStart);
-        const timeStr = startTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-        startTimeEl.textContent = timeStr;
+        const relativeTime = getRelativeTime(STATE.sessionStart);
+        startTimeEl.textContent = relativeTime;
       }
 
-      // Update participant count in sidebar
-      const countEl = document.getElementById('bc-sidebar-participant-count');
-      if (countEl && STATE.participants) {
+      // Update participant count in sidebar badge
+      const countBadgeEl = document.getElementById('bc-participant-count-badge');
+      if (countBadgeEl && STATE.participants) {
         const activeCount = STATE.participants.filter(p => !p.leaveTime).length;
-        countEl.textContent = activeCount + '명';
+        countBadgeEl.textContent = '(' + activeCount + '명)';
       }
     }
 
@@ -3357,7 +3444,7 @@
           renderChatCards();
         } else {
           // For GUEST: just show message, actual save happens in conn.on('close')
-          showToast('대화에서 나갔습니다');
+          showToast('대화창을 다시 열면 대화를 계속할 수 있습니다(대화창을 닫는 동안 메시지는 수신되지 않습니다)');
         }
       } else {
         // Save as completed - keep in activeSessions for host to see, but guests cannot rejoin
