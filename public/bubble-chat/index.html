@@ -1775,9 +1775,10 @@
       });
 
       conn.on('data', (raw) => {
-        const msg = JSON.parse(raw);
-        console.log('[Host] Received message from guest:', msg);
-        if (msg.type === 'handshake') {
+        try {
+          const msg = JSON.parse(raw);
+          console.log('[Host] Received message from guest:', msg);
+          if (msg.type === 'handshake') {
           const guestNickname = msg.nickname;
           console.log('[Host] Processing guest handshake, nickname:', guestNickname);
           const hostNickname = STATE.participants.find(p => p.isHost)?.nickname;
@@ -1834,6 +1835,9 @@
           conn.send(JSON.stringify({ type: 'start' }));
         } else {
           handleIncomingMessage(msg, conn);
+        }
+        } catch (e) {
+          console.error('[Host] Error processing message from guest:', e, 'raw data:', raw);
         }
       });
 
@@ -1910,9 +1914,10 @@
       });
 
       conn.on('data', (raw) => {
-        const msg = JSON.parse(raw);
-        console.log('[Guest] Received message:', msg);
-        if (msg.type === 'error') {
+        try {
+          const msg = JSON.parse(raw);
+          console.log('[Guest] Received message:', msg);
+          if (msg.type === 'error') {
           // Handle error from host
           const errorMsg = msg.content;
           if (errorMsg === 'nickname_taken') {
@@ -2072,6 +2077,9 @@
           }
         } else {
           handleIncomingMessage(msg, null);
+        }
+        } catch (e) {
+          console.error('[Guest] Error processing message:', e, 'raw data:', raw);
         }
       });
 
