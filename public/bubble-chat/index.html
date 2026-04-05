@@ -2621,9 +2621,12 @@
           peer.on('error', (err) => {
             clearTimeout(timeout);
             console.error('Peer error:', err);
-            showToast('PeerJS 오류: ' + err.type);
-            if (err.type === 'unavailable-id') {
-              createRoomAsHost();
+            // Only show error if not a guest connecting (guest errors are handled in setupGuestConnection)
+            if (STATE.role !== 'guest') {
+              showToast('PeerJS 오류: ' + err.type);
+              if (err.type === 'unavailable-id') {
+                createRoomAsHost();
+              }
             }
           });
         } catch (e) {
