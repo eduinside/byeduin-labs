@@ -1,6 +1,79 @@
 # byeduin VIVES — 개발 계획
 
-> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-04-04 (배포 후 오류 수정 완료)
+> 최초 작성: 2026-03-25 / 최종 업데이트: 2026-04-05 (QR Master PWA 개선)
+
+---
+
+## QR Master — PWA 개선 (2026-04-05)
+
+### 개선 사항
+
+#### 1. PWA 아이콘 추가
+- **파일**: `public/qr/icons/qr-icon.svg`
+- **특징**: QR 스캔 코너 프레임 디자인 (브랜드 컬러 `#006fee`)
+- **지원**: `purpose: "any"` + `purpose: "maskable"` 두 목적 모두 지원
+- **기술**: SVG 기반으로 모든 화면 크기에 맞게 자동 스케일링
+
+#### 2. Manifest 개선
+**추가 필드**:
+- `id: "/qr/"` — 앱 안정적 식별 (재설치 시에도 같은 앱으로 인식)
+- `scope: "/qr/"` — PWA 범위 명시 (이 경로 내에서만 PWA 기능 활성화)
+- `lang: "ko"` — 언어 설정 (한국어)
+- `orientation: "portrait-primary"` — 권장 화면 방향 (세로 고정)
+- `categories: ["utilities"]` — 앱 스토어 분류 (유틸리티)
+
+**아이콘 변경**:
+- JPEG 기반 공용 로고 → SVG 기반 전용 아이콘
+- 마스크 가능(maskable) 아이콘 지원으로 모든 기기에서 최적 표시
+
+#### 3. Service Worker 업그레이드 (v1 → v2)
+**캐싱 개선**:
+- CDN 라이브러리 사전 캐싱: QRCode.js, jsQR
+- 추가 리소스: `init.js`, `manifest.json`, `qr-icon.svg`
+- **결과**: 첫 방문 후 완전한 오프라인 지원 가능
+
+**내비게이션 Fallback**:
+- 오프라인 상태에서 `/qr/` 직접 접속 시 캐시된 index.html 자동 반환
+- **결과**: 오프라인 네비게이션 안정성 향상
+
+**에러 처리 개선**:
+- 캐시 미스 + 네트워크 실패 시 `undefined` 반환 대신 적절한 오류 응답 반환
+- **결과**: fetch 파이프라인 안정성 향상
+
+#### 4. iOS PWA 지원 추가
+**새 메타태그**:
+```html
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="QR Master">
+<link rel="apple-touch-icon" href="/logo.jpg">
+<meta name="theme-color" content="#006fee">
+```
+
+**기능**:
+- iOS Safari에서 "홈 화면에 추가" 가능
+- 상태바를 투명하게 처리 (dark theme과 조화)
+- Android Chrome 주소창에 브랜드 컬러 표시
+
+### 검증 결과
+
+| 항목 | 상태 |
+|------|------|
+| Service Worker 등록 | ✅ Activated |
+| 캐시 버전 | ✅ qr-master-v2 |
+| 캐시된 자산 | ✅ 9개 (로컬 5개 + CDN 2개 + 메타 2개) |
+| Manifest 필드 완성 | ✅ id, scope, lang, orientation, categories |
+| iOS PWA 지원 | ✅ 모든 메타태그 추가 |
+| 아이콘 파일 | ✅ SVG 로드 성공 |
+| 오프라인 지원 | ✅ 모든 자산 캐싱 완료 |
+
+### 배포 후 확인 사항
+
+- Chrome DevTools → Application → Manifest에서 "Install" 버튼 활성화 여부
+- Chrome/Edge에서 PWA 설치 배너 자동 표시 여부
+- iOS Safari에서 공유 → 홈 화면에 추가 동작 확인
+- 네트워크 오프라인 상태에서 앱 정상 동작 확인
+- 홈 화면 아이콘이 새 QR 디자인으로 표시되는지 확인
 
 ---
 
