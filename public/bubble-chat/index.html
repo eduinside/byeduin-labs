@@ -2970,6 +2970,28 @@
         }
       });
 
+      conn.on('error', (err) => {
+        console.error('[Guest] Connection error:', err);
+        showToast('운영중이 아닌 대화 코드입니다.');
+
+        // Clean up
+        if (STATE.hostConn) {
+          STATE.hostConn.close();
+          STATE.hostConn = null;
+        }
+
+        // Return to home
+        try {
+          const key = 'bubbleChat_activeSessions';
+          let sessions = JSON.parse(localStorage.getItem(key) || '[]');
+          sessions = sessions.filter(s => s.code !== STATE.roomCode);
+          localStorage.setItem(key, JSON.stringify(sessions));
+        } catch (e) {}
+
+        renderChatCards();
+        showView('home');
+      });
+
       conn.on('close', () => {
         showToast('연결이 끊어졌습니다');
 
