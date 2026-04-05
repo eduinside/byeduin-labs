@@ -1854,6 +1854,66 @@
       _toastTimer = setTimeout(() => t.classList.remove('show'), duration);
     }
 
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* localStorage 모니터링                                           */
+    /* ═══════════════════════════════════════════════════════════════ */
+
+    let _storageWarningShown = false;  // 경고 토스트를 한 번만 표시
+
+    function getStorageUsage() {
+      // localStorage 사용량 계산 (Bytes)
+      let total = 0;
+      for (let key in localStorage) {
+        if (localStorage.hasOwnProperty(key)) {
+          const value = localStorage.getItem(key);
+          total += new Blob([value]).size;
+        }
+      }
+      return total;
+    }
+
+    function getStorageUsagePercent() {
+      // 보수적 추정: 5MB 한계 기준
+      const limit = 5 * 1024 * 1024;  // 5 MB
+      const usage = getStorageUsage();
+      return (usage / limit) * 100;
+    }
+
+    function checkStorageWarning() {
+      // 80% 이상 사용 시 경고
+      const percent = getStorageUsagePercent();
+      if (percent >= 80 && !_storageWarningShown) {
+        _storageWarningShown = true;
+        const usedMB = (getStorageUsage() / 1024 / 1024).toFixed(1);
+        showToast(`⚠️ 저장소 부족 (${usedMB}MB 사용 중)\n오래된 대화를 삭제해주세요`, 5000);
+        console.warn(`[Storage] Usage: ${percent.toFixed(1)}% (${usedMB}MB)`);
+      } else if (percent < 70) {
+        // 70% 아래로 내려가면 경고 리셋
+        _storageWarningShown = false;
+      }
+    }
+
+    // localStorage 저장 시 사용량 체크 래퍼
+    function safeLocalStorageSet(key, value) {
+      try {
+        localStorage.setItem(key, value);
+        checkStorageWarning();
+        return true;
+      } catch (e) {
+        if (e.name === 'QuotaExceededError' || e.code === 22) {
+          showToast('❌ 저장소 가득 참!\n오래된 대화를 삭제해주세요', 4000);
+          console.error('[Storage] Quota exceeded');
+          return false;
+        }
+        throw e;
+      }
+    }
+
+    // 주기적으로 저장소 상태 확인 (30초마다)
+    setInterval(() => {
+      checkStorageWarning();
+    }, 30000);
+
     function copyChatCode() {
       navigator.clipboard.writeText(STATE.roomCode).then(() => {
         showToast('코드가 복사되었습니다 ✓');
@@ -2332,7 +2392,7 @@
       sessions = sessions.slice(0, 20);
 
       try {
-        localStorage.setItem(key, JSON.stringify(sessions));
+        safeLocalStorageSet(key, JSON.stringify(sessions));
       } catch (e) {
         console.error('Error saving sessions:', e);
       }
@@ -2912,7 +2972,7 @@
               sessions = sessions.slice(0, 20);
 
               try {
-                localStorage.setItem(key, JSON.stringify(sessions));
+                safeLocalStorageSet(key, JSON.stringify(sessions));
               } catch (e) {}
             }
 
@@ -2954,7 +3014,7 @@
               const stored = localStorage.getItem(key);
               if (stored) sessions = JSON.parse(stored);
               sessions = sessions.filter(s => s.code !== STATE.roomCode);
-              localStorage.setItem(key, JSON.stringify(sessions));
+              safeLocalStorageSet(key, JSON.stringify(sessions));
             } catch (e) {}
 
             showToast('대화가 완전 종료되었습니다');
@@ -3070,7 +3130,7 @@
             sessions = sessions.slice(0, 20);
 
             try {
-              localStorage.setItem(key, JSON.stringify(sessions));
+              safeLocalStorageSet(key, JSON.stringify(sessions));
             } catch (e) {}
           }
 
