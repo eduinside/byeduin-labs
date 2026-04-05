@@ -194,6 +194,267 @@
       font-size: 14px;
     }
 
+    /* ═══════════════════════════════════════
+       HeroUI 기반 개선된 카드 컴포넌트
+    ═══════════════════════════════════════ */
+    .deck-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0;
+      cursor: pointer;
+      animation: fadeUp 0.25s ease both;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .deck-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,111,238,0.15);
+    }
+
+    /* 카드 헤더: 이모지 + 제목 + 뱃지 */
+    .deck-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 14px 14px 10px 14px;
+      gap: 8px;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+    [data-theme="dark"] .deck-card-header {
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .deck-card-title {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .deck-card-emoji {
+      font-size: 24px;
+      line-height: 1.2;
+      flex-shrink: 0;
+    }
+
+    .deck-card-title h3 {
+      margin: 0;
+      padding: 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--fg);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      line-height: 1.3;
+    }
+
+    /* 상태 뱃지 */
+    .deck-card-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .badge-active {
+      background: rgba(23, 201, 100, 0.15);
+      color: var(--success);
+    }
+
+    .badge-paused {
+      background: rgba(255, 184, 0, 0.15);
+      color: #f5a623;
+    }
+
+    .badge-completed {
+      background: rgba(0,0,0,0.08);
+      color: var(--fg-muted);
+    }
+
+    [data-theme="dark"] .badge-completed {
+      background: rgba(255,255,255,0.08);
+    }
+
+    /* 메뉴 버튼 */
+    .deck-card-menu {
+      background: none;
+      border: none;
+      color: var(--fg-muted);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 6px;
+      flex-shrink: 0;
+      transition: color 0.15s, transform 0.15s;
+    }
+
+    .deck-card-menu:hover {
+      color: var(--fg);
+      transform: scale(1.15);
+    }
+
+    /* 카드 본문: 참여자 + 메시지 수 */
+    .deck-card-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 12px 14px;
+    }
+
+    .deck-card-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .deck-card-stat .label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--fg-muted);
+    }
+
+    .deck-card-stat .value {
+      font-size: 13px;
+      color: var(--fg);
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* 카드 푸터: 코드 + 역할 */
+    .deck-card-footer {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
+      border-top: 1px solid rgba(0,0,0,0.05);
+      background: rgba(0,0,0,0.02);
+      flex-wrap: wrap;
+    }
+
+    [data-theme="dark"] .deck-card-footer {
+      border-top: 1px solid rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .code-badge, .role-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      background: rgba(0,111,238,0.1);
+      color: var(--primary);
+    }
+
+    .role-badge {
+      background: rgba(0,0,0,0.06);
+      color: var(--fg-muted);
+    }
+
+    [data-theme="dark"] .role-badge {
+      background: rgba(255,255,255,0.08);
+    }
+
+    /* 메뉴 드롭다운 */
+    .deck-card-dropdown {
+      position: absolute;
+      top: 42px;
+      right: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+      min-width: 120px;
+      animation: slideDown 0.15s ease;
+      overflow: hidden;
+    }
+
+    [data-theme="dark"] .deck-card-dropdown {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .deck-card-dropdown button {
+      display: block;
+      width: 100%;
+      background: none;
+      border: none;
+      text-align: left;
+      padding: 10px 12px;
+      color: var(--fg);
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.1s;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+    [data-theme="dark"] .deck-card-dropdown button {
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .deck-card-dropdown button:last-child {
+      border-bottom: none;
+    }
+
+    .deck-card-dropdown button:hover {
+      background: var(--bg-sec);
+    }
+
+    .deck-card-dropdown button.danger {
+      color: var(--danger);
+    }
+
+    .deck-card-dropdown button.danger:hover {
+      background: rgba(243,18,96,0.1);
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 반응형: 태블릿 이상 */
+    @media (min-width: 541px) {
+      .deck-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      }
+    }
+
+    /* 반응형: 모바일 */
+    @media (max-width: 540px) {
+      .deck-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      }
+
+      .deck-card-body {
+        grid-template-columns: 1fr;
+      }
+
+      .deck-card-stat .value {
+        font-size: 12px;
+      }
+    }
+
     /* ══════════════════════════════════
        Chat View Header (like Chalkboard)
     ══════════════════════════════════ */
@@ -718,19 +979,47 @@
     .bc-dm-select {
       padding: 6px 10px;
       border-radius: 6px;
-      border: none;
-      background: transparent;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
       color: var(--fg);
       font-size: 12px;
       cursor: pointer;
       font-family: inherit;
       min-width: 100px;
       outline: none;
+      transition: background 0.15s, border-color 0.15s;
     }
 
     .bc-dm-select:focus {
       outline: none;
-      background: rgba(0,111,238,0.08);
+      background: var(--bg-sec);
+      border-color: var(--primary);
+    }
+
+    /* Option 스타일 (드롭다운 항목) */
+    .bc-dm-select option {
+      color: #11181c;
+      background: #ffffff;
+      padding: 8px 4px;
+    }
+
+    /* Dark mode improvements */
+    [data-theme="dark"] .bc-dm-select {
+      background: var(--card-bg);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
+    [data-theme="dark"] .bc-dm-select:focus {
+      background: var(--bg-sec);
+      border-color: rgba(0, 111, 238, 0.8);
+    }
+
+    /* Dark mode: option 드롭다운 항목 */
+    [data-theme="dark"] .bc-dm-select option {
+      color: #ffffff;
+      background: #1a1a1a;
+      padding: 8px 4px;
     }
 
     .bc-msg-input {
@@ -1562,29 +1851,25 @@
 
       visibleSessions.forEach(session => {
         const card = document.createElement('div');
-        card.className = 'deck-item';
-        card.onclick = () => openChatSession(session.code);
-
-        const emoji = document.createElement('div');
-        emoji.className = 'deck-item-emoji';
-        emoji.textContent = '💬';
-
-        const name = document.createElement('div');
-        name.className = 'deck-item-name';
-        name.textContent = session.roomName || '(이름 없음)';
-
-        const meta = document.createElement('div');
-        meta.className = 'deck-item-meta';
+        card.className = 'deck-card';
+        card.onclick = (e) => {
+          if (!e.target.closest('.deck-card-menu')) {
+            openChatSession(session.code);
+          }
+        };
 
         // Status indicator
         let statusText = '진행 중';
         let statusEmoji = '🟢';
+        let badgeClass = 'badge-active';
         if (session.status === 'paused') {
           statusText = '일시 중단';
           statusEmoji = '⏸️';
+          badgeClass = 'badge-paused';
         } else if (session.status === 'completed') {
           statusText = '완전 종료';
           statusEmoji = '🔒';
+          badgeClass = 'badge-completed';
         }
 
         // Normalize participants to string array
@@ -1592,24 +1877,80 @@
           ? session.participants.map(p => typeof p === 'string' ? p : p.nickname).filter(p => p)
           : [];
 
-        meta.innerHTML = `<div>${statusEmoji} 상태: ${statusText}</div>
-                          <div>코드: ${session.code}</div>
-                          <div>역할: ${session.role === 'host' ? '호스트' : '게스트'}</div>
-                          <div>참여자: ${participants.length > 0 ? participants.join(', ') : '-'}</div>
-                          <div>메시지: ${session.messageCount || 0}개</div>`;
+        // 카드 헤더 생성
+        const header = document.createElement('div');
+        header.className = 'deck-card-header';
 
-        const del = document.createElement('button');
-        del.className = 'deck-item-del';
-        del.textContent = '✕';
-        del.onclick = (e) => {
+        const title = document.createElement('div');
+        title.className = 'deck-card-title';
+
+        const emoji = document.createElement('span');
+        emoji.className = 'deck-card-emoji';
+        emoji.textContent = '💬';
+
+        const titleH3 = document.createElement('h3');
+        titleH3.textContent = session.roomName || '(이름 없음)';
+
+        title.appendChild(emoji);
+        title.appendChild(titleH3);
+
+        const badge = document.createElement('div');
+        badge.className = `deck-card-badge ${badgeClass}`;
+        badge.innerHTML = `${statusEmoji} <span>${statusText}</span>`;
+
+        const menuBtn = document.createElement('button');
+        menuBtn.className = 'deck-card-menu';
+        menuBtn.textContent = '⋯';
+        menuBtn.onclick = (e) => {
           e.stopPropagation();
-          deleteSession(session.code);
+          toggleCardMenu(card, session.code);
         };
 
-        card.appendChild(emoji);
-        card.appendChild(name);
-        card.appendChild(meta);
-        card.appendChild(del);
+        header.appendChild(title);
+        header.appendChild(badge);
+        header.appendChild(menuBtn);
+
+        // 카드 본문 생성
+        const body = document.createElement('div');
+        body.className = 'deck-card-body';
+
+        const statParticipants = document.createElement('div');
+        statParticipants.className = 'deck-card-stat';
+        statParticipants.innerHTML = `
+          <span class="label">참여자</span>
+          <span class="value" title="${participants.join(', ')}">${participants.length > 0 ? participants.slice(0, 2).join(', ') + (participants.length > 2 ? ` +${participants.length - 2}` : '') : '-'}</span>
+        `;
+
+        const statMessages = document.createElement('div');
+        statMessages.className = 'deck-card-stat';
+        statMessages.innerHTML = `
+          <span class="label">메시지</span>
+          <span class="value">${session.messageCount || 0}개</span>
+        `;
+
+        body.appendChild(statParticipants);
+        body.appendChild(statMessages);
+
+        // 카드 푸터 생성
+        const footer = document.createElement('div');
+        footer.className = 'deck-card-footer';
+
+        const codeBadge = document.createElement('span');
+        codeBadge.className = 'code-badge';
+        codeBadge.textContent = `CODE: ${session.code}`;
+
+        const roleStr = session.role === 'host' ? '호스트' : '게스트';
+        const roleBadge = document.createElement('span');
+        roleBadge.className = 'role-badge';
+        roleBadge.textContent = roleStr;
+
+        footer.appendChild(codeBadge);
+        footer.appendChild(roleBadge);
+
+        // 카드 조립
+        card.appendChild(header);
+        card.appendChild(body);
+        card.appendChild(footer);
         container.appendChild(card);
       });
     }
@@ -1653,6 +1994,45 @@
       }
 
       renderChatCards();
+    }
+
+    function toggleCardMenu(card, code) {
+      // 기존 드롭다운 닫기
+      document.querySelectorAll('.deck-card-dropdown').forEach(dropdown => {
+        if (!dropdown.closest('.deck-card').isSameNode(card)) {
+          dropdown.remove();
+        }
+      });
+
+      // 현재 카드의 드롭다운 토글
+      let dropdown = card.querySelector('.deck-card-dropdown');
+      if (dropdown) {
+        dropdown.remove();
+        return;
+      }
+
+      // 새 드롭다운 생성
+      dropdown = document.createElement('div');
+      dropdown.className = 'deck-card-dropdown';
+
+      const viewBtn = document.createElement('button');
+      viewBtn.textContent = '📂 열기';
+      viewBtn.onclick = (e) => {
+        e.stopPropagation();
+        openChatSession(code);
+      };
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'danger';
+      deleteBtn.textContent = '🗑️ 삭제';
+      deleteBtn.onclick = (e) => {
+        e.stopPropagation();
+        deleteSession(code);
+      };
+
+      dropdown.appendChild(viewBtn);
+      dropdown.appendChild(deleteBtn);
+      card.appendChild(dropdown);
     }
 
     function deleteSession(code) {
