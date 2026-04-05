@@ -1836,6 +1836,31 @@
     }
 
     /* ═══════════════════════════════════════════════════════════════ */
+    /* Utility: Relative time formatting                               */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function getRelativeTime(isoString) {
+      if (!isoString) return '-';
+      const date = new Date(isoString);
+      const now = new Date();
+      const diff = now.getTime() - date.getTime();
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(diff / 3600000);
+      const days = Math.floor(diff / 86400000);
+
+      if (minutes < 1) return '방금';
+      if (minutes < 60) return `${minutes}분 전`;
+      if (hours < 24) return `${hours}시간 전`;
+      if (days < 7) return `${days}일 전`;
+
+      // Show date for older sessions
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const dateNum = String(date.getDate()).padStart(2, '0');
+      const hour = String(date.getHours()).padStart(2, '0');
+      const min = String(date.getMinutes()).padStart(2, '0');
+      return `${month}/${dateNum} ${hour}:${min}`;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
     /* Chat Card Management (Home List)                                */
     /* ═══════════════════════════════════════════════════════════════ */
     function renderChatCards() {
@@ -1931,29 +1956,24 @@
         const body = document.createElement('div');
         body.className = 'deck-card-body';
 
-        // 시작일시 추가
-        let startTimeStr = '-';
-        if (session.startedAt) {
-          const startDate = new Date(session.startedAt);
-          const month = String(startDate.getMonth() + 1).padStart(2, '0');
-          const date = String(startDate.getDate()).padStart(2, '0');
-          const hours = String(startDate.getHours()).padStart(2, '0');
-          const minutes = String(startDate.getMinutes()).padStart(2, '0');
-          startTimeStr = `${month}/${date} ${hours}:${minutes}`;
-        }
+        // 시작일시 추가 (상대 시간 사용)
+        const relativeTime = getRelativeTime(session.startedAt);
 
         const statStartTime = document.createElement('div');
         statStartTime.className = 'deck-card-stat';
         statStartTime.innerHTML = `
           <span class="label">시작</span>
-          <span class="value">${startTimeStr}</span>
+          <span class="value">${relativeTime}</span>
         `;
 
-        const statParticipants = document.createElement('div');
-        statParticipants.className = 'deck-card-stat';
-        statParticipants.innerHTML = `
-          <span class="label">참여자</span>
-          <span class="value" title="${participants.join(', ')}">${participants.length > 0 ? participants.slice(0, 2).join(', ') + (participants.length > 2 ? ` +${participants.length - 2}` : '') : '-'}</span>
+        // 호스트 닉네임 표시
+        const hostNickname = session.hostNickname || (participants.length > 0 ? participants[0] : '-');
+
+        const statHost = document.createElement('div');
+        statHost.className = 'deck-card-stat';
+        statHost.innerHTML = `
+          <span class="label">호스트</span>
+          <span class="value" title="${hostNickname}">${hostNickname}</span>
         `;
 
         const statMessages = document.createElement('div');
@@ -1964,7 +1984,7 @@
         `;
 
         body.appendChild(statStartTime);
-        body.appendChild(statParticipants);
+        body.appendChild(statHost);
         body.appendChild(statMessages);
 
         // 카드 푸터 생성
@@ -2011,11 +2031,16 @@
       sessions = sessions.filter(s => s.code !== STATE.roomCode);
 
       // Add new
+      // For hostNickname: use STATE.nickname directly for consistency (not derived from participants)
+      const hostNickname = STATE.role === 'host' ? STATE.nickname : (STATE.participants.find(p => p.isHost)?.nickname || STATE.nickname);
+
       sessions.unshift({
         code: STATE.roomCode,
         roomName: STATE.roomName,
         role: STATE.role,
+        status: 'active',  // Add explicit status field
         participants: STATE.participants.map(p => p.nickname),
+        hostNickname: hostNickname,
         messages: STATE.messages,  // Save full message history
         messageCount: STATE.messages.length,
         startedAt: new Date(STATE.sessionStart).toISOString(),
@@ -2047,17 +2072,42 @@
         return;
       }
 
+      // 세션 정보 조회
+      let session = null;
+      const key = 'bubbleChat_activeSessions';
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          const sessions = JSON.parse(stored);
+          session = sessions.find(s => s.code === code);
+        }
+      } catch (e) {}
+
       // 새 드롭다운 생성
       dropdown = document.createElement('div');
       dropdown.className = 'deck-card-dropdown';
 
-      const viewBtn = document.createElement('button');
-      viewBtn.textContent = '📂 열기';
-      viewBtn.onclick = (e) => {
-        e.stopPropagation();
-        openChatSession(code);
-      };
+      // 완전 종료된 대화 & 호스트인 경우: "대화 저장하기" 표시
+      if (session && session.status === 'completed' && session.role === 'host') {
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = '💾 대화 저장하기';
+        saveBtn.onclick = (e) => {
+          e.stopPropagation();
+          downloadSessionHistory(code);
+        };
+        dropdown.appendChild(saveBtn);
+      } else {
+        // 진행 중/일시중단 대화: "열기" 버튼 표시
+        const viewBtn = document.createElement('button');
+        viewBtn.textContent = '📂 열기';
+        viewBtn.onclick = (e) => {
+          e.stopPropagation();
+          openChatSession(code);
+        };
+        dropdown.appendChild(viewBtn);
+      }
 
+      // 삭제 버튼 (항상 표시)
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'danger';
       deleteBtn.textContent = '🗑️ 삭제';
@@ -2065,9 +2115,8 @@
         e.stopPropagation();
         deleteSession(code);
       };
-
-      dropdown.appendChild(viewBtn);
       dropdown.appendChild(deleteBtn);
+
       card.appendChild(dropdown);
     }
 
@@ -2126,22 +2175,33 @@
       STATE.role = session.role;
       STATE.sessionStart = new Date(session.startedAt).getTime();
 
-      // For guest, restore nickname from localStorage
+      // Restore nickname based on role
       if (session.role === 'guest') {
+        // Guest: restore from localStorage
         try {
           const guestNicks = JSON.parse(localStorage.getItem('bubbleChat_guestNicknames')) || {};
           STATE.nickname = guestNicks[code] || '';
         } catch (e) {}
+      } else if (session.role === 'host') {
+        // Host: restore from hostNickname in session (newly added field)
+        STATE.nickname = session.hostNickname || '';
       }
 
       // Initialize participants
-      const hostNickname = session.role === 'guest' ? session.hostNickname : session.nickname;
+      // Get host nickname - for guests, it's from session.hostNickname; for hosts, from hostNickname field (newly saved)
+      const hostNickname = session.hostNickname || (session.role === 'host' ? session.participants?.[0] : '');
       STATE.participants = (session.participants || []).map((nickname) => ({
         nickname: typeof nickname === 'string' ? nickname : nickname.nickname,
         isHost: (typeof nickname === 'string' ? nickname : nickname.nickname) === hostNickname,
         joinTime: Date.now(),
         leaveTime: null
       })) || [];
+
+      // Safety check: ensure host is in participants list with isHost flag
+      if (session.role === 'host' && hostNickname && !STATE.participants.find(p => p.isHost)) {
+        // Add host if missing
+        STATE.participants.unshift({ nickname: hostNickname, isHost: true, joinTime: Date.now(), leaveTime: null });
+      }
 
       // Restore messages
       if (session.messages && Array.isArray(session.messages)) {
@@ -2159,14 +2219,30 @@
           }
           // else: peer still running from pause, just reuse it
         } else {
-          // Guest: only initialize peer if not already connected
-          if (!STATE.hostConn || !STATE.peer || !STATE.peer.open) {
+          // Guest: check if connection is actually open (not just exists)
+          const needsNewConnection = !STATE.hostConn ||
+                                    !STATE.hostConn.open ||
+                                    !STATE.peer ||
+                                    !STATE.peer.open;
+
+          if (needsNewConnection) {
+            console.log('[Guest] Creating new connection (old connection closed or missing)');
+            // Clean up old peer if it exists but is closed
+            if (STATE.peer && !STATE.peer.open) {
+              try {
+                STATE.peer.destroy();
+              } catch (e) {}
+              STATE.peer = null;
+            }
+
+            // Create fresh connection
             const peerId = 'bubble-guest-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
             await initPeer(peerId);
             const conn = STATE.peer.connect('bubble-' + STATE.roomCode, { reliable: true });
             setupGuestConnection(conn);
+          } else {
+            console.log('[Guest] Reusing existing open connection');
           }
-          // else: reuse existing connection, just open chat view
         }
       } catch (e) {
         showToast('연결 복구 실패: ' + e.message);
@@ -2177,8 +2253,8 @@
       STATE.chatEnded = false;
       STATE.isClosing = false;
 
-      // Open chat view
-      setupChatUI();
+      // Open chat view (don't clear messages for rejoining sessions)
+      setupChatUI(false);
 
       // Display restored messages (for guests, only show messages after their join time)
       if (STATE.messages && STATE.messages.length > 0) {
@@ -2240,7 +2316,7 @@
     function startHostChat() {
       closeHostSetupModal();
       saveActiveSession();
-      setupChatUI();
+      setupChatUI(true);  // clearMessages=true for new sessions
       showView('chat');
     }
 
@@ -2523,6 +2599,9 @@
 
             showToast('호스트가 대화를 일시 중단했습니다');
 
+            // Set flag to prevent close handler from overwriting the paused status
+            STATE.isClosing = true;
+
             // Close connection and reset state
             if (STATE.hostConn) {
               STATE.hostConn.close();
@@ -2561,6 +2640,9 @@
 
             showToast('호스트가 대화를 종료했습니다');
 
+            // Set flag to prevent close handler from overwriting the session removal
+            STATE.isClosing = true;
+
             // Close connection and reset state
             if (STATE.hostConn) {
               STATE.hostConn.close();
@@ -2598,6 +2680,12 @@
       conn.on('close', () => {
         showToast('연결이 끊어졌습니다');
 
+        // Clear connection reference
+        if (STATE.role === 'guest') {
+          STATE.hostConn = null;
+          console.log('[Guest] Connection closed - cleared hostConn');
+        }
+
         // Guest temporarily disconnected - save session as active (not paused)
         // Skip if already closing (to prevent duplicate saves)
         if (STATE.role === 'guest' && !STATE.isClosing) {
@@ -2621,11 +2709,14 @@
             sessions = sessions.filter(s => s.code !== STATE.roomCode);
 
             // Add as active (without paused status) so guest can rejoin
+            // Include hostNickname for consistency
+            const hostNick = STATE.participants.find(p => p.isHost)?.nickname || '';
             sessions.unshift({
               code: STATE.roomCode,
               roomName: roomName,
               role: STATE.role,
               status: 'active',  // Keep as active, not paused
+              hostNickname: hostNick,
               participants: STATE.participants.map(p => p.nickname),
               messageCount: STATE.messages.length,
               messages: STATE.messages,
@@ -2704,22 +2795,20 @@
     /* ═══════════════════════════════════════════════════════════════ */
     /* Chat UI Setup                                                   */
     /* ═══════════════════════════════════════════════════════════════ */
-    function setupChatUI() {
+    function setupChatUI(clearMessages = false) {
       document.getElementById('chat-header-code').textContent = STATE.roomCode;
 
-      // Reset input and message wrap
+      // Reset input
       document.getElementById('bc-msg-input').value = '';
-      document.getElementById('bc-messages-wrap').innerHTML = '';
+
+      // Only clear messages if explicitly requested (new session)
+      // For rejoining, let openChatSession handle message rendering
+      if (clearMessages) {
+        document.getElementById('bc-messages-wrap').innerHTML = '';
+      }
 
       // updateParticipantList() 호출 (DM select 리셋 포함)
       updateParticipantList();
-
-      // Restore saved messages
-      if (STATE.messages && STATE.messages.length > 0) {
-        STATE.messages.forEach(msgObj => {
-          addMessageToUI(msgObj);
-        });
-      }
 
       // For host, broadcast start signal
       if (STATE.role === 'host') {
@@ -2790,8 +2879,9 @@
         li.appendChild(time);
         list.appendChild(li);
 
-        // Add to DM select (only active participants)
-        if (!p.leaveTime && p.nickname !== STATE.nickname) {
+        // Add to DM select (only active participants, excluding self)
+        // STATE.nickname must be set and match to filter out self
+        if (!p.leaveTime && STATE.nickname && p.nickname !== STATE.nickname) {
           const opt = document.createElement('option');
           opt.value = p.nickname;
 
@@ -2921,25 +3011,35 @@
     /* Link handling in messages */
     function renderMessageContent(content, bubbleElement) {
       const urlRegex = /(https?:\/\/[^\s)]+)/g;
-      const parts = content.split(urlRegex);
+      // Split by newlines first to preserve line breaks
+      const lines = content.split('\n');
 
       bubbleElement.innerHTML = ''; // Clear
-      parts.forEach((part, i) => {
-        if (part && part.match(urlRegex)) {
-          // This is a URL
-          const a = document.createElement('a');
-          a.href = part;
-          a.textContent = part;
-          a.target = '_blank';
-          a.rel = 'noopener noreferrer';
-          a.style.cssText = 'color: var(--primary); text-decoration: underline; word-break: break-all;';
-          bubbleElement.appendChild(a);
+      lines.forEach((line, lineIndex) => {
+        const parts = line.split(urlRegex);
 
-          // Try to load preview from URL (async)
-          loadLinkPreview(part, bubbleElement);
-        } else if (part) {
-          // Regular text
-          bubbleElement.appendChild(document.createTextNode(part));
+        parts.forEach((part, i) => {
+          if (part && part.match(urlRegex)) {
+            // This is a URL
+            const a = document.createElement('a');
+            a.href = part;
+            a.textContent = part;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.style.cssText = 'color: var(--primary); text-decoration: underline; word-break: break-all;';
+            bubbleElement.appendChild(a);
+
+            // Try to load preview from URL (async)
+            loadLinkPreview(part, bubbleElement);
+          } else if (part) {
+            // Regular text
+            bubbleElement.appendChild(document.createTextNode(part));
+          }
+        });
+
+        // Add line break if not the last line
+        if (lineIndex < lines.length - 1) {
+          bubbleElement.appendChild(document.createElement('br'));
         }
       });
     }
@@ -3120,6 +3220,11 @@
       setTimeout(() => {
         if (STATE.hostConn) {
           STATE.hostConn.close();
+          // For guest: also set to null so we can reconnect with new peer
+          if (STATE.role === 'guest') {
+            STATE.hostConn = null;
+            console.log('[Guest] Cleared hostConn for potential rejoin');
+          }
         }
         for (const conn of Object.values(STATE.guestConns)) {
           if (conn.open) {
@@ -3130,6 +3235,18 @@
         // Only destroy peer on complete, not on pause
         if (choice === 'complete' && STATE.peer) {
           STATE.peer.destroy();
+          STATE.peer = null;
+        }
+        // For guest pause: also destroy peer so we can create fresh connection on rejoin
+        // This ensures clean reconnection with proper event listeners
+        if (choice === 'pause' && STATE.role === 'guest' && STATE.peer) {
+          try {
+            STATE.peer.destroy();
+            STATE.peer = null;
+            console.log('[Guest] Destroyed peer for clean rejoin');
+          } catch (e) {
+            console.error('[Guest] Error destroying peer:', e);
+          }
         }
       }, 100);
 
@@ -3160,12 +3277,14 @@
           sessions = sessions.filter(s => s.code !== STATE.roomCode);
 
           // Add as paused
+          // Use STATE.nickname directly for host consistency
+          const hostNick = STATE.role === 'host' ? STATE.nickname : (STATE.participants.find(p => p.isHost)?.nickname || '');
           sessions.unshift({
             code: STATE.roomCode,
             roomName: STATE.roomName,
             role: STATE.role,
             status: 'paused',
-            hostNickname: STATE.participants.find(p => p.isHost)?.nickname,
+            hostNickname: hostNick,
             participants: STATE.participants.map(p => p.nickname),
             messageCount: STATE.messages.length,
             messages: STATE.messages,
@@ -3204,12 +3323,14 @@
         sessions = sessions.filter(s => s.code !== STATE.roomCode);
 
         // Add as completed
+        // Use STATE.nickname directly for host consistency
+        const hostNick = STATE.role === 'host' ? STATE.nickname : (STATE.participants.find(p => p.isHost)?.nickname || '');
         sessions.unshift({
           code: STATE.roomCode,
           roomName: STATE.roomName,
           role: STATE.role,
           status: 'completed',
-          hostNickname: STATE.participants.find(p => p.isHost)?.nickname,
+          hostNickname: hostNick,
           participants: STATE.participants.map(p => p.nickname),
           messageCount: STATE.messages.length,
           messages: STATE.messages,
@@ -3250,6 +3371,91 @@
       // Return to home
       renderChatCards();
       showView('home');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════ */
+    /* Download Completed Session History                             */
+    /* ═══════════════════════════════════════════════════════════════ */
+    function downloadSessionHistory(code) {
+      const key = 'bubbleChat_activeSessions';
+      let session = null;
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          const sessions = JSON.parse(stored);
+          session = sessions.find(s => s.code === code);
+        }
+      } catch (e) {
+        showToast('세션을 찾을 수 없습니다');
+        return;
+      }
+
+      if (!session) {
+        showToast('세션을 찾을 수 없습니다');
+        return;
+      }
+
+      if (!session.messages || session.messages.length === 0) {
+        showToast('저장할 메시지가 없습니다');
+        return;
+      }
+
+      let text = '';
+
+      // Header with metadata
+      text += '═══════════════════════════════════════════\n';
+      text += 'Bubble Chat 대화 기록\n';
+      text += '═══════════════════════════════════════════\n\n';
+
+      text += `방 이름: ${session.roomName || '(이름 없음)'}\n`;
+      text += `코드: ${session.code}\n`;
+      text += `역할: ${session.role === 'host' ? '호스트' : '게스트'}\n`;
+      text += `시작: ${new Date(session.startedAt).toLocaleString('ko-KR')}\n`;
+      text += `상태: ${session.status === 'completed' ? '완전 종료' : session.status === 'paused' ? '일시 중단' : '진행 중'}\n\n`;
+
+      // Participants
+      text += '참여자 목록:\n';
+      if (session.participants && session.participants.length > 0) {
+        session.participants.forEach(name => {
+          text += `  - ${name}\n`;
+        });
+      }
+
+      text += '\n───────────────────────────────────────────\n';
+      text += '대화 내용\n';
+      text += '───────────────────────────────────────────\n\n';
+
+      // Messages
+      session.messages.forEach(msg => {
+        const time = new Date(msg.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+
+        if (msg.type === 'system') {
+          text += `[${time}] [시스템] ${msg.content}\n`;
+        } else if (msg.type === 'dm') {
+          const target = msg.to ? `➡️ ${msg.to}` : 'Unknown';
+          text += `[${time}] ${msg.from} ${target}: ${msg.content}\n`;
+        } else {
+          text += `[${time}] ${msg.from}: ${msg.content}\n`;
+        }
+      });
+
+      text += '\n═══════════════════════════════════════════\n';
+      text += `저장 날짜: ${new Date().toLocaleString('ko-KR')}\n`;
+      text += '═══════════════════════════════════════════\n';
+
+      // Create blob and download
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const filename = `bubble-chat-${session.code}-${new Date().toISOString().split('T')[0]}.txt`;
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      showToast('대화 내용이 저장되었습니다');
     }
 
     /* ═══════════════════════════════════════════════════════════════ */
@@ -3360,8 +3566,33 @@
       updateThemeButtonChat();
       initializeMobileSidebar();
 
-      // Check for QR code join (URL parameter: ?code=123456)
+      // Auto-restore host session after refresh
       const urlParams = new URLSearchParams(window.location.search);
+      if (!urlParams.has('code')) {
+        // Only auto-restore if not joining as guest via QR code
+        try {
+          const key = 'bubbleChat_activeSessions';
+          const sessions = JSON.parse(localStorage.getItem(key) || '[]');
+
+          // Find active host session
+          const hostSession = sessions.find(s =>
+            s.role === 'host' &&
+            (s.status === 'active' || s.status === 'paused')
+          );
+
+          if (hostSession) {
+            console.log('[Init] Auto-restoring host session:', hostSession.code);
+            setTimeout(() => {
+              openChatSession(hostSession.code);
+            }, 500);
+          }
+        } catch (e) {
+          console.error('[Init] Error auto-restoring host session:', e);
+        }
+      }
+
+      // Check for QR code join (URL parameter: ?code=123456)
+      // urlParams already declared above, reuse it
       const codeParam = urlParams.get('code');
       if (codeParam && /^\d{6}$/.test(codeParam)) {
         // Auto-fill guest code and open modal
