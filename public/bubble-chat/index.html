@@ -1994,13 +1994,16 @@
 
     function executeConfirmedAction() {
       if (!_pendingChatAction) return;
+
+      // Save action type before closing modal (which clears _pendingChatAction)
+      const actionType = _pendingChatAction;
       closeConfirmChatActionModal();
 
-      if (_pendingChatAction === 'leave') {
+      if (actionType === 'leave') {
         _endChatSession('pause');
-      } else if (_pendingChatAction === 'pause') {
+      } else if (actionType === 'pause') {
         _endChatSession('pause');
-      } else if (_pendingChatAction === 'complete') {
+      } else if (actionType === 'complete') {
         _endChatSession('complete');
       }
     }
