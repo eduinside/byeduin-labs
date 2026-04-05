@@ -1815,7 +1815,12 @@
     function showToast(msg, duration = 2500) {
       clearTimeout(_toastTimer);
       const t = document.getElementById('bc-toast');
-      t.textContent = msg;
+      // Convert \n to <br> for multi-line messages
+      // Use textContent first to escape HTML, then convert newlines
+      const div = document.createElement('div');
+      div.textContent = msg;
+      const escapedMsg = div.innerHTML;
+      t.innerHTML = escapedMsg.replace(/\n/g, '<br>');
       t.classList.add('show');
       _toastTimer = setTimeout(() => t.classList.remove('show'), duration);
     }
