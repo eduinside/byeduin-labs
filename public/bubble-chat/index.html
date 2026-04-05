@@ -2770,7 +2770,7 @@
 
         const conn = STATE.peer.connect('bubble-' + code, { reliable: true });
 
-        // Set timeout for connection attempt (10 seconds)
+        // Set timeout for connection attempt (3 seconds)
         const connectionTimeout = setTimeout(() => {
           if (!conn.open) {
             console.warn('[Guest] Connection timeout - host not responding');
@@ -2779,9 +2779,10 @@
               STATE.hostConn.close();
               STATE.hostConn = null;
             }
+            renderChatCards();
             showView('home');
           }
-        }, 10000);
+        }, 3000);
 
         // Store timeout ID for cleanup
         conn._connectionTimeout = connectionTimeout;
