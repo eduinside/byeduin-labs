@@ -313,48 +313,48 @@
       </svg>
     </div>
 
-    <!-- 결과 테이블 -->
-    <div id="tableSection" style="display:none">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th class="num">#</th>
-              <th>도서명</th>
-              <th>저자</th>
-              <th>출판사</th>
-              <th>정가</th>
-              <th>주문수량</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="tableBody"></tbody>
-        </table>
-      </div>
-
-      <div class="stats-row" id="statsRow"></div>
-
-      <div class="action-row">
-        <button class="hero-btn" onclick="exportExcel()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
-          </svg>
-          내려받기
-        </button>
-        <button class="hero-btn hero-btn-ghost share-btn" id="shareBtn" onclick="shareList()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-          </svg>
-          링크로 공유
-        </button>
-        <button class="hero-btn hero-btn-ghost" onclick="confirmReset()">전체 초기화</button>
-      </div>
-    </div>
-
     <div id="emptyState"></div>
 
+  </div>
+
+  <!-- 결과 테이블 (page-wrap 밖으로 분리 - 독립적인 폭 설정) -->
+  <div id="tableSection" style="display:none; max-width:800px; margin:0 auto; padding:0 1.5rem">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="num">#</th>
+            <th>도서명</th>
+            <th>저자</th>
+            <th>출판사</th>
+            <th>정가</th>
+            <th>주문수량</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="stats-row" id="statsRow"></div>
+
+    <div class="action-row">
+      <button class="hero-btn" onclick="exportExcel()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
+        </svg>
+        내려받기
+      </button>
+      <button class="hero-btn hero-btn-ghost share-btn" id="shareBtn" onclick="shareList()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+        링크로 공유
+      </button>
+      <button class="hero-btn hero-btn-ghost" onclick="confirmReset()">전체 초기화</button>
+    </div>
   </div>
 
   <!-- 토스트 -->
@@ -551,7 +551,6 @@
       const tbody = document.getElementById('tableBody');
       const section = document.getElementById('tableSection');
       const empty = document.getElementById('emptyState');
-      const pageWrap = document.querySelector('.page-wrap');
 
       const validList = list.filter(b => !b.error);
       const errorList = list.filter(b => b.error);
@@ -562,14 +561,12 @@
         section.style.display = 'none';
         empty.style.display = '';
         arrow.style.display = 'none';
-        pageWrap.style.maxWidth = '440px';
         return;
       }
 
       section.style.display = '';
       empty.style.display = 'none';
       arrow.style.display = '';
-      pageWrap.style.maxWidth = '800px';  // 테이블 표시 시 넓게 확장
 
       // 행 렌더링
       let num = 0;
