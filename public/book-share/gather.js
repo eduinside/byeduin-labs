@@ -306,7 +306,7 @@ async function shareList() {
     .replace(/\//g, '_')
     .replace(/=/g, '');
 
-  const longUrl = `${window.location.origin}${window.location.pathname}#share=${encoded}`;
+  const longUrl = `${window.location.origin}/book-share/#share=${encoded}`;
 
   // 단축 URL 생성
   try {
