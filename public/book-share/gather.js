@@ -173,16 +173,19 @@ function setGatherProgress(current, total) {
 function renderTable() {
   const tbody = document.getElementById('tableBody');
   const section = document.getElementById('tableSection');
+  const arrow = document.getElementById('gatherArrow');
 
   const validList = list.filter(b => !b.error);
   const errorList = list.filter(b => b.error);
 
   if (list.length === 0) {
     section.style.display = 'none';
+    arrow.style.display = 'none';
     return;
   }
 
   section.style.display = '';
+  arrow.style.display = '';
 
   // 행 렌더링
   let num = 0;
