@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>도서 정보 수집 — byeduin</title>
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
+  <script src="config.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 64px 16px 80px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .page-wrap {
+      max-width: 440px;
+      width: 100%;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 표 영역은 별도로 확대 */
+    #tableSection {
+      margin: 0 auto;
+      max-width: 800px;
+      width: 100%;
+      padding: 0 16px;
+    }
+
+    /* 링크 입력 영역 */
+    .section-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--fg-muted);
+      letter-spacing: 0.03em;
+      margin-bottom: 0.4rem;
+    }
+
+    textarea.hero-input {
+      resize: vertical;
+      min-height: 150px;
+      font-size: 0.875rem;
+      line-height: 1.7;
+    }
+
+    /* 진행 상태 바 */
+    .progress-wrap {
+      margin-top: 0.75rem;
+      display: none;
+    }
+    .progress-wrap.visible { display: block; }
+
+    .progress-bar-bg {
+      height: 4px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 0.35rem;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 99px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .progress-text {
+      font-size: 0.75rem;
+      color: var(--fg-muted);
+    }
+
+    /* 테이블 */
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 1.5rem;
+      border-radius: 1rem;
+      border: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      min-width: 560px;
+    }
+
+    thead th {
+      background: var(--card-bg);
+      color: var(--fg-muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.7rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr:last-child { border-bottom: none; }
+
+    tbody tr:hover { background: var(--bg-sec); }
+
+    tbody tr.error-row td { color: var(--danger); }
+
+    td {
+      padding: 0.7rem 1rem;
+      vertical-align: middle;
+      color: var(--fg);
+    }
+
+    td.num { color: var(--fg-muted); font-size: 0.75rem; width: 36px; text-align: center; }
+    td.title { font-weight: 500; }
+    td.price { white-space: nowrap; }
+    td.qty { width: 90px; }
+    td.del { width: 44px; text-align: center; }
+
+    .qty-input {
+      width: 64px;
+      padding: 0.3rem 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      background: var(--input-bg);
+      color: var(--fg);
+      font-size: 0.875rem;
+      font-family: inherit;
+      text-align: center;
+    }
+    .qty-input:focus { outline: none; border-color: var(--primary); }
+
+    .del-btn {
+      background: none;
+      border: none;
+      color: var(--fg-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 6px;
+      line-height: 1;
+      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .del-btn:hover { color: var(--danger); background: rgba(243,18,96,0.07); }
+
+    /* 하단 액션 버튼 */
+    .action-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .action-row .hero-btn,
+    .action-row .hero-btn-ghost { flex: 1; min-width: 0; }
+
+    /* 통계 */
+    .stats-row {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.75rem;
+      font-size: 0.78rem;
+      color: var(--fg-muted);
+      flex-wrap: wrap;
+    }
+
+    .stats-row span { white-space: nowrap; }
+    .stats-row strong { color: var(--fg); }
+
+    /* 토스트 */
+    #toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(1rem);
+      background: var(--fg);
+      color: var(--bg);
+      padding: 0.65rem 1.25rem;
+      border-radius: 99px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 9000;
+      white-space: nowrap;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 540px) {
+      .page-wrap { padding-top: 56px; }
+      .overlay-btn span { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 상단 좌측: 돌아가기 -->
+  <div class="top-overlay-left">
+    <a href="./" class="overlay-btn" title="이전 페이지로">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+      </svg>
+      <span>돌아가기</span>
+    </a>
+  </div>
+
+  <!-- 상단 우측: 테마·입력 -->
+  <div class="top-overlay">
+    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+    <a href="./" class="overlay-btn" title="ISBN 입력하여 책 정보 조회">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+      </svg>
+      <span>입력</span>
+    </a>
+  </div>
+
+  <div class="page-wrap">
+
+    <!-- 앱 헤더 -->
+    <div class="app-header">
+      <div class="app-badge">◆ SOCIAL</div>
+      <h1 class="app-title">도서 정보 <span>수집</span></h1>
+      <p class="app-desc">다른 사용자가 공유한 단축URL이나 링크를 입력하면 모든 책 정보를 수집하여 표로 정리하고, 파일로 내려받거나 다시 공유할 수 있습니다.</p>
+    </div>
+
+    <!-- 링크 입력 -->
+    <div style="margin-bottom:1rem">
+      <div class="section-label">링크 목록</div>
+      <textarea class="hero-input" id="linkInput"
+        placeholder="단축URL이나 공유 링크를 붙여넣으세요. 줄바꿈·공백·쉼표 모두 OK.&#10;&#10;예)&#10;https://byeduin.short.gy/b5Ycho"></textarea>
+    </div>
+
+    <!-- 수집 버튼 + 진행 상태 -->
+    <button class="hero-btn" id="gatherBtn" onclick="startGather()" style="width:100%">
+      수집 시작
+    </button>
+
+    <div class="progress-wrap" id="gatherProgressWrap">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="gatherProgressFill"></div>
+      </div>
+      <div class="progress-text" id="gatherProgressText"></div>
+    </div>
+
+  </div>
+
+  <!-- 결과 테이블 -->
+  <div id="tableSection" style="display:none; max-width:800px; margin:0 auto; padding:0 1.5rem">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="num">#</th>
+            <th>도서명</th>
+            <th>저자</th>
+            <th>출판사</th>
+            <th>정가</th>
+            <th>주문수량</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="stats-row" id="statsRow"></div>
+
+    <div class="action-row">
+      <button class="hero-btn" onclick="exportExcel()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
+        </svg>
+        내려받기
+      </button>
+      <button class="hero-btn hero-btn-ghost" onclick="goHome()">돌아가기</button>
+    </div>
+  </div>
+
+  <!-- 토스트 -->
+  <div id="toast"></div>
+
+  <!-- SheetJS -->
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+  <!-- gather.js -->
+  <script src="./gather.js"></script>
+
+</body>
+</html>
