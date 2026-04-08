@@ -70,6 +70,7 @@ exports.handler = async (event) => {
           if (res.statusCode === 200) {
             try {
               const json = JSON.parse(data);
+              console.log('Short.io API Response:', JSON.stringify(json, null, 2));
               // Short.io API 응답에서 originalURL 필드 추출
               const url = json.originalURL || json.redirect || json.url;
               if (url) {
