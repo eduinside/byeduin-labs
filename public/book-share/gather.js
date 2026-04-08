@@ -291,6 +291,41 @@ function goHome() {
   window.location.href = './';
 }
 
+/* ── 링크로 공유 ── */
+function shareList() {
+  const validList = list.filter(b => !b.error);
+  if (validList.length === 0) { showToast('공유할 책이 없습니다.'); return; }
+
+  // Base64url 인코딩
+  const json = JSON.stringify(validList);
+  const encoded = btoa(encodeURIComponent(json))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+
+  const shareUrl = `${window.location.origin}${window.location.pathname}#share=${encoded}`;
+
+  // 클립보드에 복사
+  navigator.clipboard.writeText(shareUrl).then(() => {
+    showToast('공유 링크가 복사되었습니다.');
+  }).catch(() => {
+    // 폴백: 사용자가 직접 복사할 수 있도록 프롬프트
+    const msg = prompt('공유 링크를 복사하세요:', shareUrl);
+  });
+}
+
+/* ── 전체 초기화 ── */
+function confirmReset() {
+  if (confirm('정말로 모든 데이터를 삭제하시겠습니까?')) {
+    list = [];
+    localStorage.removeItem(LS_ITEMS);
+    renderTable();
+    document.getElementById('tableSection').style.display = 'none';
+    document.getElementById('linkInput').value = '';
+    showToast('초기화 완료');
+  }
+}
+
 /* ── 초기화 ── */
 (function init() {
   // localStorage에서 저장된 데이터 복원
