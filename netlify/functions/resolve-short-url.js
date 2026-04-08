@@ -46,11 +46,11 @@ exports.handler = async (event) => {
 
     const code = match[1];
 
-    // Short.io REST API 호출: GET /links/{domain}/{code}?expand=originalURL
+    // Short.io REST API 호출: GET /links/expand?domain={domain}&path={code}
     const options = {
       hostname: 'api.short.io',
       port: 443,
-      path: `/links/${encodeURIComponent(domain)}/${encodeURIComponent(code)}?expand=originalURL`,
+      path: `/links/expand?domain=${encodeURIComponent(domain)}&path=${encodeURIComponent(code)}`,
       method: 'GET',
       headers: {
         'Authorization': apiKey,
