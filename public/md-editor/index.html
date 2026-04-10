@@ -522,6 +522,7 @@
     <button class="toolbar-btn view-only-hide" onclick="newDocument()">📄 새 문서</button>
     <button class="toolbar-btn view-only-hide" onclick="toggleOpenMenu(event)">📂 열기 ▾</button>
     <input type="file" id="fileInput" accept=".md,.txt,.markdown" style="display:none" onchange="handleFileLoad(this)">
+    <input type="file" id="hwpFileInput" accept=".hwp,.hwpx" style="display:none" onchange="handleHwpLoad(this)">
     <button class="toolbar-btn view-only-hide" id="saveBtn" onclick="toggleSaveMenu(event)">💾 저장 ▾</button>
     <button class="toolbar-btn view-only-hide" id="viewBtn" onclick="toggleViewMenu(event)">👁 보기 ▾</button>
     <div id="view-badge">👁 보기 전용</div>
@@ -590,6 +591,12 @@
       <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
     </svg>
     브라우저에서 열기
+  </button>
+  <button class="dropdown-opt" onclick="openHwpFileInput()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+    </svg>
+    HWP 열기
   </button>
 </div>
 
@@ -762,6 +769,62 @@
     };
     reader.readAsText(file, 'UTF-8');
     input.value = '';
+  }
+
+  // ── HWP 파일 열기 ──
+  function openHwpFileInput() {
+    _closeOpenMenu();
+    document.getElementById('hwpFileInput').click();
+  }
+
+  function handleHwpLoad(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    // 파일 크기 검증 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('파일 크기가 5MB를 초과합니다.');
+      input.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const fileData = btoa(String.fromCharCode.apply(null, new Uint8Array(e.target.result)));
+      convertHwpToMd(fileData, file.name);
+    };
+    reader.readAsArrayBuffer(file);
+    input.value = '';
+  }
+
+  async function convertHwpToMd(fileData, filename) {
+    showToast('HWP 파일 변환 중...');
+
+    try {
+      const response = await fetch('/.netlify/functions/hwp-to-md', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileData, filename })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        showToast('변환 실패: ' + (result.error || 'Unknown error'));
+        return;
+      }
+
+      // 성공: mdContent 업데이트
+      mdContent = result.markdown;
+      currentFilename = filename.replace(/\.(hwp|hwpx)$/i, '.md');
+      document.getElementById('filenameInput').value = currentFilename;
+      document.getElementById('editor').value = mdContent;
+      renderPreview();
+
+      showToast('✓ HWP 파일이 마크다운으로 변환되었습니다.');
+    } catch (err) {
+      showToast('변환 오류: ' + err.message);
+    }
   }
 
   // ── 모든 드롭다운 닫기 헬퍼 ──
