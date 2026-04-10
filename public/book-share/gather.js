@@ -295,7 +295,7 @@ function goHome() {
 }
 
 /* ── 링크로 공유 ── */
-function shareList() {
+async function shareList() {
   const validList = list.filter(b => !b.error);
   if (validList.length === 0) { showToast('공유할 책이 없습니다.'); return; }
 
@@ -306,15 +306,30 @@ function shareList() {
     .replace(/\//g, '_')
     .replace(/=/g, '');
 
-  const shareUrl = `${window.location.origin}${window.location.pathname}#share=${encoded}`;
+  const longUrl = `${window.location.origin}/book-share/#share=${encoded}`;
 
-  // 클립보드에 복사
-  navigator.clipboard.writeText(shareUrl).then(() => {
-    showToast('공유 링크가 복사되었습니다.');
-  }).catch(() => {
-    // 폴백: 사용자가 직접 복사할 수 있도록 프롬프트
-    const msg = prompt('공유 링크를 복사하세요:', shareUrl);
-  });
+  // 단축 URL 생성
+  try {
+    const res = await fetch('/.netlify/functions/shorten', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: longUrl }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.shortURL) throw new Error();
+
+    // 단축 URL을 클립보드에 복사
+    await navigator.clipboard.writeText(data.shortURL);
+    showToast('단축 링크가 복사되었습니다.');
+  } catch {
+    // 폴백: 긴 URL 복사
+    try {
+      await navigator.clipboard.writeText(longUrl);
+      showToast('공유 링크가 복사되었습니다 (단축 미적용)');
+    } catch {
+      showToast('공유에 실패했습니다.');
+    }
+  }
 }
 
 /* ── 전체 초기화 ── */

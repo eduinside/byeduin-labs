@@ -119,10 +119,26 @@
 
     /* 테이블 */
     .table-wrap {
-      overflow-x: auto;
+      overflow: auto;
       margin-top: 1.5rem;
       border-radius: 1rem;
       border: 1px solid var(--border);
+      scrollbar-color: var(--border) transparent;
+      scrollbar-width: thin;
+    }
+    .table-wrap::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    .table-wrap::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .table-wrap::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+    .table-wrap::-webkit-scrollbar-thumb:hover {
+      background: var(--fg-muted);
     }
 
     table {
@@ -767,6 +783,27 @@
         copy();
       }
     }
+
+    /* ── 공유 링크 처리 (페이지 로드 시) ── */
+    (function initShareLink() {
+      const hash = location.hash;
+      if (hash.startsWith('#share=')) {
+        const encoded = hash.slice(7);
+        try {
+          const data = decodeShareData(encoded);
+          if (data && Array.isArray(data) && data.length > 0) {
+            list = data;
+            renderTable();
+            history.replaceState(null, '', location.pathname); // 해시 제거
+            showToast('공유된 책 정보를 불러왔습니다.');
+            return;
+          }
+        } catch (e) {
+          console.error('공유 링크 처리 오류:', e);
+        }
+        showToast('공유 링크를 읽을 수 없습니다.');
+      }
+    })();
   </script>
 </body>
 </html>
