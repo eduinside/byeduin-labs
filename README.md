@@ -16,9 +16,14 @@
   - 인덱스 페이지 "소셜 도구" 카테고리 추가
 - **Phase 2.5**: UI 개선 ✅ 완료 (2026.04.11)
   - QR Master: 긴 URL 레이아웃 오버플로우 버그 수정
-  - Index: "최근 방문 앱" 섹션 추가 (파란 테두리 강조)
-- **Phase 3**: 향후 개선사항 (로드맵 참고)
-  - HWP 변환 기능 (MD Editor) - 개발 중
+  - Index: "최근 방문 앱" 섹션 추가 (최근 1개만 하이라이트)
+- **Phase 3**: 마크다운 에디터 확장 ✅ 완료 (2026.04.11)
+  - MD Editor: HWP/HWPX → MD 변환 (hwp2md 라이브러리)
+  - MD Editor: HTML/HTM → MD 변환 (Turndown 라이브러리)
+  - MD Editor: URL → MD 변환 (웹페이지 자동 fetch)
+  - 열기 메뉴 통합: .MD / .HTML / .HWP / URL / 브라우저 저장 파일
+  - 뱃지 표시: 실험 중 기능 시각화
+  - 3초 타임아웃 및 통일된 에러 메시지
 
 ---
 

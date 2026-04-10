@@ -192,6 +192,18 @@
       opacity: 0.5;
     }
 
+    .beta-badge {
+      display: inline-block;
+      font-size: 0.6rem;
+      color: var(--fg-muted);
+      margin-left: 0.5rem;
+      padding: 0.2rem 0.3rem;
+      background: var(--border);
+      border-radius: 0.3rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
     /* ── 모바일 탭 (hidden on desktop) ── */
     .mobile-tabs {
       display: none;
@@ -522,6 +534,7 @@
     <button class="toolbar-btn view-only-hide" onclick="newDocument()">📄 새 문서</button>
     <button class="toolbar-btn view-only-hide" onclick="toggleOpenMenu(event)">📂 열기 ▾</button>
     <input type="file" id="fileInput" accept=".md,.txt,.markdown" style="display:none" onchange="handleFileLoad(this)">
+    <input type="file" id="htmlFileInput" accept=".html,.htm" style="display:none" onchange="handleHtmlLoad(this)">
     <input type="file" id="hwpFileInput" accept=".hwp,.hwpx" style="display:none" onchange="handleHwpLoad(this)">
     <button class="toolbar-btn view-only-hide" id="saveBtn" onclick="toggleSaveMenu(event)">💾 저장 ▾</button>
     <button class="toolbar-btn view-only-hide" id="viewBtn" onclick="toggleViewMenu(event)">👁 보기 ▾</button>
@@ -584,19 +597,34 @@
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
     </svg>
-    파일 열기
+    .MD 열기
   </button>
-  <button class="dropdown-opt" id="openLsOpt" onclick="openLoadModal()">
+  <button class="dropdown-opt" onclick="openHtmlFileInput()">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
     </svg>
-    브라우저에서 열기
+    .HTML 열기
+    <span class="beta-badge">실험 중</span>
   </button>
   <button class="dropdown-opt" onclick="openHwpFileInput()">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
     </svg>
-    HWP 열기
+    .HWP 열기
+    <span class="beta-badge">실험 중</span>
+  </button>
+  <button class="dropdown-opt" onclick="openUrlModal()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+    </svg>
+    URL 열기
+    <span class="beta-badge">실험 중</span>
+  </button>
+  <button class="dropdown-opt" id="openLsOpt" onclick="openLoadModal()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+    </svg>
+    브라우저에 저장된 파일 열기
   </button>
 </div>
 
@@ -711,6 +739,7 @@
   let _saveMenuOpen = false;
   let _viewMenuOpen = false;
   let _openMenuOpen = false;
+  let hwpConversionTimer = null;
 
   // ── 모바일 탭 ──
   function switchMobileTab(tab) {
@@ -766,6 +795,44 @@
       mdContent = e.target.result;
       document.getElementById('editor').value = mdContent;
       renderPreview();
+      showToast('✓ 파일이 로드되었습니다.');
+    };
+    reader.onerror = () => {
+      showToast('파일을 로드할 수 없습니다.');
+      input.value = '';
+    };
+    reader.readAsText(file, 'UTF-8');
+    input.value = '';
+  }
+
+  // ── HWP 파일 열기 ──
+  // ── HTML 파일 열기 ──
+  function openHtmlFileInput() {
+    _closeOpenMenu();
+    document.getElementById('htmlFileInput').click();
+  }
+
+  function handleHtmlLoad(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    // 파일 크기 검증 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('파일 크기가 5MB를 초과합니다.');
+      input.value = '';
+      return;
+    }
+
+    // 3초 후 변환 완료 안 되면 토스트 표시
+    if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+    hwpConversionTimer = setTimeout(() => {
+      showToast('파일 변환이 되지 않았습니다.');
+    }, 3000);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const htmlContent = e.target.result;
+      convertHtmlToMd(htmlContent, file.name);
     };
     reader.readAsText(file, 'UTF-8');
     input.value = '';
@@ -788,6 +855,12 @@
       return;
     }
 
+    // 3초 후 변환 완료 안 되면 토스트 표시
+    if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+    hwpConversionTimer = setTimeout(() => {
+      showToast('파일 변환이 되지 않았습니다.');
+    }, 3000);
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const fileData = btoa(String.fromCharCode.apply(null, new Uint8Array(e.target.result)));
@@ -797,33 +870,99 @@
     input.value = '';
   }
 
-  async function convertHwpToMd(fileData, filename) {
-    showToast('HWP 파일 변환 중...');
-
+  async function convertHtmlToMd(htmlContent, filename) {
     try {
-      const response = await fetch('/.netlify/functions/hwp-to-md', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileData, filename })
-      });
+      // 3초 타임아웃 설정
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 3000)
+      );
+
+      const response = await Promise.race([
+        fetch('/.netlify/functions/html-to-md', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ htmlContent, filename })
+        }),
+        timeoutPromise
+      ]);
 
       const result = await response.json();
 
       if (!response.ok) {
-        showToast('변환 실패: ' + (result.error || 'Unknown error'));
+        showToast('파일 변환이 되지 않았습니다.');
+        if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
         return;
       }
 
       // 성공: mdContent 업데이트
       mdContent = result.markdown;
+      currentFilename = filename.replace(/\.(html|htm)$/i, '.md');
+      document.getElementById('filenameInput').value = currentFilename;
+      document.getElementById('editor').value = mdContent;
+      renderPreview();
+
+      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+      showToast('✓ HTML 파일이 마크다운으로 변환되었습니다.');
+    } catch (err) {
+      showToast('파일 변환이 되지 않았습니다.');
+      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+    }
+  }
+
+  async function convertHwpToMd(fileData, filename) {
+    try {
+      // 3초 타임아웃 설정
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 3000)
+      );
+
+      const response = await Promise.race([
+        fetch('/.netlify/functions/hwp-to-md', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileData, filename })
+        }),
+        timeoutPromise
+      ]);
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        showToast('파일 변환이 되지 않았습니다.');
+        if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+        return;
+      }
+
+      // 성공: mdContent 업데이트 및 정제
+      // 한글, 영문, 숫자, 마크다운 특수문자, 기본 특수문자만 유지
+      mdContent = result.markdown
+        .split('') // 문자 단위로 분해
+        .filter(char => {
+          const code = char.charCodeAt(0);
+          // 한글 (AC00-D7AF)
+          if (code >= 0xAC00 && code <= 0xD7AF) return true;
+          // 영문 (a-z, A-Z)
+          if ((code >= 97 && code <= 122) || (code >= 65 && code <= 90)) return true;
+          // 숫자 (0-9)
+          if (code >= 48 && code <= 57) return true;
+          // 공백, 탭, 개행, 캐리지 리턴
+          if ([9, 10, 13, 32].includes(code)) return true;
+          // 마크다운 및 일반 특수문자
+          if ('!\"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'.includes(char)) return true;
+          return false;
+        })
+        .join('');
+
       currentFilename = filename.replace(/\.(hwp|hwpx)$/i, '.md');
       document.getElementById('filenameInput').value = currentFilename;
       document.getElementById('editor').value = mdContent;
       renderPreview();
 
+      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
       showToast('✓ HWP 파일이 마크다운으로 변환되었습니다.');
     } catch (err) {
-      showToast('변환 오류: ' + err.message);
+      showToast('파일 변환이 되지 않았습니다.');
+      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
     }
   }
 
@@ -1005,6 +1144,66 @@
       updateSaveButtonState();
       showToast(`"${currentFilename}" 불러왔습니다`);
     } catch { showToast('저장된 문서를 불러오지 못했습니다'); }
+  }
+
+  // ── URL 변환 ──
+  function openUrlModal() {
+    _closeOpenMenu();
+    const url = prompt('변환할 웹페이지 URL을 입력하세요:\n(예: https://example.com)');
+    if (!url || url.trim() === '') return;
+
+    // URL 유효성 검증 (간단한 검증)
+    if (!url.includes('://')) {
+      showToast('유효한 URL을 입력하세요.');
+      return;
+    }
+
+    // 3초 후 변환 완료 안 되면 토스트 표시
+    if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+    hwpConversionTimer = setTimeout(() => {
+      showToast('파일 변환이 되지 않았습니다.');
+    }, 3000);
+
+    convertUrlToMd(url);
+  }
+
+  async function convertUrlToMd(url) {
+    try {
+      // 3초 타임아웃 설정
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 3000)
+      );
+
+      const response = await Promise.race([
+        fetch('/.netlify/functions/url-to-md', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        }),
+        timeoutPromise
+      ]);
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        showToast('파일 변환이 되지 않았습니다.');
+        if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+        return;
+      }
+
+      // 성공: mdContent 업데이트
+      mdContent = result.markdown;
+      currentFilename = result.filename || 'untitled.md';
+      document.getElementById('filenameInput').value = currentFilename;
+      document.getElementById('editor').value = mdContent;
+      renderPreview();
+
+      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+      showToast('✓ URL이 마크다운으로 변환되었습니다.');
+    } catch (err) {
+      showToast('파일 변환이 되지 않았습니다.');
+      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+    }
   }
 
   function openLoadModal() {

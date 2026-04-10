@@ -1,8 +1,8 @@
-const { convert } = require('hwp2md');
+const TurndownService = require('turndown');
 
 /**
- * HWP/HWPX 파일을 마크다운으로 변환하는 Netlify 함수
- * 요청: POST { fileData: "base64...", filename: "file.hwp" }
+ * HTML 파일을 마크다운으로 변환하는 Netlify 함수
+ * 요청: POST { htmlContent: "<html>...", filename: "file.html" }
  * 응답: { markdown: "# 제목\n..." } 또는 에러 메시지
  */
 exports.handler = async (event) => {
@@ -16,14 +16,14 @@ exports.handler = async (event) => {
 
   try {
     // 요청 본문 파싱
-    let fileData, filename;
+    let htmlContent, filename;
     try {
       const body = JSON.parse(event.body);
-      fileData = body.fileData;
+      htmlContent = body.htmlContent;
       filename = body.filename;
 
-      if (!fileData || !filename) {
-        throw new Error('fileData와 filename 필드가 필수입니다.');
+      if (!htmlContent || !filename) {
+        throw new Error('htmlContent와 filename 필드가 필수입니다.');
       }
     } catch (e) {
       return {
@@ -32,48 +32,41 @@ exports.handler = async (event) => {
       };
     }
 
-    // Base64 → Buffer 디코딩
-    let fileBuffer;
-    try {
-      fileBuffer = Buffer.from(fileData, 'base64');
-    } catch (e) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Base64 디코딩 실패: ' + e.message })
-      };
-    }
-
-    // 파일 크기 검증 (5MB)
+    // HTML 크기 검증 (5MB)
     const maxSize = 5 * 1024 * 1024;
-    if (fileBuffer.length > maxSize) {
+    if (Buffer.byteLength(htmlContent, 'utf8') > maxSize) {
       return {
         statusCode: 400,
         body: JSON.stringify({
-          error: `파일 크기가 5MB를 초과합니다. (현재: ${(fileBuffer.length / 1024 / 1024).toFixed(2)}MB)`
+          error: `파일 크기가 5MB를 초과합니다.`
         })
       };
     }
 
     // 파일 형식 검증
-    const ext = filename.toLowerCase().slice(-5);
-    if (!ext.endsWith('.hwpx') && !filename.toLowerCase().endsWith('.hwp')) {
+    if (!filename.toLowerCase().endsWith('.html') && !filename.toLowerCase().endsWith('.htm')) {
       return {
         statusCode: 400,
         body: JSON.stringify({
-          error: '지원하지 않는 파일 형식입니다. (.hwp 또는 .hwpx만 가능)'
+          error: '지원하지 않는 파일 형식입니다. (.html 또는 .htm만 가능)'
         })
       };
     }
 
-    // HWP/HWPX → 마크다운 변환 (hwp2md는 Buffer 직접 지원)
+    // HTML → 마크다운 변환
     let markdownContent;
     try {
-      markdownContent = await convert(fileBuffer);
+      const turndownService = new TurndownService({
+        headingStyle: 'atx',
+        bulletListMarker: '-',
+        codeBlockStyle: 'fenced'
+      });
+      markdownContent = turndownService.turndown(htmlContent);
     } catch (e) {
       return {
         statusCode: 400,
         body: JSON.stringify({
-          error: 'HWP 파일 변환 실패: ' + e.message
+          error: 'HTML 파일 변환 실패: ' + e.message
         })
       };
     }
