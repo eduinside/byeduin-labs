@@ -78,11 +78,11 @@ exports.handler = async (event) => {
       };
     }
 
-    // 표 첫 행 정리: 빈 셀들로만 이루어진 행 제거
+    // 표 첫 행 정리: 빈 행 제거 후 separator와 데이터 행 순서 맞추기
     if (markdownContent) {
       markdownContent = markdownContent.replace(
-        /\n\|\s*(\|\s*)*\n/g,
-        '\n'
+        /\n\|\s*(\|\s*)*\n((\|\s*[-:\s|]*\|\s*)+)\n(\|[^\n]*\|)/g,
+        '\n$4\n$2'
       );
     }
 
