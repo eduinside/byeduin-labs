@@ -78,6 +78,14 @@ exports.handler = async (event) => {
       };
     }
 
+    // 표 첫 행 정리: 빈 셀들로만 이루어진 행 제거
+    if (markdownContent) {
+      markdownContent = markdownContent.replace(
+        /\n\|\s*(\|\s*)*\n/g,
+        '\n'
+      );
+    }
+
     // 변환 결과 검증
     if (!markdownContent) {
       return {
