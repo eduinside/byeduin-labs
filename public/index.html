@@ -238,12 +238,17 @@
     /* 모달 타입 카드 — 클릭 커서만 다름 */
     .app-card.modal-card { cursor: pointer; }
 
-    /* 최근 방문 섹션 */
+    /* 최근 방문 섹션: 하이라이트 없음 */
     .recent-section .app-card {
+      /* 일반 카드 스타일 사용 */
+    }
+
+    /* 아래 앱 섹션에서 최근 방문 앱 강조 */
+    .app-card.is-recent-visited {
       border-color: var(--primary);
       border-width: 2px;
     }
-    .recent-section .app-card:hover {
+    .app-card.is-recent-visited:hover {
       border-color: var(--primary);
     }
   </style>
@@ -513,6 +518,11 @@
       const main = document.getElementById('main');
       main.innerHTML = '';
 
+      // 최근 방문 앱의 href 목록 저장
+      const KEY = 'byeduin_recent_apps';
+      const recentList = JSON.parse(localStorage.getItem(KEY) || '[]');
+      const recentHrefs = new Set(recentList.map(a => a.href));
+
       renderRecentSection(main);
 
       CATEGORIES.forEach(cat => {
@@ -535,7 +545,8 @@
           const isModal = app.type === 'modal';
           const isExternal = !isModal && (app.type === 'link' || app.external);
           const a = document.createElement('a');
-          a.className = 'app-card' + (isModal ? ' modal-card' : '');
+          const isRecentVisited = recentHrefs.has(app.href);
+          a.className = 'app-card' + (isModal ? ' modal-card' : '') + (isRecentVisited ? ' is-recent-visited' : '');
 
           if (isModal) {
             a.href = '#';
