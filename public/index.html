@@ -237,6 +237,15 @@
 
     /* 모달 타입 카드 — 클릭 커서만 다름 */
     .app-card.modal-card { cursor: pointer; }
+
+    /* 최근 방문 섹션 */
+    .recent-section .app-card {
+      border-color: var(--primary);
+      border-width: 2px;
+    }
+    .recent-section .app-card:hover {
+      border-color: var(--primary);
+    }
   </style>
 </head>
 
@@ -459,9 +468,52 @@
     /* =============================================
        렌더링 — 수정 불필요
        ============================================= */
+    function saveRecentApp(app) {
+      const KEY = 'byeduin_recent_apps';
+      let list = JSON.parse(localStorage.getItem(KEY) || '[]');
+      list = list.filter(a => a.href !== app.href);
+      list.unshift({ href: app.href, emoji: app.emoji, title: app.title, desc: app.desc, category: app.category });
+      if (list.length > 10) list = list.slice(0, 10);
+      localStorage.setItem(KEY, JSON.stringify(list));
+    }
+
+    function renderRecentSection(main) {
+      const KEY = 'byeduin_recent_apps';
+      const list = JSON.parse(localStorage.getItem(KEY) || '[]').slice(0, 3);
+      if (list.length === 0) return;
+
+      const section = document.createElement('section');
+      section.className = 'category-section recent-section';
+      section.innerHTML = `
+        <div class="category-header">
+          <span class="category-label">⏱ 최근 방문</span>
+          <span class="category-desc">최근에 사용한 앱</span>
+        </div>
+        <div class="card-grid" id="grid-recent"></div>
+      `;
+      main.appendChild(section);
+
+      const grid = section.querySelector('#grid-recent');
+      list.forEach(app => {
+        const isModal = false;
+        const a = document.createElement('a');
+        a.className = 'app-card';
+        a.href = app.href;
+        a.innerHTML = `
+          <div class="card-emoji">${app.emoji}</div>
+          <div class="card-title">${app.title}</div>
+          <div class="card-desc">${app.desc}</div>
+        `;
+        a.addEventListener('click', () => saveRecentApp(app));
+        grid.appendChild(a);
+      });
+    }
+
     function render() {
       const main = document.getElementById('main');
       main.innerHTML = '';
+
+      renderRecentSection(main);
 
       CATEGORIES.forEach(cat => {
         const items = APPS.filter(a => a.category === cat.id);
@@ -487,10 +539,11 @@
 
           if (isModal) {
             a.href = '#';
-            a.addEventListener('click', (e) => { e.preventDefault(); openModal(app); });
+            a.addEventListener('click', (e) => { e.preventDefault(); saveRecentApp(app); openModal(app); });
           } else {
             a.href = app.href;
             if (isExternal) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+            a.addEventListener('click', () => saveRecentApp(app));
           }
 
           a.innerHTML = `
