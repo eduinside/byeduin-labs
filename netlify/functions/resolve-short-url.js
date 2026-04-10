@@ -46,11 +46,11 @@ exports.handler = async (event) => {
 
     const code = match[1];
 
-    // Short.io REST API 호출: GET /links/expand?domain={domain}&path={code}
+    // Short.io REST API 호출: GET /links/{domain}/{code}
     const options = {
       hostname: 'api.short.io',
       port: 443,
-      path: `/links/expand?domain=${encodeURIComponent(domain)}&path=${encodeURIComponent(code)}`,
+      path: `/links/${encodeURIComponent(domain)}/${encodeURIComponent(code)}`,
       method: 'GET',
       headers: {
         'Authorization': apiKey,
@@ -67,11 +67,11 @@ exports.handler = async (event) => {
         });
 
         res.on('end', () => {
-          console.log('Short.io API Response - Status:', res.statusCode, 'Body:', data.substring(0, 500));
+          console.log('Short.io API Status:', res.statusCode, 'Data:', data.substring(0, 500));
           if (res.statusCode === 200) {
             try {
               const json = JSON.parse(data);
-              console.log('Short.io API Parsed JSON:', JSON.stringify(json, null, 2));
+              console.log('Short.io API Response:', JSON.stringify(json, null, 2));
               // Short.io API 응답에서 originalURL 필드 추출
               const url = json.originalURL || json.redirect || json.url;
               if (url) {
