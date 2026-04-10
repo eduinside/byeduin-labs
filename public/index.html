@@ -518,10 +518,10 @@
       const main = document.getElementById('main');
       main.innerHTML = '';
 
-      // 최근 방문 앱의 href 목록 저장
+      // 가장 최근 방문 앱(1개)만 하이라이트
       const KEY = 'byeduin_recent_apps';
       const recentList = JSON.parse(localStorage.getItem(KEY) || '[]');
-      const recentHrefs = new Set(recentList.map(a => a.href));
+      const mostRecentHref = recentList.length > 0 ? recentList[0].href : null;
 
       renderRecentSection(main);
 
@@ -545,7 +545,7 @@
           const isModal = app.type === 'modal';
           const isExternal = !isModal && (app.type === 'link' || app.external);
           const a = document.createElement('a');
-          const isRecentVisited = recentHrefs.has(app.href);
+          const isRecentVisited = app.href === mostRecentHref;
           a.className = 'app-card' + (isModal ? ' modal-card' : '') + (isRecentVisited ? ' is-recent-visited' : '');
 
           if (isModal) {
