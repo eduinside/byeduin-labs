@@ -8,362 +8,563 @@
   <link rel="stylesheet" href="/common/hero-theme.css">
   <script src="/common/theme.js"></script>
   <script src="/common/init.js"></script>
-  <!-- Markdown 렌더링 -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     * { box-sizing: border-box; }
 
-    body {
-      min-height: 100vh;
-      padding: 0;
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", sans-serif;
     }
 
-    body::before {
-      content: '';
-      position: fixed; inset: 0;
-      background-image:
-        linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
-      background-size: 40px 40px;
-      pointer-events: none; z-index: 0;
-    }
-
-    /* ── 탭 바 ── */
-    .tab-bar {
-      position: sticky; top: 52px; z-index: 90;
+    /* ── 전체 레이아웃 ── */
+    .app-layout {
+      display: flex;
+      height: 100vh;
       background: var(--bg);
-      border-bottom: 1px solid var(--border);
-      display: flex; gap: 0;
-    }
-    .tab-item {
-      flex: 1; padding: 12px; border: none; background: none;
-      font-size: 13px; font-weight: 600; cursor: pointer;
-      color: var(--fg-muted); border-bottom: 2px solid transparent;
-      transition: all 0.15s; font-family: inherit;
-    }
-    .tab-item.active {
-      color: var(--primary); border-bottom-color: var(--primary);
     }
 
-    /* ── 패널 ── */
-    .tab-panel { display: none; }
-    .tab-panel.active { display: flex; }
-
-    /* ── 2패널 레이아웃 ── */
-    #browseTab, #searchTab {
-      height: calc(100vh - 96px);
-      overflow: hidden;
-      display: flex !important;
-      flex-direction: row;
-    }
-
-    .sidebar {
-      width: 300px; min-width: 280px;
+    /* ══════════════════════════════════════
+       사이드바
+    ══════════════════════════════════════ */
+    .app-sidebar {
+      width: 260px;
+      min-width: 220px;
+      height: 100%;
       border-right: 1px solid var(--border);
-      overflow-y: auto;
-      padding: 12px 0;
-      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
       background: var(--bg);
+      flex-shrink: 0;
     }
 
-    .main-content {
-      flex: 1; overflow-y: auto;
-      display: flex; flex-direction: column;
+    /* 좌상단 오버레이(Home 버튼) 영역 확보 */
+    .sidebar-top-pad { height: 56px; flex-shrink: 0; }
+
+    .sidebar-brand {
+      padding: 0 16px 12px;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: var(--fg);
     }
 
-    .tree-panel {
-      padding: 0;
+    .new-chat-btn {
+      margin: 0 10px 10px;
+      padding: 9px 14px;
+      border-radius: 10px;
+      border: 1.5px dashed var(--border);
+      background: none;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--fg-muted);
+      cursor: pointer;
+      text-align: left;
+      font-family: inherit;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .new-chat-btn:hover {
+      background: var(--card-bg);
+      border-color: var(--primary);
+      color: var(--primary);
     }
 
-    .content-panel {
-      padding: 24px;
+    .sidebar-scrollable {
       flex: 1;
       overflow-y: auto;
+      padding-bottom: 16px;
     }
 
-    /* 트리 UI */
-    .tree-category {
-      margin-bottom: 4px;
+    .sidebar-section-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px 4px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
     }
+    .sidebar-label-btn {
+      font-size: 10px;
+      color: var(--fg-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color 0.12s;
+    }
+    .sidebar-label-btn:hover { color: var(--danger); }
+
+    /* 대화 목록 */
+    .conv-item {
+      padding: 7px 14px;
+      font-size: 12px;
+      color: var(--fg);
+      cursor: pointer;
+      border-radius: 8px;
+      margin: 1px 8px;
+      transition: background 0.12s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.5;
+    }
+    .conv-item:hover { background: var(--card-bg); }
+    .conv-item.active {
+      background: rgba(0,111,238,0.1);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .conv-item-empty {
+      padding: 8px 16px;
+      font-size: 11px;
+      color: var(--fg-muted);
+      font-style: italic;
+    }
+
+    .sidebar-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 10px 12px;
+    }
+
+    /* 문서 트리 */
+    .tree-category { margin-bottom: 2px; }
     .tree-cat-header {
-      display: flex; align-items: center; gap: 6px;
-      padding: 7px 14px; cursor: pointer;
-      font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
-      color: var(--fg-muted); text-transform: uppercase;
-      border-radius: 6px; margin: 0 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--fg-muted);
+      border-radius: 6px;
+      margin: 0 6px;
       transition: background 0.12s;
       user-select: none;
     }
     .tree-cat-header:hover { background: var(--card-bg); }
     .tree-cat-header .arrow {
-      font-size: 10px; transition: transform 0.15s; display: inline-block;
+      font-size: 9px;
+      transition: transform 0.15s;
+      display: inline-block;
     }
     .tree-cat-header.open .arrow { transform: rotate(90deg); }
 
-    .tree-files {
-      display: none; padding-left: 8px;
-    }
+    .tree-files { display: none; }
     .tree-files.open { display: block; }
 
     .tree-file {
-      display: flex; align-items: center; gap: 6px;
-      padding: 5px 14px 5px 20px;
-      font-size: 12px; cursor: pointer; color: var(--fg);
-      border-radius: 6px; margin: 0 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px 5px 22px;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--fg);
+      border-radius: 6px;
+      margin: 1px 6px;
       transition: background 0.12s;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .tree-file:hover { background: var(--card-bg); }
     .tree-file.active {
-      background: rgba(124,106,247,0.12);
-      color: var(--primary); font-weight: 600;
+      background: rgba(0,111,238,0.1);
+      color: var(--primary);
+      font-weight: 600;
     }
-    .tree-file-icon { font-size: 11px; flex-shrink: 0; }
 
-    .tree-empty {
-      padding: 24px 14px; font-size: 12px; color: var(--fg-muted);
-      text-align: center; line-height: 1.6;
-    }
     .tree-loading {
-      padding: 24px 14px; text-align: center;
+      padding: 16px;
+      text-align: center;
     }
     .tree-loading::after {
-      content: ''; display: inline-block; width: 16px; height: 16px;
-      border: 2px solid var(--border); border-top-color: var(--primary);
-      border-radius: 50%; animation: spin 0.7s linear infinite;
+      content: '';
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    .tree-empty {
+      padding: 12px 16px;
+      font-size: 11px;
+      color: var(--fg-muted);
+      text-align: center;
+      line-height: 1.6;
     }
 
-    /* 내용 패널 */
-    .content-placeholder {
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      height: 100%; color: var(--fg-muted); gap: 8px;
+    /* ══════════════════════════════════════
+       메인 영역
+    ══════════════════════════════════════ */
+    .app-main {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
     }
-    .content-placeholder .icon { font-size: 40px; }
-    .content-placeholder p { font-size: 13px; text-align: center; line-height: 1.6; }
 
-    .content-header {
-      display: flex; align-items: center; gap: 10px;
+    .main-view {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+    .main-view.active { display: flex; }
+
+    /* ── 환영 화면 ── */
+    .welcome-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 40px 40px;
+      overflow-y: auto;
+    }
+
+    .welcome-icon { font-size: 52px; margin-bottom: 16px; }
+
+    .welcome-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--fg);
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+      text-align: center;
+    }
+
+    .welcome-desc {
+      font-size: 14px;
+      color: var(--fg-muted);
+      text-align: center;
+      line-height: 1.7;
+      margin: 0 0 32px;
+      max-width: 460px;
+    }
+
+    .welcome-input-box {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      gap: 8px;
       margin-bottom: 20px;
-      padding-bottom: 16px; border-bottom: 1px solid var(--border);
     }
-    .content-path {
-      font-size: 11px; color: var(--fg-muted); flex: 1;
+    .welcome-input {
+      flex: 1;
+      padding: 13px 18px;
+      border-radius: 14px;
+      border: 2px solid var(--border);
+      background: var(--card-bg);
+      font-size: 15px;
+      color: var(--fg);
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
     }
-    .content-action-btn {
-      padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border);
-      background: none; font-size: 11px; font-weight: 600; cursor: pointer;
-      color: var(--fg-muted); transition: all 0.12s; font-family: inherit;
+    .welcome-input:focus { border-color: var(--primary); }
+    .welcome-input::placeholder { color: var(--fg-muted); }
+
+    .welcome-submit {
+      padding: 13px 24px;
+      border-radius: 14px;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s;
+      white-space: nowrap;
     }
-    .content-action-btn:hover {
-      border-color: var(--primary); color: var(--primary);
+    .welcome-submit:hover { background: var(--primary-h); }
+
+    .welcome-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      max-width: 600px;
+    }
+    .welcome-chip {
+      padding: 7px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      font-size: 12px;
+      color: var(--fg-muted);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.12s;
+    }
+    .welcome-chip:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── 채팅 화면 ── */
+    .chat-filter-bar {
+      flex-shrink: 0;
+      padding: 10px 24px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+    .cat-chip {
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: none;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--fg-muted);
+      font-family: inherit;
+      transition: all 0.12s;
+    }
+    .cat-chip.selected {
+      background: rgba(0,111,238,0.12);
+      border-color: var(--primary);
+      color: var(--primary);
     }
 
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* 채팅 메시지 */
+    .chat-turn { display: flex; flex-direction: column; gap: 8px; }
+
+    .chat-user {
+      align-self: flex-end;
+      background: var(--primary);
+      color: #fff;
+      border-radius: 16px 16px 4px 16px;
+      padding: 10px 15px;
+      font-size: 14px;
+      max-width: 75%;
+      line-height: 1.5;
+    }
+
+    .chat-ai { align-self: flex-start; max-width: 90%; }
+    .chat-ai-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px 16px 16px 16px;
+      padding: 14px 16px;
+    }
+    .chat-ai-body { font-size: 13px; line-height: 1.8; color: var(--fg); }
+    .chat-ai-body h1, .chat-ai-body h2, .chat-ai-body h3 { font-weight: 700; margin: 0.8em 0 0.3em; font-size: 1.05em; }
+    .chat-ai-body p { margin: 0.4em 0; }
+    .chat-ai-body ul, .chat-ai-body ol { padding-left: 1.4em; margin: 0.4em 0; }
+    .chat-ai-body li { margin: 0.2em 0; }
+    .chat-ai-body strong { font-weight: 700; }
+    .chat-ai-body code { background: rgba(0,111,238,0.08); padding: 1px 5px; border-radius: 4px; font-size: 0.87em; }
+    .chat-ai-body table { border-collapse: collapse; width: 100%; margin: 0.8em 0; font-size: 12px; }
+    .chat-ai-body th, .chat-ai-body td { border: 1px solid var(--border); padding: 5px 8px; }
+    .chat-ai-body th { background: rgba(0,0,0,0.04); font-weight: 700; }
+
+    .chat-sources {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--fg-muted);
+    }
+    .chat-sources-label { font-weight: 700; margin-bottom: 4px; }
+    .source-chip {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(0,111,238,0.08);
+      color: var(--primary);
+      font-size: 10px;
+      font-weight: 600;
+      margin: 2px 2px 0 0;
+    }
+
+    .chat-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .chat-action-btn {
+      padding: 5px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: none;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--fg-muted);
+      font-family: inherit;
+      transition: all 0.12s;
+    }
+    .chat-action-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* 로딩 점 */
+    .chat-thinking {
+      align-self: flex-start;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--fg-muted);
+    }
+    .thinking-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--primary);
+      opacity: 0.4;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    /* 채팅 입력창 */
+    .chat-input-bar {
+      flex-shrink: 0;
+      padding: 12px 20px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .chat-input-bar input {
+      flex: 1;
+      padding: 11px 16px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: var(--card-bg);
+      font-size: 14px;
+      color: var(--fg);
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .chat-input-bar input:focus { border-color: var(--primary); }
+    .chat-input-bar input::placeholder { color: var(--fg-muted); }
+    .chat-send-btn {
+      padding: 11px 20px;
+      border-radius: 12px;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .chat-send-btn:hover { background: var(--primary-h); }
+    .chat-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── 문서 화면 ── */
+    .doc-header {
+      flex-shrink: 0;
+      padding: 18px 28px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .doc-meta { flex: 1; min-width: 0; }
+    .doc-filename {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--fg);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .doc-path { font-size: 11px; color: var(--fg-muted); }
+    .doc-action-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: none;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--fg-muted);
+      font-family: inherit;
+      transition: all 0.12s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .doc-action-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+    .doc-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 32px;
+    }
+
+    /* MD 렌더링 */
     .md-body { font-size: 14px; line-height: 1.8; color: var(--fg); }
-    .md-body h1, .md-body h2, .md-body h3 { font-weight: 700; margin: 1.2em 0 0.4em; color: var(--fg); }
-    .md-body h1 { font-size: 1.4em; }
+    .md-body h1, .md-body h2, .md-body h3 { font-weight: 700; margin: 1.2em 0 0.4em; }
+    .md-body h1 { font-size: 1.4em; border-bottom: 1px solid var(--border); padding-bottom: 0.4em; }
     .md-body h2 { font-size: 1.2em; }
     .md-body h3 { font-size: 1.05em; }
     .md-body p { margin: 0.6em 0; }
     .md-body ul, .md-body ol { padding-left: 1.5em; margin: 0.5em 0; }
     .md-body li { margin: 0.25em 0; }
     .md-body table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 13px; }
-    .md-body th, .md-body td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+    .md-body th, .md-body td { border: 1px solid var(--border); padding: 6px 10px; }
     .md-body th { background: var(--card-bg); font-weight: 700; }
     .md-body code { background: var(--card-bg); padding: 1px 5px; border-radius: 4px; font-size: 0.88em; }
     .md-body pre { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; overflow-x: auto; }
     .md-body blockquote { border-left: 3px solid var(--primary); padding-left: 12px; margin: 0.8em 0; color: var(--fg-muted); }
     .md-body a { color: var(--primary); }
+    .md-body hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
 
-    /* ── 검색 탭 ── */
-    #searchTab {
-      flex-direction: row;
-      height: calc(100vh - 96px);
-    }
-
-    .search-top {
-      padding: 14px 12px;
-      border-bottom: 1px solid var(--border);
-      background: var(--bg);
-      flex-shrink: 0;
-    }
-
-    .search-input-row {
-      display: flex; gap: 8px; align-items: stretch;
-    }
-    .search-input {
-      flex: 1; padding: 10px 14px; border-radius: 10px;
-      border: 1.5px solid var(--border); background: var(--card-bg);
-      font-size: 14px; color: var(--fg); font-family: inherit;
-      transition: border-color 0.15s; outline: none;
-    }
-    .search-input:focus { border-color: var(--primary); }
-    .search-input::placeholder { color: var(--fg-muted); }
-
-    .search-submit {
-      padding: 10px 18px; border-radius: 10px; border: none;
-      background: var(--primary); color: #fff;
-      font-size: 13px; font-weight: 700; cursor: pointer;
-      font-family: inherit; transition: background 0.15s; white-space: nowrap;
-    }
-    .search-submit:hover { background: var(--primary-h); }
-    .search-submit:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .cat-filter {
-      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
-    }
-    .cat-chip {
-      padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border);
-      background: none; font-size: 11px; font-weight: 600; cursor: pointer;
-      color: var(--fg-muted); font-family: inherit; transition: all 0.12s;
-    }
-    .cat-chip.selected {
-      background: rgba(124,106,247,0.15); border-color: var(--primary);
-      color: var(--primary);
-    }
-
-    /* 대화 이력 */
-    .chat-area {
-      flex: 1; overflow-y: auto;
-      padding: 16px; display: flex; flex-direction: column; gap: 16px;
-    }
-
-    .chat-empty {
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      height: 100%; color: var(--fg-muted); gap: 8px; text-align: center;
-    }
-    .chat-empty .icon { font-size: 40px; }
-    .chat-empty p { font-size: 13px; line-height: 1.6; }
-    .chat-suggestions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; }
-    .chat-suggest-btn {
-      padding: 6px 12px; border-radius: 20px;
-      border: 1px solid var(--border); background: var(--card-bg);
-      font-size: 12px; color: var(--fg-muted); cursor: pointer;
-      font-family: inherit; transition: all 0.12s;
-    }
-    .chat-suggest-btn:hover { border-color: var(--primary); color: var(--primary); }
-
-    .chat-turn { display: flex; flex-direction: column; gap: 8px; }
-
-    .chat-user {
-      align-self: flex-end;
-      background: var(--primary); color: #fff;
-      border-radius: 16px 16px 4px 16px;
-      padding: 10px 14px; font-size: 13px; max-width: 80%;
-      line-height: 1.5;
-    }
-
-    .chat-ai {
-      align-self: flex-start; max-width: 90%;
-    }
-    .chat-ai-card {
-      background: var(--card-bg); border: 1px solid var(--border);
-      border-radius: 4px 16px 16px 16px;
-      padding: 14px 16px;
-    }
-    .chat-ai-body { font-size: 13px; line-height: 1.75; color: var(--fg); }
-    .chat-ai-body h1, .chat-ai-body h2, .chat-ai-body h3 { font-weight: 700; margin: 0.8em 0 0.3em; font-size: 1em; }
-    .chat-ai-body p { margin: 0.4em 0; }
-    .chat-ai-body ul, .chat-ai-body ol { padding-left: 1.4em; margin: 0.4em 0; }
-    .chat-ai-body li { margin: 0.2em 0; }
-    .chat-ai-body strong { font-weight: 700; }
-    .chat-ai-body code { background: rgba(124,106,247,0.1); padding: 1px 4px; border-radius: 3px; font-size: 0.87em; }
-
-    .chat-sources {
-      margin-top: 10px; padding-top: 10px;
-      border-top: 1px solid var(--border);
-      font-size: 11px; color: var(--fg-muted);
-    }
-    .chat-sources-label { font-weight: 700; margin-bottom: 4px; }
-    .source-chip {
-      display: inline-block; padding: 2px 7px; border-radius: 4px;
-      background: rgba(124,106,247,0.1); color: var(--primary);
-      font-size: 10px; font-weight: 600; margin: 2px 2px 0 0;
-    }
-
-    .chat-actions {
-      display: flex; gap: 6px; margin-top: 8px;
-      flex-wrap: wrap;
-    }
-    .chat-action-btn {
-      padding: 5px 10px; border-radius: 8px;
-      border: 1px solid var(--border); background: none;
-      font-size: 11px; font-weight: 600; cursor: pointer;
-      color: var(--fg-muted); font-family: inherit; transition: all 0.12s;
-    }
-    .chat-action-btn:hover { border-color: var(--primary); color: var(--primary); }
-
-    /* 로딩 */
-    .chat-thinking {
-      align-self: flex-start;
-      display: flex; align-items: center; gap: 8px;
-      padding: 10px 14px; border-radius: 12px;
-      background: var(--card-bg); border: 1px solid var(--border);
-      font-size: 12px; color: var(--fg-muted);
-    }
-    .thinking-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: var(--primary); opacity: 0.4;
-      animation: pulse 1.2s ease-in-out infinite;
-    }
-    .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
-    .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
-
+    /* 애니메이션 */
+    @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes pulse {
       0%, 100% { opacity: 0.4; transform: scale(0.9); }
       50% { opacity: 1; transform: scale(1.1); }
     }
 
-    /* 이력 헤더 */
-    .chat-history-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 14px; flex-shrink: 0;
-    }
-    .chat-history-label { font-size: 11px; color: var(--fg-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-    .clear-history-btn {
-      font-size: 10px; color: var(--fg-muted); background: none;
-      border: none; cursor: pointer; font-family: inherit;
-      padding: 2px 6px; border-radius: 4px; transition: all 0.12s;
-    }
-    .clear-history-btn:hover { color: var(--danger); background: rgba(255,0,0,0.05); }
-
-    /* 최근 검색 목록 */
-    .recent-search-item {
-      padding: 6px 14px; font-size: 12px; color: var(--fg);
-      cursor: pointer; border-radius: 6px; margin: 2px 8px;
-      transition: background 0.12s; white-space: nowrap;
-      overflow: hidden; text-overflow: ellipsis;
-    }
-    .recent-search-item:hover { background: var(--card-bg); }
-    .recent-search-item::before { content: '🔍 '; font-size: 10px; opacity: 0.6; }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
     /* 반응형 */
-    @media (max-width: 600px) {
-      .tree-panel { width: 180px; min-width: 160px; }
-      .content-panel { padding: 16px; }
+    @media (max-width: 640px) {
+      .app-sidebar { width: 200px; min-width: 180px; }
+      .chat-messages { padding: 16px; }
+      .doc-body { padding: 16px; }
+      .welcome-wrap { padding: 56px 20px 24px; }
     }
   </style>
 </head>
 <body>
-  <!-- 앱 헤더 -->
-  <div style="padding:16px 20px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;z-index:100;position:relative">
-    <div style="font-size:18px;font-weight:700;letter-spacing:-0.02em">🏫 교육문서 검색</div>
-    <div style="display:flex;gap:8px">
-      <button class="overlay-btn" onclick="shareCurrentPage()" title="공유">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-          <polyline points="16 6 12 2 8 6"/>
-          <line x1="12" x2="12" y1="2" y2="15"/>
-        </svg>
-      </button>
-    </div>
-  </div>
 
   <!-- 좌상단: 홈 -->
   <div class="top-overlay-left">
@@ -376,133 +577,190 @@
     </a>
   </div>
 
-  <!-- 우상단: 테마 토글 -->
+  <!-- 우상단: 테마 + 공유 -->
   <div class="top-overlay">
     <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+    <button class="overlay-btn" onclick="shareCurrentPage()" title="공유">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+        <polyline points="16 6 12 2 8 6"/>
+        <line x1="12" x2="12" y1="2" y2="15"/>
+      </svg>
+      <span>공유</span>
+    </button>
   </div>
 
-  <!-- 탭 바 -->
-  <div class="tab-bar">
-    <button class="tab-item active" onclick="switchTab('browse')">📂 문서 탐색</button>
-    <button class="tab-item" onclick="switchTab('search')">🔍 AI 검색</button>
-  </div>
+  <div class="app-layout">
+    <!-- ═══════════ 사이드바 ═══════════ -->
+    <aside class="app-sidebar">
+      <!-- Home 버튼 영역 확보 -->
+      <div class="sidebar-top-pad"></div>
 
-  <!-- 조회 탭 -->
-  <div id="browseTab" class="tab-panel active">
-    <div class="sidebar tree-panel" id="treePanel">
-      <div class="tree-loading" id="treeLoading"></div>
-    </div>
-    <div class="main-content">
-      <div class="content-panel" id="contentPanel">
-        <div class="content-placeholder">
-          <div class="icon">📄</div>
-          <p>왼쪽에서 문서를 선택하면<br>내용이 표시됩니다</p>
+      <!-- 브랜드 -->
+      <div class="sidebar-brand">🏫 교육문서 검색</div>
+
+      <!-- 새 대화 -->
+      <button class="new-chat-btn" onclick="newChat()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        새 대화
+      </button>
+
+      <div class="sidebar-scrollable">
+        <!-- 대화 목록 -->
+        <div class="sidebar-section-label">
+          <span>대화 목록</span>
+          <button class="sidebar-label-btn" onclick="clearHistory()">지우기</button>
+        </div>
+        <div id="convList"></div>
+
+        <div class="sidebar-divider"></div>
+
+        <!-- 문서 목록 -->
+        <div class="sidebar-section-label">
+          <span>문서 목록</span>
+        </div>
+        <div id="treePanel">
+          <div class="tree-loading"></div>
         </div>
       </div>
-    </div>
-  </div>
+    </aside>
 
-  <!-- 검색 탭 -->
-  <div id="searchTab" class="tab-panel">
-    <!-- 왼쪽 사이드바: 검색 + 최근 목록 -->
-    <div class="sidebar" id="searchSidebar">
-      <div class="search-top">
-        <div class="search-input-row">
-          <input
-            type="text" id="searchInput" class="search-input"
-            placeholder="질문을 입력하세요"
-            onkeydown="if(event.key==='Enter')doSearch()"
-          >
-          <button class="search-submit" id="searchBtn" onclick="doSearch()">검색</button>
-        </div>
-        <div class="cat-filter" id="catFilter">
-          <button class="cat-chip selected" data-cat="" onclick="toggleCat(this)">전체</button>
-        </div>
-      </div>
-      <div style="padding:12px 0">
-        <div class="chat-history-header">
-          <span class="chat-history-label">최근 검색</span>
-          <button class="clear-history-btn" onclick="clearHistory()">지우기</button>
-        </div>
-        <div id="recentSearchList" style="padding:0 8px"></div>
-      </div>
-    </div>
+    <!-- ═══════════ 메인 영역 ═══════════ -->
+    <main class="app-main">
 
-    <!-- 오른쪽 메인: 대화 영역 -->
-    <div class="main-content">
-      <div class="chat-area" id="chatArea">
-        <div class="chat-empty" id="chatEmpty">
-          <div class="icon">🏫</div>
-          <p>교육법규, 교육과정, 실무지침에 대해<br>자유롭게 질문해 보세요</p>
-          <div class="chat-suggestions" id="suggestions">
-            <button class="chat-suggest-btn" onclick="fillSuggest(this)">초등학교 법정 수업 일수는?</button>
-            <button class="chat-suggest-btn" onclick="fillSuggest(this)">학교생활기록부 기재 원칙</button>
-            <button class="chat-suggest-btn" onclick="fillSuggest(this)">교원 연수 이수 시간 기준</button>
-            <button class="chat-suggest-btn" onclick="fillSuggest(this)">2022 개정 교육과정 주요 변경사항</button>
+      <!-- 🏠 환영 화면 (기본) -->
+      <div id="welcomeView" class="main-view active">
+        <div class="welcome-wrap">
+          <div class="welcome-icon">🏫</div>
+          <h1 class="welcome-title">교육문서 AI 검색</h1>
+          <p class="welcome-desc">
+            교육법규·교육과정·실무지침·교육청 계획서 등 교육 관련 문서를<br>
+            자연어로 검색하고, AI 답변과 근거 출처를 함께 확인하세요.
+          </p>
+          <div class="welcome-input-box">
+            <input
+              type="text" id="welcomeInput" class="welcome-input"
+              placeholder="무엇이 궁금하신가요?"
+              onkeydown="if(event.key==='Enter')startFromWelcome()"
+            >
+            <button class="welcome-submit" onclick="startFromWelcome()">검색</button>
+          </div>
+          <div class="welcome-chips">
+            <button class="welcome-chip" onclick="welcomeChip(this)">초등학교 법정 수업 일수는?</button>
+            <button class="welcome-chip" onclick="welcomeChip(this)">학교생활기록부 기재 원칙</button>
+            <button class="welcome-chip" onclick="welcomeChip(this)">교원 연수 이수 시간 기준</button>
+            <button class="welcome-chip" onclick="welcomeChip(this)">2022 개정 교육과정 주요 변경사항</button>
           </div>
         </div>
       </div>
-    </div>
+
+      <!-- 💬 채팅 화면 -->
+      <div id="chatView" class="main-view">
+        <!-- 카테고리 필터 -->
+        <div class="chat-filter-bar" id="catFilter">
+          <button class="cat-chip selected" data-cat="" onclick="toggleCat(this)">전체</button>
+        </div>
+        <!-- 메시지 영역 -->
+        <div class="chat-messages" id="chatArea"></div>
+        <!-- 입력창 -->
+        <div class="chat-input-bar">
+          <input
+            type="text" id="searchInput"
+            placeholder="질문을 입력하세요"
+            onkeydown="if(event.key==='Enter')doSearch()"
+          >
+          <button class="chat-send-btn" id="searchBtn" onclick="doSearch()">검색</button>
+        </div>
+      </div>
+
+      <!-- 📄 문서 화면 -->
+      <div id="docView" class="main-view">
+        <div class="doc-header" id="docHeader">
+          <div class="doc-meta">
+            <div class="doc-filename" id="docFilename">—</div>
+            <div class="doc-path" id="docPath"></div>
+          </div>
+          <button class="doc-action-btn" id="docOpenBtn">MD Editor로 열기</button>
+        </div>
+        <div class="doc-body">
+          <div class="md-body" id="docContent"></div>
+        </div>
+      </div>
+
+    </main>
   </div>
 
   <script>
     /* ─────────────────────────────────────────
        설정
     ───────────────────────────────────────── */
-    const REPO = 'eduinside/byeduin-edu-docs';
-    const RAW_BASE = `https://raw.githubusercontent.com/${REPO}/main`;
-    const TREE_API = `https://api.github.com/repos/${REPO}/git/trees/main?recursive=1`;
-    const LS_HISTORY_KEY = 'edu-search-history';
-    const LS_TREE_KEY = 'edu-search-tree-cache';
-    const LS_TREE_TS_KEY = 'edu-search-tree-ts';
-    const TREE_CACHE_TTL = 10 * 60 * 1000; // 10분
+    const REPO         = 'eduinside/byeduin-edu-docs';
+    const RAW_BASE     = `https://raw.githubusercontent.com/${REPO}/main`;
+    const TREE_API     = `https://api.github.com/repos/${REPO}/git/trees/main?recursive=1`;
+    const LS_HISTORY   = 'edu-search-history';
+    const LS_TREE      = 'edu-search-tree-cache';
+    const LS_TREE_TS   = 'edu-search-tree-ts';
+    const TREE_TTL     = 10 * 60 * 1000;
 
     /* ─────────────────────────────────────────
-       탭 전환
+       뷰 전환
     ───────────────────────────────────────── */
-    function switchTab(tab) {
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active'));
-      const tabEl = document.getElementById(tab + 'Tab');
-      tabEl.classList.add('active');
-      event.currentTarget.classList.add('active');
-
-      // 검색 탭으로 전환 시 대화 이력 로드
-      if (tab === 'search' && document.getElementById('chatEmpty')) {
-        const list = getHistory();
-        if (list.length > 0) {
-          hideChatEmpty();
-          list.slice().reverse().forEach(item => {
-            appendUserMsg(item.query);
-            appendAiMsg(item.query, item.answer, item.sources || []);
-          });
-        }
-      }
+    function showView(name) {
+      document.querySelectorAll('.main-view').forEach(v => v.classList.remove('active'));
+      document.getElementById(name + 'View').classList.add('active');
     }
 
     /* ─────────────────────────────────────────
-       트리 데이터 로드 (캐시 포함)
+       환영 화면
     ───────────────────────────────────────── */
-    let treeData = null; // { categories: { name: [filePath, ...] } }
+    function startFromWelcome() {
+      const q = document.getElementById('welcomeInput').value.trim();
+      if (!q) return;
+      document.getElementById('searchInput').value = q;
+      document.getElementById('welcomeInput').value = '';
+      showView('chat');
+      doSearch();
+    }
+
+    function welcomeChip(btn) {
+      document.getElementById('welcomeInput').value = btn.textContent;
+      startFromWelcome();
+    }
+
+    /* ─────────────────────────────────────────
+       새 대화
+    ───────────────────────────────────────── */
+    function newChat() {
+      document.getElementById('chatArea').innerHTML = '';
+      document.getElementById('searchInput').value = '';
+      document.querySelectorAll('.conv-item').forEach(i => i.classList.remove('active'));
+      selectedCats.clear();
+      document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('selected'));
+      const allChip = document.querySelector('.cat-chip[data-cat=""]');
+      if (allChip) allChip.classList.add('selected');
+      showView('welcome');
+    }
+
+    /* ─────────────────────────────────────────
+       트리 데이터 로드
+    ───────────────────────────────────────── */
+    let treeData = null;
 
     async function loadTree() {
-      // 캐시 확인
-      const ts = parseInt(localStorage.getItem(LS_TREE_TS_KEY) || '0');
-      if (Date.now() - ts < TREE_CACHE_TTL) {
-        const cached = localStorage.getItem(LS_TREE_KEY);
-        if (cached) {
-          treeData = JSON.parse(cached);
-          renderTree();
-          return;
-        }
+      const ts = parseInt(localStorage.getItem(LS_TREE_TS) || '0');
+      if (Date.now() - ts < TREE_TTL) {
+        const cached = localStorage.getItem(LS_TREE);
+        if (cached) { treeData = JSON.parse(cached); renderTree(); return; }
       }
 
       try {
         const res = await fetch(TREE_API);
-        if (!res.ok) throw new Error('fetch failed');
+        if (!res.ok) throw new Error();
         const json = await res.json();
 
-        // MD 파일만 추출 → 카테고리별 분류
         const cats = {};
         (json.tree || [])
           .filter(f => f.type === 'blob' && f.path.endsWith('.md'))
@@ -515,37 +773,37 @@
           });
 
         treeData = { categories: cats };
-        localStorage.setItem(LS_TREE_KEY, JSON.stringify(treeData));
-        localStorage.setItem(LS_TREE_TS_KEY, String(Date.now()));
+        localStorage.setItem(LS_TREE, JSON.stringify(treeData));
+        localStorage.setItem(LS_TREE_TS, String(Date.now()));
         renderTree();
         buildCatFilter(Object.keys(cats));
       } catch {
         document.getElementById('treePanel').innerHTML =
-          '<div class="tree-empty">문서 목록을 불러오지 못했습니다.<br>리포지토리 설정을 확인해주세요.</div>';
+          '<div class="tree-empty">문서 목록을 불러오지<br>못했습니다.</div>';
       }
     }
 
     function renderTree() {
       const panel = document.getElementById('treePanel');
-      const cats = treeData.categories;
-      const catNames = Object.keys(cats);
+      const cats  = treeData.categories;
+      const names = Object.keys(cats);
 
-      if (catNames.length === 0) {
+      if (names.length === 0) {
         panel.innerHTML = '<div class="tree-empty">등록된 문서가 없습니다.</div>';
         return;
       }
 
-      panel.innerHTML = catNames.map(cat => `
+      panel.innerHTML = names.map(cat => `
         <div class="tree-category">
           <div class="tree-cat-header" onclick="toggleCatTree(this)">
             <span class="arrow">▶</span>
             <span>${catIcon(cat)} ${cat}</span>
-            <span style="margin-left:auto;font-size:10px;opacity:.5">${cats[cat].length}</span>
+            <span style="margin-left:auto;font-size:10px;opacity:.4">${cats[cat].length}</span>
           </div>
           <div class="tree-files">
             ${cats[cat].map(f => `
               <div class="tree-file" data-path="${f.path}" onclick="openFile(this)" title="${f.name}">
-                <span class="tree-file-icon">📄</span>
+                <span style="font-size:11px">📄</span>
                 <span style="overflow:hidden;text-overflow:ellipsis">${f.name}</span>
               </div>
             `).join('')}
@@ -553,14 +811,12 @@
         </div>
       `).join('');
 
-      // 첫 카테고리 자동 열기
       const firstHeader = panel.querySelector('.tree-cat-header');
       if (firstHeader) toggleCatTree(firstHeader);
     }
 
     function catIcon(name) {
-      const map = { '교육법규': '⚖️', '교육과정': '📘', '실무지침': '📋', '교육청계획': '🏫' };
-      return map[name] || '📁';
+      return { '교육법규': '⚖️', '교육과정': '📘', '실무지침': '📋', '교육청계획': '🏫' }[name] || '📁';
     }
 
     function toggleCatTree(header) {
@@ -570,65 +826,45 @@
     }
 
     /* ─────────────────────────────────────────
-       파일 열기 (MD 뷰어)
+       파일 열기 (문서 화면)
     ───────────────────────────────────────── */
     let currentPath = null;
 
     async function openFile(el) {
       const path = el.dataset.path;
-      if (currentPath === path) return;
+      if (currentPath === path && document.getElementById('docView').classList.contains('active')) return;
       currentPath = path;
 
       document.querySelectorAll('.tree-file').forEach(f => f.classList.remove('active'));
       el.classList.add('active');
 
-      const panel = document.getElementById('contentPanel');
-      panel.innerHTML = `
+      const filename = path.split('/').pop().replace(/\.md$/, '');
+      document.getElementById('docFilename').textContent = filename;
+      document.getElementById('docPath').textContent = path;
+      document.getElementById('docContent').innerHTML = `
         <div style="text-align:center;padding:40px 0;color:var(--fg-muted)">
-          <div style="width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 8px"></div>
+          <div style="width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 8px"></div>
           불러오는 중...
         </div>`;
+
+      showView('doc');
 
       try {
         const res = await fetch(`${RAW_BASE}/${path}`);
         if (!res.ok) throw new Error();
         const text = await res.text();
 
-        const filename = path.split('/').pop().replace(/\.md$/, '');
-        panel.innerHTML = `
-          <div class="content-header">
-            <div>
-              <div style="font-size:14px;font-weight:700">${filename}</div>
-              <div class="content-path">${path}</div>
-            </div>
-            <button class="content-action-btn" onclick="sendToMdEditor('${path.replace(/'/g, "\\'")}', \`${text.slice(0, 200).replace(/`/g, '\\`')}\`)">
-              MD Editor로 열기
-            </button>
-          </div>
-          <div class="md-body" id="mdBody"></div>
-        `;
-        document.getElementById('mdBody').innerHTML = marked.parse(text);
+        document.getElementById('docContent').innerHTML = marked.parse(text);
+        document.getElementById('docOpenBtn').onclick = () => openMdEditor(text, path.split('/').pop());
       } catch {
-        panel.innerHTML = '<div class="content-placeholder"><div class="icon">⚠️</div><p>파일을 불러오지 못했습니다.</p></div>';
-      }
-    }
-
-    async function sendToMdEditor(path, preview) {
-      // 전체 내용 fetch 후 md-editor 공유 링크 생성
-      try {
-        const res = await fetch(`${RAW_BASE}/${path}`);
-        const text = await res.text();
-        const filename = path.split('/').pop();
-        openMdEditor(text, filename);
-      } catch {
-        showToast('파일 열기 실패');
+        document.getElementById('docContent').innerHTML = '<p style="color:var(--fg-muted)">파일을 불러오지 못했습니다.</p>';
       }
     }
 
     /* ─────────────────────────────────────────
-       카테고리 필터 (검색 탭)
+       카테고리 필터
     ───────────────────────────────────────── */
-    let selectedCats = new Set(); // 빈 Set = 전체
+    let selectedCats = new Set();
 
     function buildCatFilter(catNames) {
       const filter = document.getElementById('catFilter');
@@ -645,22 +881,14 @@
     function toggleCat(btn) {
       const cat = btn.dataset.cat;
       if (cat === '') {
-        // 전체 선택
         selectedCats.clear();
         document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('selected'));
         btn.classList.add('selected');
       } else {
         document.querySelector('.cat-chip[data-cat=""]').classList.remove('selected');
-        if (selectedCats.has(cat)) {
-          selectedCats.delete(cat);
-          btn.classList.remove('selected');
-        } else {
-          selectedCats.add(cat);
-          btn.classList.add('selected');
-        }
-        if (selectedCats.size === 0) {
-          document.querySelector('.cat-chip[data-cat=""]').classList.add('selected');
-        }
+        if (selectedCats.has(cat)) { selectedCats.delete(cat); btn.classList.remove('selected'); }
+        else { selectedCats.add(cat); btn.classList.add('selected'); }
+        if (selectedCats.size === 0) document.querySelector('.cat-chip[data-cat=""]').classList.add('selected');
       }
     }
 
@@ -675,13 +903,11 @@
       const query = input.value.trim();
       if (!query) return;
 
+      showView('chat');
       isSearching = true;
       const btn = document.getElementById('searchBtn');
       btn.disabled = true;
 
-      hideChatEmpty();
-
-      // 사용자 메시지 추가
       appendUserMsg(query);
       const thinkingEl = appendThinking();
       input.value = '';
@@ -690,18 +916,13 @@
         const res = await fetch('/.netlify/functions/edu-search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query,
-            categories: Array.from(selectedCats),
-          }),
+          body: JSON.stringify({ query, categories: Array.from(selectedCats) }),
         });
-
-        if (!res.ok) throw new Error('search failed');
+        if (!res.ok) throw new Error();
         const data = await res.json();
-
         thinkingEl.remove();
-        appendAiMsg(query, data.answer, data.sources);
-        saveHistory(query, data.answer, data.sources);
+        appendAiMsg(query, data.answer, data.sources || []);
+        saveHistory(query, data.answer, data.sources || []);
       } catch {
         thinkingEl.remove();
         appendAiMsg(query, '검색 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.', []);
@@ -709,12 +930,6 @@
         isSearching = false;
         btn.disabled = false;
       }
-    }
-
-    function hideChatEmpty() {
-      const el = document.getElementById('chatEmpty');
-      if (el) el.style.display = 'none';
-      document.getElementById('historyHeader').style.display = 'flex';
     }
 
     function appendUserMsg(text) {
@@ -742,34 +957,34 @@
       const el = document.createElement('div');
       el.className = 'chat-ai';
 
-      const sourceHtml = sources.length > 0 ? `
+      const sourceHtml = sources.length ? `
         <div class="chat-sources">
           <div class="chat-sources-label">📎 참조 문서</div>
           ${sources.map(s => `<span class="source-chip">${s.split('/').pop().replace(/\.md$/, '')}</span>`).join('')}
         </div>` : '';
 
+      const answerJson = JSON.stringify(answer);
+      const queryJson  = JSON.stringify(query);
+      const srcJson    = JSON.stringify(sources);
+
       el.innerHTML = `
         <div class="chat-ai-card">
-          <div class="chat-ai-body" id="ai-body-${Date.now()}"></div>
+          <div class="chat-ai-body"></div>
           ${sourceHtml}
         </div>
         <div class="chat-actions">
-          <button class="chat-action-btn" onclick="copyAnswer(this, ${JSON.stringify(answer)})">복사</button>
-          <button class="chat-action-btn" onclick="shareAnswer(${JSON.stringify(query)}, ${JSON.stringify(answer)}, ${JSON.stringify(sources)})">MD Editor로 공유</button>
-        </div>
-      `;
+          <button class="chat-action-btn" onclick='copyAnswer(this, ${answerJson})'>복사</button>
+          <button class="chat-action-btn" onclick='shareAnswer(${queryJson}, ${answerJson}, ${srcJson})'>MD Editor로 공유</button>
+        </div>`;
+
+      el.querySelector('.chat-ai-body').innerHTML = marked.parse(answer);
       area.appendChild(el);
-
-      // 마지막으로 추가된 ai-body에 마크다운 렌더링
-      const bodyEl = el.querySelector('.chat-ai-body');
-      bodyEl.innerHTML = marked.parse(answer);
-
       el.scrollIntoView({ behavior: 'smooth', block: 'end' });
       return el;
     }
 
     /* ─────────────────────────────────────────
-       액션 버튼
+       액션
     ───────────────────────────────────────── */
     function copyAnswer(btn, answer) {
       navigator.clipboard.writeText(answer).then(() => {
@@ -780,34 +995,19 @@
     }
 
     function shareAnswer(query, answer, sources) {
-      const md = [
-        `# 검색 결과\n`,
-        `**질문:** ${query}\n`,
-        answer,
-        sources.length ? `\n---\n**참조 문서**\n${sources.map(s => `- ${s}`).join('\n')}` : '',
-      ].join('\n');
+      const md = `# 검색 결과\n\n**질문:** ${query}\n\n${answer}${
+        sources.length ? `\n\n---\n**참조 문서**\n${sources.map(s => `- ${s}`).join('\n')}` : ''}`;
       openMdEditor(md, '검색결과.md');
     }
 
     function openMdEditor(content, filename) {
-      // 8000바이트 제한
       let safeContent = content;
       if (new Blob([content]).size > 7500) {
-        safeContent = content.slice(0, 7000) + '\n\n*(내용이 잘렸습니다. 원본 앱에서 전체 내용을 확인하세요.)*';
+        safeContent = content.slice(0, 7000) + '\n\n*(내용이 잘렸습니다.)*';
       }
-      const payload = JSON.stringify({
-        data: { content: safeContent, filename },
-        permission: 'clone',
-      });
-      const encoded = btoa(encodeURIComponent(payload))
-        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      const payload = JSON.stringify({ data: { content: safeContent, filename }, permission: 'clone' });
+      const encoded = btoa(encodeURIComponent(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
       window.open(`/md-editor/#share=${encoded}`, '_blank');
-    }
-
-    function fillSuggest(btn) {
-      document.getElementById('searchInput').value = btn.textContent;
-      // 검색 탭이 활성화된 상태에서 호출됨
-      doSearch();
     }
 
     /* ─────────────────────────────────────────
@@ -817,74 +1017,70 @@
       const list = getHistory();
       list.unshift({ id: Date.now(), query, answer, sources, ts: Date.now() });
       if (list.length > 50) list.length = 50;
-      localStorage.setItem(LS_HISTORY_KEY, JSON.stringify(list));
-      renderRecentSearchSidebar(); // 사이드바 업데이트
+      localStorage.setItem(LS_HISTORY, JSON.stringify(list));
+      renderConvList();
     }
 
     function getHistory() {
-      try { return JSON.parse(localStorage.getItem(LS_HISTORY_KEY) || '[]'); } catch { return []; }
+      try { return JSON.parse(localStorage.getItem(LS_HISTORY) || '[]'); } catch { return []; }
     }
 
-    function loadHistory() {
-      const list = getHistory();
-      renderRecentSearchSidebar();
-      if (list.length === 0) return;
-      // 검색 탭이 이미 활성화되어 있으면 대화 로드
-      if (document.getElementById('searchTab').classList.contains('active')) {
-        hideChatEmpty();
-        list.slice().reverse().forEach(item => {
-          appendUserMsg(item.query);
-          appendAiMsg(item.query, item.answer, item.sources || []);
-        });
-      }
-    }
-
-    function renderRecentSearchSidebar() {
-      const list = getHistory().slice(0, 10); // 최근 10개만
-      const container = document.getElementById('recentSearchList');
+    function renderConvList() {
+      const list = getHistory().slice(0, 20);
+      const container = document.getElementById('convList');
       if (list.length === 0) {
-        container.innerHTML = '<div style="padding:12px 14px;color:var(--fg-muted);font-size:11px;text-align:center">검색 이력 없음</div>';
+        container.innerHTML = '<div class="conv-item-empty">대화 없음</div>';
         return;
       }
       container.innerHTML = list.map(item =>
-        `<div class="recent-search-item" onclick="fillSidebarSuggest(this)">${escHtml(item.query)}</div>`
+        `<div class="conv-item" data-id="${item.id}" onclick="loadConv(${item.id})">${escHtml(item.query)}</div>`
       ).join('');
     }
 
-    function fillSidebarSuggest(el) {
-      const query = el.textContent.replace(/^🔍\s+/, '');
-      document.getElementById('searchInput').value = query;
-      doSearch();
+    function loadConv(id) {
+      const list = getHistory();
+      const item = list.find(i => i.id === id);
+      if (!item) return;
+
+      document.querySelectorAll('.conv-item').forEach(i => {
+        i.classList.toggle('active', +i.dataset.id === id);
+      });
+
+      document.getElementById('chatArea').innerHTML = '';
+      appendUserMsg(item.query);
+      appendAiMsg(item.query, item.answer, item.sources || []);
+      showView('chat');
     }
 
     function clearHistory() {
       if (!confirm('대화 이력을 모두 지울까요?')) return;
-      localStorage.removeItem(LS_HISTORY_KEY);
-      const area = document.getElementById('chatArea');
-      area.innerHTML = `
-        <div class="chat-empty" id="chatEmpty">
-          <div class="icon">🏫</div>
-          <p>교육법규, 교육과정, 실무지침에 대해<br>자유롭게 질문해 보세요</p>
-          <div class="chat-suggestions" id="suggestions">
-            <button class="chat-suggest-btn" onclick="fillSuggest(this)">초등학교 법정 수업 일수는?</button>
-            <button class="chat-suggest-btn" onclick="fillSuggest(this)">학교생활기록부 기재 원칙</button>
-            <button class="chat-suggest-btn" onclick="fillSuggest(this)">교원 연수 이수 시간 기준</button>
-            <button class="chat-suggest-btn" onclick="fillSuggest(this)">2022 개정 교육과정 주요 변경사항</button>
-          </div>
-        </div>`;
-      document.getElementById('historyHeader').style.display = 'none';
+      localStorage.removeItem(LS_HISTORY);
+      renderConvList();
+      newChat();
+    }
+
+    /* ─────────────────────────────────────────
+       공유
+    ───────────────────────────────────────── */
+    function shareCurrentPage() {
+      const url = window.location.href;
+      navigator.clipboard.writeText(url).then(() => showToast('링크를 복사했습니다'));
     }
 
     /* ─────────────────────────────────────────
        유틸
     ───────────────────────────────────────── */
     function escHtml(s) {
-      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
     }
 
     function showToast(msg) {
       const t = document.createElement('div');
-      t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:8px;font-size:13px;z-index:999;pointer-events:none';
+      t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:8px;font-size:13px;z-index:9999;pointer-events:none';
       t.textContent = msg;
       document.body.appendChild(t);
       setTimeout(() => t.remove(), 2000);
@@ -894,7 +1090,7 @@
        초기화
     ───────────────────────────────────────── */
     loadTree();
-    loadHistory();
+    renderConvList();
   </script>
 </body>
 </html>
