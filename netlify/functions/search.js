@@ -63,8 +63,8 @@ exports.handler = async (event) => {
       };
     }
 
-    // 최대 25개 파일로 제한 (토큰 과다 방지)
-    const targetFiles = files.slice(0, 25);
+    // 최대 10개 파일로 제한 (타임아웃 방지)
+    const targetFiles = files.slice(0, 10);
 
     // 2. MD 파일 내용 병렬 fetch
     const rawBase = `https://raw.githubusercontent.com/${REPO}/main`;

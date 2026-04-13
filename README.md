@@ -38,7 +38,7 @@
 ### 교육 (3)
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **에듀서치** | `/edu-search/` | 교육문서 AI 검색 (Gemini RAG) |
+| **에듀서치** | `/search/` | 교육문서 AI 검색 (Gemini RAG) |
 | **Flash Deck** | `/flash-deck/` | 플래시카드 학습 앱 |
 | **Chalkboard** | `/chalkboard/` | 칠판/화이트보드 메모 |
 
