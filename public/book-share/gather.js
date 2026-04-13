@@ -74,11 +74,22 @@ async function resolveShortURL(shortURL) {
 
 /* ── 링크 처리 및 책 정보 추출 ── */
 async function resolveAndDecodeLink(link) {
+  // 단축코드 추출 (단축URL에서)
+  let shortCode = '';
+  const shortMatch = link.match(/\/([a-zA-Z0-9]+)$/);
+  if (shortMatch) {
+    shortCode = shortMatch[1];
+  }
+
   // 공유 링크 형태 (#share=...)
   if (link.includes('#share=')) {
     const encoded = link.split('#share=')[1];
     const data = decodeShareData(encoded);
-    return (data && Array.isArray(data)) ? data : [];
+    if (data && Array.isArray(data)) {
+      // 공유 링크의 경우 source는 전체 링크
+      return data.map(b => ({ ...b, _source: link }));
+    }
+    return [];
   }
 
   // 단축URL 형태
@@ -90,7 +101,10 @@ async function resolveAndDecodeLink(link) {
       if (resolvedURL.includes('#share=')) {
         const encoded = resolvedURL.split('#share=')[1];
         const data = decodeShareData(encoded);
-        return (data && Array.isArray(data)) ? data : [];
+        if (data && Array.isArray(data)) {
+          // 단축코드를 source로 저장
+          return data.map(b => ({ ...b, _source: shortCode }));
+        }
       }
     } catch (e) {
       console.error('링크 처리 오류:', link, e);
@@ -139,13 +153,30 @@ async function startGather() {
     }
   }
 
-  // 중복 제거 (ISBN 기준)
-  const seenISBNs = new Set();
-  const uniqueBooks = collectedBooks.filter(b => {
-    if (seenISBNs.has(b.isbn13)) return false;
-    seenISBNs.add(b.isbn13);
-    return true;
-  });
+  // 중복 도서 수량 합산 및 출처 추적 (ISBN 기준)
+  const booksByISBN = new Map();
+  console.log('collectedBooks count:', collectedBooks.length);
+  console.log('First book _source:', collectedBooks[0]?._source);
+
+  for (const book of collectedBooks) {
+    const key = book.isbn13;
+    if (booksByISBN.has(key)) {
+      // 같은 ISBN 도서가 있으면 수량 합산 및 출처 추가
+      const existing = booksByISBN.get(key);
+      existing.qty = (existing.qty || 1) + (book.qty || 1);
+      // 출처 추가 (중복 제거)
+      if (book._source && !existing._sources.includes(book._source)) {
+        existing._sources.push(book._source);
+      }
+    } else {
+      // 새로운 도서 추가
+      const newBook = { ...book };
+      newBook._sources = book._source ? [book._source] : [];
+      booksByISBN.set(key, newBook);
+    }
+  }
+  const uniqueBooks = Array.from(booksByISBN.values());
+  console.log('uniqueBooks _sources:', uniqueBooks.map(b => ({ title: b.title.substring(0, 20), _sources: b._sources })));
 
   // 결과 표시
   gatherBtn.disabled = false;
@@ -248,6 +279,7 @@ function exportExcel() {
     '정가': b.priceStandard,
     '주문수량': b.qty,
     'ISBN': b.isbn13,
+    '출처': (b._sources && b._sources.length > 0) ? b._sources.join(', ') : '',
   }));
 
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -261,6 +293,7 @@ function exportExcel() {
     { wch: 10 },  // 정가
     { wch: 10 },  // 주문수량
     { wch: 16 },  // ISBN
+    { wch: 30 },  // 출처
   ];
 
   const wb = XLSX.utils.book_new();
