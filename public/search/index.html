@@ -1447,7 +1447,10 @@
         const commitsRes = await fetch(
           `https://api.github.com/repos/${REPO}/commits?per_page=10`
         );
-        if (!commitsRes.ok) return;
+        if (!commitsRes.ok) {
+          console.error('Recent docs API failed:', commitsRes.status, commitsRes.statusText);
+          throw new Error('API 호출 실패');
+        }
         const commits = await commitsRes.json();
 
         // 각 커밋에서 .md 파일 추출 (병렬)
