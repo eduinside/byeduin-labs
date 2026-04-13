@@ -395,6 +395,7 @@
       display: flex;
       flex-direction: column;
       gap: 16px;
+      min-height: 0; /* flexbox에서 overflow 작동 위해 필수 */
     }
 
     /* 채팅 메시지 */
@@ -629,19 +630,55 @@
       50% { opacity: 1; transform: scale(1.1); }
     }
 
+    /* 모바일 삼선 버튼 */
+    .sidebar-toggle-btn {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--fg);
+      padding: 8px 12px;
+      margin-right: 8px;
+      transition: color 0.12s;
+    }
+    .sidebar-toggle-btn:hover { color: var(--primary); }
+
     /* 반응형 */
     @media (max-width: 640px) {
-      .app-sidebar { width: 200px; min-width: 180px; }
+      .sidebar-toggle-btn { display: block; }
+      .app-sidebar {
+        width: 260px;
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        transform: translateX(-260px);
+        transition: transform 0.3s ease;
+        z-index: 999;
+        box-shadow: 0 0 0 9999px rgba(0,0,0,0);
+      }
+      .app-sidebar.sidebar-open {
+        transform: translateX(0);
+        box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+      }
+      .sidebar-brand { display: none; }
+      .app-sidebar.sidebar-open .sidebar-brand { display: block; }
       .chat-messages { padding: 16px; }
       .doc-body { padding: 16px; }
       .welcome-wrap { padding: 56px 20px 24px; }
+    }
+
+    @media (min-width: 641px) {
+      .sidebar-brand { display: block; }
     }
   </style>
 </head>
 <body>
 
-  <!-- 좌상단: 홈 -->
+  <!-- 좌상단: 삼선 + 홈 -->
   <div class="top-overlay-left">
+    <button id="sidebarToggleBtn" class="sidebar-toggle-btn" onclick="toggleSidebar()" title="사이드바">☰</button>
     <a href="/" class="overlay-btn" title="홈">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -795,11 +832,19 @@
        대화 제목 관리
     ───────────────────────────────────────── */
     function updateChatTitle(query) {
-      // 첫 검색어를 기반으로 제목 생성 (최대 30자)
-      let title = query.trim().substring(0, 30);
-      if (query.length > 30) title += '...';
+      // 첫 검색어를 기반으로 제목 생성 (최대 10자)
+      let title = query.trim().substring(0, 10);
+      if (query.length > 10) title += '...';
       currentChatTitle = title || '새 대화';
       document.getElementById('chatTitleText').textContent = currentChatTitle;
+    }
+
+    /* ─────────────────────────────────────────
+       사이드바 토글 (모바일)
+    ───────────────────────────────────────── */
+    function toggleSidebar() {
+      const sidebar = document.querySelector('.app-sidebar');
+      sidebar.classList.toggle('sidebar-open');
     }
 
     /* ─────────────────────────────────────────
@@ -864,13 +909,14 @@
           )
         );
 
-        // 중복 없이 최근 .md 파일 최대 3개 추출
+        // 중복 없이 최근 .md 파일 최대 3개 추출 (README 제외)
         const seen = new Set();
         const recent = [];
         for (const detail of detailResults) {
           if (!detail) continue;
           for (const file of detail.files) {
             if (!file.filename.endsWith('.md')) continue;
+            if (file.filename.toLowerCase().endsWith('readme.md')) continue; // README 제외
             if (seen.has(file.filename)) continue;
             seen.add(file.filename);
             recent.push({ path: file.filename, date: detail.date });
@@ -1270,7 +1316,12 @@
     function summarizeDoc() {
       if (!currentDocContent || !currentPath) return;
 
-      showView('chat');
+      // 이미 채팅 화면이면 전환 안 함
+      const chatView = document.getElementById('chatView');
+      if (!chatView.classList.contains('active')) {
+        showView('chat');
+      }
+
       const docName = currentPath.split('/').pop();
       appendUserMsg(`📄 [${docName}] 문서 요약 생성 중...`);
       const thinkingEl = appendThinking();
@@ -1284,7 +1335,12 @@
       const q = prompt('이 문서에 대해 무엇을 알고 싶으신가요?');
       if (!q) return;
 
-      showView('chat');
+      // 이미 채팅 화면이면 전환 안 함
+      const chatView = document.getElementById('chatView');
+      if (!chatView.classList.contains('active')) {
+        showView('chat');
+      }
+
       const docName = currentPath.split('/').pop();
       appendUserMsg(`❓ [${docName}] ${q}`);
       const thinkingEl = appendThinking();
