@@ -1066,6 +1066,7 @@
       const query = input.value.trim();
       if (!query) return;
 
+      console.log('🔍 [search] Starting search:', { query: query.substring(0, 50) });
       showView('chat');
       isSearching = true;
       const btn = document.getElementById('searchBtn');
@@ -1076,19 +1077,36 @@
       input.value = '';
 
       try {
+        console.log('📤 [search] Sending request to API');
+        const startTime = performance.now();
+
         const res = await fetch('/.netlify/functions/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query, categories: Array.from(selectedCats) }),
         });
-        if (!res.ok) throw new Error();
+
+        const elapsed = (performance.now() - startTime).toFixed(0);
+        console.log('📊 [search] Response received:', { status: res.status, ok: res.ok, elapsed: elapsed + 'ms' });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error('❌ [search] Server error:', { status: res.status, message: errText });
+          throw new Error(`API Error: ${res.status} - ${errText}`);
+        }
+
         const data = await res.json();
+        console.log('✅ [search] Response parsed successfully:', { answerLength: data.answer?.length, sources: data.sources?.length });
+
         thinkingEl.remove();
         appendAiMsg(query, data.answer, data.sources || []);
         saveHistory(query, data.answer, data.sources || []);
-      } catch {
+        console.log('🎉 [search] Search completed successfully');
+      } catch (err) {
+        console.error('❌ [search] Error occurred:', { name: err.name, message: err.message, stack: err.stack });
         thinkingEl.remove();
-        appendAiMsg(query, '검색 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.', []);
+        const errorMsg = `검색 중 오류가 발생했습니다. 콘솔을 확인해주세요.\n[${err.message}]`;
+        appendAiMsg(query, errorMsg, []);
       } finally {
         isSearching = false;
         btn.disabled = false;
