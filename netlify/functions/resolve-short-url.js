@@ -1,4 +1,5 @@
 const https = require('https');
+const http = require('http');
 
 exports.handler = async (event) => {
   // POST 요청만 허용
@@ -24,83 +25,13 @@ exports.handler = async (event) => {
     };
   }
 
-  // 환경변수에서 API 키와 도메인 읽기
-  const apiKey = process.env.SHORT_IO_API_KEY;
-  const domain = process.env.SHORT_IO_DOMAIN;
-
-  if (!apiKey || !domain) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'API configuration missing' })
-    };
-  }
-
   try {
-    // Short.io URL 형식에서 코드 추출
-    // 예: https://byeduin.short.gy/b5Ycho → b5Ycho
-    //     https://book.byeduin.com/sh/abc123 → abc123
-    const match = shortURL.match(/\/([a-zA-Z0-9]+)$/);
-    if (!match) {
-      throw new Error('Invalid short URL format');
+    // HTTP 리다이렉트 따라가기 (Short.io API 대신 직접 리다이렉트 사용)
+    const resolvedURL = await followRedirect(shortURL, 0, 10);
+
+    if (!resolvedURL) {
+      throw new Error('리다이렉트 따라가기 실패');
     }
-
-    const code = match[1];
-
-    // Short.io REST API 호출: GET /links/{domain}/{code}
-    const options = {
-      hostname: 'api.short.io',
-      port: 443,
-      path: `/links/${encodeURIComponent(domain)}/${encodeURIComponent(code)}`,
-      method: 'GET',
-      headers: {
-        'Authorization': apiKey,
-      },
-      timeout: 10000,
-    };
-
-    const resolvedURL = await new Promise((resolve, reject) => {
-      const req = https.request(options, (res) => {
-        let data = '';
-
-        res.on('data', chunk => {
-          data += chunk;
-        });
-
-        res.on('end', () => {
-          console.log('Short.io API Status:', res.statusCode, 'Data:', data.substring(0, 500));
-          if (res.statusCode === 200) {
-            try {
-              const json = JSON.parse(data);
-              console.log('Short.io API Response:', JSON.stringify(json, null, 2));
-              // Short.io API 응답에서 originalURL 필드 추출
-              const url = json.originalURL || json.redirect || json.url;
-              if (url) {
-                resolve(url);
-              } else {
-                reject(new Error('No URL found in response'));
-              }
-            } catch (err) {
-              reject(new Error('Failed to parse response: ' + err.message));
-            }
-          } else if (res.statusCode === 404) {
-            reject(new Error('Short URL not found'));
-          } else {
-            reject(new Error(`API error: ${res.statusCode}`));
-          }
-        });
-      });
-
-      req.on('error', (err) => {
-        reject(new Error('Request failed: ' + err.message));
-      });
-
-      req.on('timeout', () => {
-        req.destroy();
-        reject(new Error('Request timeout'));
-      });
-
-      req.end();
-    });
 
     return {
       statusCode: 200,
@@ -108,10 +39,60 @@ exports.handler = async (event) => {
       body: JSON.stringify({ resolvedURL })
     };
   } catch (err) {
-    console.error('Short.io API error:', err.message);
+    console.error('URL resolution error:', err.message);
     return {
       statusCode: 502,
       body: JSON.stringify({ error: 'URL resolution failed: ' + err.message })
     };
   }
 };
+
+// HTTP 리다이렉트 따라가기
+function followRedirect(urlString, redirectCount = 0, maxRedirects = 10) {
+  return new Promise((resolve, reject) => {
+    if (redirectCount > maxRedirects) {
+      return reject(new Error('Max redirects exceeded'));
+    }
+
+    try {
+      const url = new URL(urlString);
+      const protocol = url.protocol === 'https:' ? https : http;
+
+      const req = protocol.request(url, {
+        method: 'HEAD',
+        timeout: 10000,
+      }, (res) => {
+        // 리다이렉트 응답 (3xx)
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          const redirectUrl = res.headers.location;
+          // 상대 경로인 경우 절대 경로로 변환
+          const absoluteUrl = redirectUrl.startsWith('http')
+            ? redirectUrl
+            : new URL(redirectUrl, urlString).href;
+
+          followRedirect(absoluteUrl, redirectCount + 1, maxRedirects)
+            .then(resolve)
+            .catch(reject);
+        }
+        // 최종 URL (2xx)
+        else if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(urlString);
+        }
+        // 에러 응답
+        else {
+          reject(new Error(`HTTP ${res.statusCode}`));
+        }
+      });
+
+      req.on('error', reject);
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Request timeout'));
+      });
+
+      req.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
