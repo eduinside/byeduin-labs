@@ -1,9 +1,75 @@
 /**
- * Netlify Function: 교육문서 RAG 검색
+ * Netlify Function: 교육문서 RAG 검색 & 문서 요약/질문
  * - GitHub 공개 리포에서 MD 파일을 fetch하여 Gemini 2.0 Flash Lite로 검색
  * - GEMINI_API_KEY, EDU_DOCS_REPO 환경 변수 필요
  * - GITHUB_TOKEN 환경 변수 선택 (없으면 비인증 60req/h)
  */
+
+// 문서 요약/질문 전용 함수
+async function handleDocumentRequest(type, docPath, question, geminiApiKey) {
+  try {
+    console.log(`📄 [${type}] Fetching document: ${docPath}`);
+
+    const REPO = process.env.EDU_DOCS_REPO || 'eduinside/byeduin-edu-docs';
+    const rawUrl = `https://raw.githubusercontent.com/${REPO}/main/${docPath}`;
+
+    const docRes = await fetch(rawUrl);
+    if (!docRes.ok) {
+      console.error('❌ [doc-request] Document not found:', docPath);
+      return { statusCode: 404, body: JSON.stringify({ error: `문서를 찾을 수 없습니다: ${docPath}` }) };
+    }
+
+    const content = await docRes.text();
+    // 토큰 절약: 문서 크기 제한 (6000자)
+    const truncated = content.length > 6000
+      ? content.slice(0, 6000) + '\n...(이하 생략)'
+      : content;
+
+    // 프롬프트 구성
+    let prompt;
+    if (type === 'summarize') {
+      prompt = `다음 문서를 간단히 요약해 주세요 (5~10줄):\n\n${truncated}`;
+    } else {
+      prompt = `다음 문서를 읽고 질문에 답해주세요:\n\n문서:\n${truncated}\n\n질문: ${question}`;
+    }
+
+    console.log('🤖 [doc-request] Calling Gemini API...');
+    console.log('📄 [doc-request] Prompt size:', prompt.length, 'chars');
+
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 512 }
+        })
+      }
+    );
+
+    if (!geminiRes.ok) {
+      const err = await geminiRes.text();
+      console.error('❌ [doc-request] Gemini API failed:', err?.substring?.(0, 200));
+      return { statusCode: 502, body: JSON.stringify({ error: 'AI 응답 생성 실패' }) };
+    }
+
+    const geminiData = await geminiRes.json();
+    const answer = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '응답을 생성하지 못했습니다.';
+
+    console.log('✅ [doc-request] Completed successfully');
+
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answer, sources: [docPath] })
+    };
+  } catch (err) {
+    console.error('❌ [doc-request] Unhandled error:', err.message, err.stack);
+    return { statusCode: 502, body: JSON.stringify({ error: `서버 오류: ${err.message}` }) };
+  }
+}
+
 exports.handler = async (event) => {
   console.log('🔍 [search] Request received:', { query: event.body?.substring?.(0, 100) });
 
@@ -20,12 +86,12 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: 'Invalid JSON' };
   }
 
-  const { query, categories } = body;
-  console.log('📝 [search] Query:', { query: query?.substring?.(0, 50), categoriesCount: categories?.length });
+  const { query, categories, type = 'search', documentPath } = body;
+  console.log('📝 [search] Request type:', type, { query: query?.substring?.(0, 50), documentPath });
 
   if (!query || typeof query !== 'string' || query.trim().length === 0) {
     console.error('❌ [search] Invalid query');
-    return { statusCode: 400, body: 'Missing query' };
+    return { statusCode: 400, body: JSON.stringify({ error: 'Missing query' }) };
   }
 
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -36,9 +102,17 @@ exports.handler = async (event) => {
 
   if (!GEMINI_API_KEY) {
     console.error('❌ [search] GEMINI_API_KEY not set');
-    return { statusCode: 500, body: 'Server configuration error: missing GEMINI_API_KEY' };
+    return { statusCode: 500, body: JSON.stringify({ error: 'Server configuration error: missing GEMINI_API_KEY' }) };
   }
 
+  // 문서 요약/질문 요청 처리
+  if ((type === 'summarize' || type === 'question') && documentPath) {
+    console.log(`📄 [handler] Delegating to handleDocumentRequest: ${type}`);
+    const result = await handleDocumentRequest(type, documentPath, query, GEMINI_API_KEY);
+    return result;
+  }
+
+  // 일반 검색 처리
   try {
     // 1. GitHub API로 파일 트리 조회
     console.log('📥 [search] Fetching GitHub tree...');
@@ -59,8 +133,9 @@ exports.handler = async (event) => {
     }
 
     const treeData = await treeRes.json();
+    // MD 파일만, 폴더 안에 있는 파일만 (루트 레벨 readme.md 등 제외)
     let files = (treeData.tree || [])
-      .filter(f => f.type === 'blob' && f.path.endsWith('.md'));
+      .filter(f => f.type === 'blob' && f.path.endsWith('.md') && f.path.includes('/'));
 
     console.log('📂 [search] Total MD files found:', files.length);
 
