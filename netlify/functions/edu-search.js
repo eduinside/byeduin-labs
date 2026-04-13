@@ -1,6 +1,6 @@
 /**
  * Netlify Function: 교육문서 RAG 검색
- * - GitHub 공개 리포에서 MD 파일을 fetch하여 Gemini 1.5 Flash로 검색
+ * - GitHub 공개 리포에서 MD 파일을 fetch하여 Gemini 2.0 Flash Lite로 검색
  * - GEMINI_API_KEY, EDU_DOCS_REPO 환경 변수 필요
  * - GITHUB_TOKEN 환경 변수 선택 (없으면 비인증 60req/h)
  */
@@ -113,7 +113,7 @@ ${context}
 질문: ${query.trim()}`;
 
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
