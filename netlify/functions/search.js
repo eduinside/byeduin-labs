@@ -253,11 +253,14 @@ ${context}
       .filter(f => usedSourceSet.size === 0 || usedSourceSet.has(f.path.split('/').pop().replace(/\.md$/, '')))
       .map(f => f.path);
 
-    console.log('🎉 [search] Search completed successfully', { usedSources: Array.from(usedSourceSet) });
+    // 모든 파일을 사용했는지 확인 (사용한 파일 수 = 제공한 파일 수)
+    const allProvided = usedSourceSet.size === 0 || sources.length === contents.length;
+
+    console.log('🎉 [search] Search completed successfully', { usedSources: Array.from(usedSourceSet), allProvided });
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ answer, sources }),
+      body: JSON.stringify({ answer, sources, allProvided }),
     };
   } catch (err) {
     console.error('❌ [search] Unhandled error:', err.message, err.stack);

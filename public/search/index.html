@@ -42,14 +42,19 @@
     }
 
     /* 좌상단 오버레이(Home 버튼) 영역 확보 */
-    .sidebar-top-pad { height: 56px; flex-shrink: 0; }
+    .sidebar-top-pad { height: 56px; flex-shrink: 0; position: relative; }
 
     .sidebar-brand {
-      padding: 0 16px 12px;
+      position: absolute;
+      bottom: 8px;
+      left: 16px;
+      right: 16px;
+      padding: 0;
       font-size: 14px;
       font-weight: 800;
       letter-spacing: -0.01em;
       color: var(--fg);
+      z-index: 10;
     }
 
     .new-chat-btn {
@@ -363,12 +368,13 @@
     /* ── 채팅 화면 ── */
     .chat-filter-bar {
       flex-shrink: 0;
-      padding: 14px 24px;
+      padding: 8px 24px;
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
       border-bottom: 1px solid var(--border);
       align-items: center;
+      height: 32px;
     }
     .cat-chip {
       padding: 4px 10px;
@@ -447,6 +453,11 @@
       font-size: 10px;
       font-weight: 600;
       margin: 2px 2px 0 0;
+      transition: all 0.12s;
+    }
+    .source-chip:hover {
+      background: rgba(0,111,238,0.2);
+      transform: scale(1.05);
     }
 
     .chat-actions {
@@ -791,18 +802,22 @@
       </div>
 
       <!-- 📄 문서 화면 -->
-      <div id="docView" class="main-view">
-        <div class="doc-header" id="docHeader">
-          <div class="doc-meta">
-            <div class="doc-filename" id="docFilename">—</div>
-            <div class="doc-path" id="docPath"></div>
-          </div>
+      <div id="docView" class="main-view" style="display: flex; flex-direction: column;">
+        <!-- 상단: 채팅창 같은 제목 표시 -->
+        <div id="docTitleBar" style="flex-shrink: 0; padding: 8px 24px; border-bottom: 1px solid var(--border); height: 32px; display: flex; align-items: center;">
+          <div id="docTitleText" style="font-weight: 500; font-size: 13px; color: var(--fg-muted);">문서</div>
+        </div>
+
+        <!-- 본문 -->
+        <div class="doc-body" id="docBody" style="flex: 1; overflow-y: auto; min-height: 0; padding: 20px 32px;">
+          <div class="md-body" id="docContent"></div>
+        </div>
+
+        <!-- 하단: 버튼들 중앙 배치 -->
+        <div style="flex-shrink: 0; display: flex; justify-content: center; gap: 8px; padding: 12px 20px 16px; border-top: 1px solid var(--border);">
           <button class="doc-action-btn" onclick="summarizeDoc()" title="AI로 문서 요약">📝 요약</button>
           <button class="doc-action-btn" onclick="askAboutDoc()" title="이 문서에 대해 질문">💬 질문</button>
-          <button class="doc-action-btn" id="docOpenBtn">MD Editor로 열기</button>
-        </div>
-        <div class="doc-body" id="docBody">
-          <div class="md-body" id="docContent"></div>
+          <button class="doc-action-btn" id="docOpenBtn" title="MD Editor에서 열기">🔗 MD로 열기</button>
         </div>
       </div>
 
@@ -832,9 +847,8 @@
        대화 제목 관리
     ───────────────────────────────────────── */
     function updateChatTitle(query) {
-      // 첫 검색어를 기반으로 제목 생성 (최대 10자)
-      let title = query.trim().substring(0, 10);
-      if (query.length > 10) title += '...';
+      // 첫 검색어를 기반으로 제목 생성 (최대 20자, 말줄임표 제거)
+      let title = query.trim().substring(0, 20);
       currentChatTitle = title || '새 대화';
       document.getElementById('chatTitleText').textContent = currentChatTitle;
     }
@@ -1048,8 +1062,7 @@
       if (typeof el !== 'string') el.classList.add('active');
 
       const filename = path.split('/').pop().replace(/\.md$/, '');
-      document.getElementById('docFilename').textContent = filename;
-      document.getElementById('docPath').textContent = path;
+      document.getElementById('docTitleText').textContent = filename;
       document.getElementById('docContent').innerHTML = `
         <div style="text-align:center;padding:40px 0;color:var(--fg-muted)">
           <div style="width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 8px"></div>
@@ -1156,10 +1169,10 @@
         }
 
         const data = await res.json();
-        console.log('✅ [search] Response parsed successfully:', { answerLength: data.answer?.length, sources: data.sources?.length });
+        console.log('✅ [search] Response parsed successfully:', { answerLength: data.answer?.length, sources: data.sources?.length, allProvided: data.allProvided });
 
         thinkingEl.remove();
-        appendAiMsg(query, data.answer, data.sources || []);
+        appendAiMsg(query, data.answer, data.sources || [], data.allProvided);
         saveHistory(query, data.answer, data.sources || []);
         console.log('🎉 [search] Search completed successfully');
       } catch (err) {
@@ -1193,15 +1206,17 @@
       return el;
     }
 
-    function appendAiMsg(query, answer, sources) {
+    function appendAiMsg(query, answer, sources, allProvided = false) {
       const area = document.getElementById('chatArea');
       const el = document.createElement('div');
       el.className = 'chat-ai';
 
-      const sourceHtml = sources.length ? `
+      // 모든 문서를 참조했으면 참조 섹션 표시 안 함
+      const showSources = sources.length > 0 && !allProvided;
+      const sourceHtml = showSources ? `
         <div class="chat-sources">
           <div class="chat-sources-label">📎 참조 문서</div>
-          ${sources.map(s => `<span class="source-chip">${s.split('/').pop().replace(/\.md$/, '')}</span>`).join('')}
+          ${sources.map(s => `<span class="source-chip" onclick="openFile('${s}')" style="cursor: pointer;">${s.split('/').pop().replace(/\.md$/, '')}</span>`).join('')}
         </div>` : '';
 
       const answerJson = JSON.stringify(answer);
