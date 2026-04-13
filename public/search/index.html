@@ -38,22 +38,28 @@
       flex-direction: column;
       overflow: hidden;
       background: var(--bg);
+      background-color: rgba(0, 0, 0, 0.02);
       flex-shrink: 0;
+      position: relative;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .app-sidebar {
+        background-color: rgba(255, 255, 255, 0.02);
+      }
     }
 
     /* 좌상단 오버레이(Home 버튼) 영역 확보 */
     .sidebar-top-pad { height: 56px; flex-shrink: 0; position: relative; }
 
     .sidebar-brand {
-      position: absolute;
-      bottom: 8px;
-      left: 16px;
-      right: 16px;
-      padding: 0;
-      font-size: 14px;
+      position: static;
+      padding: 8px 16px;
+      font-size: 12px;
       font-weight: 800;
       letter-spacing: -0.01em;
       color: var(--fg);
+      opacity: 0.7;
       z-index: 10;
     }
 
@@ -78,6 +84,47 @@
       background: var(--card-bg);
       border-color: var(--primary);
       color: var(--primary);
+    }
+
+    /* 사이드바 탭 */
+    .sidebar-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sidebar-tab {
+      flex: 1;
+      padding: 6px 8px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      color: var(--fg-muted);
+      font-family: inherit;
+      font-weight: 600;
+      transition: all 0.12s;
+    }
+
+    .sidebar-tab.active {
+      background: rgba(0,111,238,0.1);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .sidebar-tab:hover {
+      border-color: var(--primary);
+    }
+
+    .sidebar-tab-content {
+      display: none;
+    }
+
+    .sidebar-tab-content.active {
+      display: block;
     }
 
     .sidebar-scrollable {
@@ -368,13 +415,13 @@
     /* ── 채팅 화면 ── */
     .chat-filter-bar {
       flex-shrink: 0;
-      padding: 8px 24px;
+      padding: 16px 24px;
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
       border-bottom: 1px solid var(--border);
       align-items: center;
-      height: 32px;
+      height: 58px;
     }
     .cat-chip {
       padding: 4px 10px;
@@ -402,6 +449,43 @@
       flex-direction: column;
       gap: 16px;
       min-height: 0; /* flexbox에서 overflow 작동 위해 필수 */
+      background-image:
+        repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 19px,
+          rgba(0, 0, 0, 0.02) 19px,
+          rgba(0, 0, 0, 0.02) 20px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          transparent,
+          transparent 19px,
+          rgba(0, 0, 0, 0.02) 19px,
+          rgba(0, 0, 0, 0.02) 20px
+        );
+      background-size: 20px 20px;
+      background-position: 0 0, 0 0;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .chat-messages {
+        background-image:
+          repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 19px,
+            rgba(255, 255, 255, 0.02) 19px,
+            rgba(255, 255, 255, 0.02) 20px
+          ),
+          repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 19px,
+            rgba(255, 255, 255, 0.02) 19px,
+            rgba(255, 255, 255, 0.02) 20px
+          );
+      }
     }
 
     /* 채팅 메시지 */
@@ -686,6 +770,14 @@
       }
       .sidebar-brand { display: none; }
       .app-sidebar.sidebar-open .sidebar-brand { display: block; }
+      #chatTitleText {
+        flex: 1;
+        text-align: right;
+        padding-right: 8px;
+      }
+      .chat-filter-bar {
+        padding-left: 12px;
+      }
       .chat-messages { padding: 16px; }
       .doc-body { padding: 16px; }
       .welcome-wrap { padding: 56px 20px 24px; }
@@ -738,23 +830,30 @@
         새 대화
       </button>
 
+      <!-- 에듀서치 브랜드 -->
+      <div class="sidebar-brand">🔎 에듀서치</div>
+
+      <!-- 탭 버튼 -->
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" data-tab="conversations" onclick="switchTab('conversations')">💬 대화</button>
+        <button class="sidebar-tab" data-tab="documents" onclick="switchTab('documents')">📁 문서</button>
+      </div>
+
       <div class="sidebar-scrollable">
-        <!-- 대화 목록 -->
-        <div class="sidebar-section-label">
-          <span>대화 목록</span>
-          <button class="sidebar-label-btn" onclick="clearHistory()">지우기</button>
+        <!-- 대화 목록 탭 -->
+        <div id="conversations-tab" class="sidebar-tab-content active">
+          <div class="sidebar-section-label">
+            <span>대화 목록</span>
+            <button class="sidebar-label-btn" onclick="clearHistory()">지우기</button>
+          </div>
+          <div id="convList"></div>
         </div>
-        <div id="convList"></div>
 
-        <div class="sidebar-divider"></div>
-
-        <!-- 에듀서치 브랜드 + 문서 목록 -->
-        <div style="padding: 14px 16px 8px;">
-          <div style="font-size: 14px; font-weight: 800; color: var(--fg); margin-bottom: 10px; letter-spacing: -0.01em;">🔎 에듀서치</div>
-          <div style="font-size: 10px; font-weight: 700; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.06em;">문서 목록</div>
-        </div>
-        <div id="treePanel">
-          <div class="tree-loading"></div>
+        <!-- 문서 목록 탭 -->
+        <div id="documents-tab" class="sidebar-tab-content">
+          <div id="treePanel">
+            <div class="tree-loading"></div>
+          </div>
         </div>
       </div>
     </aside>
@@ -815,7 +914,7 @@
       <!-- 📄 문서 화면 -->
       <div id="docView" class="main-view doc-view">
         <!-- 상단: 채팅창 같은 제목 표시 -->
-        <div id="docTitleBar" style="flex-shrink: 0; padding: 8px 24px; border-bottom: 1px solid var(--border); height: 32px; display: flex; align-items: center;">
+        <div id="docTitleBar" style="flex-shrink: 0; padding: 16px 24px; border-bottom: 1px solid var(--border); height: 58px; display: flex; align-items: center;">
           <div id="docTitleText" style="font-weight: 500; font-size: 13px; color: var(--fg-muted);">문서</div>
         </div>
 
@@ -870,6 +969,29 @@
     function toggleSidebar() {
       const sidebar = document.querySelector('.app-sidebar');
       sidebar.classList.toggle('sidebar-open');
+    }
+
+    /* ─────────────────────────────────────────
+       사이드바 탭 전환
+    ───────────────────────────────────────── */
+    function switchTab(tabName) {
+      // 탭 버튼 상태 업데이트
+      document.querySelectorAll('.sidebar-tab').forEach(tab => {
+        if (tab.dataset.tab === tabName) {
+          tab.classList.add('active');
+        } else {
+          tab.classList.remove('active');
+        }
+      });
+
+      // 콘텐츠 표시/숨김
+      document.querySelectorAll('.sidebar-tab-content').forEach(content => {
+        if (content.id === tabName + '-tab') {
+          content.classList.add('active');
+        } else {
+          content.classList.remove('active');
+        }
+      });
     }
 
     /* ─────────────────────────────────────────
