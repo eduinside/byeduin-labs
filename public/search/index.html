@@ -736,9 +736,9 @@
 
       <!-- 💬 채팅 화면 -->
       <div id="chatView" class="main-view">
-        <!-- 카테고리 필터 -->
-        <div class="chat-filter-bar" id="catFilter">
-          <button class="cat-chip selected" data-cat="" onclick="toggleCat(this)">전체</button>
+        <!-- 대화 제목 표시 -->
+        <div class="chat-filter-bar" id="chatTitle" style="padding-left: 24px; display: flex; align-items: center;">
+          <span id="chatTitleText" style="font-weight: 500; font-size: 13px; color: var(--fg-muted);">새 대화</span>
         </div>
         <!-- 메시지 영역 -->
         <div class="chat-messages" id="chatArea"></div>
@@ -788,6 +788,19 @@
     const LS_TREE      = 'edu-search-tree-cache';
     const LS_TREE_TS   = 'edu-search-tree-ts';
     const TREE_TTL     = 10 * 60 * 1000;
+
+    let currentChatTitle = '새 대화';
+
+    /* ─────────────────────────────────────────
+       대화 제목 관리
+    ───────────────────────────────────────── */
+    function updateChatTitle(query) {
+      // 첫 검색어를 기반으로 제목 생성 (최대 30자)
+      let title = query.trim().substring(0, 30);
+      if (query.length > 30) title += '...';
+      currentChatTitle = title || '새 대화';
+      document.getElementById('chatTitleText').textContent = currentChatTitle;
+    }
 
     /* ─────────────────────────────────────────
        뷰 전환
@@ -1068,6 +1081,7 @@
 
       console.log('🔍 [search] Starting search:', { query: query.substring(0, 50) });
       showView('chat');
+      updateChatTitle(query);  // 대화 제목 업데이트
       isSearching = true;
       const btn = document.getElementById('searchBtn');
       btn.disabled = true;

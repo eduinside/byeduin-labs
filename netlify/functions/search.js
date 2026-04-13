@@ -237,9 +237,23 @@ ${context}
     const geminiData = await geminiRes.json();
     console.log('✅ [search] Gemini response received, parsing...');
     const answer = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '답변을 생성하지 못했습니다.';
-    const sources = contents.map(f => f.path);
 
-    console.log('🎉 [search] Search completed successfully');
+    // 답변에서 실제 사용한 출처 파일명 추출 (**출처: filename 형식)
+    const sourcesMatch = answer.match(/\*\*출처:\*\*\s*(.+?)(?:\n|$)/g);
+    const usedSourceSet = new Set();
+    if (sourcesMatch) {
+      sourcesMatch.forEach(match => {
+        const filenames = match.replace(/\*\*출처:\*\*\s*/, '').trim().split(',').map(s => s.trim());
+        filenames.forEach(fn => usedSourceSet.add(fn));
+      });
+    }
+
+    // 실제 사용한 파일만 sources에 포함
+    const sources = contents
+      .filter(f => usedSourceSet.size === 0 || usedSourceSet.has(f.path.split('/').pop().replace(/\.md$/, '')))
+      .map(f => f.path);
+
+    console.log('🎉 [search] Search completed successfully', { usedSources: Array.from(usedSourceSet) });
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
