@@ -570,6 +570,33 @@
     }
     .doc-action-btn:hover { border-color: var(--primary); color: var(--primary); }
 
+    /* 텍스트 선택 팝업 */
+    .selection-popup {
+      position: fixed;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 0;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+      display: none;
+      min-width: 140px;
+    }
+    .selection-popup.active { display: flex; flex-direction: column; }
+    .selection-popup-btn {
+      padding: 8px 12px;
+      background: none;
+      border: none;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--fg);
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.12s;
+    }
+    .selection-popup-btn:hover { background: rgba(0,111,238,0.08); color: var(--primary); }
+
     .doc-body {
       flex: 1;
       overflow-y: auto;
@@ -735,11 +762,18 @@
             <div class="doc-filename" id="docFilename">—</div>
             <div class="doc-path" id="docPath"></div>
           </div>
+          <button class="doc-action-btn" onclick="summarizeDoc()" title="AI로 문서 요약">📝 요약</button>
+          <button class="doc-action-btn" onclick="askAboutDoc()" title="이 문서에 대해 질문">💬 질문</button>
           <button class="doc-action-btn" id="docOpenBtn">MD Editor로 열기</button>
         </div>
-        <div class="doc-body">
+        <div class="doc-body" id="docBody">
           <div class="md-body" id="docContent"></div>
         </div>
+      </div>
+
+      <!-- 텍스트 선택 팝업 -->
+      <div class="selection-popup" id="selectionPopup">
+        <button class="selection-popup-btn" onclick="askAboutSelection()">선택 부분에 대해 질문</button>
       </div>
 
     </main>
@@ -972,8 +1006,21 @@
         if (!res.ok) throw new Error();
         const text = await res.text();
 
+        currentDocContent = text;
         document.getElementById('docContent').innerHTML = marked.parse(text);
         document.getElementById('docOpenBtn').onclick = () => openMdEditor(text, path.split('/').pop());
+
+        // 텍스트 선택 이벤트
+        document.getElementById('docBody').addEventListener('mouseup', () => {
+          const selected = window.getSelection().toString().trim();
+          if (selected.length > 0) {
+            const range = window.getSelection().getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            showSelectionPopup(rect.left + window.scrollX, rect.bottom + window.scrollY);
+          } else {
+            hideSelectionPopup();
+          }
+        });
       } catch {
         document.getElementById('docContent').innerHTML = '<p style="color:var(--fg-muted)">파일을 불러오지 못했습니다.</p>';
       }
@@ -1183,6 +1230,50 @@
     function shareCurrentPage() {
       const url = window.location.href;
       navigator.clipboard.writeText(url).then(() => showToast('링크를 복사했습니다'));
+    }
+
+    /* ─────────────────────────────────────────
+       문서 AI 질문/요약
+    ───────────────────────────────────────── */
+    let currentDocContent = '';
+
+    function summarizeDoc() {
+      if (!currentDocContent) return;
+      const query = `다음 문서를 간단히 요약해 주세요:\n\n${currentDocContent.slice(0, 3000)}`;
+      askDocQuestion(query, '문서 요약');
+    }
+
+    function askAboutDoc() {
+      const q = prompt('이 문서에 대해 무엇을 알고 싶으신가요?');
+      if (!q) return;
+      if (!currentDocContent) return;
+      const query = `다음 문서를 읽고 질문에 답해주세요:\n\n문서:\n${currentDocContent.slice(0, 3000)}\n\n질문: ${q}`;
+      askDocQuestion(query, q);
+    }
+
+    function askAboutSelection() {
+      const selected = window.getSelection().toString().trim();
+      if (!selected) return;
+      hideSelectionPopup();
+      const query = `다음 텍스트에 대해 설명해 주세요:\n\n"${selected}"`;
+      askDocQuestion(query, '선택 부분 설명');
+    }
+
+    function askDocQuestion(query, label) {
+      showView('chat');
+      document.getElementById('searchInput').value = query;
+      setTimeout(() => doSearch(), 100);
+    }
+
+    function showSelectionPopup(x, y) {
+      const popup = document.getElementById('selectionPopup');
+      popup.classList.add('active');
+      popup.style.left = (x + 5) + 'px';
+      popup.style.top = (y + 5) + 'px';
+    }
+
+    function hideSelectionPopup() {
+      document.getElementById('selectionPopup').classList.remove('active');
     }
 
     /* ─────────────────────────────────────────
