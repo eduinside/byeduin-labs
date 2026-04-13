@@ -704,6 +704,195 @@
     }
     .selection-popup-btn:hover { background: rgba(0,111,238,0.08); color: var(--primary); }
 
+    /* 문서 질문 모달 */
+    .question-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .question-modal.active {
+      display: flex;
+    }
+
+    .question-modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+    }
+
+    .question-modal-content {
+      position: relative;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 90%;
+      max-width: 440px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .question-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .question-modal-header h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--fg);
+    }
+
+    .question-modal-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--fg-muted);
+      padding: 0;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: all 0.12s;
+    }
+
+    .question-modal-close:hover {
+      background: rgba(0, 0, 0, 0.08);
+      color: var(--fg);
+    }
+
+    .question-modal-body {
+      padding: 20px;
+    }
+
+    .question-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+      font-size: 14px;
+      color: var(--fg);
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .question-input:focus {
+      border-color: var(--primary);
+    }
+
+    .question-input::placeholder {
+      color: var(--fg-muted);
+    }
+
+    .question-modal-footer {
+      display: flex;
+      gap: 8px;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      justify-content: flex-end;
+    }
+
+    .question-btn-cancel,
+    .question-btn-submit {
+      padding: 9px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.12s;
+    }
+
+    .question-btn-cancel {
+      color: var(--fg-muted);
+    }
+
+    .question-btn-cancel:hover {
+      background: var(--card-bg);
+      border-color: var(--border);
+    }
+
+    .question-btn-submit {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .question-btn-submit:hover {
+      background: var(--primary-h);
+      border-color: var(--primary-h);
+    }
+
+    /* 문서 질문 카드 */
+    .chat-document-card {
+      align-self: flex-end;
+      max-width: 60%;
+      background: rgba(0, 111, 238, 0.08);
+      border: 1px solid var(--primary);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 8px;
+    }
+
+    .chat-document-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .chat-document-card-content {
+      font-size: 13px;
+      color: var(--fg);
+      line-height: 1.5;
+    }
+
+    .chat-document-card-type {
+      display: inline-block;
+      padding: 2px 8px;
+      background: var(--primary);
+      color: #fff;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      margin-right: 6px;
+    }
+
     .doc-body {
       flex: 1;
       overflow-y: auto;
@@ -936,6 +1125,30 @@
         <button class="selection-popup-btn" onclick="askAboutSelection()">선택 부분에 대해 질문</button>
       </div>
 
+      <!-- 문서 질문 모달 -->
+      <div class="question-modal" id="questionModal">
+        <div class="question-modal-overlay" onclick="closeQuestionModal()"></div>
+        <div class="question-modal-content">
+          <div class="question-modal-header">
+            <h2 id="questionModalTitle">이 문서에 대해 질문</h2>
+            <button class="question-modal-close" onclick="closeQuestionModal()">✕</button>
+          </div>
+          <div class="question-modal-body">
+            <input
+              type="text"
+              id="questionInput"
+              class="question-input"
+              placeholder="무엇이 궁금하신가요?"
+              onkeydown="if(event.key==='Enter') submitQuestion()"
+            >
+          </div>
+          <div class="question-modal-footer">
+            <button class="question-btn-cancel" onclick="closeQuestionModal()">취소</button>
+            <button class="question-btn-submit" onclick="submitQuestion()">질문하기</button>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 
@@ -992,6 +1205,92 @@
           content.classList.remove('active');
         }
       });
+    }
+
+    /* ─────────────────────────────────────────
+       문서 질문 모달
+    ───────────────────────────────────────── */
+    let pendingQuestionData = null;
+
+    function showQuestionModal(type = 'question', docPath = '', docContent = '') {
+      pendingQuestionData = { type, docPath, docContent };
+      const modal = document.getElementById('questionModal');
+      const title = document.getElementById('questionModalTitle');
+      const input = document.getElementById('questionInput');
+
+      if (type === 'summarize') {
+        title.textContent = '문서 요약';
+        input.placeholder = '추가로 알고 싶은 내용이 있으신가요? (선택)';
+      } else {
+        title.textContent = '이 문서에 대해 질문';
+        input.placeholder = '무엇이 궁금하신가요?';
+      }
+
+      input.value = '';
+      modal.classList.add('active');
+      input.focus();
+    }
+
+    function closeQuestionModal() {
+      const modal = document.getElementById('questionModal');
+      modal.classList.remove('active');
+      pendingQuestionData = null;
+    }
+
+    function submitQuestion() {
+      if (!pendingQuestionData) return;
+
+      const input = document.getElementById('questionInput');
+      const question = input.value.trim();
+
+      if (!question && pendingQuestionData.type === 'question') {
+        input.focus();
+        return;
+      }
+
+      closeQuestionModal();
+
+      const { type, docPath, docContent } = pendingQuestionData;
+      const docName = docPath.split('/').pop();
+
+      // 채팅 화면으로 전환
+      const chatView = document.getElementById('chatView');
+      if (!chatView.classList.contains('active')) {
+        showView('chat');
+      }
+
+      // 문서 카드 추가
+      appendDocumentQueryCard(docName, type, question);
+
+      // 로딩 표시
+      const thinkingEl = appendThinking();
+
+      // API 요청
+      sendDocumentRequest(type, docPath, thinkingEl, question || undefined);
+    }
+
+    function appendDocumentQueryCard(docName, type, question) {
+      const area = document.getElementById('chatArea');
+      const el = document.createElement('div');
+      el.className = 'chat-turn';
+
+      const typeLabel = type === 'summarize' ? '📄 요약' : '❓ 질문';
+
+      el.innerHTML = `
+        <div class="chat-document-card">
+          <div class="chat-document-card-header">
+            <span class="chat-document-card-type">${typeLabel}</span>
+            ${escHtml(docName)}
+          </div>
+          <div class="chat-document-card-content">
+            ${question ? escHtml(question) : type === 'summarize' ? '이 문서를 요약해 주세요.' : ''}
+          </div>
+        </div>
+      `;
+
+      area.appendChild(el);
+      el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      return el;
     }
 
     /* ─────────────────────────────────────────
@@ -1463,37 +1762,12 @@
 
     function summarizeDoc() {
       if (!currentDocContent || !currentPath) return;
-
-      // 이미 채팅 화면이면 전환 안 함
-      const chatView = document.getElementById('chatView');
-      if (!chatView.classList.contains('active')) {
-        showView('chat');
-      }
-
-      const docName = currentPath.split('/').pop();
-      appendUserMsg(`📄 [${docName}] 문서 요약 생성 중...`);
-      const thinkingEl = appendThinking();
-
-      sendDocumentRequest('summarize', currentPath, thinkingEl);
+      showQuestionModal('summarize', currentPath, currentDocContent);
     }
 
     function askAboutDoc() {
       if (!currentDocContent || !currentPath) return;
-
-      const q = prompt('이 문서에 대해 무엇을 알고 싶으신가요?');
-      if (!q) return;
-
-      // 이미 채팅 화면이면 전환 안 함
-      const chatView = document.getElementById('chatView');
-      if (!chatView.classList.contains('active')) {
-        showView('chat');
-      }
-
-      const docName = currentPath.split('/').pop();
-      appendUserMsg(`❓ [${docName}] ${q}`);
-      const thinkingEl = appendThinking();
-
-      sendDocumentRequest('question', currentPath, thinkingEl, q);
+      showQuestionModal('question', currentPath, currentDocContent);
     }
 
     function askAboutSelection() {
