@@ -320,21 +320,43 @@
     /* ══════════════════════════════════
        헬퍼 함수
     ══════════════════════════════════ */
-    function dataUrlToBlob(dataUrl) {
+    function downloadImage(dataUrl, filename) {
       try {
-        const parts = dataUrl.split(',');
-        const mimeMatch = parts[0].match(/:(.*?);/);
-        const mime = mimeMatch ? mimeMatch[1] : 'image/png';
-        const bstr = atob(parts[1]);
-        const n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        for (let i = 0; i < n; i++) {
-          u8arr[i] = bstr.charCodeAt(i);
+        // 방법 1: 직접 다운로드 시도 (더 간단함)
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return true;
+      } catch (e1) {
+        try {
+          // 방법 2: blob 변환 (방법 1 실패 시)
+          const parts = dataUrl.split(',');
+          const mimeMatch = parts[0].match(/:(.*?);/);
+          const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+          const bstr = atob(parts[1]);
+          const n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          for (let i = 0; i < n; i++) {
+            u8arr[i] = bstr.charCodeAt(i);
+          }
+          const blob = new Blob([u8arr], { type: mime });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          return true;
+        } catch (e2) {
+          console.error('Download failed:', e1, e2);
+          alert('다운로드 실패했습니다. 이미지를 우클릭하여 저장해주세요.');
+          return false;
         }
-        return new Blob([u8arr], { type: mime });
-      } catch (e) {
-        console.error('dataUrlToBlob error:', e);
-        return null;
       }
     }
 
@@ -519,17 +541,7 @@
             <img src="${img}" alt="생성 이미지 ${idx+1}" style="width: 100%; aspect-ratio: 9/16; object-fit: cover; display: block;" />
             <div style="padding: 10px; text-align: center;">
               <button class="fd-btn fd-btn-success fd-btn-sm" style="width: 100%;"
-                      onclick="(() => {
-                        const blob = dataUrlToBlob('${img}');
-                        if (blob) {
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = '${text}_${stamp}.png';
-                          a.click();
-                          URL.revokeObjectURL(url);
-                        }
-                      })()">⬇ 다운로드</button>
+                      onclick="downloadImage('${img}', '${text}_${stamp}.png')">⬇ 다운로드</button>
             </div>
           </div>
         `;
@@ -744,17 +756,7 @@
             <img src="${img}" alt="생성 이미지 ${idx+1}" style="width: 100%; aspect-ratio: 9/16; object-fit: cover; display: block;" />
             <div style="padding: 10px; text-align: center;">
               <button class="fd-btn fd-btn-success fd-btn-sm" style="width: 100%;"
-                      onclick="(() => {
-                        const blob = dataUrlToBlob('${img}');
-                        if (blob) {
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = '${dlText}_${stamp}.png';
-                          a.click();
-                          URL.revokeObjectURL(url);
-                        }
-                      })()">⬇ 다운로드</button>
+                      onclick="downloadImage('${img}', '${dlText}_${stamp}.png')">⬇ 다운로드</button>
             </div>
           </div>
         `).join('');
