@@ -49,6 +49,7 @@ exports.handler = async (event) => {
         prompt,
         size: '1024x1536',
         quality: 'high',
+        n: 1,
         response_format: 'b64_json',
       }),
     });
