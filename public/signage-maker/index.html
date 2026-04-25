@@ -595,6 +595,7 @@
 
         let item;
         const d = loadData();
+        let saveSuccess = false;
         if (state.currentItemId) {
           // 기존 item에 이미지 추가 (재생성의 경우)
           item = d.items.find(x => x.id === state.currentItemId);
@@ -616,11 +617,29 @@
           d.items.push(item);
           state.currentItemId = item.id;
         }
+
         try {
           saveData(d);
+          saveSuccess = true;
         } catch (e) {
-          toast('로컬 저장 용량이 부족할 수 있어요. 일부 항목을 정리해 주세요.');
+          console.error('Save failed:', e.message);
+          toast('저장 실패. 용량이 부족할 수 있어요. 이전 항목을 삭제한 후 다시 시도해 주세요.');
+          // 방금 추가한 항목 제거
+          d.items = d.items.filter(x => x.id !== item.id);
+          try {
+            saveData(d);
+          } catch {}
+          btn.disabled = false;
+          btn.innerHTML = old;
+          return;
         }
+
+        if (!saveSuccess) {
+          btn.disabled = false;
+          btn.innerHTML = old;
+          return;
+        }
+
         state.regenCountLeft = 2;
 
         // 메타데이터 표시
