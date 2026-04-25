@@ -23,12 +23,13 @@ exports.handler = async (event) => {
     };
   }
 
-  let prompt, code;
+  let prompt, code, quality;
   try {
-    ({ prompt, code } = JSON.parse(event.body || '{}'));
+    ({ prompt, code, quality } = JSON.parse(event.body || '{}'));
     if (!prompt || typeof prompt !== 'string') throw new Error('prompt');
     if (prompt.length > 4000) throw new Error('long');
     if (!code || typeof code !== 'string') throw new Error('code');
+    if (!quality || !['standard', 'medium'].includes(quality)) quality = 'medium';
   } catch {
     return { statusCode: 400, body: JSON.stringify({ error: '입력값(prompt, code)이 올바르지 않습니다.' }) };
   }
@@ -48,7 +49,7 @@ exports.handler = async (event) => {
         model: MODEL,
         prompt,
         size: '1024x1536',
-        quality: 'medium',
+        quality,
         background: 'opaque',
         n: 1,
       }),
