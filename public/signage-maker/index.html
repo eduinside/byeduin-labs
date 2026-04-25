@@ -82,11 +82,6 @@
     .fd-label { display:block; font-size:12px; font-weight:600; color:var(--fg-muted); margin: 14px 0 6px; }
 
     /* Home */
-    .app-header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 24px; gap: 16px;
-    }
-    .app-header h1 { font-size: 24px; font-weight: 700; margin: 0; }
 
     .gallery-grid {
       display: grid;
@@ -118,9 +113,17 @@
     .gallery-meta .d { font-size: 11px; color: var(--fg-muted); margin-top: 4px; }
 
     .empty {
-      text-align: center; padding: 40px 20px; color: var(--fg-muted);
+      text-align: center; padding: 48px 24px; color: var(--fg-muted);
       border: 1px dashed var(--border); border-radius: 14px;
-      line-height: 1.6;
+      line-height: 1.7; background: rgba(0,111,238,0.02);
+    }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-title { font-size: 14px; font-weight: 600; color: var(--fg); margin-bottom: 4px; }
+    .empty-text { font-size: 13px; margin-bottom: 16px; }
+
+    /* Home top */
+    .home-top {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
     }
 
     @keyframes fadeUp {
@@ -183,17 +186,27 @@
   </div>
 
   <div class="fd-root">
-    <!-- ════════ Home ════════ -->
-    <section id="view-home" class="fd-view active">
-      <div class="app-header">
-        <h1>🖼️ Signage Maker</h1>
-        <button class="fd-btn fd-btn-primary" id="btn-new">+ 새 이미지</button>
+    <!-- 앱 헤더 -->
+    <header class="app-header">
+      <span class="app-badge">◆ Creative</span>
+      <h1 class="app-title">Signage <span>Maker</span></h1>
+      <p class="app-desc">학교 행사 안내용 세로 사이니지 이미지를 AI로 생성하세요</p>
+    </header>
+
+    <!-- ══ 홈 뷰 ══ -->
+    <div id="view-home" class="fd-view active">
+      <div class="home-top">
+        <div class="fd-section-title" style="margin:0;flex:1">생성된 이미지</div>
+        <button class="fd-btn fd-btn-primary" id="btn-new">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          새 이미지
+        </button>
       </div>
       <div id="gallery-wrap"></div>
-    </section>
+    </div>
 
     <!-- ════════ Compose ════════ -->
-    <section id="view-compose" class="fd-view">
+    <div id="view-compose" class="fd-view">
       <div class="row" style="margin-bottom:16px;">
         <button class="fd-btn fd-btn-ghost fd-btn-sm" data-go="home">← 홈</button>
       </div>
@@ -217,10 +230,10 @@
           <button class="fd-btn fd-btn-primary" id="btn-make-prompt">프롬프트 만들기</button>
         </div>
       </div>
-    </section>
+    </div>
 
     <!-- ════════ Prompt review ════════ -->
-    <section id="view-prompt" class="fd-view">
+    <div id="view-prompt" class="fd-view">
       <div class="row" style="margin-bottom:16px;">
         <button class="fd-btn fd-btn-ghost fd-btn-sm" data-go="home">← 홈</button>
         <button class="fd-btn fd-btn-ghost fd-btn-sm" id="btn-back-compose">◀ 다시 작성</button>
@@ -245,10 +258,10 @@
           <button class="fd-btn fd-btn-primary" id="btn-generate">이미지 생성</button>
         </div>
       </div>
-    </section>
+    </div>
 
     <!-- ════════ Result ════════ -->
-    <section id="view-result" class="fd-view">
+    <div id="view-result" class="fd-view">
       <div class="row" style="margin-bottom:16px;">
         <button class="fd-btn fd-btn-ghost fd-btn-sm" data-go="home">← 홈</button>
       </div>
@@ -260,7 +273,7 @@
           <button class="fd-btn fd-btn-ghost" id="btn-regenerate">🔁 더 만들어 보기 <span id="regen-left">(2/2)</span></button>
         </div>
       </div>
-    </section>
+    </div>
   </div>
 
   <div id="toast" class="toast"></div>
@@ -346,7 +359,11 @@
       const wrap = document.getElementById('gallery-wrap');
       const data = loadData();
       if (!data.items.length) {
-        wrap.innerHTML = `<div class="empty">아직 생성된 이미지가 없어요.<br>우측 상단 <b>+ 새 이미지</b> 버튼으로 시작해 보세요.</div>`;
+        wrap.innerHTML = `<div class="empty">
+          <div class="empty-icon">🖼️</div>
+          <div class="empty-title">아직 생성된 이미지가 없어요</div>
+          <div class="empty-text">위의 <strong>새 이미지</strong> 버튼으로 시작해 보세요.</div>
+        </div>`;
         return;
       }
       const items = [...data.items].sort((a, b) => b.createdAt - a.createdAt);
@@ -538,6 +555,9 @@
       }
     }
     document.getElementById('btn-generate').addEventListener('click', generateImage);
+
+    // 임시 테스트용 logincode 자동 입력 (개발 중에만 사용, 프로덕션에서는 제거)
+    window.setTestCode = () => document.getElementById('admin-code').value = '1234';
 
     function fitTo1080x1920(srcDataUrl) {
       return new Promise((resolve, reject) => {
