@@ -511,7 +511,6 @@
     async function generateImage() {
       const prompt = document.getElementById('final-prompt').value.trim();
       const code = document.getElementById('admin-code').value.trim();
-      const quality = 'standard';
       if (!prompt) { toast('프롬프트가 비어 있습니다.'); return; }
       if (!/^\d{4}$/.test(code)) { toast('관리자 코드는 4자리 숫자입니다.'); return; }
 
@@ -523,7 +522,7 @@
         const res = await fetch('/.netlify/functions/signage-image', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, code, quality }),
+          body: JSON.stringify({ prompt, code }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || '실패');
