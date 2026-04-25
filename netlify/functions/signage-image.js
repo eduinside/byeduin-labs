@@ -10,7 +10,7 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  const apiKey = process.env.GOOGLE_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   const loginCode = process.env.SIGNAGE_LOGINCODE;
   if (!apiKey || !loginCode) {
     console.error('Missing env:', { hasApiKey: !!apiKey, hasLoginCode: !!loginCode });
