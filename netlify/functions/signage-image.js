@@ -15,7 +15,12 @@ exports.handler = async (event) => {
   const apiKey = process.env.OPENAI_API_KEY;
   const loginCode = process.env.SIGNAGE_LOGINCODE;
   if (!apiKey || !loginCode) {
-    return { statusCode: 503, body: JSON.stringify({ error: '서버 환경변수(OPENAI_API_KEY, SIGNAGE_LOGINCODE)가 설정되지 않았습니다.' }) };
+    console.error('Missing env:', { hasApiKey: !!apiKey, hasLoginCode: !!loginCode });
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: '서버 환경변수가 설정되지 않았습니다.' })
+    };
   }
 
   let prompt, code;
