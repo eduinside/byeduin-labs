@@ -1,18 +1,16 @@
 /**
- * Netlify Function: 사이니지 이미지 생성 (gpt-image-2)
+ * Netlify Function: 사이니지 이미지 생성 (Google Gemini)
  * - SIGNAGE_LOGINCODE(4자리)로 호출 게이트
- * - OPENAI_API_KEY는 서버에서만 사용
- * - 1024x1536(2:3 portrait), quality=medium, opaque, n=1
- *   클라이언트가 1080x1920 캔버스로 패딩 후 다운로드
+ * - GOOGLE_API_KEY는 서버에서만 사용
  */
-const MODEL = 'gpt-image-1.5';
+const MODEL = 'gemini-3.1-flash-image-preview';
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GOOGLE_API_KEY;
   const loginCode = process.env.SIGNAGE_LOGINCODE;
   if (!apiKey || !loginCode) {
     console.error('Missing env:', { hasApiKey: !!apiKey, hasLoginCode: !!loginCode });
@@ -30,7 +28,11 @@ exports.handler = async (event) => {
     if (prompt.length > 4000) throw new Error('long');
     if (!code || typeof code !== 'string') throw new Error('code');
   } catch {
-    return { statusCode: 400, body: JSON.stringify({ error: '입력값(prompt, code)이 올바르지 않습니다.' }) };
+    return {
+      statusCode: 400,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: '입력값(prompt, code)이 올바르지 않습니다.' })
+    };
   }
 
   if (code !== loginCode) {
@@ -40,44 +42,59 @@ exports.handler = async (event) => {
   try {
     const requestBody = {
       model: MODEL,
-      prompt,
-      size: '768x768',
-      quality: 'low',
-      n: 1,
+      prompt: prompt,
     };
-    console.log('OpenAI request body:', JSON.stringify(requestBody));
+    console.log('Gemini request prompt length:', prompt.length);
 
-    const res = await fetch('https://api.openai.com/v1/images/generations', {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          temperature: 1,
+        }
+      }),
     });
 
     const data = await res.json();
-    console.log('OpenAI response status:', res.status, 'error:', data?.error?.message);
+    console.log('Gemini response status:', res.status, 'error:', data?.error?.message);
     if (!res.ok) {
-      console.error('signage-image OpenAI error:', res.status, data?.error?.code, data?.error?.message);
-      return { statusCode: res.status, body: JSON.stringify({ error: '이미지 생성에 실패했습니다.' }) };
+      console.error('signage-image Gemini error:', res.status, data?.error?.message);
+      return {
+        statusCode: res.status,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: '이미지 생성에 실패했습니다.' })
+      };
     }
 
-    const imageUrl = data?.data?.[0]?.url;
-    console.log('Image URL:', imageUrl ? '✓ ' + imageUrl.slice(0, 80) + '...' : 'MISSING');
-    if (!imageUrl) {
-      console.error('No imageUrl in response. Full data:', JSON.stringify(data).slice(0, 300));
-      return { statusCode: 502, body: JSON.stringify({ error: '응답이 비어 있습니다.' }) };
+    const imageData = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!imageData) {
+      console.error('No image data in response. Full data:', JSON.stringify(data).slice(0, 300));
+      return {
+        statusCode: 502,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: '응답이 비어 있습니다.' })
+      };
     }
 
-    // URL을 클라이언트로 반환 (클라이언트에서 직접 처리)
+    console.log('Image generated successfully, size:', imageData.length);
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageUrl }),
+      body: JSON.stringify({ b64: imageData }),
     };
   } catch (e) {
     console.error('signage-image fetch fail:', e?.message);
-    return { statusCode: 502, body: JSON.stringify({ error: '외부 API 연결에 실패했습니다.' }) };
+    return {
+      statusCode: 502,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: '외부 API 연결에 실패했습니다.' })
+    };
   }
 };
