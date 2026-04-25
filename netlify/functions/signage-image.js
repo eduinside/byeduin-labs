@@ -41,8 +41,8 @@ exports.handler = async (event) => {
     const requestBody = {
       model: MODEL,
       prompt,
-      size: '1024x1024',
-      quality: 'auto',
+      size: '768x768',
+      quality: 'low',
       n: 1,
     };
     console.log('OpenAI request body:', JSON.stringify(requestBody));
