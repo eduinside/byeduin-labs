@@ -63,7 +63,7 @@ exports.handler = async (event) => {
         contents: [{
           role: 'user',
           parts: [{ text: userMessage }]
-        ]},
+        }],
         generationConfig: {
           temperature: 0.7,
         }
