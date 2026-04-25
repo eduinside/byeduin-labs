@@ -287,7 +287,7 @@
       </div>
       <div class="fd-card" style="margin-top: 16px;">
         <div class="fd-section-title">생성 정보</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
           <div>
             <label class="fd-label" style="margin: 0 0 8px;">삽입 텍스트</label>
             <div style="background: var(--bg); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13px; color: var(--fg); word-break: break-word; line-height: 1.5; max-height: 120px; overflow-y: auto;">
@@ -298,6 +298,12 @@
             <label class="fd-label" style="margin: 0 0 8px;">스타일</label>
             <div style="background: var(--bg); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13px; color: var(--fg);">
               <span id="result-style">—</span>
+            </div>
+          </div>
+          <div>
+            <label class="fd-label" style="margin: 0 0 8px;">생성일시</label>
+            <div style="background: var(--bg); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13px; color: var(--fg);">
+              <span id="result-created">—</span>
             </div>
           </div>
         </div>
@@ -476,6 +482,8 @@
       // 메타데이터 표시
       document.getElementById('result-text').textContent = state.sourceText || '—';
       document.getElementById('result-style').textContent = state.style || '—';
+      const createdTime = new Date(it.createdAt).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      document.getElementById('result-created').textContent = createdTime || '—';
 
       // 이미지 갤러리 표시
       const container = document.getElementById('result-images-container');
@@ -489,10 +497,21 @@
             <div style="padding: 10px; text-align: center;">
               <button class="fd-btn fd-btn-success fd-btn-sm" style="width: 100%;"
                       onclick="(() => {
-                        const a = document.createElement('a');
-                        a.href = '${img}';
-                        a.download = '${text}_${stamp}.png';
-                        a.click();
+                        const dataUrl = '${img}';
+                        const filename = '${text}_${stamp}.png';
+                        fetch(dataUrl).then(res => res.blob()).then(blob => {
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = filename;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }).catch(() => {
+                          const a = document.createElement('a');
+                          a.href = dataUrl;
+                          a.download = filename;
+                          a.click();
+                        });
                       })()">⬇ 다운로드</button>
             </div>
           </div>
@@ -694,6 +713,8 @@
         // 메타데이터 표시
         document.getElementById('result-text').textContent = state.sourceText || '—';
         document.getElementById('result-style').textContent = state.style || '—';
+        const createdTime = new Date(createdAt).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        document.getElementById('result-created').textContent = createdTime;
 
         // 이미지 갤러리 표시
         const container = document.getElementById('result-images-container');
@@ -707,10 +728,21 @@
             <div style="padding: 10px; text-align: center;">
               <button class="fd-btn fd-btn-success fd-btn-sm" style="width: 100%;"
                       onclick="(() => {
-                        const a = document.createElement('a');
-                        a.href = '${img}';
-                        a.download = '${dlText}_${stamp}.png';
-                        a.click();
+                        const dataUrl = '${img}';
+                        const filename = '${dlText}_${stamp}.png';
+                        fetch(dataUrl).then(res => res.blob()).then(blob => {
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = filename;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }).catch(() => {
+                          const a = document.createElement('a');
+                          a.href = dataUrl;
+                          a.download = filename;
+                          a.click();
+                        });
                       })()">⬇ 다운로드</button>
             </div>
           </div>
