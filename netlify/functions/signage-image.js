@@ -48,6 +48,8 @@ exports.handler = async (event) => {
         model: MODEL,
         prompt,
         size: '1024x1536',
+        quality: 'high',
+        response_format: 'b64_json',
         n: 1,
       }),
     });
@@ -58,18 +60,10 @@ exports.handler = async (event) => {
       return { statusCode: res.status, body: JSON.stringify({ error: '이미지 생성에 실패했습니다.' }) };
     }
 
-    const imageUrl = data?.data?.[0]?.url;
-    if (!imageUrl) {
+    const b64 = data?.data?.[0]?.b64_json;
+    if (!b64) {
       return { statusCode: 502, body: JSON.stringify({ error: '응답이 비어 있습니다.' }) };
     }
-
-    // URL을 base64로 변환
-    const imgRes = await fetch(imageUrl);
-    if (!imgRes.ok) {
-      return { statusCode: 502, body: JSON.stringify({ error: '이미지 다운로드 실패' }) };
-    }
-    const buffer = await imgRes.arrayBuffer();
-    const b64 = Buffer.from(buffer).toString('base64');
 
     return {
       statusCode: 200,
