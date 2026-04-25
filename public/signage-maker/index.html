@@ -320,8 +320,11 @@
     /* ══════════════════════════════════
        헬퍼 함수
     ══════════════════════════════════ */
-    function downloadImage(dataUrl, filename) {
-      console.log('다운로드 시작:', { filename, dataUrlType: typeof dataUrl, dataUrlLength: dataUrl ? dataUrl.length : 0 });
+    function downloadFromButton(button) {
+      const dataUrl = button.dataset.img;
+      const filename = button.dataset.filename;
+
+      console.log('다운로드 시작:', { filename, dataUrlLength: dataUrl ? dataUrl.length : 0 });
 
       if (!dataUrl) {
         console.error('이미지 데이터 없음');
@@ -562,7 +565,9 @@
             <img src="${img}" alt="생성 이미지 ${idx+1}" style="width: 100%; aspect-ratio: 9/16; object-fit: cover; display: block;" />
             <div style="padding: 10px; text-align: center;">
               <button class="fd-btn fd-btn-success fd-btn-sm" style="width: 100%;"
-                      onclick="downloadImage('${img}', '${text}_${stamp}.png')">⬇ 다운로드</button>
+                      data-img="${img.replace(/"/g, '&quot;')}"
+                      data-filename="${(text + '_' + stamp + '.png').replace(/"/g, '&quot;')}"
+                      onclick="downloadFromButton(this)">⬇ 다운로드</button>
             </div>
           </div>
         `;
@@ -777,7 +782,9 @@
             <img src="${img}" alt="생성 이미지 ${idx+1}" style="width: 100%; aspect-ratio: 9/16; object-fit: cover; display: block;" />
             <div style="padding: 10px; text-align: center;">
               <button class="fd-btn fd-btn-success fd-btn-sm" style="width: 100%;"
-                      onclick="downloadImage('${img}', '${dlText}_${stamp}.png')">⬇ 다운로드</button>
+                      data-img="${img.replace(/"/g, '&quot;')}"
+                      data-filename="${(dlText + '_' + stamp + '.png').replace(/"/g, '&quot;')}"
+                      onclick="downloadFromButton(this)">⬇ 다운로드</button>
             </div>
           </div>
         `).join('');
