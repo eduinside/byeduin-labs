@@ -68,18 +68,11 @@ exports.handler = async (event) => {
       return { statusCode: 502, body: JSON.stringify({ error: '응답이 비어 있습니다.' }) };
     }
 
-    // URL을 base64로 변환
-    const imgRes = await fetch(imageUrl);
-    if (!imgRes.ok) {
-      return { statusCode: 502, body: JSON.stringify({ error: '이미지 다운로드 실패' }) };
-    }
-    const buffer = await imgRes.arrayBuffer();
-    const b64 = Buffer.from(buffer).toString('base64');
-
+    // URL을 클라이언트로 반환 (클라이언트에서 직접 처리)
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ b64 }),
+      body: JSON.stringify({ imageUrl }),
     };
   } catch (e) {
     console.error('signage-image fetch fail:', e?.message);
