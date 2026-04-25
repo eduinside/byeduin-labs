@@ -29,7 +29,7 @@ exports.handler = async (event) => {
     if (!prompt || typeof prompt !== 'string') throw new Error('prompt');
     if (prompt.length > 4000) throw new Error('long');
     if (!code || typeof code !== 'string') throw new Error('code');
-    if (!quality || !['standard', 'medium'].includes(quality)) quality = 'medium';
+    if (!quality || typeof quality !== 'string') quality = 'standard';
   } catch {
     return { statusCode: 400, body: JSON.stringify({ error: '입력값(prompt, code)이 올바르지 않습니다.' }) };
   }
