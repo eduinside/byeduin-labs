@@ -450,6 +450,55 @@
       });
     }
 
+    async function saveDataWithCleanup(d) {
+      try {
+        // 첫 시도
+        await saveData(d);
+        return true;
+      } catch (e) {
+        // 저장 실패 시 가장 오래된 아이템 삭제 후 재시도
+        console.warn('저장 실패, 오래된 아이템 정리 중...', e);
+
+        if (!d.items || d.items.length === 0) {
+          throw new Error('저장할 데이터가 없습니다.');
+        }
+
+        // 가장 오래된 아이템 찾기
+        const sortedItems = [...d.items].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+        const oldestItem = sortedItems[0];
+
+        if (!oldestItem) {
+          throw e; // 재시도 할 아이템이 없음
+        }
+
+        console.log('가장 오래된 아이템 삭제:', { id: oldestItem.id, createdAt: new Date(oldestItem.createdAt).toLocaleString('ko-KR') });
+
+        // 오래된 아이템 제거
+        d.items = d.items.filter(x => x.id !== oldestItem.id);
+
+        // 재저장 시도
+        try {
+          await saveData(d);
+          console.log('✓ 아이템 삭제 후 저장 성공');
+          return true;
+        } catch (e2) {
+          // 여전히 실패하면 더 많이 삭제 (최대 3개)
+          console.warn('여전히 실패, 추가 정리 중...');
+          for (let i = 1; i < Math.min(3, sortedItems.length); i++) {
+            const item = sortedItems[i];
+            console.log(`아이템 ${i}개 더 삭제:`, item.id);
+            d.items = d.items.filter(x => x.id !== item.id);
+            try {
+              await saveData(d);
+              console.log('✓ 추가 정리 후 저장 성공');
+              return true;
+            } catch {}
+          }
+          throw e2;
+        }
+      }
+    }
+
     let state = {
       sourceText: '',
       style: '',
@@ -741,15 +790,15 @@
         }
 
         try {
-          await saveData(d);
+          await saveDataWithCleanup(d);
           saveSuccess = true;
         } catch (e) {
-          console.error('Save failed:', e.message);
-          toast('저장 실패. 용량이 부족할 수 있어요. 이전 항목을 삭제한 후 다시 시도해 주세요.');
+          console.error('저장 실패:', e.message);
+          toast('저장 실패했습니다. 다시 시도해 주세요.');
           // 방금 추가한 항목 제거
           d.items = d.items.filter(x => x.id !== item.id);
           try {
-            await saveData(d);
+            await saveDataWithCleanup(d);
           } catch {}
           btn.disabled = false;
           btn.innerHTML = old;
