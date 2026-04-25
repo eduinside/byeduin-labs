@@ -42,7 +42,7 @@ exports.handler = async (event) => {
       model: MODEL,
       prompt,
       size: '1024x1536',
-      quality: 'high',
+      quality: 'low',
       n: 1,
     };
     console.log('OpenAI request body:', JSON.stringify(requestBody));
