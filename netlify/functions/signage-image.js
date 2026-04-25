@@ -50,7 +50,6 @@ exports.handler = async (event) => {
         size: '1024x1536',
         quality: 'high',
         response_format: 'b64_json',
-        n: 1,
       }),
     });
 
