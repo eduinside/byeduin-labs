@@ -3,7 +3,7 @@
  * - Google Gemini를 사용해 입력 텍스트와 스타일을 받아 이미지 생성용 프롬프트 생성
  * - GOOGLE_API_KEY는 서버에서만 사용, 클라이언트 미노출
  */
-const MODEL = 'gemini-2.5-flash-lite';
+const MODEL = 'gemini-flash-lite-latest';
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
