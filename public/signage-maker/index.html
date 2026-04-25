@@ -399,13 +399,16 @@
         return;
       }
       const items = [...data.items].sort((a, b) => b.createdAt - a.createdAt);
-      wrap.innerHTML = `<div class="gallery-grid">${items.map(it => `
+      wrap.innerHTML = `<div class="gallery-grid">${items.map(it => {
+        const thumb = (it.images && it.images.length > 0) ? it.images[it.images.length - 1] : it.imageDataUrl;
+        return `
         <div class="gallery-item" data-id="${it.id}">
-          <img class="gallery-thumb" src="${it.imageDataUrl}" alt="" loading="lazy" />
+          <img class="gallery-thumb" src="${thumb}" alt="" loading="lazy" />
           <div class="gallery-meta">
             <div class="d">${fmtDate(it.createdAt)}</div>
           </div>
-        </div>`).join('')}</div>`;
+        </div>`;
+      }).join('')}</div>`;
       wrap.querySelectorAll('.gallery-item').forEach(el => {
         el.addEventListener('click', () => openItem(el.dataset.id));
       });
