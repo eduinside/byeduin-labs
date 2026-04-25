@@ -64,7 +64,9 @@ exports.handler = async (event) => {
     }
 
     const imageUrl = data?.data?.[0]?.url;
+    console.log('Image URL:', imageUrl ? '✓ ' + imageUrl.slice(0, 80) + '...' : 'MISSING');
     if (!imageUrl) {
+      console.error('No imageUrl in response. Full data:', JSON.stringify(data).slice(0, 300));
       return { statusCode: 502, body: JSON.stringify({ error: '응답이 비어 있습니다.' }) };
     }
 
