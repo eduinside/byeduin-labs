@@ -885,9 +885,10 @@
           const r = Math.min(W / img.width, H / img.height);
           const dw = img.width * r, dh = img.height * r;
           const dx = (W - dw) / 2, dy = (H - dh) / 2;
-          ctx.imageSmoothingQuality = 'high';
+          ctx.imageSmoothingQuality = 'medium';
           ctx.drawImage(img, dx, dy, dw, dh);
-          resolve(canvas.toDataURL('image/png'));
+          // JPEG 포맷으로 변환하여 파일 크기 약 50-70% 감소
+          resolve(canvas.toDataURL('image/jpeg', 0.75));
         };
         img.onerror = () => reject(new Error('이미지 로드 실패'));
         img.src = srcDataUrl;

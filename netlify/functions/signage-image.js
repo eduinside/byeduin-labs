@@ -54,10 +54,10 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         contents: [{
           role: 'user',
-          parts: [{ text: prompt }]
+          parts: [{ text: `Optimize image size and quality for fast generation:\n${prompt}` }]
         }],
         generationConfig: {
-          temperature: 1,
+          temperature: 0.8,
         }
       }),
     });
