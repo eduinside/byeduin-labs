@@ -8,7 +8,7 @@
 
 ---
 
-## 앱 목록 (12개)
+## 앱 목록 (13개)
 
 ### 유틸리티 (3)
 | 앱 | 경로 | 설명 |
@@ -23,12 +23,12 @@
 | **Bubble Chat** | `/bubble-chat/` | P2P 실시간 채팅 |
 | **도서 정보 나눔** | `/book-share/` | ISBN으로 도서 정보 조회 및 공유 |
 
-### 크리에이티브 (2)
+### 크리에이티브 (3)
 | 앱 | 경로 | 설명 |
 |---|---|---|
 | **Grid Maker** | `/grid-maker/` | 이미지 그리드 분할 |
 | **YT Thumbnail** | `/yt-thumb/` | 유튜브 썸네일 추출 및 아카이빙 |
-| **Signage Maker** | `/signage-maker/` | 사이니지용 세로 이미지 AI 생성기 |
+| **Signage Maker** | `/signage-maker/` | 학교 사이니지용 AI 세로 이미지 생성기 (Gemini) |
 
 ### 노션 도구 (2)
 | 앱 | 경로 | 설명 |
