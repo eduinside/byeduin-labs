@@ -141,15 +141,16 @@
     .row { display:flex; gap:8px; flex-wrap: wrap; }
     .grow { flex: 1 1 auto; }
 
-    .toast {
-      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-      background: var(--card-bg); border: 1px solid var(--border);
-      padding: 10px 16px; border-radius: 10px; font-size: 13px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1); z-index: 100;
-      opacity: 0; transition: opacity 0.2s;
+    #toast {
+      position: fixed; bottom: 32px; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: var(--fg); color: var(--bg);
+      padding: 10px 18px; border-radius: 10px;
+      font-size: 13px; font-weight: 600;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s; z-index: 9999; white-space: nowrap;
     }
-    .toast.show { opacity: 1; }
-    .toast.error { border-color: var(--danger); color: var(--danger); }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
     .spinner {
       width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
@@ -180,9 +181,17 @@
     </a>
   </div>
 
-  <!-- 우상단: 테마 -->
+  <!-- 우상단: 테마 + 공유 -->
   <div class="top-overlay">
     <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+    <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+        <polyline points="16 6 12 2 8 6"/>
+        <line x1="12" x2="12" y1="2" y2="15"/>
+      </svg>
+      <span>공유</span>
+    </button>
   </div>
 
   <div class="fd-root">
@@ -338,10 +347,9 @@
        Toast
     ══════════════════════════════════ */
     let toastTimer;
-    function toast(msg, isError) {
+    function toast(msg) {
       const t = document.getElementById('toast');
       t.textContent = msg;
-      t.classList.toggle('error', !!isError);
       t.classList.add('show');
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
@@ -420,8 +428,8 @@
       const style = sel === '__custom__'
         ? document.getElementById('style-custom').value.trim()
         : sel;
-      if (!text) { toast('삽입할 텍스트를 입력해 주세요.', true); return; }
-      if (sel === '__custom__' && !style) { toast('스타일을 입력해 주세요.', true); return; }
+      if (!text) { toast('삽입할 텍스트를 입력해 주세요.'); return; }
+      if (sel === '__custom__' && !style) { toast('스타일을 입력해 주세요.'); return; }
 
       const btn = document.getElementById('btn-make-prompt');
       btn.disabled = true;
@@ -445,7 +453,7 @@
         document.getElementById('btn-generate').disabled = false;
         showView('prompt');
       } catch (e) {
-        toast(e.message || '프롬프트 생성 실패', true);
+        toast(e.message || '프롬프트 생성 실패');
       } finally {
         btn.disabled = false; btn.innerHTML = old;
       }
@@ -468,7 +476,7 @@
 
     async function makeShareLink(permission) {
       state.finalPrompt = document.getElementById('final-prompt').value.trim();
-      if (!state.finalPrompt) { toast('공유할 프롬프트가 없습니다.', true); return; }
+      if (!state.finalPrompt) { toast('공유할 프롬프트가 없습니다.'); return; }
       const payload = JSON.stringify({
         type: 'signage-prompt',
         sourceText: state.sourceText,
@@ -503,8 +511,8 @@
     async function generateImage() {
       const prompt = document.getElementById('final-prompt').value.trim();
       const code = document.getElementById('admin-code').value.trim();
-      if (!prompt) { toast('프롬프트가 비어 있습니다.', true); return; }
-      if (!/^\d{4}$/.test(code)) { toast('관리자 코드는 4자리 숫자입니다.', true); return; }
+      if (!prompt) { toast('프롬프트가 비어 있습니다.'); return; }
+      if (!/^\d{4}$/.test(code)) { toast('관리자 코드는 4자리 숫자입니다.'); return; }
 
       const btn = document.getElementById('btn-generate');
       btn.disabled = true;
@@ -538,7 +546,7 @@
         try {
           saveData(d);
         } catch (e) {
-          toast('로컬 저장 용량이 부족할 수 있어요. 일부 항목을 정리해 주세요.', true);
+          toast('로컬 저장 용량이 부족할 수 있어요. 일부 항목을 정리해 주세요.');
         }
         state.currentItemId = item.id;
         state.regenCountLeft = 2;
@@ -549,7 +557,7 @@
         document.getElementById('regen-left').textContent = `(${state.regenCountLeft}/2)`;
         showView('result');
       } catch (e) {
-        toast(e.message || '이미지 생성 실패', true);
+        toast(e.message || '이미지 생성 실패');
       } finally {
         btn.disabled = false; btn.innerHTML = old;
       }
@@ -558,6 +566,20 @@
 
     // 임시 테스트용 logincode 자동 입력 (개발 중에만 사용, 프로덕션에서는 제거)
     window.setTestCode = () => document.getElementById('admin-code').value = '1234';
+
+    // ══════════════════════════════════
+    // 공유 버튼
+    function shareCurrentPage() {
+      const url = location.href;
+      const copy = () => navigator.clipboard.writeText(url)
+        .then(() => toast('링크가 복사되었습니다.'))
+        .catch(() => toast('복사에 실패했습니다.'));
+      if (navigator.share) {
+        navigator.share({ title: 'Signage Maker', url }).catch(copy);
+      } else {
+        copy();
+      }
+    }
 
     function fitTo1080x1920(srcDataUrl) {
       return new Promise((resolve, reject) => {
@@ -594,7 +616,7 @@
     });
 
     document.getElementById('btn-regenerate').addEventListener('click', async () => {
-      if (state.regenCountLeft <= 0) { toast('재생성 가능 횟수를 모두 사용했어요.', true); return; }
+      if (state.regenCountLeft <= 0) { toast('재생성 가능 횟수를 모두 사용했어요.'); return; }
       const code = document.getElementById('admin-code').value.trim();
       if (!/^\d{4}$/.test(code)) {
         const c = window.prompt('관리자 코드 (4자리)');
