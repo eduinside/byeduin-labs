@@ -38,25 +38,29 @@ exports.handler = async (event) => {
   }
 
   try {
+    const requestBody = {
+      model: MODEL,
+      prompt,
+      size: '1024x1536',
+      quality: 'high',
+      n: 1,
+      response_format: 'b64_json',
+    };
+    console.log('OpenAI request body:', JSON.stringify(requestBody));
+
     const res = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: MODEL,
-        prompt,
-        size: '1024x1536',
-        quality: 'high',
-        n: 1,
-        response_format: 'b64_json',
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     const data = await res.json();
+    console.log('OpenAI response status:', res.status, 'error:', data?.error?.message);
     if (!res.ok) {
-      console.error('signage-image OpenAI error:', res.status, data?.error?.code);
+      console.error('signage-image OpenAI error:', res.status, data?.error?.code, data?.error?.message);
       return { statusCode: res.status, body: JSON.stringify({ error: '이미지 생성에 실패했습니다.' }) };
     }
 
