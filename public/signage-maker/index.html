@@ -318,6 +318,27 @@
 
   <script>
     /* ══════════════════════════════════
+       헬퍼 함수
+    ══════════════════════════════════ */
+    function dataUrlToBlob(dataUrl) {
+      try {
+        const parts = dataUrl.split(',');
+        const mimeMatch = parts[0].match(/:(.*?);/);
+        const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+        const bstr = atob(parts[1]);
+        const n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        for (let i = 0; i < n; i++) {
+          u8arr[i] = bstr.charCodeAt(i);
+        }
+        return new Blob([u8arr], { type: mime });
+      } catch (e) {
+        console.error('dataUrlToBlob error:', e);
+        return null;
+      }
+    }
+
+    /* ══════════════════════════════════
        상태 / IndexedDB 저장소
     ══════════════════════════════════ */
     const STORAGE_KEY = 'vives-signage';
@@ -499,21 +520,15 @@
             <div style="padding: 10px; text-align: center;">
               <button class="fd-btn fd-btn-success fd-btn-sm" style="width: 100%;"
                       onclick="(() => {
-                        const dataUrl = '${img}';
-                        const filename = '${text}_${stamp}.png';
-                        fetch(dataUrl).then(res => res.blob()).then(blob => {
+                        const blob = dataUrlToBlob('${img}');
+                        if (blob) {
                           const url = URL.createObjectURL(blob);
                           const a = document.createElement('a');
                           a.href = url;
-                          a.download = filename;
+                          a.download = '${text}_${stamp}.png';
                           a.click();
                           URL.revokeObjectURL(url);
-                        }).catch(() => {
-                          const a = document.createElement('a');
-                          a.href = dataUrl;
-                          a.download = filename;
-                          a.click();
-                        });
+                        }
                       })()">⬇ 다운로드</button>
             </div>
           </div>
@@ -730,21 +745,15 @@
             <div style="padding: 10px; text-align: center;">
               <button class="fd-btn fd-btn-success fd-btn-sm" style="width: 100%;"
                       onclick="(() => {
-                        const dataUrl = '${img}';
-                        const filename = '${dlText}_${stamp}.png';
-                        fetch(dataUrl).then(res => res.blob()).then(blob => {
+                        const blob = dataUrlToBlob('${img}');
+                        if (blob) {
                           const url = URL.createObjectURL(blob);
                           const a = document.createElement('a');
                           a.href = url;
-                          a.download = filename;
+                          a.download = '${dlText}_${stamp}.png';
                           a.click();
                           URL.revokeObjectURL(url);
-                        }).catch(() => {
-                          const a = document.createElement('a');
-                          a.href = dataUrl;
-                          a.download = filename;
-                          a.click();
-                        });
+                        }
                       })()">⬇ 다운로드</button>
             </div>
           </div>
