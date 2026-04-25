@@ -108,9 +108,7 @@
       display:block; object-fit: cover;
     }
     .gallery-meta { padding: 12px; }
-    .gallery-meta .t { font-size: 13px; font-weight: 700; color: var(--fg);
-      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .gallery-meta .d { font-size: 11px; color: var(--fg-muted); margin-top: 4px; }
+    .gallery-meta .d { font-size: 11px; color: var(--fg-muted); }
 
     .empty {
       text-align: center; padding: 48px 24px; color: var(--fg-muted);
@@ -281,23 +279,32 @@
         <button class="fd-btn fd-btn-ghost fd-btn-sm" data-go="home">← 홈</button>
       </div>
       <div class="fd-card">
-        <div class="fd-section-title">입력 정보</div>
-        <label class="fd-label">삽입 텍스트</label>
-        <div style="background: var(--bg); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; color: var(--fg); word-break: break-word; white-space: pre-wrap;">
-          <span id="result-text">—</span>
-        </div>
-        <label class="fd-label" style="margin-top: 14px;">스타일</label>
-        <div style="background: var(--bg); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; color: var(--fg);">
-          <span id="result-style">—</span>
-        </div>
-      </div>
-      <div class="fd-card" style="margin-top: 16px;">
         <div class="fd-section-title">생성된 이미지</div>
         <img id="result-img" class="result-img" alt="생성된 사이니지 이미지" />
         <div id="result-images-container" style="margin-top: 16px;"></div>
         <div class="row" style="margin-top: 18px; justify-content: center; gap: 8px;">
           <button class="fd-btn fd-btn-success" id="btn-download">⬇ 1080×1920 다운로드</button>
           <button class="fd-btn fd-btn-ghost" id="btn-regenerate">🔁 더 만들어 보기 <span id="regen-left">(2/2)</span></button>
+        </div>
+      </div>
+      <div class="fd-card" style="margin-top: 16px;">
+        <div class="fd-section-title">생성 정보</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div>
+            <label class="fd-label" style="margin: 0 0 8px;">삽입 텍스트</label>
+            <div style="background: var(--bg); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13px; color: var(--fg); word-break: break-word; line-height: 1.5; max-height: 120px; overflow-y: auto;">
+              <span id="result-text">—</span>
+            </div>
+          </div>
+          <div>
+            <label class="fd-label" style="margin: 0 0 8px;">스타일</label>
+            <div style="background: var(--bg); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 13px; color: var(--fg);">
+              <span id="result-style">—</span>
+            </div>
+          </div>
+        </div>
+        <div class="row" style="margin-top: 14px; justify-content: flex-end;">
+          <button class="fd-btn fd-btn-danger fd-btn-sm" id="btn-delete-item">🗑 삭제</button>
         </div>
       </div>
     </div>
@@ -398,7 +405,6 @@
         <div class="gallery-item" data-id="${it.id}">
           <img class="gallery-thumb" src="${it.imageDataUrl}" alt="" loading="lazy" />
           <div class="gallery-meta">
-            <div class="t">${escapeHtml(it.title || '제목 없음')}</div>
             <div class="d">${fmtDate(it.createdAt)}</div>
           </div>
         </div>`).join('')}</div>`;
@@ -682,8 +688,11 @@
       if (!state.currentImageDataUrl) return;
       const a = document.createElement('a');
       a.href = state.currentImageDataUrl;
+      const data = loadData();
+      const item = data.items.find(x => x.id === state.currentItemId);
+      const text = (item?.sourceText || state.sourceText || '이미지').slice(0, 30);
       const stamp = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
-      a.download = `signage-${stamp}.png`;
+      a.download = `${text}_${stamp}.png`;
       a.click();
     });
 
@@ -698,6 +707,18 @@
       state.regenCountLeft--;
       document.getElementById('regen-left').textContent = `(${state.regenCountLeft}/2)`;
       await generateImage();
+    });
+
+    document.getElementById('btn-delete-item').addEventListener('click', () => {
+      if (!state.currentItemId) return;
+      if (!window.confirm('이 항목을 삭제하시겠어요?\n(되돌릴 수 없습니다)')) return;
+      const d = loadData();
+      d.items = d.items.filter(x => x.id !== state.currentItemId);
+      saveData(d);
+      toast('삭제되었습니다.');
+      location.hash = '';
+      renderGallery();
+      showView('home');
     });
 
     /* ══════════════════════════════════

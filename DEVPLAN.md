@@ -183,3 +183,87 @@ npx netlify dev --port 8888
 - `/netlify/functions/tree.js` — GitHub API 서버사이드 호출
 - `/public/index.html` — 에듀서치를 홈 페이지에 표시 + 면책 추가
 
+---
+
+### Phase 6: Signage Maker (사이니지 이미지 생성 앱)
+**상태**: 완료 및 배포
+
+**개발 개요**:
+학교 행사 안내용 세로 사이니지(1080×1920) 이미지를 AI로 생성하는 앱. 사용자가 텍스트와 스타일을 입력하면 프롬프트를 자동 다듬은 후 이미지를 생성해 로컬에 저장.
+
+**주요 기능**:
+1. **프롬프트 생성**: 입력 텍스트 + 스타일 → Gemini 2.5 Flash Lite로 정제된 프롬프트 생성
+2. **이미지 생성**: 정제 프롬프트 → Gemini 3.1 Flash Image로 1024×1536 이미지 생성
+3. **캔버스 변환**: 생성 이미지를 1080×1920으로 자동 확대/여백 처리
+4. **이미지 관리**: 다중 생성 지원 (최대 3개), 갤러리 선택 가능
+5. **공유 기능**: 프롬프트만 공유 (보기/복제 권한 선택)
+6. **로컬 저장**: localStorage에 이미지 + 메타데이터 저장 (이미지는 비공유)
+
+**화면 구성** (4 views):
+- **Home**: 생성된 이미지 갤러리 (썸네일 + 생성일)
+- **Compose**: 텍스트 입력 + 스타일 선택
+- **Prompt Review**: 다듬어진 프롬프트 편집 + 공유 + 관리자 코드 입력
+- **Result**: 생성 이미지 갤러리 + 메타데이터(텍스트/스타일) + 삭제 기능
+
+**기술 스택**:
+- **프롬프트 생성**: `netlify/functions/signage-prompt.js` (Gemini 2.5 Flash Lite)
+- **이미지 생성**: `netlify/functions/signage-image.js` (Gemini 3.1 Flash Image)
+- **프론트엔드**: `public/signage-maker/index.html` (SPA, flash-deck 스타일 차용)
+- **저장소**: localStorage (VIVES-signage 키)
+
+**핵심 시스템 프롬프트** (signage-prompt.js):
+```
+너는 학교 디지털 사이니지 세로 이미지(정확히 1080×1920 세로 9:16 비율) 생성 프롬프트를 만드는 보조자다.
+...
+[중요] 배경에는 실제 환경(교실, 책장, 가구, 사람 등)을 그리지 말 것. 
+오직 "사이니지 화면에 직접 디스플레이될 콘텐츠"만 생성하도록 명시.
+배경은 단색 또는 추상적 패턴/그래디언트만 사용.
+```
+
+**보안 및 비용 관리**:
+- 관리자 코드(SIGNAGE_LOGINCODE) Netlify env 저장, 함수에서 검증
+- API 키는 서버사이드만 사용, 클라이언트 미노출
+- 재생성 제한: 세션당 최대 2회 추가 생성 (총 3개)
+- 함수 타임아웃: 26초 (Netlify Pro 한계)
+
+**UI 개선 사항**:
+1. **갤러리**: 생성일만 표시 (깔끔한 카드)
+2. **Result 화면**: 
+   - 상단: 이미지 갤러리 (클릭해서 선택)
+   - 중단: 메인 이미지 표시
+   - 하단: 텍스트/스타일 메타데이터 (2열 레이아웃)
+   - 삭제 버튼: 항목 제거
+3. **프롬프트 공유**: 파란색 박스로 강조
+4. **관리자 코드**: 주황색 박스, 큰 폰트(18px) + 중앙 정렬
+
+**파일 변경**:
+- `/public/signage-maker/index.html` (652→750+ 줄)
+  - 4-view SPA (home/compose/prompt/result)
+  - 다중 이미지 갤러리 및 선택 기능
+  - 메타데이터 표시 및 삭제 기능
+- `/netlify/functions/signage-prompt.js` (신규)
+  - Gemini 2.5 Flash Lite 사용
+  - 한국어 사이니지 프롬프트 생성
+  - 시스템 프롬프트: 배경 환경 제외
+- `/netlify/functions/signage-image.js` (신규)
+  - Gemini 3.1 Flash Image 사용
+  - 1024×1536 이미지 생성
+  - Base64 데이터 반환
+- `/netlify.toml`
+  - signage-image 함수 타임아웃: 26초
+- `/public/index.html`
+  - APPS 배열에 Signage Maker 추가 (🖼️ 아이콘, creative 카테고리)
+- `/README.md`
+  - Creative 섹션에 Signage Maker 행 추가
+
+**배포 상태**:
+- 테스트 브랜치: 모든 기능 완료, 배포 대기
+- 환경변수: GEMINI_API_KEY, SIGNAGE_LOGINCODE(1902)
+- 메인 브랜치: 아직 미병합 (사용자 지시 대기)
+
+**향후 개선 사항** (V2):
+- 배치 생성 (여러 텍스트 동시 처리)
+- 프롬프트 템플릿 라이브러리
+- 생성 이미지 온라인 공유 (S3/CDN)
+- 프롬프트 버전 관리 (하이스토리)
+
