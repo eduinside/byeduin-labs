@@ -255,15 +255,21 @@
         <textarea id="final-prompt" class="fd-textarea" style="min-height:180px;"></textarea>
         <div class="hint">필요 시 자유롭게 수정하세요. 한국어 텍스트는 정확히 따옴표 안에 들어 있어야 합니다.</div>
 
-        <div class="row" style="margin-top: 14px;">
-          <button class="fd-btn fd-btn-ghost fd-btn-sm" id="btn-share-view">🔗 보기 전용 링크 복사</button>
-          <button class="fd-btn fd-btn-ghost fd-btn-sm" id="btn-share-copy">🔗 복제 허용 링크 복사</button>
+        <div style="margin-top: 18px; padding: 14px; background: rgba(0,111,238,0.05); border: 1px solid rgba(0,111,238,0.15); border-radius: 10px;">
+          <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); margin-bottom: 12px;">공유</div>
+          <div class="row" style="gap: 6px;">
+            <button class="fd-btn fd-btn-ghost fd-btn-sm" id="btn-share-view">🔗 보기 링크</button>
+            <button class="fd-btn fd-btn-ghost fd-btn-sm" id="btn-share-copy">🔗 복제 링크</button>
+          </div>
         </div>
 
-        <label class="fd-label" style="margin-top: 22px;">관리자 코드 (4자리)</label>
-        <input id="admin-code" class="fd-input" inputmode="numeric" maxlength="4" placeholder="****" autocomplete="off" />
+        <div style="margin-top: 20px; padding: 14px; background: rgba(255,193,7,0.06); border: 1px solid rgba(255,193,7,0.2); border-radius: 10px;">
+          <label class="fd-label" style="margin:0 0 10px;">관리자 코드 (4자리)</label>
+          <input id="admin-code" class="fd-input" inputmode="numeric" maxlength="4" placeholder="0000" autocomplete="off" style="font-size: 18px; text-align: center; letter-spacing: 4px;" />
+          <div class="hint" style="margin-top: 8px; text-align: center;">환경변수에서 설정된 4자리 숫자 코드</div>
+        </div>
 
-        <div class="row" style="margin-top: 18px; justify-content:flex-end;">
+        <div class="row" style="margin-top: 20px; justify-content:flex-end;">
           <button class="fd-btn fd-btn-primary" id="btn-generate">이미지 생성</button>
         </div>
       </div>
@@ -275,9 +281,21 @@
         <button class="fd-btn fd-btn-ghost fd-btn-sm" data-go="home">← 홈</button>
       </div>
       <div class="fd-card">
-        <div class="fd-section-title">생성 결과</div>
+        <div class="fd-section-title">입력 정보</div>
+        <label class="fd-label">삽입 텍스트</label>
+        <div style="background: var(--bg); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; color: var(--fg); word-break: break-word; white-space: pre-wrap;">
+          <span id="result-text">—</span>
+        </div>
+        <label class="fd-label" style="margin-top: 14px;">스타일</label>
+        <div style="background: var(--bg); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; color: var(--fg);">
+          <span id="result-style">—</span>
+        </div>
+      </div>
+      <div class="fd-card" style="margin-top: 16px;">
+        <div class="fd-section-title">생성된 이미지</div>
         <img id="result-img" class="result-img" alt="생성된 사이니지 이미지" />
-        <div class="row" style="margin-top: 18px; justify-content: center;">
+        <div id="result-images-container" style="margin-top: 16px;"></div>
+        <div class="row" style="margin-top: 18px; justify-content: center; gap: 8px;">
           <button class="fd-btn fd-btn-success" id="btn-download">⬇ 1080×1920 다운로드</button>
           <button class="fd-btn fd-btn-ghost" id="btn-regenerate">🔁 더 만들어 보기 <span id="regen-left">(2/2)</span></button>
         </div>
@@ -317,6 +335,7 @@
       finalPrompt: '',
       currentImageDataUrl: null,
       currentItemId: null,
+      generatedImages: [], // 현재 세션의 생성 이미지들
       regenCountLeft: 2,
       viewOnly: null, // 'view' | 'copy' | null
     };
@@ -401,7 +420,29 @@
       state.currentImageDataUrl = it.imageDataUrl;
       state.currentItemId = it.id;
       state.regenCountLeft = 0;
-      document.getElementById('result-img').src = it.imageDataUrl;
+
+      // 메타데이터 표시
+      document.getElementById('result-text').textContent = state.sourceText || '—';
+      document.getElementById('result-style').textContent = state.style || '—';
+
+      // 이미지 표시
+      const container = document.getElementById('result-images-container');
+      const allImages = it.images || [it.imageDataUrl];
+      container.innerHTML = allImages.length > 1 ? allImages.map((img, idx) => `
+        <div style="margin-bottom: 16px; cursor: pointer; border-radius: 12px; overflow: hidden; border: 2px solid ${idx === 0 ? 'var(--primary)' : 'var(--border)'}; transition: border-color 0.2s;"
+             onclick="state.currentImageDataUrl='${img}'; document.getElementById('result-img').src='${img}'; document.querySelectorAll('#result-images-container > div').forEach(el => el.style.borderColor='var(--border)'); this.style.borderColor='var(--primary)';">
+          <img src="${img}" alt="생성 이미지 ${idx+1}" style="width: 100%; aspect-ratio: 9/16; object-fit: cover; display: block;" />
+          <div style="padding: 8px 12px; background: var(--card-bg); font-size: 12px; color: var(--fg-muted); text-align: center;">
+            이미지 ${idx+1}
+          </div>
+        </div>
+      `).join('') : '';
+
+      // 첫 번째 이미지를 메인으로 설정
+      if (allImages.length > 0) {
+        document.getElementById('result-img').src = allImages[0];
+      }
+
       document.getElementById('btn-regenerate').style.display = 'none';
       showView('result');
     }
@@ -414,6 +455,8 @@
       document.getElementById('style-preset').value = STYLE_PRESETS[0];
       document.getElementById('style-custom').style.display = 'none';
       document.getElementById('style-custom').value = '';
+      state.generatedImages = [];
+      state.currentItemId = null;
       showView('compose');
     });
 
@@ -531,25 +574,54 @@
 
         state.finalPrompt = prompt;
         state.currentImageDataUrl = finalDataUrl;
+        state.generatedImages.push(finalDataUrl);
 
-        const item = {
-          id: 'sg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-          title: (state.sourceText || '').split('\n')[0].slice(0, 40) || '제목 없음',
-          createdAt: Date.now(),
-          sourceText: state.sourceText,
-          style: state.style,
-          finalPrompt: state.finalPrompt,
-          imageDataUrl: finalDataUrl,
-        };
+        let item;
         const d = loadData();
-        d.items.push(item);
+        if (state.currentItemId) {
+          // 기존 item에 이미지 추가 (재생성의 경우)
+          item = d.items.find(x => x.id === state.currentItemId);
+          if (item) {
+            item.images = state.generatedImages;
+          }
+        } else {
+          // 새로운 item 생성
+          item = {
+            id: 'sg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+            title: (state.sourceText || '').split('\n')[0].slice(0, 40) || '제목 없음',
+            createdAt: Date.now(),
+            sourceText: state.sourceText,
+            style: state.style,
+            finalPrompt: state.finalPrompt,
+            imageDataUrl: finalDataUrl,
+            images: state.generatedImages,
+          };
+          d.items.push(item);
+          state.currentItemId = item.id;
+        }
         try {
           saveData(d);
         } catch (e) {
           toast('로컬 저장 용량이 부족할 수 있어요. 일부 항목을 정리해 주세요.');
         }
-        state.currentItemId = item.id;
         state.regenCountLeft = 2;
+
+        // 메타데이터 표시
+        document.getElementById('result-text').textContent = state.sourceText || '—';
+        document.getElementById('result-style').textContent = state.style || '—';
+
+        // 이미지 미리보기 표시
+        const container = document.getElementById('result-images-container');
+        container.innerHTML = state.generatedImages.length > 1 ? state.generatedImages.map((img, idx) => `
+          <div style="margin-bottom: 16px; cursor: pointer; border-radius: 12px; overflow: hidden; border: 2px solid ${idx === state.generatedImages.length - 1 ? 'var(--primary)' : 'var(--border)'}; transition: border-color 0.2s;"
+               onclick="state.currentImageDataUrl='${img}'; document.getElementById('result-img').src='${img}'; document.querySelectorAll('#result-images-container > div').forEach(el => el.style.borderColor='var(--border)'); this.style.borderColor='var(--primary)';">
+            <img src="${img}" alt="생성 이미지 ${idx+1}" style="width: 100%; aspect-ratio: 9/16; object-fit: cover; display: block;" />
+            <div style="padding: 8px 12px; background: var(--card-bg); font-size: 12px; color: var(--fg-muted); text-align: center;">
+              이미지 ${idx+1}
+            </div>
+          </div>
+        `).join('') : '';
+
         document.getElementById('result-img').src = finalDataUrl;
         const regenBtn = document.getElementById('btn-regenerate');
         regenBtn.style.display = '';
