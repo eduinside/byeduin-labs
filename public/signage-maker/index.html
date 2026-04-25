@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signage Maker — byeduin</title>
+  <link rel="icon" href="/logo.jpg" type="image/jpeg">
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      padding: 56px 1rem 5rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .fd-root { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; }
+
+    .fd-view { display: none; }
+    .fd-view.active { display: block; }
+
+    .fd-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+    .fd-section-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--fg-muted); margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .fd-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    .fd-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px 18px; border-radius: 10px; border: none;
+      font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: all 0.15s; min-height: 40px; white-space: nowrap;
+    }
+    .fd-btn-primary { background: var(--primary); color: #fff; }
+    .fd-btn-primary:hover { background: var(--primary-h); }
+    .fd-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .fd-btn-ghost {
+      background: var(--card-bg); color: var(--fg-muted);
+      border: 1px solid var(--border);
+    }
+    .fd-btn-ghost:hover { border-color: var(--primary); color: var(--primary); background: rgba(0,111,238,0.06); }
+    .fd-btn-success { background: rgba(23,201,100,0.1); color: var(--success); border: 1px solid rgba(23,201,100,0.25); }
+    .fd-btn-success:hover { background: rgba(23,201,100,0.2); }
+    .fd-btn-danger { background: rgba(243,18,96,0.1); color: var(--danger); border: 1px solid rgba(243,18,96,0.2); }
+    .fd-btn-danger:hover { background: rgba(243,18,96,0.18); }
+    .fd-btn-sm { padding: 6px 12px; font-size: 12px; min-height: 32px; border-radius: 8px; }
+
+    .fd-input, .fd-select {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px; font-size: 14px;
+      color: var(--fg); outline: none; transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    .fd-input:focus, .fd-select:focus { border-color: var(--primary); }
+    .fd-textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px; font-size: 13px;
+      color: var(--fg); outline: none; resize: vertical; min-height: 120px;
+      font-family: inherit; line-height: 1.6;
+      transition: border-color 0.2s;
+    }
+    .fd-textarea:focus { border-color: var(--primary); }
+    .fd-label { display:block; font-size:12px; font-weight:600; color:var(--fg-muted); margin: 14px 0 6px; }
+
+    /* Home */
+    .app-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 24px; gap: 16px;
+    }
+    .app-header h1 { font-size: 24px; font-weight: 700; margin: 0; }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .gallery-item {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+      display: flex; flex-direction: column;
+      animation: fadeUp 0.25s ease both;
+    }
+    .gallery-item:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,111,238,0.1);
+    }
+    .gallery-thumb {
+      width: 100%; aspect-ratio: 9/16; background: var(--bg);
+      display:block; object-fit: cover;
+    }
+    .gallery-meta { padding: 12px; }
+    .gallery-meta .t { font-size: 13px; font-weight: 700; color: var(--fg);
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .gallery-meta .d { font-size: 11px; color: var(--fg-muted); margin-top: 4px; }
+
+    .empty {
+      text-align: center; padding: 40px 20px; color: var(--fg-muted);
+      border: 1px dashed var(--border); border-radius: 14px;
+      line-height: 1.6;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Result preview */
+    .result-img {
+      width: 100%; max-width: 360px; aspect-ratio: 9/16;
+      background: #fff; border: 1px solid var(--border); border-radius: 12px;
+      object-fit: contain; display: block; margin: 0 auto;
+    }
+
+    .row { display:flex; gap:8px; flex-wrap: wrap; }
+    .grow { flex: 1 1 auto; }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: var(--card-bg); border: 1px solid var(--border);
+      padding: 10px 16px; border-radius: 10px; font-size: 13px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1); z-index: 100;
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .toast.show { opacity: 1; }
+    .toast.error { border-color: var(--danger); color: var(--danger); }
+
+    .spinner {
+      width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hint { font-size: 12px; color: var(--fg-muted); margin-top: 6px; }
+
+    .view-only-banner {
+      background: rgba(0,111,238,0.08); color: var(--primary);
+      border: 1px solid rgba(0,111,238,0.25);
+      padding: 10px 14px; border-radius: 10px; font-size: 13px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <!-- 좌상단: 홈 -->
+  <div class="top-overlay-left">
+    <a href="/" class="overlay-btn" title="홈">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span>Home</span>
+    </a>
+  </div>
+
+  <!-- 우상단: 테마 -->
+  <div class="top-overlay">
+    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+  </div>
+
+  <div class="fd-root">
+    <!-- ════════ Home ════════ -->
+    <section id="view-home" class="fd-view active">
+      <div class="app-header">
+        <h1>🖼️ Signage Maker</h1>
+        <button class="fd-btn fd-btn-primary" id="btn-new">+ 새 이미지</button>
+      </div>
+      <div id="gallery-wrap"></div>
+    </section>
+
+    <!-- ════════ Compose ════════ -->
+    <section id="view-compose" class="fd-view">
+      <div class="row" style="margin-bottom:16px;">
+        <button class="fd-btn fd-btn-ghost fd-btn-sm" data-go="home">← 홈</button>
+      </div>
+      <div class="fd-card">
+        <div class="fd-section-title">새 사이니지 이미지</div>
+        <label class="fd-label">삽입할 텍스트</label>
+        <textarea id="src-text" class="fd-textarea" placeholder="예: 5월 1일 운동회"></textarea>
+
+        <label class="fd-label">스타일</label>
+        <select id="style-preset" class="fd-select">
+          <option value="귀엽고 산뜻한 느낌">귀엽고 산뜻한 느낌</option>
+          <option value="차분하고 정돈된 학교 공지 스타일">차분하고 정돈된 학교 공지 스타일</option>
+          <option value="활기찬 포스터/플래카드 풍">활기찬 포스터/플래카드 풍</option>
+          <option value="미니멀 타이포그래피 중심">미니멀 타이포그래피 중심</option>
+          <option value="손그림/일러스트풍">손그림/일러스트풍</option>
+          <option value="__custom__">직접 입력…</option>
+        </select>
+        <input id="style-custom" class="fd-input" placeholder="원하는 스타일을 자유롭게 입력" style="margin-top:8px; display:none;" />
+
+        <div class="row" style="margin-top: 18px; justify-content:flex-end;">
+          <button class="fd-btn fd-btn-primary" id="btn-make-prompt">프롬프트 만들기</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ Prompt review ════════ -->
+    <section id="view-prompt" class="fd-view">
+      <div class="row" style="margin-bottom:16px;">
+        <button class="fd-btn fd-btn-ghost fd-btn-sm" data-go="home">← 홈</button>
+        <button class="fd-btn fd-btn-ghost fd-btn-sm" id="btn-back-compose">◀ 다시 작성</button>
+      </div>
+      <div id="view-only-banner" class="view-only-banner" style="display:none;">
+        🔗 공유된 프롬프트입니다. <span id="view-only-mode"></span>
+      </div>
+      <div class="fd-card">
+        <div class="fd-section-title">다듬어진 프롬프트</div>
+        <textarea id="final-prompt" class="fd-textarea" style="min-height:180px;"></textarea>
+        <div class="hint">필요 시 자유롭게 수정하세요. 한국어 텍스트는 정확히 따옴표 안에 들어 있어야 합니다.</div>
+
+        <div class="row" style="margin-top: 14px;">
+          <button class="fd-btn fd-btn-ghost fd-btn-sm" id="btn-share-view">🔗 보기 전용 링크 복사</button>
+          <button class="fd-btn fd-btn-ghost fd-btn-sm" id="btn-share-copy">🔗 복제 허용 링크 복사</button>
+        </div>
+
+        <label class="fd-label" style="margin-top: 22px;">관리자 코드 (4자리)</label>
+        <input id="admin-code" class="fd-input" inputmode="numeric" maxlength="4" placeholder="****" autocomplete="off" />
+
+        <div class="row" style="margin-top: 18px; justify-content:flex-end;">
+          <button class="fd-btn fd-btn-primary" id="btn-generate">이미지 생성</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ Result ════════ -->
+    <section id="view-result" class="fd-view">
+      <div class="row" style="margin-bottom:16px;">
+        <button class="fd-btn fd-btn-ghost fd-btn-sm" data-go="home">← 홈</button>
+      </div>
+      <div class="fd-card">
+        <div class="fd-section-title">생성 결과</div>
+        <img id="result-img" class="result-img" alt="생성된 사이니지 이미지" />
+        <div class="row" style="margin-top: 18px; justify-content: center;">
+          <button class="fd-btn fd-btn-success" id="btn-download">⬇ 1080×1920 다운로드</button>
+          <button class="fd-btn fd-btn-ghost" id="btn-regenerate">🔁 더 만들어 보기 <span id="regen-left">(2/2)</span></button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    /* ══════════════════════════════════
+       상태 / 저장소
+    ══════════════════════════════════ */
+    const STORAGE_KEY = 'vives-signage';
+    const STYLE_PRESETS = [
+      '귀엽고 산뜻한 느낌',
+      '차분하고 정돈된 학교 공지 스타일',
+      '활기찬 포스터/플래카드 풍',
+      '미니멀 타이포그래피 중심',
+      '손그림/일러스트풍',
+    ];
+
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { items: [] };
+        const d = JSON.parse(raw);
+        if (!Array.isArray(d.items)) d.items = [];
+        return d;
+      } catch { return { items: [] }; }
+    }
+    function saveData(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+
+    let state = {
+      sourceText: '',
+      style: '',
+      finalPrompt: '',
+      currentImageDataUrl: null,
+      currentItemId: null,
+      regenCountLeft: 2,
+      viewOnly: null, // 'view' | 'copy' | null
+    };
+
+    /* ══════════════════════════════════
+       View routing
+    ══════════════════════════════════ */
+    function showView(name) {
+      document.querySelectorAll('.fd-view').forEach(v => v.classList.remove('active'));
+      const el = document.getElementById('view-' + name);
+      if (el) el.classList.add('active');
+      window.scrollTo(0, 0);
+    }
+
+    document.querySelectorAll('[data-go]').forEach(b => {
+      b.addEventListener('click', () => {
+        if (b.dataset.go === 'home') {
+          location.hash = '';
+          renderGallery();
+          showView('home');
+        } else {
+          showView(b.dataset.go);
+        }
+      });
+    });
+
+    /* ══════════════════════════════════
+       Toast
+    ══════════════════════════════════ */
+    let toastTimer;
+    function toast(msg, isError) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.toggle('error', !!isError);
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+    }
+
+    /* ══════════════════════════════════
+       Gallery
+    ══════════════════════════════════ */
+    function fmtDate(ts) {
+      const d = new Date(ts);
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+    function renderGallery() {
+      const wrap = document.getElementById('gallery-wrap');
+      const data = loadData();
+      if (!data.items.length) {
+        wrap.innerHTML = `<div class="empty">아직 생성된 이미지가 없어요.<br>우측 상단 <b>+ 새 이미지</b> 버튼으로 시작해 보세요.</div>`;
+        return;
+      }
+      const items = [...data.items].sort((a, b) => b.createdAt - a.createdAt);
+      wrap.innerHTML = `<div class="gallery-grid">${items.map(it => `
+        <div class="gallery-item" data-id="${it.id}">
+          <img class="gallery-thumb" src="${it.imageDataUrl}" alt="" loading="lazy" />
+          <div class="gallery-meta">
+            <div class="t">${escapeHtml(it.title || '제목 없음')}</div>
+            <div class="d">${fmtDate(it.createdAt)}</div>
+          </div>
+        </div>`).join('')}</div>`;
+      wrap.querySelectorAll('.gallery-item').forEach(el => {
+        el.addEventListener('click', () => openItem(el.dataset.id));
+      });
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function openItem(id) {
+      const data = loadData();
+      const it = data.items.find(x => x.id === id);
+      if (!it) return;
+      state.sourceText = it.sourceText || '';
+      state.style = it.style || '';
+      state.finalPrompt = it.finalPrompt || '';
+      state.currentImageDataUrl = it.imageDataUrl;
+      state.currentItemId = it.id;
+      state.regenCountLeft = 0;
+      document.getElementById('result-img').src = it.imageDataUrl;
+      document.getElementById('btn-regenerate').style.display = 'none';
+      showView('result');
+    }
+
+    /* ══════════════════════════════════
+       Compose
+    ══════════════════════════════════ */
+    document.getElementById('btn-new').addEventListener('click', () => {
+      document.getElementById('src-text').value = '';
+      document.getElementById('style-preset').value = STYLE_PRESETS[0];
+      document.getElementById('style-custom').style.display = 'none';
+      document.getElementById('style-custom').value = '';
+      showView('compose');
+    });
+
+    document.getElementById('style-preset').addEventListener('change', (e) => {
+      const cust = document.getElementById('style-custom');
+      cust.style.display = e.target.value === '__custom__' ? 'block' : 'none';
+    });
+
+    document.getElementById('btn-make-prompt').addEventListener('click', async () => {
+      const text = document.getElementById('src-text').value.trim();
+      const sel = document.getElementById('style-preset').value;
+      const style = sel === '__custom__'
+        ? document.getElementById('style-custom').value.trim()
+        : sel;
+      if (!text) { toast('삽입할 텍스트를 입력해 주세요.', true); return; }
+      if (sel === '__custom__' && !style) { toast('스타일을 입력해 주세요.', true); return; }
+
+      const btn = document.getElementById('btn-make-prompt');
+      btn.disabled = true;
+      const old = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner"></span> 생성 중…';
+      try {
+        const res = await fetch('/.netlify/functions/signage-prompt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, style }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '실패');
+        state.sourceText = text;
+        state.style = style;
+        state.finalPrompt = data.prompt;
+        state.viewOnly = null;
+        document.getElementById('view-only-banner').style.display = 'none';
+        document.getElementById('final-prompt').value = state.finalPrompt;
+        document.getElementById('admin-code').value = '';
+        document.getElementById('btn-generate').disabled = false;
+        showView('prompt');
+      } catch (e) {
+        toast(e.message || '프롬프트 생성 실패', true);
+      } finally {
+        btn.disabled = false; btn.innerHTML = old;
+      }
+    });
+
+    document.getElementById('btn-back-compose').addEventListener('click', () => showView('compose'));
+
+    /* ══════════════════════════════════
+       Share (vives-share base64url)
+    ══════════════════════════════════ */
+    function b64urlEncode(str) {
+      return btoa(unescape(encodeURIComponent(str)))
+        .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    }
+    function b64urlDecode(s) {
+      const raw = s.replace(/-/g,'+').replace(/_/g,'/');
+      const pad = (4 - raw.length % 4) % 4;
+      return decodeURIComponent(escape(atob(raw + '='.repeat(pad))));
+    }
+
+    async function makeShareLink(permission) {
+      state.finalPrompt = document.getElementById('final-prompt').value.trim();
+      if (!state.finalPrompt) { toast('공유할 프롬프트가 없습니다.', true); return; }
+      const payload = JSON.stringify({
+        type: 'signage-prompt',
+        sourceText: state.sourceText,
+        style: state.style,
+        finalPrompt: state.finalPrompt,
+        permission,
+      });
+      const longUrl = `${location.origin}/signage-maker/#share=${b64urlEncode(payload)}`;
+      let url = longUrl;
+      try {
+        const res = await fetch('/.netlify/functions/shorten', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: longUrl }),
+        });
+        const data = await res.json();
+        if (res.ok && data.shortURL) url = data.shortURL;
+      } catch {}
+      try {
+        await navigator.clipboard.writeText(url);
+        toast('공유 링크가 클립보드에 복사되었습니다.');
+      } catch {
+        prompt('아래 링크를 복사하세요:', url);
+      }
+    }
+    document.getElementById('btn-share-view').addEventListener('click', () => makeShareLink('view'));
+    document.getElementById('btn-share-copy').addEventListener('click', () => makeShareLink('copy'));
+
+    /* ══════════════════════════════════
+       Image generation + 1080x1920 변환
+    ══════════════════════════════════ */
+    async function generateImage() {
+      const prompt = document.getElementById('final-prompt').value.trim();
+      const code = document.getElementById('admin-code').value.trim();
+      if (!prompt) { toast('프롬프트가 비어 있습니다.', true); return; }
+      if (!/^\d{4}$/.test(code)) { toast('관리자 코드는 4자리 숫자입니다.', true); return; }
+
+      const btn = document.getElementById('btn-generate');
+      btn.disabled = true;
+      const old = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner"></span> 생성 중… (10~30초)';
+      try {
+        const res = await fetch('/.netlify/functions/signage-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, code }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '실패');
+        const srcDataUrl = `data:image/png;base64,${data.b64}`;
+        const finalDataUrl = await fitTo1080x1920(srcDataUrl);
+
+        state.finalPrompt = prompt;
+        state.currentImageDataUrl = finalDataUrl;
+
+        const item = {
+          id: 'sg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+          title: (state.sourceText || '').split('\n')[0].slice(0, 40) || '제목 없음',
+          createdAt: Date.now(),
+          sourceText: state.sourceText,
+          style: state.style,
+          finalPrompt: state.finalPrompt,
+          imageDataUrl: finalDataUrl,
+        };
+        const d = loadData();
+        d.items.push(item);
+        try {
+          saveData(d);
+        } catch (e) {
+          toast('로컬 저장 용량이 부족할 수 있어요. 일부 항목을 정리해 주세요.', true);
+        }
+        state.currentItemId = item.id;
+        state.regenCountLeft = 2;
+        document.getElementById('result-img').src = finalDataUrl;
+        const regenBtn = document.getElementById('btn-regenerate');
+        regenBtn.style.display = '';
+        regenBtn.disabled = false;
+        document.getElementById('regen-left').textContent = `(${state.regenCountLeft}/2)`;
+        showView('result');
+      } catch (e) {
+        toast(e.message || '이미지 생성 실패', true);
+      } finally {
+        btn.disabled = false; btn.innerHTML = old;
+      }
+    }
+    document.getElementById('btn-generate').addEventListener('click', generateImage);
+
+    function fitTo1080x1920(srcDataUrl) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const W = 1080, H = 1920;
+          const canvas = document.createElement('canvas');
+          canvas.width = W; canvas.height = H;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, W, H);
+          const r = Math.min(W / img.width, H / img.height);
+          const dw = img.width * r, dh = img.height * r;
+          const dx = (W - dw) / 2, dy = (H - dh) / 2;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, dx, dy, dw, dh);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = () => reject(new Error('이미지 로드 실패'));
+        img.src = srcDataUrl;
+      });
+    }
+
+    /* ══════════════════════════════════
+       Download / Regenerate
+    ══════════════════════════════════ */
+    document.getElementById('btn-download').addEventListener('click', () => {
+      if (!state.currentImageDataUrl) return;
+      const a = document.createElement('a');
+      a.href = state.currentImageDataUrl;
+      const stamp = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+      a.download = `signage-${stamp}.png`;
+      a.click();
+    });
+
+    document.getElementById('btn-regenerate').addEventListener('click', async () => {
+      if (state.regenCountLeft <= 0) { toast('재생성 가능 횟수를 모두 사용했어요.', true); return; }
+      const code = document.getElementById('admin-code').value.trim();
+      if (!/^\d{4}$/.test(code)) {
+        const c = window.prompt('관리자 코드 (4자리)');
+        if (!c) return;
+        document.getElementById('admin-code').value = c;
+      }
+      state.regenCountLeft--;
+      document.getElementById('regen-left').textContent = `(${state.regenCountLeft}/2)`;
+      await generateImage();
+    });
+
+    /* ══════════════════════════════════
+       Hash share intake
+    ══════════════════════════════════ */
+    function handleHashShare() {
+      const h = location.hash;
+      if (!h.startsWith('#share=')) return false;
+      try {
+        const decoded = b64urlDecode(h.slice(7));
+        const shared = JSON.parse(decoded);
+        if (shared.type !== 'signage-prompt') return false;
+        state.sourceText = shared.sourceText || '';
+        state.style = shared.style || '';
+        state.finalPrompt = shared.finalPrompt || '';
+        state.viewOnly = shared.permission === 'copy' ? 'copy' : 'view';
+        document.getElementById('final-prompt').value = state.finalPrompt;
+        const banner = document.getElementById('view-only-banner');
+        const mode = document.getElementById('view-only-mode');
+        banner.style.display = '';
+        if (state.viewOnly === 'copy') {
+          mode.textContent = '복제가 허용되어 있어 그대로 사용·수정할 수 있습니다.';
+          document.getElementById('final-prompt').readOnly = false;
+        } else {
+          mode.textContent = '보기 전용입니다. 그대로 이미지 생성은 가능하지만 다른 곳에 다시 공유하지는 마세요.';
+          document.getElementById('final-prompt').readOnly = false;
+        }
+        document.getElementById('admin-code').value = '';
+        showView('prompt');
+        return true;
+      } catch { return false; }
+    }
+
+    /* ══════════════════════════════════
+       Init
+    ══════════════════════════════════ */
+    renderGallery();
+    if (!handleHashShare()) showView('home');
+    window.addEventListener('hashchange', () => {
+      if (location.hash === '' || location.hash === '#') {
+        showView('home'); renderGallery();
+      } else handleHashShare();
+    });
+  </script>
+</body>
+</html>

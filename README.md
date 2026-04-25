@@ -28,6 +28,7 @@
 |---|---|---|
 | **Grid Maker** | `/grid-maker/` | 이미지 그리드 분할 |
 | **YT Thumbnail** | `/yt-thumb/` | 유튜브 썸네일 추출 및 아카이빙 |
+| **Signage Maker** | `/signage-maker/` | 사이니지용 세로 이미지 AI 생성기 |
 
 ### 노션 도구 (2)
 | 앱 | 경로 | 설명 |
