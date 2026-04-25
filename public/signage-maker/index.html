@@ -851,25 +851,11 @@
     document.getElementById('btn-regenerate').addEventListener('click', async () => {
       if (state.regenCountLeft <= 0) { toast('재생성 가능 횟수를 모두 사용했어요.'); return; }
 
-      // 갤러리에서 열었을 때는 모달로 코드 입력
-      if (state.isExistingItem) {
-        const c = window.prompt('관리자 코드 (4자리)를 입력해 주세요.');
-        if (!c || !/^\d{4}$/.test(c)) {
-          toast('올바른 관리자 코드를 입력해 주세요.');
-          return;
-        }
-        document.getElementById('admin-code').value = c;
-      } else {
-        // 새로 생성한 아이템이면 기존 코드 사용
-        const code = document.getElementById('admin-code').value.trim();
-        if (!/^\d{4}$/.test(code)) {
-          toast('관리자 코드가 입력되지 않았습니다.');
-          return;
-        }
-      }
-
-      state.regenCountLeft--;
-      await generateImage();
+      // 프롬프트 화면으로 이동하면서 기존 프롬프트 표시
+      document.getElementById('final-prompt').value = state.finalPrompt || '';
+      document.getElementById('admin-code').value = '';
+      document.getElementById('final-prompt').readOnly = false;
+      showView('prompt');
     });
 
     document.getElementById('btn-delete-item').addEventListener('click', async () => {
