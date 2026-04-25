@@ -282,7 +282,7 @@
         <div class="fd-section-title">생성된 이미지</div>
         <div id="result-images-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;"></div>
         <div class="row" style="margin-top: 18px; justify-content: center;">
-          <button class="fd-btn fd-btn-ghost" id="btn-regenerate">🔁 더 만들어 보기 <span id="regen-left">(2/2)</span></button>
+          <button class="fd-btn fd-btn-ghost" id="btn-regenerate">🔁 더 만들어 보기</button>
         </div>
       </div>
       <div class="fd-card" style="margin-top: 16px;">
@@ -386,6 +386,7 @@
       generatedImages: [], // 현재 세션의 생성 이미지들
       regenCountLeft: 2,
       viewOnly: null, // 'view' | 'copy' | null
+      isExistingItem: false, // 갤러리에서 열었는지 새로 생성했는지
     };
 
     /* ══════════════════════════════════
@@ -469,7 +470,8 @@
       state.finalPrompt = it.finalPrompt || '';
       state.currentImageDataUrl = it.imageDataUrl;
       state.currentItemId = it.id;
-      state.regenCountLeft = 0;
+      state.isExistingItem = true; // 갤러리에서 열었음을 표시
+      state.generatedImages = it.images || [it.imageDataUrl];
 
       // 메타데이터 표시
       document.getElementById('result-text').textContent = state.sourceText || '—';
@@ -477,7 +479,7 @@
 
       // 이미지 갤러리 표시
       const container = document.getElementById('result-images-container');
-      const allImages = it.images || [it.imageDataUrl];
+      const allImages = state.generatedImages;
       container.innerHTML = allImages.map((img, idx) => {
         const text = (it.sourceText || '이미지').slice(0, 30);
         const stamp = new Date(it.createdAt).toISOString().replace(/[:.]/g,'-').slice(0,19);
@@ -497,12 +499,13 @@
         `;
       }).join('');
 
-      // 이미지가 3개면 "더 만들어 보기" 버튼 숨김
+      // 이미지가 1개 또는 2개면 "더 만들어 보기" 버튼 표시
       const regenBtn = document.getElementById('btn-regenerate');
       if (allImages.length >= 3) {
         regenBtn.style.display = 'none';
       } else {
-        regenBtn.style.display = 'none'; // 보관 항목은 재생성 불가
+        regenBtn.style.display = '';
+        regenBtn.disabled = false;
       }
       showView('result');
     }
@@ -684,6 +687,7 @@
         }
 
         state.regenCountLeft = 2;
+        state.isExistingItem = false; // 새로 생성한 아이템
 
         // 메타데이터 표시
         document.getElementById('result-text').textContent = state.sourceText || '—';
@@ -717,7 +721,6 @@
         } else {
           regenBtn.style.display = '';
           regenBtn.disabled = false;
-          document.getElementById('regen-left').textContent = `(${state.regenCountLeft}/2)`;
         }
         showView('result');
       } catch (e) {
@@ -772,14 +775,25 @@
     ══════════════════════════════════ */
     document.getElementById('btn-regenerate').addEventListener('click', async () => {
       if (state.regenCountLeft <= 0) { toast('재생성 가능 횟수를 모두 사용했어요.'); return; }
-      const code = document.getElementById('admin-code').value.trim();
-      if (!/^\d{4}$/.test(code)) {
-        const c = window.prompt('관리자 코드 (4자리)');
-        if (!c) return;
+
+      // 갤러리에서 열었을 때는 모달로 코드 입력
+      if (state.isExistingItem) {
+        const c = window.prompt('관리자 코드 (4자리)를 입력해 주세요.');
+        if (!c || !/^\d{4}$/.test(c)) {
+          toast('올바른 관리자 코드를 입력해 주세요.');
+          return;
+        }
         document.getElementById('admin-code').value = c;
+      } else {
+        // 새로 생성한 아이템이면 기존 코드 사용
+        const code = document.getElementById('admin-code').value.trim();
+        if (!/^\d{4}$/.test(code)) {
+          toast('관리자 코드가 입력되지 않았습니다.');
+          return;
+        }
       }
+
       state.regenCountLeft--;
-      document.getElementById('regen-left').textContent = `(${state.regenCountLeft}/2)`;
       await generateImage();
     });
 
