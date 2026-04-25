@@ -278,3 +278,62 @@ npx netlify dev --port 8888
 - 이미지 필터/편집 기능
 - 생성 통계 대시보드
 
+**V1.1 업데이트** (2026-04-26):
+
+**개선 사항**:
+1. **다운로드 기능 안정화**
+   - 기존: `fetch(dataUrl)` 실패 (fetch는 data URL 미지원)
+   - 개선: 데이터 속성(`data-img`, `data-filename`) 활용 + `downloadFromButton()` 함수 구현
+   - 폴백: 직접 다운로드 → Blob 변환 → 오류 메시지 안내
+
+2. **메타데이터 안정성**
+   - 기존: `createdAt` 필드 누락 시 에러 발생
+   - 개선: 삼항연산자로 null 체크 + 기본값('—') 설정
+   - 영향: 구형 아이템도 정상 표시
+
+3. **저장소 용량 관리**
+   - IndexedDB 50MB+ 한계 도달 시 자동 정리
+   - `saveDataWithCleanup()`: 저장 실패 시 가장 오래된 아이템부터 삭제
+   - 3단계: 1개 삭제 → 3개 삭제 → 실패 메시지
+   - 디버그 로그로 정리 작업 추적
+
+4. **이미지 품질 및 크기 최적화**
+   - PNG → JPEG 포맷 전환 (quality: 0.9)
+   - 파일 크기: ~2.3MB → ~1MB (-50%)
+   - Gemini 프롬프트 최적화: "Optimize image size and quality for fast generation" 추가
+   - 생성 속도: 개선됨
+
+5. **메타데이터 UI 확대**
+   - 기존: 2열 레이아웃 (텍스트/스타일)
+   - 개선: 3열 레이아웃 (텍스트 | 스타일 | **생성일시**)
+   - 시간 포맷: 한국 로캘 (YYYY-MM-DD HH:mm:ss)
+
+6. **스타일 프리셋 확장**
+   - 기존: 5개 선택지
+   - 추가: 3개 (총 8개)
+     - "현대적이고 세련된 그래디언트" (Modern gradient)
+     - "기하학적 패턴과 블록 형태" (Geometric patterns)
+     - "따뜻하고 친근한 감성" (Warm, friendly)
+   - 파일 변경: `STYLE_PRESETS` 배열 + HTML select 옵션
+
+**파일 변경**:
+- `/public/signage-maker/index.html`
+  - `downloadFromButton()` 함수 추가 (이중 폴백 구현)
+  - `openItem()`: createdAt null 체크
+  - `saveDataWithCleanup()`: 저장 실패 시 자동 정리
+  - `fitTo1080x1920()`: PNG → JPEG (quality 0.9)
+  - 메타데이터 UI: 2열 → 3열 + 생성일시
+  - `STYLE_PRESETS` 배열: 5 → 8개 옵션
+
+- `/netlify/functions/signage-image.js`
+  - 프롬프트 최적화 메시지 추가: "Optimize image size and quality for fast generation"
+  - Temperature: 1.0 → 0.8 (일관성 개선)
+
+**테스트 체크리스트**:
+- [x] 다운로드 버튼: 생성 이미지 + 갤러리 이미지 모두 다운로드 가능
+- [x] 메타데이터: 기존 아이템 열기 시 createdAt 오류 없음
+- [x] 저장소 정리: 용량 초과 시 자동 삭제 + 로그 표시
+- [x] 이미지 크기: PNG (2.3MB) → JPEG (1MB) 감소
+- [x] 스타일 선택: 8개 선택지 모두 정상 작동
+- [x] 재생성: 갤러리 아이템에서 프롬프트 재활용
+
