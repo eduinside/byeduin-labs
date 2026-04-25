@@ -5,7 +5,7 @@
  * - 1024x1536(2:3 portrait), quality=medium, opaque, n=1
  *   클라이언트가 1080x1920 캔버스로 패딩 후 다운로드
  */
-const MODEL = 'gpt-image-2';
+const MODEL = 'gpt-image-1.5';
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
