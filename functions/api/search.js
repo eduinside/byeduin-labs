@@ -1,16 +1,15 @@
 /**
- * Netlify Function: 교육문서 RAG 검색 & 문서 요약/질문
+ * Cloudflare Pages Function: 교육문서 RAG 검색 & 문서 요약/질문
  * - GitHub 공개 리포에서 MD 파일을 fetch하여 Gemini 2.0 Flash Lite로 검색
  * - GEMINI_API_KEY, EDU_DOCS_REPO 환경 변수 필요
  * - GITHUB_TOKEN 환경 변수 선택 (없으면 비인증 60req/h)
  */
 
 // 문서 요약/질문 전용 함수
-async function handleDocumentRequest(type, docPath, question, geminiApiKey) {
+async function handleDocumentRequest(type, docPath, question, geminiApiKey, REPO) {
   try {
     console.log(`📄 [${type}] Fetching document: ${docPath}`);
 
-    const REPO = process.env.EDU_DOCS_REPO || 'eduinside/byeduin-edu-docs';
     const rawUrl = `https://raw.githubusercontent.com/${REPO}/main/${docPath}`;
 
     const docRes = await fetch(rawUrl);
@@ -70,20 +69,21 @@ async function handleDocumentRequest(type, docPath, question, geminiApiKey) {
   }
 }
 
-exports.handler = async (event) => {
-  console.log('🔍 [search] Request received:', { query: event.body?.substring?.(0, 100) });
-
-  if (event.httpMethod !== 'POST') {
-    console.error('❌ [search] Invalid method:', event.httpMethod);
-    return { statusCode: 405, body: 'Method Not Allowed' };
-  }
-
+export async function onRequest(ctx) {
   let body;
   try {
-    body = JSON.parse(event.body);
+    const rawBody = await ctx.request.text();
+    console.log('🔍 [search] Request received:', { query: rawBody?.substring?.(0, 100) });
+
+    body = JSON.parse(rawBody);
   } catch (err) {
     console.error('❌ [search] JSON parse failed:', err.message);
-    return { statusCode: 400, body: 'Invalid JSON' };
+    return new Response('Invalid JSON', { status: 400 });
+  }
+
+  if (ctx.request.method !== 'POST') {
+    console.error('❌ [search] Invalid method:', ctx.request.method);
+    return new Response('Method Not Allowed', { status: 405 });
   }
 
   const { query, categories, type = 'search', documentPath } = body;
@@ -91,25 +91,31 @@ exports.handler = async (event) => {
 
   if (!query || typeof query !== 'string' || query.trim().length === 0) {
     console.error('❌ [search] Invalid query');
-    return { statusCode: 400, body: JSON.stringify({ error: 'Missing query' }) };
+    return new Response(
+      JSON.stringify({ error: 'Missing query' }),
+      { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+    );
   }
 
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  const REPO = process.env.EDU_DOCS_REPO || 'eduinside/byeduin-edu-docs';
-  const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+  const GEMINI_API_KEY = ctx.env.GEMINI_API_KEY;
+  const REPO = ctx.env.EDU_DOCS_REPO || 'eduinside/byeduin-edu-docs';
+  const GITHUB_TOKEN = ctx.env.GITHUB_TOKEN;
 
   console.log('🔧 [search] Config:', { REPO, hasGeminiKey: !!GEMINI_API_KEY, hasGithubToken: !!GITHUB_TOKEN });
 
   if (!GEMINI_API_KEY) {
     console.error('❌ [search] GEMINI_API_KEY not set');
-    return { statusCode: 500, body: JSON.stringify({ error: 'Server configuration error: missing GEMINI_API_KEY' }) };
+    return new Response(
+      JSON.stringify({ error: 'Server configuration error: missing GEMINI_API_KEY' }),
+      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+    );
   }
 
   // 문서 요약/질문 요청 처리
   if ((type === 'summarize' || type === 'question') && documentPath) {
     console.log(`📄 [handler] Delegating to handleDocumentRequest: ${type}`);
-    const result = await handleDocumentRequest(type, documentPath, query, GEMINI_API_KEY);
-    return result;
+    const result = await handleDocumentRequest(type, documentPath, query, GEMINI_API_KEY, REPO);
+    return new Response(result.body, { status: result.statusCode, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
   }
 
   // 일반 검색 처리
@@ -129,7 +135,7 @@ exports.handler = async (event) => {
     if (!treeRes.ok) {
       const treeErr = await treeRes.text();
       console.error('❌ [search] GitHub API failed:', { status: treeRes.status, error: treeErr?.substring?.(0, 200) });
-      return { statusCode: 502, body: `Failed to fetch document tree (HTTP ${treeRes.status})` };
+      return new Response(`Failed to fetch document tree (HTTP ${treeRes.status})`, { status: 502 });
     }
 
     const treeData = await treeRes.json();
@@ -149,11 +155,10 @@ exports.handler = async (event) => {
 
     if (files.length === 0) {
       console.warn('⚠️ [search] No files found after filtering');
-      return {
-        statusCode: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answer: '해당 카테고리에 문서가 없습니다.', sources: [] }),
-      };
+      return new Response(
+        JSON.stringify({ answer: '해당 카테고리에 문서가 없습니다.', sources: [] }),
+        { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      );
     }
 
     // 최대 10개 파일로 제한 (타임아웃 방지)
@@ -180,11 +185,10 @@ exports.handler = async (event) => {
 
     if (contents.length === 0) {
       console.error('❌ [search] No content could be fetched');
-      return {
-        statusCode: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answer: '문서를 불러오지 못했습니다.', sources: [] }),
-      };
+      return new Response(
+        JSON.stringify({ answer: '문서를 불러오지 못했습니다.', sources: [] }),
+        { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      );
     }
 
     // 3. Gemini 프롬프트 구성 (토큰 절약: 파일당 최대 4000자)
@@ -231,7 +235,7 @@ ${context}
     if (!geminiRes.ok) {
       const geminiErr = await geminiRes.text();
       console.error('❌ [search] Gemini API failed:', { status: geminiRes.status, error: geminiErr?.substring?.(0, 300) });
-      return { statusCode: 502, body: `Gemini API request failed (HTTP ${geminiRes.status}): ${geminiErr?.substring?.(0, 100)}` };
+      return new Response(`Gemini API request failed (HTTP ${geminiRes.status}): ${geminiErr?.substring?.(0, 100)}`, { status: 502 });
     }
 
     const geminiData = await geminiRes.json();
@@ -257,13 +261,12 @@ ${context}
     const allProvided = usedSourceSet.size === 0 || sources.length === contents.length;
 
     console.log('🎉 [search] Search completed successfully', { usedSources: Array.from(usedSourceSet), allProvided });
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ answer, sources, allProvided }),
-    };
+    return new Response(
+      JSON.stringify({ answer, sources, allProvided }),
+      { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+    );
   } catch (err) {
     console.error('❌ [search] Unhandled error:', err.message, err.stack);
-    return { statusCode: 502, body: `Server error: ${err.message}` };
+    return new Response(`Server error: ${err.message}`, { status: 502 });
   }
-};
+}

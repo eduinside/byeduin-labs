@@ -54,7 +54,7 @@ function parseLinks(text) {
 /* ── Short.io API를 통한 URL 역추적 ── */
 async function resolveShortURL(shortURL) {
   try {
-    const res = await fetch('/.netlify/functions/resolve-short-url', {
+    const res = await fetch('/api/resolve-short-url', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ shortURL }),
@@ -343,7 +343,7 @@ async function shareList() {
 
   // 단축 URL 생성
   try {
-    const res = await fetch('/.netlify/functions/shorten', {
+    const res = await fetch('/api/shorten', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: longUrl }),

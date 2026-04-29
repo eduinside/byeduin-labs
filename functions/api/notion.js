@@ -1,26 +1,25 @@
 /**
- * Netlify Function: 노션 API 프록시
+ * Cloudflare Pages Function: 노션 API 프록시
  * - 토큰은 헤더로만 전달, 서버에 저장/로깅 없음
- * - console.log 일절 없음 (Netlify 함수 로그에도 안 남음)
  */
-exports.handler = async (event) => {
+export async function onRequest(ctx) {
   // POST 요청만 허용
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+  if (ctx.request.method !== 'POST') {
+    return new Response('Method Not Allowed', { status: 405 });
   }
 
   let body;
   try {
-    body = JSON.parse(event.body);
+    body = await ctx.request.json();
   } catch {
-    return { statusCode: 400, body: 'Invalid JSON' };
+    return new Response('Invalid JSON', { status: 400 });
   }
 
   const { token, path, payload } = body;
 
   // 필수값 체크
   if (!token || !path) {
-    return { statusCode: 400, body: 'Missing token or path' };
+    return new Response('Missing token or path', { status: 400 });
   }
 
   // 허용된 노션 API 경로만 통과 (보안: 임의 경로 차단)
@@ -30,7 +29,7 @@ exports.handler = async (event) => {
   ];
   const allowed = ALLOWED.some(re => re.test(path));
   if (!allowed) {
-    return { statusCode: 403, body: 'Forbidden path' };
+    return new Response('Forbidden path', { status: 403 });
   }
 
   try {
@@ -48,14 +47,12 @@ exports.handler = async (event) => {
 
     const data = await resp.json();
 
-    return {
-      statusCode: resp.status,
-      headers: { 'Content-Type': 'application/json' },
-      // token을 응답에 절대 포함하지 않음
-      body: JSON.stringify(data),
-    };
+    return new Response(
+      JSON.stringify(data),
+      { status: resp.status, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+    );
   } catch (err) {
     // 에러 메시지에 토큰 등 민감정보 포함하지 않음
-    return { statusCode: 502, body: 'Upstream request failed' };
+    return new Response('Upstream request failed', { status: 502 });
   }
-};
+}

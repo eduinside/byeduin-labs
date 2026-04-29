@@ -398,7 +398,7 @@ function shareEpisode(epId) {
   const payload = JSON.stringify({ep:epId});
   const encoded = btoa(encodeURIComponent(payload)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
   const url = `${location.origin}/numberblocks/#share=${encoded}`;
-  fetch('/.netlify/functions/shorten', {
+  fetch('/api/shorten', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({url})
@@ -452,7 +452,7 @@ async function runGeminiSearch(q) {
   const aiBtn = document.getElementById('sidebarAiBtn');
   if(aiBtn) aiBtn.classList.add('loading');
   try {
-    const res = await fetch('/.netlify/functions/gemini-search', {
+    const res = await fetch('/api/gemini-search', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({q, episodes:allEpisodes.map(e => ({id:e.id, title:e.title, idea:e.idea||'', topic:e.topic||''}))})

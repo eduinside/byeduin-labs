@@ -1,36 +1,36 @@
 /**
- * Netlify Function: 사이니지용 프롬프트 다듬기 (Gemini)
+ * Cloudflare Pages Function: 사이니지용 프롬프트 다듬기 (Gemini)
  * - Google Gemini를 사용해 입력 텍스트와 스타일을 받아 이미지 생성용 프롬프트 생성
- * - GOOGLE_API_KEY는 서버에서만 사용, 클라이언트 미노출
+ * - GEMINI_API_KEY는 서버에서만 사용, 클라이언트 미노출
  */
 const MODEL = 'gemini-flash-lite-latest';
 
-exports.handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+export async function onRequest(ctx) {
+  if (ctx.request.method !== 'POST') {
+    return new Response('Method Not Allowed', { status: 405 });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = ctx.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.error('Missing GOOGLE_API_KEY');
-    return {
-      statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: '서버 환경변수가 설정되지 않았습니다.' })
-    };
+    console.error('Missing GEMINI_API_KEY');
+    return new Response(
+      JSON.stringify({ error: '서버 환경변수가 설정되지 않았습니다.' }),
+      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+    );
   }
 
   let text, style;
   try {
-    ({ text, style } = JSON.parse(event.body || '{}'));
+    const body = await ctx.request.json();
+    text = body.text;
+    style = body.style;
     if (!text || typeof text !== 'string') throw new Error();
     if (text.length > 500) throw new Error();
   } catch {
-    return {
-      statusCode: 400,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: '입력값(text)이 올바르지 않습니다.' })
-    };
+    return new Response(
+      JSON.stringify({ error: '입력값(text)이 올바르지 않습니다.' }),
+      { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+    );
   }
 
   const styleDirective = (style && typeof style === 'string' && style.trim())
@@ -74,33 +74,29 @@ exports.handler = async (event) => {
     const data = await res.json();
     if (!res.ok) {
       console.error('signage-prompt Gemini error:', res.status, data?.error?.message);
-      return {
-        statusCode: res.status,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: '프롬프트 생성에 실패했습니다.' })
-      };
+      return new Response(
+        JSON.stringify({ error: '프롬프트 생성에 실패했습니다.' }),
+        { status: res.status, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      );
     }
 
     const prompt = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!prompt) {
-      return {
-        statusCode: 502,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: '응답이 비어 있습니다.' })
-      };
+      return new Response(
+        JSON.stringify({ error: '응답이 비어 있습니다.' }),
+        { status: 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      );
     }
 
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
-    };
+    return new Response(
+      JSON.stringify({ prompt }),
+      { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+    );
   } catch (e) {
     console.error('signage-prompt fetch fail:', e?.message);
-    return {
-      statusCode: 502,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: '외부 API 연결에 실패했습니다.' })
-    };
+    return new Response(
+      JSON.stringify({ error: '외부 API 연결에 실패했습니다.' }),
+      { status: 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+    );
   }
-};
+}

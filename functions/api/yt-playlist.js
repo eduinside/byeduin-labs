@@ -1,29 +1,29 @@
 /**
- * Netlify Function: YouTube 플레이리스트 API 프록시
+ * Cloudflare Pages Function: YouTube 플레이리스트 API 프록시
  * - YOUTUBE_API_KEY 환경변수에서 API 키 읽기
  * - 클라이언트에 API 키 노출 없음
  */
-exports.handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+export async function onRequest(ctx) {
+  if (ctx.request.method !== 'POST') {
+    return new Response('Method Not Allowed', { status: 405 });
   }
 
-  const apiKey = process.env.YOUTUBE_API_KEY;
+  const apiKey = ctx.env.YOUTUBE_API_KEY;
   if (!apiKey) {
-    return { statusCode: 500, body: 'API key not configured' };
+    return new Response('API key not configured', { status: 500 });
   }
 
   let body;
   try {
-    body = JSON.parse(event.body);
+    body = await ctx.request.json();
   } catch {
-    return { statusCode: 400, body: 'Invalid JSON' };
+    return new Response('Invalid JSON', { status: 400 });
   }
 
   const { playlistId, pageToken } = body;
 
   if (!playlistId || !/^[A-Za-z0-9_-]{10,60}$/.test(playlistId)) {
-    return { statusCode: 400, body: 'Invalid playlistId' };
+    return new Response('Invalid playlistId', { status: 400 });
   }
 
   const BASE = 'https://www.googleapis.com/youtube/v3';
@@ -55,11 +55,10 @@ exports.handler = async (event) => {
       const displayMsg = errMsg.includes('referer')
         ? 'API 키 설정을 확인하세요. YouTube API 콘솔에서 API 키의 "HTTP referrers" 제한을 제거하거나 https://byeduin-labs.netlify.app 을 추가해주세요.'
         : errMsg;
-      return {
-        statusCode: itemsRes.status,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: displayMsg }),
-      };
+      return new Response(
+        JSON.stringify({ error: displayMsg }),
+        { status: itemsRes.status, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      );
     }
 
     const items = (itemsData.items ?? [])
@@ -74,16 +73,15 @@ exports.handler = async (event) => {
           `https://img.youtube.com/vi/${it.snippet.resourceId.videoId}/hqdefault.jpg`,
       }));
 
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    return new Response(
+      JSON.stringify({
         playlistTitle,
         items,
         nextPageToken: itemsData.nextPageToken ?? null,
       }),
-    };
+      { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+    );
   } catch {
-    return { statusCode: 502, body: 'Upstream request failed' };
+    return new Response('Upstream request failed', { status: 502 });
   }
-};
+}
