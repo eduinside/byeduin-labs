@@ -4,18 +4,7 @@
 export async function onRequest(ctx) {
   const { request, env } = ctx;
 
-  // Only allow POST
-  if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-    });
-  }
-
-  // Handle preflight requests
+  // Handle preflight requests first
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
@@ -23,6 +12,17 @@ export async function onRequest(ctx) {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
+  }
+
+  // Only allow POST
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
       },
     });
   }
