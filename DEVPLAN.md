@@ -337,3 +337,125 @@ npx netlify dev --port 8888
 - [x] 스타일 선택: 8개 선택지 모두 정상 작동
 - [x] 재생성: 갤러리 아이템에서 프롬프트 재활용
 
+---
+
+### Phase 7: Cloudflare Pages 이전 (2026-04-29)
+**상태**: 완료 ✅
+
+**배경**:
+- Netlify → Cloudflare Pages로 완전 이전
+- 12개 Netlify Functions → Cloudflare Pages Functions 변환
+- hwp-to-md 기능은 외부 서비스 필요로 일시 중단
+- GitHub 레이트 제한 문제 해결 (서버사이드 API 호출)
+
+**구현 사항**:
+
+1. **프로젝트 구조 변경**
+   ```
+   netlify/functions/  →  functions/api/
+   netlify.toml        →  wrangler.toml (Cloudflare Pages 설정)
+   ```
+
+2. **Netlify Functions → Cloudflare Pages Functions 변환 (12개)**
+   
+   변환 패턴:
+   ```javascript
+   // Netlify
+   exports.handler = async (event) => {
+     const { httpMethod, body } = event;
+     return { statusCode: 200, body: JSON.stringify(...) };
+   }
+   
+   // Cloudflare
+   export async function onRequest(ctx) {
+     const { request } = ctx;
+     const body = await request.json();
+     return new Response(JSON.stringify(...), { status: 200 });
+   }
+   ```
+   
+   변환된 함수:
+   - `signage-image.js` — Gemini 이미지 생성 (26초 타임아웃)
+   - `signage-prompt.js` — 프롬프트 최적화
+   - `search.js` — 교육 문서 RAG 검색
+   - `url-to-md.js` — URL 마크다운 변환
+   - `html-to-md.js` — HTML 마크다운 변환
+   - `get-page-title.js` — 페이지 제목 추출
+   - `yt-thumb-img.js` — YouTube 썸네일
+   - `yt-playlist.js` — YouTube 플레이리스트
+   - `notion.js` — Notion API 프록시
+   - `shorten.js` — short.io 단축 URL
+   - `resolve-short-url.js` — 단축 URL 해석
+   - `tree.js` — GitHub 저장소 트리 조회
+
+3. **환경변수 설정** (Cloudflare 대시보드)
+   - GEMINI_API_KEY
+   - ALADIN_TTB_KEY
+   - EDU_DOCS_REPO
+   - SHORT_IO_API_KEY
+   - SHORT_IO_DOMAIN
+   - GITHUB_TOKEN
+   - SIGNAGE_LOGINCODE
+
+4. **클라이언트 API 경로 업데이트**
+   ```javascript
+   // Before: /.netlify/functions/*
+   // After:  /api/*
+   ```
+   
+   변경된 파일:
+   - `public/md-editor/index.html` — html-to-md, url-to-md, shorten 경로 수정
+   - `public/search/index.html` — /api/tree, /api/recent-docs 사용
+   - 기타 앱들 — /api/* 엔드포인트 호출
+
+5. **Search 앱 최적화** (GitHub API 레이트 제한 해결)
+   
+   문제점:
+   - 클라이언트에서 GitHub API 직접 호출 → 403 Forbidden
+   - 인증 없는 요청은 시간당 60회 제한
+   
+   해결책:
+   - `/api/tree` — 전체 저장소 구조 (서버사이드 + 캐싱)
+   - `/api/recent-docs` — 최근 수정 문서 (서버사이드 GITHUB_TOKEN 사용)
+   - 클라이언트는 서버사이드 엔드포인트만 호출
+   
+   CORS 처리:
+   - 모든 함수에 `Access-Control-Allow-Origin: *` 헤더 추가
+   - OPTIONS 프리플라이트 요청 지원
+
+6. **hwp-to-md 프록시** (임시 해결)
+   - `/api/hwp-to-md` 프록시 생성 → Netlify 함수로 포워딩
+   - CORS 문제 해결
+   - **현재 상태**: Netlify 함수가 404 → 기능 일시 중단
+
+7. **Git 브랜치 정리**
+   - `cloudflare` 브랜치를 main으로 merge
+   - 임시 브랜치 정리 (7개 삭제)
+   - 최종: main 브랜치만 유지 (Cloudflare Pages 배포)
+
+**배포 설정**:
+- Cloudflare Pages 대시보드에서 main 브랜치로 자동 배포 설정
+- 명령: `wrangler pages deploy --project-name=byeduin-vives`
+- URL: https://byeduin-vives.pages.dev
+
+**기능 상태**:
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| 정적 앱 (13개) | ✅ 작동 | 모두 Cloudflare Pages에서 배포 |
+| Cloudflare Functions (12개) | ✅ 작동 | 모든 API 엔드포인트 정상 |
+| Search 앱 | ✅ 작동 | 서버사이드 API 사용으로 안정화 |
+| MD Editor (기본) | ✅ 작동 | HTML 변환, 파일 공유 |
+| HWP 변환 | ⏸️ 중단 | Netlify 함수 404 (외부 서비스 필요) |
+| URL 열기 | ⏸️ 중단 | 불안정으로 UI에서 숨김 |
+
+**이점**:
+- 글로벌 CDN 성능 향상 (Cloudflare)
+- 더 많은 함수 호출량 (10만회/일)
+- 서버사이드 인증으로 API 레이트 제한 해결
+- 단일 브랜치 관리 (유지보수 간소화)
+
+**향후 계획**:
+1. hwp-to-md를 Railway/Render 같은 외부 서비스로 배포
+2. URL 열기 기능 재개 (안정화 후)
+3. Netlify 완전 탈출 (현재 하이브리드 상태)
+

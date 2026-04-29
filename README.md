@@ -3,7 +3,7 @@
 바이브 코딩으로 만든 소형 웹 앱 모음. 순수 정적 사이트 (HTML + CSS + JS, 빌드 없음).
 
 **로컬 실행**: `npx serve public -l 3000`  
-**배포**: Netlify 정적 호스팅  
+**배포**: [Cloudflare Pages](https://byeduin-vives.pages.dev) (자동 배포: main 브랜치)  
 **개발 진행**: [`DEVPLAN.md`](DEVPLAN.md) 참고
 
 ---
@@ -15,7 +15,7 @@
 |---|---|---|
 | **QR Master** | `/qr/` | QR 코드 생성, 카메라/이미지 스캔 |
 | **Smart Timer** | `/timer/` | 반복 알람 타이머 |
-| **MD Editor** | `/md-editor/` | 마크다운 편집기 (HWP/HTML/URL 변환 지원) |
+| **MD Editor** | `/md-editor/` | 마크다운 편집기 (HTML 변환, 파일 공유 지원) |
 
 ### 소셜 도구 (2)
 | 앱 | 경로 | 설명 |
