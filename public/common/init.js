@@ -1,3 +1,19 @@
+// 파비콘 강제 설정 (모든 페이지에서 통일)
+(function() {
+  let faviconLink = document.querySelector('link[rel="icon"]');
+
+  // 기존 파비콘 태그가 없으면 생성
+  if (!faviconLink) {
+    faviconLink = document.createElement('link');
+    faviconLink.rel = 'icon';
+    document.head.appendChild(faviconLink);
+  }
+
+  // 파비콘 강제 설정
+  faviconLink.href = '/logo.jpg';
+  faviconLink.type = 'image/jpeg';
+})();
+
 // Google Analytics 4 초기화
 // localhost 환경 제외 (개발 환경 데이터 보호)
 
