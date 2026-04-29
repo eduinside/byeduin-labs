@@ -720,8 +720,16 @@
   function saveToUnifiedHistory(type, data) {
     let hist = JSON.parse(localStorage.getItem(UNIFIED_HISTORY_KEY) || '[]');
     const item = { type, data, timestamp: new Date().toISOString() };
-    // 중복 제거
-    hist = hist.filter(h => !(h.type === type && h.data === data));
+    // 중복 제거 (playlist는 URL을 비교)
+    hist = hist.filter(h => {
+      if (h.type !== type) return true;
+      if (type === 'playlist') {
+        const hUrl = typeof h.data === 'object' ? h.data.url : h.data;
+        const newUrl = typeof data === 'object' ? data.url : data;
+        return hUrl !== newUrl;
+      }
+      return h.data !== data;
+    });
     hist.unshift(item);
     localStorage.setItem(UNIFIED_HISTORY_KEY, JSON.stringify(hist.slice(0, 30)));
   }
@@ -748,16 +756,31 @@
           </div>
         `;
       } else if (item.type === 'playlist') {
-        const url = item.data;
         const dateStr = new Date(item.timestamp).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        // item.data가 객체일 수도 있고 문자열(URL)일 수도 있음 (하위호환성)
+        const isNewFormat = typeof item.data === 'object' && item.data.url;
+        const playlistUrl = isNewFormat ? item.data.url : item.data;
+        const firstVideoId = isNewFormat ? item.data.firstVideoId : null;
+        const firstVideoTitle = isNewFormat ? item.data.firstVideoTitle : null;
+        const playlistTitle = isNewFormat ? item.data.title : null;
+
+        const thumbUrl = firstVideoId
+          ? `https://img.youtube.com/vi/${firstVideoId}/mqdefault.jpg`
+          : 'https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg';
+
+        const displayTitle = firstVideoTitle && playlistTitle
+          ? `${playlistTitle} (1번 항목)`
+          : (firstVideoTitle || '📺 재생목록');
+
         return `
-          <div class="history-item" onclick="applyFromUnifiedHistory('playlist', '${url}')">
-            <img class="history-thumb" src="https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg" alt="">
+          <div class="history-item" onclick="applyFromUnifiedHistory('playlist', '${playlistUrl.replace(/'/g, "\\'")}')">
+            <img class="history-thumb" src="${thumbUrl}" alt="">
             <div class="history-info">
-              <div class="history-title">📺 재생목록</div>
+              <div class="history-title">${escHtml(displayTitle)}</div>
               <div class="history-time">${dateStr}</div>
             </div>
-            <button class="btn-del-h" onclick="event.stopPropagation(); deleteFromUnifiedHistory('${item.type}', '${url}')">✕</button>
+            <button class="btn-del-h" onclick="event.stopPropagation(); deleteFromUnifiedHistory('${item.type}', ${typeof item.data === 'object' ? "'" + item.data.url.replace(/'/g, "\\'") + "'" : "'" + item.data.replace(/'/g, "\\'") + "'"})">✕</button>
           </div>
         `;
       }
@@ -769,7 +792,9 @@
       document.getElementById('youtubeUrl').value = `https://www.youtube.com/watch?v=${data}`;
       displayResult(data);
     } else if (type === 'playlist') {
-      document.getElementById('youtubeUrl').value = data;
+      // data가 객체일 수도 있고 문자열(URL)일 수도 있음 (하위호환성)
+      const playlistUrl = typeof data === 'object' ? data.url : data;
+      document.getElementById('youtubeUrl').value = playlistUrl;
       analyzeUrl();
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -777,7 +802,16 @@
 
   function deleteFromUnifiedHistory(type, data) {
     let hist = JSON.parse(localStorage.getItem(UNIFIED_HISTORY_KEY) || '[]');
-    hist = hist.filter(h => !(h.type === type && h.data === data));
+    hist = hist.filter(h => {
+      if (h.type !== type) return true;
+      // playlist는 URL을 비교 (객체든 문자열이든)
+      if (type === 'playlist') {
+        const hUrl = typeof h.data === 'object' ? h.data.url : h.data;
+        return hUrl !== data;
+      }
+      // video는 직접 비교
+      return h.data !== data;
+    });
     localStorage.setItem(UNIFIED_HISTORY_KEY, JSON.stringify(hist));
     renderUnifiedHistory();
   }
@@ -888,7 +922,15 @@
 
       renderPlaylist();
       savePLToHistory(plUrl);
-      saveToUnifiedHistory('playlist', plUrl);
+      // 첫 영상 정보를 포함하여 히스토리에 저장
+      const firstVideo = plItems[0];
+      const playlistData = {
+        url: plUrl,
+        title: plTitle,
+        firstVideoId: firstVideo?.videoId,
+        firstVideoTitle: firstVideo?.title
+      };
+      saveToUnifiedHistory('playlist', playlistData);
       renderPLHistory();
       renderUnifiedHistory();
     } catch (e) {
