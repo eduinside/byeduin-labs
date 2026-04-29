@@ -138,8 +138,7 @@
     /* ── 히스토리 ── */
     .history-section {
       margin-top: 1.25rem;
-      padding-top: 1.25rem;
-      border-top: 1px solid var(--border);
+      padding-top: 0;
       display: block;
     }
 
@@ -157,9 +156,6 @@
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
-      max-height: 220px;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
     }
 
     .history-item {
@@ -820,6 +816,20 @@
       // data가 객체일 수도 있고 문자열(ID)일 수도 있음 (하위호환성)
       const videoId = typeof data === 'object' ? data.videoId : data;
       document.getElementById('youtubeUrl').value = `https://www.youtube.com/watch?v=${videoId}`;
+
+      // 썸네일 탭으로 전환
+      currentMode = 'video';
+      document.getElementById('dual-mode-tabs').style.display = 'block';
+      const thumbnailBtn = document.getElementById('tab-thumbnail');
+      const playlistBtn = document.getElementById('tab-playlist');
+      thumbnailBtn.disabled = false;
+      thumbnailBtn.style.opacity = '1';
+      thumbnailBtn.style.cursor = 'pointer';
+      playlistBtn.disabled = true;
+      playlistBtn.style.opacity = '0.5';
+      playlistBtn.style.cursor = 'not-allowed';
+      switchDualModeTab('thumbnail');
+
       displayResult(videoId);
     } else if (type === 'playlist') {
       // data가 객체일 수도 있고 문자열(URL)일 수도 있음 (하위호환성)
@@ -965,7 +975,6 @@
         firstVideoTitle: firstVideo?.title
       };
       saveToUnifiedHistory('playlist', playlistData);
-      renderPLHistory();
       renderUnifiedHistory();
     } catch (e) {
       showPlError('네트워크 오류가 발생했습니다. API 키 설정을 확인해주세요.');
@@ -1030,7 +1039,7 @@
         <div class="pl-meta">총 ${plItems.length}개 영상</div>
       </div>
       <div class="pl-actions">
-        <button class="hero-btn" onclick="openInMdEditor()">📋 링크 정리 (MD Editor로)</button>
+        <button class="hero-btn" onclick="openInMdEditor()">📋 MD로 정리</button>
         <button class="hero-btn hero-btn-ghost" id="zipBtn" onclick="downloadZip()">📦 다운로드(ZIP)</button>
       </div>
       <div class="pl-list">
