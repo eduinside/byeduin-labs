@@ -108,6 +108,12 @@ function renderScanList() {
        <span>${f.name}</span>
        <span class="meta">${fmtBytes(f.size)} <button class="file-list-remove" onclick="removeScanFile(${i})" title="제거">×</button></span>
      </div>`).join('');
+  const grid = document.getElementById('scanOptionsGrid');
+  if (scanState.files.length > 0) {
+    grid.style.display = 'grid';
+  } else {
+    grid.style.display = 'none';
+  }
   document.getElementById('scanRunBtn').disabled = scanState.files.length === 0;
   updateScanEstimate();
 }
