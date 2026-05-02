@@ -554,7 +554,8 @@ async function recompressPptx(zip, mediaNames, quality, maxWidth, onProgress) {
   );
 
   // 결과 처리 및 중복 검사
-  for (const { name, blob: outBlob } of processResults) {
+  for (let i = 0; i < processResults.length; i++) {
+    const { name, blob: outBlob } = processResults[i];
     const sample = await outBlob.slice(0, 102400).arrayBuffer();
     const hashVal = Array.from(new Uint8Array(sample)).slice(0, 1000).join(',');
 
