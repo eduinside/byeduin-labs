@@ -82,6 +82,14 @@ bindDropzone(
   document.getElementById('scanDrop'),
   document.getElementById('scanInput'),
   (files) => {
+    // PPTX 파일만 들어오면 PPTX 탭으로 이동
+    if (files.every(f => f.name.toLowerCase().endsWith('.pptx'))) {
+      switchTab('pptx');
+      pptxState.file = files[0];
+      renderPptxList();
+      scanPptxMedia();
+      return;
+    }
     scanState.files.push(...files);
     renderScanList();
   }
@@ -245,6 +253,15 @@ async function rasterizeAll(maxWidth, onProgress) {
       pages.push({ canvas: c, sourceName: f.name.replace(/\.[^.]+$/, ''), pageIdx: 1 });
       done++;
       onProgress?.(done, total);
+    } else if (ext === 'png') {
+      const buf = await f.arrayBuffer();
+      const blob = new Blob([buf], { type: 'image/png' });
+      const bmp = await createImageBitmap(blob);
+      const c = downscaleToCanvas(bmp, maxWidth);
+      total += 1;
+      pages.push({ canvas: c, sourceName: f.name.replace(/\.[^.]+$/, ''), pageIdx: 1 });
+      done++;
+      onProgress?.(done, total);
     }
   }
   return pages;
@@ -380,6 +397,17 @@ bindDropzone(
   document.getElementById('pptxDrop'),
   document.getElementById('pptxInput'),
   (files) => {
+    // 스캔 타입 파일이 들어오면 스캔 탭으로 이동
+    const scanExts = ['jpg', 'jpeg', 'png', 'pdf', 'tif', 'tiff'];
+    if (files.every(f => {
+      const ext = f.name.split('.').pop().toLowerCase();
+      return scanExts.includes(ext);
+    })) {
+      switchTab('scan');
+      scanState.files.push(...files);
+      renderScanList();
+      return;
+    }
     pptxState.file = files[0];
     renderPptxList();
     scanPptxMedia();
