@@ -111,6 +111,15 @@ function renderScanList() {
   const grid = document.getElementById('scanOptionsGrid');
   if (scanState.files.length > 0) {
     grid.style.display = 'grid';
+    // 동적 슬라이더 범위 설정
+    const totalSize = scanState.files.reduce((s, f) => s + f.size, 0);
+    const minMB = (totalSize * 0.025) / (1024 * 1024);
+    const maxMB = totalSize / (1024 * 1024);
+    const slider = document.getElementById('scanTargetMB');
+    slider.min = minMB.toFixed(1);
+    slider.max = maxMB.toFixed(1);
+    slider.value = Math.min(1.0, maxMB).toFixed(1);
+    document.getElementById('scanTargetMBVal').textContent = slider.value;
   } else {
     grid.style.display = 'none';
   }
@@ -227,6 +236,15 @@ async function rasterizeAll(maxWidth, onProgress) {
         done++;
         onProgress?.(done, total);
       }
+    } else if (ext === 'jpg' || ext === 'jpeg') {
+      const buf = await f.arrayBuffer();
+      const blob = new Blob([buf], { type: 'image/jpeg' });
+      const bmp = await createImageBitmap(blob);
+      const c = downscaleToCanvas(bmp, maxWidth);
+      total += 1;
+      pages.push({ canvas: c, sourceName: f.name.replace(/\.[^.]+$/, ''), pageIdx: 1 });
+      done++;
+      onProgress?.(done, total);
     }
   }
   return pages;
@@ -238,6 +256,7 @@ async function buildPdf(pages, quality) {
   let totalSize = 0;
   for (const p of pages) {
     const blob = await canvasToBlob(p.canvas, 'image/jpeg', quality);
+    if (!blob || blob.size === 0) throw new Error('이미지 변환 실패');
     const bytes = new Uint8Array(await blob.arrayBuffer());
     totalSize += bytes.length;
     const img = await doc.embedJpg(bytes);
@@ -245,21 +264,26 @@ async function buildPdf(pages, quality) {
     page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
   }
   const out = await doc.save();
-  return { blob: new Blob([out], { type: 'application/pdf' }), imgTotal: totalSize };
+  const pdfBlob = new Blob([out], { type: 'application/pdf' });
+  if (!pdfBlob || pdfBlob.size === 0) throw new Error('PDF 생성 실패');
+  return { blob: pdfBlob, imgTotal: totalSize };
 }
 
 async function buildJpgZip(pages, quality) {
   if (pages.length === 1) {
     const blob = await canvasToBlob(pages[0].canvas, 'image/jpeg', quality);
+    if (!blob || blob.size === 0) throw new Error('이미지 변환 실패');
     return { blob, ext: 'jpg' };
   }
   const zip = new JSZip();
   for (let i = 0; i < pages.length; i++) {
     const blob = await canvasToBlob(pages[i].canvas, 'image/jpeg', quality);
+    if (!blob || blob.size === 0) throw new Error('이미지 변환 실패');
     const name = `${pages[i].sourceName}_p${pages[i].pageIdx}.jpg`;
     zip.file(name, blob);
   }
   const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+  if (!blob || blob.size === 0) throw new Error('압축파일 생성 실패');
   return { blob, ext: 'zip' };
 }
 
