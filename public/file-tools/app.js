@@ -343,9 +343,7 @@ async function runScan() {
     setScanProgress(100, '완료');
 
     const ext = fmt === 'pdf' ? 'pdf' : (bestResult.ext || 'jpg');
-    const baseName = scanState.files.length === 1
-      ? scanState.files[0].name.replace(/\.[^.]+$/, '')
-      : 'optimized';
+    const baseName = scanState.files[0].name.replace(/\.[^.]+$/, '');
     const fname = `${baseName}_optimized.${ext}`;
     downloadBlob(bestResult.blob, fname);
 
