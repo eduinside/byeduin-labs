@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>파일 압축 도구 — byeduin</title>
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script>
+    if (window['pdfjsLib']) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
+</head>
+<body>
+
+<!-- 좌상단: 홈 -->
+<div class="top-overlay-left">
+  <a href="/" class="overlay-btn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    <span>Home</span>
+  </a>
+</div>
+<!-- 우상단: 테마 + 공유 -->
+<div class="top-overlay">
+  <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+  <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+      <polyline points="16 6 12 2 8 6"/>
+      <line x1="12" x2="12" y1="2" y2="15"/>
+    </svg>
+    <span>공유</span>
+  </button>
+</div>
+
+<div class="wrap">
+  <div class="app-header">
+    <div class="app-badge">◆ Utility</div>
+    <h1 class="app-title">파일 <span>압축 도구</span></h1>
+    <p class="app-desc">스캔 PDF/TIFF 최적화 · 대용량 PPTX 이미지 재압축 — 모두 브라우저 내에서 처리됩니다</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="scan" onclick="switchTab('scan')">📄 스캔 최적화</button>
+    <button class="tab-btn" data-tab="pptx" onclick="switchTab('pptx')">🗜️ PPTX 압축</button>
+  </div>
+
+  <!-- ─────────────── Tab 1: 스캔 최적화 ─────────────── -->
+  <section class="panel active" id="panel-scan">
+    <div class="dropzone" id="scanDrop">
+      <div class="dropzone-icon">📥</div>
+      <div class="dropzone-label">TIFF / PDF 파일을 끌어다 놓거나 클릭</div>
+      <div class="dropzone-hint">.tif, .tiff, .pdf · 다중 선택 가능</div>
+      <input type="file" id="scanInput" accept=".tif,.tiff,.pdf,application/pdf,image/tiff" multiple style="display:none">
+    </div>
+    <div class="file-list" id="scanFileList"></div>
+
+    <div class="options-grid">
+      <div class="opt-field" style="grid-column: 1 / -1;">
+        <label>출력 형식</label>
+        <div class="toggle-group" id="scanFormatToggle">
+          <button data-fmt="pdf" class="active">PDF</button>
+          <button data-fmt="jpg">JPG</button>
+        </div>
+      </div>
+      <div class="opt-field" style="grid-column: 1 / -1;">
+        <label>목표 용량 (MB)</label>
+        <div class="range-row">
+          <input type="range" id="scanTargetMB" min="0.1" max="10" step="0.1" value="1.0">
+          <span class="range-val" id="scanTargetMBVal">1.0</span>
+        </div>
+        <div style="font-size:0.75rem; color:var(--fg-muted); margin-top:0.4rem;">
+          자동으로 품질과 가로폭이 조절됩니다
+        </div>
+      </div>
+    </div>
+
+    <div class="estimate" id="scanEstimate" style="display:none"></div>
+
+    <div class="action-row">
+      <button class="action-btn" id="scanRunBtn" onclick="runScan()" disabled>변환 후 다운로드</button>
+      <button class="action-btn secondary" onclick="clearScan()">초기화</button>
+    </div>
+
+    <div class="progress" id="scanProgress" style="display:none">
+      <div class="progress-msg" id="scanProgressMsg">처리 중…</div>
+      <div class="progress-bar"><div class="progress-bar-fill" id="scanProgressFill"></div></div>
+    </div>
+
+    <div class="result" id="scanResult" style="display:none"></div>
+  </section>
+
+  <!-- ─────────────── Tab 2: PPTX 압축 ─────────────── -->
+  <section class="panel" id="panel-pptx">
+    <div class="dropzone" id="pptxDrop">
+      <div class="dropzone-icon">📥</div>
+      <div class="dropzone-label">PPTX 파일을 끌어다 놓거나 클릭</div>
+      <div class="dropzone-hint">.pptx · 단일 파일</div>
+      <input type="file" id="pptxInput" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none">
+    </div>
+    <div class="file-list" id="pptxFileList"></div>
+
+    <div class="options-grid" id="pptxOptionsGrid" style="display:none">
+      <div class="opt-field" style="grid-column: 1 / -1;">
+        <label>목표 용량 (MB)</label>
+        <div class="range-row">
+          <input type="range" id="pptxTargetMB" min="0.5" max="10" step="0.1" value="3">
+          <span class="range-val" id="pptxTargetMBVal">3.0</span>
+        </div>
+        <div style="font-size:0.75rem; color:var(--fg-muted); margin-top:0.4rem;">
+          <span id="pptxTargetMin">최소</span> ~ <span id="pptxTargetMax">최대</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="estimate" id="pptxEstimate" style="display:none"></div>
+
+    <div class="action-row">
+      <button class="action-btn" id="pptxRunBtn" onclick="runPptx()" disabled>압축 후 다운로드</button>
+      <button class="action-btn secondary" onclick="clearPptx()">초기화</button>
+    </div>
+
+    <div class="progress" id="pptxProgress" style="display:none">
+      <div class="progress-msg" id="pptxProgressMsg">처리 중…</div>
+      <div class="progress-bar"><div class="progress-bar-fill" id="pptxProgressFill"></div></div>
+    </div>
+
+    <div class="result" id="pptxResult" style="display:none"></div>
+  </section>
+</div>
+
+<!-- PDF 변환 모달 -->
+<div id="pptxPdfModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index:10000;">
+  <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:1rem; padding:1.75rem; max-width:380px; width:90%;">
+    <div style="font-size:1.1rem; font-weight:700; margin-bottom:0.5rem;">📄 PDF로도 저장하시겠어요?</div>
+    <div style="font-size:0.85rem; color:var(--fg-muted); margin-bottom:1.25rem;">
+      압축된 PPTX를 PDF로 변환하면 파일 크기를 더 줄일 수 있습니다. 슬라이드를 이미지로 임베드합니다.
+    </div>
+    <div style="display:flex; gap:0.75rem;">
+      <button onclick="closePptxPdfModal()" style="flex:1; padding:0.6rem; background:none; border:1px solid var(--border); border-radius:0.5rem; color:var(--fg); font-size:0.85rem; cursor:pointer; font-family:inherit; font-weight:600;">아니오</button>
+      <button onclick="convertPptxToPdf()" style="flex:1; padding:0.6rem; background:var(--primary); color:#fff; border:none; border-radius:0.5rem; font-size:0.85rem; cursor:pointer; font-family:inherit; font-weight:600;">PDF로 변환</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="./app.js"></script>
+</body>
+</html>

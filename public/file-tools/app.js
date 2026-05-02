@@ -95,11 +95,10 @@ document.querySelectorAll('#scanFormatToggle button').forEach(btn => {
   });
 });
 
-['scanQuality', 'scanMaxWidth', 'scanTargetMB'].forEach(id => {
-  document.getElementById(id).addEventListener('input', () => {
-    if (id === 'scanQuality') document.getElementById('scanQualityVal').textContent = (+document.getElementById(id).value).toFixed(2);
-    updateScanEstimate();
-  });
+document.getElementById('scanTargetMB').addEventListener('input', () => {
+  const v = +document.getElementById('scanTargetMB').value;
+  document.getElementById('scanTargetMBVal').textContent = v.toFixed(1);
+  updateScanEstimate();
 });
 
 function renderScanList() {
@@ -148,15 +147,30 @@ function updateScanEstimate() {
   }
   _scanEstTimer = setTimeout(async () => {
     const pages = await countPagesEstimate();
-    const q = +document.getElementById('scanQuality').value;
-    const w = +document.getElementById('scanMaxWidth').value;
+    const targetMB = +document.getElementById('scanTargetMB').value;
+    const origTotal = scanState.files.reduce((s, f) => s + f.size, 0);
+    const targetBytes = targetMB * 1024 * 1024;
+    const ratio = targetBytes / origTotal;
+
+    // 목표 비율에 따라 자동 설정 (PPTX와 동일한 로직)
+    let estQ, estW;
+    if (ratio < 0.05) {
+      estQ = 0.3; estW = 400;
+    } else if (ratio < 0.1) {
+      estQ = 0.4; estW = 600;
+    } else if (ratio < 0.2) {
+      estQ = 0.5; estW = 800;
+    } else {
+      estQ = 0.75; estW = 1600;
+    }
+
     // 거친 추정: JPEG 평균 ~ 0.15 bytes/픽셀 × quality 가중치
-    const bytesPerPage = w * (w * 1.41) * (0.04 + q * 0.18);
+    const bytesPerPage = estW * (estW * 1.41) * (0.04 + estQ * 0.18);
     const est = bytesPerPage * pages * (scanState.format === 'pdf' ? 1.05 : 1);
     document.getElementById('scanEstimate').style.display = 'block';
     document.getElementById('scanEstimate').innerHTML =
       `📊 입력 ${scanState.files.length}개 · ${pages}페이지 · 예상 출력 <strong>≈ ${fmtBytes(est)}</strong> ` +
-      `<span style="color:var(--fg-muted)">(품질 ${q.toFixed(2)}, ${w}px 기준)</span>`;
+      `<span style="color:var(--fg-muted)">(품질 ${estQ.toFixed(2)}, ${estW}px · 목표 ${fmtBytes(targetBytes)})</span>`;
   }, 200);
 }
 
@@ -248,47 +262,71 @@ async function runScan() {
   document.getElementById('scanRunBtn').disabled = true;
   document.getElementById('scanResult').style.display = 'none';
 
-  const maxWidth = +document.getElementById('scanMaxWidth').value;
-  const targetMB = parseFloat(document.getElementById('scanTargetMB').value);
-  const targetBytes = isFinite(targetMB) && targetMB > 0 ? targetMB * 1024 * 1024 : null;
-  const initialQ = +document.getElementById('scanQuality').value;
+  const targetMB = +document.getElementById('scanTargetMB').value;
+  const targetBytes = targetMB * 1024 * 1024;
   const fmt = scanState.format;
-
   const origTotal = scanState.files.reduce((s, f) => s + f.size, 0);
+  const ratio = targetBytes / origTotal;
+
+  // 목표 비율에 따라 시작 범위 결정
+  let widths, qualities;
+  if (ratio < 0.05) {
+    widths = [400, 600, 800, 1000];
+    qualities = [0.3, 0.4, 0.5, 0.6];
+  } else if (ratio < 0.1) {
+    widths = [600, 800, 1000, 1200];
+    qualities = [0.4, 0.5, 0.6, 0.7];
+  } else if (ratio < 0.2) {
+    widths = [800, 1000, 1200, 1600];
+    qualities = [0.5, 0.6, 0.7, 0.8];
+  } else {
+    widths = [1200, 1600, 2000, 2400];
+    qualities = [0.65, 0.75, 0.85, 0.95];
+  }
+
+  const attempts = [];
+  for (const w of widths) {
+    for (const q of qualities) {
+      attempts.push({ w, q });
+    }
+  }
 
   try {
     setScanProgress(5, '페이지 라스터화 중…');
-    const pages = await rasterizeAll(maxWidth, (d, t) => setScanProgress(5 + (d / t) * 50, `페이지 라스터화 중… ${d}/${t}`));
 
-    const qualities = targetBytes ? [initialQ, 0.65, 0.55, 0.45, 0.4] : [initialQ];
-    let result, finalQ;
-    for (let i = 0; i < qualities.length; i++) {
-      const q = qualities[i];
-      finalQ = q;
-      setScanProgress(60 + (i / qualities.length) * 35, `${fmt.toUpperCase()} 생성 중… (품질 ${q.toFixed(2)})`);
-      result = fmt === 'pdf'
+    let bestResult = null, bestParams = null;
+    for (let a = 0; a < attempts.length; a++) {
+      const { w, q } = attempts[a];
+      setScanProgress(5 + (a / attempts.length) * 90, `시도 ${a + 1}/${attempts.length} — ${w}px / 품질 ${q.toFixed(2)}`);
+
+      const pages = await rasterizeAll(w, () => {});
+      const result = fmt === 'pdf'
         ? (await buildPdf(pages, q))
         : (await buildJpgZip(pages, q));
-      if (!targetBytes || result.blob.size <= targetBytes) break;
+
+      bestResult = result;
+      bestParams = { w, q };
+      if (result.blob.size <= targetBytes) break;
     }
 
     setScanProgress(100, '완료');
 
-    const ext = fmt === 'pdf' ? 'pdf' : (result.ext || 'jpg');
+    const ext = fmt === 'pdf' ? 'pdf' : (bestResult.ext || 'jpg');
     const baseName = scanState.files.length === 1
       ? scanState.files[0].name.replace(/\.[^.]+$/, '')
       : 'optimized';
     const fname = `${baseName}_optimized.${ext}`;
-    downloadBlob(result.blob, fname);
+    downloadBlob(bestResult.blob, fname);
 
-    const reachedTarget = !targetBytes || result.blob.size <= targetBytes;
-    const ratio = ((1 - result.blob.size / origTotal) * 100).toFixed(1);
+    const reached = bestResult.blob.size <= targetBytes;
+    const compressionRatio = ((1 - bestResult.blob.size / origTotal) * 100).toFixed(1);
     const r = document.getElementById('scanResult');
-    r.className = 'result' + (reachedTarget ? '' : ' warning');
+    r.className = 'result' + (reached ? '' : ' warning');
     r.style.display = 'block';
     r.innerHTML = `✅ <strong>${fname}</strong> 다운로드<br>
-      원본 ${fmtBytes(origTotal)} → 출력 ${fmtBytes(result.blob.size)} (${ratio}% 감소, 품질 ${finalQ.toFixed(2)})
-      ${targetBytes ? `<br>${reachedTarget ? '✓ 목표 용량 달성' : '⚠️ 목표 용량 초과 — 가로폭을 더 줄이면 추가 압축 가능'}` : ''}`;
+      원본 ${fmtBytes(origTotal)} → 출력 ${fmtBytes(bestResult.blob.size)} (${compressionRatio}% 감소)<br>
+      적용 옵션: ${bestParams.w}px / 품질 ${bestParams.q.toFixed(2)}<br>
+      ${reached ? '✓ 목표 용량 달성' : '⚠️ 목표 용량 초과 — 슬라이더를 더 내리세요'}`;
 
     showToast('변환 완료 ✓');
   } catch (e) {
