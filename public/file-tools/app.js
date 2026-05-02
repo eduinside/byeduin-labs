@@ -266,6 +266,7 @@ async function buildJpgZip(pages, quality) {
 async function runScan() {
   if (!scanState.files.length) return;
   document.getElementById('scanRunBtn').disabled = true;
+  document.getElementById('scanTargetMB').disabled = true;
   document.getElementById('scanResult').style.display = 'none';
 
   const targetMB = +document.getElementById('scanTargetMB').value;
@@ -343,6 +344,7 @@ async function runScan() {
     r.textContent = '❌ 변환 중 오류: ' + (e.message || e);
   } finally {
     document.getElementById('scanRunBtn').disabled = false;
+    document.getElementById('scanTargetMB').disabled = false;
     setTimeout(() => { document.getElementById('scanProgress').style.display = 'none'; }, 1500);
   }
 }
@@ -528,6 +530,7 @@ function minifyXml(xml) {
 async function runPptx() {
   if (!pptxState.file) return;
   document.getElementById('pptxRunBtn').disabled = true;
+  document.getElementById('pptxTargetMB').disabled = true;
   document.getElementById('pptxResult').style.display = 'none';
 
   const targetMB = +document.getElementById('pptxTargetMB').value;
@@ -635,6 +638,7 @@ async function runPptx() {
     r.textContent = '❌ 압축 중 오류: ' + (e.message || e);
   } finally {
     document.getElementById('pptxRunBtn').disabled = false;
+    document.getElementById('pptxTargetMB').disabled = false;
     setTimeout(() => { document.getElementById('pptxProgress').style.display = 'none'; }, 1500);
   }
 }
