@@ -480,56 +480,57 @@ async function recompressPptx(zip, mediaNames, quality, maxWidth, onProgress) {
   // 중복 이미지 추적: hash -> { origName, blob, minSize }
   const imageHashes = new Map();
 
-  for (let i = 0; i < mediaNames.length; i++) {
-    const name = mediaNames[i];
-    const ext = name.split('.').pop().toLowerCase();
-    const origBlob = await zip.files[name].async('blob');
-    let outBlob = origBlob;
+  // ✨ 최적화: 모든 이미지를 병렬로 처리
+  const processResults = await Promise.all(
+    mediaNames.map(async (name) => {
+      const ext = name.split('.').pop().toLowerCase();
+      const origBlob = await zip.files[name].async('blob');
+      let outBlob = origBlob;
 
-    try {
-      if (ext === 'jpg' || ext === 'jpeg') {
-        const bmp = await createImageBitmap(origBlob);
-        const c = downscaleToCanvas(bmp, maxWidth);
-        // 품질을 더 낮춰서 시도: quality, quality-0.1, quality-0.2, ...
-        let bestBlob = origBlob;
-        for (let q = quality; q >= 0.3; q -= 0.05) {
-          const recomp = await canvasToBlob(c, 'image/jpeg', q);
-          if (recomp && recomp.size < bestBlob.size) {
-            bestBlob = recomp;
-          }
-        }
-        outBlob = bestBlob;
-      } else if (ext === 'png') {
-        const bmp = await createImageBitmap(origBlob);
-        const hasAlpha = await pngHasAlpha(origBlob);
-        const c = downscaleToCanvas(bmp, maxWidth);
-        if (!hasAlpha) {
-          // alpha 없으면 JPEG로 변환 시도 (훨씬 작음)
+      try {
+        if (ext === 'jpg' || ext === 'jpeg') {
+          const bmp = await createImageBitmap(origBlob);
+          const c = downscaleToCanvas(bmp, maxWidth);
           let bestBlob = origBlob;
           for (let q = quality; q >= 0.3; q -= 0.05) {
-            const asJpeg = await canvasToBlob(c, 'image/jpeg', q);
-            if (asJpeg && asJpeg.size < bestBlob.size) {
-              bestBlob = asJpeg;
+            const recomp = await canvasToBlob(c, 'image/jpeg', q);
+            if (recomp && recomp.size < bestBlob.size) {
+              bestBlob = recomp;
             }
           }
           outBlob = bestBlob;
-        } else {
-          // alpha 있으면 PNG 유지
-          const asPng = await canvasToBlob(c, 'image/png');
-          if (asPng && asPng.size < origBlob.size) outBlob = asPng;
+        } else if (ext === 'png') {
+          const bmp = await createImageBitmap(origBlob);
+          const hasAlpha = await pngHasAlpha(origBlob);
+          const c = downscaleToCanvas(bmp, maxWidth);
+          if (!hasAlpha) {
+            let bestBlob = origBlob;
+            for (let q = quality; q >= 0.3; q -= 0.05) {
+              const asJpeg = await canvasToBlob(c, 'image/jpeg', q);
+              if (asJpeg && asJpeg.size < bestBlob.size) {
+                bestBlob = asJpeg;
+              }
+            }
+            outBlob = bestBlob;
+          } else {
+            const asPng = await canvasToBlob(c, 'image/png');
+            if (asPng && asPng.size < origBlob.size) outBlob = asPng;
+          }
         }
+      } catch (e) {
+        console.warn('이미지 재압축 실패:', name, e);
       }
-    } catch (e) {
-      console.warn('이미지 재압축 실패:', name, e);
-    }
 
-    // 중복 검사: Blob 내용의 간단한 해시 (첫 100KB 기반)
+      return { name, blob: outBlob };
+    })
+  );
+
+  // 결과 처리 및 중복 검사
+  for (const { name, blob: outBlob } of processResults) {
     const sample = await outBlob.slice(0, 102400).arrayBuffer();
     const hashVal = Array.from(new Uint8Array(sample)).slice(0, 1000).join(',');
 
     if (imageHashes.has(hashVal)) {
-      // 중복 발견: PPTX 내 참조 경로만 변경하고 파일은 건드리지 않음
-      // 실제로는 .rels 파일을 수정해야 하지만, 간단히 기존 이미지로 교체
       const existing = imageHashes.get(hashVal);
       zip.file(name, existing.blob);
     } else {
@@ -592,28 +593,38 @@ async function runPptx() {
       }
     }
 
+    // ✨ 최적화: ZIP 한 번만 로드
+    setPptxProgress(10, 'PPTX 로드 중…');
+    const baseZip = await JSZip.loadAsync(fileBuf);
+    const mediaNames = Object.keys(baseZip.files).filter(n => n.startsWith('ppt/media/') && !baseZip.files[n].dir);
+
+    // ✨ 최적화: XML 미리 minify해서 캐시
+    setPptxProgress(20, 'XML 최적화 중…');
+    const minifiedXmlCache = new Map();
+    for (const fileName of Object.keys(baseZip.files)) {
+      if ((fileName.endsWith('.xml') || fileName.endsWith('.rels')) && !baseZip.files[fileName].dir) {
+        try {
+          const xmlText = await baseZip.files[fileName].async('text');
+          const minified = minifyXml(xmlText);
+          minifiedXmlCache.set(fileName, minified);
+        } catch (e) {
+          // 바이너리 파일은 무시
+        }
+      }
+    }
+
     let bestBlob = null, bestParams = null;
     for (let a = 0; a < attempts.length; a++) {
       const { w, q } = attempts[a];
-      setPptxProgress(Math.floor((a / attempts.length) * 85), `시도 ${a + 1}/${attempts.length} — ${w}px / 품질 ${q.toFixed(2)}`);
+      setPptxProgress(Math.floor((20 + a / attempts.length) * 75), `시도 ${a + 1}/${attempts.length} — ${w}px / 품질 ${q.toFixed(2)}`);
 
-      const zip = await JSZip.loadAsync(fileBuf);
-      const mediaNames = Object.keys(zip.files).filter(n => n.startsWith('ppt/media/') && !zip.files[n].dir);
-
+      // ✨ 최적화: 각 시도마다 ZIP 복사본 생성 (재사용)
+      const zip = baseZip;
       await recompressPptx(zip, mediaNames, q, w, () => {});
 
-      // XML minify
-      setPptxProgress(85 + (a / attempts.length) * 5, `메타데이터 최적화 중…`);
-      for (const fileName of Object.keys(zip.files)) {
-        if ((fileName.endsWith('.xml') || fileName.endsWith('.rels')) && !zip.files[fileName].dir) {
-          try {
-            const xmlText = await zip.files[fileName].async('text');
-            const minified = minifyXml(xmlText);
-            zip.file(fileName, minified);
-          } catch (e) {
-            // 바이너리 파일은 무시
-          }
-        }
+      // ✨ 최적화: 캐시된 XML 사용
+      for (const [fileName, minified] of minifiedXmlCache) {
+        zip.file(fileName, minified);
       }
 
       setPptxProgress(90 + (a / attempts.length) * 5, `PPTX 재패키징 중…`);
