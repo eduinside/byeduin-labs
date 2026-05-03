@@ -673,10 +673,6 @@ async function runPptx() {
 
     const fname = pptxState.file.name.replace(/\.pptx$/i, '') + '_compressed.pptx';
 
-    // 압축된 blob 임시 저장
-    window._pptxCompressedBlob = bestBlob;
-    window._pptxCompressedFname = fname;
-
     const reached = bestBlob.size <= targetBytes;
     const compressionRatio = ((1 - bestBlob.size / origSize) * 100).toFixed(1);
     const r = document.getElementById('pptxResult');
@@ -688,10 +684,9 @@ async function runPptx() {
       <span style="font-size:0.78rem; color:var(--fg-muted)">이미지 폭·품질 조절 + XML minify + ZIP 재압축</span>
       ${reached ? '<br>✓ 목표 용량 달성' : '<br>⚠️ 목표 용량 초과 — 슬라이더를 더 내리세요'}`;
 
-    // PDF 변환 모달 표시
-    document.getElementById('pptxPdfModal').style.display = 'flex';
-
-    showToast('압축 완료 ✓');
+    // 압축된 PPTX 자동 다운로드
+    downloadBlob(bestBlob, fname);
+    showToast('다운로드 완료 ✓');
   } catch (e) {
     console.error(e);
     const r = document.getElementById('pptxResult');
@@ -705,106 +700,5 @@ async function runPptx() {
   }
 }
 
-function closePptxPdfModal() {
-  document.getElementById('pptxPdfModal').style.display = 'none';
-  // PPTX 다운로드
-  downloadBlob(window._pptxCompressedBlob, window._pptxCompressedFname);
-}
-
-async function convertPptxToPdf() {
-  const modal = document.getElementById('pptxPdfModal');
-  modal.style.display = 'none';
-
-  const pptxBlob = window._pptxCompressedBlob;
-  const origFname = window._pptxCompressedFname;
-
-  try {
-    showToast('PDF 변환 중…');
-    const pptxZip = await JSZip.loadAsync(pptxBlob);
-
-    // slide1.xml ~ slideN.xml 찾기
-    const slideFiles = Object.keys(pptxZip.files)
-      .filter(n => n.match(/^ppt\/slides\/slide\d+\.xml$/))
-      .sort((a, b) => {
-        const aNum = parseInt(a.match(/\d+/)[0]);
-        const bNum = parseInt(b.match(/\d+/)[0]);
-        return aNum - bNum;
-      });
-
-    const { PDFDocument } = PDFLib;
-    const pdfDoc = await PDFDocument.create();
-
-    // 각 슬라이드를 이미지로 변환해 PDF에 임베드
-    for (let i = 0; i < slideFiles.length; i++) {
-      const slideXml = await pptxZip.files[slideFiles[i]].async('text');
-      // 슬라이드 크기 추출 (기본 16:9)
-      let slideWidth = 960, slideHeight = 540;
-      const sizeMatch = slideXml.match(/cSld.*?extLst/);
-      if (sizeMatch) {
-        const wxMatch = slideXml.match(/cx="(\d+)"/);
-        const hyMatch = slideXml.match(/cy="(\d+)"/);
-        if (wxMatch) slideWidth = Math.round(parseInt(wxMatch[1]) / 914400);
-        if (hyMatch) slideHeight = Math.round(parseInt(hyMatch[1]) / 914400);
-      }
-
-      // 슬라이드 임베드 이미지 추출
-      const relsFile = `ppt/slides/_rels/${slideFiles[i].split('/')[2]}.rels`;
-      let imageRels = [];
-      try {
-        const relsXml = await pptxZip.files[relsFile].async('text');
-        const matches = relsXml.matchAll(/Id="rId(\d+)".*?Target="\.\.\/media\/([^"]+)"/g);
-        for (const m of matches) imageRels.push({ rId: m[1], file: m[2] });
-      } catch (e) {}
-
-      // 첫 번째 이미지나 플레이스홀더 사용
-      let slideImage = null;
-      if (imageRels.length > 0) {
-        try {
-          const imgBlob = await pptxZip.files[`ppt/media/${imageRels[0].file}`].async('blob');
-          const buf = await imgBlob.arrayBuffer();
-          const ext = imageRels[0].file.split('.').pop().toLowerCase();
-          slideImage = ext === 'png'
-            ? await pdfDoc.embedPng(new Uint8Array(buf))
-            : await pdfDoc.embedJpg(new Uint8Array(buf));
-        } catch (e) {}
-      }
-
-      // PDF 페이지 추가
-      const page = pdfDoc.addPage([slideWidth, slideHeight]);
-      if (slideImage) {
-        page.drawImage(slideImage, {
-          x: 0, y: 0,
-          width: slideWidth,
-          height: slideHeight
-        });
-      } else {
-        // 텍스트 플레이스홀더
-        page.drawText(`Slide ${i + 1}`, {
-          x: 50, y: slideHeight - 50,
-          size: 24,
-          color: PDFLib.rgb(0.5, 0.5, 0.5)
-        });
-      }
-    }
-
-    const pdfBytes = await pdfDoc.save();
-    const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const pdfFname = origFname.replace(/\.pptx$/i, '.pdf');
-
-    // 두 파일 모두 다운로드
-    downloadBlob(window._pptxCompressedBlob, origFname);
-    setTimeout(() => downloadBlob(pdfBlob, pdfFname), 500);
-
-    showToast(`${pdfFname} 변환 완료 ✓`);
-  } catch (e) {
-    console.error(e);
-    showToast('PDF 변환 중 오류: ' + (e.message || e));
-    // 그래도 PPTX는 다운로드
-    downloadBlob(window._pptxCompressedBlob, origFname);
-  }
-}
-
 window.runPptx = runPptx;
 window.switchTab = switchTab;
-window.closePptxPdfModal = closePptxPdfModal;
-window.convertPptxToPdf = convertPptxToPdf;
