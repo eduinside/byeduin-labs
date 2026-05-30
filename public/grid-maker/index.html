@@ -1,981 +1,828 @@
 <!DOCTYPE html>
 <html lang="ko">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Grid Maker — byeduin</title>
-    <link rel="stylesheet" href="/common/hero-theme.css">
-    <script src="/common/theme.js"></script>
-    <script src="/common/init.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap');
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Grid Maker — byeduin</title>
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    body {
+      padding: 56px 1rem 5rem;
+      min-height: 100vh;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
 
-        :root {
-            --primary: #006fee;
-            --primary-hover: #005bc4;
-        }
+    .page-wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative; z-index: 1;
+    }
 
-        /* ---- 다크 모드 오버라이드 ---- */
-        [data-theme="dark"] body { background: #0d0d0d !important; color: #ecedee; }
-        [data-theme="dark"] .bg-white { background-color: #1a1a1a !important; }
-        [data-theme="dark"] .bg-slate-50,
-        [data-theme="dark"] .bg-\[\#f8fafc\],
-        [data-theme="dark"] body { background-color: #0d0d0d !important; }
-        [data-theme="dark"] .border-slate-100,
-        [data-theme="dark"] .border-slate-200 { border-color: #2a2a2a !important; }
-        [data-theme="dark"] .text-slate-900,
-        [data-theme="dark"] .text-slate-800,
-        [data-theme="dark"] .text-slate-700 { color: #ecedee !important; }
-        [data-theme="dark"] .text-slate-500,
-        [data-theme="dark"] .text-slate-400 { color: #888 !important; }
-        [data-theme="dark"] .shadow-sm,
-        [data-theme="dark"] .shadow-xl { box-shadow: none !important; }
-        [data-theme="dark"] .bg-slate-100 { background-color: #2a2a2a !important; }
-        [data-theme="dark"] .bg-slate-900 { background-color: #ecedee !important; color: #0d0d0d !important; }
-        [data-theme="dark"] .bg-indigo-50 { background-color: rgba(0,111,238,0.1) !important; }
-        [data-theme="dark"] .text-indigo-600 { color: #338ef7 !important; }
-        [data-theme="dark"] .border-slate-50 { border-color: #2a2a2a !important; }
-        [data-theme="dark"] #toast { background: #ecedee; color: #0d0d0d; }
-        [data-theme="dark"] .preview-stage { background: #1a1a1a !important; }
-        [data-theme="dark"] .value-input { background-color: #2a2a2a !important; color: #338ef7 !important; }
+    /* ── 레이아웃 ── */
+    .grid-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 1.25rem;
+      align-items: start;
+    }
+    @media (max-width: 680px) {
+      .grid-layout { grid-template-columns: 1fr; }
+    }
 
-        body {
-            font-family: 'Pretendard', sans-serif;
-            overflow-x: hidden;
-            -webkit-tap-highlight-color: transparent;
-            background-color: var(--bg);
-        }
-        body::before {
-            content: '';
-            position: fixed; inset: 0;
-            background-image:
-                linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
-            pointer-events: none; z-index: 0;
-        }
+    /* ── 사이드바 ── */
+    .sidebar { display: flex; flex-direction: column; gap: 1rem; }
 
-        .transition-all {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+    .step-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      overflow: hidden;
+    }
+    .step-section { padding: 1.125rem 1.25rem; }
+    .step-section + .step-section { border-top: 1px solid var(--border); }
 
-        .content-width {
-            width: 100%;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
-        }
+    .step-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
 
-        .preview-stage {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #ffffff;
-            border-radius: 2rem;
-            padding: 1.5rem;
-            min-height: 500px;
-            position: relative;
-            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
-        }
+    /* ── 업로드 존 ── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 0.875rem;
+      padding: 1.25rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.2s;
+    }
+    .upload-zone:hover {
+      border-color: var(--primary);
+      background: rgba(0,111,238,0.04);
+    }
+    .upload-zone.drag-over {
+      border-color: var(--primary);
+      background: rgba(0,111,238,0.08);
+      transform: scale(1.01);
+    }
+    .upload-icon {
+      width: 40px; height: 40px;
+      background: rgba(0,111,238,0.1);
+      color: var(--primary);
+      border-radius: 0.75rem;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 0.625rem;
+      font-size: 1.1rem;
+      transition: transform 0.2s;
+    }
+    .upload-zone:hover .upload-icon { transform: scale(1.12) translateY(-2px); }
+    .upload-zone p { font-size: 13px; font-weight: 600; color: var(--fg); margin: 0 0 2px; }
+    .upload-zone small { font-size: 11px; color: var(--fg-muted); }
 
-        .crop-target {
-            position: relative;
-            width: 100%;
-            background-color: #f1f5f9;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: aspect-ratio 0.4s ease;
-            cursor: move;
-            user-select: none;
-            touch-action: none;
-            border-radius: 4px;
-        }
+    /* ── 프리셋 버튼 그리드 ── */
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.4rem;
+    }
+    .preset-btn {
+      padding: 0.5rem 0.375rem;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 0.625rem;
+      font-size: 12px; font-weight: 600;
+      color: var(--fg-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .preset-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(0,111,238,0.05);
+    }
+    .preset-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
 
-        #preview-img {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            z-index: 1;
-            pointer-events: none;
-            will-change: transform;
-            transform-origin: center center;
-        }
+    /* ── 커스텀 추가 ── */
+    .custom-add-row { display: flex; align-items: center; gap: 0.3rem; }
+    .custom-input {
+      display: none;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 7px;
+      font-size: 11px; color: var(--fg);
+      outline: none; width: 72px;
+    }
+    .custom-input.show { display: block; }
+    .custom-input:focus { border-color: var(--primary); }
+    .icon-btn {
+      width: 26px; height: 26px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--bg-sec); border: 1px solid var(--border);
+      border-radius: 6px; cursor: pointer; color: var(--fg-muted);
+      font-size: 15px; line-height: 1; flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .icon-btn:hover { background: rgba(0,111,238,0.08); color: var(--primary); border-color: var(--primary); }
 
-        .grid-overlay {
-            position: absolute;
-            inset: 0;
-            z-index: 10;
-            pointer-events: none;
-        }
+    /* ── 저장 버튼 ── */
+    #save-btn {
+      width: 100%;
+      padding: 0.875rem;
+      background: var(--bg-sec);
+      border: 1.5px solid var(--border);
+      border-radius: 1rem;
+      font-size: 15px; font-weight: 700;
+      color: var(--fg-muted);
+      cursor: not-allowed;
+      transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    #save-btn.ready {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,111,238,0.28);
+    }
+    #save-btn.ready:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0,111,238,0.35); }
 
-        .grid-line-v {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 1px;
-            background: rgba(255, 255, 255, 0.6);
-            backdrop-filter: invert(0.1);
-        }
+    /* ── 미리보기 영역 ── */
+    .preview-stage {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 1.25rem;
+      min-height: 380px;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+    .empty-view { text-align: center; }
+    .empty-icon {
+      width: 72px; height: 72px;
+      background: var(--bg-sec); color: var(--border);
+      border-radius: 1.25rem;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1rem; font-size: 2rem;
+    }
+    .empty-view h3 { font-size: 16px; font-weight: 700; color: var(--fg); margin: 0 0 4px; }
+    .empty-view p  { font-size: 13px; color: var(--fg-muted); margin: 0; }
 
-        .grid-line-h {
-            position: absolute;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: rgba(255, 255, 255, 0.6);
-            backdrop-filter: invert(0.1);
-        }
+    .crop-target {
+      position: relative; width: 100%;
+      background: var(--bg-sec);
+      border-radius: 4px; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      cursor: move; user-select: none; touch-action: none;
+      transition: aspect-ratio 0.4s ease;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+    #preview-img {
+      position: absolute; width: 100%; height: 100%;
+      object-fit: contain; z-index: 1;
+      pointer-events: none; will-change: transform;
+      transform-origin: center center;
+    }
+    .grid-overlay { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
+    .grid-line-v {
+      position: absolute; top: 0; bottom: 0; width: 1px;
+      background: rgba(255,255,255,0.6); backdrop-filter: invert(0.1);
+    }
+    .grid-line-h {
+      position: absolute; left: 0; right: 0; height: 1px;
+      background: rgba(255,255,255,0.6); backdrop-filter: invert(0.1);
+    }
+    .glass-info {
+      position: absolute; bottom: 0.875rem; left: 0.875rem;
+      background: rgba(15,23,42,0.8); backdrop-filter: blur(8px);
+      color: #fff; padding: 0.5rem 0.75rem; border-radius: 0.625rem;
+      font-size: 11px; z-index: 50;
+      border: 1px solid rgba(255,255,255,0.1); line-height: 1.6;
+    }
 
-        input[type="range"] {
-            -webkit-appearance: none;
-            width: 100%;
-            height: 5px;
-            background: #e2e8f0;
-            border-radius: 99px;
-            outline: none;
-        }
+    /* ── 조정 패널 ── */
+    .adj-panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 1.125rem 1.25rem;
+      margin-top: 0.875rem;
+      display: flex; flex-direction: column; gap: 1rem;
+      transition: opacity 0.2s;
+    }
+    .adj-panel.disabled { opacity: 0.4; pointer-events: none; }
 
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
-            background: var(--primary);
-            border-radius: 50%;
-            cursor: pointer;
-            border: 3px solid white;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
+    .action-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; }
 
-        .btn-active {
-            background-color: var(--primary) !important;
-            color: white !important;
-            border-color: var(--primary) !important;
-            box-shadow: 0 8px 12px -3px rgba(79, 70, 229, 0.25) !important;
-        }
+    .adj-sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 480px) { .adj-sliders { grid-template-columns: 1fr; } }
 
-        .glass-info {
-            position: absolute;
-            bottom: 1.5rem;
-            left: 1.5rem;
-            background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(8px);
-            color: white;
-            padding: 0.75rem 1rem;
-            border-radius: 1rem;
-            font-size: 0.75rem;
-            z-index: 50;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            line-height: 1.5;
-        }
+    .adj-field { display: flex; flex-direction: column; gap: 0.4rem; }
+    .adj-label-row { display: flex; justify-content: space-between; align-items: center; }
 
-        .smart-gradient {
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-        }
+    input[type="range"] {
+      -webkit-appearance: none; width: 100%;
+      height: 4px; background: var(--border); border-radius: 99px; outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 16px; height: 16px;
+      background: var(--primary); border-radius: 50%; cursor: pointer;
+      border: 2px solid var(--bg); box-shadow: 0 2px 6px rgba(0,111,238,0.3);
+    }
+    .value-input {
+      width: 44px; text-align: center;
+      font-weight: 700; font-size: 12px; color: var(--primary);
+      background: var(--input-bg); border: 1px solid var(--border);
+      border-radius: 5px; padding: 2px 0; outline: none;
+    }
+    .unit { font-size: 11px; color: var(--fg-muted); }
 
-        .value-input {
-            width: 3.5rem;
-            text-align: center;
-            font-weight: 700;
-            font-size: 0.75rem;
-            color: var(--primary);
-            background-color: #f5f3ff;
-            border: none;
-            border-radius: 0.375rem;
-            padding: 0.25rem 0;
-            outline: none;
-        }
+    .help-row {
+      display: flex; flex-wrap: wrap; gap: 0.875rem; justify-content: center;
+      padding-top: 0.75rem; border-top: 1px solid var(--border);
+    }
+    .help-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--fg-muted); }
 
-        /* (old floating-home-btn removed — using .top-overlay from hero-theme.css) */
+    /* ── 로더 ── */
+    #loader {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+      z-index: 200; display: none;
+      align-items: center; justify-content: center;
+    }
+    #loader.show { display: flex; }
+    .loader-box {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 1.25rem; padding: 2rem 2.5rem; text-align: center;
+    }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 3px solid var(--border); border-top-color: var(--primary);
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader-box p { margin: 0; font-weight: 700; font-size: 15px; }
+    .loader-box small { color: var(--fg-muted); font-size: 12px; }
 
-        /* ---- 드래그 업로드 상태 ---- */
-        #upload-zone.drag-over {
-            border-color: var(--primary) !important;
-            background-color: rgba(0, 111, 238, 0.07) !important;
-            transform: scale(1.02);
-        }
-        #upload-zone.drag-over .upload-icon {
-            transform: scale(1.15) translateY(-3px);
-        }
-
-        /* ════ HeroUI 통합 오버라이드 ════ */
-
-        /* 카드/패널 — CSS 변수 기반 */
-        .bg-white   { background-color: var(--card-bg) !important; }
-        .bg-slate-50 { background-color: var(--bg-sec)  !important; }
-        .bg-slate-100{ background-color: var(--bg-sec)  !important; }
-        .border-slate-50,
-        .border-slate-100,
-        .border-slate-200 { border-color: var(--border) !important; }
-        .text-slate-900,
-        .text-slate-800,
-        .text-slate-700 { color: var(--fg)      !important; }
-        .text-slate-500,
-        .text-slate-400 { color: var(--fg-muted)!important; }
-
-        /* Indigo → HeroUI Primary (#006fee) */
-        .text-indigo-600,
-        .text-indigo-400 { color: var(--primary) !important; }
-        .text-indigo-300  { color: var(--fg-muted) !important; }
-        .bg-indigo-50     { background-color: rgba(0,111,238,0.08) !important; }
-        .hover\:bg-indigo-50:hover    { background-color: rgba(0,111,238,0.08) !important; }
-        .hover\:text-indigo-600:hover { color: var(--primary) !important; }
-        .hover\:border-indigo-400:hover,
-        .focus\:border-indigo-400:focus { border-color: var(--primary) !important; }
-        .ring-indigo-200  { --tw-ring-color: rgba(0,111,238,0.25) !important; }
-        .border-indigo-600 { border-color: var(--primary) !important; } /* 로더 스피너 */
-
-        /* 업로드 아이콘 — primary 계열 */
-        .upload-icon {
-            background-color: rgba(0,111,238,0.1) !important;
-            color: var(--primary) !important;
-        }
-
-        /* Smart Fit 버튼 */
-        .smart-gradient {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-h) 100%) !important;
-            box-shadow: 0 4px 16px rgba(0,111,238,0.28) !important;
-        }
-
-        /* 90° 회전 버튼 */
-        .bg-slate-900 {
-            background-color: var(--fg) !important;
-            color: var(--bg) !important;
-        }
-        [data-theme="dark"] .bg-slate-900 {
-            background-color: var(--fg) !important;
-            color: var(--bg) !important;
-        }
-
-        /* 값 입력 필드 */
-        .value-input {
-            background-color: var(--input-bg) !important;
-            color: var(--primary) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: 0.5rem !important;
-        }
-
-        /* 활성 preset 버튼 — shadow를 primary 계열로 */
-        .btn-active {
-            box-shadow: 0 4px 14px rgba(0,111,238,0.28) !important;
-        }
-
-        /* Range 슬라이더 트랙 */
-        input[type="range"] {
-            background: var(--border) !important;
-        }
-
-        /* 상태 표시 박스 */
-        header .flex.items-center.gap-3 {
-            background: var(--card-bg) !important;
-            border-color: var(--border) !important;
-        }
-
-        /* 저장 버튼 활성 상태 */
-        #save-btn-sidebar:not(:disabled) {
-            background: var(--primary) !important;
-            color: #fff !important;
-            cursor: pointer !important;
-            box-shadow: 0 4px 20px rgba(0,111,238,0.3) !important;
-        }
-        #save-btn-sidebar:disabled {
-            background-color: var(--bg-sec) !important;
-            color: var(--fg-muted) !important;
-        }
-
-        /* 커스텀 입력 필드 */
-        #custom-ratio-input,
-        #custom-grid-input {
-            background-color: var(--input-bg) !important;
-            border-color: var(--border) !important;
-            color: var(--fg) !important;
-            font-size: 12px !important;
-        }
-
-        /* 편집 초기화 버튼 */
-        button[onclick="resetAdjustments()"] {
-            border-color: var(--border) !important;
-            color: var(--fg-muted) !important;
-        }
-        button[onclick="resetAdjustments()"]:hover {
-            color: var(--primary) !important;
-            background-color: rgba(0,111,238,0.08) !important;
-            border-color: var(--primary) !important;
-        }
-
-        /* + 버튼 (커스텀 추가) */
-        button[onclick*="toggleInput"] {
-            background-color: var(--bg-sec) !important;
-            color: var(--fg-muted) !important;
-        }
-        button[onclick*="toggleInput"]:hover {
-            background-color: rgba(0,111,238,0.1) !important;
-            color: var(--primary) !important;
-        }
-
-        /* 빈 상태 이미지 플레이스홀더 */
-        .bg-slate-50.text-slate-200 {
-            background-color: var(--bg-sec) !important;
-            color: var(--border) !important;
-        }
-
-        /* 로더 */
-        .bg-slate-900\/40 { background-color: rgba(0,0,0,0.48) !important; }
-        #loader .bg-white { background-color: var(--card-bg) !important; }
-    </style>
+    /* ── fd-btn (design system) ── */
+    .fd-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+      padding: 8px 14px; border-radius: 8px; border: none;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: all 0.15s; min-height: 36px;
+    }
+    .fd-btn-primary { background: var(--primary); color: #fff; }
+    .fd-btn-primary:hover { background: var(--primary-h); }
+    .fd-btn-ghost {
+      background: none; border: 1px solid var(--border);
+      color: var(--fg-muted);
+    }
+    .fd-btn-ghost:hover {
+      border-color: var(--primary); color: var(--primary);
+      background: rgba(0,111,238,0.06);
+    }
+  </style>
 </head>
+<body>
 
-<body class="text-slate-900 antialiased">
+  <!-- 좌상단: 홈 -->
+  <div class="top-overlay-left">
+    <a href="/" class="overlay-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span>Home</span>
+    </a>
+  </div>
+  <!-- 우상단: 테마 + 공유 -->
+  <div class="top-overlay">
+    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()">💻</button>
+    <button class="overlay-btn" onclick="shareCurrentPage()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/>
+      </svg>
+      <span>공유</span>
+    </button>
+  </div>
 
-    <div class="max-w-[1100px] mx-auto px-6 pb-6 pt-16" style="position:relative;z-index:1">
+  <div class="page-wrap">
+    <header class="app-header">
+      <span class="app-badge">◆ CREATIVE</span>
+      <h1 class="app-title">Grid <span style="color:var(--primary)">Maker</span></h1>
+      <p class="app-desc">이미지를 그리드로 분할하고 ZIP으로 저장하세요.</p>
+    </header>
 
-        <div class="app-header" style="margin-bottom:24px">
-            <div class="app-badge">◆ Creative</div>
-            <h1 class="app-title">Grid <span>Maker</span></h1>
-            <p class="app-desc">정교하게 분할하고, 완벽하게 전달하세요.</p>
+    <div class="grid-layout">
+      <!-- ── 사이드바 ── -->
+      <aside class="sidebar">
+        <div class="step-card">
+
+          <!-- 01. 업로드 -->
+          <div class="step-section">
+            <div class="fd-section-title">01. 이미지 업로드</div>
+            <div class="upload-zone" id="upload-zone">
+              <input type="file" id="file-input" accept="image/*" style="display:none">
+              <div class="upload-icon">📤</div>
+              <p>클릭 또는 드래그하여 업로드</p>
+              <small>PNG, JPG, WEBP 지원</small>
+            </div>
+          </div>
+
+          <!-- 02. 비율 -->
+          <div class="step-section">
+            <div class="step-header">
+              <span class="fd-section-title" style="margin:0">02. 개별 비율</span>
+              <div class="custom-add-row">
+                <input type="text" id="custom-ratio-input" class="custom-input" placeholder="16:9">
+                <button class="icon-btn" onclick="toggleInput('custom-ratio-input')" title="커스텀 비율 추가">+</button>
+              </div>
+            </div>
+            <div class="preset-grid" id="ratio-container"></div>
+          </div>
+
+          <!-- 03. 레이아웃 -->
+          <div class="step-section">
+            <div class="step-header">
+              <span class="fd-section-title" style="margin:0">03. 전체 레이아웃</span>
+              <div class="custom-add-row">
+                <input type="text" id="custom-grid-input" class="custom-input" placeholder="4×1">
+                <button class="icon-btn" onclick="toggleInput('custom-grid-input')" title="커스텀 그리드 추가">+</button>
+              </div>
+            </div>
+            <div class="preset-grid" id="preset-container"></div>
+          </div>
+
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <!-- Sidebar Controls -->
-            <aside class="lg:col-span-4 space-y-8">
+        <!-- 저장 버튼 -->
+        <button id="save-btn" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          압축파일 생성
+        </button>
+      </aside>
 
-                <!-- Combined Steps Card -->
-                <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
-                    <!-- Step 01: Upload -->
-                    <div class="p-8">
-                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-5">01.
-                            이미지 업로드</label>
-                        <div id="upload-zone"
-                            class="relative overflow-hidden border-2 border-dashed border-slate-200 rounded-3xl p-8 text-center hover:border-indigo-400 hover:bg-indigo-50/50 transition-all cursor-pointer group">
-                            <input type="file" id="file-input" class="hidden" accept="image/*">
-                            <div class="relative z-10">
-                                <div
-                                    class="upload-icon w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-all">
-                                    <i data-lucide="upload" class="w-5 h-5"></i>
-                                </div>
-                                <p class="text-sm font-bold text-slate-700 leading-none">클릭 또는 드래그하여 업로드</p>
-                                <p class="text-xs text-slate-400 mt-1">PNG, JPG, WEBP 지원</p>
-                            </div>
-                        </div>
-                    </div>
+      <!-- ── 메인 캔버스 ── -->
+      <div>
+        <div class="preview-stage">
+          <!-- 빈 상태 -->
+          <div id="empty-view" class="empty-view">
+            <div class="empty-icon">🖼️</div>
+            <h3>이미지가 비어있습니다</h3>
+            <p>편집할 이미지를 먼저 로드해 주세요.</p>
+          </div>
 
-                    <div class="border-t border-slate-100"></div>
+          <!-- 미리보기 -->
+          <div id="preview-box" class="crop-target" style="display:none">
+            <img id="preview-img" src="" alt="">
+            <div id="grid-overlay" class="grid-overlay"></div>
+            <div id="info-badge" class="glass-info" style="display:none"></div>
+          </div>
+        </div>
 
-                    <!-- Step 02: Ratio -->
-                    <div class="p-8 relative">
-                        <div class="flex justify-between items-center mb-5 pr-10">
-                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">02. 개별
-                                비율</label>
-                        </div>
-                        <div class="absolute top-8 right-8 flex gap-1 items-center">
-                            <input type="text" id="custom-ratio-input" placeholder="비율 (16:9)"
-                                class="hidden w-24 px-2 py-1 bg-slate-50 border border-slate-100 rounded-lg text-[10px] outline-none focus:border-indigo-400 transition-all">
-                            <button onclick="toggleInput('custom-ratio-input')"
-                                class="w-7 h-7 bg-slate-100 text-slate-400 rounded-lg flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 transition-all">
-                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                            </button>
-                        </div>
+        <!-- 조정 패널 -->
+        <div id="adjustment-panel" class="adj-panel disabled">
+          <div class="action-row">
+            <button class="fd-btn fd-btn-primary" onclick="smartAutoFit()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2m0 20v-2M8 8l-1.5-1.5M18.5 18.5 17 17m0-9 1.5-1.5M5.5 18.5 7 17M4 15H2m20 0h-2"/><circle cx="12" cy="12" r="4"/></svg>
+              스마트 핏
+            </button>
+            <button class="fd-btn fd-btn-ghost" onclick="rotate90()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+              90° 회전
+            </button>
+            <button class="fd-btn fd-btn-ghost" onclick="resetAdjustments()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              초기화
+            </button>
+          </div>
 
-                        <div class="grid grid-cols-2 gap-3" id="ratio-container"></div>
-                    </div>
-
-                    <div class="border-t border-slate-100"></div>
-
-                    <!-- Step 03: Layout -->
-                    <div class="p-8 relative">
-                        <div class="flex justify-between items-center mb-5 pr-10">
-                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">03. 전체
-                                레이아웃</label>
-                        </div>
-                        <div class="absolute top-8 right-8 flex gap-1 items-center">
-                            <input type="text" id="custom-grid-input" placeholder="그리드 (4*1)"
-                                class="hidden w-24 px-2 py-1 bg-slate-50 border border-slate-100 rounded-lg text-[10px] outline-none focus:border-indigo-400 transition-all">
-                            <button onclick="toggleInput('custom-grid-input')"
-                                class="w-7 h-7 bg-slate-100 text-slate-400 rounded-lg flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 transition-all">
-                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                            </button>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3" id="preset-container"></div>
-                    </div>
+          <div class="adj-sliders">
+            <div class="adj-field">
+              <div class="adj-label-row">
+                <span class="fd-section-title" style="margin:0;font-size:10px">확대/축소</span>
+                <div style="display:flex;align-items:center;gap:3px">
+                  <input type="number" id="zoom-val-input" class="value-input" value="100" min="10" max="500">
+                  <span class="unit">%</span>
                 </div>
-
-                <button id="save-btn-sidebar" disabled
-                    class="w-full py-5 bg-slate-100 text-slate-400 rounded-[1.5rem] font-black text-base flex items-center justify-center gap-2 cursor-not-allowed transition-all shadow-none" style="letter-spacing:-0.01em">
-                    <i data-lucide="archive"></i> 압축파일 생성
-                </button>
-            </aside>
-
-            <!-- Main Canvas & Adjustments -->
-            <main class="lg:col-span-8 flex flex-col gap-8">
-                <div class="content-width">
-                    <div class="preview-stage shadow-xl shadow-indigo-100/50 mb-8">
-                        <div id="empty-view" class="text-center animate-pulse">
-                            <div
-                                class="w-24 h-24 bg-slate-50 text-slate-200 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6">
-                                <i data-lucide="image" class="w-12 h-12"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-slate-800 mb-2">이미지가 비어있습니다</h3>
-                            <p class="text-slate-400 font-medium">편집할 이미지를 먼저 로드해 주세요.</p>
-                        </div>
-
-                        <div id="preview-box" class="crop-target hidden">
-                            <img id="preview-img" src="" alt="preview">
-                            <div id="grid-overlay" class="grid-overlay"></div>
-                            <div id="info-badge" class="glass-info hidden shadow-2xl"></div>
-                        </div>
-                    </div>
-
-                    <!-- Adjustment Panel -->
-                    <div id="adjustment-panel"
-                        class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100 space-y-8 opacity-40 pointer-events-none transition-all">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                            <div class="grid grid-cols-2 gap-4">
-                                <button onclick="smartAutoFit()"
-                                    class="smart-gradient text-white py-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 transition-all hover:-translate-y-0.5 active:translate-y-0">
-                                    <i data-lucide="wand-2" class="w-4 h-4"></i> 스마트 핏
-                                </button>
-                                <button onclick="rotate90()"
-                                    class="bg-slate-900 text-white py-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-slate-200 transition-all hover:-translate-y-0.5 active:translate-y-0">
-                                    <i data-lucide="rotate-cw" class="w-4 h-4"></i> 90° 회전
-                                </button>
-                            </div>
-                            <button onclick="resetAdjustments()"
-                                class="w-full py-4 text-[11px] font-bold text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl border border-dashed border-slate-200 transition-all flex items-center justify-center gap-2">
-                                <i data-lucide="refresh-ccw" class="w-3.5 h-3.5"></i> 편집 초기화
-                            </button>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div class="space-y-4">
-                                <div class="flex justify-between items-center">
-                                    <label
-                                        class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">확대/축소</label>
-                                    <div class="flex items-center gap-1.5">
-                                        <input type="number" id="zoom-val-input" value="100" class="value-input"
-                                            min="10" max="500">
-                                        <span class="text-xs font-extrabold text-indigo-300">%</span>
-                                    </div>
-                                </div>
-                                <input type="range" id="zoom-slider" min="0.1" max="5" step="0.01" value="1">
-                            </div>
-                            <div class="space-y-4">
-                                <div class="flex justify-between items-center">
-                                    <label
-                                        class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">회전</label>
-                                    <div class="flex items-center gap-1.5">
-                                        <input type="number" id="rotate-val-input" value="0" class="value-input"
-                                            min="-360" max="360">
-                                        <span class="text-xs font-extrabold text-indigo-300">°</span>
-                                    </div>
-                                </div>
-                                <input type="range" id="rotate-slider" min="-180" max="180" step="1" value="0">
-                            </div>
-                        </div>
-
-                        <!-- Simple Help Section -->
-                        <div class="pt-6 border-t border-slate-50 flex flex-wrap gap-x-8 gap-y-3 justify-center">
-                            <div class="flex items-center gap-2 text-slate-400">
-                                <i data-lucide="mouse-pointer-2" class="w-3.5 h-3.5"></i>
-                                <span class="text-[11px] font-medium">드래그 및 핀치 줌으로 구도 조정</span>
-                            </div>
-                            <div class="flex items-center gap-2 text-slate-400">
-                                <i data-lucide="save" class="w-3.5 h-3.5"></i>
-                                <span class="text-[11px] font-medium">설정 자동 저장 및 스마트 핏 지원</span>
-                            </div>
-                        </div>
-                    </div>
+              </div>
+              <input type="range" id="zoom-slider" min="0.1" max="5" step="0.01" value="1">
+            </div>
+            <div class="adj-field">
+              <div class="adj-label-row">
+                <span class="fd-section-title" style="margin:0;font-size:10px">회전</span>
+                <div style="display:flex;align-items:center;gap:3px">
+                  <input type="number" id="rotate-val-input" class="value-input" value="0" min="-360" max="360">
+                  <span class="unit">°</span>
                 </div>
-            </main>
+              </div>
+              <input type="range" id="rotate-slider" min="-180" max="180" step="1" value="0">
+            </div>
+          </div>
+
+          <div class="help-row">
+            <span class="help-item">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>
+              드래그 및 핀치 줌으로 구도 조정
+            </span>
+            <span class="help-item">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              설정 자동 저장 및 스마트 핏 지원
+            </span>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 
-    <div id="loader"
-        class="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] hidden flex flex-col items-center justify-center">
-        <div class="bg-white p-12 rounded-[3rem] shadow-2xl flex flex-col items-center text-center">
-            <div class="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-6"></div>
-            <p class="font-bold text-slate-800 text-lg">이미지 분할 중</p>
-            <p class="text-slate-400 text-sm mt-1">잠시만 기다려 주세요...</p>
-        </div>
+  <!-- 로더 -->
+  <div id="loader">
+    <div class="loader-box">
+      <div class="spinner"></div>
+      <p>이미지 분할 중</p>
+      <small>잠시만 기다려 주세요...</small>
     </div>
+  </div>
 
-    <div id="toast"
-        class="fixed bottom-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-10 py-4 rounded-full shadow-2xl transition-all opacity-0 translate-y-10 z-[200] font-bold text-sm tracking-tight text-center">
-    </div>
+  <!-- 토스트 -->
+  <div id="fd-toast"></div>
 
-    <script>
-        lucide.createIcons();
+  <script>
+    const STORAGE_KEY = 'grid_maker_pro_settings_v5';
 
-        const STORAGE_KEY = 'grid_maker_pro_settings_v5';
+    let state = {
+      image: null, ratio: '1:1',
+      cols: 2, rows: 1,
+      offsetX: 0, offsetY: 0,
+      scale: 1, rotation: 0,
+      customRatios: [], customGrids: []
+    };
 
-        let state = {
-            image: null,
-            ratio: '1:1',
-            cols: 2,
-            rows: 1,
-            offsetX: 0,
-            offsetY: 0,
-            scale: 1,
-            rotation: 0,
-            customRatios: [],
-            customGrids: []
+    const defaultGridPresets = [
+      { label: '2 × 1', c: 2, r: 1 },
+      { label: '3 × 1', c: 3, r: 1 },
+      { label: '1 × 1', c: 1, r: 1 },
+      { label: '3 × 2', c: 3, r: 2 },
+      { label: '3 × 3', c: 3, r: 3 },
+    ];
+
+    const el = {
+      fileInput:        document.getElementById('file-input'),
+      uploadZone:       document.getElementById('upload-zone'),
+      previewImg:       document.getElementById('preview-img'),
+      previewBox:       document.getElementById('preview-box'),
+      emptyView:        document.getElementById('empty-view'),
+      overlay:          document.getElementById('grid-overlay'),
+      saveBtn:          document.getElementById('save-btn'),
+      loader:           document.getElementById('loader'),
+      presetContainer:  document.getElementById('preset-container'),
+      ratioContainer:   document.getElementById('ratio-container'),
+      adjPanel:         document.getElementById('adjustment-panel'),
+      zoomSlider:       document.getElementById('zoom-slider'),
+      rotateSlider:     document.getElementById('rotate-slider'),
+      zoomValInput:     document.getElementById('zoom-val-input'),
+      rotateValInput:   document.getElementById('rotate-val-input'),
+      infoBadge:        document.getElementById('info-badge'),
+      customRatioInput: document.getElementById('custom-ratio-input'),
+      customGridInput:  document.getElementById('custom-grid-input'),
+    };
+
+    let isDragging = false, lastX, lastY;
+    let initialDist = 0, initialAngle = 0, startScale = 1, startRotation = 0;
+
+    // ── 초기화 ──
+    function init() {
+      loadSettings();
+      renderPresets();
+      setupInputListeners();
+      updateUI();
+    }
+
+    // ── 설정 저장/복원 ──
+    function saveSettings() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        ratio: state.ratio, cols: state.cols, rows: state.rows,
+        customRatios: state.customRatios, customGrids: state.customGrids,
+      }));
+    }
+    function loadSettings() {
+      try {
+        const p = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        state.ratio = p.ratio || '1:1';
+        state.cols  = p.cols  || 2;
+        state.rows  = p.rows  || 1;
+        state.customRatios = p.customRatios || [];
+        state.customGrids  = p.customGrids  || [];
+      } catch {}
+    }
+
+    // ── 프리셋 렌더링 ──
+    function renderPresets() {
+      // 비율
+      el.ratioContainer.innerHTML = '';
+      ['1:1', '4:5', ...state.customRatios].forEach(r => {
+        const btn = document.createElement('button');
+        btn.className = 'preset-btn';
+        btn.textContent = r;
+        btn.dataset.id = `ratio-${r}`;
+        btn.onclick = () => changeRatio(r);
+        el.ratioContainer.appendChild(btn);
+      });
+      // 그리드
+      el.presetContainer.innerHTML = '';
+      [...defaultGridPresets, ...state.customGrids].forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = 'preset-btn';
+        btn.textContent = p.label;
+        btn.dataset.id = `grid-${p.c}-${p.r}`;
+        btn.onclick = () => updateGrid(p.c, p.r);
+        el.presetContainer.appendChild(btn);
+      });
+      updateUI();
+    }
+
+    // ── 커스텀 입력 토글 ──
+    function toggleInput(id) {
+      const input = document.getElementById(id);
+      input.classList.toggle('show');
+      if (input.classList.contains('show')) {
+        input.focus();
+        input.onkeydown = (e) => {
+          if (e.key === 'Enter') {
+            if (id === 'custom-ratio-input') addCustomRatio();
+            else addCustomGrid();
+            input.classList.remove('show');
+          }
+          if (e.key === 'Escape') input.classList.remove('show');
         };
+      }
+    }
 
-        const defaultGridPresets = [
-            { label: '2 x 1', c: 2, r: 1 },
-            { label: '3 x 1', c: 3, r: 1 },
-            { label: '1 x 1', c: 1, r: 1 },
-            { label: '3 x 2', c: 3, r: 2 },
-            { label: '3 x 3', c: 3, r: 3 }
-        ];
-
-        const el = {
-            fileInput: document.getElementById('file-input'),
-            uploadZone: document.getElementById('upload-zone'),
-            previewImg: document.getElementById('preview-img'),
-            previewBox: document.getElementById('preview-box'),
-            emptyView: document.getElementById('empty-view'),
-            overlay: document.getElementById('grid-overlay'),
-            saveBtn: document.getElementById('save-btn-sidebar'),
-            loader: document.getElementById('loader'),
-            toast: document.getElementById('toast'),
-            presetContainer: document.getElementById('preset-container'),
-            ratioContainer: document.getElementById('ratio-container'),
-            adjPanel: document.getElementById('adjustment-panel'),
-            zoomSlider: document.getElementById('zoom-slider'),
-            rotateSlider: document.getElementById('rotate-slider'),
-            zoomValInput: document.getElementById('zoom-val-input'),
-            rotateValInput: document.getElementById('rotate-val-input'),
-            infoBadge: document.getElementById('info-badge'),
-            customRatioInput: document.getElementById('custom-ratio-input'),
-            customGridInput: document.getElementById('custom-grid-input'),
-            statusDot: document.getElementById('status-indicator'),
-            statusLabel: document.getElementById('status-label')
-        };
-
-        let isDragging = false;
-        let lastX, lastY;
-        let initialDist = 0;
-        let initialAngle = 0;
-        let startScale = 1;
-        let startRotation = 0;
-
-        function init() {
-            loadSettings();
-            renderPresets();
-            setupInputListeners();
-            updateUI();
+    function addCustomRatio() {
+      const val = el.customRatioInput.value.trim();
+      if (/^\d+:\d+$/.test(val) && !state.customRatios.includes(val)) {
+        state.customRatios.push(val);
+        el.customRatioInput.value = '';
+        saveSettings(); renderPresets();
+      }
+    }
+    function addCustomGrid() {
+      const match = el.customGridInput.value.trim().toLowerCase().match(/^(\d+)[x*×](\d+)$/);
+      if (match) {
+        const c = +match[1], r = +match[2];
+        if (c > 0 && r > 0 && !state.customGrids.find(g => g.c === c && g.r === r)) {
+          state.customGrids.push({ label: `${c} × ${r}`, c, r });
+          el.customGridInput.value = '';
+          saveSettings(); renderPresets();
         }
+      }
+    }
 
-        function toggleInput(id) {
-            const input = document.getElementById(id);
-            if (input.classList.contains('hidden')) {
-                input.classList.remove('hidden');
-                input.focus();
-                input.onkeydown = (e) => {
-                    if (e.key === 'Enter') {
-                        if (id === 'custom-ratio-input') addCustomRatio();
-                        else addCustomGrid();
-                        input.classList.add('hidden');
-                    }
-                };
-            } else {
-                input.classList.add('hidden');
-            }
+    function changeRatio(r) { state.ratio = r; saveSettings(); updateUI(); }
+    function updateGrid(c, r) { state.cols = c; state.rows = r; saveSettings(); updateUI(); }
+
+    // ── 슬라이더 입력 연동 ──
+    function setupInputListeners() {
+      el.zoomValInput.onchange = (e) => {
+        let v = Math.max(10, Math.min(500, parseFloat(e.target.value) || 100));
+        state.scale = v / 100; updateSliderUI(); applyTransform();
+      };
+      el.rotateValInput.onchange = (e) => {
+        state.rotation = parseFloat(e.target.value) || 0; updateSliderUI(); applyTransform();
+      };
+      el.zoomSlider.oninput = (e) => {
+        state.scale = parseFloat(e.target.value); updateSliderUI(); applyTransform();
+      };
+      el.rotateSlider.oninput = (e) => {
+        state.rotation = parseInt(e.target.value); updateSliderUI(); applyTransform();
+      };
+    }
+
+    function updateSliderUI() {
+      el.zoomSlider.value    = state.scale;
+      el.rotateSlider.value  = state.rotation;
+      el.zoomValInput.value  = Math.round(state.scale * 100);
+      el.rotateValInput.value = Math.round(state.rotation);
+      updateInfoBadge();
+    }
+
+    // ── 편집 조작 ──
+    function resetAdjustments() {
+      state.offsetX = 0; state.offsetY = 0; state.rotation = 0; state.scale = 1;
+      updateSliderUI(); applyTransform();
+    }
+    function rotate90() {
+      state.rotation = (Math.round(state.rotation / 90) * 90 + 90);
+      updateSliderUI(); applyTransform();
+    }
+    function smartAutoFit() {
+      if (!state.image) return;
+      state.offsetX = 0; state.offsetY = 0; state.rotation = 0;
+      const [uw, uh] = state.ratio.split(':').map(Number);
+      const targetRatio = (uw * state.cols) / (uh * state.rows);
+      const imgRatio = state.image.width / state.image.height;
+      state.scale = imgRatio > targetRatio ? imgRatio / targetRatio : targetRatio / imgRatio;
+      updateSliderUI(); updateUI();
+      showToast('최적의 구도를 찾았습니다.');
+    }
+
+    function applyTransform() {
+      el.previewImg.style.transform =
+        `translate(${state.offsetX}px, ${state.offsetY}px) rotate(${state.rotation}deg) scale(${state.scale})`;
+    }
+
+    // ── 파일 처리 ──
+    function handleFile(file) {
+      if (!file || !file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => { state.image = img; el.previewImg.src = e.target.result; updateUI(); };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    el.fileInput.onchange = (e) => handleFile(e.target.files[0]);
+    el.uploadZone.onclick = () => el.fileInput.click();
+    el.uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); el.uploadZone.classList.add('drag-over'); });
+    el.uploadZone.addEventListener('dragleave', (e) => { if (!el.uploadZone.contains(e.relatedTarget)) el.uploadZone.classList.remove('drag-over'); });
+    el.uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault(); el.uploadZone.classList.remove('drag-over');
+      handleFile(e.dataTransfer.files[0]);
+    });
+
+    // ── 마우스/터치 드래그 ──
+    el.previewBox.addEventListener('mousedown', e => { if (!state.image) return; isDragging = true; lastX = e.clientX; lastY = e.clientY; });
+    window.addEventListener('mousemove', e => {
+      if (!isDragging) return;
+      state.offsetX += e.clientX - lastX; state.offsetY += e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY; applyTransform();
+    });
+    window.addEventListener('mouseup', () => isDragging = false);
+
+    const getDist  = (t1, t2) => Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+    const getAngle = (t1, t2) => Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * 180 / Math.PI;
+
+    el.previewBox.addEventListener('touchstart', e => {
+      if (!state.image) return;
+      if (e.touches.length === 1) { isDragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; }
+      else if (e.touches.length === 2) {
+        isDragging = false;
+        initialDist = getDist(e.touches[0], e.touches[1]);
+        initialAngle = getAngle(e.touches[0], e.touches[1]);
+        startScale = state.scale; startRotation = state.rotation;
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchmove', e => {
+      if (e.touches.length === 1 && isDragging) {
+        state.offsetX += e.touches[0].clientX - lastX; state.offsetY += e.touches[0].clientY - lastY;
+        lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; applyTransform();
+      } else if (e.touches.length === 2 && initialDist > 0) {
+        const cd = getDist(e.touches[0], e.touches[1]);
+        const ca = getAngle(e.touches[0], e.touches[1]);
+        state.scale = Math.min(Math.max(0.1, startScale * (cd / initialDist)), 5);
+        state.rotation = startRotation + (ca - initialAngle);
+        updateSliderUI(); applyTransform();
+      }
+    }, { passive: false });
+    window.addEventListener('touchend', () => { isDragging = false; initialDist = 0; });
+
+    // ── 정보 배지 ──
+    function updateInfoBadge() {
+      const [uw, uh] = state.ratio.split(':').map(Number);
+      const pw = 1080, ph = Math.round((1080 / uw) * uh);
+      const total = state.cols * state.rows;
+      const kbEach = Math.round((pw * ph * 3 * 0.1) / 1024);
+      el.infoBadge.innerHTML =
+        `<span style="font-size:9px;opacity:.6;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(255,255,255,.2);display:block;padding-bottom:3px;margin-bottom:3px">Image Details</span>` +
+        `조각: ${pw}×${ph}px (${total}개)<br>예상: 약 ${kbEach}KB/조각`;
+    }
+
+    // ── UI 업데이트 ──
+    function updateUI() {
+      document.querySelectorAll('.preset-btn[data-id^="ratio-"]').forEach(b =>
+        b.classList.toggle('active', b.dataset.id === `ratio-${state.ratio}`)
+      );
+      document.querySelectorAll('.preset-btn[data-id^="grid-"]').forEach(b =>
+        b.classList.toggle('active', b.dataset.id === `grid-${state.cols}-${state.rows}`)
+      );
+
+      if (!state.image) return;
+
+      el.emptyView.style.display = 'none';
+      el.previewBox.style.display = 'flex';
+      el.infoBadge.style.display = 'block';
+      el.saveBtn.disabled = false;
+      el.saveBtn.classList.add('ready');
+      el.adjPanel.classList.remove('disabled');
+
+      const [uw, uh] = state.ratio.split(':').map(Number);
+      el.previewBox.style.aspectRatio = `${uw * state.cols} / ${uh * state.rows}`;
+
+      const boxRatio = (uw * state.cols) / (uh * state.rows);
+      const imgRatio = state.image.width / state.image.height;
+      el.previewImg.style.width  = imgRatio > boxRatio ? 'auto' : '100%';
+      el.previewImg.style.height = imgRatio > boxRatio ? '100%' : 'auto';
+
+      updateInfoBadge();
+
+      el.overlay.innerHTML = '';
+      for (let i = 1; i < state.cols; i++) {
+        const l = document.createElement('div'); l.className = 'grid-line-v';
+        l.style.left = `${(i / state.cols) * 100}%`; el.overlay.appendChild(l);
+      }
+      for (let i = 1; i < state.rows; i++) {
+        const l = document.createElement('div'); l.className = 'grid-line-h';
+        l.style.top = `${(i / state.rows) * 100}%`; el.overlay.appendChild(l);
+      }
+      applyTransform();
+    }
+
+    // ── 압축 파일 저장 ──
+    el.saveBtn.onclick = async () => {
+      if (!state.image) return;
+      el.loader.classList.add('show');
+      const zip = new JSZip();
+      const [uw, uh] = state.ratio.split(':').map(Number);
+      const qw = 1080, qh = Math.round((qw / uw) * uh);
+
+      const masterCanvas = document.createElement('canvas');
+      const mCtx = masterCanvas.getContext('2d');
+      const fullW = qw * state.cols, fullH = qh * state.rows;
+      masterCanvas.width = fullW; masterCanvas.height = fullH;
+
+      mCtx.save();
+      mCtx.translate(fullW / 2, fullH / 2);
+      const rect = el.previewBox.getBoundingClientRect();
+      const sf = fullW / rect.width;
+      mCtx.translate(state.offsetX * sf, state.offsetY * sf);
+      mCtx.rotate(state.rotation * Math.PI / 180);
+      mCtx.scale(state.scale, state.scale);
+
+      const ir = state.image.width / state.image.height;
+      const br = (uw * state.cols) / (uh * state.rows);
+      const dH = ir > br ? fullH : fullW / ir;
+      const dW = ir > br ? fullH * ir : fullW;
+      mCtx.drawImage(state.image, -dW / 2, -dH / 2, dW, dH);
+      mCtx.restore();
+
+      try {
+        const tileCanvas = document.createElement('canvas');
+        const tCtx = tileCanvas.getContext('2d');
+        tileCanvas.width = qw; tileCanvas.height = qh;
+        const jobs = [];
+        for (let r = 0; r < state.rows; r++) {
+          for (let c = 0; c < state.cols; c++) {
+            tCtx.clearRect(0, 0, qw, qh);
+            tCtx.drawImage(masterCanvas, c * qw, r * qh, qw, qh, 0, 0, qw, qh);
+            jobs.push(new Promise(res => {
+              tileCanvas.toBlob(blob => { zip.file(`part_${r + 1}_${c + 1}.jpg`, blob); res(); }, 'image/jpeg', 0.92);
+            }));
+          }
         }
+        await Promise.all(jobs);
+        const content = await zip.generateAsync({ type: 'blob' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = `grid_pack_${Date.now()}.zip`;
+        link.click();
+        showToast('압축 파일이 저장되었습니다.');
+      } catch { showToast('오류가 발생했습니다.'); }
+      finally { el.loader.classList.remove('show'); }
+    };
 
-        function saveSettings() {
-            const dataToSave = {
-                ratio: state.ratio,
-                cols: state.cols,
-                rows: state.rows,
-                customRatios: state.customRatios,
-                customGrids: state.customGrids
-            };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
-        }
+    // ── 토스트 (design system 패턴) ──
+    let _toastTimer;
+    function showToast(msg) {
+      const el = document.getElementById('fd-toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+    }
 
-        function loadSettings() {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    state.ratio = parsed.ratio || '1:1';
-                    state.cols = parsed.cols || 2;
-                    state.rows = parsed.rows || 1;
-                    state.customRatios = parsed.customRatios || [];
-                    state.customGrids = parsed.customGrids || [];
-                } catch (e) { }
-            }
-        }
-
-        function renderPresets() {
-            el.ratioContainer.innerHTML = `
-                <button onclick="changeRatio('1:1')" data-id="ratio-1:1" class="ratio-option py-3.5 px-4 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-xs text-slate-500 transition-all">1:1</button>
-                <button onclick="changeRatio('4:5')" data-id="ratio-4:5" class="ratio-option py-3.5 px-4 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-xs text-slate-500 transition-all">4:5</button>
-            `;
-            state.customRatios.forEach(r => {
-                const btn = document.createElement('button');
-                btn.className = 'ratio-option py-3.5 px-4 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-xs text-slate-500 transition-all';
-                btn.textContent = r;
-                btn.dataset.id = `ratio-${r}`;
-                btn.onclick = () => changeRatio(r);
-                el.ratioContainer.appendChild(btn);
-            });
-
-            el.presetContainer.innerHTML = '';
-            const allGrids = [...defaultGridPresets, ...state.customGrids];
-            allGrids.forEach(p => {
-                const btn = document.createElement('button');
-                btn.className = 'grid-option py-3.5 px-2 rounded-2xl border-2 border-slate-100 bg-slate-50 font-bold text-[11px] text-slate-500 transition-all hover:bg-slate-100';
-                btn.textContent = p.label;
-                btn.dataset.id = `grid-${p.c}-${p.r}`;
-                btn.onclick = () => updateGrid(p.c, p.r);
-                el.presetContainer.appendChild(btn);
-            });
-            updateUI();
-        }
-
-        function setupInputListeners() {
-            el.zoomValInput.onchange = (e) => {
-                let val = parseFloat(e.target.value);
-                if (isNaN(val)) val = 100;
-                val = Math.max(10, Math.min(500, val));
-                state.scale = val / 100;
-                updateSliderUI();
-                applyTransform();
-            };
-            el.rotateValInput.onchange = (e) => {
-                let val = parseFloat(e.target.value);
-                if (isNaN(val)) val = 0;
-                state.rotation = val;
-                updateSliderUI();
-                applyTransform();
-            };
-        }
-
-        function addCustomRatio() {
-            const val = el.customRatioInput.value.trim();
-            if (/^\d+:\d+$/.test(val)) {
-                if (!state.customRatios.includes(val)) {
-                    state.customRatios.push(val);
-                    saveSettings(); renderPresets();
-                }
-            }
-        }
-
-        function addCustomGrid() {
-            const val = el.customGridInput.value.trim().toLowerCase();
-            const match = val.match(/^(\d+)[x\*×](\d+)$/);
-            if (match) {
-                const c = parseInt(match[1]);
-                const r = parseInt(match[2]);
-                if (c > 0 && r > 0) {
-                    const label = `${c} x ${r}`;
-                    if (!state.customGrids.find(g => g.c === c && g.r === r)) {
-                        state.customGrids.push({ label, c, r });
-                        saveSettings(); renderPresets();
-                    }
-                }
-            }
-        }
-
-        function changeRatio(r) { state.ratio = r; saveSettings(); updateUI(); }
-        function updateGrid(c, r) { state.cols = c; state.rows = r; saveSettings(); updateUI(); }
-
-        function resetAdjustments() {
-            state.offsetX = 0; state.offsetY = 0; state.rotation = 0; state.scale = 1;
-            updateSliderUI(); applyTransform();
-        }
-
-        function rotate90() {
-            state.rotation = (Math.round(state.rotation / 90) * 90 + 90);
-            updateSliderUI(); applyTransform();
-        }
-
-        function updateSliderUI() {
-            el.zoomSlider.value = state.scale;
-            el.rotateSlider.value = state.rotation;
-            el.zoomValInput.value = Math.round(state.scale * 100);
-            el.rotateValInput.value = Math.round(state.rotation);
-            updateInfoBadge();
-        }
-
-        function handleFile(file) {
-            if (!file || !file.type.startsWith('image/')) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    state.image = img;
-                    el.previewImg.src = e.target.result;
-                    el.adjPanel.classList.remove('opacity-40', 'pointer-events-none');
-                    updateUI();
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        el.fileInput.onchange = (e) => handleFile(e.target.files[0]);
-        el.uploadZone.onclick = () => el.fileInput.click();
-
-        // 드래그 앤 드롭
-        el.uploadZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            el.uploadZone.classList.add('drag-over');
-        });
-        el.uploadZone.addEventListener('dragleave', (e) => {
-            if (!el.uploadZone.contains(e.relatedTarget)) {
-                el.uploadZone.classList.remove('drag-over');
-            }
-        });
-        el.uploadZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            el.uploadZone.classList.remove('drag-over');
-            const file = e.dataTransfer.files[0];
-            if (file) handleFile(file);
-        });
-
-        el.zoomSlider.oninput = (e) => {
-            state.scale = parseFloat(e.target.value);
-            updateSliderUI();
-            applyTransform();
-        };
-
-        el.rotateSlider.oninput = (e) => {
-            state.rotation = parseInt(e.target.value);
-            updateSliderUI();
-            applyTransform();
-        };
-
-        const getDist = (t1, t2) => Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-        const getAngle = (t1, t2) => Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * 180 / Math.PI;
-
-        el.previewBox.addEventListener('mousedown', e => {
-            if (!state.image) return;
-            isDragging = true; lastX = e.clientX; lastY = e.clientY;
-        });
-
-        window.addEventListener('mousemove', e => {
-            if (!isDragging) return;
-            state.offsetX += (e.clientX - lastX);
-            state.offsetY += (e.clientY - lastY);
-            lastX = e.clientX; lastY = e.clientY;
-            applyTransform();
-        });
-
-        window.addEventListener('mouseup', () => isDragging = false);
-
-        el.previewBox.addEventListener('touchstart', e => {
-            if (!state.image) return;
-            if (e.touches.length === 1) {
-                isDragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
-            } else if (e.touches.length === 2) {
-                isDragging = false;
-                initialDist = getDist(e.touches[0], e.touches[1]);
-                initialAngle = getAngle(e.touches[0], e.touches[1]);
-                startScale = state.scale;
-                startRotation = state.rotation;
-            }
-        }, { passive: false });
-
-        window.addEventListener('touchmove', e => {
-            if (e.touches.length === 1 && isDragging) {
-                state.offsetX += (e.touches[0].clientX - lastX);
-                state.offsetY += (e.touches[0].clientY - lastY);
-                lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
-                applyTransform();
-            } else if (e.touches.length === 2 && initialDist > 0) {
-                const currentDist = getDist(e.touches[0], e.touches[1]);
-                const currentAngle = getAngle(e.touches[0], e.touches[1]);
-                state.scale = Math.min(Math.max(0.1, startScale * (currentDist / initialDist)), 5);
-                let deltaAngle = currentAngle - initialAngle;
-                state.rotation = startRotation + deltaAngle;
-                updateSliderUI(); applyTransform();
-            }
-        }, { passive: false });
-
-        window.addEventListener('touchend', () => { isDragging = false; initialDist = 0; });
-
-        function applyTransform() {
-            el.previewImg.style.transform = `translate(${state.offsetX}px, ${state.offsetY}px) rotate(${state.rotation}deg) scale(${state.scale})`;
-        }
-
-        function smartAutoFit() {
-            if (!state.image) return;
-            state.offsetX = 0; state.offsetY = 0; state.rotation = 0;
-            const [unitW, unitH] = state.ratio.split(':').map(Number);
-            const targetTotalRatio = (unitW * state.cols) / (unitH * state.rows);
-            const imgRatio = state.image.width / state.image.height;
-            state.scale = imgRatio > targetTotalRatio ? imgRatio / targetTotalRatio : targetTotalRatio / imgRatio;
-            updateSliderUI(); updateUI();
-            showToast("최적의 구도를 찾았습니다.");
-        }
-
-        function updateInfoBadge() {
-            const [unitW, unitH] = state.ratio.split(':').map(Number);
-            const pieceW = 1080;
-            const pieceH = Math.round((1080 / unitW) * unitH);
-            const totalPieces = state.cols * state.rows;
-            const estSizeKB = Math.round((pieceW * pieceH * 3 * 0.1) / 1024);
-            const totalSizeMB = ((estSizeKB * totalPieces) / 1024).toFixed(1);
-
-            el.infoBadge.innerHTML = `
-                <div class="font-bold border-b border-white/20 pb-1 mb-1 opacity-60 uppercase text-[9px] tracking-widest">Image Details</div>
-                조각: ${pieceW}x${pieceH} px (${totalPieces}개)<br>
-                예상: 약 ${estSizeKB}KB/조각 (합계 ${totalSizeMB}MB)
-            `;
-        }
-
-        function updateUI() {
-            document.querySelectorAll('.ratio-option').forEach(b => b.classList.toggle('btn-active', b.dataset.id === `ratio-${state.ratio}`));
-            document.querySelectorAll('.grid-option').forEach(b => b.classList.toggle('btn-active', b.dataset.id === `grid-${state.cols}-${state.rows}`));
-
-            if (!state.image) return;
-
-            el.emptyView.classList.add('hidden');
-            el.previewBox.classList.remove('hidden');
-            el.infoBadge.classList.remove('hidden');
-            el.saveBtn.disabled = false;
-            el.saveBtn.className = 'w-full py-6 smart-gradient text-white rounded-[2rem] font-black text-xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-indigo-200 cursor-pointer hover:-translate-y-1';
-            el.statusDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-200 ml-2';
-            el.statusLabel.className = 'text-sm font-bold text-emerald-600 mr-2';
-            el.statusLabel.textContent = 'Active Editing';
-
-            const [unitW, unitH] = state.ratio.split(':').map(Number);
-            const totalW = unitW * state.cols;
-            const totalH = unitH * state.rows;
-            el.previewBox.style.aspectRatio = `${totalW} / ${totalH}`;
-
-            const boxRatio = totalW / totalH;
-            const imgRatio = state.image.width / state.image.height;
-
-            if (imgRatio > boxRatio) {
-                el.previewImg.style.width = 'auto'; el.previewImg.style.height = '100%';
-            } else {
-                el.previewImg.style.width = '100%'; el.previewImg.style.height = 'auto';
-            }
-
-            updateInfoBadge();
-
-            el.overlay.innerHTML = '';
-            if (state.cols > 1 || state.rows > 1) {
-                for (let i = 1; i < state.cols; i++) {
-                    const line = document.createElement('div');
-                    line.className = 'grid-line-v';
-                    line.style.left = `${(i / state.cols) * 100}%`;
-                    el.overlay.appendChild(line);
-                }
-                for (let i = 1; i < state.rows; i++) {
-                    const line = document.createElement('div');
-                    line.className = 'grid-line-h';
-                    line.style.top = `${(i / state.rows) * 100}%`;
-                    el.overlay.appendChild(line);
-                }
-            }
-            applyTransform();
-        }
-
-        el.saveBtn.onclick = async () => {
-            if (!state.image) return;
-            el.loader.classList.remove('hidden');
-            const zip = new JSZip();
-            const [unitW, unitH] = state.ratio.split(':').map(Number);
-            const qualityW = 1080;
-            const qualityH = Math.round((qualityW / unitW) * unitH);
-
-            const masterCanvas = document.createElement('canvas');
-            const mCtx = masterCanvas.getContext('2d');
-            const fullW = qualityW * state.cols;
-            const fullH = qualityH * state.rows;
-            masterCanvas.width = fullW; masterCanvas.height = fullH;
-
-            mCtx.save();
-            mCtx.translate(fullW / 2, fullH / 2);
-            const rect = el.previewBox.getBoundingClientRect();
-            const scaleFactor = fullW / rect.width;
-            mCtx.translate(state.offsetX * scaleFactor, state.offsetY * scaleFactor);
-            mCtx.rotate(state.rotation * Math.PI / 180);
-            mCtx.scale(state.scale, state.scale);
-
-            let dW, dH;
-            const imgRatio = state.image.width / state.image.height;
-            const boxRatio = (unitW * state.cols) / (unitH * state.rows);
-            if (imgRatio > boxRatio) {
-                dH = fullH; dW = dH * imgRatio;
-            } else {
-                dW = fullW; dH = dW / imgRatio;
-            }
-            mCtx.drawImage(state.image, -dW / 2, -dH / 2, dW, dH);
-            mCtx.restore();
-
-            try {
-                const tileCanvas = document.createElement('canvas');
-                const tCtx = tileCanvas.getContext('2d');
-                tileCanvas.width = qualityW;
-                tileCanvas.height = qualityH;
-                const jobs = [];
-                for (let r = 0; r < state.rows; r++) {
-                    for (let c = 0; c < state.cols; c++) {
-                        tCtx.clearRect(0, 0, qualityW, qualityH);
-                        tCtx.drawImage(masterCanvas, c * qualityW, r * qualityH, qualityW, qualityH, 0, 0, qualityW, qualityH);
-                        jobs.push(new Promise(res => {
-                            tileCanvas.toBlob(blob => { zip.file(`part_${r + 1}_${c + 1}.jpg`, blob); res(); }, 'image/jpeg', 0.92);
-                        }));
-                    }
-                }
-                await Promise.all(jobs);
-                const content = await zip.generateAsync({ type: 'blob' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(content);
-                link.download = `grid_pack_${Date.now()}.zip`;
-                link.click();
-                showToast("압축 파일이 저장되었습니다.");
-            } catch (e) { showToast("오류가 발생했습니다."); } finally { el.loader.classList.add('hidden'); }
-        };
-
-        function showToast(m) {
-            el.toast.textContent = m;
-            el.toast.classList.remove('opacity-0', 'translate-y-10');
-            el.toast.classList.add('opacity-100', 'translate-y-0');
-            setTimeout(() => {
-                el.toast.classList.remove('opacity-100', 'translate-y-0');
-                el.toast.classList.add('opacity-0', 'translate-y-10');
-            }, 3000);
-        }
-
-        init();
-    </script>
-    <!-- 좌상단: 홈 -->
-    <div class="top-overlay-left">
-      <a href="/" class="overlay-btn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-          <polyline points="9 22 9 12 15 12 15 22"/>
-        </svg>
-        <span>Home</span>
-      </a>
-    </div>
-    <!-- 우상단: 보기모드 + 공유 -->
-    <div class="top-overlay">
-      <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
-      <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-          <polyline points="16 6 12 2 8 6"/>
-          <line x1="12" x2="12" y1="2" y2="15"/>
-        </svg>
-        <span>공유</span>
-      </button>
-    </div>
+    init();
+  </script>
 </body>
-
 </html>
