@@ -365,7 +365,6 @@
         features: [
           "MP4 영상 링크가 감지되면 확장 아이콘이 번쩍임",
           "클릭 한 번으로 URL을 클립보드에 복사",
-          "여러 링크가 있으면 목록으로 표시",
         ],
         modalDesc: "MP4 영상을 불러오는 웹페이지를 방문하면 자동으로 링크를 감지하고 확장 아이콘에 알림을 표시합니다. 아이콘을 클릭하면 발견된 MP4 주소를 바로 복사할 수 있습니다.",
       },
@@ -399,7 +398,7 @@
         category: "social",
         badge: "소셜 도구",
         features: [
-          '교육용 단축주소 및 설문조사 기능 제공, 메일 OTP로 간편 인증·가입',
+          '교육용 단축주소 및 설문조사 기능 제공, 메일 OTP로 간편 로그인',
           '<a href="https://ssac.dgedu.link" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:none">개념튼튼 ON싹(ssac.dgedu.link)</a> — 초등학생 어휘·개념·독해·영어 자기주도 학습',
           '<a href="https://map.dgedu.link" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:none">에듀맵(map.dgedu.link)</a> — 대구 학년별·월별 체험 장소 탐색',
         ],
@@ -606,12 +605,12 @@
           const isModal = app.type === 'modal';
           const isExternal = !isModal && (app.type === 'link' || app.external);
           const a = document.createElement('a');
-          const isRecentVisited = app.href === mostRecentHref;
+          const isRecentVisited = !isModal && app.href === mostRecentHref;
           a.className = 'app-card' + (isModal ? ' modal-card' : '') + (isRecentVisited ? ' is-recent-visited' : '');
 
           if (isModal) {
             a.href = '#';
-            a.addEventListener('click', (e) => { e.preventDefault(); saveRecentApp(app); openModal(app); });
+            a.addEventListener('click', (e) => { e.preventDefault(); openModal(app); });
           } else {
             a.href = app.href;
             if (isExternal) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
