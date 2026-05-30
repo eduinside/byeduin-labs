@@ -581,3 +581,34 @@ public/file-tools/
 **파일 변경**:
 - `public/file-tools/index.html` — 모달 제거 (12줄 감소)
 - `public/file-tools/app.js` — 함수 제거 (120줄 감소), 자동 다운로드 추가
+
+---
+
+### Phase 8: 채점표 (Scoring Table) 앱 개발 (2026-05-30)
+
+대회·발표·공모 채점을 서버 없이 링크 하나로 처리하는 단일 HTML 앱. 한 명이 양식을 만들어 공동 채점자에게 배포하고, 각자 매긴 점수를 다시 모아 종합 결과를 산출한다. `docs/채점표-요구사항정의서.md` 명세 기반, `docs/design-system.md` 토큰 적용.
+
+**파일**: `public/scoring-table/index.html` (단일 파일, 인라인 CSS·JS)
+
+**3-탭 구조** (file-tools 탭 패턴 재사용):
+1. **표 만들기** — 대회 제목, 참가 인원/시상 비율/영역 수 스테퍼, 영역별 만점 설정(만점 합계 실시간 표시), 시상자 점수 범위 옵션, 점수 랜덤 생성, 결과 표(엑셀형 그리드, contenteditable). 시상 비율 변경 시 예상 시상 인원 실시간 갱신. 정렬: 높은순/낮은순/이름순 순환.
+2. **채점하기** — 양식 링크를 열면 채점자 이름 입력 후 점수 입력. 규칙에 따른 자동배점, 수합자에게 결과 링크 공유, xlsx 내려받기. 양식이 없으면 사용 안내 표시. 입력마다 localStorage 자동저장·복구.
+3. **수합하기** — 결과 링크들을 textarea에 붙여넣고 합치기(book-share/gather 패턴, 단축주소는 `/api/resolve-short-url` 역추적). 채점자별×참가자별 종합 표 생성, 셀 편집 시 합계·평균·석차·시상 즉시 갱신(원본 영역 점수는 보존하는 오버라이드 방식). xlsx(종합+채점자별 멀티시트) 내려받기.
+
+**재사용 패턴**:
+- 링크 공유: `buildShareURL`/`decodeSharePayload` (vives-share base64url + `/api/shorten`)
+- 결과 수집: book-share gather의 textarea 다중 링크 + `/api/resolve-short-url`
+- 파일 저장: SheetJS(xlsx) `aoa_to_sheet`/`book_append_sheet`/`writeFile`
+- 탭 UI: file-tools `.tabs`/`.tab-btn`/`.panel`/`switchTab()`
+
+**localStorage 키**: `vives-scoring-make`(탭1), `vives-scoring-draft`(탭2), `vives-scoring-collect`(탭3) — 각 탭에 💾 임시저장 버튼.
+
+**기타 변경 사항**:
+- 엑셀형 그리드 CSS: sticky 헤더의 총점/합계 칸을 불투명 배경으로 처리해 세로 스크롤 시 본문 비침(어긋남) 제거.
+- 인쇄·심사자 서명란 기능은 요청에 따라 제거.
+
+**홈(index.html) 동기화**:
+- 교육 카테고리에 `채점표`(/scoring-table/) 추가
+- 소셜 카테고리에 `에듀링크`(dgedu.link) 모달 추가
+- `Numberblocks` 메인 항목 숨김(주석 처리)
+- `Notion Image DL` 이모지 🖼️ → ⬇️ (다운로드 의미 강조)

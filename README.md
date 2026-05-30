@@ -8,21 +8,32 @@
 
 ---
 
-## 앱 목록 (14개)
+## 앱 목록 (18개)
+
+### 교육 (7)
+| 앱 | 경로 | 설명 |
+|---|---|---|
+| **채점표** | `/scoring-table/` | 대회·발표 채점 양식 배포, 공동 채점, 결과 수합 (링크 공유 + xlsx) |
+| **에듀서치** | `/search/` | 교육문서 AI 검색 (Gemini RAG) |
+| **Flash Deck** | `/flash-deck/` | 플래시카드 학습 앱 |
+| **Chalkboard** | `/chalkboard/` | 칠판/화이트보드 메모 |
+| **Step Squad** | `/numberblocks/step-squad.html` | 계단수 개념 블록 시각화 + 퀴즈 |
+| **Club Badge** | `/numberblocks/clubs.html` | 1~100 수의 넘버블록스 클럽 탐색 + 퀴즈 |
+| **Moon Phase** | `/moon-phase/` | 달의 위상 시뮬레이터 |
 
 ### 유틸리티 (4)
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **QR Master** | `/qr/` | QR 코드 생성, 카메라/이미지 스캔 |
-| **Smart Timer** | `/timer/` | 반복 알람 타이머 |
 | **MD Editor** | `/md-editor/` | 마크다운 편집기 (HTML 변환, 파일 공유 지원) |
+| **QR Master** | `/qr/` | QR 코드 생성, 카메라/이미지 스캔, 단축주소 |
 | **이미지 최적화 도구** | `/file-tools/` | 스캔 이미지 및 대용량 PPTX 이미지 최적화 |
+| **Smart Timer** | `/timer/` | 반복 알람 타이머 |
 
 ### 소셜 도구 (2)
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **Bubble Chat** | `/bubble-chat/` | P2P 실시간 채팅 |
 | **도서 정보 나눔** | `/book-share/` | ISBN으로 도서 정보 조회 및 공유 |
+| **Bubble Chat** | `/bubble-chat/` | P2P 실시간 채팅 |
 
 ### 크리에이티브 (3)
 | 앱 | 경로 | 설명 |
@@ -37,18 +48,8 @@
 | **Notion Image DL** | `/notion-image-downloader/` | Notion DB 이미지 일괄 다운로드 |
 | **Notion Styler** | `/notion-styler/` | LaTeX 수식 스타일링 및 HTML 생성 |
 
-### 교육 (3)
-| 앱 | 경로 | 설명 |
-|---|---|---|
-| **에듀서치** | `/search/` | 교육문서 AI 검색 (Gemini RAG) |
-| **Flash Deck** | `/flash-deck/` | 플래시카드 학습 앱 |
-| **Chalkboard** | `/chalkboard/` | 칠판/화이트보드 메모 |
-
-### 그 외
-| 앱 | 경로 | 설명 |
-|---|---|---|
-| **Numberblocks** | `/numberblocks/` | 넘버블록스 에피소드 파인더 + 부가 기능 |
-| **Moon Phase** | `/moon-phase/` | 달의 위상 시뮬레이터 |
+> 홈 화면에는 외부 연동·확장 항목(에듀링크, Content ID Viewer, Login Helper)도 모달로 노출됩니다.
+> `/numberblocks/` 메인(에피소드 파인더)은 현재 홈에서 숨김 처리되어 있습니다.
 
 ---
 

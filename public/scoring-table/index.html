@@ -126,6 +126,11 @@
       letter-spacing:.04em; text-transform:uppercase; color:var(--fg-muted);
       position:sticky; top:0; z-index:2;
     }
+    /* 총점/합계 헤더 — 불투명 배경(스크롤 시 본문 비침 방지) */
+    .st-grid th.total-th {
+      background:linear-gradient(0deg, rgba(0,111,238,.10), rgba(0,111,238,.10)), var(--bg-sec);
+      color:var(--primary);
+    }
     .st-grid td.name-td { text-align:left; font-weight:600; min-width:80px; }
     .st-grid td.score-td { min-width:64px; }
     .st-grid td.total-td { font-weight:700; background:rgba(0,111,238,.04) !important; }
@@ -303,6 +308,13 @@
           <span style="font-size:11px;color:var(--fg-muted);margin-top:4px">링크를 직접 열면 자동으로 불러옵니다</span>
         </div>
       </div>
+      <div style="margin-top:16px;padding:14px 16px;background:rgba(0,111,238,.05);border:1px solid rgba(0,111,238,.15);border-radius:10px;font-size:12.5px;line-height:1.7;color:var(--fg-muted)">
+        <strong style="color:var(--fg)">이 탭은 채점자용입니다.</strong><br>
+        ① 주최자가 <b>표 만들기</b> 탭에서 만든 <b>채점 양식 링크</b>를 받아 엽니다.<br>
+        ② <b>채점자 이름</b>을 입력하고 참가자별 점수를 매깁니다. (규칙에 따른 자동배점도 가능)<br>
+        ③ 입력이 끝나면 <b>수합자에게 공유</b> 버튼으로 결과 링크를 만들어 전달하거나, 엑셀로 내려받습니다.<br>
+        <span style="display:inline-block;margin-top:6px">아직 양식이 없다면, 위 입력란에 받은 링크를 붙여넣고 <b>불러오기</b>를 눌러주세요.</span>
+      </div>
     </div>
     <div id="sc-content-wrap" style="display:none">
       <!-- renderScTable() 로 채움 -->
@@ -315,12 +327,15 @@
   <section class="panel" id="panel-collect">
     <div class="st-card no-print" id="cl-input-card">
       <div class="st-sec">채점 결과 링크 수집</div>
-      <div style="display:flex;gap:8px;margin-bottom:10px">
-        <input id="cl-url-input" class="st-input" type="text" placeholder="채점 결과 링크를 붙여넣고 추가" style="flex:1">
-        <button class="st-btn st-btn-primary" onclick="clAddFromInput()">추가</button>
+      <textarea id="cl-url-input" class="st-input" style="width:100%;min-height:96px;resize:vertical;line-height:1.6"
+        placeholder="채점자들이 보낸 결과 링크를 붙여넣으세요. 줄바꿈·쉼표로 여러 개 입력 가능.&#10;&#10;예)&#10;https://byeduin.short.gy/Ab3xZ&#10;https://by.eduin.info/scoring-table/#share=..."></textarea>
+      <div class="act-row" style="margin-top:10px">
+        <button class="st-btn st-btn-primary" id="cl-merge-btn" onclick="clMergeFromInput()">🧩 합치기</button>
+        <button class="st-btn st-btn-ghost st-btn-sm" onclick="clSaveLocal(true)">💾 임시저장</button>
+        <span id="cl-merge-status" style="font-size:12px;color:var(--fg-muted)"></span>
       </div>
-      <div class="chip-list" id="cl-chip-list"></div>
-      <div style="font-size:11px;color:var(--fg-muted)">동일한 채점자명 링크는 덮어씁니다</div>
+      <div class="chip-list" id="cl-chip-list" style="margin-top:10px"></div>
+      <div style="font-size:11px;color:var(--fg-muted)">동일한 채점자명 링크는 덮어씁니다 · 단축주소·공유링크 모두 지원</div>
     </div>
     <div id="cl-result-wrap" style="display:none">
       <!-- renderClTable() 로 채움 -->
@@ -364,12 +379,6 @@ function switchTab(id) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + id));
   currentTab = id;
-}
-
-function triggerPrint() {
-  document.body.dataset.print = currentTab;
-  window.print();
-  delete document.body.dataset.print;
 }
 
 // ════════════════════════════════════════════════════════
@@ -479,14 +488,16 @@ function computeRanksAwards(rows, ratio) {
 //  ── 탭 1: 표 만들기 ──
 // ════════════════════════════════════════════════════════
 const mk = {
+  title: '',
   count: 5,
   ratio: 20,
   areaCount: 2,
   areas: [{ name: '영역1', max: 30 }, { name: '영역2', max: 20 }],
   rows: [],
   awardRange: { enabled: false, min: 80, max: 100 },
-  sortAsc: false  // 기본: 높은 순
+  sortMode: 'desc'  // 'desc'(높은순) | 'asc'(낮은순) | 'name'(이름순)
 };
+const MK_KEY = 'vives-scoring-make';
 
 function mkInit() {
   mk.rows = Array.from({ length: mk.count }, (_, i) => ({
@@ -528,25 +539,47 @@ function mkSetField(field, raw) {
     document.getElementById('mk-ratio-inp').value = val;
     document.getElementById('mk-ratio-val').textContent = val;
     mkUpdateRanksAwards();
+    mkUpdateInfoBadge();
+  }
+  mkSaveLocal();
+}
+
+function mkUpdateInfoBadge() {
+  const el = document.getElementById('mk-info-badge');
+  if (el) {
+    const awardN = Math.round(mk.rows.length * mk.ratio / 100);
+    el.textContent = `총 ${mk.rows.length}명 · 시상 ${awardN}명`;
   }
 }
 
-function mkOnAreaName(i, v)  { mk.areas[i].name = v; renderMkTableHead(); }
+function mkUpdateMaxTotal() {
+  const el = document.getElementById('mk-maxtotal');
+  if (el) el.textContent = mk.areas.reduce((s, a) => s + a.max, 0);
+}
+function mkOnAreaName(i, v)  { mk.areas[i].name = v; renderMkTableHead(); mkSaveLocal(); }
 function mkOnAreaMax(i, inp) {
   mk.areas[i].max = clamp(+inp.value, 1, 200);
   inp.value = mk.areas[i].max;
-  renderMkTableHead();
+  mkUpdateMaxTotal(); renderMkTableHead(); mkSaveLocal();
 }
 function mkAreaMaxStep(i, delta) {
   mk.areas[i].max = clamp(mk.areas[i].max + delta * 5, 1, 200);
   document.getElementById(`mk-amax-inp-${i}`).value = mk.areas[i].max;
-  renderMkTableHead();
+  mkUpdateMaxTotal(); renderMkTableHead(); mkSaveLocal();
 }
 
 // ── 설정 패널 렌더 ──
 function renderMkSettings() {
   const el = document.getElementById('mk-settings-card');
   el.innerHTML = `
+    <div class="st-sec">대회 정보</div>
+    <div class="sf" style="margin-bottom:16px">
+      <label class="sf-label" for="mk-title">대회 제목</label>
+      <input id="mk-title" class="st-input" type="text" value="${esc(mk.title)}"
+        placeholder="예) 2026 교내 발표 대회" style="max-width:360px"
+        oninput="mk.title=this.value;mkSaveLocal()">
+    </div>
+
     <div class="st-sec">기본 설정</div>
     <div class="settings-row">
       <div class="sf">
@@ -578,7 +611,7 @@ function renderMkSettings() {
       </div>
     </div>
 
-    <div class="st-sec">영역 설정</div>
+    <div class="st-sec">영역 설정 · 만점 합계 <span id="mk-maxtotal" style="color:var(--primary);font-weight:800">${mk.areas.reduce((s,a)=>s+a.max,0)}</span>점</div>
     <div class="area-rows">
       ${mk.areas.map((a, i) => `
         <div class="area-row">
@@ -633,20 +666,23 @@ function mkToggleAwardRange(on) {
 // ── 표 렌더 ──
 function renderMkTable() {
   const el = document.getElementById('mk-table-wrap');
-  const { rows, areas, ratio, sortAsc } = mk;
+  const { rows, areas, ratio, sortMode } = mk;
   if (!rows.length) { el.innerHTML = ''; return; }
 
   const { rankMap, awardSet } = computeRanksAwards(rows, ratio);
   const awardN = Math.round(rows.length * ratio / 100);
 
   const sorted = [...rows].sort((a, b) =>
-    sortAsc ? rowTotal(a) - rowTotal(b) : rowTotal(b) - rowTotal(a));
+    sortMode === 'name' ? a.name.localeCompare(b.name, 'ko')
+    : sortMode === 'asc' ? rowTotal(a) - rowTotal(b)
+    : rowTotal(b) - rowTotal(a));
+  const sortLabel = sortMode === 'name' ? '이름순 ⇅' : sortMode === 'asc' ? '낮은순 ↑' : '높은순 ↓';
 
   const thead = `<thead><tr>
     <th class="rank-td">순위</th>
     <th style="text-align:left;min-width:80px">이름</th>
     ${areas.map(a => `<th class="area-th">${esc(a.name)}<br><span style="font-weight:400;font-size:10px;color:var(--fg-muted)">(${a.max}점)</span></th>`).join('')}
-    <th class="total-td" style="background:rgba(0,111,238,.06)">총점</th>
+    <th class="total-th">총점</th>
     <th class="award-td">시상</th>
   </tr></thead>`;
 
@@ -672,23 +708,21 @@ function renderMkTable() {
   }).join('')}</tbody>`;
 
   el.innerHTML = `
+    ${mk.title ? `<h2 style="font-size:1.05rem;font-weight:800;margin:0 0 10px;text-align:center">${esc(mk.title)}</h2>` : ''}
     <div class="tbl-header no-print">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span style="font-size:13px;font-weight:700">채점 결과</span>
-        <span class="info-badge">총 ${rows.length}명 · 시상 ${awardN}명</span>
-        <button class="st-btn st-btn-ghost st-btn-sm ${sortAsc ? '' : 'on'}" onclick="mkToggleSort()">
-          ${sortAsc ? '낮은순 ↑' : '높은순 ↓'}
-        </button>
+        <span class="info-badge" id="mk-info-badge">총 ${rows.length}명 · 시상 ${awardN}명</span>
+        <button class="st-btn st-btn-ghost st-btn-sm on" onclick="mkCycleSort()">${sortLabel}</button>
       </div>
       <div class="act-row mk-btn-row">
         <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkRandom()">🎲 점수 랜덤</button>
         <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkShareForm()">🔗 양식 공유</button>
         <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkExportXlsx()">📥 xlsx</button>
-        <button class="st-btn st-btn-ghost st-btn-sm" onclick="triggerPrint()">🖨 인쇄</button>
+        <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkSaveLocal(true)">💾 임시저장</button>
       </div>
     </div>
     <div class="grid-wrap"><table class="st-grid">${thead}${tbody}</table></div>
-    ${mkBuildSig()}
   `;
 }
 
@@ -697,14 +731,15 @@ function renderMkTableHead() {
   renderMkTable();
 }
 
-function mkToggleSort() {
-  mk.sortAsc = !mk.sortAsc;
+function mkCycleSort() {
+  mk.sortMode = mk.sortMode === 'desc' ? 'asc' : mk.sortMode === 'asc' ? 'name' : 'desc';
   renderMkTable();
 }
 
 function mkRandom() {
   generateScores(mk.rows, mk.areas, mk.ratio, mk.awardRange);
   renderMkTable();
+  mkSaveLocal();
 }
 
 // contenteditable 핸들러
@@ -731,9 +766,10 @@ function mkScoreBlur(el) {
   const tr = el.closest('tr');
   tr.querySelector('.total-td').textContent = rowTotal(mk.rows[rIdx]);
   mkUpdateRanksAwards();
+  mkSaveLocal();
 }
 function mkOnNameEdit(rIdx, text) { mk.rows[rIdx].name = text; }
-function mkNameBlur(rIdx, el) { mk.rows[rIdx].name = el.textContent.trim(); el.textContent = mk.rows[rIdx].name; }
+function mkNameBlur(rIdx, el) { mk.rows[rIdx].name = el.textContent.trim(); el.textContent = mk.rows[rIdx].name; mkSaveLocal(); }
 
 function mkUpdateRanksAwards() {
   const { rankMap, awardSet } = computeRanksAwards(mk.rows, mk.ratio);
@@ -748,27 +784,43 @@ function mkUpdateRanksAwards() {
   });
 }
 
-// 양식 공유 — 이름 목록만 포함
+// 양식 공유 — 제목·이름 목록·시상 규칙 포함 (점수는 비움)
 function mkShareForm() {
   const data = {
+    title: mk.title,
     ratio: mk.ratio,
     areas: mk.areas.map(a => [a.name, a.max]),
     names: mk.rows.map(r => r.name),
+    award: [mk.awardRange.enabled, mk.awardRange.min, mk.awardRange.max],
   };
   doShare(data, 'form');
 }
 
-// 서명란
-function mkBuildSig() {
-  return `<div class="sig-section">
-    <div class="sig-title">심사위원 서명</div>
-    <div class="sig-rows">
-      <div class="sig-row">
-        <div class="sig-field"><span class="sig-lbl">심사위원:</span><span class="sig-line"></span></div>
-        <div class="sig-field"><span class="sig-lbl">서명:</span><span class="sig-line"></span></div>
-      </div>
-    </div>
-  </div>`;
+// 임시저장 (localStorage)
+function mkSaveLocal(notify) {
+  try {
+    localStorage.setItem(MK_KEY, JSON.stringify({
+      title: mk.title, count: mk.count, ratio: mk.ratio,
+      areaCount: mk.areaCount, areas: mk.areas, rows: mk.rows,
+      awardRange: mk.awardRange, sortMode: mk.sortMode,
+    }));
+    if (notify) showToast('표 만들기 내용을 임시저장했습니다 💾');
+  } catch {}
+}
+function mkLoadLocal() {
+  try {
+    const d = JSON.parse(localStorage.getItem(MK_KEY));
+    if (!d || !Array.isArray(d.areas) || !Array.isArray(d.rows)) return false;
+    mk.title = d.title || '';
+    mk.count = d.count ?? d.rows.length;
+    mk.ratio = d.ratio ?? 20;
+    mk.areaCount = d.areaCount ?? d.areas.length;
+    mk.areas = d.areas;
+    mk.rows = d.rows;
+    mk.awardRange = d.awardRange || { enabled: false, min: 80, max: 100 };
+    mk.sortMode = d.sortMode || 'desc';
+    return true;
+  } catch { return false; }
 }
 
 // xlsx 내보내기
@@ -795,7 +847,8 @@ function mkExportXlsx() {
 // ════════════════════════════════════════════════════════
 //  ── 탭 2: 채점하기 ──
 // ════════════════════════════════════════════════════════
-const sc = { scorer: '', areas: [], rows: [], ratio: 20, loaded: false };
+const sc = { title: '', scorer: '', areas: [], rows: [], ratio: 20,
+  awardRange: { enabled: true, min: 80, max: 100 }, loaded: false };
 const SC_KEY = 'vives-scoring-draft';
 
 function scLoadFromInput() {
@@ -808,8 +861,10 @@ function scLoadFromInput() {
 }
 
 function scApplyForm(data) {
+  sc.title  = data.title || '';
   sc.areas  = (data.areas || []).map(([name, max]) => ({ name, max }));
   sc.ratio  = data.ratio ?? 20;
+  if (Array.isArray(data.award)) sc.awardRange = { enabled: !!data.award[0], min: data.award[1] ?? 80, max: data.award[2] ?? 100 };
   sc.rows   = (data.names || []).map(name => ({ name, scores: sc.areas.map(() => null) }));
   // 기존 초안 복구
   const draft = scLoadDraft();
@@ -828,8 +883,12 @@ function scApplyForm(data) {
 function scLoadDraft() {
   try { return JSON.parse(localStorage.getItem(SC_KEY)); } catch { return null; }
 }
-function scSaveDraft() {
-  localStorage.setItem(SC_KEY, JSON.stringify({ scorerName: sc.scorer, areas: sc.areas, rows: sc.rows }));
+function scSaveDraft(notify) {
+  localStorage.setItem(SC_KEY, JSON.stringify({
+    scorerName: sc.scorer, title: sc.title, ratio: sc.ratio,
+    awardRange: sc.awardRange, areas: sc.areas, rows: sc.rows,
+  }));
+  if (notify === true) showToast('채점 내용을 임시저장했습니다 💾');
 }
 function scClearAll() {
   if (!confirm('채점 내용을 초기화할까요?')) return;
@@ -861,7 +920,7 @@ function renderScTable() {
   const thead = `<thead><tr>
     <th style="text-align:left;min-width:80px">이름</th>
     ${sc.areas.map(a => `<th class="area-th">${esc(a.name)}<br><span style="font-weight:400;font-size:10px;color:var(--fg-muted)">(${a.max}점)</span></th>`).join('')}
-    <th class="total-td" style="background:rgba(0,111,238,.06)">총점</th>
+    <th class="total-th">총점</th>
   </tr></thead>`;
 
   const tbody = `<tbody>${sc.rows.map((row, ri) => `
@@ -879,11 +938,13 @@ function renderScTable() {
     </tr>`).join('')}</tbody>`;
 
   wrap.innerHTML = `
+    ${sc.title ? `<h2 style="font-size:1.05rem;font-weight:800;margin:0 0 10px;text-align:center">${esc(sc.title)}</h2>` : ''}
     <div class="st-card no-print" style="padding:12px 20px">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <span style="font-size:13px;font-weight:700">채점자: ${esc(sc.scorer || '(미입력)')}</span>
+        <label class="sf-label" for="sc-scorer-inline" style="margin:0">채점자</label>
+        <input id="sc-scorer-inline" class="st-input" type="text" placeholder="채점자 이름" value="${esc(sc.scorer)}"
+          style="width:160px" oninput="sc.scorer=this.value;scSaveDraft()">
         <span class="info-badge">${sc.rows.length}명 · ${sc.areas.length}개 영역</span>
-        <button class="st-btn st-btn-ghost st-btn-sm no-print" style="margin-left:auto" onclick="scBackToSetup()">← 설정으로</button>
       </div>
       <div class="prog-wrap">
         <div class="prog-bar"><div class="prog-fill" id="sc-prog-fill" style="width:0%"></div></div>
@@ -892,19 +953,22 @@ function renderScTable() {
     </div>
     <div class="grid-wrap"><table class="st-grid">${thead}${tbody}</table></div>
     <div class="act-row sc-btn-row no-print" style="margin-top:12px;gap:8px">
-      <button class="st-btn st-btn-primary" onclick="scSubmit()">🔗 결과 링크 생성</button>
+      <button class="st-btn st-btn-primary" onclick="scSubmit()">🔗 수합자에게 공유</button>
       <button class="st-btn st-btn-ghost" onclick="scExportXlsx()">📥 xlsx</button>
-      <button class="st-btn st-btn-ghost" onclick="triggerPrint()">🖨 인쇄</button>
+      <button class="st-btn st-btn-ghost" onclick="scAutoFill()">🎲 규칙에 따른 자동배점</button>
+      <button class="st-btn st-btn-ghost" onclick="scSaveDraft(true)">💾 임시저장</button>
       <button class="st-btn st-btn-danger st-btn-sm" onclick="scClearAll()">초기화</button>
     </div>
-    ${scBuildSig()}
   `;
   scUpdateProgress();
 }
 
-function scBackToSetup() {
-  document.getElementById('sc-content-wrap').style.display = 'none';
-  document.getElementById('sc-setup-card').style.display = '';
+function scAutoFill() {
+  if (!sc.rows.length) return;
+  generateScores(sc.rows, sc.areas, sc.ratio, sc.awardRange);
+  renderScTable();
+  scSaveDraft();
+  showToast('규칙에 따라 점수를 자동배점했습니다');
 }
 
 function scOnInput(inp) {
@@ -929,7 +993,8 @@ function scOnBlur(inp) {
 }
 
 async function scSubmit() {
-  sc.scorer = document.getElementById('sc-scorer') ? document.getElementById('sc-scorer').value.trim() : sc.scorer;
+  const inline = document.getElementById('sc-scorer-inline');
+  if (inline) sc.scorer = inline.value.trim();
   if (!sc.scorer) { showToast('채점자 이름을 입력해 주세요.'); return; }
   const hasEmpty = sc.rows.some(r => r.scores.some(s => s == null));
   if (hasEmpty && !confirm('미입력 칸이 있습니다. 계속 진행할까요?')) return;
@@ -940,19 +1005,6 @@ async function scSubmit() {
     rows:   sc.rows.map(r => [r.name, r.scores.map(s => s ?? 0)]),
   };
   await doShare(data, 'result');
-}
-
-function scBuildSig() {
-  const name = sc.scorer || '(채점자명)';
-  return `<div class="sig-section">
-    <div class="sig-title">심사위원 서명</div>
-    <div class="sig-rows">
-      <div class="sig-row">
-        <div class="sig-field"><span class="sig-lbl">심사위원:</span><span class="sig-name">${esc(name)}</span></div>
-        <div class="sig-field"><span class="sig-lbl">서명:</span><span class="sig-line"></span></div>
-      </div>
-    </div>
-  </div>`;
 }
 
 function scExportXlsx() {
@@ -972,18 +1024,76 @@ function scExportXlsx() {
 //  ── 탭 3: 수합하기 ──
 // ════════════════════════════════════════════════════════
 const cl = { results: [], aggregateBy: 'avg', sortAsc: false };
+const CL_KEY = 'vives-scoring-collect';
 
-function clAddFromInput() {
-  const url = document.getElementById('cl-url-input').value.trim();
-  if (!url) return;
-  const hash = url.includes('#share=') ? url.split('#share=')[1] : url;
-  const payload = decodeSharePayload(hash);
-  if (!payload || payload.permission !== 'result') { showToast('결과 링크를 읽을 수 없습니다.'); return; }
-  clAddResult(payload.data);
-  document.getElementById('cl-url-input').value = '';
+// 한 줄 → 결과 payload 디코드 (단축주소는 서버에서 역추적)
+async function clResolveLine(line) {
+  if (line.includes('#share=')) {
+    return decodeSharePayload(line.split('#share=')[1]);
+  }
+  if (/^https?:\/\//.test(line)) {
+    try {
+      const res = await fetch('/api/resolve-short-url', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shortURL: line }),
+      });
+      const j = await res.json();
+      if (res.ok && j.resolvedURL && j.resolvedURL.includes('#share=')) {
+        return decodeSharePayload(j.resolvedURL.split('#share=')[1]);
+      }
+    } catch {}
+  }
+  return null;
 }
 
-function clAddResult(data) {
+async function clMergeFromInput() {
+  const text = document.getElementById('cl-url-input').value;
+  const lines = [...new Set(text.split(/[\n\r,]+/).map(s => s.trim()).filter(Boolean))];
+  if (!lines.length) { showToast('링크를 입력해 주세요.'); return; }
+
+  const btn = document.getElementById('cl-merge-btn');
+  const status = document.getElementById('cl-merge-status');
+  btn.disabled = true;
+  let ok = 0, fail = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (status) status.textContent = `처리 중… ${i + 1}/${lines.length}`;
+    const payload = await clResolveLine(lines[i]);
+    if (payload && payload.permission === 'result') { clAddResult(payload.data, true); ok++; }
+    else fail++;
+  }
+  btn.disabled = false;
+  if (status) status.textContent = '';
+  renderClChips();
+  renderClTable();
+  clSaveLocal();
+  if (ok) {
+    document.getElementById('cl-url-input').value = '';
+    showToast(`✓ ${ok}명 수합 완료${fail ? ` (실패 ${fail}건)` : ''}`);
+  } else {
+    showToast('읽을 수 있는 결과 링크가 없습니다.');
+  }
+}
+
+function clSaveLocal(notify) {
+  try {
+    localStorage.setItem(CL_KEY, JSON.stringify({
+      results: cl.results, aggregateBy: cl.aggregateBy, sortAsc: cl.sortAsc,
+    }));
+    if (notify) showToast('수합 내용을 임시저장했습니다 💾');
+  } catch {}
+}
+function clLoadLocal() {
+  try {
+    const d = JSON.parse(localStorage.getItem(CL_KEY));
+    if (!d || !Array.isArray(d.results) || !d.results.length) return false;
+    cl.results = d.results;
+    cl.aggregateBy = d.aggregateBy || 'avg';
+    cl.sortAsc = !!d.sortAsc;
+    return true;
+  } catch { return false; }
+}
+
+function clAddResult(data, silent) {
   const scorer = data.scorer || '알 수 없음';
   // 동일 채점자 덮어쓰기
   const idx = cl.results.findIndex(r => r.scorer === scorer);
@@ -994,15 +1104,19 @@ function clAddResult(data) {
     rows:   (data.rows || []).map(([name, scores]) => ({ name, scores: scores.map(Number) })),
   };
   if (idx >= 0) cl.results[idx] = entry; else cl.results.push(entry);
-  renderClChips();
-  renderClTable();
-  showToast(`${scorer} 채점 결과 추가됨`);
+  if (!silent) {
+    renderClChips();
+    renderClTable();
+    clSaveLocal();
+    showToast(`${scorer} 채점 결과 추가됨`);
+  }
 }
 
 function clRemoveResult(scorer) {
   cl.results = cl.results.filter(r => r.scorer !== scorer);
   renderClChips();
   renderClTable();
+  clSaveLocal();
 }
 
 function renderClChips() {
@@ -1031,7 +1145,8 @@ function clAggregate() {
   cl.results.forEach(r => {
     r.rows.forEach(row => {
       if (!scoreMap.has(row.name)) scoreMap.set(row.name, {});
-      scoreMap.get(row.name)[r.scorer] = row.scores.reduce((s, v) => s + (v ?? 0), 0);
+      const ov = r._ov && r._ov[row.name];
+      scoreMap.get(row.name)[r.scorer] = ov != null ? ov : row.scores.reduce((s, v) => s + (v ?? 0), 0);
     });
   });
 
@@ -1070,7 +1185,7 @@ function renderClTable() {
     <th class="rank-td">순위</th>
     <th style="text-align:left;min-width:80px">이름</th>
     ${scorerList.map(s => `<th style="min-width:80px">${esc(s)}</th>`).join('')}
-    <th class="total-td" style="background:rgba(0,111,238,.06)">합계</th>
+    <th class="total-th">합계</th>
     <th style="min-width:64px">평균</th>
     <th class="award-td">시상</th>
   </tr></thead>`;
@@ -1102,7 +1217,7 @@ function renderClTable() {
       </div>
       <div class="act-row cl-btn-row">
         <button class="st-btn st-btn-ghost st-btn-sm" onclick="clExportXlsx()">📥 xlsx</button>
-        <button class="st-btn st-btn-ghost st-btn-sm" onclick="triggerPrint()">🖨 인쇄</button>
+        <button class="st-btn st-btn-ghost st-btn-sm" onclick="clSaveLocal(true)">💾 임시저장</button>
       </div>
     </div>
     <div class="grid-wrap"><table class="st-grid">${thead}${tbody}</table></div>
@@ -1117,8 +1232,6 @@ function renderClTable() {
         ${clBuildDetailTables()}
       </div>
     </div>
-
-    ${clBuildSig()}
   `;
 }
 
@@ -1152,8 +1265,8 @@ function clToggleDetail() {
   toggle.classList.toggle('open', open);
 }
 
-function clSetAggregate(mode) { cl.aggregateBy = mode; renderClTable(); }
-function clToggleSort()       { cl.sortAsc = !cl.sortAsc; renderClTable(); }
+function clSetAggregate(mode) { cl.aggregateBy = mode; renderClTable(); clSaveLocal(); }
+function clToggleSort()       { cl.sortAsc = !cl.sortAsc; renderClTable(); clSaveLocal(); }
 
 // contenteditable 핸들러 — DOM 기반으로 in-place 업데이트
 function clOnScoreEdit(el) {
@@ -1165,8 +1278,17 @@ function clOnScoreBlur(el) {
   const raw = el.textContent.trim();
   const val = (raw === '-' || raw === '') ? null : Math.max(0, parseInt(raw, 10) || 0);
   el.textContent = val != null ? val : '-';
+  // 편집 총점을 해당 채점자의 오버라이드로 저장 (상세표 per-영역 점수는 보존)
+  const name = el.dataset.name;
+  const scorer = clAggregate().scorerList[+el.dataset.si];
+  const result = cl.results.find(r => r.scorer === scorer);
+  if (result) {
+    result._ov = result._ov || {};
+    if (val == null) delete result._ov[name]; else result._ov[name] = val;
+  }
   _clRefreshRowTotals(el.closest('tr'));
   clUpdateAllRanksAwards();
+  clSaveLocal();
 }
 
 function _clRefreshRowTotals(tr) {
@@ -1208,20 +1330,6 @@ function clUpdateAllRanksAwards() {
   });
 }
 
-function clBuildSig() {
-  if (!cl.results.length) return '';
-  return `<div class="sig-section">
-    <div class="sig-title">심사위원 서명</div>
-    <div class="sig-rows">
-      ${cl.results.map(r => `
-        <div class="sig-row">
-          <div class="sig-field"><span class="sig-lbl">심사위원:</span><span class="sig-name">${esc(r.scorer)}</span></div>
-          <div class="sig-field"><span class="sig-lbl">서명:</span><span class="sig-line"></span></div>
-        </div>`).join('')}
-    </div>
-  </div>`;
-}
-
 function clExportXlsx() {
   if (typeof XLSX === 'undefined') { showToast('SheetJS 로딩 중...'); return; }
   if (!cl.results.length) { showToast('수집된 결과가 없습니다.'); return; }
@@ -1261,10 +1369,34 @@ function clExportXlsx() {
 // ════════════════════════════════════════════════════════
 //  INIT
 // ════════════════════════════════════════════════════════
+// 탭 2 임시저장 복구
+function scInitRestore() {
+  const d = scLoadDraft();
+  if (d && Array.isArray(d.areas) && d.areas.length && Array.isArray(d.rows) && d.rows.length) {
+    sc.title = d.title || '';
+    sc.scorer = d.scorerName || '';
+    sc.ratio = d.ratio ?? 20;
+    sc.awardRange = d.awardRange || sc.awardRange;
+    sc.areas = d.areas;
+    sc.rows = d.rows;
+    sc.loaded = true;
+    renderScTable();
+    return true;
+  }
+  return false;
+}
+
 (function init() {
-  mkInit();
+  // 탭 1 — 임시저장 복구 또는 기본값
+  if (!mkLoadLocal()) mkInit();
   renderMkSettings();
   renderMkTable();
+
+  // 탭 2 — 임시저장 복구
+  scInitRestore();
+
+  // 탭 3 — 임시저장 복구
+  if (clLoadLocal()) { renderClChips(); renderClTable(); }
 
   const hash = location.hash;
   if (hash.startsWith('#share=')) {
