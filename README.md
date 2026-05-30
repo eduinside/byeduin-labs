@@ -4,7 +4,7 @@
 
 **로컬 실행**: `npx serve public -l 3000`  
 **배포**: [Cloudflare Pages](https://byeduin-vives.pages.dev) (자동 배포: main 브랜치)  
-**개발 진행**: [`DEVPLAN.md`](DEVPLAN.md) 참고
+**개발 진행**: [`docs/DEVPLAN.md`](docs/DEVPLAN.md) 참고
 
 ---
 
@@ -74,7 +74,7 @@ public/common/
 
 ## 📖 개발 문서
 
-자세한 개발 계획, 테스트 체크리스트, 알려진 이슈, 성능 분석은 [`DEVPLAN.md`](DEVPLAN.md)를 참고하세요.
+자세한 개발 계획, 테스트 체크리스트, 알려진 이슈, 성능 분석은 [`docs/DEVPLAN.md`](docs/DEVPLAN.md)를 참고하세요.
 
 ---
 
