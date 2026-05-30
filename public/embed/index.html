@@ -421,21 +421,6 @@
     }
     .v-open-btn:hover { background: var(--primary-h, #005bc4); }
 
-    /* Floating fullscreen button */
-    #v-fs-float {
-      display: none;
-      position: fixed; bottom: 14px; right: 14px; z-index: 9998;
-      background: rgba(0,0,0,0.5);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      color: #fff; border: none; border-radius: 9px;
-      padding: 8px 10px; cursor: pointer;
-      align-items: center; font-size: 16px; line-height: 1;
-      transition: background 0.15s;
-    }
-    #v-fs-float:hover { background: rgba(0,0,0,0.72); }
-    #v-fs-float.on { display: flex; }
-
     @media (max-width: 540px) {
       body.mode-builder { padding-top: 56px; }
     }
@@ -511,30 +496,6 @@
         <span class="section-label">옵션</span>
         <div class="toggle-list">
 
-          <label class="toggle-row" for="opt-fullscreen">
-            <div class="toggle-left">
-              <div class="toggle-label-text">전체화면 버튼</div>
-            </div>
-            <input type="checkbox" class="t-check" id="opt-fullscreen">
-            <span class="t-switch"></span>
-          </label>
-
-          <label class="toggle-row" for="opt-rounded">
-            <div class="toggle-left">
-              <div class="toggle-label-text">둥근 모서리</div>
-            </div>
-            <input type="checkbox" class="t-check" id="opt-rounded" checked>
-            <span class="t-switch"></span>
-          </label>
-
-          <label class="toggle-row" for="opt-border">
-            <div class="toggle-left">
-              <div class="toggle-label-text">테두리</div>
-            </div>
-            <input type="checkbox" class="t-check" id="opt-border">
-            <span class="t-switch"></span>
-          </label>
-
           <label class="toggle-row" for="opt-titlebar">
             <div class="toggle-left">
               <div class="toggle-label-text">상단 제목바</div>
@@ -601,37 +562,28 @@
     <!-- Output -->
     <div id="output-section" style="display:none">
       <div class="output-card">
-        <div class="output-head">생성된 URL</div>
+        <div class="output-head" id="output-head-label">임베드 URL</div>
 
-        <input type="text" id="generatedURL" class="hero-input output-url-input" readonly>
-
-        <div class="output-btn-row">
-          <button class="hero-btn" onclick="copyLongURL()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-            복사
-          </button>
-          <button class="hero-btn hero-btn-ghost" id="shortenBtn" onclick="shortenURL()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-            </svg>
-            단축 URL
-          </button>
+        <!-- Primary URL (short URL after success, long URL as fallback) -->
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <input type="text" id="primaryURL" class="hero-input output-url-input" readonly
+            placeholder="단축 URL 생성 중…">
+          <button class="hero-btn" onclick="copyPrimaryURL()"
+            style="flex-shrink:0; padding:0.6rem 1rem; min-width:64px;">복사</button>
         </div>
 
-        <div id="short-result" class="short-result" style="display:none"></div>
+        <!-- Long URL fallback (shown when shorten fails) -->
+        <div id="long-url-row" style="display:none; font-size:0.76rem; color:var(--fg-muted); margin-bottom:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span>원본 URL:</span>
+          <input type="text" id="generatedURL" class="hero-input"
+            readonly style="flex:1; min-width:0; font-size:0.76rem; font-family:ui-monospace,monospace; padding:4px 8px;">
+          <button class="hero-btn hero-btn-ghost" onclick="copyLongURL()"
+            style="font-size:0.76rem; padding:4px 10px; min-height:0;">복사</button>
+        </div>
 
         <div class="notion-hint">
           <strong>노션에 붙여넣는 법</strong><br>
           노션 페이지에서 <code>/embed</code> 입력 → 임베드 블록 생성 → 위 URL 붙여넣기
-        </div>
-
-        <div class="short-note">
-          단축 URL도 노션 임베드에 사용 가능합니다. 단축 URL은 최종 URL로 리다이렉트되며 해시(#)가 그대로 전달됩니다.
         </div>
       </div>
     </div><!-- /output -->
@@ -648,12 +600,6 @@
   <!-- Optional title bar -->
   <div id="v-title-bar">
     <span id="v-title-text"></span>
-    <button class="v-tb-btn" id="v-tb-fs" title="전체화면" onclick="goFullscreen()">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-        <line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/>
-      </svg>
-    </button>
   </div>
 
   <!-- Iframe area -->
@@ -691,13 +637,6 @@
     </div><!-- /v-wrap -->
   </div><!-- /v-iframe-area -->
 
-  <!-- Floating fullscreen button (shown when titleBar=false, fullscreen=true) -->
-  <button id="v-fs-float" onclick="goFullscreen()" title="전체화면">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-      <line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/>
-    </svg>
-  </button>
 
 </div><!-- /viewer-mode -->
 
@@ -787,9 +726,6 @@
     document.getElementById('urlInput').addEventListener('input', updatePreview);
     document.getElementById('customW').addEventListener('input', updatePreview);
     document.getElementById('customH').addEventListener('input', updatePreview);
-    ['opt-fullscreen','opt-rounded','opt-border'].forEach(id => {
-      document.getElementById(id).addEventListener('change', updatePreview);
-    });
     document.getElementById('urlInput').addEventListener('blur', () => {
       if (document.getElementById('opt-titlebar').checked) autoFillTitle();
     });
@@ -813,17 +749,8 @@
 
   function updatePreview() {
     const url = document.getElementById('urlInput').value.trim();
-    const rounded = document.getElementById('opt-rounded').checked;
-    const border  = document.getElementById('opt-border').checked;
     const titleOn = document.getElementById('opt-titlebar').checked;
     const titleTxt = document.getElementById('titleInput').value.trim();
-
-    // Shell style
-    const shell = document.getElementById('preview-shell');
-    shell.style.borderRadius = rounded ? '12px' : '4px';
-    shell.style.border = border
-      ? '1.5px solid rgba(0,111,238,0.35)'
-      : '1px solid var(--border)';
 
     // Title bar
     const tb = document.getElementById('preview-titlebar');
@@ -868,15 +795,12 @@
       ratio: currentRatio,
       customW: parseFloat(document.getElementById('customW').value) || 16,
       customH: parseFloat(document.getElementById('customH').value) || 9,
-      fullscreen: document.getElementById('opt-fullscreen').checked,
-      rounded:    document.getElementById('opt-rounded').checked,
-      border:     document.getElementById('opt-border').checked,
       titleBar:   document.getElementById('opt-titlebar').checked,
       title:      document.getElementById('titleInput').value.trim(),
     };
   }
 
-  function generateURL() {
+  async function generateURL() {
     const state = getBuilderState();
 
     if (!state.url) {
@@ -889,28 +813,21 @@
     const encoded = encodeState(state);
     generatedLongURL = location.origin + '/embed/#' + encoded;
 
-    document.getElementById('generatedURL').value = generatedLongURL;
-    document.getElementById('output-section').style.display = '';
-    document.getElementById('short-result').style.display = 'none';
+    // 출력 영역 표시 + 로딩 상태
+    const section = document.getElementById('output-section');
+    const primaryInput = document.getElementById('primaryURL');
+    const longRow = document.getElementById('long-url-row');
+    const headLabel = document.getElementById('output-head-label');
 
-    showToast('임베드 URL이 생성되었습니다!');
-    setTimeout(() => {
-      document.getElementById('output-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 100);
-  }
+    section.style.display = '';
+    primaryInput.value = '';
+    primaryInput.placeholder = '단축 URL 생성 중…';
+    longRow.style.display = 'none';
+    headLabel.textContent = '임베드 URL';
 
-  function copyLongURL() {
-    if (!generatedLongURL) return;
-    writeClip(generatedLongURL, 'URL이 복사되었습니다 ✓');
-  }
+    setTimeout(() => section.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
 
-  async function shortenURL() {
-    if (!generatedLongURL) return;
-    const btn = document.getElementById('shortenBtn');
-    const saved = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span style="opacity:.6; font-size:.875rem">생성 중…</span>';
-
+    // 자동 단축
     try {
       const res = await fetch('/api/shorten', {
         method: 'POST',
@@ -920,18 +837,26 @@
       const data = await res.json();
       if (!res.ok || !data.shortURL) throw new Error(data.error || '단축 실패');
 
+      primaryInput.value = data.shortURL;
+      primaryInput.placeholder = '';
       writeClip(data.shortURL, '단축 URL이 복사되었습니다 ✓');
-
-      const el = document.getElementById('short-result');
-      el.style.display = '';
-      el.innerHTML = '단축 URL: <a href="' + escHtml(data.shortURL) + '" target="_blank" rel="noopener">'
-        + escHtml(data.shortURL) + '</a> — 클립보드에 복사됨';
-    } catch (e) {
-      showToast('단축 실패: ' + (e.message || '오류'));
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = saved;
+    } catch {
+      // 단축 실패 시 원본 URL로 폴백
+      primaryInput.value = generatedLongURL;
+      primaryInput.placeholder = '';
+      longRow.style.display = 'none';
+      showToast('단축 실패 — 원본 URL을 사용하세요.');
     }
+  }
+
+  function copyPrimaryURL() {
+    const val = document.getElementById('primaryURL').value;
+    if (val) writeClip(val, 'URL이 복사되었습니다 ✓');
+  }
+
+  function copyLongURL() {
+    if (!generatedLongURL) return;
+    writeClip(generatedLongURL, '원본 URL이 복사되었습니다 ✓');
   }
 
   /* ══════════════
@@ -946,16 +871,9 @@
 
     // Title bar
     const titleBar = document.getElementById('v-title-bar');
-    const fsTbBtn  = document.getElementById('v-tb-fs');
     if (state.titleBar) {
       titleBar.classList.add('on');
       document.getElementById('v-title-text').textContent = state.title || '';
-      fsTbBtn.style.display = state.fullscreen ? '' : 'none';
-    }
-
-    // Floating FS button (only if no title bar)
-    if (state.fullscreen && !state.titleBar) {
-      document.getElementById('v-fs-float').classList.add('on');
     }
 
     // Iframe area layout
@@ -981,8 +899,6 @@
     }
 
     // Visual options
-    if (state.rounded) iframe.style.borderRadius = '10px';
-    if (state.border)  iframe.style.boxShadow = 'inset 0 0 0 1px rgba(0,0,0,0.1)';
 
     // Blocked fallback setup
     document.getElementById('v-open-tab').href = state.url;
@@ -1006,14 +922,6 @@
   function showBlockedView() {
     document.getElementById('v-loading').style.display = 'none';
     document.getElementById('v-blocked').classList.add('on');
-  }
-
-  function goFullscreen() {
-    const el = document.getElementById('v-wrap');
-    if (el.requestFullscreen)       el.requestFullscreen();
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    else if (document.documentElement.requestFullscreen)
-      document.documentElement.requestFullscreen();
   }
 
   /* ── Utilities ── */
