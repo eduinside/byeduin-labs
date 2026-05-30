@@ -536,6 +536,7 @@
     <input type="file" id="fileInput" accept=".md,.txt,.markdown" style="display:none" onchange="handleFileLoad(this)">
     <input type="file" id="htmlFileInput" accept=".html,.htm" style="display:none" onchange="handleHtmlLoad(this)">
     <input type="file" id="hwpFileInput" accept=".hwp,.hwpx" style="display:none" onchange="handleHwpLoad(this)">
+    <input type="file" id="multiFileInput" accept=".json,.csv,.xml,.html,.htm" style="display:none" onchange="handleMultiLoad(this)">
     <button class="toolbar-btn view-only-hide" id="saveBtn" onclick="toggleSaveMenu(event)">💾 저장 ▾</button>
     <button class="toolbar-btn view-only-hide" id="viewBtn" onclick="toggleViewMenu(event)">👁 보기 ▾</button>
     <div id="view-badge">👁 보기 전용</div>
@@ -623,6 +624,13 @@
     URL 열기
     <span class="beta-badge">실험 중</span>
   </button> -->
+  <button class="dropdown-opt" onclick="openMultiFileInput()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
+    </svg>
+    다른 파일 열기
+    <span class="beta-badge">JSON · CSV · XML · HTML</span>
+  </button>
   <button class="dropdown-opt" id="openLsOpt" onclick="openLoadModal()">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
@@ -1021,6 +1029,269 @@
   function openFileInput() {
     _closeOpenMenu();
     document.getElementById('fileInput').click();
+  }
+
+  function openMultiFileInput() {
+    _closeOpenMenu();
+    document.getElementById('multiFileInput').click();
+  }
+
+  function handleMultiLoad(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    const reader = new FileReader();
+    reader.onerror = () => { showToast('파일을 읽을 수 없습니다.'); input.value = ''; };
+    reader.onload = (e) => {
+      const text = e.target.result;
+      let md = '', toast = '';
+      if (ext === 'json') {
+        md = convertJsonToMd(text, file.name);
+        toast = '✓ JSON → 중첩 테이블로 변환했습니다.';
+      } else if (ext === 'csv') {
+        md = convertCsvToMd(text, file.name);
+        toast = '✓ CSV → 마크다운 테이블로 변환했습니다.';
+      } else if (ext === 'xml') {
+        md = convertXmlToMd(text, file.name);
+        toast = md && md.includes('<table')
+          ? '✓ XML → 테이블로 변환했습니다.'
+          : '✓ XML 불러왔습니다. (파싱 오류로 코드블록 표시)';
+      } else if (ext === 'html' || ext === 'htm') {
+        md = convertHtmlDomToMd(text, file.name);
+        toast = '✓ HTML → 마크다운으로 변환했습니다.';
+      }
+      if (md === null) { input.value = ''; return; }
+      mdContent = md;
+      currentFilename = file.name.replace(/\.[^.]+$/, '.md');
+      document.getElementById('filenameInput').value = currentFilename;
+      document.getElementById('editor').value = mdContent;
+      renderPreview();
+      showToast(toast);
+    };
+    reader.readAsText(file, 'UTF-8');
+    input.value = '';
+  }
+
+  // ── JSON → HTML 중첩 테이블 ──
+  function convertJsonToMd(text, filename) {
+    let data;
+    try { data = JSON.parse(text); } catch {
+      showToast('JSON 파싱 오류: 올바른 JSON 파일인지 확인하세요.');
+      return null;
+    }
+    const html = jsonToHtmlTable(data);
+    return `## ${filename}\n\n${html}`;
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function jsonToHtmlTable(data) {
+    // 원시값
+    if (data === null || typeof data !== 'object') return esc(data);
+
+    // 배열 of 객체 → 열이 있는 표
+    if (Array.isArray(data) && data.length > 0 && data.some(r => r && typeof r === 'object' && !Array.isArray(r))) {
+      const keys = [...new Set(data.flatMap(r => (r && typeof r === 'object' && !Array.isArray(r)) ? Object.keys(r) : []))];
+      const thead = '<thead><tr>' + keys.map(k => `<th style="padding:4px 8px;border:1px solid var(--border);background:var(--card-bg);white-space:nowrap">${esc(k)}</th>`).join('') + '</tr></thead>';
+      const tbody = '<tbody>' + data.map(row => {
+        if (!row || typeof row !== 'object' || Array.isArray(row)) {
+          return `<tr><td colspan="${keys.length}" style="padding:4px 8px;border:1px solid var(--border)">${jsonToHtmlTable(row)}</td></tr>`;
+        }
+        return '<tr>' + keys.map(k => {
+          const v = row[k];
+          const inner = (v !== null && typeof v === 'object') ? jsonToHtmlTable(v) : esc(v ?? '');
+          return `<td style="padding:4px 8px;border:1px solid var(--border);vertical-align:top">${inner}</td>`;
+        }).join('') + '</tr>';
+      }).join('') + '</tbody>';
+      return `<table style="border-collapse:collapse;font-size:0.85em">${thead}${tbody}</table>`;
+    }
+
+    // 배열 of 원시값 → 단일 열 표
+    if (Array.isArray(data)) {
+      const rows = data.map(v => `<tr><td style="padding:4px 8px;border:1px solid var(--border);vertical-align:top">${jsonToHtmlTable(v)}</td></tr>`).join('');
+      return `<table style="border-collapse:collapse;font-size:0.85em"><tbody>${rows}</tbody></table>`;
+    }
+
+    // 일반 객체 → 키/값 표
+    const rows = Object.entries(data).map(([k, v]) => {
+      const inner = (v !== null && typeof v === 'object') ? jsonToHtmlTable(v) : esc(v ?? '');
+      return `<tr><td style="padding:4px 8px;border:1px solid var(--border);background:var(--card-bg);white-space:nowrap;vertical-align:top"><strong>${esc(k)}</strong></td><td style="padding:4px 8px;border:1px solid var(--border);vertical-align:top">${inner}</td></tr>`;
+    }).join('');
+    return `<table style="border-collapse:collapse;font-size:0.85em"><tbody>${rows}</tbody></table>`;
+  }
+
+  // ── CSV → Markdown 테이블 ──
+  function convertCsvToMd(text, filename) {
+    const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+    if (lines.length === 0) { showToast('CSV 파일이 비어 있습니다.'); return null; }
+    const parseRow = line => {
+      const cells = [];
+      let cur = '', inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"' && !inQ) { inQ = true; continue; }
+        if (c === '"' && inQ && line[i+1] === '"') { cur += '"'; i++; continue; }
+        if (c === '"' && inQ) { inQ = false; continue; }
+        if (c === ',' && !inQ) { cells.push(cur); cur = ''; continue; }
+        cur += c;
+      }
+      cells.push(cur);
+      return cells.map(c => c.replace(/\|/g, '\\|').replace(/\n/g, ' ').trim());
+    };
+    const rows = lines.map(parseRow);
+    const colCount = Math.max(...rows.map(r => r.length));
+    const pad = row => { while (row.length < colCount) row.push(''); return row; };
+    const header = '| ' + pad(rows[0]).join(' | ') + ' |';
+    const sep    = '| ' + Array(colCount).fill('---').join(' | ') + ' |';
+    const body   = rows.slice(1).map(r => '| ' + pad(r).join(' | ') + ' |').join('\n');
+    return `## ${filename}\n\n${header}\n${sep}\n${body}`;
+  }
+
+  // ── XML → HTML 중첩 테이블 ──
+  function convertXmlToMd(text, filename) {
+    const doc = new DOMParser().parseFromString(text, 'application/xml');
+    const err = doc.querySelector('parsererror');
+    if (err) return `## ${filename}\n\n\`\`\`xml\n${text.trim()}\n\`\`\``;
+    const root = doc.documentElement;
+    const html = xmlNodeToHtmlTable(root);
+    return `## ${filename} <small style="color:var(--fg-muted);font-weight:400">&lt;${esc(root.tagName)}&gt;</small>\n\n${html}`;
+  }
+
+  function xmlNodeToHtmlTable(node) {
+    const elChildren = Array.from(node.childNodes).filter(n => n.nodeType === 1);
+    const text = node.textContent.trim();
+
+    // 자식 엘리먼트 없음 → 텍스트 또는 빈 값
+    if (elChildren.length === 0) return esc(text);
+
+    // 자식이 모두 같은 태그이고 2개 이상 → 배열형 → 행(row) 테이블
+    const childTags = [...new Set(elChildren.map(c => c.tagName))];
+    if (childTags.length === 1 && elChildren.length > 1) {
+      return xmlArrayToTable(elChildren);
+    }
+
+    // 자식 태그가 다양하거나 1개 → 객체형 → 키/값 테이블
+    return xmlObjectToTable(node, elChildren);
+  }
+
+  // 반복 엘리먼트 → 열이 있는 표
+  function xmlArrayToTable(items) {
+    // 모든 속성 + 자식 엘리먼트 이름 수집
+    const attrKeys = new Set(), elKeys = new Set();
+    items.forEach(item => {
+      Array.from(item.attributes).forEach(a => attrKeys.add(a.name));
+      Array.from(item.childNodes).filter(n => n.nodeType === 1).forEach(c => elKeys.add(c.tagName));
+    });
+    const cols = [...attrKeys].map(k => '@' + k).concat([...elKeys]);
+
+    // 헤더가 없고 텍스트만 있는 경우 (단순 배열)
+    if (cols.length === 0) {
+      const rows = items.map(item =>
+        `<tr><td style="${TD}">${esc(item.textContent.trim())}</td></tr>`
+      ).join('');
+      return `<table style="${TBL}"><tbody>${rows}</tbody></table>`;
+    }
+
+    const TH_S = `padding:4px 8px;border:1px solid var(--border);background:var(--card-bg);white-space:nowrap`;
+    const thead = '<thead><tr>' +
+      cols.map(k => `<th style="${TH_S}">${esc(k)}</th>`).join('') +
+      '</tr></thead>';
+    const tbody = '<tbody>' + items.map(item => {
+      return '<tr>' + cols.map(col => {
+        let inner = '';
+        if (col.startsWith('@')) {
+          inner = esc(item.getAttribute(col.slice(1)) ?? '');
+        } else {
+          const child = Array.from(item.childNodes).find(n => n.nodeType === 1 && n.tagName === col);
+          inner = child ? xmlNodeToHtmlTable(child) : '';
+        }
+        return `<td style="${TD}">${inner}</td>`;
+      }).join('') + '</tr>';
+    }).join('') + '</tbody>';
+    return `<table style="${TBL}">${thead}${tbody}</table>`;
+  }
+
+  // 객체형 → 키/값 표
+  function xmlObjectToTable(node, elChildren) {
+    const rows = [];
+    Array.from(node.attributes).forEach(a => {
+      rows.push(`<tr><td style="${TH_KV}"><strong>@${esc(a.name)}</strong></td><td style="${TD}">${esc(a.value)}</td></tr>`);
+    });
+    elChildren.forEach(child => {
+      const val = xmlNodeToHtmlTable(child);
+      rows.push(`<tr><td style="${TH_KV}"><strong>${esc(child.tagName)}</strong></td><td style="${TD}">${val}</td></tr>`);
+    });
+    return `<table style="${TBL}"><tbody>${rows.join('')}</tbody></table>`;
+  }
+
+  const TBL = 'border-collapse:collapse;font-size:0.85em';
+  const TD  = 'padding:4px 8px;border:1px solid var(--border);vertical-align:top';
+  const TH_KV = 'padding:4px 8px;border:1px solid var(--border);background:var(--card-bg);white-space:nowrap;vertical-align:top';
+
+  // ── HTML → Markdown (DOMParser, 순수 JS) ──
+  function convertHtmlDomToMd(html, filename) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const title = doc.title || filename;
+
+    function nodeToMd(node, depth) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return node.textContent.replace(/\n+/g, ' ');
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return '';
+      const tag = node.tagName.toLowerCase();
+      const children = () => Array.from(node.childNodes).map(n => nodeToMd(n, depth)).join('');
+
+      if (tag === 'script' || tag === 'style' || tag === 'head') return '';
+      if (/^h([1-6])$/.test(tag)) return '\n\n' + '#'.repeat(+tag[1]) + ' ' + node.textContent.trim() + '\n\n';
+      if (tag === 'p') { const t = children().trim(); return t ? '\n\n' + t + '\n\n' : ''; }
+      if (tag === 'br') return '  \n';
+      if (tag === 'strong' || tag === 'b') return '**' + node.textContent.replace(/\n/g, ' ').trim() + '**';
+      if (tag === 'em' || tag === 'i') return '*' + node.textContent.replace(/\n/g, ' ').trim() + '*';
+      if (tag === 'code') return '`' + node.textContent + '`';
+      if (tag === 'pre') return '\n\n```\n' + node.textContent.trim() + '\n```\n\n';
+      if (tag === 'a') {
+        const href = node.getAttribute('href') || '';
+        const t = node.textContent.trim();
+        return href ? `[${t}](${href})` : t;
+      }
+      if (tag === 'img') {
+        const alt = node.getAttribute('alt') || '';
+        const src = node.getAttribute('src') || '';
+        return src ? `![${alt}](${src})` : '';
+      }
+      if (tag === 'ul') {
+        return '\n\n' + Array.from(node.children).map(li => '- ' + li.textContent.replace(/\n+/g, ' ').trim()).join('\n') + '\n\n';
+      }
+      if (tag === 'ol') {
+        return '\n\n' + Array.from(node.children).map((li, i) => (i+1) + '. ' + li.textContent.replace(/\n+/g, ' ').trim()).join('\n') + '\n\n';
+      }
+      if (tag === 'table') return '\n\n' + tableToMd(node) + '\n\n';
+      if (tag === 'hr') return '\n\n---\n\n';
+      if (tag === 'blockquote') return '\n\n> ' + node.textContent.replace(/\n+/g, '\n> ').trim() + '\n\n';
+      return children();
+    }
+
+    function tableToMd(table) {
+      const rows = Array.from(table.querySelectorAll('tr'));
+      if (rows.length === 0) return '';
+      const parseRow = tr => Array.from(tr.querySelectorAll('th,td')).map(td => td.textContent.replace(/\|/g, '\\|').replace(/\n+/g, ' ').trim());
+      const data = rows.map(parseRow);
+      const colCount = Math.max(...data.map(r => r.length));
+      const pad = r => { while (r.length < colCount) r.push(''); return r; };
+      const header = '| ' + pad(data[0]).join(' | ') + ' |';
+      const sep    = '| ' + Array(colCount).fill('---').join(' | ') + ' |';
+      const body   = data.slice(1).map(r => '| ' + pad(r).join(' | ') + ' |').join('\n');
+      return header + '\n' + sep + (body ? '\n' + body : '');
+    }
+
+    const body = doc.body || doc.documentElement;
+    const md = nodeToMd(body, 0)
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    return `# ${title}\n\n${md}`;
   }
 
   // ── 보기 모드 드롭다운 ──

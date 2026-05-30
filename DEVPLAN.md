@@ -612,3 +612,59 @@ public/file-tools/
 - 소셜 카테고리에 `에듀링크`(dgedu.link) 모달 추가
 - `Numberblocks` 메인 항목 숨김(주석 처리)
 - `Notion Image DL` 이모지 🖼️ → ⬇️ (다운로드 의미 강조)
+
+---
+
+### Phase 9: MD Editor 다중 파일 형식 열기 (2026-05-30)
+**상태**: 완료 ✅
+
+**배경**:
+- MD Editor 열기 기능이 `.md/.txt` 외 포맷 미지원
+- 서버 의존 변환 방식(html-to-md, url-to-md)은 turndown·타임아웃 문제로 비활성화 상태
+- 순수 클라이언트사이드 구현으로 외부 서비스 없이 처리
+
+**구현 사항**:
+
+1. **열기 드롭다운에 "다른 파일 열기" 버튼 추가**
+   - accept: `.json,.csv,.xml,.html,.htm`
+   - 배지로 지원 포맷 표시: `JSON · CSV · XML · HTML`
+   - 기존 `.MD 열기` 버튼 바로 아래에 삽입
+
+2. **파일별 변환 로직 (순수 JS, 라이브러리 없음)**
+
+   | 포맷 | 변환 방식 | 결과 |
+   |------|----------|------|
+   | JSON (배열 of 객체) | `jsonToHtmlTable()` 재귀 | 중첩 HTML 테이블 |
+   | JSON (일반 객체) | `jsonToHtmlTable()` 재귀 | 키/값 중첩 HTML 테이블 |
+   | CSV | 직접 파싱 (따옴표 이스케이프 처리) | 마크다운 테이블 |
+   | XML | `DOMParser` → `xmlNodeToHtmlTable()` 재귀 | 중첩 HTML 테이블 |
+   | HTML | `DOMParser` DOM 순회 | 마크다운 (h1~h6, 표, 목록, 링크 등) |
+
+3. **중첩 테이블 알고리즘**
+   - JSON: 값이 객체/배열이면 해당 셀 안에 재귀적으로 테이블 생성
+   - XML: 반복 태그 → 열이 있는 표(속성은 `@attr` 컬럼), 혼합 구조 → 키/값 표
+   - `DOMParser`의 `parsererror` 감지 → 코드블록 폴백
+
+4. **변환 완료 토스트**
+   - JSON: `✓ JSON → 중첩 테이블로 변환했습니다.`
+   - CSV: `✓ CSV → 마크다운 테이블로 변환했습니다.`
+   - XML(성공): `✓ XML → 테이블로 변환했습니다.`
+   - XML(폴백): `✓ XML 불러왔습니다. (파싱 오류로 코드블록 표시)`
+   - HTML: `✓ HTML → 마크다운으로 변환했습니다.`
+
+**파일 변경**:
+- `public/md-editor/index.html`
+  - `<input id="multiFileInput">` 추가
+  - 드롭다운에 "다른 파일 열기" 버튼 추가
+  - `openMultiFileInput()`, `handleMultiLoad()` 추가
+  - `convertJsonToMd()`, `jsonToHtmlTable()`, `esc()` 추가
+  - `convertCsvToMd()` 추가
+  - `convertXmlToMd()`, `xmlNodeToHtmlTable()`, `xmlArrayToTable()`, `xmlObjectToTable()` 추가
+  - `convertHtmlDomToMd()`, `tableToMd()` (HTML 내부용) 추가
+  - 공통 스타일 상수 `TBL`, `TD`, `TH_KV` 추가
+- `README.md` — MD Editor 설명 업데이트
+
+**기술 선택 근거**:
+- turndown: 이전 시도에서 불안정(한국어 특수문자, 복잡한 구조)
+- DOMParser: 브라우저 내장, 라이브러리 불필요
+- HTML 테이블 출력: marked.js가 인라인 HTML을 그대로 렌더링하므로 중첩 구조 표현 가능
