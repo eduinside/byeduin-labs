@@ -331,7 +331,7 @@
         placeholder="채점자들이 보낸 결과 링크를 붙여넣으세요. 줄바꿈·쉼표로 여러 개 입력 가능.&#10;&#10;예)&#10;https://byeduin.short.gy/Ab3xZ&#10;https://by.eduin.info/scoring-table/#share=..."></textarea>
       <div class="act-row" style="margin-top:10px">
         <button class="st-btn st-btn-primary" id="cl-merge-btn" onclick="clMergeFromInput()">🧩 합치기</button>
-        <button class="st-btn st-btn-ghost st-btn-sm" onclick="clSaveLocal(true)">💾 임시저장</button>
+        <button class="st-btn st-btn-danger st-btn-sm" onclick="clClearAll()">초기화</button>
         <span id="cl-merge-status" style="font-size:12px;color:var(--fg-muted)"></span>
       </div>
       <div class="chip-list" id="cl-chip-list" style="margin-top:10px"></div>
@@ -393,7 +393,9 @@ function buildShareURL(data, permission) {
 
 function decodeSharePayload(encoded) {
   const attempts = [
-    () => JSON.parse(decodeURIComponent(atob(padB64(encoded.replace(/-/g,'+').replace(/_/,'/'))))),
+    // 현재 인코딩: btoa(encodeURIComponent(payload)) + base64url
+    () => JSON.parse(decodeURIComponent(atob(padB64(encoded.replace(/-/g,'+').replace(/_/g,'/'))))),
+    // 구버전 호환: btoa(payload) + base64url (encodeURIComponent 없음)
     () => JSON.parse(atob(padB64(encoded.replace(/-/g,'+').replace(/_/g,'/'))))
   ];
   for (const fn of attempts) {
@@ -851,13 +853,38 @@ const sc = { title: '', scorer: '', areas: [], rows: [], ratio: 20,
   awardRange: { enabled: true, min: 80, max: 100 }, loaded: false };
 const SC_KEY = 'vives-scoring-draft';
 
-function scLoadFromInput() {
+async function scLoadFromInput() {
   const url = document.getElementById('sc-form-url').value.trim();
-  const hash = url.includes('#share=') ? url.split('#share=')[1] : null;
-  if (!hash) { showToast('올바른 양식 링크가 아닙니다.'); return; }
-  const payload = decodeSharePayload(hash);
-  if (!payload || payload.permission !== 'form') { showToast('양식 링크를 읽을 수 없습니다.'); return; }
-  scApplyForm(payload.data);
+
+  // 직접 공유 링크
+  if (url.includes('#share=')) {
+    const payload = decodeSharePayload(url.split('#share=')[1]);
+    if (!payload || payload.permission !== 'form') { showToast('양식 링크를 읽을 수 없습니다.'); return; }
+    scApplyForm(payload.data);
+    return;
+  }
+
+  // 단축 URL → 서버에서 원본 URL 조회
+  if (/^https?:\/\//.test(url)) {
+    showToast('링크를 불러오는 중…');
+    try {
+      const res = await fetch('/api/resolve-short-url', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shortURL: url }),
+      });
+      const j = await res.json();
+      if (res.ok && j.resolvedURL && j.resolvedURL.includes('#share=')) {
+        const payload = decodeSharePayload(j.resolvedURL.split('#share=')[1]);
+        if (!payload || payload.permission !== 'form') { showToast('양식 링크를 읽을 수 없습니다.'); return; }
+        scApplyForm(payload.data);
+        return;
+      }
+    } catch {}
+    showToast('링크를 불러올 수 없습니다.');
+    return;
+  }
+
+  showToast('올바른 양식 링크가 아닙니다.');
 }
 
 function scApplyForm(data) {
@@ -1091,6 +1118,17 @@ function clLoadLocal() {
     cl.sortAsc = !!d.sortAsc;
     return true;
   } catch { return false; }
+}
+
+function clClearAll() {
+  if (cl.results.length && !confirm('수합 내용을 초기화할까요?')) return;
+  cl.results = [];
+  cl.aggregateBy = 'avg';
+  cl.sortAsc = false;
+  try { localStorage.removeItem(CL_KEY); } catch {}
+  renderClChips();
+  renderClTable();
+  showToast('초기화되었습니다.');
 }
 
 function clAddResult(data, silent) {
