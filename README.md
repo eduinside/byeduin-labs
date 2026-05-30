@@ -8,7 +8,7 @@
 
 ---
 
-## 앱 목록 (22개)
+## 앱 목록 (23개)
 
 ### 교육 (7)
 | 앱 | 경로 | 설명 |
@@ -46,9 +46,10 @@
 | **YT Thumbnail** | `/yt-thumb/` | 유튜브 썸네일 추출 및 아카이빙 |
 | **Signage Maker** | `/signage-maker/` | 학교 사이니지용 AI 세로 이미지 생성기 (Gemini) |
 
-### 노션 도구 (2)
+### 노션 도구 (3)
 | 앱 | 경로 | 설명 |
 |---|---|---|
+| **임베드 생성기** | `/embed/` | 외부 URL을 반응형 iframe으로 감싸 노션 임베드 블록에 삽입 (base64url 해시, 서버 상태 없음) |
 | **Notion Image DL** | `/notion-image-downloader/` | Notion DB 이미지 일괄 다운로드 |
 | **Notion Styler** | `/notion-styler/` | LaTeX 수식 스타일링 및 HTML 생성 |
 
