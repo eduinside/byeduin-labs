@@ -8,7 +8,7 @@
 
 ---
 
-## 앱 목록 (20개)
+## 앱 목록 (22개)
 
 ### 교육 (7)
 | 앱 | 경로 | 설명 |
@@ -21,7 +21,7 @@
 | **Club Badge** | `/numberblocks/clubs.html` | 1~100 수의 넘버블록스 클럽 탐색 + 퀴즈 |
 | **Moon Phase** | `/moon-phase/` | 달의 위상 시뮬레이터 |
 
-### 유틸리티 (6)
+### 유틸리티 (7)
 | 앱 | 경로 | 설명 |
 |---|---|---|
 | **MD Editor** | `/md-editor/` | 마크다운 편집기 (JSON·CSV·XML·HTML 불러오기, 중첩 테이블 변환, 파일 공유 지원) |
@@ -30,6 +30,7 @@
 | **Smart Timer** | `/timer/` | 반복 알람 타이머 |
 | **MP4 Finder** | `/chrome-extentions/mp4-finder.zip` | 웹페이지 내 MP4 링크 자동 감지 및 클립보드 복사 (Chrome 확장) |
 | **Content ID Viewer** | `/chrome-extentions/content-id-viewer-for-edunavi.zip` | 에듀나비 콘텐츠 ID 조회 (Chrome 확장) |
+| **Login Helper** | `https://www.eduin.info/...` | 에듀나비 교원업무지원 자동 로그인 프로그램 (모달) |
 
 ### 소셜 도구 (3)
 | 앱 | 경로 | 설명 |
@@ -51,7 +52,7 @@
 | **Notion Image DL** | `/notion-image-downloader/` | Notion DB 이미지 일괄 다운로드 |
 | **Notion Styler** | `/notion-styler/` | LaTeX 수식 스타일링 및 HTML 생성 |
 
-> 홈 화면에는 외부 연동·확장 항목(에듀링크, Content ID Viewer, Login Helper)도 모달로 노출됩니다.
+> 홈 화면에는 외부 연동·확장 항목(에듀링크, Content ID Viewer, MP4 Finder, Login Helper)도 모달로 노출됩니다.
 > `/numberblocks/` 메인(에피소드 파인더)은 현재 홈에서 숨김 처리되어 있습니다.
 
 ---
