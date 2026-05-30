@@ -1050,7 +1050,7 @@ function scExportXlsx() {
 // ════════════════════════════════════════════════════════
 //  ── 탭 3: 수합하기 ──
 // ════════════════════════════════════════════════════════
-const cl = { results: [], aggregateBy: 'avg', sortAsc: false };
+const cl = { results: [], aggregateBy: 'avg', sortMode: 'desc' };
 const CL_KEY = 'vives-scoring-collect';
 
 // 한 줄 → 결과 payload 디코드 (단축주소는 서버에서 역추적)
@@ -1104,7 +1104,7 @@ async function clMergeFromInput() {
 function clSaveLocal(notify) {
   try {
     localStorage.setItem(CL_KEY, JSON.stringify({
-      results: cl.results, aggregateBy: cl.aggregateBy, sortAsc: cl.sortAsc,
+      results: cl.results, aggregateBy: cl.aggregateBy, sortMode: cl.sortMode,
     }));
     if (notify) showToast('수합 내용을 임시저장했습니다 💾');
   } catch {}
@@ -1115,7 +1115,7 @@ function clLoadLocal() {
     if (!d || !Array.isArray(d.results) || !d.results.length) return false;
     cl.results = d.results;
     cl.aggregateBy = d.aggregateBy || 'avg';
-    cl.sortAsc = !!d.sortAsc;
+    cl.sortMode = d.sortMode || (d.sortAsc ? 'asc' : 'desc'); // 구버전 호환
     return true;
   } catch { return false; }
 }
@@ -1124,7 +1124,7 @@ function clClearAll() {
   if (cl.results.length && !confirm('수합 내용을 초기화할까요?')) return;
   cl.results = [];
   cl.aggregateBy = 'avg';
-  cl.sortAsc = false;
+  cl.sortMode = 'desc';
   try { localStorage.removeItem(CL_KEY); } catch {}
   renderClChips();
   renderClTable();
@@ -1211,7 +1211,9 @@ function renderClTable() {
   // 집계 기준에 따라 정렬
   const getSortVal = r => cl.aggregateBy === 'sum' ? r.sum : r.avg;
   const sorted = [...aggRows].sort((a, b) =>
-    cl.sortAsc ? getSortVal(a) - getSortVal(b) : getSortVal(b) - getSortVal(a));
+    cl.sortMode === 'name' ? a.name.localeCompare(b.name, 'ko')
+    : cl.sortMode === 'asc' ? getSortVal(a) - getSortVal(b)
+    : getSortVal(b) - getSortVal(a));
 
   // 석차 계산
   const rankSorted = [...aggRows].sort((a, b) => getSortVal(b) - getSortVal(a));
@@ -1249,8 +1251,8 @@ function renderClTable() {
         <span class="info-badge">채점자 ${scorerList.length}명 · 참가자 ${aggRows.length}명 · 시상 ${awardN}명</span>
         <button class="st-btn st-btn-ghost st-btn-sm ${cl.aggregateBy==='avg'?'on':''}" onclick="clSetAggregate('avg')">평균 기준</button>
         <button class="st-btn st-btn-ghost st-btn-sm ${cl.aggregateBy==='sum'?'on':''}" onclick="clSetAggregate('sum')">합계 기준</button>
-        <button class="st-btn st-btn-ghost st-btn-sm ${cl.sortAsc?'':'on'}" onclick="clToggleSort()">
-          ${cl.sortAsc ? '낮은순 ↑' : '높은순 ↓'}
+        <button class="st-btn st-btn-ghost st-btn-sm ${cl.sortMode!=='name'?'on':''}" onclick="clCycleSort()">
+          ${ cl.sortMode === 'name' ? '이름순 ⇅' : cl.sortMode === 'asc' ? '낮은순 ↑' : '높은순 ↓' }
         </button>
       </div>
       <div class="act-row cl-btn-row">
@@ -1304,7 +1306,10 @@ function clToggleDetail() {
 }
 
 function clSetAggregate(mode) { cl.aggregateBy = mode; renderClTable(); clSaveLocal(); }
-function clToggleSort()       { cl.sortAsc = !cl.sortAsc; renderClTable(); clSaveLocal(); }
+function clCycleSort() {
+  cl.sortMode = cl.sortMode === 'desc' ? 'asc' : cl.sortMode === 'asc' ? 'name' : 'desc';
+  renderClTable(); clSaveLocal();
+}
 
 // contenteditable 핸들러 — DOM 기반으로 in-place 업데이트
 function clOnScoreEdit(el) {
