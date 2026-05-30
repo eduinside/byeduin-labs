@@ -8,7 +8,7 @@
 
 ---
 
-## 앱 목록 (18개)
+## 앱 목록 (20개)
 
 ### 교육 (7)
 | 앱 | 경로 | 설명 |
@@ -21,17 +21,20 @@
 | **Club Badge** | `/numberblocks/clubs.html` | 1~100 수의 넘버블록스 클럽 탐색 + 퀴즈 |
 | **Moon Phase** | `/moon-phase/` | 달의 위상 시뮬레이터 |
 
-### 유틸리티 (4)
+### 유틸리티 (6)
 | 앱 | 경로 | 설명 |
 |---|---|---|
 | **MD Editor** | `/md-editor/` | 마크다운 편집기 (JSON·CSV·XML·HTML 불러오기, 중첩 테이블 변환, 파일 공유 지원) |
 | **QR Master** | `/qr/` | QR 코드 생성, 카메라/이미지 스캔, 단축주소 |
 | **이미지 최적화 도구** | `/file-tools/` | 스캔 이미지 및 대용량 PPTX 이미지 최적화 |
 | **Smart Timer** | `/timer/` | 반복 알람 타이머 |
+| **MP4 Finder** | `/chrome-extentions/mp4-finder.zip` | 웹페이지 내 MP4 링크 자동 감지 및 클립보드 복사 (Chrome 확장) |
+| **Content ID Viewer** | `/chrome-extentions/content-id-viewer-for-edunavi.zip` | 에듀나비 콘텐츠 ID 조회 (Chrome 확장) |
 
-### 소셜 도구 (2)
+### 소셜 도구 (3)
 | 앱 | 경로 | 설명 |
 |---|---|---|
+| **에듀링크** | `https://dgedu.link/` | 교육용 단축주소·설문조사·체험 지도 서비스 |
 | **도서 정보 나눔** | `/book-share/` | ISBN으로 도서 정보 조회 및 공유 |
 | **Bubble Chat** | `/bubble-chat/` | P2P 실시간 채팅 |
 
