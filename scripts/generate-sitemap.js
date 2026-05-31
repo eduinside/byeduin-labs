@@ -62,8 +62,9 @@ function main() {
     if (app.external) return;
     if (app.type === 'modal' && !app.href.startsWith('/')) return;
 
-    // Only include internal paths
+    // Only include internal paths, skipping Chrome extensions
     if (!app.href || !app.href.startsWith('/')) return;
+    if (app.href.startsWith('/chrome-extentions')) return;
 
     var fullUrl = siteUrl + app.href;
     urls.push(buildUrl(fullUrl, lastmod, 'monthly', '0.8'));
