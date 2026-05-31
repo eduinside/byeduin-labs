@@ -10,8 +10,8 @@
   }
 
   // 파비콘 강제 설정
-  faviconLink.href = '/logo.jpg';
-  faviconLink.type = 'image/jpeg';
+  faviconLink.href = '/favicon.svg';
+  faviconLink.type = 'image/svg+xml';
 })();
 
 // Google Analytics 4 초기화

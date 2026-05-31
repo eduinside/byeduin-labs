@@ -704,3 +704,69 @@ public/file-tools/
 - turndown: 이전 시도에서 불안정(한국어 특수문자, 복잡한 구조)
 - DOMParser: 브라우저 내장, 라이브러리 불필요
 - HTML 테이블 출력: marked.js가 인라인 HTML을 그대로 렌더링하므로 중첩 구조 표현 가능
+
+---
+
+### Phase 11: SEO 자동화 및 미니앱 통합 아키텍처 구축 (2026-05-31)
+**상태**: 완료 ✅
+
+**배경**:
+- 미니앱 추가가 반복되면서 개별 정적 파일 구조에서 메타태그 복제, 사이트맵/로봇 수동 관리의 비효율 발생
+- 크롤러 수집을 고려한 빌드타임 정적 SEO 태그 선행 주입과 브라우저 내 유연한 런타임 동적 SEO 매핑을 합친 하이브리드 아키텍처 도입
+
+**구현 사항**:
+1. **중앙 앱 레지스트리 (`apps.json`)**:
+   - 사이트 메타데이터 및 23개 미니앱의 메타데이터(카테고리, 이모지, Href, 최적화된 SEO 문구)를 중앙 제어로 통합
+2. **메인 페이지 동적 Fetch화 (`index.html`)**:
+   - 메인 카드의 하드코딩된 앱 목록을 걷어내고 `apps.json`을 비동기 Fetch하여 렌더링하도록 전환
+   - 모던한 그라디언트 파비콘(`favicon.svg`) 및 로고(`logo.png`) 교체
+3. **런타임 동적 SEO 보완 (`seo-injector.js`)**:
+   - 클라이언트 사이드에서 현재 경로와 매핑하여 Twitter Card, Canonical URL, JSON-LD 구조화 데이터를 동적 추가
+4. **정적 빌드타임 SEO 태그 주입기 (`inject-seo.js`)**:
+   - `apps.json`을 기준으로 각 서브앱 HTML 파일들에 Canonical URL 및 Twitter Card, JSON-LD, `seo-injector.js`를 정적 자동 삽입
+5. **카테고리별 맞춤 OG 이미지 자동 생성 (`generate-og.js`)**:
+   - `canvas` 모듈을 이용하여 1200x630px 해상도의 균일하고 완성도 높은 OG 이미지 17종 자동 드로잉
+6. **로봇 및 사이트맵 자동화 (`generate-sitemap.js` & `robots.txt`)**:
+   - 유효한 `sitemap.xml`을 자동 발굴하여 22개 URL 등록 및 로봇 크롤링 지침 완성
+7. **새로운 앱 스캐폴딩 CLI (`scaffold-app.js`)**:
+   - 대화형 CLI 프롬프트를 통해 템플릿 파일 생성 및 `apps.json` 등록 과정을 원클릭 자동화
+8. **유지보수 스크립트 단일화**:
+   - `package.json` 도입을 통해 `npm run dev`, `npm run inject`, `npm run og`, `npm run sitemap`, `npm run scaffold` 명령 체계 구축
+
+**파일 변경**:
+- `public/index.html` - fetch 구현 및 메인 SEO 보강
+- `public/common/init.js` - 새 파비콘.svg 매핑
+- `public/common/seo-injector.js` (신규)
+- `public/robots.txt` (신규)
+- `scripts/generate-sitemap.js` (신규)
+- `scripts/generate-og.js` (신규)
+- `scripts/inject-seo.js` (신규)
+- `scripts/scaffold-app.js` (신규)
+- `package.json` (신규)
+- `docs/app-development-guide.md` (신규) - 신규 개발 가이드 추가
+- 모든 하위 앱 `index.html` - `inject-seo.js`를 통한 SEO 메타 주입 완료
+---
+
+### Phase 12: 수당 계산기 앱 개발 (2026-05-31)
+**상태**: 완료 ✅
+
+**배경**:
+- 수당 정산 시 세전/세후 금액을 혼동하거나 8.8% 기타소득 원천징수 세금 및 과세최저한(125,000원 이하 비과세) 역산이 복잡하여 이를 자동화하는 계산기 추가 요구
+
+**구현 사항**:
+1. **수당 계산기 앱 제작 (`/allowance-calculator/`)**:
+   - 세전 금액 기준 계산 및 세후 금액 기준 역산 지원
+   - 수당 1,000원 단위 유무에 따른 세전/세후 자동 판별 로직(콤마 미세 금액 포함 시 세후로 자동 토글)
+   - 8.8% 세율(기타소득세 8% + 지방세 0.8%) 및 125,000원 이하 비과세 적용
+   - 국세기본법의 원천징수 소득세/지방소득세 단수 절사 원칙에 따른 10원 미만(1원 단위) 세금/세후 공제 처리 탑재
+2. **로컬스토리지를 통한 최근 계산 내역**:
+   - 계산된 이력을 로컬에 기억하고, 개별 삭제 및 전체 삭제 관리 지원
+3. **vives-share 공유 패턴 적용**:
+   - 입력한 값과 모드 상태를 URL 해시로 복원할 수 있는 공유 링크 연동
+4. **HeroUI 컴포넌트 일치**:
+   - `hero-input`, `hero-btn` 컴포넌트 클래스를 입력창과 저장 버튼에 완전 매핑하고, 결괏값 숫자-한글 폰트 패밀리 분리 및 웹폰트 명시적 로드 처리
+
+**파일 변경**:
+- `public/apps.json` - 수당 계산기 앱 메타데이터 추가
+- `public/allowance-calculator/index.html` (신규)
+- `README.md` - 유틸리티 앱 목록 및 앱 개수(24개) 갱신

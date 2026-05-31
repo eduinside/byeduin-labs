@@ -2,13 +2,13 @@
 
 바이브 코딩으로 만든 소형 웹 앱 모음. 순수 정적 사이트 (HTML + CSS + JS, 빌드 없음).
 
-**로컬 실행**: `npx serve public -l 3000`  
+**로컬 실행**: `npm run dev` (Cloudflare Pages Functions 로컬 서버 기동)  
 **배포**: [Cloudflare Pages](https://byeduin-vives.pages.dev) (자동 배포: main 브랜치)  
-**개발 진행**: [`docs/DEVPLAN.md`](docs/DEVPLAN.md) 참고
+**개발 진행**: [`docs/DEVPLAN.md`](docs/DEVPLAN.md) 및 [`docs/app-development-guide.md`](docs/app-development-guide.md) 참고  
 
 ---
 
-## 앱 목록 (23개)
+## 앱 목록 (24개)
 
 ### 교육 (7)
 | 앱 | 경로 | 설명 |
@@ -21,9 +21,10 @@
 | **Club Badge** | `/numberblocks/clubs.html` | 1~100 수의 넘버블록스 클럽 탐색 + 퀴즈 |
 | **Moon Phase** | `/moon-phase/` | 달의 위상 시뮬레이터 |
 
-### 유틸리티 (7)
+### 유틸리티 (8)
 | 앱 | 경로 | 설명 |
 |---|---|---|
+| **수당 계산기** | `/allowance-calculator/` | 세전·세후 수당 및 기타소득 세금(8.8%, 10원 미만 절사) 자동 판별 계산기 |
 | **MD Editor** | `/md-editor/` | 마크다운 편집기 (JSON·CSV·XML·HTML 불러오기, 중첩 테이블 변환, 파일 공유 지원) |
 | **QR Master** | `/qr/` | QR 코드 생성, 카메라/이미지 스캔, 단축주소 |
 | **이미지 최적화 도구** | `/file-tools/` | 스캔 이미지 및 대용량 PPTX 이미지 최적화 |
@@ -63,18 +64,32 @@
 ```
 public/common/
 ├── hero-theme.css   — HeroUI CSS 변수, 공통 컴포넌트 (.top-overlay, .app-header 등)
-└── theme.js         — 테마 전환 (auto/light/dark), 페이지 공유 기능
+├── theme.js         — 테마 전환 (auto/light/dark), 페이지 공유 기능
+├── init.js          — 공통 파비콘 강제 설정 및 구글 애널리틱스 초기화
+└── seo-injector.js  — 런타임 클라이언트 사이드 동적 SEO 및 JSON-LD 메타태그 완성
 ```
 
-모든 앱은 좌상단 홈 버튼 + 우상단 테마 전환·공유 버튼을 공통으로 사용한다.
+모든 앱은 좌상단 홈 버튼 + 우상단 테마 전환·공유 버튼을 공통으로 사용하며, 페이지 로드 시 `seo-injector.js`를 통해 SEO 메타데이터가 동적으로 완성됩니다.
 
 ---
+
+## 🛠 유지보수 및 개발용 명령어
+
+프로젝트에는 개발 편의성과 SEO 배포 자동화를 위해 아래와 같은 패키지 스크립트들이 준비되어 있습니다:
+
+- **로컬 개발 서버 실행**: `npm run dev`
+- **신규 미니 앱 스캐폴딩 생성**: `npm run scaffold` (대화형 CLI를 통한 앱 생성 및 `apps.json` 자동 추가)
+- **각 하위 앱 HTML에 SEO 태그 일괄 정적 주입**: `npm run inject`
+- **전체 앱의 카테고리별 OG 이미지 자동 빌드**: `npm run og`
+- **`sitemap.xml` 재생성 및 업데이트**: `npm run sitemap`
 
 ---
 
 ## 📖 개발 문서
 
-자세한 개발 계획, 테스트 체크리스트, 알려진 이슈, 성능 분석은 [`docs/DEVPLAN.md`](docs/DEVPLAN.md)를 참고하세요.
+* [개발 계획 및 진행 현황](docs/DEVPLAN.md) — 과거 개발 마일스톤, 성능 분석, 알려진 이슈
+* [디자인 시스템 사양](docs/design-system.md) — 색상 토큰, 타이포그래피, 반응형 크기, 공통 컴포넌트 마크업 규칙
+* [신규 앱 개발 가이드](docs/app-development-guide.md) — 신규 미니 앱 추가를 위한 스캐폴딩 가이드 및 체크리스트
 
 ---
 
