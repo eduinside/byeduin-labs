@@ -360,13 +360,31 @@
       transition: border-color 0.15s, color 0.15s;
     }
     .notice-go:hover { border-color: var(--primary); color: var(--primary); }
+    /* 로딩 스켈레톤 — 갯수만큼 높이 예약(레이아웃 점프 방지) */
+    .notice-skeleton {
+      display: flex;
+      align-items: center;
+      padding: 0.95rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .notice-skeleton:last-child { border-bottom: none; }
+    .notice-skeleton::before {
+      content: '';
+      height: 1.05rem;
+      width: 58%;
+      border-radius: 5px;
+      background: var(--border);
+      animation: noticeShimmer 1.3s ease-in-out infinite;
+    }
+    @keyframes noticeShimmer { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.85; } }
     .notices-more {
-      display: inline-block;
-      margin-top: 0.75rem;
-      font-size: 0.8rem;
+      margin-left: auto;
+      font-size: 0.72rem;
       font-weight: 600;
       color: var(--primary);
       text-decoration: none;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .notices-more:hover { text-decoration: underline; }
     @media (max-width: 480px) {
@@ -476,16 +494,43 @@
       const wantPinned = (cfg.mode === 'pinned' || cfg.mode === 'both') && cfg.pinned.length > 0;
       if (!wantRecent && !wantPinned) return;
 
+      // 로드 전에도 갯수만큼 높이 예약(스켈레톤) — 레이아웃 점프 방지
+      const expected = (wantPinned ? cfg.pinned.length : 0) + (wantRecent ? cfg.recentLimit : 0);
+      if (expected === 0) return;
+
+      const section = document.createElement('section');
+      section.className = 'category-section notices-section';
+      section.innerHTML = `
+        <div class="category-header">
+          <span class="category-label">📢 공지사항</span>
+          <span class="category-desc">에듀인 블로그 소식</span>
+        </div>
+        <div class="notices-list"></div>
+      `;
+      const list = section.querySelector('.notices-list');
+      for (let i = 0; i < expected; i++) {
+        const sk = document.createElement('div');
+        sk.className = 'notice-skeleton';
+        list.appendChild(sk);
+      }
+      // '전체 공지 보기'를 헤더 우측('에듀인 블로그 소식' 오른쪽)에 작게 배치, href는 로드 후 갱신
+      const more = document.createElement('a');
+      more.className = 'notices-more';
+      more.href = 'https://blog.eduin.info/';
+      more.target = '_blank'; more.rel = 'noopener noreferrer';
+      more.textContent = '전체 공지 보기 →';
+      section.querySelector('.category-header').appendChild(more);
+      main.prepend(section); // 항상 <main> 최상단
+
       // 최신글 (recent/both 모드에서 RSS 로드)
       let recent = [];
-      let source = 'https://blog.eduin.info/';
       if (wantRecent) {
         try {
           const res = await fetch('/api/notices?limit=' + cfg.recentLimit, { cache: 'no-cache' });
           if (res.ok) {
             const data = await res.json();
             recent = Array.isArray(data.posts) ? data.posts : [];
-            if (data.source) source = data.source;
+            if (data.source) more.href = data.source;
           }
         } catch (e) { console.error('[notices] recent 로드 실패:', e); }
       }
@@ -508,19 +553,10 @@
       const recentShown = wantRecent ? recent.filter(p => !pinnedLinks.has(p.link)) : [];
 
       const items = [...pinned, ...recentShown];
-      if (items.length === 0) return; // 표시할 것 없음 → 섹션 생성 안 함
 
-      const section = document.createElement('section');
-      section.className = 'category-section notices-section';
-      section.innerHTML = `
-        <div class="category-header">
-          <span class="category-label">📢 공지사항</span>
-          <span class="category-desc">에듀인 블로그 소식</span>
-        </div>
-        <div class="notices-list"></div>
-      `;
-      main.prepend(section); // 항상 <main> 최상단
-      const list = section.querySelector('.notices-list');
+      // 스켈레톤 제거 후 실제 항목 렌더 (표시할 게 없으면 섹션 숨김)
+      list.innerHTML = '';
+      if (items.length === 0) { section.remove(); return; }
 
       items.forEach(post => {
         if (!post || !post.title || !post.link) return;
@@ -586,13 +622,6 @@
         item.appendChild(body);
         list.appendChild(item);
       });
-
-      const more = document.createElement('a');
-      more.className = 'notices-more';
-      more.href = source;
-      more.target = '_blank'; more.rel = 'noopener noreferrer';
-      more.textContent = '전체 공지 보기 →';
-      section.appendChild(more);
     }
 
     function renderRecentSection(main) {

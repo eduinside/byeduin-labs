@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="/common/hero-theme.css">
   <script src="/common/theme.js"></script>
   <script src="/common/init.js"></script>
-  <script src="config.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
 
@@ -412,7 +411,6 @@
   <script>
     /* ── 상태 ── */
     let list = [];          // { isbn13, title, author, publisher, priceStandard, qty, error? }
-    const ttbkey = typeof ALADIN_TTB_KEY !== 'undefined' ? ALADIN_TTB_KEY : '';
     let fetching = false;
 
     const LS_ITEMS = 'bookwishlist_items';
@@ -482,49 +480,22 @@
       return [...new Set(all)];
     }
 
-    /* ── JSONP 조회 ── */
+    /* ── ISBN 조회 (서버 함수 경유 — 키는 서버 env, 배포본에서도 동작) ── */
     function lookupISBN(isbn) {
       return new Promise((resolve, reject) => {
-        const cbName = 'aladinCb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-        const script = document.createElement('script');
-        const timeout = setTimeout(() => {
-          cleanup(); reject('시간 초과');
-        }, 8000);
-
-        function cleanup() {
-          clearTimeout(timeout);
-          delete window[cbName];
-          if (script.parentNode) script.remove();
-        }
-
-        window[cbName] = (data) => {
-          cleanup();
-          if (data && data.item && data.item.length > 0) {
-            resolve(data.item[0]);
-          } else {
-            reject('도서를 찾을 수 없습니다');
-          }
-        };
-
-        script.onerror = () => { cleanup(); reject('API 연결 실패'); };
-        script.src = 'https://www.aladin.co.kr/ttb/api/ItemLookUp.aspx'
-          + '?ttbkey=' + encodeURIComponent(ttbkey)
-          + '&itemId=' + encodeURIComponent(isbn)
-          + '&itemIdType=ISBN13'
-          + '&output=js'
-          + '&Version=20131101'
-          + '&callback=' + cbName;
-        document.head.appendChild(script);
+        fetch('/api/book-lookup?isbn=' + encodeURIComponent(isbn))
+          .then(async (res) => {
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.item) resolve(data.item);
+            else reject(data.error || '도서를 찾을 수 없습니다');
+          })
+          .catch(() => reject('API 연결 실패'));
       });
     }
 
     /* ── 전체 조회 ── */
     async function startFetch() {
       if (fetching) return;
-      if (!ttbkey) {
-        showToast('API 키가 설정되지 않았습니다.');
-        return;
-      }
 
       const text = document.getElementById('isbnInput').value;
       const isbns = parseISBNs(text);
