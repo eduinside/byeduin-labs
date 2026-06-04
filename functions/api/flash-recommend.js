@@ -1,22 +1,8 @@
-/**
- * Cloudflare Pages Function: 플래시카드 AI 추천 (Gemini)
- * - Google Gemini를 사용해 주제(덱 이름)를 받아 10개의 학습용 단어/개념 카드 추천 쌍을 생성
- * - GEMINI_API_KEY는 서버에서만 사용, 클라이언트 미노출
- */
-const MODEL = 'gemini-flash-lite-latest';
+import { generateContent } from './ai.js';
 
 export async function onRequest(ctx) {
   if (ctx.request.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
-  }
-
-  const apiKey = ctx.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.error('Missing GEMINI_API_KEY');
-    return new Response(
-      JSON.stringify({ error: '서버 환경변수(GEMINI_API_KEY)가 설정되지 않았습니다.' }),
-      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
-    );
   }
 
   let subject;
@@ -49,41 +35,12 @@ export async function onRequest(ctx) {
   const userMessage = `주제(덱 이름): ${subject}\n이 주제에 맞는 10개의 학습용 단어/개념 쌍을 생성해줘.`;
 
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: { text: systemPrompt }
-        },
-        contents: [{
-          role: 'user',
-          parts: [{ text: userMessage }]
-        }],
-        generationConfig: {
-          temperature: 0.8, // 다양성을 위해 0.8로 지정 (다시 누르면 새로운 키워드가 나올 확률 증가)
-        }
-      }),
+    let text = await generateContent({
+      systemPrompt,
+      userMessage,
+      env: ctx.env,
+      temperature: 0.8
     });
-
-    const data = await res.json();
-    if (!res.ok) {
-      console.error('flash-recommend Gemini error:', res.status, data?.error?.message);
-      return new Response(
-        JSON.stringify({ error: 'Gemini API 호출에 실패했습니다.' }),
-        { status: res.status, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
-      );
-    }
-
-    let text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      return new Response(
-        JSON.stringify({ error: '응답이 비어 있습니다.' }),
-        { status: 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
-      );
-    }
 
     // 마크다운 백틱 코드 블록이나 앞뒤 공백 제거
     text = text.replace(/```[a-zA-Z]*\n?/g, '').replace(/```/g, '').trim();
@@ -93,9 +50,9 @@ export async function onRequest(ctx) {
       { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
     );
   } catch (e) {
-    console.error('flash-recommend fetch fail:', e?.message);
+    console.error('flash-recommend error:', e?.message);
     return new Response(
-      JSON.stringify({ error: '외부 API 연결에 실패했습니다.' }),
+      JSON.stringify({ error: e.message || '추천 중 오류가 발생했습니다.' }),
       { status: 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
     );
   }

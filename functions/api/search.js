@@ -5,8 +5,10 @@
  * - GITHUB_TOKEN 환경 변수 선택 (없으면 비인증 60req/h)
  */
 
+import { generateContent } from './ai.js';
+
 // 문서 요약/질문 전용 함수
-async function handleDocumentRequest(type, docPath, question, geminiApiKey, REPO) {
+async function handleDocumentRequest(type, docPath, question, env, REPO) {
   try {
     console.log(`📄 [${type}] Fetching document: ${docPath}`);
 
@@ -32,29 +34,15 @@ async function handleDocumentRequest(type, docPath, question, geminiApiKey, REPO
       prompt = `다음 문서를 읽고 질문에 답해주세요:\n\n문서:\n${truncated}\n\n질문: ${question}`;
     }
 
-    console.log('🤖 [doc-request] Calling Gemini API...');
+    console.log('🤖 [doc-request] Calling AI API...');
     console.log('📄 [doc-request] Prompt size:', prompt.length, 'chars');
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiApiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 512 }
-        })
-      }
-    );
-
-    if (!geminiRes.ok) {
-      const err = await geminiRes.text();
-      console.error('❌ [doc-request] Gemini API failed:', err?.substring?.(0, 200));
-      return { statusCode: 502, body: JSON.stringify({ error: 'AI 응답 생성 실패' }) };
-    }
-
-    const geminiData = await geminiRes.json();
-    const answer = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '응답을 생성하지 못했습니다.';
+    const answer = await generateContent({
+      systemPrompt: '당신은 문서를 요약하거나 문서 내용에 기반해 질문에 성실히 답변해주는 AI 조수입니다.',
+      userMessage: prompt,
+      env,
+      temperature: 0.3
+    });
 
     console.log('✅ [doc-request] Completed successfully');
 
@@ -97,24 +85,15 @@ export async function onRequest(ctx) {
     );
   }
 
-  const GEMINI_API_KEY = ctx.env.GEMINI_API_KEY;
   const REPO = ctx.env.EDU_DOCS_REPO || 'eduinside/byeduin-edu-docs';
   const GITHUB_TOKEN = ctx.env.GITHUB_TOKEN;
 
-  console.log('🔧 [search] Config:', { REPO, hasGeminiKey: !!GEMINI_API_KEY, hasGithubToken: !!GITHUB_TOKEN });
-
-  if (!GEMINI_API_KEY) {
-    console.error('❌ [search] GEMINI_API_KEY not set');
-    return new Response(
-      JSON.stringify({ error: 'Server configuration error: missing GEMINI_API_KEY' }),
-      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
-    );
-  }
+  console.log('🔧 [search] Config:', { REPO, hasGithubToken: !!GITHUB_TOKEN });
 
   // 문서 요약/질문 요청 처리
   if ((type === 'summarize' || type === 'question') && documentPath) {
     console.log(`📄 [handler] Delegating to handleDocumentRequest: ${type}`);
-    const result = await handleDocumentRequest(type, documentPath, query, GEMINI_API_KEY, REPO);
+    const result = await handleDocumentRequest(type, documentPath, query, ctx.env, REPO);
     return new Response(result.body, { status: result.statusCode, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
   }
 
@@ -215,32 +194,15 @@ ${context}
 
 질문: ${query.trim()}`;
 
-    console.log('🤖 [search] Calling Gemini API...');
+    console.log('🤖 [search] Calling AI API...');
     console.log('📄 [search] Prompt size:', prompt.length, 'chars');
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
-        }),
-      }
-    );
-
-    console.log('📊 [search] Gemini response:', { status: geminiRes.status, ok: geminiRes.ok });
-
-    if (!geminiRes.ok) {
-      const geminiErr = await geminiRes.text();
-      console.error('❌ [search] Gemini API failed:', { status: geminiRes.status, error: geminiErr?.substring?.(0, 300) });
-      return new Response(`Gemini API request failed (HTTP ${geminiRes.status}): ${geminiErr?.substring?.(0, 100)}`, { status: 502 });
-    }
-
-    const geminiData = await geminiRes.json();
-    console.log('✅ [search] Gemini response received, parsing...');
-    const answer = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '답변을 생성하지 못했습니다.';
+    const answer = await generateContent({
+      systemPrompt: '당신은 교육 행정 전문가입니다. 제공된 문서 내용에만 기반하여 질문에 답해야 합니다.',
+      userMessage: prompt,
+      env: ctx.env,
+      temperature: 0.2
+    });
 
     // 답변에서 실제 사용한 출처 파일명 추출 (**출처: filename 형식)
     const sourcesMatch = answer.match(/\*\*출처:\*\*\s*(.+?)(?:\n|$)/g);
