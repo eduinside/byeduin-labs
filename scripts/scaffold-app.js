@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * scaffold-app.js
- * Interactive scaffolding for a new byeduin VIVES sub-app.
+ * Interactive scaffolding for a new eduin VIVES sub-app.
  * Creates the HTML file and adds the entry to apps.json.
  * No external dependencies.
  *
@@ -38,7 +38,7 @@ async function main() {
   });
 
   console.log('');
-  console.log('🛠  byeduin VIVES — New App Scaffolder');
+  console.log('🛠  eduin VIVES — New App Scaffolder');
   console.log('─'.repeat(40));
   console.log('');
 
@@ -103,16 +103,16 @@ async function main() {
 
   // ── Build the HTML ──
   var categoryUpper = category.charAt(0).toUpperCase() + category.slice(1);
-  var siteUrl = (data.site && data.site.url) || 'https://by.eduin.info';
+  var siteUrl = (data.site && data.site.url) || 'https://eduin.info';
 
   var htmlContent = '<!DOCTYPE html>\n'
     + '<html lang="ko">\n'
     + '<head>\n'
     + '  <meta charset="UTF-8">\n'
     + '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
-    + '  <title>' + escapeHtml(appName) + ' — byeduin VIVES</title>\n'
+    + '  <title>' + escapeHtml(appName) + ' — eduin VIVES</title>\n'
     + '  <meta name="description" content="' + escapeHtmlAttr(seoDesc) + '">\n'
-    + '  <meta property="og:title" content="' + escapeHtmlAttr(seoTitle) + ' | byeduin VIVES">\n'
+    + '  <meta property="og:title" content="' + escapeHtmlAttr(seoTitle) + ' | eduin VIVES">\n'
     + '  <meta property="og:description" content="' + escapeHtmlAttr(seoDesc) + '">\n'
     + '  <meta property="og:image" content="/og-images/' + appId + '.png">\n'
     + '  <meta property="og:type" content="website">\n'

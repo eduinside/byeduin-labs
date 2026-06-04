@@ -1,5 +1,5 @@
 /**
- * seo-injector.js — Runtime SEO tag injection for byeduin VIVES sub-apps
+ * seo-injector.js — Runtime SEO tag injection for eduin VIVES sub-apps
  * Fetches /apps.json (cached in sessionStorage) and injects Twitter Card,
  * Open Graph, canonical, and JSON-LD structured data for the current page.
  *
@@ -107,8 +107,8 @@
     if (!app || !app.seo) return;
 
     var seo = app.seo;
-    var siteUrl = (site.url || 'https://by.eduin.info').replace(/\/$/, '');
-    var fullTitle = seo.title + ' | ' + (site.name || 'byeduin VIVES');
+    var siteUrl = (site.url || 'https://eduin.info').replace(/\/$/, '');
+    var fullTitle = seo.title + ' | ' + (site.name || 'eduin VIVES');
     var description = seo.description || '';
     var ogImage = absUrl(siteUrl, app.ogImage || site.ogImage || '');
     var canonicalUrl = siteUrl + app.href;
@@ -144,7 +144,7 @@
         applicationCategory: 'EducationApplication',
         operatingSystem: 'Any',
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'KRW' },
-        isPartOf: { '@type': 'WebSite', name: site.name || 'byeduin VIVES', url: siteUrl }
+        isPartOf: { '@type': 'WebSite', name: site.name || 'eduin VIVES', url: siteUrl }
       };
       var script = document.createElement('script');
       script.type = 'application/ld+json';

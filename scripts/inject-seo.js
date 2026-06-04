@@ -22,7 +22,7 @@ function main() {
 
   var data = JSON.parse(fs.readFileSync(APPS_JSON, 'utf8'));
   var site = data.site || {};
-  var siteUrl = (site.url || 'https://by.eduin.info').replace(/\/$/, '');
+  var siteUrl = (site.url || 'https://eduin.info').replace(/\/$/, '');
   var apps = data.apps || [];
 
   var processed = 0;
@@ -56,7 +56,7 @@ function main() {
     var seo = app.seo || {};
     var ogImageUrl = app.ogImage ? siteUrl + app.ogImage : (site.ogImage ? siteUrl + site.ogImage : '');
     var canonicalUrl = siteUrl + app.href;
-    var fullTitle = seo.title + ' | ' + (site.name || 'byeduin VIVES');
+    var fullTitle = seo.title + ' | ' + (site.name || 'eduin VIVES');
     var description = seo.description || '';
 
     // ── 1. Update og:image ──
@@ -122,7 +122,7 @@ function main() {
         applicationCategory: 'EducationApplication',
         operatingSystem: 'Any',
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'KRW' },
-        isPartOf: { '@type': 'WebSite', name: site.name || 'byeduin VIVES', url: siteUrl }
+        isPartOf: { '@type': 'WebSite', name: site.name || 'eduin VIVES', url: siteUrl }
       };
       var ldTag = '  <script type="application/ld+json">' + JSON.stringify(ld) + '<\/script>';
       html = addBeforeHeadClose(html, ldTag);

@@ -1,4 +1,4 @@
-# byeduin VIVES — 개발 계획 및 진행 현황
+# eduin VIVES — 개발 계획 및 진행 현황
 
 ## 🧪 테스트 체크리스트
 
@@ -770,3 +770,36 @@ public/file-tools/
 - `public/apps.json` - 수당 계산기 앱 메타데이터 추가
 - `public/allowance-calculator/index.html` (신규)
 - `README.md` - 유틸리티 앱 목록 및 앱 개수(24개) 갱신
+
+---
+
+### Phase 13: eduin.info 통합 홈 + 공지사항(티스토리 RSS) + 도메인/브랜드 정리 (2026-06-04)
+**상태**: 코드 완료 ✅ / Cloudflare·short.io 설정 진행 중 🔧
+
+**배경**:
+- 기존 Notion+oopy로 운영되던 `eduin.info`(브랜드 홈)와 `by.eduin.info`(앱 모음)를 단일 정본 홈 `eduin.info`로 통합. 자주 업데이트하지 않으면서 앱 소개·공지·안내를 제공하는 홈으로 개편.
+
+**구현 사항**:
+1. **도메인 정본 전환 (`by.eduin.info` → `eduin.info`)**:
+   - `apps.json` `site.url` 단일 소스 변경 후 `npm run inject`·`npm run sitemap` 재생성
+   - 하위 앱 HTML의 하드코딩 canonical/og:url/twitter:image/JSON-LD를 일괄 치환 (inject-seo.js는 og:image만 갱신하고 나머지는 "없을 때만 추가"하므로 기존값은 수동 치환)
+   - 리다이렉트는 코드가 아닌 **Cloudflare Redirect Rule**로 처리 (apex 연결 + `by`·`www` → `eduin.info` 301, 경로 보존)
+2. **공지사항 기능 (티스토리 RSS, 아코디언)**:
+   - `functions/api/notices.js` (신규) — `blog.eduin.info/rss` 우선 + `eduin.tistory.com/rss` 폴백(인증서 프로비저닝 대비), 정규식 파싱(제목·링크·날짜·요약), 30분 캐시, `source`는 실제 성공한 피드 도메인
+   - `public/notices.json` (신규) — `recent`/`pinned`/`both` 모드, 지정글 상단 고정(📌)
+   - 홈 아코디언 UI(한 번에 하나, 요약 미리보기 + "글 보러가기" 새 창, 펼침 시 흰 배경), 클라이언트 `no-cache` fetch로 신선도 확보, 외부 문자열은 `textContent`로 주입(XSS 안전)
+3. **단축 URL 도메인**: `byeduin.short.gy` → `go.eduin.info` (환경변수 `SHORT_IO_DOMAIN`만 변경, `shorten.js`/`resolve-short-url.js` 로직 무변경). 기존 링크 호환 위해 short.io에 옛 도메인 유지
+4. **블로그 연동**: `blog.eduin.info`(티스토리 2차 도메인)에 공지 작성. Login Helper 안내도 oopy 슬러그 → `blog.eduin.info/450`로 이전
+5. **브랜드명**: 사이트 표시명 `byeduin VIVES` → `eduin VIVES` (apps.json `site.name`)
+
+**파일 변경**:
+- `functions/api/notices.js`·`public/notices.json` (신규)
+- `public/index.html` — 공지 아코디언 섹션·CSS·렌더 로직 + canonical 등 도메인 치환
+- `public/apps.json` — `site.url`(eduin.info)·`site.name`(eduin VIVES)·Login Helper href
+- `public/common/seo-injector.js`·`scripts/*`·`robots.txt`·`sitemap.xml`·하위 앱 HTML 19개 — 도메인 치환
+- `public/book-share/gather.html`·`public/scoring-table/index.html` — 단축 예시 `go.eduin.info`
+
+**남은 설정(사용자 수행)**:
+- Cloudflare: `eduin.info` apex를 Pages 프로젝트에 연결 + 기존 apex→www 룰 제거 + `by`·`www` → `eduin.info` 301 Redirect Rule (도메인 치환 **배포 전 선행** 권장)
+- short.io: `go.eduin.info` 도메인 추가 + `SHORT_IO_DOMAIN=go.eduin.info` (Cloudflare 환경변수 + 로컬 `.env`)
+- 티스토리: `blog.eduin.info` SSL 인증서 발급 대기(자동) → 발급 후 대표주소 설정(선택)

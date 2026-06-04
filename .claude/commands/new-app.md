@@ -1,5 +1,5 @@
 ---
-description: byeduin VIVES에 새 미니앱 스캐폴딩 — 폴더+HTML 생성, 앱 목록 자동 등록
+description: eduin VIVES에 새 미니앱 스캐폴딩 — 폴더+HTML 생성, 앱 목록 자동 등록
 argument-hint: [app-slug] [category]
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
 ---
@@ -10,7 +10,7 @@ allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
 
 ## 목표
 
-byeduin VIVES 프로젝트에 새 미니앱을 추가합니다. 아래 단계를 순서대로 수행하세요.
+eduin VIVES 프로젝트에 새 미니앱을 추가합니다. 아래 단계를 순서대로 수행하세요.
 
 ---
 
@@ -46,7 +46,7 @@ byeduin VIVES 프로젝트에 새 미니앱을 추가합니다. 아래 단계를
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>{앱 제목} — byeduin</title>
+  <title>{앱 제목} — eduin</title>
   <link rel="stylesheet" href="/common/hero-theme.css">
   <script src="/common/theme.js"></script>
   <style>
@@ -118,7 +118,7 @@ byeduin VIVES 프로젝트에 새 미니앱을 추가합니다. 아래 단계를
 
   <!-- 상단 좌측: 홈 -->
   <div class="top-overlay-left">
-    <a href="/" class="overlay-btn" title="byeduin VIVES 홈">
+    <a href="/" class="overlay-btn" title="eduin VIVES 홈">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
         <polyline points="9 22 9 12 15 12 15 22"/>

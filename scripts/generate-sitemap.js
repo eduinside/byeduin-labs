@@ -44,7 +44,7 @@ function main() {
   }
 
   var data = JSON.parse(fs.readFileSync(APPS_JSON, 'utf8'));
-  var siteUrl = (data.site && data.site.url) || 'https://by.eduin.info';
+  var siteUrl = (data.site && data.site.url) || 'https://eduin.info';
   siteUrl = siteUrl.replace(/\/$/, '');
 
   var lastmod = today();

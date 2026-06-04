@@ -1,6 +1,6 @@
-# byeduin VIVES — 신규 앱 개발 가이드 및 배포 매뉴얼
+# eduin VIVES — 신규 앱 개발 가이드 및 배포 매뉴얼
 
-이 문서는 byeduin VIVES(labs)에 새로운 미니 웹 앱을 설계하고, 개발하고, SEO 및 메타데이터를 연결하여 최종 배포하는 프로세스를 안내합니다.
+이 문서는 eduin VIVES(labs)에 새로운 미니 웹 앱을 설계하고, 개발하고, SEO 및 메타데이터를 연결하여 최종 배포하는 프로세스를 안내합니다.
 
 기존 디자인 시스템([design-system.md](file:///d:/Hwan/Documents/Web/byeduin-labs/docs/design-system.md))의 색상, 타이포그래피, 컴포넌트 규칙을 철저히 준수하여 일관성 있는 사용자 경험(UX)을 구축해야 합니다.
 
@@ -56,10 +56,10 @@ npm run scaffold
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>앱이름 — byeduin VIVES</title>
+  <title>앱이름 — eduin VIVES</title>
   <!-- SEO 메타 태그 (빌드타임에 inject 스크립트로 오버라이드 됨) -->
   <meta name="description" content="SEO 설명 문구">
-  <meta property="og:title" content="SEO 타이틀 | byeduin VIVES">
+  <meta property="og:title" content="SEO 타이틀 | eduin VIVES">
   <meta property="og:description" content="SEO 설명 문구">
   <meta property="og:image" content="/og-images/앱-ID.png">
   <meta property="og:type" content="website">

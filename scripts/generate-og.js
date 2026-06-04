@@ -204,7 +204,7 @@ function drawOgImage(app, categories) {
   ctx.font = '18px ' + fontFamily + ', sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('byeduin VIVES', WIDTH / 2, HEIGHT - 40);
+  ctx.fillText('eduin VIVES', WIDTH / 2, HEIGHT - 40);
 
   // Small line above branding
   ctx.strokeStyle = '#1e293b';

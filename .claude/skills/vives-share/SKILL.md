@@ -1,7 +1,7 @@
 ---
 name: vives-share
 description: >
-  Implements URL-based sharing for static web apps in the byeduin VIVES project.
+  Implements URL-based sharing for static web apps in the eduin VIVES project.
   Use this skill whenever adding a share feature to any app in the project,
   or when the user mentions "공유 기능", "share link", "URL 공유", or wants
   users to share app state via a link. Covers the full pattern:

@@ -1,4 +1,4 @@
-# byeduin VIVES — 디자인 시스템
+# eduin VIVES — 디자인 시스템
 
 > 새 앱을 추가할 때 참조하는 색·타이포·컴포넌트 토큰 레퍼런스.  
 > 소스 오브 트루스: [`/public/common/hero-theme.css`](/public/common/hero-theme.css)

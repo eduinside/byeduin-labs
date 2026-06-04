@@ -1,6 +1,6 @@
-# byeduin VIVES
+# eduin VIVES
 
-바이브 코딩으로 만든 소형 웹 앱 모음. 순수 정적 사이트 (HTML + CSS + JS, 빌드 없음).
+바이브 코딩으로 만든 소형 웹 앱 모음 + 앱 소개·공지 홈. 순수 정적 사이트 (HTML + CSS + JS, 빌드 없음). 프로덕션 정본 도메인: **[eduin.info](https://eduin.info)** (`by.eduin.info`·`www`는 301 리다이렉트).
 
 **로컬 실행**: `npm run dev` (Cloudflare Pages Functions 로컬 서버 기동)  
 **배포**: [Cloudflare Pages](https://byeduin-vives.pages.dev) (자동 배포: main 브랜치)  
@@ -31,7 +31,7 @@
 | **Smart Timer** | `/timer/` | 반복 알람 타이머 |
 | **MP4 Finder** | `/chrome-extentions/mp4-finder.zip` | 웹페이지 내 MP4 링크 자동 감지 및 클립보드 복사 (Chrome 확장) |
 | **Content ID Viewer** | `/chrome-extentions/content-id-viewer-for-edunavi.zip` | 에듀나비 콘텐츠 ID 조회 (Chrome 확장) |
-| **Login Helper** | `https://www.eduin.info/...` | 에듀나비 교원업무지원 자동 로그인 프로그램 (모달) |
+| **Login Helper** | `https://blog.eduin.info/450` | 에듀나비 교원업무지원 자동 로그인 프로그램 (모달) |
 
 ### 소셜 도구 (3)
 | 앱 | 경로 | 설명 |
@@ -59,6 +59,18 @@
 
 ---
 
+## 홈 & 공지사항
+
+홈은 앱 카드 그리드 외에 **공지사항(아코디언)** 을 제공합니다. 공지는 [티스토리 블로그](https://blog.eduin.info)에 글을 올리면 RSS로 자동 노출됩니다.
+
+- **UI**: 헤더 클릭 시 펼쳐지는 아코디언(한 번에 하나) → 본문 요약 미리보기 + "글 보러가기"(새 창). 펼친 항목은 흰 배경으로 강조.
+- **설정**: [`public/notices.json`](public/notices.json)
+  - `mode`: `recent`(최신글만) · `pinned`(지정글만) · `both`(지정글📌 + 최신글)
+  - `recentLimit`: 최신글 개수(1–20) · `pinned`: 상단 고정 지정글 `[{ title, link }]`
+- **RSS 프록시**: [`functions/api/notices.js`](functions/api/notices.js) — `blog.eduin.info/rss` 우선, 실패 시 `eduin.tistory.com/rss` 폴백. 정규식으로 제목·링크·날짜·요약 추출, 30분 캐시(서버사이드 중계로 CORS 우회).
+
+---
+
 ## 공통 리소스
 
 ```
@@ -80,7 +92,7 @@ public/common/
 - **로컬 개발 서버 실행**: `npm run dev`
 - **신규 미니 앱 스캐폴딩 생성**: `npm run scaffold` (대화형 CLI를 통한 앱 생성 및 `apps.json` 자동 추가)
 - **각 하위 앱 HTML에 SEO 태그 일괄 정적 주입**: `npm run inject`
-- **전체 앱의 카테고리별 OG 이미지 자동 빌드**: `npm run og`
+- **OG 이미지 빌드 (앱별 + 홈 기본 `og-default.png`)**: `npm run og`
 - **`sitemap.xml` 재생성 및 업데이트**: `npm run sitemap`
 
 ---

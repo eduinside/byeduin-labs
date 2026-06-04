@@ -19,7 +19,7 @@ allowed-tools: [Read, Edit, Glob, Grep]
    - 제외: `common/`, `chrome-extentions/`, 루트 `index.html` 자체
 
 2. 각 앱 폴더의 `index.html`에서 다음을 추출하세요:
-   - `<title>` 태그 내용 (` — byeduin` 제거)
+   - `<title>` 태그 내용 (` — eduin` 제거)
    - `<meta name="description">` content (있는 경우)
    - `<h1>` 첫 번째 태그 (title이 없는 경우 대체)
 
