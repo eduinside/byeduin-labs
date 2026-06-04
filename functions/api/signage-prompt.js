@@ -1,4 +1,4 @@
-import { generateContent } from './ai.js';
+import { generateContent } from './_ai.js';
 
 export async function onRequest(ctx) {
   if (ctx.request.method !== 'POST') {

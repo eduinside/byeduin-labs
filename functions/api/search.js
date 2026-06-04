@@ -5,7 +5,7 @@
  * - GITHUB_TOKEN 환경 변수 선택 (없으면 비인증 60req/h)
  */
 
-import { generateContent } from './ai.js';
+import { generateContent } from './_ai.js';
 
 // 문서 요약/질문 전용 함수
 async function handleDocumentRequest(type, docPath, question, env, REPO) {
