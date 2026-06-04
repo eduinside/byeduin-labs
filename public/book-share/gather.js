@@ -349,7 +349,7 @@ async function shareList() {
       body: JSON.stringify({ url: longUrl }),
     });
     const data = await res.json();
-    if (!res.ok || !data.shortURL) throw new Error();
+    if (!res.ok || !data.shortURL) { console.error('[shorten] failed:', res.status, data); throw new Error((data && data.error) || 'shorten failed'); }
 
     // 단축 URL을 클립보드에 복사
     await navigator.clipboard.writeText(data.shortURL);

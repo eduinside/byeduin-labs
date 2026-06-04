@@ -924,7 +924,7 @@
         body: JSON.stringify({ url: text }),
       });
       const data = await res.json();
-      if (!res.ok || !data.shortURL) throw new Error();
+      if (!res.ok || !data.shortURL) { console.error('[shorten] failed:', res.status, data); throw new Error((data && data.error) || 'shorten failed'); }
       await navigator.clipboard.writeText(data.shortURL);
       showToast('단축 URL 복사됨 ✓ ' + data.shortURL);
     } catch {

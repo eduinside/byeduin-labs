@@ -728,7 +728,7 @@
           body: JSON.stringify({ url: longURL }),
         });
         const data = await res.json();
-        if (!res.ok || !data.shortURL) throw new Error(data.error || '단축 실패');
+        if (!res.ok || !data.shortURL) { console.error('[shorten] failed:', res.status, data); throw new Error(data.error || '단축 실패'); }
 
         await navigator.clipboard.writeText(data.shortURL);
         showToast('단축 링크가 복사되었습니다 ✓');

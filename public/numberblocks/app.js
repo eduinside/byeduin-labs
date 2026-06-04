@@ -403,10 +403,12 @@ function shareEpisode(epId) {
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({url})
   }).then(r => r.json()).then(d => {
+    if (!d || !d.shortURL) console.error('[shorten] failed:', d);
     navigator.clipboard.writeText(d.shortURL || url).then(() => {
       showToast('링크 복사됨 ✓');
     }).catch(() => showToast('URL: '+url));
-  }).catch(() => {
+  }).catch((e) => {
+    console.error('[shorten] error:', e);
     navigator.clipboard.writeText(url).then(() => showToast('링크 복사됨 ✓'));
   });
 }

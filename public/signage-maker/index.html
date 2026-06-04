@@ -738,7 +738,8 @@
         });
         const data = await res.json();
         if (res.ok && data.shortURL) url = data.shortURL;
-      } catch {}
+        else console.error('[shorten] failed:', res.status, data);
+      } catch (e) { console.error('[shorten] error:', e); }
       try {
         await navigator.clipboard.writeText(url);
         toast('공유 링크가 클립보드에 복사되었습니다.');

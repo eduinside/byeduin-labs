@@ -427,7 +427,7 @@ async function doShare(data, permission) {
       body: JSON.stringify({ url: longURL }),
     });
     const j = await res.json();
-    if (!res.ok || !j.shortURL) throw new Error();
+    if (!res.ok || !j.shortURL) { console.error('[shorten] failed:', res.status, j); throw new Error((j && j.error) || 'shorten failed'); }
     await navigator.clipboard.writeText(j.shortURL);
     showToast('링크가 복사되었습니다 ✓');
   } catch {
