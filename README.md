@@ -92,7 +92,8 @@ public/common/
 - **로컬 개발 서버 실행**: `npm run dev`
 - **신규 미니 앱 스캐폴딩 생성**: `npm run scaffold` (대화형 CLI를 통한 앱 생성 및 `apps.json` 자동 추가)
 - **각 하위 앱 HTML에 SEO 태그 일괄 정적 주입**: `npm run inject`
-- **OG 이미지 빌드 (앱별 + 홈 기본 `og-default.png`)**: `npm run og`
+- **OG 이미지 빌드 (앱별 + 홈 기본 `og-default.png`, 소스 `brand/logo-seo.png`)**: `npm run og`
+- **브랜드 로고·파비콘 재생성 (소스 `brand/logo.png`)**: `node scripts/generate-icons.js`
 - **`sitemap.xml` 재생성 및 업데이트**: `npm run sitemap`
 
 ---

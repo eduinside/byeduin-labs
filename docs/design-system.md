@@ -19,7 +19,7 @@
 |------|------|
 | `hero-theme.css` | CSS 변수(토큰) + 공통 컴포넌트 클래스 |
 | `theme.js` | `cycleTheme()` · `shareCurrentPage()` · `data-theme` 자동 적용 |
-| `init.js` | 파비콘 `/logo.jpg` 강제 설정 · GA4 초기화 (localhost 제외) |
+| `init.js` | 파비콘 `/favicon.svg` 강제 설정 · GA4 초기화 (localhost 제외) |
 
 ---
 
