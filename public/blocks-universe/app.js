@@ -515,6 +515,42 @@ let ytPlayer = null;
 let queue = [];
 let queueIdx = 0;
 let ytApiReady = null;
+let watchdogTimer = null;
+let durCache = JSON.parse(localStorage.getItem(DUR_KEY) || '{}');
+
+function clearWatchdog() {
+  clearTimeout(watchdogTimer);
+  watchdogTimer = null;
+}
+
+async function fetchDuration(videoId) {
+  if (durCache[videoId]) return durCache[videoId];
+  try {
+    const res = await fetch(`/api/yt-duration?ids=${videoId}`);
+    if (!res.ok) return 0;
+    const data = await res.json();
+    const sec = data.durations?.[videoId] || 0;
+    if (sec > 0) {
+      durCache[videoId] = sec;
+      localStorage.setItem(DUR_KEY, JSON.stringify(durCache));
+    }
+    return sec;
+  } catch { return 0; }
+}
+
+async function setWatchdog(videoId) {
+  clearWatchdog();
+  const dur = durations[videoId] || await fetchDuration(videoId);
+  if (!dur || !ytPlayer?.getCurrentTime) return;
+  // PLAYING 이벤트 직후 호출되므로 약간의 딜레이 후 현재 위치 파악
+  setTimeout(() => {
+    const elapsed = ytPlayer.getCurrentTime?.() || 0;
+    const remaining = Math.max((dur - elapsed) * 1000 + 1500, 3000);
+    watchdogTimer = setTimeout(() => {
+      if (ytPlayer && !document.getElementById('playerOverlay').hidden) playNext();
+    }, remaining);
+  }, 400);
+}
 
 function loadYtApi() {
   if (ytApiReady) return ytApiReady;
@@ -544,8 +580,12 @@ async function startSequentialPlay() {
     videoId: currentVideoId(),
     playerVars: { autoplay: 1, rel: 0, origin: location.origin },
     events: {
-      onReady: () => startWatchdog(),
-      onStateChange: (e) => { if (e.data === YT.PlayerState.ENDED) playNext(); },
+      onReady: () => setWatchdog(currentVideoId()),
+      onStateChange: (e) => {
+        if (e.data === YT.PlayerState.ENDED) { clearWatchdog(); playNext(); }
+        else if (e.data === YT.PlayerState.PLAYING) setWatchdog(currentVideoId());
+        else if (e.data === YT.PlayerState.PAUSED) clearWatchdog();
+      },
     },
   });
   renderPlayerUi();
@@ -558,6 +598,7 @@ function currentVideoId() {
 let lastAdvance = 0;
 function playAt(i) {
   if (i < 0 || i >= queue.length) return;
+  clearWatchdog();
   lastAdvance = performance.now();
   queueIdx = i;
   if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById(currentVideoId());
@@ -612,6 +653,7 @@ function renderPlayerUi() {
 }
 
 function closePlayer() {
+  clearWatchdog();
   stopWatchdog();
   if (ytPlayer) { ytPlayer.destroy(); ytPlayer = null; }
   $('playerStage').innerHTML = '';
