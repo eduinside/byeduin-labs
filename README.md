@@ -41,7 +41,7 @@
 #### 🔧 생활편의
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **MD Editor** | `/md-editor/` | 마크다운 편집기 (JSON·CSV·XML·HTML 불러오기, 중첩 테이블 변환, 파일 공유 지원) |
+| **MD Editor** | `/md-editor/` | 마크다운 편집기 (JSON·CSV·XML·HTML 불러오기, **HWP·PDF·DOCX·PPTX·XLSX 변환** via Corepin API, 파일 공유) |
 | **QR Master** | `/qr/` | QR 코드 생성, 카메라/이미지 스캔, 단축주소 |
 
 #### 🧩 크롬확장
@@ -78,7 +78,7 @@
 
 ## 홈 & 공지사항
 
-홈은 앱 카드 그리드 외에 **공지사항(아코디언)** 을 제공합니다. 공지는 [티스토리 블로그](https://blog.eduin.info)에 글을 올리면 RSS로 자동 노출됩니다.
+홈은 **트리 사이드바**(2단계 카테고리 탐색) + 앱 카드 그리드 + **공지사항(아코디언)** 으로 구성됩니다. 공지는 [티스토리 블로그](https://blog.eduin.info)에 글을 올리면 RSS로 자동 노출됩니다.
 
 - **UI**: 헤더 클릭 시 펼쳐지는 아코디언(한 번에 하나) → 본문 요약 미리보기 + "글 보러가기"(새 창). 펼친 항목은 흰 배경으로 강조.
 - **설정**: [`public/notices.json`](public/notices.json)
@@ -143,4 +143,5 @@ public/common/
 | [Babel Standalone](https://babeljs.io/docs/babel-standalone) | latest | MIT | Notion Styler |
 | [Tailwind CSS](https://tailwindcss.com/) | CDN | MIT | Grid Maker, Notion Styler |
 | [Lucide](https://lucide.dev/) | latest | ISC | Grid Maker, Smart Timer |
+| [MapLibre GL JS](https://maplibre.org/) | 4.x | BSD-2-Clause | 화산 탐험대 |
 | [Google Fonts](https://fonts.google.com/) | — | SIL OFL | 전체 (JetBrains Mono, Noto Sans KR, Dongle) |
