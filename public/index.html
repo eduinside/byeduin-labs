@@ -403,9 +403,27 @@
     /* 모달 타입 카드 — 클릭 커서만 다름 */
     .app-card.modal-card { cursor: pointer; }
 
-    /* 최근 방문 섹션: 하이라이트 없음 */
-    .recent-section .app-card {
-      /* 일반 카드 스타일 사용 */
+    /* 최근 방문: 넓은 화면에서 4열 */
+    .recent-section .card-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    /* 최근 방문: 좁은 화면에서 가로 스크롤 한 행 */
+    @media (max-width: 640px) {
+      .recent-section .card-grid {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 2px;
+      }
+      .recent-section .card-grid::-webkit-scrollbar { display: none; }
+      .recent-section .card-grid .app-card {
+        flex: 0 0 160px;
+        scroll-snap-align: start;
+      }
     }
 
     /* 아래 앱 섹션에서 최근 방문 앱 강조 (채도 낮춤) */
@@ -771,7 +789,7 @@
 
     function renderRecentSection(main) {
       const KEY = 'byeduin_recent_apps';
-      const list = JSON.parse(localStorage.getItem(KEY) || '[]').slice(0, 3);
+      const list = JSON.parse(localStorage.getItem(KEY) || '[]').slice(0, 4);
       if (list.length === 0) return;
 
       const section = document.createElement('section');
