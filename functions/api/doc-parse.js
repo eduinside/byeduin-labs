@@ -18,21 +18,22 @@ export async function onRequest(ctx) {
   const apiKey = env.COREPIN_API_KEY;
   if (!apiKey) return json({ error: 'COREPIN_API_KEY not configured' }, 500);
 
-  let form;
-  try {
-    form = await request.formData();
-  } catch {
-    return json({ error: 'multipart 파싱 실패 — 파일 형식을 확인해주세요.' }, 400);
+  // raw body + 원본 Content-Type(boundary 포함) 그대로 포워딩
+  // FormData 재구성 시 boundary가 바뀌어 405가 발생할 수 있어 직접 전달
+  const contentType = request.headers.get('content-type') || '';
+  if (!contentType.includes('multipart/form-data')) {
+    return json({ error: 'multipart/form-data 요청이 필요합니다.' }, 400);
   }
-
-  if (!form.has('output_format')) form.set('output_format', 'markdown');
 
   let upstream;
   try {
     upstream = await fetch('https://api.corepin.ai/v1/doc/parse', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: form,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': contentType,
+      },
+      body: request.body,
     });
   } catch (e) {
     return json({ error: `Corepin 연결 실패: ${e.message}` }, 502);

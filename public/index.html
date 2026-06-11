@@ -677,17 +677,26 @@
       const wantPinned = (cfg.mode === 'pinned' || cfg.mode === 'both') && cfg.pinned.length > 0;
       if (!wantRecent && !wantPinned) { section.remove(); return; }
 
-      // 최신글 (recent/both 모드에서 RSS 로드)
+      // 최신글 (recent/both 모드에서 RSS 로드) — 1시간 localStorage 캐시
       let recent = [];
       if (wantRecent) {
+        const CACHE_KEY = 'byeduin_notices_cache';
+        const CACHE_TTL = 60 * 60 * 1000; // 1시간
         try {
-          const res = await fetch('/api/notices?limit=' + cfg.recentLimit, { cache: 'no-cache' });
-          if (res.ok) {
-            const data = await res.json();
-            recent = Array.isArray(data.posts) ? data.posts : [];
-            if (data.source) more.href = data.source;
+          const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+          if (cached && Date.now() - cached.ts < CACHE_TTL) {
+            recent = cached.posts;
+            if (cached.source) more.href = cached.source;
+          } else {
+            const res = await fetch('/api/notices?limit=' + cfg.recentLimit);
+            if (res.ok) {
+              const data = await res.json();
+              recent = Array.isArray(data.posts) ? data.posts : [];
+              if (data.source) more.href = data.source;
+              localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), posts: recent, source: data.source || '' }));
+            }
           }
-        } catch (e) { console.error('[notices] recent 로드 실패:', e); }
+        } catch (e) { console.error('[notices] 로드 실패:', e); }
       }
 
       // 지정글: 제목·요약 없으면 최신글에서 link 매칭으로 보완
