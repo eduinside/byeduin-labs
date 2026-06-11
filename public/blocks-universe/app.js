@@ -82,8 +82,17 @@ async function init() {
   handleHash();
 }
 
+function goToWelcome() {
+  state.series = null; state.season = 0; state.level = 0;
+  state.theme = false; state.aiIds = null; state.q = ''; state.favOnly = false;
+  $('searchInput').value = '';
+  renderSeriesTabs(); renderToolbar(); renderGrid();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 /* ── 시리즈 탭 ── */
 function renderSeriesTabs() {
+  $('welcomeBack').hidden = !state.series;
   const nav = $('seriesTabs');
   nav.innerHTML = '';
   for (const s of SERIES) {
