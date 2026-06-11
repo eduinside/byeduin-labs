@@ -371,7 +371,25 @@ function renderModal() {
         <button id="langEn" class="${useKo ? '' : 'active'}">EN</button>
       </span>` : ''}`;
   if (showLangToggle) {
-    $('langKo').onclick = () => { modalLang = 'ko'; renderModal(); };
+    $('langKo').onclick = async () => {
+      modalLang = 'ko';
+      // 영문 설명만 있고 한글 번역이 없으면 AI 번역 요청
+      if (ep.desc && !ep.descKo) {
+        renderModal();
+        $('modalDesc').textContent = '✨ 번역 중…';
+        try {
+          const res = await fetch('/api/bu-translate', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: ep.desc }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.ko) ep.descKo = data.ko; // 세션 캐시: 재오픈 시 재번역 불필요
+          }
+        } catch { /* 실패 시 영문 표시 */ }
+      }
+      renderModal();
+    };
     $('langEn').onclick = () => { modalLang = 'en'; renderModal(); };
   }
 

@@ -8,21 +8,22 @@
 
 ---
 
-## 앱 목록 (25개)
+## 앱 목록 (26개)
 
-### 📚 교육 (12)
+### 📚 교육 (13)
 
 #### 🌐 시뮬레이션
 | 앱 | 경로 | 설명 |
 |---|---|---|
 | **Moon Phase** | `/moon-phase/` | 달의 위상 시뮬레이터 |
 | **화산 탐험대** | `/volcano/` | 3D 위성지도로 세계 화산 11개 탐험 · 초등 과학 4학년 연계 |
-| **Step Squad** | `/numberblocks/step-squad.html` | 계단수 개념 블록 시각화 + 퀴즈 |
-| **Club Badge** | `/numberblocks/clubs.html` | 1~100 수의 넘버블록스 클럽 탐색 + 퀴즈 |
+| **Step Squad** | `/blocks-universe/step-squad.html` | 계단수 개념 블록 시각화 + 퀴즈 |
+| **Club Badge** | `/blocks-universe/clubs.html` | 1~100 수의 넘버블록스 클럽 탐색 + 퀴즈 |
 
 #### 📖 학습지원
 | 앱 | 경로 | 설명 |
 |---|---|---|
+| **Blocks Universe** | `/blocks-universe/` | 넘버블록스·알파블록스·컬러블록스·원더블록스 351편 에피소드 탐색 · AI 검색 · 순차재생 |
 | **Flash Deck** | `/flash-deck/` | 플래시카드 학습 앱 |
 | **Chalkboard** | `/chalkboard/` | 칠판/화이트보드 메모 |
 
@@ -72,7 +73,6 @@
 | **Notion Styler** | `/notion-styler/` | LaTeX 수식 스타일링 및 HTML 생성 |
 
 > 홈 화면에는 외부 연동·확장 항목(에듀링크, Content ID Viewer, MP4 Finder, Login Helper)도 모달로 노출됩니다.
-> `/numberblocks/` 메인(에피소드 파인더)은 현재 홈에서 숨김 처리되어 있습니다.
 
 ---
 
