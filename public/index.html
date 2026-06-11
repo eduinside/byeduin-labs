@@ -58,7 +58,7 @@
 
     .site-header {
       padding: 2rem 1.5rem 1rem;
-      max-width: 860px;
+      max-width: 1280px;
       margin: 0 auto;
       display: flex;
       align-items: center;
@@ -95,8 +95,145 @@
 
     main {
       padding: 0 1.5rem 5rem;
-      max-width: 860px;
+      max-width: 1280px;
       margin: 0 auto;
+    }
+
+    /* ── 트리 네비 레이아웃 ── */
+    .page-layout {
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+
+    /* 사이드바 */
+    .tree-sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 1.5rem;
+    }
+
+    .sidebar-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+      margin-bottom: 0.5rem;
+      padding: 0 0.5rem;
+    }
+
+    .tree-nav {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .tree-node > .tree-item {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      width: 100%;
+      padding: 0.45rem 0.5rem;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: none;
+      border: none;
+      color: var(--fg);
+      text-align: left;
+      transition: background 0.15s, color 0.15s;
+      text-decoration: none;
+    }
+    .tree-node > .tree-item:hover {
+      background: rgba(124,106,247,0.08);
+    }
+    .tree-node > .tree-item.is-active {
+      background: rgba(0,111,238,0.1);
+      color: var(--primary);
+    }
+
+    .tree-chevron {
+      font-size: 0.6rem;
+      margin-left: auto;
+      transition: transform 0.2s;
+      color: var(--fg-muted);
+      flex-shrink: 0;
+    }
+    .tree-node.is-open > .tree-item .tree-chevron { transform: rotate(90deg); }
+
+    /* 서브트리 */
+    .subtree {
+      list-style: none;
+      padding: 0 0 0 1rem;
+      margin: 0;
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.25s ease;
+    }
+    .tree-node.is-open > .subtree {
+      max-height: 20rem;
+    }
+
+    .subtree-item {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      width: 100%;
+      padding: 0.35rem 0.5rem;
+      border-radius: 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      background: none;
+      border: none;
+      color: var(--fg-muted);
+      text-align: left;
+      transition: background 0.15s, color 0.15s;
+      text-decoration: none;
+    }
+    .subtree-item:hover { background: rgba(124,106,247,0.06); color: var(--fg); }
+    .subtree-item.is-active { color: var(--primary); font-weight: 600; }
+
+    /* 모바일: 사이드바 접기 토글 */
+    .sidebar-toggle {
+      display: none;
+      align-items: center;
+      gap: 0.4rem;
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      margin-bottom: 0.5rem;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 0.6rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--fg);
+      cursor: pointer;
+    }
+
+    /* 콘텐츠 영역 */
+    .content-area {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* 넓은 화면: 4열 그리드 */
+    @media (min-width: 1024px) {
+      .content-area .card-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    /* 태블릿: 사이드바 접힘 */
+    @media (max-width: 860px) {
+      .page-layout { flex-direction: column; gap: 0.5rem; }
+      .tree-sidebar { width: 100%; position: static; }
+      .sidebar-toggle { display: flex; }
+      .tree-nav { display: none; }
+      .tree-sidebar.is-open .tree-nav { display: block; }
     }
 
     /* 카테고리 섹션 */
@@ -360,21 +497,31 @@
       transition: border-color 0.15s, color 0.15s;
     }
     .notice-go:hover { border-color: var(--primary); color: var(--primary); }
-    /* 로딩 스켈레톤 — 갯수만큼 높이 예약(레이아웃 점프 방지) */
+    /* 로딩 스켈레톤 — 실제 notice-header와 동일한 높이로 고정(레이아웃 점프 방지) */
     .notice-skeleton {
       display: flex;
       align-items: center;
-      padding: 0.95rem 1rem;
+      padding: 0.8rem 1rem;
       border-bottom: 1px solid var(--border);
+      box-sizing: border-box;
     }
     .notice-skeleton:last-child { border-bottom: none; }
     .notice-skeleton::before {
       content: '';
-      height: 1.05rem;
+      height: 0.9rem;
       width: 58%;
       border-radius: 5px;
       background: var(--border);
       animation: noticeShimmer 1.3s ease-in-out infinite;
+    }
+    .notice-skeleton::after {
+      content: '';
+      height: 0.75rem;
+      width: 4rem;
+      border-radius: 5px;
+      background: var(--border);
+      animation: noticeShimmer 1.3s ease-in-out infinite 0.2s;
+      margin-left: auto;
     }
     @keyframes noticeShimmer { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.85; } }
     .notices-more {
@@ -489,15 +636,8 @@
     }
 
     async function renderNoticesSection(main) {
-      const cfg = await loadNoticesConfig();
-      const wantRecent = cfg.mode === 'recent' || cfg.mode === 'both';
-      const wantPinned = (cfg.mode === 'pinned' || cfg.mode === 'both') && cfg.pinned.length > 0;
-      if (!wantRecent && !wantPinned) return;
-
-      // 로드 전에도 갯수만큼 높이 예약(스켈레톤) — 레이아웃 점프 방지
-      const expected = (wantPinned ? cfg.pinned.length : 0) + (wantRecent ? cfg.recentLimit : 0);
-      if (expected === 0) return;
-
+      // ── 스켈레톤을 await 이전에 동기로 그려서 페이지 로드 즉시 공간 확보 ──
+      const SKELETON_COUNT = 4;
       const section = document.createElement('section');
       section.className = 'category-section notices-section';
       section.innerHTML = `
@@ -508,12 +648,11 @@
         <div class="notices-list"></div>
       `;
       const list = section.querySelector('.notices-list');
-      for (let i = 0; i < expected; i++) {
+      for (let i = 0; i < SKELETON_COUNT; i++) {
         const sk = document.createElement('div');
         sk.className = 'notice-skeleton';
         list.appendChild(sk);
       }
-      // '전체 공지 보기'를 헤더 우측('에듀인 블로그 소식' 오른쪽)에 작게 배치, href는 로드 후 갱신
       const more = document.createElement('a');
       more.className = 'notices-more';
       more.href = 'https://blog.eduin.info/';
@@ -521,6 +660,12 @@
       more.textContent = '전체 공지 보기 →';
       section.querySelector('.category-header').appendChild(more);
       main.prepend(section); // 항상 <main> 최상단
+
+      // ── 이후 비동기로 설정·데이터 로드 ──
+      const cfg = await loadNoticesConfig();
+      const wantRecent = cfg.mode === 'recent' || cfg.mode === 'both';
+      const wantPinned = (cfg.mode === 'pinned' || cfg.mode === 'both') && cfg.pinned.length > 0;
+      if (!wantRecent && !wantPinned) { section.remove(); return; }
 
       // 최신글 (recent/both 모드에서 RSS 로드)
       let recent = [];
@@ -655,62 +800,221 @@
       });
     }
 
+    /* ── 서브카테고리 정의 (apps.json 없이 JS 하드코딩) ── */
+    const SUBCATS = {
+      edu: [
+        { id: 'edu-math',    label: '🔢 수학 탐구',  appIds: ['step-squad', 'clubs'] },
+        { id: 'edu-science', label: '🔬 과학 탐구',  appIds: ['moon-phase', 'volcano'] },
+        { id: 'edu-tools',   label: '🎓 학습 도구',  appIds: ['scoring-table', 'search', 'flash-deck', 'chalkboard'] },
+      ],
+    };
+
+    function buildSidebar(categories) {
+      const sidebar = document.createElement('nav');
+      sidebar.className = 'tree-sidebar';
+
+      // 모바일 토글 버튼
+      const toggle = document.createElement('button');
+      toggle.className = 'sidebar-toggle';
+      toggle.innerHTML = '☰ 카테고리 &nbsp;<span style="margin-left:auto;font-size:0.7rem;color:var(--fg-muted)">▾</span>';
+      toggle.addEventListener('click', () => sidebar.classList.toggle('is-open'));
+      sidebar.appendChild(toggle);
+
+      const p = document.createElement('div');
+      p.className = 'sidebar-label';
+      p.textContent = '카테고리';
+      sidebar.appendChild(p);
+
+      const ul = document.createElement('ul');
+      ul.className = 'tree-nav';
+      sidebar.appendChild(ul);
+
+      categories.forEach(cat => {
+        const hasChildren = !!(SUBCATS[cat.id] && SUBCATS[cat.id].length > 0);
+        const li = document.createElement('li');
+        li.className = 'tree-node' + (hasChildren ? ' is-open' : '');
+        li.dataset.catId = cat.id;
+
+        const btn = document.createElement('button');
+        btn.className = 'tree-item';
+        btn.type = 'button';
+        btn.innerHTML = cat.label + (hasChildren ? '<span class="tree-chevron">▶</span>' : '');
+        btn.addEventListener('click', () => {
+          if (hasChildren) {
+            li.classList.toggle('is-open');
+          } else {
+            scrollToSection(cat.id);
+          }
+        });
+        li.appendChild(btn);
+
+        if (hasChildren) {
+          const sub = document.createElement('ul');
+          sub.className = 'subtree';
+          SUBCATS[cat.id].forEach(sc => {
+            const sli = document.createElement('li');
+            const sbtn = document.createElement('button');
+            sbtn.className = 'subtree-item';
+            sbtn.type = 'button';
+            sbtn.dataset.subcatId = sc.id;
+            sbtn.textContent = sc.label;
+            sbtn.addEventListener('click', () => scrollToSection(sc.id));
+            sli.appendChild(sbtn);
+            sub.appendChild(sli);
+          });
+          li.appendChild(sub);
+        }
+        ul.appendChild(li);
+      });
+
+      return sidebar;
+    }
+
+    function scrollToSection(id) {
+      const el = document.getElementById('section-' + id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function setActiveNav(id) {
+      document.querySelectorAll('.tree-item, .subtree-item').forEach(el => el.classList.remove('is-active'));
+      const active = document.querySelector(`[data-cat-id="${id}"] > .tree-item, .subtree-item[data-subcat-id="${id}"]`);
+      if (active) active.classList.add('is-active');
+    }
+
+    function setupScrollSpy(sectionIds) {
+      const targets = sectionIds.map(id => document.getElementById('section-' + id)).filter(Boolean);
+      if (!targets.length) return;
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach(e => { if (e.isIntersecting) setActiveNav(e.target.dataset.navId); });
+      }, { rootMargin: '-20% 0px -60% 0px' });
+      targets.forEach(el => obs.observe(el));
+    }
+
+    function renderCardGrid(container, items, mostRecentHref) {
+      items.forEach(app => {
+        const isModal = app.type === 'modal';
+        const isExternal = !isModal && (app.type === 'link' || app.external);
+        const a = document.createElement('a');
+        const isRecentVisited = !isModal && app.href === mostRecentHref;
+        a.className = 'app-card' + (isModal ? ' modal-card' : '') + (isRecentVisited ? ' is-recent-visited' : '');
+        if (isModal) {
+          a.href = '#';
+          a.addEventListener('click', (e) => { e.preventDefault(); openModal(app); });
+        } else {
+          a.href = app.href;
+          if (isExternal) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+          a.addEventListener('click', () => saveRecentApp(app));
+        }
+        a.innerHTML = `
+          ${isExternal ? '<span class="external-badge">↗</span>' : ''}
+          ${isModal ? '<span class="external-badge">ℹ</span>' : ''}
+          <div class="card-emoji">${app.emoji}</div>
+          <div class="card-title">${app.title}</div>
+          <div class="card-desc">${app.desc}</div>
+        `;
+        container.appendChild(a);
+      });
+    }
+
     function render() {
       const main = document.getElementById('main');
       main.innerHTML = '';
 
-      // 공지사항: 비동기 하이드레이션 (그리드 렌더를 막지 않음, prepend로 항상 최상단)
+      // 공지사항: 비동기 하이드레이션 (prepend로 항상 최상단, page-layout 위)
       renderNoticesSection(main);
+
+      // 페이지 레이아웃 컨테이너 (사이드바 + 콘텐츠)
+      const layout = document.createElement('div');
+      layout.className = 'page-layout';
+      main.appendChild(layout);
+
+      // 사이드바 빌드
+      const sidebar = buildSidebar(CATEGORIES);
+      layout.appendChild(sidebar);
+
+      // 콘텐츠 영역
+      const content = document.createElement('div');
+      content.className = 'content-area';
+      layout.appendChild(content);
 
       // 가장 최근 방문 앱(1개)만 하이라이트
       const KEY = 'byeduin_recent_apps';
       const recentList = JSON.parse(localStorage.getItem(KEY) || '[]');
       const mostRecentHref = recentList.length > 0 ? recentList[0].href : null;
 
-      renderRecentSection(main);
+      renderRecentSection(content);
+
+      const spyIds = [];
 
       CATEGORIES.forEach(cat => {
-        const items = APPS.filter(a => a.category === cat.id);
-        if (items.length === 0) return;
+        const allItems = APPS.filter(a => a.category === cat.id);
+        if (allItems.length === 0) return;
+
+        const subcats = SUBCATS[cat.id];
 
         const section = document.createElement('section');
         section.className = 'category-section';
-        section.innerHTML = `
-          <div class="category-header">
-            <span class="category-label">${cat.label}</span>
-            <span class="category-desc">${cat.desc}</span>
-          </div>
-          <div class="card-grid" id="grid-${cat.id}"></div>
-        `;
-        main.appendChild(section);
+        section.id = 'section-' + cat.id;
+        section.dataset.navId = cat.id;
+        spyIds.push(cat.id);
 
-        const grid = section.querySelector(`#grid-${cat.id}`);
-        items.forEach(app => {
-          const isModal = app.type === 'modal';
-          const isExternal = !isModal && (app.type === 'link' || app.external);
-          const a = document.createElement('a');
-          const isRecentVisited = !isModal && app.href === mostRecentHref;
-          a.className = 'app-card' + (isModal ? ' modal-card' : '') + (isRecentVisited ? ' is-recent-visited' : '');
-
-          if (isModal) {
-            a.href = '#';
-            a.addEventListener('click', (e) => { e.preventDefault(); openModal(app); });
-          } else {
-            a.href = app.href;
-            if (isExternal) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
-            a.addEventListener('click', () => saveRecentApp(app));
-          }
-
-          a.innerHTML = `
-            ${isExternal ? '<span class="external-badge">↗</span>' : ''}
-            ${isModal ? '<span class="external-badge">ℹ</span>' : ''}
-            <div class="card-emoji">${app.emoji}</div>
-            <div class="card-title">${app.title}</div>
-            <div class="card-desc">${app.desc}</div>
+        if (subcats) {
+          // 카테고리 헤더만 (그리드 없음 — 서브카트별 렌더)
+          section.innerHTML = `
+            <div class="category-header">
+              <span class="category-label">${cat.label}</span>
+              <span class="category-desc">${cat.desc}</span>
+            </div>
           `;
-          grid.appendChild(a);
-        });
+          content.appendChild(section);
+
+          // 서브카테고리별 섹션
+          const assignedIds = new Set(subcats.flatMap(sc => sc.appIds));
+          const unassigned = allItems.filter(a => !assignedIds.has(a.id));
+
+          subcats.forEach(sc => {
+            const scItems = sc.appIds.map(id => APPS.find(a => a.id === id)).filter(Boolean);
+            if (!scItems.length) return;
+
+            const scSec = document.createElement('section');
+            scSec.className = 'category-section';
+            scSec.id = 'section-' + sc.id;
+            scSec.dataset.navId = sc.id;
+            scSec.style.marginTop = '0';
+            spyIds.push(sc.id);
+
+            scSec.innerHTML = `
+              <div class="category-header" style="border-bottom-style:dashed; opacity:0.75;">
+                <span class="category-label" style="font-size:0.85rem;">${sc.label}</span>
+              </div>
+              <div class="card-grid"></div>
+            `;
+            renderCardGrid(scSec.querySelector('.card-grid'), scItems, mostRecentHref);
+            content.appendChild(scSec);
+          });
+
+          // 서브카테고리 미배정 앱 (있으면 기타로 추가)
+          if (unassigned.length > 0) {
+            const extra = document.createElement('div');
+            extra.innerHTML = `<div class="card-grid"></div>`;
+            renderCardGrid(extra.querySelector('.card-grid'), unassigned, mostRecentHref);
+            content.appendChild(extra);
+          }
+        } else {
+          section.innerHTML = `
+            <div class="category-header">
+              <span class="category-label">${cat.label}</span>
+              <span class="category-desc">${cat.desc}</span>
+            </div>
+            <div class="card-grid" id="grid-${cat.id}"></div>
+          `;
+          content.appendChild(section);
+          renderCardGrid(section.querySelector(`#grid-${cat.id}`), allItems, mostRecentHref);
+        }
       });
+
+      // 스크롤 스파이 — 렌더 완료 후 설정
+      requestAnimationFrame(() => setupScrollSpy(spyIds));
     }
 
     // 앱 데이터 로드 후 렌더링
