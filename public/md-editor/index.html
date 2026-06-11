@@ -275,6 +275,7 @@
       overflow-y: auto;
     }
     #editor::placeholder { color: var(--fg-muted); }
+    #editor.is-loading { opacity: 0.4; cursor: wait; }
     #editor::-webkit-scrollbar { width: 8px; }
     #editor::-webkit-scrollbar-track { background: transparent; }
     #editor::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
@@ -544,8 +545,8 @@
     <button class="toolbar-btn view-only-hide" onclick="toggleOpenMenu(event)">📂 열기 ▾</button>
     <input type="file" id="fileInput" accept=".md,.txt,.markdown" style="display:none" onchange="handleFileLoad(this)">
     <input type="file" id="htmlFileInput" accept=".html,.htm" style="display:none" onchange="handleHtmlLoad(this)">
-    <input type="file" id="hwpFileInput" accept=".hwp,.hwpx" style="display:none" onchange="handleHwpLoad(this)">
     <input type="file" id="multiFileInput" accept=".json,.csv,.xml,.html,.htm" style="display:none" onchange="handleMultiLoad(this)">
+    <input type="file" id="docFileInput" accept=".hwp,.hwpx,.hwpml,.pdf,.docx,.pptx,.xlsx,.doc,.xls" style="display:none" onchange="handleDocLoad(this)">
     <button class="toolbar-btn view-only-hide" id="saveBtn" onclick="toggleSaveMenu(event)">💾 저장 ▾</button>
     <button class="toolbar-btn view-only-hide" id="viewBtn" onclick="toggleViewMenu(event)">👁 보기 ▾</button>
     <div id="view-badge">👁 보기 전용</div>
@@ -617,22 +618,13 @@
     .HTML 열기
     <span class="beta-badge">실험 중</span>
   </button> -->
-  <!-- HWP 열기 버튼은 hwp-to-md 처리가 완성될 때까지 숨김 처리 -->
-  <!-- <button class="dropdown-opt" onclick="openHwpFileInput()" style="display: none;">
+  <button class="dropdown-opt" onclick="closeAllMenus(); openDocFileInput()">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
     </svg>
-    .HWP 열기
-    <span class="beta-badge">실험 중</span>
-  </button> -->
-  <!-- URL 열기는 안정화될 때까지 숨김 처리 -->
-  <!-- <button class="dropdown-opt" onclick="openUrlModal()" style="display: none;">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-    </svg>
-    URL 열기
-    <span class="beta-badge">실험 중</span>
-  </button> -->
+    로컬 문서 열기
+    <span class="beta-badge">HWP · PDF · DOCX · PPTX · XLSX</span>
+  </button>
   <button class="dropdown-opt" onclick="openMultiFileInput()">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
@@ -858,38 +850,6 @@
     input.value = '';
   }
 
-  // ── HWP 파일 열기 ──
-  function openHwpFileInput() {
-    _closeOpenMenu();
-    document.getElementById('hwpFileInput').click();
-  }
-
-  function handleHwpLoad(input) {
-    const file = input.files[0];
-    if (!file) return;
-
-    // 파일 크기 검증 (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('파일 크기가 5MB를 초과합니다.');
-      input.value = '';
-      return;
-    }
-
-    // 3초 후 변환 완료 안 되면 토스트 표시
-    if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
-    hwpConversionTimer = setTimeout(() => {
-      showToast('파일 변환이 되지 않았습니다.');
-    }, 3000);
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const fileData = btoa(String.fromCharCode.apply(null, new Uint8Array(e.target.result)));
-      convertHwpToMd(fileData, file.name);
-    };
-    reader.readAsArrayBuffer(file);
-    input.value = '';
-  }
-
   async function convertHtmlToMd(htmlContent, filename) {
     try {
       // 3초 타임아웃 설정
@@ -929,69 +889,61 @@
     }
   }
 
-  async function convertHwpToMd(fileData, filename) {
-    try {
-      // 3초 타임아웃 설정
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 3000)
-      );
-
-      const response = await Promise.race([
-        fetch('/api/hwp-to-md', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fileData, filename })
-        }),
-        timeoutPromise
-      ]);
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        showToast('파일 변환이 되지 않았습니다.');
-        if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
-        return;
-      }
-
-      // 성공: mdContent 업데이트 및 정제
-      // 한글, 영문, 숫자, 마크다운 특수문자, 기본 특수문자만 유지
-      mdContent = result.markdown
-        .split('') // 문자 단위로 분해
-        .filter(char => {
-          const code = char.charCodeAt(0);
-          // 한글 (AC00-D7AF)
-          if (code >= 0xAC00 && code <= 0xD7AF) return true;
-          // 영문 (a-z, A-Z)
-          if ((code >= 97 && code <= 122) || (code >= 65 && code <= 90)) return true;
-          // 숫자 (0-9)
-          if (code >= 48 && code <= 57) return true;
-          // 공백, 탭, 개행, 캐리지 리턴
-          if ([9, 10, 13, 32].includes(code)) return true;
-          // 마크다운 및 일반 특수문자
-          if ('!\"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'.includes(char)) return true;
-          return false;
-        })
-        .join('');
-
-      currentFilename = filename.replace(/\.(hwp|hwpx)$/i, '.md');
-      document.getElementById('filenameInput').value = currentFilename;
-      document.getElementById('editor').value = mdContent;
-      renderPreview();
-
-      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
-      showToast('✓ HWP 파일이 마크다운으로 변환되었습니다.');
-    } catch (err) {
-      showToast('파일 변환이 되지 않았습니다.');
-      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
-    }
-  }
-
   // ── 모든 드롭다운 닫기 헬퍼 ──
   function closeAllMenus() {
     _closeSaveMenu();
     _closeOpenMenu();
     _closeViewMenu();
     _closeShareMenu();
+  }
+
+  // ── 로컬 문서 열기 (Corepin API) ──
+  function openDocFileInput() {
+    document.getElementById('docFileInput').value = '';
+    document.getElementById('docFileInput').click();
+  }
+
+  async function handleDocLoad(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) {
+      showToast('파일 크기가 50MB를 초과합니다.');
+      input.value = '';
+      return;
+    }
+
+    showToast('⏳ 변환 중… 복잡한 문서는 최대 20초 소요됩니다', 0);
+    const editor = document.getElementById('editor');
+    editor.disabled = true;
+    editor.classList.add('is-loading');
+
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('output_format', 'markdown');
+
+      const res = await fetch('/api/doc-parse', { method: 'POST', body: form });
+      const data = await res.json();
+
+      if (!res.ok || !data.markdown) {
+        throw new Error(data.error || `서버 오류 (${res.status})`);
+      }
+
+      mdContent = data.markdown;
+      currentFilename = file.name.replace(/\.[^.]+$/, '') + '.md';
+      document.getElementById('filenameInput').value = currentFilename;
+      editor.value = mdContent;
+      renderPreview();
+      hideToast();
+      showToast('✅ 변환 완료');
+    } catch (e) {
+      hideToast();
+      showToast(`❌ 변환 실패: ${e.message}`, 6000);
+    } finally {
+      editor.disabled = false;
+      editor.classList.remove('is-loading');
+      input.value = '';
+    }
   }
 
   // ── 저장 드롭다운 ──
@@ -1723,12 +1675,17 @@
 
   // ── 토스트 ──
   let _toastTimer;
-  function showToast(msg) {
+  function showToast(msg, duration) {
     const el = document.getElementById('md-toast');
     el.textContent = msg;
     el.classList.add('show');
     clearTimeout(_toastTimer);
-    _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+    const ms = duration !== undefined ? duration : 2800;
+    if (ms > 0) _toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+  }
+  function hideToast() {
+    clearTimeout(_toastTimer);
+    document.getElementById('md-toast').classList.remove('show');
   }
 
   // ── 초기화 (URL 해시 처리) ──
