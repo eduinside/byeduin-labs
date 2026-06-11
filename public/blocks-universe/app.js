@@ -94,7 +94,7 @@ function renderSeriesTabs() {
     btn.innerHTML = `
       <span class="st-emoji">${s.emoji}</span>
       <span class="st-name">${s.name}</span>
-      <span class="st-meta">${s.ko} · ${m.count}편 · 시즌 ${m.seasons}</span>`;
+      <span class="st-meta">${s.ko} · ${m.count}편 · ${m.seasons > 1 ? `시즌 1~${m.seasons}` : `시즌 ${m.seasons}`}</span>`;
     btn.onclick = () => {
       state.series = s.id;
       state.season = 0; state.theme = false; state.aiIds = null;
@@ -223,6 +223,9 @@ function renderGrid() {
 function renderWelcome() {
   if (document.getElementById('welcomeSection')) return;
   const total = DATA ? DATA.episodes.length : 351;
+  const seriesBtns = SERIES.map(s =>
+    `<button class="wf-random-btn" style="--sc:${s.color}" onclick="randomPlay('${s.id}')">${s.emoji} ${s.ko}</button>`
+  ).join('');
   const sec = document.createElement('div');
   sec.id = 'welcomeSection';
   sec.className = 'welcome-section';
@@ -249,8 +252,26 @@ function renderWelcome() {
         <div class="wf-title">재생목록 · 순차재생</div>
         <div class="wf-desc">에피소드를 모아 재생목록으로 만들고, 연속으로 자동 재생</div>
       </div>
+      <div class="welcome-feat">
+        <div class="wf-icon">🔀</div>
+        <div class="wf-title">랜덤 재생</div>
+        <div class="wf-desc">시리즈를 골라 에피소드를 바로 랜덤 재생</div>
+        <div class="wf-random-btns">${seriesBtns}</div>
+      </div>
     </div>`;
   $('epGrid').before(sec);
+}
+
+function randomPlay(seriesId) {
+  const s = SERIES.find(x => x.id === seriesId);
+  if (!s || !DATA) return;
+  state.series = seriesId; state.season = 0; state.theme = false; state.aiIds = null;
+  renderSeriesTabs(); renderToolbar(); renderGrid();
+  const eps = DATA.episodes.filter(ep => ep.series === seriesId);
+  const shuffled = [...eps].sort(() => Math.random() - 0.5);
+  playlist = { title: `🔀 ${s.ko} 랜덤 재생`, ids: shuffled.map(ep => ep.id) };
+  savePl();
+  startSequentialPlay();
 }
 
 /* ── AI 추천 ── */
@@ -311,7 +332,7 @@ function openEpisode(id, updateHash = true) {
   const ep = byId.get(id);
   if (!ep) return;
   modalEp = ep;
-  modalLang = ep.ytKo || ep.titleKo ? 'ko' : 'en';
+  modalLang = (ep.ytKo || ep.titleKo || ep.descKo) ? 'ko' : 'en';
   renderModal();
   $('epModal').hidden = false;
   document.body.style.overflow = 'hidden';
@@ -338,17 +359,18 @@ function renderModal() {
       allowfullscreen loading="lazy"></iframe>`;
 
   const hasKo = !!(ep.titleKo || ep.descKo || ep.ytKo);
+  const showLangToggle = hasKo || !!(ep.desc);
   $('modalTags').innerHTML = `
     <span class="mtag series-tag" style="background:${s.color}">${s.emoji} ${s.name}</span>
     <span class="mtag">시즌 ${ep.season} · ${ep.ep}화</span>
     ${ep.level ? `<span class="mtag" style="color:${LEVEL_COLORS[ep.level]}">Lv${ep.level}</span>` : ''}
     ${ep.theme === 'TimesTables' ? '<span class="mtag">✖️ 구구단</span>' : ''}
-    ${hasKo ? `
+    ${showLangToggle ? `
       <span class="lang-toggle">
         <button id="langKo" class="${useKo ? 'active' : ''}">한글</button>
         <button id="langEn" class="${useKo ? '' : 'active'}">EN</button>
       </span>` : ''}`;
-  if (hasKo) {
+  if (showLangToggle) {
     $('langKo').onclick = () => { modalLang = 'ko'; renderModal(); };
     $('langEn').onclick = () => { modalLang = 'en'; renderModal(); };
   }
