@@ -724,6 +724,15 @@ function bind() {
   $('playerCloseBtn').onclick = closePlayer;
   $('pcPrev').onclick = () => playAt(queueIdx - 1);
   $('pcNext').onclick = () => playAt(queueIdx + 1);
+  // sticky 툴바가 상단 오버레이 버튼과 겹치지 않도록 padding 동적 추가
+  function updateStuck() {
+    const sentinel = $('toolbarSentinel');
+    const toolbar = $('toolbar');
+    if (sentinel && toolbar && !toolbar.hidden)
+      toolbar.classList.toggle('is-stuck', sentinel.getBoundingClientRect().top < 0);
+  }
+  window.addEventListener('scroll', updateStuck, { passive: true });
+  updateStuck();
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (!$('playerOverlay').hidden) closePlayer();
