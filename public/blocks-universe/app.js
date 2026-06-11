@@ -19,6 +19,7 @@ let favs = new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]'));
 let playlist = JSON.parse(localStorage.getItem(PL_KEY) || '{"title":"","ids":[]}');
 let modalEp = null;
 let modalLang = 'ko';
+let dragSrc = null;
 
 const $ = (id) => document.getElementById(id);
 const thumb = (ep, q) => `https://img.youtube.com/vi/${ep.yt}/${q || 'hqdefault'}.jpg`;
@@ -468,7 +469,6 @@ function closePlDrawer() {
 }
 
 function renderPlDrawer() {
-  $('plTitleInput').value = playlist.title;
   const list = $('plList');
   list.innerHTML = '';
   if (playlist.ids.length === 0) {
@@ -485,20 +485,41 @@ function renderPlDrawer() {
     const dur = durations[playVid(ep)];
     const row = document.createElement('div');
     row.className = 'pl-item';
+    row.draggable = true;
     row.innerHTML = `
+      <span class="pl-drag" title="드래그해서 순서 변경">⠿</span>
       <img src="${thumb(ep, 'default')}" alt="">
       <span class="pl-item-title">${i + 1}. ${dispTitle(ep)}
         ${dur ? `<small class="pl-item-dur">${fmtDur(dur)}</small>` : ''}</span>
-      <span class="pl-item-btns">
-        <button title="위로">▲</button>
-        <button title="아래로">▼</button>
-        <button title="제거">✕</button>
-      </span>`;
-    const [up, down, del] = row.querySelectorAll('button');
-    up.onclick = (e) => { e.stopPropagation(); movePl(i, -1); };
-    down.onclick = (e) => { e.stopPropagation(); movePl(i, 1); };
-    del.onclick = (e) => { e.stopPropagation(); playlist.ids.splice(i, 1); savePl(); renderPlDrawer(); };
+      <button class="pl-del-btn" title="제거">✕</button>`;
+    row.querySelector('.pl-del-btn').onclick = (e) => {
+      e.stopPropagation(); playlist.ids.splice(i, 1); savePl(); renderPlDrawer();
+    };
     row.onclick = () => { closePlDrawer(); openEpisode(id); };
+    row.addEventListener('dragstart', (e) => {
+      dragSrc = i; e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => row.classList.add('dragging'), 0);
+    });
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+      list.querySelectorAll('.pl-item').forEach(el => el.classList.remove('drag-over'));
+      row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', (e) => {
+      if (!row.contains(e.relatedTarget)) row.classList.remove('drag-over');
+    });
+    row.addEventListener('drop', (e) => {
+      e.preventDefault(); row.classList.remove('drag-over');
+      if (dragSrc !== null && dragSrc !== i) {
+        const [moved] = playlist.ids.splice(dragSrc, 1);
+        playlist.ids.splice(i, 0, moved);
+        savePl(); renderPlDrawer();
+      }
+    });
+    row.addEventListener('dragend', () => {
+      dragSrc = null;
+      list.querySelectorAll('.pl-item').forEach(el => el.classList.remove('dragging', 'drag-over'));
+    });
     list.appendChild(row);
   });
 }
@@ -525,7 +546,6 @@ function b64uDecode(str) {
 
 async function sharePlaylist() {
   if (playlist.ids.length === 0) { toast('재생목록이 비어 있습니다'); return; }
-  playlist.title = $('plTitleInput').value.trim();
   savePl();
   const payload = b64uEncode({ t: playlist.title, ids: playlist.ids });
   const longURL = `${location.origin}/blocks-universe/#list=${payload}`;
@@ -753,7 +773,6 @@ function bind() {
       savePl(); renderPlDrawer();
     }
   };
-  $('plTitleInput').onchange = (e) => { playlist.title = e.target.value.trim(); savePl(); };
   $('playerCloseBtn').onclick = closePlayer;
   $('pcPrev').onclick = () => playAt(queueIdx - 1);
   $('pcNext').onclick = () => playAt(queueIdx + 1);
