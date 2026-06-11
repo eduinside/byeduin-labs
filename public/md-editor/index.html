@@ -903,16 +903,31 @@
     document.getElementById('docFileInput').click();
   }
 
+  function _docParseErrorMsg(data, status) {
+    const apiMsg = data?.error || data?.message || data?.detail || data?.msg || '';
+    if (apiMsg) return apiMsg;
+    if (status === 401) return 'API 키 인증 실패 — 관리자에게 문의해주세요.';
+    if (status === 402) return 'API 크레딧 부족 — Corepin 잔액을 확인해주세요.';
+    if (status === 413) return '파일이 너무 큽니다 (50MB 초과).';
+    if (status === 415) return '지원하지 않는 파일 형식입니다.';
+    if (status === 422) return '파일을 처리할 수 없습니다 (손상되었거나 암호화된 파일).';
+    if (status === 429) return '요청 한도 초과 — 잠시 후 다시 시도해주세요.';
+    if (status >= 500) return `Corepin 서버 오류 (${status}) — 잠시 후 다시 시도해주세요.`;
+    return `변환 실패 (HTTP ${status})`;
+  }
+
   async function handleDocLoad(input) {
     const file = input.files[0];
     if (!file) return;
+
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
     if (file.size > 50 * 1024 * 1024) {
-      showToast('파일 크기가 50MB를 초과합니다.');
+      showToast(`❌ 파일 크기 초과 — ${sizeMB}MB (최대 50MB)`, 5000);
       input.value = '';
       return;
     }
 
-    showToast('⏳ 변환 중… 복잡한 문서는 최대 20초 소요됩니다', 0);
+    showToast(`⏳ 변환 중… ${file.name} (${sizeMB}MB) — 최대 20초 소요됩니다`, 0);
     const editor = document.getElementById('editor');
     editor.disabled = true;
     editor.classList.add('is-loading');
@@ -923,10 +938,19 @@
       form.append('output_format', 'markdown');
 
       const res = await fetch('/api/doc-parse', { method: 'POST', body: form });
-      const data = await res.json();
 
-      if (!res.ok || !data.markdown) {
-        throw new Error(data.error || `서버 오류 (${res.status})`);
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`서버 응답 파싱 실패 (HTTP ${res.status})`);
+      }
+
+      if (!res.ok) {
+        throw new Error(_docParseErrorMsg(data, res.status));
+      }
+      if (!data.markdown && data.markdown !== '') {
+        throw new Error('변환 결과가 없습니다 — 파일 내용을 확인해주세요.');
       }
 
       mdContent = data.markdown;
@@ -935,10 +959,11 @@
       editor.value = mdContent;
       renderPreview();
       hideToast();
-      showToast('✅ 변환 완료');
+      const pages = data.meta?.page_count ? ` (${data.meta.page_count}페이지)` : '';
+      showToast(`✅ 변환 완료${pages}`);
     } catch (e) {
       hideToast();
-      showToast(`❌ 변환 실패: ${e.message}`, 6000);
+      showToast(`❌ ${e.message}`, 8000);
     } finally {
       editor.disabled = false;
       editor.classList.remove('is-loading');
