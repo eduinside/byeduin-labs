@@ -281,7 +281,7 @@ function randomPlay(seriesId) {
   const shuffled = [...eps].sort(() => Math.random() - 0.5);
   playlist = { title: `🔀 ${s.ko} 랜덤 재생`, ids: shuffled.map(ep => ep.id) };
   savePl();
-  startSequentialPlay();
+  startSequentialPlay(`🔀 ${s.ko} 랜덤 재생`);
 }
 
 /* ── AI 추천 ── */
@@ -637,7 +637,7 @@ function loadYtApi() {
   return ytApiReady;
 }
 
-async function startSequentialPlay() {
+async function startSequentialPlay(title) {
   if (playlist.ids.length === 0) { toast('재생목록이 비어 있습니다'); return; }
   queue = playlist.ids.filter(id => byId.has(id));
   queueIdx = 0;
@@ -645,7 +645,7 @@ async function startSequentialPlay() {
   $('playerOverlay').hidden = false;
   document.body.classList.add('player-open');
   document.body.style.overflow = 'hidden';
-  $('playerTitle').textContent = playlist.title || '재생목록';
+  $('playerTitle').textContent = title || '재생목록';
   ensureDurations(queue.map(id => playVid(byId.get(id)))).then(renderPlayerUi);
   await loadYtApi();
   if (ytPlayer) { ytPlayer.destroy(); ytPlayer = null; }
@@ -765,7 +765,7 @@ function bind() {
   $('modalCloseBtn').onclick = closeModal;
   $('plFab').onclick = openPlDrawer;
   $('plCloseBtn').onclick = closePlDrawer;
-  $('plPlayBtn').onclick = startSequentialPlay;
+  $('plPlayBtn').onclick = () => startSequentialPlay('재생목록');
   $('plShareBtn').onclick = sharePlaylist;
   $('plClearBtn').onclick = () => {
     if (playlist.ids.length && confirm('재생목록을 비울까요?')) {
