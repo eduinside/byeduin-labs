@@ -458,10 +458,14 @@ function togglePlaylist(id) {
 function openPlDrawer() {
   renderPlDrawer();
   $('plDrawer').classList.add('open');
+  document.body.classList.add('pl-open');
   ensureDurations(playlist.ids.filter(id => byId.has(id)).map(id => playVid(byId.get(id))))
     .then(() => { if ($('plDrawer').classList.contains('open')) renderPlDrawer(); });
 }
-function closePlDrawer() { $('plDrawer').classList.remove('open'); }
+function closePlDrawer() {
+  $('plDrawer').classList.remove('open');
+  document.body.classList.remove('pl-open');
+}
 
 function renderPlDrawer() {
   $('plTitleInput').value = playlist.title;
@@ -619,6 +623,7 @@ async function startSequentialPlay() {
   queueIdx = 0;
   closePlDrawer();
   $('playerOverlay').hidden = false;
+  document.body.classList.add('player-open');
   document.body.style.overflow = 'hidden';
   $('playerTitle').textContent = playlist.title || '재생목록';
   ensureDurations(queue.map(id => playVid(byId.get(id)))).then(renderPlayerUi);
@@ -707,6 +712,7 @@ function closePlayer() {
   if (ytPlayer) { ytPlayer.destroy(); ytPlayer = null; }
   $('playerStage').innerHTML = '';
   $('playerOverlay').hidden = true;
+  document.body.classList.remove('player-open');
   document.body.style.overflow = '';
 }
 

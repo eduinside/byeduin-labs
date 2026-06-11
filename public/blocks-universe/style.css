@@ -23,16 +23,8 @@ body::before {
 
 .bu-root { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; }
 
-/* ── 뒤로가기 버튼 ── */
-.welcome-back-btn {
-  border: none; background: transparent;
-  color: var(--fg-muted); font: inherit; font-size: 0.82rem;
-  cursor: pointer; padding: 0.2rem 0;
-  display: inline-flex; align-items: center; gap: 0.25rem;
-  margin-bottom: 0.6rem;
-  transition: color 0.12s;
-}
-.welcome-back-btn:hover { color: var(--fg); }
+/* ── 뒤로가기 버튼 (top-overlay-left 안에 위치) ── */
+#welcomeBack { font-size: 0.82rem; }
 
 /* ── 시리즈 탭 ── */
 .series-tabs {
@@ -91,9 +83,6 @@ body::before {
   overflow-x: auto;
   scrollbar-width: none;
   padding-bottom: 0.55rem;
-  /* 우측 끝 페이드 — 스크롤 가능함을 암시 */
-  -webkit-mask-image: linear-gradient(to right, black calc(100% - 2rem), transparent 100%);
-  mask-image: linear-gradient(to right, black calc(100% - 2rem), transparent 100%);
 }
 .season-chips::-webkit-scrollbar { display: none; }
 .chip {
@@ -403,13 +392,23 @@ body::before {
 .pl-drawer.open { transform: translateX(0); }
 .pl-head {
   display: flex; align-items: center; gap: 0.5rem;
-  padding: 1rem;
-  border-bottom: 1px solid var(--border);
+  padding: 0.85rem 1rem 0.6rem;
 }
 .pl-head h2 { font-size: 0.95rem; margin: 0; flex: 1; }
+.pl-close-btn {
+  border: none; background: var(--bg-sec); color: var(--fg-muted);
+  width: 28px; height: 28px; border-radius: 50%;
+  font-size: 0.85rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background 0.12s, color 0.12s;
+}
+.pl-close-btn:hover { background: var(--border); color: var(--fg); }
+.pl-title-wrap {
+  padding: 0 1rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
 .pl-title-input {
   width: 100%;
-  margin: 0.7rem 0 0.2rem;
   padding: 0.45rem 0.8rem;
   border: 1px solid var(--border); border-radius: 0.6rem;
   background: var(--input-bg); color: var(--fg);
@@ -435,11 +434,17 @@ body::before {
 }
 .pl-item .pl-item-btns button:hover { background: var(--border); color: var(--fg); }
 .pl-foot {
-  padding: 0.8rem 1rem;
+  padding: 1rem;
   border-top: 1px solid var(--border);
-  display: flex; gap: 0.5rem;
+  display: flex; flex-direction: column; gap: 0.5rem;
 }
-.pl-foot .hero-btn, .pl-foot .hero-btn-ghost { flex: 1; font-size: 0.8rem; padding: 0.55rem; text-align: center; }
+.pl-play-btn { width: 100%; font-size: 0.9rem; padding: 0.7rem; font-weight: 700; }
+.pl-foot-row { display: flex; gap: 0.5rem; }
+.pl-sec-btn { flex: 1; font-size: 0.82rem; padding: 0.55rem; text-align: center; }
+.pl-clear-btn:hover { color: #e53935; border-color: #e53935; }
+body.pl-open .top-overlay { opacity: 0; pointer-events: none; transition: opacity 0.15s; }
+body.player-open .top-overlay,
+body.player-open .top-overlay-left { display: none; }
 .pl-empty { text-align: center; color: var(--fg-muted); font-size: 0.82rem; padding: 2.5rem 1rem; }
 
 /* ── 순차재생 오버레이 ── */
@@ -474,9 +479,13 @@ body::before {
 .player-queue {
   max-width: 960px; width: 100%; margin: 0.6rem auto 0;
   display: flex; gap: 0.5rem; overflow-x: auto;
-  padding-bottom: 0.4rem;
+  padding-bottom: 0.6rem;
   scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.18) transparent;
 }
+.player-queue::-webkit-scrollbar { height: 4px; }
+.player-queue::-webkit-scrollbar-track { background: transparent; }
+.player-queue::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 2px; }
 .player-queue .pq-item {
   position: relative;
   flex: 0 0 120px; cursor: pointer; border-radius: 0.5rem; overflow: hidden;
