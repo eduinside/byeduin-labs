@@ -8,46 +8,63 @@
 
 ---
 
-## 앱 목록 (24개)
+## 앱 목록 (25개)
 
-### 교육 (7)
+### 📚 교육 (12)
+
+#### 🌐 시뮬레이션
+| 앱 | 경로 | 설명 |
+|---|---|---|
+| **Moon Phase** | `/moon-phase/` | 달의 위상 시뮬레이터 |
+| **화산 탐험대** | `/volcano/` | 3D 위성지도로 세계 화산 11개 탐험 · 초등 과학 4학년 연계 |
+| **Step Squad** | `/numberblocks/step-squad.html` | 계단수 개념 블록 시각화 + 퀴즈 |
+| **Club Badge** | `/numberblocks/clubs.html` | 1~100 수의 넘버블록스 클럽 탐색 + 퀴즈 |
+
+#### 📖 학습지원
+| 앱 | 경로 | 설명 |
+|---|---|---|
+| **Flash Deck** | `/flash-deck/` | 플래시카드 학습 앱 |
+| **Chalkboard** | `/chalkboard/` | 칠판/화이트보드 메모 |
+
+#### 💼 업무경감
 | 앱 | 경로 | 설명 |
 |---|---|---|
 | **채점표** | `/scoring-table/` | 대회·발표 채점 양식 배포, 공동 채점, 결과 수합 (링크 공유 + xlsx) |
+| **파일 최적화 도구** | `/file-tools/` | 스캔 이미지 및 대용량 PPTX 이미지 최적화 |
+| **Smart Timer** | `/timer/` | 반복 알람 타이머 |
+| **수당 계산기** | `/allowance-calculator/` | 세전·세후 수당 및 기타소득 세금(8.8%) 자동 판별 계산기 |
+| **Login Helper** | `https://blog.eduin.info/450` | 에듀나비 교원업무지원 자동 로그인 프로그램 (모달) |
 | **에듀서치** | `/search/` | 교육문서 AI 검색 (Gemini RAG) |
-| **Flash Deck** | `/flash-deck/` | 플래시카드 학습 앱 |
-| **Chalkboard** | `/chalkboard/` | 칠판/화이트보드 메모 |
-| **Step Squad** | `/numberblocks/step-squad.html` | 계단수 개념 블록 시각화 + 퀴즈 |
-| **Club Badge** | `/numberblocks/clubs.html` | 1~100 수의 넘버블록스 클럽 탐색 + 퀴즈 |
-| **Moon Phase** | `/moon-phase/` | 달의 위상 시뮬레이터 |
 
-### 유틸리티 (8)
+### 🛠 유틸리티 (13)
+
+#### 🔧 생활편의
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **수당 계산기** | `/allowance-calculator/` | 세전·세후 수당 및 기타소득 세금(8.8%, 10원 미만 절사) 자동 판별 계산기 |
 | **MD Editor** | `/md-editor/` | 마크다운 편집기 (JSON·CSV·XML·HTML 불러오기, 중첩 테이블 변환, 파일 공유 지원) |
 | **QR Master** | `/qr/` | QR 코드 생성, 카메라/이미지 스캔, 단축주소 |
-| **이미지 최적화 도구** | `/file-tools/` | 스캔 이미지 및 대용량 PPTX 이미지 최적화 |
-| **Smart Timer** | `/timer/` | 반복 알람 타이머 |
-| **MP4 Finder** | `/chrome-extentions/mp4-finder.zip` | 웹페이지 내 MP4 링크 자동 감지 및 클립보드 복사 (Chrome 확장) |
-| **Content ID Viewer** | `/chrome-extentions/content-id-viewer-for-edunavi.zip` | 에듀나비 콘텐츠 ID 조회 (Chrome 확장) |
-| **Login Helper** | `https://blog.eduin.info/450` | 에듀나비 교원업무지원 자동 로그인 프로그램 (모달) |
 
-### 소셜 도구 (3)
+#### 🧩 크롬확장
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **에듀링크** | `https://dgedu.link/` | 교육용 단축주소·설문조사·체험 지도 서비스 |
+| **Content ID Viewer** | `/chrome-extentions/content-id-viewer-for-edunavi.zip` | 에듀나비 콘텐츠 ID 조회 (Chrome 확장) |
+| **MP4 Finder** | `/chrome-extentions/mp4-finder.zip` | 웹페이지 내 MP4 링크 자동 감지 및 클립보드 복사 (Chrome 확장) |
+
+#### 💬 소셜
+| 앱 | 경로 | 설명 |
+|---|---|---|
 | **도서 정보 나눔** | `/book-share/` | ISBN으로 도서 정보 조회 및 공유 |
 | **Bubble Chat** | `/bubble-chat/` | P2P 실시간 채팅 |
+| **에듀링크** | `https://dgedu.link/` | 교육용 단축주소·설문조사·체험 지도 서비스 |
 
-### 크리에이티브 (3)
+#### 🎨 크리에이티브
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **Grid Maker** | `/grid-maker/` | 이미지 그리드 분할 |
 | **YT Thumbnail** | `/yt-thumb/` | 유튜브 썸네일 추출 및 아카이빙 |
+| **Grid Maker** | `/grid-maker/` | 이미지 그리드 분할 |
 | **Signage Maker** | `/signage-maker/` | 학교 사이니지용 AI 세로 이미지 생성기 (Gemini) |
 
-### 노션 도구 (3)
+#### 📐 노션도구
 | 앱 | 경로 | 설명 |
 |---|---|---|
 | **임베드 생성기** | `/embed/` | 외부 URL을 반응형 iframe으로 감싸 노션 임베드 블록에 삽입 (base64url 해시, 서버 상태 없음) |
