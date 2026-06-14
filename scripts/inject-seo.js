@@ -59,6 +59,17 @@ function main() {
     var fullTitle = seo.title + ' | ' + (site.name || 'eduin VIVES');
     var description = seo.description || '';
 
+    // ── 0. <title> 동기화 (apps.json title 기준, 'X — eduin VIVES' 통일) ──
+    var desiredTitle = (app.title || seo.title || '') + ' — ' + (site.name || 'eduin VIVES');
+    var titleRegex = /<title>[\s\S]*?<\/title>/i;
+    if (titleRegex.test(html)) {
+      var wantTitle = '<title>' + escapeHtmlAttr(desiredTitle) + '</title>';
+      if (html.match(titleRegex)[0] !== wantTitle) {
+        html = html.replace(titleRegex, wantTitle);
+        changes.push('title synced');
+      }
+    }
+
     // ── 1. Update og:image ──
     var ogImageRegex = /<meta\s+property="og:image"\s+content="([^"]*)"\s*\/?>/i;
     if (ogImageRegex.test(html) && ogImageUrl) {
