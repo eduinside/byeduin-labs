@@ -8,9 +8,9 @@
 
 ---
 
-## 앱 목록 (28개)
+## 앱 목록 (29개)
 
-### 📚 교육 (14)
+### 📚 교육 (15)
 
 #### 🌐 시뮬레이션
 | 앱 | 경로 | 설명 |
@@ -18,6 +18,7 @@
 | **Moon Phase** | `/apps/moon-phase/` | 달의 위상 시뮬레이터 |
 | **화산 탐험대** | `/apps/volcano/` | 3D 위성지도로 세계 화산 11개 탐험 · 초등 과학 4학년 연계 |
 | **Step Squad** | `/apps/blocks-universe/step-squad.html` | 계단수 개념 블록 시각화 + 퀴즈 |
+| **Break & Make** | `/apps/blocks-universe/break-make.html` | 구슬로 수 가르기·모으기 연습 + 도전 모드·도감 |
 | **Club Badge** | `/apps/blocks-universe/clubs.html` | 1~100 수의 넘버블록스 클럽 탐색 + 퀴즈 |
 
 #### 📖 학습지원

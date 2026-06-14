@@ -40,6 +40,7 @@ docs/                  ← 개발 문서
 | `moon-phase` | 달 위상 시뮬레이터 | 오늘의 달 위상 시뮬레이터 |
 | `volcano` | 화산 지도 | 3D 위성지도로 세계 화산 11개 탐험 |
 | `step-squad` | 계단수 | 계단수 개념을 블록으로 시각화 + 퀴즈 |
+| `break-make` | 가르기 모으기 | 구슬 조작으로 수 가르기·모으기 + 도전 모드·도감 |
 | `clubs` | 넘버블록스 클럽 | 1~100 수의 클럽 탐색 + 퀴즈 |
 
 ### 교육 · 학습지원 (`edu-learn`)
@@ -106,7 +107,7 @@ docs/                  ← 개발 문서
 | `split` | 2-페인 (입력 \| 미리보기) | md-editor, notion-styler |
 | `sidebar` | 내비 사이드바 + 메인 | search |
 | `gallery` | 반응형 카드 그리드 | blocks-universe, chalkboard, bubble-chat |
-| `immersive` | 풀뷰포트 (크롬만 주입) | moon-phase, volcano, step-squad, clubs |
+| `immersive` | 풀뷰포트 (크롬만 주입) | moon-phase, volcano, step-squad, break-make, clubs |
 
 **폭 플래그** (`data-width`): `narrow`(480px) · `medium`(720px) · `wide`(1120px)  
 **기능 플래그**: `data-focus`(아이템→전체화면 `enterFocus()`) · `data-print`(A4 인쇄 베이스라인)
@@ -121,7 +122,7 @@ docs/                  ← 개발 문서
 <script src="/common/seo-injector.js" defer></script>
 ```
 
-> **예외**: `immersive` 유형 중 step-squad·clubs는 독자 CSS(Dongle 폰트·`--bg`)를 사용하므로 `hero-theme.css`·`app-shell.css`를 포함하지 않음.
+> **예외**: `immersive` 유형 중 step-squad·clubs·break-make는 독자 CSS(Dongle 폰트·`--bg`)를 사용하므로 `hero-theme.css`·`app-shell.css`를 포함하지 않음.
 
 ---
 
@@ -142,6 +143,11 @@ docs/                  ← 개발 문서
 ---
 
 ## 주요 변경 이력
+
+### 2026-06 — Break & Make 신규 + 효과음 확대
+- **Break & Make**(`break-make`) 신규: 구슬 교구로 수 가르기·모으기 조작 학습 (개념/가르기/모으기/나의 기록 탭, 한자리·10·십몇 단계, 도전 모드, 별·도장 도감, `localStorage` 저장). step-squad 인라인 홈·공유 영역 계승
+- **Web Audio 효과음 + 음소거**: break-make에 신규 적용 후 step-squad·clubs에도 동일 패턴 확대(조작·정답·오답음 + 🔊/🔇 토글, 상태 `localStorage` 저장)
+- **접근성**: `prefers-reduced-motion` 대응, 음소거·도전 토글 `aria-pressed`, `focus-visible` (break-make)
 
 ### 2026-06 — Blocks Universe 개선
 - **AI 번역 사전 적재**: 영문 전용 231편·한글 영상+영문 설명 31편 → `descKo` / `titleKo` 번역 추가 (전체 351편 완비)

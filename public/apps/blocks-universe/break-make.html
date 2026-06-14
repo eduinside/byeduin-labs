@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Break &amp; Make — 가르기 모으기 | eduin VIVES</title>
+<meta name="description" content="초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터.">
+<link href="https://fonts.googleapis.com/css2?family=Dongle:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FFF9F0;
+    --sky: #C8E6FF;
+    --yellow: #FFD93D;
+    --orange: #FF8C00;
+    --red: #FF4757;
+    --green: #2ED573;
+    --blue: #1E90FF;
+    --purple: #A855F7;
+    --pink: #FF6EB4;
+    --teal: #00CEC9;
+    --dark: #2D2D2D;
+    --shadow: 4px 4px 0px #2D2D2D;
+  }
+
+  html { font-size: 200%; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Dongle', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(circle at 10% 20%, #FFE0B2 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, #C8E6FF 0%, transparent 40%);
+  }
+
+  /* ── Header ── */
+  header {
+    text-align: center;
+    padding: 28px 20px 6px;
+    position: relative;
+  }
+  header h1 {
+    font-family: 'Dongle', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.8rem);
+    color: var(--dark);
+    letter-spacing: 2px;
+    text-shadow: 4px 4px 0 var(--orange);
+    line-height: 1;
+  }
+  header p {
+    font-size: 1rem;
+    color: #666;
+    margin-top: 6px;
+    font-weight: 700;
+  }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 16px;
+    flex-wrap: wrap;
+  }
+  .tab {
+    font-family: 'Dongle', sans-serif;
+    font-size: 1.05rem;
+    padding: 8px 22px;
+    border: 3px solid var(--dark);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s, background 0.2s;
+    box-shadow: var(--shadow);
+    background: white;
+    color: var(--dark);
+  }
+  .tab:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+  .tab.active { background: var(--yellow); transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+
+  /* ── Sections ── */
+  .section { display: none; padding: 6px 18px 48px; max-width: 880px; margin: 0 auto; }
+  .section.visible { display: block; animation: fadeIn .25s ease; }
+  @keyframes fadeIn { from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
+
+  /* ── Generic card ── */
+  .card {
+    background: white;
+    border: 3px solid var(--dark);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 18px;
+  }
+
+  /* ── Control row (chips + toggle) ── */
+  .controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .chip {
+    font-family: 'Dongle', sans-serif;
+    font-size: 0.95rem;
+    padding: 7px 18px;
+    border: 3px solid var(--dark);
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 var(--dark);
+    background: white;
+    color: var(--dark);
+    transition: transform .1s, box-shadow .1s, background .2s;
+  }
+  .chip:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--dark); }
+  .chip.active { background: var(--orange); color: white; }
+  .toggle {
+    font-family: 'Dongle', sans-serif;
+    font-size: 0.95rem;
+    padding: 7px 16px;
+    border: 3px dashed var(--dark);
+    border-radius: 999px;
+    cursor: pointer;
+    background: white;
+    color: var(--dark);
+    transition: background .2s, color .2s;
+  }
+  .toggle.on { background: var(--purple); color: white; border-style: solid; }
+
+  /* ── Number selection grid ── */
+  .num-grid {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .numbtn {
+    font-family: 'Dongle', sans-serif;
+    font-size: 1.8rem;
+    width: 64px;
+    height: 64px;
+    border: 3px solid var(--dark);
+    border-radius: 16px;
+    background: white;
+    color: var(--dark);
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform .1s, box-shadow .1s, background .2s;
+    line-height: 1;
+  }
+  .numbtn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+  .numbtn.sel { background: var(--yellow); transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+
+  /* ── Number bond diagram ── */
+  .bond { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .bond-row { display: flex; justify-content: center; gap: 36px; }
+  .bond-box {
+    min-width: 130px;
+    min-height: 92px;
+    border: 4px solid var(--red);
+    border-radius: 22px;
+    background: #fff;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px;
+    position: relative;
+  }
+  .bond-box.whole { min-width: 150px; background: #FFF3F4; }
+  .bond-box.tappable { cursor: pointer; transition: box-shadow .12s, transform .12s; }
+  .bond-box.tappable:hover { box-shadow: 0 0 0 4px rgba(255,71,87,0.18); }
+  .bond-box.flash { animation: bump .25s ease; }
+  @keyframes bump { 0%{transform:scale(1);} 40%{transform:scale(1.06);} 100%{transform:scale(1);} }
+  .bond-box .ph { font-size: 2.4rem; color: #FFC2C7; font-family:'Dongle'; }
+  .bond-box .sum { font-size: 3rem; color: var(--red); font-family:'Dongle'; line-height:1; }
+
+  .bond-arrows { display: flex; justify-content: center; gap: 150px; height: 34px; }
+  .bond-arrows svg { width: 38px; height: 34px; }
+  .bond-arrows.up svg { transform: rotate(180deg); }
+  .arrow-l { transform: rotate(22deg); }
+  .arrow-r { transform: rotate(-22deg); }
+  .bond-arrows.up .arrow-l { transform: rotate(180deg) rotate(22deg); }
+  .bond-arrows.up .arrow-r { transform: rotate(180deg) rotate(-22deg); }
+
+  /* ── Bead (구슬) ── */
+  .bead {
+    border-radius: 50%;
+    border: 2px solid rgba(0,0,0,0.30);
+    box-shadow: 0 3px 4px rgba(0,0,0,0.18), inset 0 -3px 6px rgba(0,0,0,0.14), inset 0 3px 5px rgba(255,255,255,0.35);
+    flex: 0 0 auto;
+    animation: dropIn .28s cubic-bezier(.36,1.56,.64,1) both;
+  }
+  .bead.tappable { cursor: pointer; }
+  .bead.tappable:hover { filter: brightness(1.08); }
+  @keyframes dropIn { from{ transform: translateY(-14px) scale(.4); opacity:0; } to{ transform:none; opacity:1; } }
+
+  /* ── Ten-frame bundle (10 묶음) ── */
+  .tenframe {
+    display: inline-grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 3px;
+    padding: 6px 6px 4px;
+    border: 3px solid #27408B;
+    border-radius: 12px;
+    background: #EAF0FB;
+    position: relative;
+    animation: dropIn .28s cubic-bezier(.36,1.56,.64,1) both;
+  }
+  .tenframe.tappable { cursor: pointer; }
+  .tenframe.tappable:hover { box-shadow: 0 0 0 3px rgba(39,64,139,0.2); }
+  .tenframe .mini {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #4E6FC0, #27408B);
+    border: 1px solid rgba(0,0,0,0.18);
+  }
+  .tenframe .tf-tag {
+    position: absolute; top: -12px; right: -8px;
+    background: #27408B; color: #fff; font-family:'Dongle';
+    font-size: .8rem; line-height:1; padding: 2px 7px; border-radius: 999px;
+    border: 2px solid #fff; box-shadow: 1px 1px 0 rgba(0,0,0,.3);
+  }
+
+  /* ── Equation / result ── */
+  .eq-area { text-align: center; margin-top: 14px; min-height: 48px; display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .eq {
+    font-family: 'Dongle', sans-serif;
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+    color: var(--dark);
+    background: var(--green);
+    border: 3px solid var(--dark);
+    border-radius: 16px;
+    padding: 4px 22px;
+    box-shadow: var(--shadow);
+    line-height: 1.2;
+  }
+  .eq.prompt { background: var(--sky); }
+  .eq.pop { animation: popIn .4s cubic-bezier(.36,1.56,.64,1) both; }
+  @keyframes popIn { from{ transform: scale(0) rotate(-8deg); opacity:0; } to{ transform: scale(1) rotate(0); opacity:1; } }
+  .hint { font-size: 1.1rem; color:#888; font-weight:700; }
+
+  /* ── Buttons ── */
+  .btn {
+    font-family: 'Dongle', sans-serif;
+    font-size: 1.1rem;
+    padding: 8px 24px;
+    border: 3px solid var(--dark);
+    border-radius: 14px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform .1s, box-shadow .1s;
+    background: var(--blue);
+    color: white;
+  }
+  .btn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+  .btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--dark); }
+  .btn.again { background: var(--orange); }
+  .btn.ghost { background: #fff; color: var(--dark); }
+  .btn-row { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top: 6px; }
+
+  /* ── Concept ── */
+  #cstage {
+    display: flex; justify-content: center; align-items: center; gap: 10px;
+    transition: gap .8s cubic-bezier(.4,0,.2,1); min-height: 96px; margin: 8px 0 18px;
+  }
+  #cstage.apart { gap: 130px; }
+  .cgroup { display: flex; gap: 10px; }
+  #ccap {
+    text-align:center; font-family:'Dongle'; font-size: clamp(1.4rem,4.5vw,2rem);
+    color: var(--dark); font-weight:700;
+  }
+  .concept-lines { text-align:center; line-height:1.6; font-size:1.1rem; color:#555; margin-top:14px; }
+  .concept-lines b { color: var(--dark); font-weight:900; }
+
+  /* ── Record / 도감 ── */
+  .stat-row { display:flex; justify-content:center; gap:16px; flex-wrap:wrap; margin-bottom: 18px; }
+  .stat {
+    background:white; border:3px solid var(--dark); border-radius:16px;
+    padding:10px 22px; box-shadow:var(--shadow); font-family:'Dongle'; font-size:1.3rem;
+    display:flex; align-items:center; gap:8px; color:var(--dark);
+  }
+  .rec-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap:14px; }
+  .rec-card {
+    background:white; border:3px solid var(--dark); border-radius:16px;
+    padding:12px; box-shadow:var(--shadow); position:relative;
+  }
+  .rec-card.done { background: #F4FFF6; }
+  .rec-title { font-family:'Dongle'; font-size:1.5rem; color:var(--dark); margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+  .rec-cells { display:flex; flex-wrap:wrap; gap:6px; }
+  .rec-cell {
+    font-family:'Dongle'; font-size:.95rem; padding:3px 8px; border-radius:8px;
+    border:2px solid #ccc; background:#f3f3f3; color:#aaa; line-height:1.1;
+  }
+  .rec-cell.got { border-color: var(--dark); color:#fff; }
+  .rec-stamp { position:absolute; top:-10px; right:-8px; font-size:1.6rem; transform: rotate(12deg); }
+  .rec-sec-title { font-family:'Dongle'; font-size:1.4rem; color:var(--dark); margin:22px 0 10px; text-align:center; }
+
+  /* ── Overlay buttons (step-squad 계승) ── */
+  .overlay-left, .overlay-right { position: fixed; top: 12px; z-index: 999; display: flex; gap: 8px; }
+  .overlay-left { left: 12px; }
+  .overlay-right { right: 12px; }
+  .ov-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'Dongle', sans-serif; font-size: 0.75rem; font-weight: 700;
+    padding: 6px 14px; border: 2.5px solid var(--dark); border-radius: 999px;
+    background: white; color: var(--dark); cursor: pointer;
+    box-shadow: 3px 3px 0 var(--dark); text-decoration: none;
+    transition: transform 0.1s, box-shadow 0.1s; white-space: nowrap;
+  }
+  .ov-btn:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--dark); }
+  .ov-btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--dark); }
+
+  /* ── Toast ── */
+  #ssToast {
+    position: fixed; bottom: 1.5rem; left: 50%;
+    transform: translateX(-50%) translateY(1rem);
+    background: var(--dark); color: white; padding: 0.5rem 1.2rem;
+    border-radius: 999px; font-family: 'Dongle', sans-serif;
+    font-size: 0.95rem; font-weight: 700; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s; z-index: 9000; white-space: nowrap;
+  }
+  #ssToast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Floating deco ── */
+  .deco { position: fixed; pointer-events: none; font-size: 1.5rem; animation: floatStar linear infinite; opacity: 0.35; z-index: 0; }
+  @keyframes floatStar { from { transform: translateY(0) rotate(0); } to { transform: translateY(-100vh) rotate(360deg); } }
+
+  /* ── Confetti / fanfare ── */
+  .fx-burst { position: fixed; inset: 0; pointer-events:none; z-index: 8000; }
+  .fx-piece { position:absolute; font-size:1.6rem; animation: fxFall 1.1s ease-out forwards; }
+  @keyframes fxFall { 0%{ transform: translateY(0) scale(.4); opacity:1;} 100%{ transform: translateY(60vh) rotate(220deg) scale(1); opacity:0;} }
+
+  /* ── Responsive ── */
+  @media (max-width: 540px) {
+    html { font-size: 170%; }
+    header { padding-top: 60px; }
+    header h1 { font-size: clamp(1.5rem, 7vw, 2.1rem); }
+    .bond-row { gap: 18px; }
+    .bond-box { min-width: 108px; min-height: 80px; padding: 9px; }
+    .bond-box.whole { min-width: 120px; }
+    .bond-arrows { gap: 90px; }
+    .numbtn { width: 56px; height: 56px; font-size: 1.5rem; }
+    .ov-btn span.lbl { display:none; }
+  }
+  @media (min-width: 1100px) { .section { max-width: 980px; } }
+
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; }
+    .deco { display: none; }
+  }
+</style>
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Break & Make — 가르기 모으기 | eduin VIVES">
+  <meta property="og:description" content="초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터.">
+  <meta property="og:image" content="https://eduin.info/og-default.png">
+  <meta property="og:url" content="https://eduin.info/apps/blocks-universe/break-make.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Break & Make — 가르기 모으기 | eduin VIVES">
+  <meta name="twitter:description" content="초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터.">
+  <meta name="twitter:image" content="https://eduin.info/og-default.png">
+  <link rel="canonical" href="https://eduin.info/apps/blocks-universe/break-make.html">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Break & Make","description":"초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터.","url":"https://eduin.info/apps/blocks-universe/break-make.html","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script src="/common/seo-injector.js" defer></script>
+</head>
+<body data-shell="immersive">
+
+<!-- BYEDUIN 공통 홈 영역 (step-squad 계승) -->
+<div class="overlay-left">
+  <a href="/" class="ov-btn" title="홈으로">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    <span class="lbl">Home</span>
+  </a>
+</div>
+
+<!-- BYEDUIN 공통 공유 영역 + 음소거 (step-squad 계승) -->
+<div class="overlay-right">
+  <button class="ov-btn" id="muteBtn" onclick="toggleMute()" title="소리 켜기/끄기" aria-label="소리 켜기/끄기" aria-pressed="false">🔊</button>
+  <button class="ov-btn" onclick="shareApp()" title="공유">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+      <polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/>
+    </svg>
+    <span class="lbl">공유</span>
+  </button>
+</div>
+
+<div id="ssToast"></div>
+
+<!-- floating deco -->
+<div class="deco" style="left:5%;top:80%;animation-duration:18s;font-size:2rem;">⭐</div>
+<div class="deco" style="left:88%;top:70%;animation-duration:22s;animation-delay:-8s;">🔺</div>
+<div class="deco" style="left:50%;top:90%;animation-duration:15s;animation-delay:-4s;font-size:1rem;">✦</div>
+<div class="deco" style="left:20%;top:95%;animation-duration:25s;animation-delay:-12s;">🟡</div>
+
+<header>
+  <h1>🧩 Break &amp; Make</h1>
+  <p>가르기 모으기 — 구슬로 톡톡!</p>
+</header>
+
+<div class="tabs">
+  <button class="tab" onclick="showTab('concept')" id="tab-concept">💡 개념</button>
+  <button class="tab active" onclick="showTab('split')" id="tab-split">✂️ 가르기</button>
+  <button class="tab" onclick="showTab('make')" id="tab-make">🤝 모으기</button>
+  <button class="tab" onclick="showTab('record')" id="tab-record">⭐ 나의 기록</button>
+</div>
+
+<!-- ════════════ 개념 ════════════ -->
+<div id="concept" class="section">
+  <div class="card">
+    <div id="cstage">
+      <div class="cgroup" id="cgL"></div>
+      <div class="cgroup" id="cgR"></div>
+    </div>
+    <div id="ccap">두 무리를 합치면 → 모으기</div>
+    <div class="concept-lines">
+      <p>한 수를 둘로 나누는 것이 <b>가르기</b> 예요. ✂️</p>
+      <p>두 수를 하나로 합치는 것이 <b>모으기</b> 예요. 🤝</p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ 가르기 ════════════ -->
+<div id="split" class="section visible">
+  <div class="controls">
+    <button class="chip active" id="stage-single" onclick="setSplitStage('single')">한 자리수</button>
+    <button class="chip" id="stage-ten" onclick="setSplitStage('ten')">10</button>
+    <button class="chip" id="stage-teen" onclick="setSplitStage('teen')">십몇</button>
+    <button class="toggle" id="splitChallengeBtn" onclick="toggleSplitChallenge()" aria-pressed="false">🎯 도전 모드</button>
+  </div>
+  <div class="card">
+    <div class="num-grid" id="splitGrid"></div>
+    <div id="splitBond"></div>
+    <div class="eq-area" id="splitEq"></div>
+    <div class="btn-row">
+      <button class="btn ghost" onclick="resetSplit()">↺ 처음부터</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ 모으기 ════════════ -->
+<div id="make" class="section">
+  <div class="controls">
+    <button class="toggle" id="makeChallengeBtn" onclick="toggleMakeChallenge()" aria-pressed="false">🎯 도전 모드</button>
+  </div>
+  <div class="card">
+    <div class="num-grid" id="makeGrid"></div>
+    <div id="makeBond"></div>
+    <div class="eq-area" id="makeEq"></div>
+    <div class="btn-row">
+      <button class="btn ghost" onclick="resetMake()">↺ 처음부터</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ 나의 기록 ════════════ -->
+<div id="record" class="section">
+  <div class="stat-row">
+    <div class="stat">⭐ 별 <b id="recStars">0</b></div>
+    <div class="stat">🏅 도장 <b id="recStamps">0</b></div>
+  </div>
+  <div id="recBody"></div>
+  <div class="btn-row" style="margin-top:20px;">
+    <button class="btn ghost" onclick="resetProgress()">🗑️ 기록 초기화</button>
+  </div>
+</div>
+
+<script>
+/* ════════════════════ 데이터 ════════════════════ */
+const KEY = 'breakmake.progress';
+function loadProgress(){
+  let p=null;
+  try { p = JSON.parse(localStorage.getItem(KEY)); } catch(e){}
+  const d = Object.assign({found:{},stars:0,stamps:[],muted:false}, (p && typeof p==='object') ? p : {});
+  if(!d.found || typeof d.found!=='object') d.found={};
+  if(!Array.isArray(d.stamps)) d.stamps=[];
+  if(typeof d.stars!=='number' || !isFinite(d.stars)) d.stars=0;
+  d.muted = !!d.muted;
+  for(const k in d.found){ if(!Array.isArray(d.found[k])) d.found[k]=[]; }
+  return d;
+}
+let progress = loadProgress();
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(progress)); }catch(e){} }
+
+/* ════════════════════ 색 / 구슬 ════════════════════ */
+const COLORS = {
+  orange:['#FF8C00','#FFB347'], yellow:['#FFD93D','#FFE889'], green:['#2ED573','#6BE89B'],
+  teal:['#00CEC9','#5BE7E3'], purple:['#A855F7','#C99BFA'], red:['#FF4757','#FF818B'],
+  pink:['#FF6EB4','#FFA6D2'], blue:['#1E90FF','#63B3FF'], navy:['#27408B','#4E6FC0'],
+};
+const NUMKEY = {2:'orange',3:'yellow',4:'green',5:'teal',6:'purple',7:'red',8:'pink',9:'blue',10:'navy'};
+function keyFor(n){ return NUMKEY[n] || 'teal'; }
+function isTeen(n){ return n>=11 && n<=19; }
+
+function el(tag, props, txt){
+  const e = document.createElement(tag);
+  if(props) for(const k in props){
+    if(k==='class') e.className = props[k];
+    else if(k==='html') e.innerHTML = props[k];
+    else if(k==='style') e.style.cssText = props[k];
+    else e.setAttribute(k, props[k]);
+  }
+  if(txt!=null) e.textContent = txt;
+  return e;
+}
+function beadNode(colorKey, size, tappable, onTap){
+  const [base,lite] = COLORS[colorKey];
+  const b = el('div', { class: 'bead'+(tappable?' tappable':'') });
+  b.style.cssText = `width:${size}px;height:${size}px;background:radial-gradient(circle at 35% 30%, ${lite}, ${base});`;
+  if(tappable && onTap){ b.onclick = (ev)=>{ ev.stopPropagation(); onTap(); }; }
+  return b;
+}
+function tenframeNode(tappable, onTap){
+  const tf = el('div', { class:'tenframe'+(tappable?' tappable':'') });
+  for(let i=0;i<10;i++) tf.appendChild(el('div',{class:'mini'}));
+  tf.appendChild(el('div',{class:'tf-tag'},'10'));
+  if(tappable && onTap){ tf.onclick = (ev)=>{ ev.stopPropagation(); onTap(); }; }
+  return tf;
+}
+function beadSize(count){ return count<=6 ? 36 : count<=10 ? 30 : 24; }
+
+/* ════════════════════ 사운드 ════════════════════ */
+let actx = null;
+function ac(){
+  if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } }
+  if(actx && actx.state==='suspended') actx.resume();
+  return actx;
+}
+function tone(freq, dur, type, gain, delay){
+  const c = ac(); if(!c) return;
+  const t = c.currentTime + (delay||0);
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type||'sine'; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(gain||0.14, t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(t); o.stop(t+dur+0.03);
+}
+function sfx(type){
+  if(progress.muted) return;
+  switch(type){
+    case 'move':  tone(540,0.08,'triangle',0.10); break;
+    case 'done':  tone(523,0.12,'sine',0.14,0); tone(659,0.12,'sine',0.14,0.09); tone(784,0.18,'sine',0.14,0.18); break;
+    case 'star':  tone(988,0.08,'triangle',0.13,0); tone(1319,0.13,'triangle',0.13,0.07); break;
+    case 'stamp': [523,659,784,1047].forEach((f,i)=>tone(f,0.15,'square',0.10,i*0.11)); break;
+    case 'wrong': tone(233,0.18,'sine',0.13,0); tone(185,0.22,'sine',0.13,0.13); break;
+  }
+}
+function toggleMute(){
+  progress.muted = !progress.muted; save();
+  const b=document.getElementById('muteBtn');
+  b.textContent = progress.muted ? '🔇' : '🔊';
+  b.setAttribute('aria-pressed', String(progress.muted));
+  if(!progress.muted) sfx('move');
+}
+
+/* ════════════════════ 토스트 / 공유 (step-squad 계승) ════════════════════ */
+let toastTimer;
+function ssToast(msg){
+  const e = document.getElementById('ssToast');
+  e.textContent = msg; e.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> e.classList.remove('show'), 2200);
+}
+function fallbackCopy(text){
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.cssText='position:fixed;opacity:0;top:0;left:0;';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try{ document.execCommand('copy'); ssToast('링크가 복사되었습니다 ✓'); }
+  catch(e){ ssToast('복사에 실패했습니다.'); }
+  document.body.removeChild(ta);
+}
+function shareApp(){
+  const url = location.href;
+  if(navigator.share){ navigator.share({ title:'🧩 Break & Make — 가르기 모으기', url }); }
+  else if(navigator.clipboard){ navigator.clipboard.writeText(url).then(()=>ssToast('링크가 복사되었습니다 ✓')).catch(()=>fallbackCopy(url)); }
+  else fallbackCopy(url);
+}
+
+/* ════════════════════ 보상 / 조합 ════════════════════ */
+function comboCount(n){ if(isTeen(n)) return 1; if(n===10) return 9; return n-1; }
+/* 숫자 한국어 받침(사이시옷) 기준 조사 — 七은, 四는, 二와 三을 ... */
+function batchim(n){ if(n%10===0) return true; return {1:1,3:1,6:1,7:1,8:1}[n%10]?true:false; }
+function josaEunNeun(n){ return batchim(n)?'은':'는'; }
+function josaEulReul(n){ return batchim(n)?'을':'를'; }
+function josaGwaWa(n){ return batchim(n)?'과':'와'; }
+function josaIGa(n){ return batchim(n)?'이':'가'; }
+function recordCombo(n, combo){
+  const k = String(n);
+  const set = progress.found[k] || (progress.found[k] = []);
+  if(set.includes(combo)){ ssToast('이미 찾았어요! 😊'); return; }
+  set.push(combo);
+  progress.stars++;
+  sfx('star');
+  burst('⭐');
+  let msg = '새 방법 발견! 별 +1 ⭐';
+  if(set.length >= comboCount(n) && !progress.stamps.includes(k)){
+    progress.stamps.push(k);
+    setTimeout(()=>{ sfx('stamp'); burst('🏅'); }, 320);
+    msg = n + ' 완성! 도장 획득 🏅';
+  }
+  save();
+  ssToast(msg);
+}
+function burst(emoji){
+  const wrap = el('div',{class:'fx-burst'});
+  const icons = [emoji,'✨','🎉',emoji,'⭐'];
+  for(let i=0;i<14;i++){
+    const p = el('div',{class:'fx-piece'}, icons[i%icons.length]);
+    p.style.left = (10 + Math.floor((i/14)*80)) + '%';
+    p.style.top = (10 + (i%3)*8) + '%';
+    p.style.animationDelay = ((i%5)*0.05) + 's';
+    wrap.appendChild(p);
+  }
+  document.body.appendChild(wrap);
+  setTimeout(()=> wrap.remove(), 1400);
+}
+
+/* ════════════════════ 탭 ════════════════════ */
+function showTab(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('visible'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('visible');
+  const tb = document.getElementById('tab-'+id); if(tb) tb.classList.add('active');
+  if(id==='concept') startConcept(); else stopConcept();
+  if(id==='record') renderRecord();
+}
+
+/* ════════════════════ Bond 렌더 공통 ════════════════════ */
+// single: {items, cls, ph}  pair: left/right {items}
+function buildBond(host, opt){
+  host.innerHTML = '';
+  const bond = el('div',{class:'bond'});
+
+  const single = el('div',{class:'bond-box '+(opt.singleCls||'')});
+  if(opt.singlePlaceholder!=null && opt.singleItems.length===0)
+    single.appendChild(el('div',{class:opt.singleBig?'sum':'ph'}, opt.singlePlaceholder));
+  opt.singleItems.forEach(it=> single.appendChild(it));
+  if(opt.flash==='S') single.classList.add('flash');
+
+  const arrows = el('div',{class:'bond-arrows'+(opt.dir==='up'?' up':'')});
+  arrows.appendChild(arrowSvg('arrow-l')); arrows.appendChild(arrowSvg('arrow-r'));
+
+  const pair = el('div',{class:'bond-row'});
+  const lb = el('div',{class:'bond-box tappable'}); if(opt.flash==='L') lb.classList.add('flash');
+  const rb = el('div',{class:'bond-box tappable'}); if(opt.flash==='R') rb.classList.add('flash');
+  opt.leftItems.forEach(it=> lb.appendChild(it));
+  opt.rightItems.forEach(it=> rb.appendChild(it));
+  lb.onclick = ()=> opt.onPairTap('L');
+  rb.onclick = ()=> opt.onPairTap('R');
+  pair.appendChild(lb); pair.appendChild(rb);
+
+  if(opt.dir==='up'){ bond.appendChild(single); bond.appendChild(arrows); bond.appendChild(pair); }
+  else { bond.appendChild(single); bond.appendChild(arrows); bond.appendChild(pair); }
+  host.appendChild(bond);
+}
+function arrowSvg(cls){
+  const ns='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(ns,'svg'); svg.setAttribute('viewBox','0 0 38 34'); svg.setAttribute('class',cls);
+  const line=document.createElementNS(ns,'line'); line.setAttribute('x1','19');line.setAttribute('y1','2');line.setAttribute('x2','19');line.setAttribute('y2','26');
+  line.setAttribute('stroke','#FF4757');line.setAttribute('stroke-width','4');line.setAttribute('stroke-linecap','round');
+  const poly=document.createElementNS(ns,'polyline'); poly.setAttribute('points','9,20 19,30 29,20');
+  poly.setAttribute('fill','none');poly.setAttribute('stroke','#FF4757');poly.setAttribute('stroke-width','4');poly.setAttribute('stroke-linecap','round');poly.setAttribute('stroke-linejoin','round');
+  svg.appendChild(line); svg.appendChild(poly); return svg;
+}
+
+/* ════════════════════ 가르기 상태 ════════════════════ */
+const S = { stage:'single', whole:null, top:0, left:0, right:0, done:false,
+  challenge:false, given:null, flash:null,
+  teenTopBundle:false, teenTopLoose:0, teenL:{bundle:false,loose:0}, teenR:{bundle:false,loose:0} };
+
+function setSplitStage(stage){
+  S.stage = stage; S.whole = null; S.done = false;
+  ['single','ten','teen'].forEach(s=> document.getElementById('stage-'+s).classList.toggle('active', s===stage));
+  renderSplitGrid(); document.getElementById('splitBond').innerHTML=''; document.getElementById('splitEq').innerHTML='';
+}
+function renderSplitGrid(){
+  const g = document.getElementById('splitGrid'); g.innerHTML='';
+  let nums = [];
+  if(S.stage==='single') for(let n=2;n<=9;n++) nums.push(n);
+  else if(S.stage==='ten') nums=[10];
+  else for(let n=11;n<=19;n++) nums.push(n);
+  nums.forEach(n=>{
+    const b = el('button',{class:'numbtn'+(S.whole===n?' sel':'')}, String(n));
+    b.onclick = ()=> selectSplit(n);
+    g.appendChild(b);
+  });
+}
+function selectSplit(n){
+  S.whole = n; S.done = false; S.flash = null;
+  if(isTeen(n)){ S.teenTopBundle=true; S.teenTopLoose=n-10; S.teenL={bundle:false,loose:0}; S.teenR={bundle:false,loose:0}; }
+  else { S.top=n; S.left=0; S.right=0; }
+  document.querySelectorAll('#splitGrid .numbtn').forEach(b=> b.classList.toggle('sel', b.textContent===String(n)));
+  if(S.challenge && !isTeen(n)){ S.given = 1 + Math.floor(Math.random()*(n-1)); }
+  document.getElementById('splitEq').innerHTML='';
+  renderSplit();
+}
+function sideObj(side){ return side==='L' ? S.teenL : S.teenR; }
+
+function splitTapBox(side){
+  if(S.whole==null || S.done) return;
+  if(isTeen(S.whole)){
+    if(S.teenTopLoose>0){ S.teenTopLoose--; sideObj(side).loose++; }
+    else if(S.teenTopBundle){ S.teenTopBundle=false; sideObj(side).bundle=true; }
+    else {
+      // top empty: help move a loose bead onto an empty side
+      const me=sideObj(side), other=sideObj(side==='L'?'R':'L');
+      if(!me.bundle && me.loose===0 && other.loose>0){ other.loose--; me.loose++; S.flash=side; sfx('move'); renderSplit(); checkTeenDone(); }
+      else ssToast('아래 구슬을 톡! 하면 다시 위로 올라가요 🙂');
+      return;
+    }
+    S.flash = side; sfx('move'); renderSplit();
+    if(S.teenTopLoose===0 && !S.teenTopBundle) checkTeenDone();
+    return;
+  }
+  if(S.top<=0){
+    // top empty but a side is empty: slide one bead over so both sides have beads
+    const cur=side==='L'?S.left:S.right, other=side==='L'?S.right:S.left;
+    if(cur===0 && other>1){ if(side==='L'){S.left++;S.right--;} else {S.right++;S.left--;} S.flash=side; sfx('move'); renderSplit(); checkSplitDone(); }
+    else ssToast('아래 구슬을 톡! 하면 다시 위로 올라가요 🙂');
+    return;
+  }
+  S.top--; if(side==='L') S.left++; else S.right++;
+  S.flash = side; sfx('move'); renderSplit();
+  if(S.top===0) checkSplitDone();
+}
+function splitReturn(side, kind){
+  if(S.whole==null || S.done) return;
+  if(isTeen(S.whole)){
+    const o = sideObj(side);
+    if(kind==='bundle' && o.bundle){ o.bundle=false; S.teenTopBundle=true; }
+    else if(kind==='loose' && o.loose>0){ o.loose--; S.teenTopLoose++; }
+    else return;
+    S.flash='S'; sfx('move'); renderSplit(); return;
+  }
+  if(side==='L' && S.left>0){ S.left--; S.top++; }
+  else if(side==='R' && S.right>0){ S.right--; S.top++; }
+  else return;
+  S.flash='S'; sfx('move'); renderSplit();
+}
+function checkSplitDone(){
+  const n=S.whole, L=S.left, R=S.right;
+  if(L<1 || R<1){ ssToast('양쪽에 모두 담아 볼까요? 🙂'); return; }
+  if(S.challenge){
+    if(L===S.given){ finishSplit(n,L,R,true); }
+    else { sfx('wrong'); ssToast('왼쪽에 '+S.given+'개! 다시 해볼까요? 🤔'); showSplitEq('🤔 '+n+josaEunNeun(n)+' '+S.given+josaGwaWa(S.given)+' □', false, true); }
+  } else finishSplit(n,L,R,false);
+}
+function checkTeenDone(){
+  const n=S.whole, k=n-10, L=S.teenL, R=S.teenR;
+  const valid = (L.bundle&&L.loose===0&&!R.bundle&&R.loose===k) || (R.bundle&&R.loose===0&&!L.bundle&&L.loose===k);
+  if(!valid){ ssToast('10 묶음과 낱개를 나눠 담아요! 🙂'); return; }
+  S.done = true; sfx('done');
+  showSplitEq(n+josaEunNeun(n)+' 10과 '+k, true, false);
+  recordCombo(n, '10+'+k);
+}
+function finishSplit(n,L,R,viaChallenge){
+  S.done = true; sfx('done');
+  showSplitEq(n+josaEunNeun(n)+' '+L+josaGwaWa(L)+' '+R, true, false);
+  recordCombo(n, L+'+'+R);
+}
+function showSplitEq(text, success, retry){
+  const e = document.getElementById('splitEq'); e.innerHTML='';
+  const b = el('div',{class:'eq pop'+(success?'':' prompt')}, text); e.appendChild(b);
+  if(success){
+    const r = el('button',{class:'btn again'},'다른 방법으로! 🔁'); r.onclick=resetSplit; e.appendChild(r);
+  } else if(retry){
+    const r = el('button',{class:'btn'},'↺ 다시 해보기'); r.onclick=resetSplit; e.appendChild(r);
+  }
+}
+function resetSplit(){ if(S.whole==null) return; selectSplit(S.whole); }
+function toggleSplitChallenge(){
+  S.challenge=!S.challenge;
+  const b=document.getElementById('splitChallengeBtn');
+  b.classList.toggle('on', S.challenge);
+  b.setAttribute('aria-pressed', String(S.challenge));
+  if(S.whole!=null) selectSplit(S.whole);
+}
+
+function renderSplit(){
+  const host = document.getElementById('splitBond');
+  if(S.whole==null){ host.innerHTML = '<p class="hint" style="text-align:center;">위에서 가를 수를 골라 주세요! 👆</p>'; return; }
+  const n=S.whole, ck=keyFor(n);
+
+  if(isTeen(n)){
+    const k=n-10;
+    const topItems=[]; const sz=beadSize(k);
+    if(S.teenTopBundle) topItems.push(tenframeNode(false,null));
+    for(let i=0;i<S.teenTopLoose;i++) topItems.push(beadNode('orange',sz,false,null));
+    const li=teenSideItems(S.teenL,sz,'L'), ri=teenSideItems(S.teenR,sz,'R');
+    buildBond(host,{ dir:'down', singleCls:'whole', singleItems:topItems, leftItems:li, rightItems:ri,
+      onPairTap: splitTapBox, flash:S.flash });
+  } else {
+    const sz=beadSize(n);
+    const topItems=[]; for(let i=0;i<S.top;i++) topItems.push(beadNode(ck,sz,false,null));
+    const li=[]; for(let i=0;i<S.left;i++) li.push(beadNode(ck,sz,true,()=>splitReturn('L')));
+    const ri=[]; for(let i=0;i<S.right;i++) ri.push(beadNode(ck,sz,true,()=>splitReturn('R')));
+    buildBond(host,{ dir:'down', singleCls:'whole', singleItems:topItems, leftItems:li, rightItems:ri,
+      onPairTap: splitTapBox, flash:S.flash });
+  }
+  S.flash=null;
+  // challenge prompt on fresh select
+  if(S.challenge && !S.done && !isTeen(n)){
+    const e=document.getElementById('splitEq');
+    if(!e.querySelector('.eq')){ e.innerHTML=''; e.appendChild(el('div',{class:'eq prompt pop'}, '🎯 '+n+josaEunNeun(n)+' '+S.given+josaGwaWa(S.given)+' □')); }
+  } else if(!S.done && (!S.challenge || isTeen(n))){
+    const e=document.getElementById('splitEq'); if(!e.querySelector('.eq')) e.innerHTML='';
+  }
+}
+function teenSideItems(o, sz, side){
+  const items=[];
+  if(o.bundle) items.push(tenframeNode(true, ()=>splitReturn(side,'bundle')));
+  for(let i=0;i<o.loose;i++) items.push(beadNode('orange',sz,true, ()=>splitReturn(side,'loose')));
+  return items;
+}
+
+/* ════════════════════ 모으기 상태 ════════════════════ */
+const M = { target:null, left:0, right:0, done:false, challenge:false, given:null, flash:null };
+function renderMakeGrid(){
+  const g=document.getElementById('makeGrid'); g.innerHTML='';
+  for(let n=2;n<=10;n++){
+    const b=el('button',{class:'numbtn'+(M.target===n?' sel':'')}, String(n));
+    b.onclick=()=>selectMake(n); g.appendChild(b);
+  }
+}
+function selectMake(n){
+  M.target=n; M.left=0; M.right=0; M.done=false; M.flash=null;
+  if(M.challenge) M.given = 1 + Math.floor(Math.random()*(n-1));
+  document.querySelectorAll('#makeGrid .numbtn').forEach(b=> b.classList.toggle('sel', b.textContent===String(n)));
+  document.getElementById('makeEq').innerHTML='';
+  renderMake();
+}
+function makeTapBox(side){
+  if(M.target==null || M.done) return;
+  if(M.left+M.right >= M.target){
+    // full: let an empty side pull one bead from the other side
+    const cur=side==='L'?M.left:M.right, other=side==='L'?M.right:M.left;
+    if(cur===0 && other>1){ if(side==='L'){M.left++;M.right--;} else {M.right++;M.left--;} M.flash=side; sfx('move'); renderMake(); checkMakeDone(); }
+    else ssToast('벌써 '+M.target+josaIGa(M.target)+' 됐어요! 🙂');
+    return;
+  }
+  if(side==='L') M.left++; else M.right++;
+  M.flash=side; sfx('move'); renderMake();
+  if(M.left+M.right===M.target) checkMakeDone();
+}
+function makeReturn(side){
+  if(M.target==null || M.done) return;
+  if(side==='L' && M.left>0) M.left--; else if(side==='R' && M.right>0) M.right--; else return;
+  M.flash='S'; sfx('move'); renderMake();
+}
+function checkMakeDone(){
+  const t=M.target,L=M.left,R=M.right;
+  if(L<1||R<1){ ssToast('양쪽에 모두 담아 볼까요? 🙂'); return; }
+  if(M.challenge){
+    if(L===M.given){ finishMake(t,L,R); }
+    else { sfx('wrong'); ssToast('왼쪽에 '+M.given+'개! 다시 해볼까요? 🤔'); showMakeEq('🤔 '+M.given+josaGwaWa(M.given)+' □를 모아 '+t, false, true); }
+  } else finishMake(t,L,R);
+}
+function finishMake(t,L,R){
+  M.done=true; sfx('done'); renderMake();
+  showMakeEq(L+josaGwaWa(L)+' '+R+josaEulReul(R)+' 모으면 '+t, true);
+  recordCombo(t, L+'+'+R);
+}
+function showMakeEq(text, success, retry){
+  const e=document.getElementById('makeEq'); e.innerHTML='';
+  e.appendChild(el('div',{class:'eq pop'+(success?'':' prompt')}, text));
+  if(success){ const r=el('button',{class:'btn again'},'또 모아 볼까? 🔁'); r.onclick=resetMake; e.appendChild(r); }
+  else if(retry){ const r=el('button',{class:'btn'},'↺ 다시 해보기'); r.onclick=resetMake; e.appendChild(r); }
+}
+function resetMake(){ if(M.target==null) return; selectMake(M.target); }
+function toggleMakeChallenge(){
+  M.challenge=!M.challenge;
+  const b=document.getElementById('makeChallengeBtn');
+  b.classList.toggle('on', M.challenge);
+  b.setAttribute('aria-pressed', String(M.challenge));
+  if(M.target!=null) selectMake(M.target);
+}
+function renderMake(){
+  const host=document.getElementById('makeBond');
+  if(M.target==null){ host.innerHTML='<p class="hint" style="text-align:center;">위에서 모을 수를 골라 주세요! 👆</p>'; return; }
+  const t=M.target, ck=keyFor(t), sz=beadSize(t);
+  const sum=M.left+M.right;
+  const single=[]; // result box
+  if(M.done){ for(let i=0;i<t;i++) single.push(beadNode(ck,sz,false,null)); }
+  const li=[]; for(let i=0;i<M.left;i++) li.push(beadNode(ck,sz,true,()=>makeReturn('L')));
+  const ri=[]; for(let i=0;i<M.right;i++) ri.push(beadNode(ck,sz,true,()=>makeReturn('R')));
+  buildBond(host,{ dir:'up', singleCls:'whole', singleItems:single,
+    singlePlaceholder: M.done? null : '?', singleBig:false,
+    leftItems:li, rightItems:ri, onPairTap:makeTapBox, flash:M.flash });
+  M.flash=null;
+  if(M.challenge && !M.done){
+    const e=document.getElementById('makeEq');
+    if(!e.querySelector('.eq')){ e.innerHTML=''; e.appendChild(el('div',{class:'eq prompt pop'}, '🎯 '+M.given+josaGwaWa(M.given)+' □를 모아 '+t)); }
+  } else if(!M.done){
+    const e=document.getElementById('makeEq'); if(!e.querySelector('.eq')) e.innerHTML='';
+  }
+}
+
+/* ════════════════════ 나의 기록 ════════════════════ */
+function renderRecord(){
+  document.getElementById('recStars').textContent = progress.stars;
+  document.getElementById('recStamps').textContent = progress.stamps.length;
+  const body = document.getElementById('recBody'); body.innerHTML='';
+
+  const grid = el('div',{class:'rec-grid'});
+  for(let n=2;n<=10;n++) grid.appendChild(recCard(n));
+  body.appendChild(grid);
+
+  body.appendChild(el('div',{class:'rec-sec-title'}, '십몇 (10과 몇)'));
+  const tgrid = el('div',{class:'rec-grid'});
+  for(let m=11;m<=19;m++) tgrid.appendChild(recCard(m));
+  body.appendChild(tgrid);
+}
+function recCard(n){
+  const found = progress.found[String(n)] || [];
+  const done = progress.stamps.includes(String(n)) || (found.length>=comboCount(n));
+  const card = el('div',{class:'rec-card'+(done?' done':'')});
+  if(done) card.appendChild(el('div',{class:'rec-stamp'}, '🏅'));
+  card.appendChild(el('div',{class:'rec-title'}, '🧩 '+n));
+  const cells = el('div',{class:'rec-cells'});
+  const [base] = COLORS[keyFor(n>10?10:n)];
+  if(isTeen(n)){
+    const combo='10+'+(n-10); const got=found.includes(combo);
+    cells.appendChild(cell('10·'+(n-10), got, base));
+  } else {
+    for(let a=1;a<=n-1;a++){
+      const combo=a+'+'+(n-a); const got=found.includes(combo);
+      cells.appendChild(cell(a+'·'+(n-a), got, base));
+    }
+  }
+  card.appendChild(cells);
+  return card;
+}
+function cell(label, got, base){
+  const c = el('div',{class:'rec-cell'+(got?' got':'')}, (got?'✓ ':'')+label);
+  if(got) c.style.background = base;
+  return c;
+}
+function resetProgress(){
+  if(!confirm('모든 별과 도장, 도감 기록을 지울까요? 되돌릴 수 없어요.')) return;
+  const muted = progress.muted;
+  progress = { found:{}, stars:0, stamps:[], muted };
+  save(); renderRecord(); ssToast('기록을 초기화했어요 🧹');
+}
+
+/* ════════════════════ 개념 애니메이션 ════════════════════ */
+let conceptTimer=null;
+function startConcept(){
+  stopConcept();
+  const stage=document.getElementById('cstage'), cap=document.getElementById('ccap');
+  let apart=true;
+  function tick(){
+    apart=!apart;
+    stage.classList.toggle('apart', apart);
+    cap.textContent = apart ? '두 무리로 나누면 → 가르기 ✂️' : '두 무리를 합치면 → 모으기 🤝';
+  }
+  tick();
+  conceptTimer=setInterval(tick, 2400);
+}
+function stopConcept(){ if(conceptTimer){ clearInterval(conceptTimer); conceptTimer=null; } }
+function buildConcept(){
+  const L=document.getElementById('cgL'), R=document.getElementById('cgR');
+  for(let i=0;i<3;i++) L.appendChild(beadNode('purple',34,false,null));
+  for(let i=0;i<3;i++) R.appendChild(beadNode('purple',34,false,null));
+}
+
+/* ════════════════════ 초기화 ════════════════════ */
+(function(){ const b=document.getElementById('muteBtn'); b.textContent = progress.muted ? '🔇' : '🔊'; b.setAttribute('aria-pressed', String(progress.muted)); })();
+buildConcept();
+renderSplitGrid();
+renderMakeGrid();
+renderSplit();
+renderMake();
+</script>
+</body>
+</html>
