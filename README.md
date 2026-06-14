@@ -8,9 +8,9 @@
 
 ---
 
-## 앱 목록 (26개)
+## 앱 목록 (28개)
 
-### 📚 교육 (13)
+### 📚 교육 (14)
 
 #### 🌐 시뮬레이션
 | 앱 | 경로 | 설명 |
@@ -26,18 +26,19 @@
 | **Blocks Universe** | `/blocks-universe/` | 넘버블록스·알파블록스·컬러블록스·원더블록스 351편 에피소드 탐색 · AI 검색 · 순차재생 |
 | **Flash Deck** | `/flash-deck/` | 플래시카드 학습 앱 |
 | **Chalkboard** | `/chalkboard/` | 칠판/화이트보드 메모 |
+| **연산연습지** | `/math-sheet/` | 사칙연산 세로셈 학습지 생성·A4 인쇄·링크/QR 공유·세트 저장 |
 
 #### 💼 업무경감
 | 앱 | 경로 | 설명 |
 |---|---|---|
 | **채점표** | `/scoring-table/` | 대회·발표 채점 양식 배포, 공동 채점, 결과 수합 (링크 공유 + xlsx) |
 | **파일 최적화 도구** | `/file-tools/` | 스캔 이미지 및 대용량 PPTX 이미지 최적화 |
-| **Smart Timer** | `/timer/` | 반복 알람 타이머 |
+| **Smart Timer** | `/timer/` | 반복 알람 타이머 · 다음 알람 표시 · 알람 켜기/끄기 |
 | **수당 계산기** | `/allowance-calculator/` | 세전·세후 수당 및 기타소득 세금(8.8%) 자동 판별 계산기 |
 | **Login Helper** | `https://blog.eduin.info/450` | 에듀나비 교원업무지원 자동 로그인 프로그램 (모달) |
 | **에듀서치** | `/search/` | 교육문서 AI 검색 (Gemini RAG) |
 
-### 🛠 유틸리티 (13)
+### 🛠 유틸리티 (14)
 
 #### 🔧 생활편의
 | 앱 | 경로 | 설명 |
@@ -71,6 +72,7 @@
 | **임베드 생성기** | `/embed/` | 외부 URL을 반응형 iframe으로 감싸 노션 임베드 블록에 삽입 (base64url 해시, 서버 상태 없음) |
 | **Notion Image DL** | `/notion-image-downloader/` | Notion DB 이미지 일괄 다운로드 |
 | **Notion Styler** | `/notion-styler/` | LaTeX 수식 스타일링 및 HTML 생성 |
+| **빠른 버튼 만들기** | `/shortcut/` | 복사한 웹 링크를 앱을 바로 여는 딥링크 버튼으로 변환·저장 (모바일 런처) |
 
 > 홈 화면에는 외부 연동·확장 항목(에듀링크, Content ID Viewer, MP4 Finder, Login Helper)도 모달로 노출됩니다.
 

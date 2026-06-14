@@ -57,6 +57,13 @@
       color: var(--fg-muted);
       margin-top: 0.375rem;
     }
+    #next-alarm {
+      font-size: 0.82rem;
+      color: var(--primary);
+      font-weight: 600;
+      margin-top: 0.5rem;
+      min-height: 1.2em;
+    }
 
     /* 메인 카드 */
     .main-card {
@@ -142,6 +149,9 @@
     .action-btn:hover { background: var(--border); }
     .action-btn.edit:hover  { color: var(--primary); }
     .action-btn.delete:hover { color: var(--danger); }
+    .action-btn.toggle.on { color: var(--primary); }
+    .alarm-item.disabled { opacity: 0.5; }
+    .alarm-item.disabled .time { text-decoration: line-through; }
 
     /* 빈 상태 */
     .empty-state {
@@ -305,6 +315,7 @@
   <div class="clock-section">
     <div id="main-date">...</div>
     <div id="main-clock">00:00:00</div>
+    <div id="next-alarm"></div>
   </div>
 
   <div class="main-card">
@@ -430,6 +441,8 @@
     let alarms = JSON.parse(localStorage.getItem('alarms') || '[]');
     let logs   = JSON.parse(localStorage.getItem('alarm_logs') || '[]');
     let audioCtx, isAlarmPlaying = false, currentTab = 'all', wakeLock = null;
+    const lastFired = {};   // id → 'date H:M' — 같은 분 중복 발동 방지 (런타임 전용, 저장 안 함)
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
     lucide.createIcons();
 
@@ -446,6 +459,7 @@
         now.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
       document.getElementById('main-date').textContent =
         now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+      updateNextAlarm(now);
       checkAlarms(now);
     };
 
@@ -461,20 +475,28 @@
 
     function checkAlarms(now) {
       if (isAlarmPlaying) return;
-      const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds(), d = now.getDay();
-      alarms.forEach(a => {
+      const h = now.getHours(), m = now.getMinutes(), d = now.getDay();
+      const minuteKey = `${now.toDateString()} ${h}:${m}`;   // 초 0을 놓쳐도(틱 지연·스로틀링) 그 분에 한 번은 발동
+      for (const a of alarms) {
+        if (a.enabled === false) continue;
         const [ah, am] = a.time.split(':').map(Number);
-        if (ah === h && am === m && s === 0 && a.days.includes(d)) triggerAlarm(a);
-      });
+        if (ah === h && am === m && a.days.includes(d) && lastFired[a.id] !== minuteKey) {
+          lastFired[a.id] = minuteKey;
+          triggerAlarm(a);
+          break;   // 같은 시각 다중 알람은 하나만 — 오버레이·소리 중첩 방지
+        }
+      }
     }
 
-    function triggerAlarm(alarm) {
+    function triggerAlarm(alarm, isTest = false) {
       isAlarmPlaying = true;
       document.getElementById('active-alarm-time').textContent = alarm.time;
       document.getElementById('active-alarm-name').textContent = alarm.name;
       document.getElementById('alarm-overlay').classList.add('show');
-      logs.unshift({ name: alarm.name, time: alarm.time, date: new Date().toLocaleString() });
-      localStorage.setItem('alarm_logs', JSON.stringify(logs));
+      if (!isTest) {
+        logs.unshift({ name: alarm.name, time: alarm.time, date: new Date().toLocaleString() });
+        localStorage.setItem('alarm_logs', JSON.stringify(logs));
+      }
       playAlarmSound();
       if (window.Notification && Notification.permission === 'granted') {
         const n = new Notification('VIVES Timer', { body: `${alarm.name} (${alarm.time})` });
@@ -510,7 +532,7 @@
 
     function testAlarm() {
       if (Notification.permission !== 'granted') Notification.requestPermission();
-      triggerAlarm({ name: '테스트 알람', time: 'TEST' });
+      triggerAlarm({ name: '테스트 알람', time: 'TEST' }, true);   // 테스트는 실행 기록에 남기지 않음
     }
 
     function openAddModal() {
@@ -547,7 +569,7 @@
         const idx = alarms.findIndex(a => a.id == id);
         alarms[idx] = { ...alarms[idx], name, time, days };
       } else {
-        alarms.push({ id: Date.now(), name, time, days });
+        alarms.push({ id: Date.now(), name, time, days, enabled: true });
       }
       localStorage.setItem('alarms', JSON.stringify(alarms));
       renderAlarms();
@@ -556,6 +578,14 @@
 
     function deleteAlarm(id) {
       alarms = alarms.filter(a => a.id !== id);
+      localStorage.setItem('alarms', JSON.stringify(alarms));
+      renderAlarms();
+    }
+
+    function toggleAlarm(id) {
+      const a = alarms.find(x => x.id === id);
+      if (!a) return;
+      a.enabled = a.enabled === false;   // 꺼져 있으면(false) 켜고, 그 외(true·미설정)는 끔
       localStorage.setItem('alarms', JSON.stringify(alarms));
       renderAlarms();
     }
@@ -571,17 +601,19 @@
       const dayNames = ['일','월','화','수','목','금','토'];
       filtered.sort((a,b) => a.time.localeCompare(b.time)).forEach(alarm => {
         const dayStr = alarm.days.length === 7 ? '매일' : alarm.days.map(d => dayNames[d]).join(', ');
+        const off = alarm.enabled === false;
         const div = document.createElement('div');
-        div.className = 'alarm-item';
+        div.className = 'alarm-item' + (off ? ' disabled' : '');
         div.innerHTML = `
           <div class="alarm-info">
-            <div class="name">${alarm.name}</div>
-            <div class="time">${alarm.time}</div>
-            <div class="days">${dayStr}</div>
+            <div class="name">${esc(alarm.name)}</div>
+            <div class="time">${esc(alarm.time)}</div>
+            <div class="days">${esc(dayStr)}</div>
           </div>
           <div class="item-actions">
-            <button class="action-btn edit" onclick="openEditModal(${alarm.id})"><i data-lucide="pencil" style="width:16px"></i></button>
-            <button class="action-btn delete" onclick="deleteAlarm(${alarm.id})"><i data-lucide="trash-2" style="width:16px"></i></button>
+            <button class="action-btn toggle ${off ? '' : 'on'}" data-action="toggle" data-id="${esc(alarm.id)}" title="${off ? '알람 켜기' : '알람 끄기'}"><i data-lucide="${off ? 'bell-off' : 'bell'}" style="width:16px"></i></button>
+            <button class="action-btn edit" data-action="edit" data-id="${esc(alarm.id)}" title="수정"><i data-lucide="pencil" style="width:16px"></i></button>
+            <button class="action-btn delete" data-action="delete" data-id="${esc(alarm.id)}" title="삭제"><i data-lucide="trash-2" style="width:16px"></i></button>
           </div>`;
         list.appendChild(div);
       });
@@ -595,14 +627,26 @@
     }
     function triggerImport() { document.getElementById('importInput').click(); }
     function importAlarms(e) {
+      const file = e.target.files[0];
+      if (!file) return;
       const reader = new FileReader();
       reader.onload = ev => {
-        const data = JSON.parse(ev.target.result);
-        alarms = data.alarms || []; logs = data.logs || [];
-        localStorage.setItem('alarms', JSON.stringify(alarms));
-        renderAlarms(); alert('불러오기 완료!');
+        try {
+          const data = JSON.parse(ev.target.result);
+          if (!data || !Array.isArray(data.alarms)) throw new Error('형식 오류');
+          alarms = data.alarms;
+          logs = Array.isArray(data.logs) ? data.logs : [];
+          localStorage.setItem('alarms', JSON.stringify(alarms));
+          localStorage.setItem('alarm_logs', JSON.stringify(logs));   // 복구한 기록도 저장 — 새로고침해도 유지
+          renderAlarms();
+          alert('불러오기 완료!');
+        } catch (err) {
+          alert('백업 파일을 읽을 수 없습니다. 올바른 JSON 백업 파일인지 확인해 주세요.');
+        } finally {
+          e.target.value = '';   // 같은 파일을 다시 선택해도 onchange가 발동하도록 초기화
+        }
       };
-      reader.readAsText(e.target.files[0]);
+      reader.readAsText(file);
     }
 
     function renderLogs() {
@@ -610,13 +654,62 @@
       if (!logs.length) { c.innerHTML = '<p style="text-align:center;color:var(--fg-muted);padding:1rem">기록이 없습니다.</p>'; return; }
       c.innerHTML = logs.slice(0, 30).map(l => `
         <div class="log-item">
-          <div class="log-name">${l.name} (${l.time})</div>
-          <div class="log-date">${l.date}</div>
+          <div class="log-name">${esc(l.name)} (${esc(l.time)})</div>
+          <div class="log-date">${esc(l.date)}</div>
         </div>`).join('');
     }
     function clearLogs() { logs = []; localStorage.setItem('alarm_logs', '[]'); renderLogs(); }
     function openModal(id)  { document.getElementById(id).classList.add('open'); if (id === 'logModal') renderLogs(); }
     function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    // 다음 알람: 활성 알람 중 지금으로부터 가장 가까운 발동 시점
+    function nextAlarmInfo(now) {
+      let best = null;
+      for (const a of alarms) {
+        if (a.enabled === false) continue;
+        const [ah, am] = a.time.split(':').map(Number);
+        if (Number.isNaN(ah) || !a.days || !a.days.length) continue;
+        for (const d of a.days) {
+          const when = new Date(now);
+          when.setHours(ah, am, 0, 0);
+          when.setDate(when.getDate() + ((d - now.getDay() + 7) % 7));
+          if (when <= now) when.setDate(when.getDate() + 7);   // 오늘 이미 지났으면 다음 주 같은 요일
+          if (!best || when < best.when) best = { alarm: a, when };
+        }
+      }
+      return best;
+    }
+
+    function fmtDelta(ms) {
+      const totalMin = Math.floor(ms / 60000);
+      if (totalMin <= 0) return '곧';
+      const days = Math.floor(totalMin / 1440);
+      const hours = Math.floor((totalMin % 1440) / 60);
+      const mins = totalMin % 60;
+      if (days > 0)  return `${days}일 ${hours}시간 후`;
+      if (hours > 0) return `${hours}시간 ${mins}분 후`;
+      return `${mins}분 후`;
+    }
+
+    function updateNextAlarm(now) {
+      const el = document.getElementById('next-alarm');
+      const next = nextAlarmInfo(now);
+      el.textContent = next
+        ? `다음 알람 · ${next.alarm.name} ${next.alarm.time} · ${fmtDelta(next.when - now)}`
+        : '예정된 알람이 없습니다';
+    }
+
+    // 알람 항목 버튼(켜기·끄기·수정·삭제)은 이벤트 위임으로 처리 — inline onclick 제거로 id 주입·XSS 경로 차단
+    document.getElementById('alarm-list').addEventListener('click', e => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const id = Number(btn.dataset.id);
+      if (!id) return;
+      const action = btn.dataset.action;
+      if (action === 'edit') openEditModal(id);
+      else if (action === 'delete') deleteAlarm(id);
+      else if (action === 'toggle') toggleAlarm(id);
+    });
 
     renderAlarms();
   </script>
