@@ -370,6 +370,8 @@ function renderModal() {
 
   const hasKo = !!(ep.titleKo || ep.descKo || ep.ytKo);
   const showLangToggle = hasKo || !!(ep.desc);
+  // Case 3: AI-translated desc only (no Korean video) → show AI indicator on toggle
+  const isAiDesc = !!ep.descKo && !ep.ytKo;
   $('modalTags').innerHTML = `
     <span class="mtag series-tag" style="background:${s.color}">${s.emoji} ${s.name}</span>
     <span class="mtag">시즌 ${ep.season} · ${ep.ep}화</span>
@@ -377,7 +379,7 @@ function renderModal() {
     ${ep.theme === 'TimesTables' ? '<span class="mtag">✖️ 구구단</span>' : ''}
     ${showLangToggle ? `
       <span class="lang-toggle">
-        <button id="langKo" class="${useKo ? 'active' : ''}">한글</button>
+        <button id="langKo" class="${useKo ? 'active' : ''}${isAiDesc ? ' ai-lang' : ''}"${isAiDesc ? ' title="AI 번역 설명"' : ''}>${isAiDesc ? '🤖 한글' : '한글'}</button>
         <button id="langEn" class="${useKo ? '' : 'active'}">EN</button>
       </span>` : ''}`;
   if (showLangToggle) {
