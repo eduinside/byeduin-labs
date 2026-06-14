@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>수당 계산기 — eduin VIVES</title>
+  <title>기타소득 세금 계산기 — eduin VIVES</title>
   <meta name="description" content="기타소득 수당의 세전 원금과 세후 금액을 자동으로 역산/계산합니다. 8.8% 세율 및 125,000원 과세최저한 완벽 적용.">
-  <meta property="og:title" content="수당 계산기 — 세전·세후 기타소득 세금 자동 판별 | eduin VIVES">
+  <meta property="og:title" content="기타소득 세금 계산기 — 세전·세후 기타소득 세금 자동 판별 | eduin VIVES">
   <meta property="og:description" content="기타소득 수당의 세전 원금과 세후 금액을 자동으로 역산/계산합니다. 8.8% 세율 및 125,000원 과세최저한 완벽 적용.">
   <meta property="og:image" content="https://eduin.info/og-images/allowance-calculator.png">
   <meta property="og:type" content="website">
@@ -16,21 +16,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
   
-  <!-- 공통 테마 및 스타일 적용 -->
+  <!-- 공통 테마·셸·스타일 -->
   <link rel="stylesheet" href="/common/hero-theme.css">
+  <link rel="stylesheet" href="/common/app-shell.css">
   <script src="/common/theme.js"></script>
   <script src="/common/init.js"></script>
+  <script src="/common/app-shell.js" defer></script>
   <script src="/common/seo-injector.js" defer></script>
   
   <style>
-    body {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 56px 1rem 6rem;
-      margin: 0;
-    }
+    body { margin: 0; }
 
     body::before {
       content: '';
@@ -44,12 +39,8 @@
       z-index: 0;
     }
 
-    /* 앱 전용 스타일 및 토큰 확장 */
+    /* 앱 전용 스타일 — 폭·정렬·패딩은 셸(.app-main, data-width=narrow)이 담당 */
     .calculator-layout {
-      width: 100%;
-      max-width: 480px;
-      position: relative;
-      z-index: 1;
       display: flex;
       flex-direction: column;
       gap: 24px;
@@ -303,37 +294,23 @@
     }
   </style>
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="수당 계산기 — 세전·세후 기타소득 세금 자동 판별 | eduin VIVES">
+  <meta name="twitter:title" content="기타소득 세금 계산기 — 세전·세후 기타소득 세금 자동 판별 | eduin VIVES">
   <meta name="twitter:description" content="기타소득 수당의 세전 원금과 세후 금액을 자동으로 역산/계산합니다. 8.8% 세율 및 125,000원 과세최저한 완벽 적용.">
   <meta name="twitter:image" content="https://eduin.info/og-images/allowance-calculator.png">
   <link rel="canonical" href="https://eduin.info/apps/allowance-calculator/">
   <meta property="og:url" content="https://eduin.info/apps/allowance-calculator/">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"수당 계산기","description":"기타소득 수당의 세전 원금과 세후 금액을 자동으로 역산/계산합니다. 8.8% 세율 및 125,000원 과세최저한 완벽 적용.","url":"https://eduin.info/apps/allowance-calculator/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"기타소득 세금 계산기","description":"기타소득 수당의 세전 원금과 세후 금액을 자동으로 역산/계산합니다. 8.8% 세율 및 125,000원 과세최저한 완벽 적용.","url":"https://eduin.info/apps/allowance-calculator/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
 </head>
-<body>
+<body data-shell="column" data-width="narrow">
 
-  <!-- 좌상단 홈가기 오버레이 -->
-  <div class="top-overlay-left">
-    <a href="/" class="overlay-btn">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-      </svg>
-      <span>홈</span>
-    </a>
-  </div>
-
-  <!-- 우상단 테마 및 공유 오버레이 -->
-  <div class="top-overlay">
-    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()">💻</button>
-    <button class="overlay-btn" onclick="shareCurrentPage()">공유</button>
-  </div>
+  <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입 -->
 
   <!-- 계산기 레이아웃 -->
-  <div class="page-wrap calculator-layout" style="position: relative; z-index: 1;">
+  <main class="app-main calculator-layout">
     
     <header class="app-header">
       <span class="app-badge">◆ 업무경감</span>
-      <h1 class="app-title">🧮 수당 계산기</h1>
+      <h1 class="app-title">🧮 기타소득 세금 계산기</h1>
       <p class="app-desc">세전 원금과 세후 실수령액 및 기타소득 세금(8.8%)을 한 번에 자동 판별하고 계산합니다.</p>
     </header>
 
@@ -402,7 +379,7 @@
       </div>
     </div>
 
-  </div>
+  </main>
 
   <!-- 공통 토스트 용 -->
   <div id="fd-toast"></div>
