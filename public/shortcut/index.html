@@ -229,7 +229,7 @@
     </header>
 
     <div class="dl-desktop-note" id="desktopNote" hidden>
-      💻 이 앱은 <b>모바일(안드로이드 크롬)</b>에서 가장 잘 작동해요. 데스크톱에서는 딥링크가 바로 열리지 않을 수 있어, 저장한 버튼의 <b>'홈 추가'</b>에서 <b>바탕화면 바로가기(.lnk)</b> 파일을 내려받아 쓸 수 있어요.
+      💻 이 앱은 <b>모바일(안드로이드 크롬)</b>에서 가장 잘 작동해요. 데스크톱에서는 딥링크가 바로 열리지 않을 수 있어, 저장한 버튼의 <b>'홈 추가'</b>에서 <b>바탕화면 바로가기(.url)</b> 파일을 내려받아 쓸 수 있어요.
     </div>
 
     <!-- 붙여넣기 영역 -->
@@ -294,7 +294,7 @@
       <div class="dl-sheet-actions">
         <button class="fd-btn fd-btn-primary" id="sheetMake" style="flex:1" onclick="makeHomeShortcut()" hidden>🏠 홈 바로가기 만들기</button>
         <a class="fd-btn fd-btn-ghost" id="sheetOpen" rel="noopener">앱 지금 열기</a>
-        <button class="fd-btn fd-btn-ghost" id="sheetDownload" onclick="downloadSheetShortcut()" hidden>💻 .lnk 내려받기</button>
+        <button class="fd-btn fd-btn-ghost" id="sheetDownload" onclick="downloadSheetShortcut()" hidden>💻 .url 내려받기</button>
         <button class="fd-btn fd-btn-ghost" onclick="closeSheet()">닫기</button>
       </div>
     </div>
@@ -521,16 +521,16 @@
   // ── 데스크톱 감지 ──
   const isDesktop = !/Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent);
 
-  // ── .lnk 바탕화면 바로가기 파일 (Windows Internet Shortcut 형식) ──
+  // ── .url 바탕화면 바로가기 파일 (Windows Internet Shortcut — 크롬이 .lnk 다운로드를 차단해 .url 사용) ──
   function downloadUrlShortcut(name, url) {
     const content = '[{000214A0-0000-0000-C000-000000000046}]\r\nProp3=19,11\r\n[InternetShortcut]\r\nIDList=\r\nURL=' + url + '\r\n';
-    const blob = new Blob([content], { type: 'application/octet-stream' });
+    const blob = new Blob([content], { type: 'application/internet-shortcut' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = (name || 'shortcut').replace(/[\\/:*?"<>|]/g, '_').slice(0, 40) + '.lnk';
+    a.download = (name || 'shortcut').replace(/[\\/:*?"<>|]/g, '_').slice(0, 40) + '.url';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    showToast('바탕화면 바로가기(.lnk)를 내려받았어요 ✓', true);
+    showToast('바탕화면 바로가기(.url)를 내려받았어요 ✓', true);
   }
 
   // ── 홈 추가 / 바로가기 시트 ──
@@ -543,7 +543,7 @@
     const body = $('sheetBody');
     if (isDesktop) {
       $('sheetTitle').textContent = `'${esc(item.name)}' — 데스크톱`;
-      body.innerHTML = '<p class="dl-sheet-lead">아래 <b>바탕화면 바로가기(.lnk)</b>를 내려받아 두면, 더블클릭으로 원본 링크가 열려요(웹은 브라우저, 앱 스킴은 해당 앱). <br><span style="color:var(--fg-muted)">※ 앱 스킴은 해당 앱·프로토콜 핸들러가 설치돼 있어야 동작해요.</span></p>';
+      body.innerHTML = '<p class="dl-sheet-lead">아래 <b>바탕화면 바로가기(.url)</b>를 내려받아 두면, 더블클릭으로 원본 링크가 열려요(웹은 브라우저, 앱 스킴은 해당 앱). <br><span style="color:var(--fg-muted)">※ 크롬은 .lnk 다운로드를 막아 .url로 제공해요. 앱 스킴은 해당 앱이 설치돼 있어야 동작해요.</span></p>';
       $('sheetMake').hidden = true; $('sheetDownload').hidden = false;
     } else {
       $('sheetTitle').textContent = `'${esc(item.name)}' 홈 바로가기`;
