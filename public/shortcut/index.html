@@ -555,14 +555,19 @@
     }
     $('sheetOverlay').classList.add('show');
   };
+  function openerPayload(item) {
+    const useFav = item.iconType === 'favicon' && item.faviconUrl;
+    const emoji = (item.iconType && item.iconType.startsWith('emoji:')) ? item.iconType.slice(6) : (item.emoji || '📲');
+    return { u: item.url, n: item.name, f: useFav ? item.faviconUrl : '', e: useFav ? '' : emoji };
+  }
   function buildOpenerURL(item) {
-    return location.origin + '/shortcut/#open=' + encodeURIComponent(JSON.stringify({ u: item.url, n: item.name, f: item.faviconUrl || '' }));
+    return location.origin + '/shortcut/#open=' + encodeURIComponent(JSON.stringify(openerPayload(item)));
   }
   window.makeHomeShortcut = function () {
     if (!sheetItem) return;
     closeSheet();
     history.replaceState(null, '', buildOpenerURL(sheetItem));   // 주소창을 오프너 URL로 (홈 화면에 추가용)
-    renderOpener({ u: sheetItem.url, n: sheetItem.name, f: sheetItem.faviconUrl || '' });
+    renderOpener(openerPayload(sheetItem));
     window.scrollTo(0, 0);
   };
   window.downloadSheetShortcut = function () { if (sheetItem) downloadUrlShortcut(sheetItem.name, sheetItem.rawUrl || sheetItem.url); };
@@ -577,16 +582,31 @@
     }
     return url;
   }
+  function emojiPng(emoji, size) {
+    try {
+      const c = document.createElement('canvas'); c.width = c.height = size;
+      const ctx = c.getContext('2d');
+      ctx.font = Math.floor(size * 0.78) + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(emoji, size / 2, size / 2 + size * 0.04);
+      return c.toDataURL('image/png');
+    } catch (e) { return ''; }
+  }
+  function setPageIcon(href) {   // 탭 파비콘 + 홈 아이콘을 선택한 로고로 교체 (이 페이지만)
+    if (!href) return;
+    document.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]').forEach(l => l.remove());
+    ['icon', 'apple-touch-icon'].forEach(rel => { const l = document.createElement('link'); l.rel = rel; l.href = href; document.head.appendChild(l); });
+  }
   function renderOpener(data) {
     document.title = (data.n || '바로가기') + ' 바로가기';
-    if (data.f && !document.querySelector('link[rel="apple-touch-icon"]')) { const l = document.createElement('link'); l.rel = 'apple-touch-icon'; l.href = data.f; document.head.appendChild(l); }
+    setPageIcon(data.f || (data.e ? emojiPng(data.e, 180) : ''));
     const root = document.querySelector('.dl-root'); if (root) root.style.display = 'none';
     const sheet = $('sheetOverlay'); if (sheet) sheet.classList.remove('show');
     $('opener').classList.add('show');
     $('openerName').textContent = data.n || '바로가기';
     $('openerIcon').innerHTML = data.f
-      ? `<img src="${esc(data.f)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none">📲</span>`
-      : '📲';
+      ? `<img src="${esc(data.f)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none">${esc(data.e || '📲')}</span>`
+      : esc(data.e || '📲');
     $('openerOpen').href = appTarget(data.u);
   }
   function tryOpener() {
