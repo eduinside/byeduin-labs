@@ -12,7 +12,7 @@
 
 ```mermaid
 flowchart TD
-    A[1. CLI 스캐폴딩 실행] -->|npm run scaffold| B[2. public/앱-ID/index.html 생성<br>및 apps.json 자동 등록]
+    A[1. CLI 스캐폴딩 실행] -->|npm run scaffold| B[2. public/apps/앱-ID/index.html 생성<br>및 apps.json 자동 등록]
     B --> C[3. 비즈니스 로직 및 UI 개발<br>디자인 토큰 & 공통 컴포넌트 활용]
     C --> D[4. 로컬 테스트 및 동작 검증<br>npm run dev]
     D --> E[5. 정적 SEO 태그 주입<br>npm run inject]
@@ -56,7 +56,7 @@ node scripts/scaffold-app.js --id my-app --name "내 앱" --base column --width 
 
 ## 3. Phase 2: 기본 템플릿 구조와 리소스 참조
 
-생성된 `public/[app-id]/index.html`은 아래와 같은 기본 뼈대를 갖습니다.
+생성된 `public/apps/[app-id]/index.html`은 아래와 같은 기본 뼈대를 갖습니다.
 
 ```html
 <!DOCTYPE html>
