@@ -558,24 +558,34 @@
   function buildOpenerURL(item) {
     return location.origin + '/shortcut/#open=' + encodeURIComponent(JSON.stringify({ u: item.url, n: item.name, f: item.faviconUrl || '' }));
   }
-  window.makeHomeShortcut = function () { if (sheetItem) location.href = buildOpenerURL(sheetItem); };
+  window.makeHomeShortcut = function () {
+    if (!sheetItem) return;
+    closeSheet();
+    history.replaceState(null, '', buildOpenerURL(sheetItem));   // 주소창을 오프너 URL로 (홈 화면에 추가용)
+    renderOpener({ u: sheetItem.url, n: sheetItem.name, f: sheetItem.faviconUrl || '' });
+    window.scrollTo(0, 0);
+  };
   window.downloadSheetShortcut = function () { if (sheetItem) downloadUrlShortcut(sheetItem.name, sheetItem.rawUrl || sheetItem.url); };
   window.closeSheet = function () { $('sheetOverlay').classList.remove('show'); };
 
   // ── 바로가기 오프너 (#open=) — 홈 아이콘에서 앱 열기 ──
-  function tryOpener() {
-    if (!location.hash.startsWith('#open=')) return false;
-    let data; try { data = JSON.parse(decodeURIComponent(location.hash.slice(6))); } catch { data = null; }
-    if (!data || !data.u) return false;
+  function renderOpener(data) {
     document.title = (data.n || '바로가기') + ' 바로가기';
-    if (data.f) { const l = document.createElement('link'); l.rel = 'apple-touch-icon'; l.href = data.f; document.head.appendChild(l); }
+    if (data.f && !document.querySelector('link[rel="apple-touch-icon"]')) { const l = document.createElement('link'); l.rel = 'apple-touch-icon'; l.href = data.f; document.head.appendChild(l); }
     const root = document.querySelector('.dl-root'); if (root) root.style.display = 'none';
+    const sheet = $('sheetOverlay'); if (sheet) sheet.classList.remove('show');
     $('opener').classList.add('show');
     $('openerName').textContent = data.n || '바로가기';
     $('openerIcon').innerHTML = data.f
       ? `<img src="${esc(data.f)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none">📲</span>`
       : '📲';
     $('openerOpen').href = data.u;   // '앱 열기' 탭(사용자 제스처)으로 안정적으로 실행 — 안드로이드는 자동 이동을 차단함
+  }
+  function tryOpener() {
+    if (!location.hash.startsWith('#open=')) return false;
+    let data; try { data = JSON.parse(decodeURIComponent(location.hash.slice(6))); } catch { data = null; }
+    if (!data || !data.u) return false;
+    renderOpener(data);
     return true;
   }
 
