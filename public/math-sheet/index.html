@@ -317,6 +317,7 @@
             <select id="aTypeSel" class="hero-input">
               <option value="x">한 자리 수</option>
               <option value="x0">몇십</option>
+              <option value="1y">십몇</option>
               <option value="xy" selected>두 자리 수</option>
               <option value="x00">몇백</option>
               <option value="xyz">세 자리 수</option>
@@ -329,6 +330,7 @@
             <select id="bTypeSel" class="hero-input">
               <option value="x" selected>한 자리 수</option>
               <option value="x0">몇십</option>
+              <option value="1y">십몇</option>
               <option value="xy">두 자리 수</option>
               <option value="x00">몇백</option>
               <option value="xyz">세 자리 수</option>
@@ -435,8 +437,8 @@
   const OPS = ['add', 'sub', 'mul', 'div'];
   const OP_SYM = { add: '+', sub: '−', mul: '×', div: '÷' };
   const OP_NAME = { add: '덧셈', sub: '뺄셈', mul: '곱셈', div: '나눗셈', mix: '사칙연산' };
-  const TYPE_LEN = { x: 1, x0: 2, xy: 2, x00: 3, xyz: 3, x000: 4, xyzq: 4 };
-  const TYPE_LABEL = { x: '한 자리', x0: '몇십', xy: '두 자리', x00: '몇백', xyz: '세 자리', x000: '몇천', xyzq: '네 자리' };
+  const TYPE_LEN = { x: 1, x0: 2, '1y': 2, xy: 2, x00: 3, xyz: 3, x000: 4, xyzq: 4 };
+  const TYPE_LABEL = { x: '한 자리', x0: '몇십', '1y': '십몇', xy: '두 자리', x00: '몇백', xyz: '세 자리', x000: '몇천', xyzq: '네 자리' };
 
   let currentProblems = [];
   let currentConfig = null;
@@ -461,6 +463,7 @@
     switch (t) {
       case 'x':    return rd();
       case 'x0':   return rd() * 10;
+      case '1y':   return 10 + rd();          // 십몇 (11–19)
       case 'xy':   return rd() * 10 + rd();
       case 'x00':  return rd() * 100;
       case 'xyz':  return rd() * 100 + rd() * 10 + rd();
@@ -855,7 +858,7 @@
 
   // 처음 로드: 연산·피연산자·연산자를 무작위로 (유효한 조합만 채택)
   function randomizeControls() {
-    const types = ['x', 'x0', 'xy', 'x00', 'xyz', 'x000', 'xyzq'];
+    const types = ['x', 'x0', '1y', 'xy', 'x00', 'xyz', 'x000', 'xyzq'];
     for (let i = 0; i < 50; i++) {
       const op = pick(['add', 'sub', 'mul', 'div']);
       const aType = pick(types), bType = pick(types);
