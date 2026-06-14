@@ -3,8 +3,8 @@
 PostToolUse 훅: public/ 앱 HTML 파일에 공통 패턴 누락 여부 검사
 - /common/hero-theme.css 링크
 - /common/theme.js 스크립트
-- .top-overlay-left (홈 버튼)
-- .top-overlay (테마/공유 버튼)
+- 셸 앱(/common/app-shell.js 링크): 크롬은 셸이 주입하므로 app-shell.js만 확인
+- 레거시 앱: top-overlay-left(홈) + top-overlay(테마/공유) 마크업 확인
 """
 import sys
 import json
@@ -37,12 +37,20 @@ try:
 except Exception:
     sys.exit(0)
 
-checks = [
-    ("/common/hero-theme.css", "hero-theme.css 링크"),
-    ("/common/theme.js",       "theme.js 스크립트"),
-    ("top-overlay-left",       "top-overlay-left (홈 버튼)"),
-    ('"top-overlay"',          "top-overlay (테마/공유)"),
-]
+if "/common/app-shell.js" in content:
+    # 셸 앱: 플로팅 크롬은 app-shell.js가 주입하므로 마크업 검사 생략
+    checks = [
+        ("/common/hero-theme.css", "hero-theme.css 링크"),
+        ("/common/theme.js",       "theme.js 스크립트"),
+        ("/common/app-shell.js",   "app-shell.js 스크립트"),
+    ]
+else:
+    checks = [
+        ("/common/hero-theme.css", "hero-theme.css 링크"),
+        ("/common/theme.js",       "theme.js 스크립트"),
+        ("top-overlay-left",       "top-overlay-left (홈 버튼)"),
+        ('"top-overlay"',          "top-overlay (테마/공유)"),
+    ]
 
 missing = [label for pattern, label in checks if pattern not in content]
 
