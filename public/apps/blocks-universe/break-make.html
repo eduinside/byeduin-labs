@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Break &amp; Make — 가르기 모으기 | eduin VIVES</title>
-<meta name="description" content="초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터.">
+<title>Break &amp; Make — eduin VIVES</title>
+<meta name="description" content="초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터. 도전 모드와 수별 도감으로 모든 조합을 모아 보세요.">
 <link href="https://fonts.googleapis.com/css2?family=Dongle:wght@300;400;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -359,7 +359,7 @@
 
   <meta property="og:type" content="website">
   <meta property="og:title" content="Break & Make — 가르기 모으기 | eduin VIVES">
-  <meta property="og:description" content="초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터.">
+  <meta property="og:description" content="초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터. 도전 모드와 수별 도감으로 모든 조합을 모아 보세요.">
   <meta property="og:image" content="https://eduin.info/og-default.png">
   <meta property="og:url" content="https://eduin.info/apps/blocks-universe/break-make.html">
   <meta name="twitter:card" content="summary_large_image">
@@ -367,7 +367,7 @@
   <meta name="twitter:description" content="초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터.">
   <meta name="twitter:image" content="https://eduin.info/og-default.png">
   <link rel="canonical" href="https://eduin.info/apps/blocks-universe/break-make.html">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Break & Make","description":"초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터.","url":"https://eduin.info/apps/blocks-universe/break-make.html","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Break & Make","description":"초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터. 도전 모드와 수별 도감으로 모든 조합을 모아 보세요.","url":"https://eduin.info/apps/blocks-universe/break-make.html","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   <script src="/common/seo-injector.js" defer></script>
 </head>
 <body data-shell="immersive">
@@ -409,14 +409,14 @@
 </header>
 
 <div class="tabs">
-  <button class="tab" onclick="showTab('concept')" id="tab-concept">💡 개념</button>
-  <button class="tab active" onclick="showTab('split')" id="tab-split">✂️ 가르기</button>
+  <button class="tab active" onclick="showTab('concept')" id="tab-concept">💡 개념</button>
+  <button class="tab" onclick="showTab('split')" id="tab-split">✂️ 가르기</button>
   <button class="tab" onclick="showTab('make')" id="tab-make">🤝 모으기</button>
   <button class="tab" onclick="showTab('record')" id="tab-record">⭐ 나의 기록</button>
 </div>
 
 <!-- ════════════ 개념 ════════════ -->
-<div id="concept" class="section">
+<div id="concept" class="section visible">
   <div class="card">
     <div id="cstage">
       <div class="cgroup" id="cgL"></div>
@@ -431,7 +431,7 @@
 </div>
 
 <!-- ════════════ 가르기 ════════════ -->
-<div id="split" class="section visible">
+<div id="split" class="section">
   <div class="controls">
     <button class="chip active" id="stage-single" onclick="setSplitStage('single')">한 자리수</button>
     <button class="chip" id="stage-ten" onclick="setSplitStage('ten')">10</button>
@@ -451,6 +451,9 @@
 <!-- ════════════ 모으기 ════════════ -->
 <div id="make" class="section">
   <div class="controls">
+    <button class="chip active" id="mstage-single" onclick="setMakeStage('single')">한 자리수</button>
+    <button class="chip" id="mstage-ten" onclick="setMakeStage('ten')">10</button>
+    <button class="chip" id="mstage-teen" onclick="setMakeStage('teen')">십몇</button>
     <button class="toggle" id="makeChallengeBtn" onclick="toggleMakeChallenge()" aria-pressed="false">🎯 도전 모드</button>
   </div>
   <div class="card">
@@ -826,23 +829,35 @@ function teenSideItems(o, sz, side){
 }
 
 /* ════════════════════ 모으기 상태 ════════════════════ */
-const M = { target:null, left:0, right:0, done:false, challenge:false, given:null, flash:null };
+const M = { stage:'single', target:null, left:0, right:0, leftB:false, rightB:false, done:false, challenge:false, given:null, flash:null };
+function boxVal(side){ return side==='L' ? (M.leftB?10:0)+M.left : (M.rightB?10:0)+M.right; }
+function makeTotal(){ return boxVal('L')+boxVal('R'); }
+function setMakeStage(stage){
+  M.stage=stage; M.target=null; M.done=false;
+  ['single','ten','teen'].forEach(s=> document.getElementById('mstage-'+s).classList.toggle('active', s===stage));
+  renderMakeGrid(); document.getElementById('makeBond').innerHTML=''; document.getElementById('makeEq').innerHTML='';
+}
 function renderMakeGrid(){
   const g=document.getElementById('makeGrid'); g.innerHTML='';
-  for(let n=2;n<=10;n++){
+  let nums=[];
+  if(M.stage==='single') for(let n=2;n<=9;n++) nums.push(n);
+  else if(M.stage==='ten') nums=[10];
+  else for(let n=11;n<=19;n++) nums.push(n);
+  nums.forEach(n=>{
     const b=el('button',{class:'numbtn'+(M.target===n?' sel':'')}, String(n));
     b.onclick=()=>selectMake(n); g.appendChild(b);
-  }
+  });
 }
 function selectMake(n){
-  M.target=n; M.left=0; M.right=0; M.done=false; M.flash=null;
-  if(M.challenge) M.given = 1 + Math.floor(Math.random()*(n-1));
+  M.target=n; M.left=0; M.right=0; M.leftB=false; M.rightB=false; M.done=false; M.flash=null;
+  if(M.challenge && !isTeen(n)) M.given = 1 + Math.floor(Math.random()*(n-1));
   document.querySelectorAll('#makeGrid .numbtn').forEach(b=> b.classList.toggle('sel', b.textContent===String(n)));
   document.getElementById('makeEq').innerHTML='';
   renderMake();
 }
 function makeTapBox(side){
   if(M.target==null || M.done) return;
+  if(isTeen(M.target)) return makeTapTeen(side);
   if(M.left+M.right >= M.target){
     // full: let an empty side pull one bead from the other side
     const cur=side==='L'?M.left:M.right, other=side==='L'?M.right:M.left;
@@ -854,8 +869,22 @@ function makeTapBox(side){
   M.flash=side; sfx('move'); renderMake();
   if(M.left+M.right===M.target) checkMakeDone();
 }
-function makeReturn(side){
+function makeTapTeen(side){
+  const bundled = side==='L' ? M.leftB : M.rightB;
+  if(bundled){ ssToast('이 상자는 벌써 10 묶음이에요! 🙂'); return; }
+  if(makeTotal() >= M.target){ ssToast('벌써 '+M.target+josaIGa(M.target)+' 됐어요! 🙂'); return; }
+  if(side==='L'){ M.left++; if(M.left===10){ M.left=0; M.leftB=true; sfx('star'); ssToast('10개를 모아 한 묶음! 📦'); } else sfx('move'); }
+  else { M.right++; if(M.right===10){ M.right=0; M.rightB=true; sfx('star'); ssToast('10개를 모아 한 묶음! 📦'); } else sfx('move'); }
+  M.flash=side; renderMake();
+  if(makeTotal()===M.target) checkMakeTeen();
+}
+function makeReturn(side, kind){
   if(M.target==null || M.done) return;
+  if(isTeen(M.target)){
+    if(kind==='bundle'){ if(side==='L'&&M.leftB) M.leftB=false; else if(side==='R'&&M.rightB) M.rightB=false; else return; }
+    else { if(side==='L'&&M.left>0) M.left--; else if(side==='R'&&M.right>0) M.right--; else return; }
+    M.flash='S'; sfx('move'); renderMake(); return;
+  }
   if(side==='L' && M.left>0) M.left--; else if(side==='R' && M.right>0) M.right--; else return;
   M.flash='S'; sfx('move'); renderMake();
 }
@@ -866,6 +895,14 @@ function checkMakeDone(){
     if(L===M.given){ finishMake(t,L,R); }
     else { sfx('wrong'); ssToast('왼쪽에 '+M.given+'개! 다시 해볼까요? 🤔'); showMakeEq('🤔 '+M.given+josaGwaWa(M.given)+' □를 모아 '+t, false, true); }
   } else finishMake(t,L,R);
+}
+function checkMakeTeen(){
+  const t=M.target, k=t-10;
+  const canonical = (M.leftB && M.left===0 && !M.rightB && M.right===k) || (M.rightB && M.right===0 && !M.leftB && M.left===k);
+  if(!canonical){ ssToast('한 상자에 10개를 모아 묶고, 나머지는 낱개로! 🙂'); return; }
+  M.done=true; sfx('done'); renderMake();
+  showMakeEq('10과 '+k+josaEulReul(k)+' 모으면 '+t, true);
+  recordCombo(t, '10+'+k);
 }
 function finishMake(t,L,R){
   M.done=true; sfx('done'); renderMake();
@@ -889,8 +926,19 @@ function toggleMakeChallenge(){
 function renderMake(){
   const host=document.getElementById('makeBond');
   if(M.target==null){ host.innerHTML='<p class="hint" style="text-align:center;">위에서 모을 수를 골라 주세요! 👆</p>'; return; }
-  const t=M.target, ck=keyFor(t), sz=beadSize(t);
-  const sum=M.left+M.right;
+  const t=M.target;
+  if(isTeen(t)){
+    const k=t-10, tsz=beadSize(k);
+    const tsingle=[];
+    if(M.done){ tsingle.push(tenframeNode(false,null)); for(let i=0;i<k;i++) tsingle.push(beadNode('orange',tsz,false,null)); }
+    buildBond(host,{ dir:'up', singleCls:'whole', singleItems:tsingle,
+      singlePlaceholder: M.done? null : '?',
+      leftItems:makeTeenSideItems('L',tsz), rightItems:makeTeenSideItems('R',tsz),
+      onPairTap:makeTapBox, flash:M.flash });
+    M.flash=null;
+    return;
+  }
+  const ck=keyFor(t), sz=beadSize(t);
   const single=[]; // result box
   if(M.done){ for(let i=0;i<t;i++) single.push(beadNode(ck,sz,false,null)); }
   const li=[]; for(let i=0;i<M.left;i++) li.push(beadNode(ck,sz,true,()=>makeReturn('L')));
@@ -905,6 +953,12 @@ function renderMake(){
   } else if(!M.done){
     const e=document.getElementById('makeEq'); if(!e.querySelector('.eq')) e.innerHTML='';
   }
+}
+function makeTeenSideItems(side, sz){
+  const items=[]; const b=side==='L'?M.leftB:M.rightB, loose=side==='L'?M.left:M.right;
+  if(b) items.push(tenframeNode(true, ()=>makeReturn(side,'bundle')));
+  for(let i=0;i<loose;i++) items.push(beadNode('orange',sz,true, ()=>makeReturn(side,'loose')));
+  return items;
 }
 
 /* ════════════════════ 나의 기록 ════════════════════ */
@@ -982,6 +1036,7 @@ renderSplitGrid();
 renderMakeGrid();
 renderSplit();
 renderMake();
+startConcept();
 </script>
 </body>
 </html>
