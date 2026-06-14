@@ -24,7 +24,7 @@ let dragSrc = null;
 const $ = (id) => document.getElementById(id);
 const thumb = (ep, q) => `https://img.youtube.com/vi/${ep.yt}/${q || 'hqdefault'}.jpg`;
 const seriesOf = (ep) => SERIES.find(s => s.id === ep.series);
-const dispTitle = (ep) => ep.titleKo || ep.title;
+const dispTitle = (ep) => ep.ytKo ? (ep.titleKo || ep.title) : ep.title;
 const playVid = (ep) => ep.ytKo || ep.yt;   // 재생용 영상 ID (한글판 우선)
 
 /* ── 영상 길이 (YouTube Data API, localStorage 캐시) ── */
@@ -219,7 +219,7 @@ function renderGrid() {
         <div class="ep-title">${dispTitle(ep)}</div>
         <div class="ep-sub">
           ${ep.level ? `<span class="ep-level" style="background:${LEVEL_COLORS[ep.level]}">Lv${ep.level}</span>` : ''}
-          ${ep.titleKo ? `<span class="ep-en">${ep.title}</span>` : ''}
+          ${ep.ytKo && ep.titleKo ? `<span class="ep-en">${ep.title}</span>` : ''}
         </div>
       </div>`;
     card.querySelector('.ep-fav').onclick = (e) => { e.stopPropagation(); toggleFav(ep.id); };
@@ -357,20 +357,22 @@ function closeModal() {
   history.replaceState(null, '', location.pathname);
 }
 
-function renderModal() {
+function renderModal(skipVideo = false) {
   const ep = modalEp;
   const s = seriesOf(ep);
   const useKo = modalLang === 'ko';
   const vid = useKo && ep.ytKo ? ep.ytKo : ep.yt;
 
-  $('modalVideoWrap').innerHTML =
-    `<iframe src="https://www.youtube-nocookie.com/embed/${vid}" title="${dispTitle(ep)}"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-      allowfullscreen loading="lazy"></iframe>`;
+  if (!skipVideo) {
+    $('modalVideoWrap').innerHTML =
+      `<iframe src="https://www.youtube-nocookie.com/embed/${vid}" title="${ep.title}"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen loading="lazy"></iframe>`;
+  }
 
   const hasKo = !!(ep.titleKo || ep.descKo || ep.ytKo);
   const showLangToggle = hasKo || !!(ep.desc);
-  // Case 3: AI-translated desc only (no Korean video) → show AI indicator on toggle
+  // Case 3: AI-translated only (no Korean video) → show AI indicator, skip video on toggle
   const isAiDesc = !!ep.descKo && !ep.ytKo;
   $('modalTags').innerHTML = `
     <span class="mtag series-tag" style="background:${s.color}">${s.emoji} ${s.name}</span>
@@ -379,15 +381,15 @@ function renderModal() {
     ${ep.theme === 'TimesTables' ? '<span class="mtag">✖️ 구구단</span>' : ''}
     ${showLangToggle ? `
       <span class="lang-toggle">
-        <button id="langKo" class="${useKo ? 'active' : ''}${isAiDesc ? ' ai-lang' : ''}"${isAiDesc ? ' title="AI 번역 설명"' : ''}>${isAiDesc ? '🤖 한글' : '한글'}</button>
+        <button id="langKo" class="${useKo ? 'active' : ''}${isAiDesc ? ' ai-lang' : ''}"${isAiDesc ? ' title="AI 번역 설명"' : ''}>${isAiDesc ? '🤖 한글번역' : '한글'}</button>
         <button id="langEn" class="${useKo ? '' : 'active'}">EN</button>
       </span>` : ''}`;
   if (showLangToggle) {
     $('langKo').onclick = async () => {
       modalLang = 'ko';
-      // 영문 설명만 있고 한글 번역이 없으면 AI 번역 요청
+      // 영문 설명만 있고 한글 번역이 없으면 AI 번역 요청 (사전 번역 없는 예외 경우)
       if (ep.desc && !ep.descKo) {
-        renderModal();
+        renderModal(isAiDesc);
         $('modalDesc').textContent = '✨ 번역 중…';
         try {
           const res = await fetch('/api/bu-translate', {
@@ -396,13 +398,13 @@ function renderModal() {
           });
           if (res.ok) {
             const data = await res.json();
-            if (data.ko) ep.descKo = data.ko; // 세션 캐시: 재오픈 시 재번역 불필요
+            if (data.ko) ep.descKo = data.ko;
           }
         } catch { /* 실패 시 영문 표시 */ }
       }
-      renderModal();
+      renderModal(isAiDesc);
     };
-    $('langEn').onclick = () => { modalLang = 'en'; renderModal(); };
+    $('langEn').onclick = () => { modalLang = 'en'; renderModal(isAiDesc); };
   }
 
   $('modalTitle').textContent = useKo && ep.titleKo ? ep.titleKo : ep.title;
