@@ -11,11 +11,14 @@ const LEVEL_COLORS = { 1: '#f31260', 2: '#f5a524', 3: '#d6b300', 4: '#17c964', 5
 const FAV_KEY = 'bu_favs';
 const PL_KEY = 'bu_playlist';
 const DUR_KEY = 'bu_dur';
+const RECENT_KEY = 'bu_recent';
+const RECENT_MAX = 50;
 
 let DATA = null;            // { meta, episodes }
 let byId = new Map();
-const state = { series: null, season: 0, level: 0, theme: false, favOnly: false, q: '', aiIds: null };
+const state = { series: null, season: 0, level: 0, theme: false, favOnly: false, recentOnly: false, q: '', aiIds: null };
 let favs = new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]'));
+let recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); // id 배열, 최신순
 let playlist = JSON.parse(localStorage.getItem(PL_KEY) || '{"title":"","ids":[]}');
 let modalEp = null;
 let modalLang = 'ko';
@@ -85,7 +88,7 @@ async function init() {
 
 function goToWelcome() {
   state.series = null; state.season = 0; state.level = 0;
-  state.theme = false; state.aiIds = null; state.q = ''; state.favOnly = false;
+  state.theme = false; state.aiIds = null; state.q = ''; state.favOnly = false; state.recentOnly = false;
   $('searchInput').value = '';
   renderSeriesTabs(); renderToolbar(); renderGrid();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -153,6 +156,7 @@ function renderToolbar() {
   if (state.level && !levels.includes(state.level)) state.level = 0;
 
   $('favToggle').classList.toggle('active', state.favOnly);
+  $('recentToggle').classList.toggle('active', state.recentOnly);
 }
 
 /* ── 필터링 + 그리드 ── */
@@ -166,6 +170,7 @@ function filtered() {
     if (!state.theme && state.season && ep.season !== state.season) return false;
     if (state.level && ep.level !== state.level) return false;
     if (state.favOnly && !favs.has(ep.id)) return false;
+    if (state.recentOnly && !recent.includes(ep.id)) return false;
     if (q && !state.aiIds && ![ep.title, ep.titleKo, ep.desc, ep.descKo].join('\n').toLowerCase().includes(q)) return false;
     return true;
   });
@@ -196,7 +201,8 @@ function renderGrid() {
     banner?.remove();
   }
 
-  const list = filtered();
+  let list = filtered();
+  if (state.recentOnly) list = list.slice().sort((a, b) => recent.indexOf(a.id) - recent.indexOf(b.id));
   const s = SERIES.find(x => x.id === state.series);
   $('resultInfo').textContent = `${s.ko} · ${list.length}편`;
   const grid = $('epGrid');
@@ -343,6 +349,9 @@ function openEpisode(id, updateHash = true) {
   if (!ep) return;
   modalEp = ep;
   modalLang = ep.ytKo ? 'ko' : 'en'; // 한글 영상 있을 때만 한글 기본값
+  // 최근시청 기록
+  recent = [id, ...recent.filter(x => x !== id)].slice(0, RECENT_MAX);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
   renderModal();
   $('epModal').hidden = false;
   document.body.style.overflow = 'hidden';
@@ -763,7 +772,8 @@ function handleHash() {
 
 /* ── 이벤트 바인딩 ── */
 function bind() {
-  $('favToggle').onclick = () => { state.favOnly = !state.favOnly; state.aiIds = null; renderToolbar(); renderGrid(); };
+  $('favToggle').onclick = () => { state.favOnly = !state.favOnly; state.recentOnly = false; state.aiIds = null; renderToolbar(); renderGrid(); };
+  $('recentToggle').onclick = () => { state.recentOnly = !state.recentOnly; state.favOnly = false; state.aiIds = null; renderToolbar(); renderGrid(); };
   let debounce = null;
   $('searchInput').oninput = (e) => {
     clearTimeout(debounce);
