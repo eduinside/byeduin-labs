@@ -1,0 +1,1744 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MD Editor — eduin</title>
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 1rem 5rem;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 1200px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── 툴바 ── */
+    .md-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    #filenameInput {
+      flex: 1;
+      min-width: 120px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+    }
+
+    .toolbar-btn {
+      padding: 0.45rem 0.875rem;
+      border-radius: 0.5rem;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--fg);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+      transition: border-color 0.15s, color 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3rem;
+      text-decoration: none;
+    }
+    .toolbar-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── 보기 전용 배지 / 복제 버튼 ── */
+    #view-badge {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(249,115,22,0.12);
+      border: 1px solid rgba(249,115,22,0.4);
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #f97316;
+      white-space: nowrap;
+    }
+    #btn-clone-content {
+      display: none;
+      padding: 0.45rem 0.875rem;
+      border-radius: 0.5rem;
+      border: 1px solid var(--primary);
+      background: transparent;
+      color: var(--primary);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+
+    body.is-view-only #view-badge { display: flex; }
+    body.is-view-only #btn-clone-content { display: inline-flex; align-items: center; }
+    body.is-view-only #editor { pointer-events: none; opacity: 0.7; background: var(--bg); }
+    body.is-view-only .view-only-hide { opacity: 0.3; pointer-events: none; }
+
+    /* ── 저장 드롭다운 ── */
+    #save-dropdown {
+      position: fixed;
+      display: none;
+      flex-direction: column;
+      gap: 3px;
+      padding: 6px;
+      border-radius: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      z-index: 9500;
+      min-width: 120px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    #save-dropdown.open { display: flex; }
+
+    /* ── 열기 드롭다운 ── */
+    #open-dropdown {
+      position: fixed;
+      display: none;
+      flex-direction: column;
+      gap: 3px;
+      padding: 6px;
+      border-radius: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      z-index: 9500;
+      min-width: 140px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    #open-dropdown.open { display: flex; }
+
+    /* ── 보기 드롭다운 ── */
+    #view-dropdown {
+      position: fixed;
+      display: none;
+      flex-direction: column;
+      gap: 3px;
+      padding: 6px;
+      border-radius: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      z-index: 9500;
+      min-width: 120px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    #view-dropdown.open { display: flex; }
+
+    /* ── 공유 드롭다운 ── */
+    #share-dropdown {
+      position: fixed;
+      display: none;
+      flex-direction: column;
+      gap: 3px;
+      padding: 6px;
+      border-radius: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      z-index: 9500;
+      min-width: 150px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    #share-dropdown.open { display: flex; }
+    .dropdown-opt, .share-opt {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 7px;
+      border: none;
+      background: none;
+      color: var(--fg);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
+    }
+    .dropdown-opt:hover, .share-opt:hover { background: var(--bg); }
+    .dropdown-opt:disabled {
+      color: var(--fg-muted);
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .beta-badge {
+      display: inline-block;
+      font-size: 0.6rem;
+      color: var(--fg-muted);
+      margin-left: 0.5rem;
+      padding: 0.2rem 0.3rem;
+      background: var(--border);
+      border-radius: 0.3rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    /* ── 모바일 탭 (hidden on desktop) ── */
+    .mobile-tabs {
+      display: none;
+      border-bottom: 1px solid var(--border);
+      background: var(--card-bg);
+      border-radius: 1rem 1rem 0 0;
+      overflow: hidden;
+    }
+    .mobile-tab-btn {
+      flex: 1;
+      padding: 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--fg-muted);
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      font-family: inherit;
+    }
+    .mobile-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* ── 스플릿 에디터 ── */
+    .md-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      overflow: hidden;
+      background: var(--card-bg);
+      height: calc(100vh - 240px);
+      min-height: 400px;
+    }
+
+    .md-pane {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .md-pane + .md-pane {
+      border-left: 1px solid var(--border);
+    }
+
+    .pane-label {
+      padding: 0.4rem 1rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--fg-muted);
+      border-bottom: 1px solid var(--border);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      background: var(--bg);
+      flex-shrink: 0;
+    }
+
+    #editor {
+      flex: 1;
+      resize: none;
+      border: none;
+      outline: none;
+      padding: 1.25rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+      line-height: 1.75;
+      background: var(--card-bg);
+      color: var(--fg);
+      tab-size: 2;
+      overflow-y: auto;
+    }
+    #editor::placeholder { color: var(--fg-muted); }
+    #editor.is-loading { opacity: 0.4; cursor: wait; }
+    #editor::-webkit-scrollbar { width: 8px; }
+    #editor::-webkit-scrollbar-track { background: transparent; }
+    #editor::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    #editor::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
+
+    #preview {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.25rem 1.5rem;
+      background: var(--card-bg);
+    }
+    #preview::-webkit-scrollbar { width: 8px; }
+    #preview::-webkit-scrollbar-track { background: transparent; }
+    #preview::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    #preview::-webkit-scrollbar-thumb:hover { background: var(--fg-muted); }
+
+    /* ── 마크다운 렌더링 스타일 ── */
+    .markdown-body { line-height: 1.75; color: var(--fg); }
+    .markdown-body h1, .markdown-body h2, .markdown-body h3,
+    .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+      font-weight: 700;
+      margin: 1.25em 0 0.5em;
+      line-height: 1.3;
+    }
+    .markdown-body h1 {
+      font-size: 1.8em;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0.3em;
+    }
+    .markdown-body h2 {
+      font-size: 1.4em;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.2em;
+    }
+    .markdown-body h3 { font-size: 1.15em; }
+    .markdown-body p { margin: 0.75em 0; }
+    .markdown-body a { color: var(--primary); text-decoration: underline; }
+    .markdown-body code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875em;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.15em 0.4em;
+    }
+    .markdown-body pre {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 1em 0;
+    }
+    .markdown-body pre code { background: none; border: none; padding: 0; }
+    .markdown-body blockquote {
+      border-left: 4px solid var(--primary);
+      margin: 0.75em 0;
+      padding: 0.25em 1em;
+      color: var(--fg-muted);
+    }
+    .markdown-body ul, .markdown-body ol { padding-left: 1.5em; margin: 0.75em 0; }
+    .markdown-body li { margin: 0.25em 0; }
+    .markdown-body table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+    .markdown-body th, .markdown-body td {
+      border: 1px solid var(--border);
+      padding: 0.4em 0.75em;
+      text-align: left;
+    }
+    .markdown-body th { background: var(--bg); font-weight: 700; }
+    .markdown-body hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+    .markdown-body img { max-width: 100%; border-radius: 0.5rem; }
+    .markdown-body input[type="checkbox"] { margin-right: 0.4em; }
+
+    /* ── 복제 모달 ── */
+    .md-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+    .md-modal-overlay.open { display: flex; }
+    .md-modal {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.75rem;
+      max-width: 380px;
+      width: 90%;
+    }
+    .md-modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .md-modal-desc { font-size: 0.85rem; color: var(--fg-muted); margin-bottom: 1.25rem; }
+    .share-import-choices { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+    .share-import-choice {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 0.875rem 1rem;
+      border-radius: 0.75rem;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      text-align: left;
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    .share-import-choice:hover { border-color: var(--primary); }
+    .share-import-choice-title { font-size: 0.9rem; font-weight: 700; color: var(--fg); }
+    .share-import-choice-desc { font-size: 0.75rem; color: var(--fg-muted); }
+    .md-modal-cancel {
+      width: 100%;
+      padding: 0.6rem;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      color: var(--fg-muted);
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .md-modal-cancel:hover { border-color: var(--fg-muted); }
+
+    /* ── 토스트 ── */
+    #md-toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      background: var(--fg);
+      color: var(--bg);
+      padding: 0.6rem 1.25rem;
+      border-radius: 2rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 9999;
+      white-space: nowrap;
+    }
+    #md-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── 로드 모달 리스트 ── */
+    #docsList li {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #docsList li:last-child { border-bottom: none; }
+    #docsList li > div {
+      flex: 1;
+      cursor: pointer;
+    }
+    #docsList li > div > div:first-child {
+      font-weight: 500;
+      margin-bottom: 0.2rem;
+    }
+    #docsList li > div > div:last-child {
+      font-size: 0.85rem;
+      color: var(--fg-muted);
+    }
+    #docsList li button {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.8rem;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      border-radius: 0.375rem;
+      color: var(--fg);
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    #docsList li button:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── 모달 열릴 때 상단 오버레이 어둡게 ── */
+    body.modal-open .top-overlay-left,
+    body.modal-open .top-overlay {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    /* ── 반응형 (모바일) ── */
+    @media (max-width: 767px) {
+      body { padding: 48px 0.5rem 4rem; }
+      .mobile-tabs { display: flex; }
+      .md-split {
+        grid-template-columns: 1fr;
+        height: calc(100vh - 260px);
+        border-radius: 0 0 1rem 1rem;
+      }
+      .md-pane { display: none; }
+      .md-pane.mobile-active { display: flex; }
+      .md-pane + .md-pane { border-left: none; }
+      .pane-label { display: none; }
+
+      /* 제목줄 + 버튼줄 분리 */
+      .md-toolbar {
+        gap: 0.35rem;
+        flex-wrap: wrap;
+      }
+      #filenameInput {
+        flex-basis: 100%;
+        min-width: 80px;
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+      }
+      .toolbar-btn, #btn-clone-content {
+        flex: 1 1 auto;
+        min-width: fit-content;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.7rem;
+      }
+      /* 모바일에서 텍스트 숨기고 아이콘만 표시 (필요시) */
+      .toolbar-btn span { display: inline; }
+    }
+  </style>
+  <meta property="og:image" content="https://eduin.info/og-images/md-editor.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="MD Editor — 만능 마크다운 편집기 | eduin VIVES">
+  <meta name="twitter:description" content="JSON, CSV, XML, HTML을 마크다운으로 자동 변환. 중첩 테이블 정리, 실시간 미리보기, 파일 공유까지.">
+  <meta name="twitter:image" content="https://eduin.info/og-images/md-editor.png">
+  <link rel="canonical" href="https://eduin.info/apps/md-editor/">
+  <meta property="og:url" content="https://eduin.info/apps/md-editor/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"MD Editor","description":"JSON, CSV, XML, HTML을 마크다운으로 자동 변환. 중첩 테이블 정리, 실시간 미리보기, 파일 공유까지.","url":"https://eduin.info/apps/md-editor/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script src="/common/seo-injector.js" defer></script>
+</head>
+<body>
+
+<!-- 좌상단: 홈 -->
+<div class="top-overlay-left">
+  <a href="/" class="overlay-btn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    <span>Home</span>
+  </a>
+</div>
+<!-- 우상단: 테마 전환 + 페이지 링크 공유 -->
+<div class="top-overlay">
+  <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+  <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+      <polyline points="16 6 12 2 8 6"/>
+      <line x1="12" x2="12" y1="2" y2="15"/>
+    </svg>
+    <span>공유</span>
+  </button>
+</div>
+
+<div class="wrap">
+  <div class="app-header">
+    <div class="app-badge">◆ 생활편의</div>
+    <h1 class="app-title">MD <span>Editor</span></h1>
+    <p class="app-desc">간편한 마크다운 문서 편집기 <button onclick="openHelpModal()" style="margin-left:0.5rem;padding:2px 8px;font-size:0.72rem;font-weight:700;border:1px solid var(--border);border-radius:10px;background:var(--card-bg);color:var(--fg-muted);cursor:pointer;font-family:inherit;">마크다운 더 알아보기</button></p>
+  </div>
+
+  <!-- 툴바 -->
+  <div class="md-toolbar">
+    <input type="text" id="filenameInput" class="hero-input" value="untitled.md" placeholder="파일명.md">
+    <button class="toolbar-btn view-only-hide" onclick="newDocument()">📄 새 문서</button>
+    <button class="toolbar-btn view-only-hide" onclick="toggleOpenMenu(event)">📂 열기 ▾</button>
+    <input type="file" id="fileInput" accept=".md,.txt,.markdown" style="display:none" onchange="handleFileLoad(this)">
+    <input type="file" id="htmlFileInput" accept=".html,.htm" style="display:none" onchange="handleHtmlLoad(this)">
+    <input type="file" id="multiFileInput" accept=".json,.csv,.xml,.html,.htm" style="display:none" onchange="handleMultiLoad(this)">
+    <input type="file" id="docFileInput" accept=".hwp,.hwpx,.hwpml,.pdf,.docx,.pptx,.xlsx,.doc,.xls" style="display:none" onchange="handleDocLoad(this)">
+    <button class="toolbar-btn view-only-hide" id="saveBtn" onclick="toggleSaveMenu(event)">💾 저장 ▾</button>
+    <button class="toolbar-btn view-only-hide" id="viewBtn" onclick="toggleViewMenu(event)">👁 보기 ▾</button>
+    <div id="view-badge">👁 보기 전용</div>
+    <button id="btn-clone-content" onclick="cloneContent()">📋 복제</button>
+    <button class="toolbar-btn view-only-hide" onclick="toggleShareMenu(event)">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+      </svg>
+      공유 ▾
+    </button>
+  </div>
+
+  <!-- 모바일 탭 -->
+  <div class="mobile-tabs">
+    <button class="mobile-tab-btn active" id="mTabEdit" onclick="switchMobileTab('edit')">편집</button>
+    <button class="mobile-tab-btn" id="mTabPreview" onclick="switchMobileTab('preview')">미리보기</button>
+  </div>
+
+  <!-- 스플릿 에디터 -->
+  <div class="md-split">
+    <div class="md-pane mobile-active" id="paneEdit">
+      <div class="pane-label">편집</div>
+      <textarea id="editor" placeholder="마크다운을 입력하세요...&#10;&#10;# 제목&#10;## 소제목&#10;**굵게** / *기울기* / `코드`" oninput="onEditorInput(this)"></textarea>
+    </div>
+    <div class="md-pane" id="panePreview">
+      <div class="pane-label">미리보기</div>
+      <div id="preview" class="markdown-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 저장 드롭다운 -->
+<div id="save-dropdown">
+  <button class="dropdown-opt" id="saveMdOpt" onclick="downloadMd()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 5 7 3 12 3"/>
+    </svg>
+    Markdown 저장
+  </button>
+  <button class="dropdown-opt" id="saveHtmlOpt" onclick="downloadHtml()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 5 7 3 12 3"/>
+    </svg>
+    HTML 저장
+  </button>
+  <button class="dropdown-opt" id="saveLsOpt" onclick="saveToLocalStorage()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+    </svg>
+    브라우저에 저장
+  </button>
+</div>
+
+<!-- 열기 드롭다운 -->
+<div id="open-dropdown">
+  <button class="dropdown-opt" onclick="openFileInput()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+    </svg>
+    .MD 열기
+  </button>
+  <!-- HTML 열기는 안정화될 때까지 숨김 처리 -->
+  <!-- <button class="dropdown-opt" onclick="openHtmlFileInput()" style="display: none;">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+    </svg>
+    .HTML 열기
+    <span class="beta-badge">실험 중</span>
+  </button> -->
+  <button class="dropdown-opt" onclick="closeAllMenus(); openDocFileInput()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
+    </svg>
+    로컬 문서 열기
+    <span class="beta-badge">HWP · PDF · DOCX · PPTX · XLSX</span>
+  </button>
+  <button class="dropdown-opt" onclick="openMultiFileInput()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
+    </svg>
+    다른 파일 열기
+    <span class="beta-badge">JSON · CSV · XML · HTML</span>
+  </button>
+  <button class="dropdown-opt" id="openLsOpt" onclick="openLoadModal()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+    </svg>
+    브라우저에 저장된 파일 열기
+  </button>
+</div>
+
+<!-- 보기 드롭다운 -->
+<div id="view-dropdown">
+  <button class="dropdown-opt" onclick="setViewMode('edit-only')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="14 2 14 8 20 8"/><path d="M17 21H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
+    </svg>
+    편집만
+  </button>
+  <button class="dropdown-opt" onclick="setViewMode('preview-only')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+    </svg>
+    미리보기만
+  </button>
+  <button class="dropdown-opt" onclick="setViewMode('both')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/>
+    </svg>
+    둘 다
+  </button>
+</div>
+
+<!-- 공유 드롭다운 -->
+<div id="share-dropdown">
+  <button class="share-opt" onclick="doShare('view')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+    </svg>
+    보기 전용
+  </button>
+  <button class="share-opt" onclick="doShare('clone')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+    </svg>
+    복제 허용
+  </button>
+</div>
+
+<!-- 마크다운 도움말 모달 -->
+<div class="md-modal-overlay" id="help-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="md-modal" style="max-width:480px;max-height:80vh;overflow-y:auto;">
+    <div class="md-modal-title">📖 마크다운 더 알아보기</div>
+    <div style="font-size:0.82rem;line-height:1.8;color:var(--fg);">
+      <table style="width:100%;border-collapse:collapse;margin-bottom:0.75rem;">
+        <thead><tr style="border-bottom:1px solid var(--border);">
+          <th style="padding:4px 8px;text-align:left;color:var(--fg-muted);font-size:0.72rem;font-weight:700;">입력</th>
+          <th style="padding:4px 8px;text-align:left;color:var(--fg-muted);font-size:0.72rem;font-weight:700;">결과</th>
+        </tr></thead>
+        <tbody style="font-family:'JetBrains Mono',monospace;">
+          <tr><td style="padding:3px 8px;"># 제목 1</td><td style="padding:3px 8px;font-family:inherit;"><strong style="font-size:1.1em;">제목 1</strong></td></tr>
+          <tr><td style="padding:3px 8px;">## 제목 2</td><td style="padding:3px 8px;font-family:inherit;"><strong>제목 2</strong></td></tr>
+          <tr><td style="padding:3px 8px;">**굵게**</td><td style="padding:3px 8px;font-family:inherit;"><strong>굵게</strong></td></tr>
+          <tr><td style="padding:3px 8px;">*기울기*</td><td style="padding:3px 8px;font-family:inherit;"><em>기울기</em></td></tr>
+          <tr><td style="padding:3px 8px;">`인라인 코드`</td><td style="padding:3px 8px;font-family:inherit;"><code style="background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:0 4px;">코드</code></td></tr>
+          <tr><td style="padding:3px 8px;">```<br>코드 블록<br>```</td><td style="padding:3px 8px;font-family:inherit;">코드 블록</td></tr>
+          <tr><td style="padding:3px 8px;">- 항목<br>- 항목</td><td style="padding:3px 8px;font-family:inherit;">• 목록</td></tr>
+          <tr><td style="padding:3px 8px;">1. 항목</td><td style="padding:3px 8px;font-family:inherit;">1. 순서 목록</td></tr>
+          <tr><td style="padding:3px 8px;">> 인용구</td><td style="padding:3px 8px;font-family:inherit;border-left:3px solid var(--primary);padding-left:8px;">인용구</td></tr>
+          <tr><td style="padding:3px 8px;">[링크](https://...)</td><td style="padding:3px 8px;font-family:inherit;"><a style="color:var(--primary);">링크</a></td></tr>
+          <tr><td style="padding:3px 8px;">![이미지](url)</td><td style="padding:3px 8px;font-family:inherit;">이미지 삽입</td></tr>
+          <tr><td style="padding:3px 8px;">---</td><td style="padding:3px 8px;font-family:inherit;">수평선</td></tr>
+          <tr><td style="padding:3px 8px;">| 열1 | 열2 |<br>|---|---|<br>| 값1 | 값2 |</td><td style="padding:3px 8px;font-family:inherit;">표</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.72rem;color:var(--fg-muted);margin:0;">빈 줄로 단락을 구분합니다. 줄 끝에 공백 2개를 추가하면 줄바꿈이 됩니다.</p>
+    </div>
+    <button class="md-modal-cancel" style="margin-top:1rem;" onclick="document.getElementById('help-modal').classList.remove('open')">닫기</button>
+  </div>
+</div>
+
+<!-- 복제 허용 모달 -->
+<div class="md-modal-overlay" id="clone-modal">
+  <div class="md-modal">
+    <div class="md-modal-title">공유된 마크다운</div>
+    <div class="md-modal-desc" id="clone-modal-desc">파일을 어떻게 열까요?</div>
+    <div class="share-import-choices">
+      <button class="share-import-choice" onclick="enterViewOnly()">
+        <span class="share-import-choice-title">👁 보기 전용</span>
+        <span class="share-import-choice-desc">편집 없이 미리보기만 합니다.</span>
+      </button>
+      <button class="share-import-choice" onclick="cloneContent()">
+        <span class="share-import-choice-title">📋 내 편집기로 가져오기</span>
+        <span class="share-import-choice-desc">편집 가능하게 불러옵니다.</span>
+      </button>
+    </div>
+    <button class="md-modal-cancel" onclick="closeCloneModal()">취소</button>
+  </div>
+</div>
+
+<!-- 저장된 파일 로드 모달 -->
+<div id="loadModalBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000;" onclick="if(event.target === this) closeLoadModal()"></div>
+<div id="loadModal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:var(--bg); border:1px solid var(--border); border-radius:1rem; padding:2rem; z-index:1001; width:90%; max-width:400px; max-height:80vh; overflow-y:auto;">
+  <div style="font-weight:600; margin-bottom:1rem; font-size:1.1rem;">저장된 파일 목록</div>
+  <ul id="docsList" style="list-style:none; padding:0; margin:0;"></ul>
+  <button onclick="closeLoadModal()" style="width:100%; margin-top:1rem; padding:0.5rem; border:1px solid var(--border); background:var(--card-bg); border-radius:0.5rem; cursor:pointer; font-family:inherit; font-weight:600; color:var(--fg);">닫기</button>
+</div>
+
+<!-- 토스트 -->
+<div id="md-toast"></div>
+
+<script>
+  marked.setOptions({ breaks: true, gfm: true });
+
+  let mdContent = '';
+  let currentFilename = 'untitled.md';
+  let isViewOnly = false;
+  let viewMode = 'both';  // 'edit-only', 'preview-only', 'both'
+  let _shareMenuOpen = false;
+  let _saveMenuOpen = false;
+  let _viewMenuOpen = false;
+  let _openMenuOpen = false;
+  let hwpConversionTimer = null;
+
+  // ── 모바일 탭 ──
+  function switchMobileTab(tab) {
+    document.getElementById('paneEdit').classList.toggle('mobile-active', tab === 'edit');
+    document.getElementById('panePreview').classList.toggle('mobile-active', tab === 'preview');
+    document.getElementById('mTabEdit').classList.toggle('active', tab === 'edit');
+    document.getElementById('mTabPreview').classList.toggle('active', tab === 'preview');
+  }
+
+  // ── 새 문서 ──
+  function newDocument() {
+    if (mdContent && !confirm('현재 문서를 버릴까요? (저장하지 않은 내용이 사라집니다)')) return;
+    mdContent = '';
+    currentFilename = 'untitled.md';
+    document.getElementById('filenameInput').value = currentFilename;
+    document.getElementById('editor').value = '';
+    renderPreview();
+    updateSaveButtonState();
+    showToast('새 문서를 만들었습니다');
+  }
+
+  // ── 에디터 입력 ──
+  function onEditorInput(el) {
+    if (isViewOnly) return;
+    mdContent = el.value;
+    updateSaveButtonState();
+    renderPreview();
+  }
+
+  // ── 저장 버튼 상태 업데이트 ──
+  function updateSaveButtonState() {
+    // 저장 버튼은 항상 활성화 (클릭 시 내용 확인)
+    const saveMdOpt = document.getElementById('saveMdOpt');
+    const saveHtmlOpt = document.getElementById('saveHtmlOpt');
+    const saveLsOpt = document.getElementById('saveLsOpt');
+    saveMdOpt.disabled = false;
+    saveHtmlOpt.disabled = false;
+    saveLsOpt.disabled = false;
+  }
+
+  function renderPreview() {
+    document.getElementById('preview').innerHTML = marked.parse(mdContent);
+  }
+
+  // ── 파일 열기 ──
+  function handleFileLoad(input) {
+    const file = input.files[0];
+    if (!file) return;
+    currentFilename = file.name;
+    document.getElementById('filenameInput').value = file.name;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      mdContent = e.target.result;
+      document.getElementById('editor').value = mdContent;
+      renderPreview();
+      showToast('✓ 파일이 로드되었습니다.');
+    };
+    reader.onerror = () => {
+      showToast('파일을 로드할 수 없습니다.');
+      input.value = '';
+    };
+    reader.readAsText(file, 'UTF-8');
+    input.value = '';
+  }
+
+  // ── HWP 파일 열기 ──
+  // ── HTML 파일 열기 ──
+  function openHtmlFileInput() {
+    _closeOpenMenu();
+    document.getElementById('htmlFileInput').click();
+  }
+
+  function handleHtmlLoad(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    // 파일 크기 검증 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('파일 크기가 5MB를 초과합니다.');
+      input.value = '';
+      return;
+    }
+
+    // 3초 후 변환 완료 안 되면 토스트 표시
+    if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+    hwpConversionTimer = setTimeout(() => {
+      showToast('파일 변환이 되지 않았습니다.');
+    }, 3000);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const htmlContent = e.target.result;
+      convertHtmlToMd(htmlContent, file.name);
+    };
+    reader.readAsText(file, 'UTF-8');
+    input.value = '';
+  }
+
+  async function convertHtmlToMd(htmlContent, filename) {
+    try {
+      // 3초 타임아웃 설정
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 3000)
+      );
+
+      const response = await Promise.race([
+        fetch('/api/html-to-md', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ htmlContent, filename })
+        }),
+        timeoutPromise
+      ]);
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        showToast('파일 변환이 되지 않았습니다.');
+        if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+        return;
+      }
+
+      // 성공: mdContent 업데이트
+      mdContent = result.markdown;
+      currentFilename = filename.replace(/\.(html|htm)$/i, '.md');
+      document.getElementById('filenameInput').value = currentFilename;
+      document.getElementById('editor').value = mdContent;
+      renderPreview();
+
+      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+      showToast('✓ HTML 파일이 마크다운으로 변환되었습니다.');
+    } catch (err) {
+      showToast('파일 변환이 되지 않았습니다.');
+      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+    }
+  }
+
+  // ── 모든 드롭다운 닫기 헬퍼 ──
+  function closeAllMenus() {
+    _closeSaveMenu();
+    _closeOpenMenu();
+    _closeViewMenu();
+    _closeShareMenu();
+  }
+
+  // ── 로컬 문서 열기 (Corepin API) ──
+  function openDocFileInput() {
+    document.getElementById('docFileInput').value = '';
+    document.getElementById('docFileInput').click();
+  }
+
+  function _docParseErrorMsg(data, status) {
+    const apiMsg = data?.error || data?.message || data?.detail || data?.msg || '';
+    if (apiMsg) return apiMsg;
+    if (status === 401) return 'API 키 인증 실패 — 관리자에게 문의해주세요.';
+    if (status === 402) return 'API 크레딧 부족 — Corepin 잔액을 확인해주세요.';
+    if (status === 413) return '파일이 너무 큽니다 (50MB 초과).';
+    if (status === 415) return '지원하지 않는 파일 형식입니다.';
+    if (status === 422) return '파일을 처리할 수 없습니다 (손상되었거나 암호화된 파일).';
+    if (status === 429) return '요청 한도 초과 — 잠시 후 다시 시도해주세요.';
+    if (status >= 500) return `Corepin 서버 오류 (${status}) — 잠시 후 다시 시도해주세요.`;
+    return `변환 실패 (HTTP ${status})`;
+  }
+
+  async function handleDocLoad(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    if (file.size > 50 * 1024 * 1024) {
+      showToast(`❌ 파일 크기 초과 — ${sizeMB}MB (최대 50MB)`, 5000);
+      input.value = '';
+      return;
+    }
+
+    showToast(`⏳ 변환 중… ${file.name} (${sizeMB}MB) — 최대 20초 소요됩니다`, 0);
+    const editor = document.getElementById('editor');
+    editor.disabled = true;
+    editor.classList.add('is-loading');
+
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('output_format', 'markdown');
+
+      const res = await fetch('/api/doc-parse', { method: 'POST', body: form });
+
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`서버 응답 파싱 실패 (HTTP ${res.status})`);
+      }
+
+      if (!res.ok) {
+        throw new Error(_docParseErrorMsg(data, res.status));
+      }
+      if (!data.markdown && data.markdown !== '') {
+        throw new Error('변환 결과가 없습니다 — 파일 내용을 확인해주세요.');
+      }
+
+      mdContent = data.markdown;
+      currentFilename = file.name.replace(/\.[^.]+$/, '') + '.md';
+      document.getElementById('filenameInput').value = currentFilename;
+      editor.value = mdContent;
+      renderPreview();
+      hideToast();
+      const pages = data.meta?.page_count ? ` (${data.meta.page_count}페이지)` : '';
+      showToast(`✅ 변환 완료${pages}`);
+    } catch (e) {
+      hideToast();
+      showToast(`❌ ${e.message}`, 8000);
+    } finally {
+      editor.disabled = false;
+      editor.classList.remove('is-loading');
+      input.value = '';
+    }
+  }
+
+  // ── 저장 드롭다운 ──
+  function toggleSaveMenu(e) {
+    if (!mdContent.trim()) { showToast('저장할 내용이 없습니다'); return; }
+    e.stopPropagation();
+    closeAllMenus();  // 다른 메뉴 먼저 닫기
+    const dd = document.getElementById('save-dropdown');
+    const rect = e.currentTarget.getBoundingClientRect();
+    dd.style.top = (rect.bottom + 6) + 'px';
+    dd.style.right = (window.innerWidth - rect.right) + 'px';
+    _saveMenuOpen = !_saveMenuOpen;
+    dd.classList.toggle('open', _saveMenuOpen);
+    if (_saveMenuOpen) {
+      setTimeout(() => document.addEventListener('click', _closeSaveMenu, { once: true }), 0);
+    }
+  }
+
+  function _closeSaveMenu() {
+    document.getElementById('save-dropdown').classList.remove('open');
+    _saveMenuOpen = false;
+  }
+
+  // ── 열기 드롭다운 ──
+  function toggleOpenMenu(e) {
+    e.stopPropagation();
+    closeAllMenus();  // 다른 메뉴 먼저 닫기
+    const dd = document.getElementById('open-dropdown');
+    const rect = e.currentTarget.getBoundingClientRect();
+    dd.style.top = (rect.bottom + 6) + 'px';
+    dd.style.left = rect.left + 'px';
+    _openMenuOpen = !_openMenuOpen;
+    dd.classList.toggle('open', _openMenuOpen);
+    if (_openMenuOpen) {
+      setTimeout(() => document.addEventListener('click', _closeOpenMenu, { once: true }), 0);
+    }
+  }
+
+  function _closeOpenMenu() {
+    document.getElementById('open-dropdown').classList.remove('open');
+    _openMenuOpen = false;
+  }
+
+  function openFileInput() {
+    _closeOpenMenu();
+    document.getElementById('fileInput').click();
+  }
+
+  function openMultiFileInput() {
+    _closeOpenMenu();
+    document.getElementById('multiFileInput').click();
+  }
+
+  function handleMultiLoad(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    const reader = new FileReader();
+    reader.onerror = () => { showToast('파일을 읽을 수 없습니다.'); input.value = ''; };
+    reader.onload = (e) => {
+      const text = e.target.result;
+      let md = '', toast = '';
+      if (ext === 'json') {
+        md = convertJsonToMd(text, file.name);
+        toast = '✓ JSON → 중첩 테이블로 변환했습니다.';
+      } else if (ext === 'csv') {
+        md = convertCsvToMd(text, file.name);
+        toast = '✓ CSV → 마크다운 테이블로 변환했습니다.';
+      } else if (ext === 'xml') {
+        md = convertXmlToMd(text, file.name);
+        toast = md && md.includes('<table')
+          ? '✓ XML → 테이블로 변환했습니다.'
+          : '✓ XML 불러왔습니다. (파싱 오류로 코드블록 표시)';
+      } else if (ext === 'html' || ext === 'htm') {
+        md = convertHtmlDomToMd(text, file.name);
+        toast = '✓ HTML → 마크다운으로 변환했습니다.';
+      }
+      if (md === null) { input.value = ''; return; }
+      mdContent = md;
+      currentFilename = file.name.replace(/\.[^.]+$/, '.md');
+      document.getElementById('filenameInput').value = currentFilename;
+      document.getElementById('editor').value = mdContent;
+      renderPreview();
+      showToast(toast);
+    };
+    reader.readAsText(file, 'UTF-8');
+    input.value = '';
+  }
+
+  // ── JSON → HTML 중첩 테이블 ──
+  function convertJsonToMd(text, filename) {
+    let data;
+    try { data = JSON.parse(text); } catch {
+      showToast('JSON 파싱 오류: 올바른 JSON 파일인지 확인하세요.');
+      return null;
+    }
+    const html = jsonToHtmlTable(data);
+    return `## ${filename}\n\n${html}`;
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function jsonToHtmlTable(data) {
+    // 원시값
+    if (data === null || typeof data !== 'object') return esc(data);
+
+    // 배열 of 객체 → 열이 있는 표
+    if (Array.isArray(data) && data.length > 0 && data.some(r => r && typeof r === 'object' && !Array.isArray(r))) {
+      const keys = [...new Set(data.flatMap(r => (r && typeof r === 'object' && !Array.isArray(r)) ? Object.keys(r) : []))];
+      const thead = '<thead><tr>' + keys.map(k => `<th style="padding:4px 8px;border:1px solid var(--border);background:var(--card-bg);white-space:nowrap">${esc(k)}</th>`).join('') + '</tr></thead>';
+      const tbody = '<tbody>' + data.map(row => {
+        if (!row || typeof row !== 'object' || Array.isArray(row)) {
+          return `<tr><td colspan="${keys.length}" style="padding:4px 8px;border:1px solid var(--border)">${jsonToHtmlTable(row)}</td></tr>`;
+        }
+        return '<tr>' + keys.map(k => {
+          const v = row[k];
+          const inner = (v !== null && typeof v === 'object') ? jsonToHtmlTable(v) : esc(v ?? '');
+          return `<td style="padding:4px 8px;border:1px solid var(--border);vertical-align:top">${inner}</td>`;
+        }).join('') + '</tr>';
+      }).join('') + '</tbody>';
+      return `<table style="border-collapse:collapse;font-size:0.85em">${thead}${tbody}</table>`;
+    }
+
+    // 배열 of 원시값 → 단일 열 표
+    if (Array.isArray(data)) {
+      const rows = data.map(v => `<tr><td style="padding:4px 8px;border:1px solid var(--border);vertical-align:top">${jsonToHtmlTable(v)}</td></tr>`).join('');
+      return `<table style="border-collapse:collapse;font-size:0.85em"><tbody>${rows}</tbody></table>`;
+    }
+
+    // 일반 객체 → 키/값 표
+    const rows = Object.entries(data).map(([k, v]) => {
+      const inner = (v !== null && typeof v === 'object') ? jsonToHtmlTable(v) : esc(v ?? '');
+      return `<tr><td style="padding:4px 8px;border:1px solid var(--border);background:var(--card-bg);white-space:nowrap;vertical-align:top"><strong>${esc(k)}</strong></td><td style="padding:4px 8px;border:1px solid var(--border);vertical-align:top">${inner}</td></tr>`;
+    }).join('');
+    return `<table style="border-collapse:collapse;font-size:0.85em"><tbody>${rows}</tbody></table>`;
+  }
+
+  // ── CSV → Markdown 테이블 ──
+  function convertCsvToMd(text, filename) {
+    const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+    if (lines.length === 0) { showToast('CSV 파일이 비어 있습니다.'); return null; }
+    const parseRow = line => {
+      const cells = [];
+      let cur = '', inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"' && !inQ) { inQ = true; continue; }
+        if (c === '"' && inQ && line[i+1] === '"') { cur += '"'; i++; continue; }
+        if (c === '"' && inQ) { inQ = false; continue; }
+        if (c === ',' && !inQ) { cells.push(cur); cur = ''; continue; }
+        cur += c;
+      }
+      cells.push(cur);
+      return cells.map(c => c.replace(/\|/g, '\\|').replace(/\n/g, ' ').trim());
+    };
+    const rows = lines.map(parseRow);
+    const colCount = Math.max(...rows.map(r => r.length));
+    const pad = row => { while (row.length < colCount) row.push(''); return row; };
+    const header = '| ' + pad(rows[0]).join(' | ') + ' |';
+    const sep    = '| ' + Array(colCount).fill('---').join(' | ') + ' |';
+    const body   = rows.slice(1).map(r => '| ' + pad(r).join(' | ') + ' |').join('\n');
+    return `## ${filename}\n\n${header}\n${sep}\n${body}`;
+  }
+
+  // ── XML → HTML 중첩 테이블 ──
+  function convertXmlToMd(text, filename) {
+    const doc = new DOMParser().parseFromString(text, 'application/xml');
+    const err = doc.querySelector('parsererror');
+    if (err) return `## ${filename}\n\n\`\`\`xml\n${text.trim()}\n\`\`\``;
+    const root = doc.documentElement;
+    const html = xmlNodeToHtmlTable(root);
+    return `## ${filename} <small style="color:var(--fg-muted);font-weight:400">&lt;${esc(root.tagName)}&gt;</small>\n\n${html}`;
+  }
+
+  function xmlNodeToHtmlTable(node) {
+    const elChildren = Array.from(node.childNodes).filter(n => n.nodeType === 1);
+    const text = node.textContent.trim();
+
+    // 자식 엘리먼트 없음 → 텍스트 또는 빈 값
+    if (elChildren.length === 0) return esc(text);
+
+    // 자식이 모두 같은 태그이고 2개 이상 → 배열형 → 행(row) 테이블
+    const childTags = [...new Set(elChildren.map(c => c.tagName))];
+    if (childTags.length === 1 && elChildren.length > 1) {
+      return xmlArrayToTable(elChildren);
+    }
+
+    // 자식 태그가 다양하거나 1개 → 객체형 → 키/값 테이블
+    return xmlObjectToTable(node, elChildren);
+  }
+
+  // 반복 엘리먼트 → 열이 있는 표
+  function xmlArrayToTable(items) {
+    // 모든 속성 + 자식 엘리먼트 이름 수집
+    const attrKeys = new Set(), elKeys = new Set();
+    items.forEach(item => {
+      Array.from(item.attributes).forEach(a => attrKeys.add(a.name));
+      Array.from(item.childNodes).filter(n => n.nodeType === 1).forEach(c => elKeys.add(c.tagName));
+    });
+    const cols = [...attrKeys].map(k => '@' + k).concat([...elKeys]);
+
+    // 헤더가 없고 텍스트만 있는 경우 (단순 배열)
+    if (cols.length === 0) {
+      const rows = items.map(item =>
+        `<tr><td style="${TD}">${esc(item.textContent.trim())}</td></tr>`
+      ).join('');
+      return `<table style="${TBL}"><tbody>${rows}</tbody></table>`;
+    }
+
+    const TH_S = `padding:4px 8px;border:1px solid var(--border);background:var(--card-bg);white-space:nowrap`;
+    const thead = '<thead><tr>' +
+      cols.map(k => `<th style="${TH_S}">${esc(k)}</th>`).join('') +
+      '</tr></thead>';
+    const tbody = '<tbody>' + items.map(item => {
+      return '<tr>' + cols.map(col => {
+        let inner = '';
+        if (col.startsWith('@')) {
+          inner = esc(item.getAttribute(col.slice(1)) ?? '');
+        } else {
+          const child = Array.from(item.childNodes).find(n => n.nodeType === 1 && n.tagName === col);
+          inner = child ? xmlNodeToHtmlTable(child) : '';
+        }
+        return `<td style="${TD}">${inner}</td>`;
+      }).join('') + '</tr>';
+    }).join('') + '</tbody>';
+    return `<table style="${TBL}">${thead}${tbody}</table>`;
+  }
+
+  // 객체형 → 키/값 표
+  function xmlObjectToTable(node, elChildren) {
+    const rows = [];
+    Array.from(node.attributes).forEach(a => {
+      rows.push(`<tr><td style="${TH_KV}"><strong>@${esc(a.name)}</strong></td><td style="${TD}">${esc(a.value)}</td></tr>`);
+    });
+    elChildren.forEach(child => {
+      const val = xmlNodeToHtmlTable(child);
+      rows.push(`<tr><td style="${TH_KV}"><strong>${esc(child.tagName)}</strong></td><td style="${TD}">${val}</td></tr>`);
+    });
+    return `<table style="${TBL}"><tbody>${rows.join('')}</tbody></table>`;
+  }
+
+  const TBL = 'border-collapse:collapse;font-size:0.85em';
+  const TD  = 'padding:4px 8px;border:1px solid var(--border);vertical-align:top';
+  const TH_KV = 'padding:4px 8px;border:1px solid var(--border);background:var(--card-bg);white-space:nowrap;vertical-align:top';
+
+  // ── HTML → Markdown (DOMParser, 순수 JS) ──
+  function convertHtmlDomToMd(html, filename) {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const title = doc.title || filename;
+
+    function nodeToMd(node, depth) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return node.textContent.replace(/\n+/g, ' ');
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return '';
+      const tag = node.tagName.toLowerCase();
+      const children = () => Array.from(node.childNodes).map(n => nodeToMd(n, depth)).join('');
+
+      if (tag === 'script' || tag === 'style' || tag === 'head') return '';
+      if (/^h([1-6])$/.test(tag)) return '\n\n' + '#'.repeat(+tag[1]) + ' ' + node.textContent.trim() + '\n\n';
+      if (tag === 'p') { const t = children().trim(); return t ? '\n\n' + t + '\n\n' : ''; }
+      if (tag === 'br') return '  \n';
+      if (tag === 'strong' || tag === 'b') return '**' + node.textContent.replace(/\n/g, ' ').trim() + '**';
+      if (tag === 'em' || tag === 'i') return '*' + node.textContent.replace(/\n/g, ' ').trim() + '*';
+      if (tag === 'code') return '`' + node.textContent + '`';
+      if (tag === 'pre') return '\n\n```\n' + node.textContent.trim() + '\n```\n\n';
+      if (tag === 'a') {
+        const href = node.getAttribute('href') || '';
+        const t = node.textContent.trim();
+        return href ? `[${t}](${href})` : t;
+      }
+      if (tag === 'img') {
+        const alt = node.getAttribute('alt') || '';
+        const src = node.getAttribute('src') || '';
+        return src ? `![${alt}](${src})` : '';
+      }
+      if (tag === 'ul') {
+        return '\n\n' + Array.from(node.children).map(li => '- ' + li.textContent.replace(/\n+/g, ' ').trim()).join('\n') + '\n\n';
+      }
+      if (tag === 'ol') {
+        return '\n\n' + Array.from(node.children).map((li, i) => (i+1) + '. ' + li.textContent.replace(/\n+/g, ' ').trim()).join('\n') + '\n\n';
+      }
+      if (tag === 'table') return '\n\n' + tableToMd(node) + '\n\n';
+      if (tag === 'hr') return '\n\n---\n\n';
+      if (tag === 'blockquote') return '\n\n> ' + node.textContent.replace(/\n+/g, '\n> ').trim() + '\n\n';
+      return children();
+    }
+
+    function tableToMd(table) {
+      const rows = Array.from(table.querySelectorAll('tr'));
+      if (rows.length === 0) return '';
+      const parseRow = tr => Array.from(tr.querySelectorAll('th,td')).map(td => td.textContent.replace(/\|/g, '\\|').replace(/\n+/g, ' ').trim());
+      const data = rows.map(parseRow);
+      const colCount = Math.max(...data.map(r => r.length));
+      const pad = r => { while (r.length < colCount) r.push(''); return r; };
+      const header = '| ' + pad(data[0]).join(' | ') + ' |';
+      const sep    = '| ' + Array(colCount).fill('---').join(' | ') + ' |';
+      const body   = data.slice(1).map(r => '| ' + pad(r).join(' | ') + ' |').join('\n');
+      return header + '\n' + sep + (body ? '\n' + body : '');
+    }
+
+    const body = doc.body || doc.documentElement;
+    const md = nodeToMd(body, 0)
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    return `# ${title}\n\n${md}`;
+  }
+
+  // ── 보기 모드 드롭다운 ──
+  function toggleViewMenu(e) {
+    e.stopPropagation();
+    closeAllMenus();  // 다른 메뉴 먼저 닫기
+    const dd = document.getElementById('view-dropdown');
+    const rect = e.currentTarget.getBoundingClientRect();
+    dd.style.top = (rect.bottom + 6) + 'px';
+    dd.style.left = rect.left + 'px';
+    _viewMenuOpen = !_viewMenuOpen;
+    dd.classList.toggle('open', _viewMenuOpen);
+    if (_viewMenuOpen) {
+      setTimeout(() => document.addEventListener('click', _closeViewMenu, { once: true }), 0);
+    }
+  }
+
+  function _closeViewMenu() {
+    document.getElementById('view-dropdown').classList.remove('open');
+    _viewMenuOpen = false;
+  }
+
+  function setViewMode(mode) {
+    _closeViewMenu();
+    if (mode === viewMode) return;  // 같은 모드면 무시
+
+    viewMode = mode;
+    const paneEdit = document.getElementById('paneEdit');
+    const panePreview = document.getElementById('panePreview');
+    const mTabEdit = document.getElementById('mTabEdit');
+    const mTabPreview = document.getElementById('mTabPreview');
+    const mdSplit = document.querySelector('.md-split');
+
+    if (mode === 'edit-only') {
+      paneEdit.style.display = 'flex';
+      panePreview.style.display = 'none';
+      mTabEdit.style.display = 'block';
+      mTabPreview.style.display = 'none';
+      paneEdit.classList.add('mobile-active');
+      mTabEdit.classList.add('active');
+      mdSplit.style.gridTemplateColumns = '1fr';  // 전체 폭
+    } else if (mode === 'preview-only') {
+      paneEdit.style.display = 'none';
+      panePreview.style.display = 'flex';
+      mTabEdit.style.display = 'none';
+      mTabPreview.style.display = 'block';
+      panePreview.classList.add('mobile-active');
+      mTabPreview.classList.add('active');
+      mdSplit.style.gridTemplateColumns = '1fr';  // 전체 폭
+    } else {  // 'both'
+      paneEdit.style.display = 'flex';
+      panePreview.style.display = 'flex';
+      mTabEdit.style.display = 'block';
+      mTabPreview.style.display = 'block';
+      paneEdit.classList.add('mobile-active');
+      mTabEdit.classList.add('active');
+      panePreview.classList.remove('mobile-active');
+      mTabPreview.classList.remove('active');
+      mdSplit.style.gridTemplateColumns = '1fr 1fr';  // 원래 너비로 복구
+    }
+    showToast(`보기: ${mode === 'edit-only' ? '편집만' : mode === 'preview-only' ? '미리보기만' : '둘 다'}`);
+  }
+
+  // ── 브라우저 저장 / 불러오기 ──
+  const LS_DOC_KEY = 'md-editor-local-doc';
+  const LS_ALL_DOCS_KEY = 'md-editor-all-docs';
+
+  function saveToLocalStorage() {
+    _closeSaveMenu();
+    if (!mdContent.trim()) { showToast('저장할 내용이 없습니다'); return; }
+
+    let filename = document.getElementById('filenameInput').value.trim() || 'untitled.md';
+
+    // localStorage의 모든 문서 확인
+    let allDocs = [];
+    try {
+      const raw = localStorage.getItem(LS_ALL_DOCS_KEY);
+      if (raw) allDocs = JSON.parse(raw);
+    } catch { allDocs = []; }
+
+    // 같은 이름 파일 있는지 확인
+    const existingNames = allDocs.map(doc => doc.filename);
+    if (existingNames.includes(filename)) {
+      let counter = 1;
+      const nameParts = filename.split('.');
+      const baseName = nameParts.slice(0, -1).join('.');
+      const ext = nameParts.length > 1 ? '.' + nameParts[nameParts.length - 1] : '';
+
+      while (existingNames.includes(`${baseName}(${counter})${ext}`)) {
+        counter++;
+      }
+      filename = `${baseName}(${counter})${ext}`;
+    }
+
+    // 새 문서 객체 생성
+    const newDoc = {
+      id: Date.now().toString(),
+      content: mdContent,
+      filename: filename,
+      savedAt: new Date().toISOString()
+    };
+
+    allDocs.push(newDoc);
+    localStorage.setItem(LS_ALL_DOCS_KEY, JSON.stringify(allDocs));
+
+    currentFilename = filename;
+    document.getElementById('filenameInput').value = filename;
+
+    showToast(`"${filename}"으로 저장되었습니다 ✓`);
+  }
+
+  function loadFromLocalStorage() {
+    _closeOpenMenu();
+    const raw = localStorage.getItem(LS_DOC_KEY);
+    if (!raw) { showToast('저장된 문서가 없습니다'); return; }
+    try {
+      const doc = JSON.parse(raw);
+      if (mdContent.trim() && !confirm('현재 문서를 버릴까요? (저장하지 않은 내용이 사라집니다)')) return;
+      mdContent = doc.content || '';
+      currentFilename = doc.filename || 'untitled.md';
+      document.getElementById('filenameInput').value = currentFilename;
+      document.getElementById('editor').value = mdContent;
+      renderPreview();
+      updateSaveButtonState();
+      showToast(`"${currentFilename}" 불러왔습니다`);
+    } catch { showToast('저장된 문서를 불러오지 못했습니다'); }
+  }
+
+  // ── URL 변환 ──
+  function openUrlModal() {
+    _closeOpenMenu();
+    const url = prompt('변환할 웹페이지 URL을 입력하세요:\n(예: https://example.com)');
+    if (!url || url.trim() === '') return;
+
+    // URL 유효성 검증 (간단한 검증)
+    if (!url.includes('://')) {
+      showToast('유효한 URL을 입력하세요.');
+      return;
+    }
+
+    // 3초 후 변환 완료 안 되면 토스트 표시
+    if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+    hwpConversionTimer = setTimeout(() => {
+      showToast('파일 변환이 되지 않았습니다.');
+    }, 3000);
+
+    convertUrlToMd(url);
+  }
+
+  async function convertUrlToMd(url) {
+    try {
+      // 3초 타임아웃 설정
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 3000)
+      );
+
+      const response = await Promise.race([
+        fetch('/api/url-to-md', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        }),
+        timeoutPromise
+      ]);
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        showToast('파일 변환이 되지 않았습니다.');
+        if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+        return;
+      }
+
+      // 성공: mdContent 업데이트
+      mdContent = result.markdown;
+      currentFilename = result.filename || 'untitled.md';
+      document.getElementById('filenameInput').value = currentFilename;
+      document.getElementById('editor').value = mdContent;
+      renderPreview();
+
+      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+      showToast('✓ URL이 마크다운으로 변환되었습니다.');
+    } catch (err) {
+      showToast('파일 변환이 되지 않았습니다.');
+      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
+    }
+  }
+
+  function openLoadModal() {
+    _closeOpenMenu();
+
+    let allDocs = [];
+    try {
+      const raw = localStorage.getItem(LS_ALL_DOCS_KEY);
+      if (raw) allDocs = JSON.parse(raw);
+    } catch { allDocs = []; }
+
+    if (allDocs.length === 0) {
+      showToast('저장된 파일이 없습니다');
+      return;
+    }
+
+    const docsList = document.getElementById('docsList');
+    docsList.innerHTML = allDocs
+      .sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt))
+      .map(doc => `
+        <li style="padding:0.75rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+          <div style="flex:1; cursor:pointer;" onclick="loadDocById('${doc.id}')">
+            <div style="font-weight:500;">${doc.filename}</div>
+            <div style="font-size:0.85rem; color:var(--fg-muted);">${new Date(doc.savedAt).toLocaleString('ko-KR')}</div>
+          </div>
+          <button onclick="deleteDocById('${doc.id}')" style="padding:0.25rem 0.5rem; font-size:0.85rem; background:none; border:1px solid var(--border); cursor:pointer; border-radius:0.25rem;">삭제</button>
+        </li>
+      `).join('');
+
+    document.getElementById('loadModalBackdrop').style.display = 'block';
+    document.getElementById('loadModal').style.display = 'block';
+    document.body.classList.add('modal-open');
+  }
+
+  function closeLoadModal() {
+    document.getElementById('loadModalBackdrop').style.display = 'none';
+    document.getElementById('loadModal').style.display = 'none';
+    document.body.classList.remove('modal-open');
+  }
+
+  function loadDocById(id) {
+    let allDocs = [];
+    try {
+      const raw = localStorage.getItem(LS_ALL_DOCS_KEY);
+      if (raw) allDocs = JSON.parse(raw);
+    } catch { allDocs = []; }
+
+    const doc = allDocs.find(d => d.id === id);
+    if (!doc) {
+      showToast('문서를 찾을 수 없습니다');
+      return;
+    }
+
+    if (mdContent.trim() && !confirm('현재 문서를 버릴까요?')) return;
+
+    mdContent = doc.content;
+    currentFilename = doc.filename;
+    document.getElementById('filenameInput').value = currentFilename;
+    document.getElementById('editor').value = mdContent;
+    renderPreview();
+    updateSaveButtonState();
+
+    closeLoadModal();
+    showToast(`"${doc.filename}"을(를) 불러왔습니다`);
+  }
+
+  function deleteDocById(id) {
+    if (!confirm('이 파일을 삭제하시겠습니까?')) return;
+
+    let allDocs = [];
+    try {
+      const raw = localStorage.getItem(LS_ALL_DOCS_KEY);
+      if (raw) allDocs = JSON.parse(raw);
+    } catch { allDocs = []; }
+
+    allDocs = allDocs.filter(d => d.id !== id);
+    localStorage.setItem(LS_ALL_DOCS_KEY, JSON.stringify(allDocs));
+
+    openLoadModal(); // 모달 새로고침
+  }
+
+  // ── Markdown 저장 ──
+  function downloadMd() {
+    _closeSaveMenu();
+    const filename = document.getElementById('filenameInput').value.trim() || 'untitled.md';
+    const fname = /\.(md|txt|markdown)$/i.test(filename) ? filename : filename + '.md';
+    const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  // ── HTML 저장 ──
+  function downloadHtml() {
+    _closeSaveMenu();
+    const filename = document.getElementById('filenameInput').value.trim() || 'untitled';
+    const fname = /\.html?$/i.test(filename) ? filename : filename + '.html';
+    const htmlContent = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${filename}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem; line-height: 1.75; color: #333; }
+    h1 { border-bottom: 2px solid #e4e4e7; padding-bottom: 0.3em; }
+    h2 { border-bottom: 1px solid #e4e4e7; padding-bottom: 0.2em; }
+    code { background: #f4f4f5; padding: 0.15em 0.4em; border-radius: 4px; font-family: monospace; }
+    pre { background: #f4f4f5; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
+    a { color: #006fee; text-decoration: underline; }
+    blockquote { border-left: 4px solid #006fee; margin: 0.75em 0; padding: 0.25em 1em; color: #666; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #e4e4e7; padding: 0.4em 0.75em; text-align: left; }
+    th { background: #f4f4f5; }
+  </style>
+</head>
+<body>
+  ${marked.parse(mdContent)}
+  <hr style="margin-top: 3rem; border: none; border-top: 1px solid #e4e4e7;">
+  <p style="font-size: 0.85rem; color: #888;">Generated by MD Editor</p>
+</body>
+</html>`;
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  // ── 공유 인코딩/디코딩 ──
+  function buildShareURL(permission) {
+    const payload = JSON.stringify({
+      data: { content: mdContent, filename: currentFilename },
+      permission,
+    });
+    if (payload.length > 8000) return { url: null, tooLarge: true };
+    const encoded = btoa(encodeURIComponent(payload))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    return { url: `${location.origin}/apps/md-editor/#share=${encoded}`, tooLarge: false };
+  }
+
+  function decodeSharePayload(encoded) {
+    try {
+      const raw = encoded.replace(/-/g, '+').replace(/_/g, '/');
+      const pad = (4 - raw.length % 4) % 4;
+      const p = JSON.parse(decodeURIComponent(atob(raw + '='.repeat(pad))));
+      if (p && p.data && typeof p.data.content === 'string') return p;
+    } catch {}
+    return null;
+  }
+
+  // ── 공유 드롭다운 ──
+  function toggleShareMenu(e) {
+    if (!mdContent.trim()) { showToast('내용이 없어 공유할 수 없습니다.'); return; }
+    e.stopPropagation();
+    closeAllMenus();  // 다른 메뉴 먼저 닫기
+    const dd = document.getElementById('share-dropdown');
+    const rect = e.currentTarget.getBoundingClientRect();
+    dd.style.top = (rect.bottom + 6) + 'px';
+    dd.style.right = (window.innerWidth - rect.right) + 'px';
+    _shareMenuOpen = !_shareMenuOpen;
+    dd.classList.toggle('open', _shareMenuOpen);
+    if (_shareMenuOpen) {
+      setTimeout(() => document.addEventListener('click', _closeShareMenu, { once: true }), 0);
+    }
+  }
+
+  function _closeShareMenu() {
+    document.getElementById('share-dropdown').classList.remove('open');
+    _shareMenuOpen = false;
+  }
+
+  // ── 공유 실행 ──
+  async function doShare(permission) {
+    _closeShareMenu();
+    const result = buildShareURL(permission);
+    if (result.tooLarge) {
+      showToast('내용이 너무 많습니다. 파일로 저장 후 직접 전달해주세요.');
+      return;
+    }
+    const longURL = result.url;
+    try {
+      const res = await fetch('/api/shorten', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: longURL }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.shortURL) { console.error('[shorten] failed:', res.status, data); throw new Error((data && data.error) || 'shorten failed'); }
+      await navigator.clipboard.writeText(data.shortURL);
+      showToast('링크가 복사되었습니다 ✓');
+    } catch {
+      try {
+        await navigator.clipboard.writeText(longURL);
+        showToast('링크가 복사되었습니다 (단축 미적용)');
+      } catch { showToast('공유에 실패했습니다.'); }
+    }
+  }
+
+  // ── 보기 전용 진입 ──
+  function enterViewOnly() {
+    isViewOnly = true;
+    document.body.classList.add('is-view-only');
+    document.getElementById('editor').setAttribute('readonly', '');
+    closeCloneModal();
+    showToast('보기 전용으로 열립니다');
+  }
+
+  // ── 복제 (편집 가능으로 전환) ──
+  function cloneContent() {
+    isViewOnly = false;
+    document.body.classList.remove('is-view-only');
+    document.getElementById('editor').removeAttribute('readonly');
+    closeCloneModal();
+    showToast('편집 가능 모드로 가져왔습니다');
+  }
+
+  // ── 복제 모달 ──
+  function openCloneModal(filename) {
+    document.getElementById('clone-modal-desc').textContent = `"${filename}"을 어떻게 열까요?`;
+    document.getElementById('clone-modal').classList.add('open');
+  }
+
+  function closeCloneModal() {
+    document.getElementById('clone-modal').classList.remove('open');
+  }
+
+  // ── 도움말 모달 ──
+  function openHelpModal() {
+    document.getElementById('help-modal').classList.add('open');
+  }
+
+  // ── 토스트 ──
+  let _toastTimer;
+  function showToast(msg, duration) {
+    const el = document.getElementById('md-toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(_toastTimer);
+    const ms = duration !== undefined ? duration : 2800;
+    if (ms > 0) _toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+  }
+  function hideToast() {
+    clearTimeout(_toastTimer);
+    document.getElementById('md-toast').classList.remove('show');
+  }
+
+  // ── 초기화 (URL 해시 처리) ──
+  (function init() {
+    const hash = location.hash;
+    if (hash.startsWith('#share=')) {
+      const payload = decodeSharePayload(hash.slice(7));
+      history.replaceState(null, '', location.pathname);
+      if (payload && payload.data) {
+        mdContent = payload.data.content || '';
+        currentFilename = payload.data.filename || 'shared.md';
+        document.getElementById('filenameInput').value = currentFilename;
+        document.getElementById('editor').value = mdContent;
+        updateSaveButtonState();
+        renderPreview();
+        if (payload.permission === 'view') {
+          enterViewOnly();
+          switchMobileTab('preview');
+        } else {
+          openCloneModal(currentFilename);
+          switchMobileTab('preview');
+        }
+        return;
+      }
+      showToast('공유 링크를 읽을 수 없습니다.');
+    }
+    updateSaveButtonState();
+  })();
+</script>
+</body>
+</html>

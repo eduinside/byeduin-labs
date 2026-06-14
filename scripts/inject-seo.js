@@ -99,33 +99,45 @@ function main() {
       changes.push('twitter cards added');
     }
 
-    // ── 5. Add canonical link if missing ──
-    if (!html.includes('rel="canonical"')) {
+    // ── 5. Canonical link (update or add) ──
+    var canonicalRegex = /<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/i;
+    if (canonicalRegex.test(html)) {
+      html = html.replace(canonicalRegex, '<link rel="canonical" href="' + canonicalUrl + '">');
+      changes.push('canonical updated');
+    } else {
       html = addBeforeHeadClose(html, '  <link rel="canonical" href="' + canonicalUrl + '">');
       changes.push('canonical added');
     }
 
-    // ── 6. Add og:url if missing ──
-    if (!html.includes('og:url')) {
+    // ── 6. og:url (update or add) ──
+    var ogUrlRegex = /<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/i;
+    if (ogUrlRegex.test(html)) {
+      html = html.replace(ogUrlRegex, '<meta property="og:url" content="' + canonicalUrl + '">');
+      changes.push('og:url updated');
+    } else {
       html = addBeforeHeadClose(html, '  <meta property="og:url" content="' + canonicalUrl + '">');
       changes.push('og:url added');
     }
 
-    // ── 7. Add JSON-LD if missing ──
-    if (!html.includes('application/ld+json')) {
-      var ld = {
-        '@context': 'https://schema.org',
-        '@type': 'WebApplication',
-        name: app.title || seo.title,
-        description: description,
-        url: canonicalUrl,
-        applicationCategory: 'EducationApplication',
-        operatingSystem: 'Any',
-        offers: { '@type': 'Offer', price: '0', priceCurrency: 'KRW' },
-        isPartOf: { '@type': 'WebSite', name: site.name || 'eduin VIVES', url: siteUrl }
-      };
-      var ldTag = '  <script type="application/ld+json">' + JSON.stringify(ld) + '<\/script>';
-      html = addBeforeHeadClose(html, ldTag);
+    // ── 7. JSON-LD (update or add) ──
+    var ld = {
+      '@context': 'https://schema.org',
+      '@type': 'WebApplication',
+      name: app.title || seo.title,
+      description: description,
+      url: canonicalUrl,
+      applicationCategory: 'EducationApplication',
+      operatingSystem: 'Any',
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'KRW' },
+      isPartOf: { '@type': 'WebSite', name: site.name || 'eduin VIVES', url: siteUrl }
+    };
+    var ldTag = '<script type="application/ld+json">' + JSON.stringify(ld) + '<\/script>';
+    var ldRegex = /<script type="application\/ld\+json">[\s\S]*?<\/script>/i;
+    if (ldRegex.test(html)) {
+      html = html.replace(ldRegex, ldTag);
+      changes.push('JSON-LD updated');
+    } else {
+      html = addBeforeHeadClose(html, '  ' + ldTag);
       changes.push('JSON-LD added');
     }
 

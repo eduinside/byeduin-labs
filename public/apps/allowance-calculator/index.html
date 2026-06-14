@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>수당 계산기 — eduin VIVES</title>
+  <meta name="description" content="기타소득 수당의 세전 원금과 세후 금액을 자동으로 역산/계산합니다. 8.8% 세율 및 125,000원 과세최저한 완벽 적용.">
+  <meta property="og:title" content="수당 계산기 — 세전·세후 기타소득 세금 자동 판별 | eduin VIVES">
+  <meta property="og:description" content="기타소득 수당의 세전 원금과 세후 금액을 자동으로 역산/계산합니다. 8.8% 세율 및 125,000원 과세최저한 완벽 적용.">
+  <meta property="og:image" content="https://eduin.info/og-images/allowance-calculator.png">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  
+  <!-- 구글 웹폰트 로드 (JetBrains Mono & Noto Sans KR) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- 공통 테마 및 스타일 적용 -->
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
+  <script src="/common/seo-injector.js" defer></script>
+  
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 56px 1rem 6rem;
+      margin: 0;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 111, 238, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 111, 238, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* 앱 전용 스타일 및 토큰 확장 */
+    .calculator-layout {
+      width: 100%;
+      max-width: 480px;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    
+    .input-group {
+      position: relative;
+      margin-bottom: 8px;
+    }
+    
+    .large-input {
+      font-size: 32px;
+      font-weight: 700;
+      text-align: right;
+      padding: 16px 20px;
+      padding-right: 50px;
+      height: auto;
+      font-family: 'JetBrains Mono', -apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif;
+    }
+    
+    .input-unit {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--fg-muted);
+    }
+    
+    /* 세전/세후 세그먼트 컨트롤 */
+    .segment-control {
+      display: flex;
+      background: var(--bg-sec);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px;
+      gap: 4px;
+      margin-bottom: 16px;
+    }
+    
+    .segment-btn {
+      flex: 1;
+      border: none;
+      background: none;
+      color: var(--fg-muted);
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    
+    .segment-btn.active {
+      background: var(--card-bg);
+      color: var(--primary);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    
+    /* 자동 판별 배지 및 안내 */
+    .badge-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .badge-bar.auto-active {
+      background: rgba(0, 111, 238, 0.06);
+      border: 1px dashed rgba(0, 111, 238, 0.3);
+      color: var(--primary);
+    }
+    
+    .badge-bar.manual-active {
+      background: rgba(124, 106, 247, 0.06);
+      border: 1px dashed rgba(124, 106, 247, 0.3);
+      color: #7c6af7;
+    }
+    
+    .pill-badge {
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    
+    .pill-badge.blue {
+      background: var(--primary);
+      color: #ffffff;
+    }
+    
+    .pill-badge.purple {
+      background: #7c6af7;
+      color: #ffffff;
+    }
+    
+    /* 결과 카드 보드 */
+    .result-board {
+      background: var(--bg-sec);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .result-label {
+      font-size: 13px;
+      color: var(--fg-muted);
+      font-weight: 500;
+    }
+    
+    .result-value {
+      font-size: 16px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', -apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif;
+    }
+    
+    .result-value.highlight {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--fg);
+    }
+    
+    .result-value.primary-highlight {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    
+    .result-value .unit {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--fg-muted);
+      margin-left: 3px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif;
+    }
+    
+    .result-value.primary-highlight .unit {
+      font-size: 15px;
+      font-weight: 600;
+      color: rgba(0, 111, 238, 0.8);
+    }
+    
+    .tax-detail {
+      font-size: 11px;
+      color: var(--fg-muted);
+      margin-top: -8px;
+      text-align: right;
+    }
+    
+    .info-box {
+      font-size: 12px;
+      color: var(--fg-muted);
+      line-height: 1.5;
+      padding: 12px 14px;
+      background: var(--bg-sec);
+      border-left: 3px solid var(--border);
+      border-radius: 0 8px 8px 0;
+    }
+    
+    .info-box.tax-exempt {
+      border-left-color: var(--success);
+      background: rgba(23, 201, 100, 0.05);
+      color: #17c964;
+    }
+    
+    /* 최근 내역 */
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+    
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    
+    .history-item:hover {
+      border-color: var(--primary);
+      transform: translateY(-1px);
+    }
+    
+    .history-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    
+    .history-main-text {
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .history-sub-text {
+      font-size: 11px;
+      color: var(--fg-muted);
+    }
+    
+    .delete-btn {
+      background: none;
+      border: none;
+      color: var(--danger);
+      cursor: pointer;
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: background 0.12s;
+    }
+    
+    .delete-btn:hover {
+      background: rgba(243, 18, 96, 0.08);
+    }
+    
+    .empty-history {
+      text-align: center;
+      padding: 30px;
+      color: var(--fg-muted);
+      font-size: 13px;
+    }
+  </style>
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="수당 계산기 — 세전·세후 기타소득 세금 자동 판별 | eduin VIVES">
+  <meta name="twitter:description" content="기타소득 수당의 세전 원금과 세후 금액을 자동으로 역산/계산합니다. 8.8% 세율 및 125,000원 과세최저한 완벽 적용.">
+  <meta name="twitter:image" content="https://eduin.info/og-images/allowance-calculator.png">
+  <link rel="canonical" href="https://eduin.info/apps/allowance-calculator/">
+  <meta property="og:url" content="https://eduin.info/apps/allowance-calculator/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"수당 계산기","description":"기타소득 수당의 세전 원금과 세후 금액을 자동으로 역산/계산합니다. 8.8% 세율 및 125,000원 과세최저한 완벽 적용.","url":"https://eduin.info/apps/allowance-calculator/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+</head>
+<body>
+
+  <!-- 좌상단 홈가기 오버레이 -->
+  <div class="top-overlay-left">
+    <a href="/" class="overlay-btn">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+      <span>홈</span>
+    </a>
+  </div>
+
+  <!-- 우상단 테마 및 공유 오버레이 -->
+  <div class="top-overlay">
+    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()">💻</button>
+    <button class="overlay-btn" onclick="shareCurrentPage()">공유</button>
+  </div>
+
+  <!-- 계산기 레이아웃 -->
+  <div class="page-wrap calculator-layout" style="position: relative; z-index: 1;">
+    
+    <header class="app-header">
+      <span class="app-badge">◆ 업무경감</span>
+      <h1 class="app-title">🧮 수당 계산기</h1>
+      <p class="app-desc">세전 원금과 세후 실수령액 및 기타소득 세금(8.8%)을 한 번에 자동 판별하고 계산합니다.</p>
+    </header>
+
+    <!-- 메인 계산 카드 -->
+    <div class="fd-card" style="padding: 24px;">
+      
+      <!-- 금액 입력 -->
+      <div class="input-group">
+        <input type="text" id="amountInput" class="hero-input large-input" placeholder="0" autocomplete="off" inputmode="numeric">
+        <span class="input-unit">원</span>
+      </div>
+
+      <!-- 모드 세그먼트 컨트롤 -->
+      <div class="segment-control">
+        <button id="btnAuto" class="segment-btn active" onclick="setMode('auto')">자동 판별</button>
+        <button id="btnPreTax" class="segment-btn" onclick="setMode('preTax')">세전 기준</button>
+        <button id="btnPostTax" class="segment-btn" onclick="setMode('postTax')">세후 기준</button>
+      </div>
+
+      <!-- 상태 표시 바 -->
+      <div id="badgeBar" class="badge-bar auto-active">
+        <span id="badgeText">금액을 입력하면 자동으로 판별합니다.</span>
+        <span id="badgeLabel" class="pill-badge blue">AUTO</span>
+      </div>
+
+      <!-- 계산 결과 디스플레이 -->
+      <div class="result-board">
+        <div class="result-row">
+          <span class="result-label">세전 금액 (수당 원금)</span>
+          <span id="valPreTax" class="result-value highlight">0 원</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">공제 세금 (8.8%)</span>
+          <span id="valTax" class="result-value">0 원</span>
+        </div>
+        <div id="taxDetail" class="tax-detail" style="display: none;">
+          (기타소득세 8%: <span id="valTaxIncome">0</span>원 + 지방소득세 0.8%: <span id="valTaxLocal">0</span>원)
+        </div>
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 4px 0;">
+        <div class="result-row">
+          <span class="result-label" style="font-weight: 600;">세후 실수령액</span>
+          <span id="valPostTax" class="result-value primary-highlight">0 원</span>
+        </div>
+      </div>
+
+      <!-- 과세 최저한 안내 박스 -->
+      <div id="infoBox" class="info-box" style="margin-top: 16px;">
+        💡 <b>기타소득 과세최저한</b>: 세전 금액이 125,000원 이하인 경우 세금이 부과되지 않으므로 세전과 세후 금액이 동일합니다.
+      </div>
+      
+      <!-- 저장 버튼 -->
+      <button class="hero-btn" style="width: 100%; margin-top: 20px;" onclick="saveCurrentCalculation()">
+        💾 계산 내역 저장하기
+      </button>
+
+    </div>
+
+    <!-- 최근 내역 카드 -->
+    <div class="fd-card" style="padding: 20px;">
+      <div class="history-header">
+        <h3 class="fd-label" style="font-size: 14px; margin: 0;">📋 최근 계산 내역</h3>
+        <button id="clearAllBtn" class="delete-btn" style="color: var(--fg-muted);" onclick="clearAllHistory()">전체 삭제</button>
+      </div>
+      <div id="historyList" class="history-list">
+        <!-- 최근 내역 동적 삽입 -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 공통 토스트 용 -->
+  <div id="fd-toast"></div>
+
+  <script>
+    // 상태 변수
+    let currentMode = 'auto'; // 'auto' | 'preTax' | 'postTax'
+    let calculatedData = {
+      preTax: 0,
+      tax: 0,
+      postTax: 0,
+      taxIncome: 0,
+      taxLocal: 0,
+      isTaxExempt: true,
+      judgedAs: 'preTax'
+    };
+
+    // 로컬스토리지 키
+    const STORAGE_KEY = 'vives-allowance-history';
+
+    // DOM Elements
+    const amountInput = document.getElementById('amountInput');
+    const btnAuto = document.getElementById('btnAuto');
+    const btnPreTax = document.getElementById('btnPreTax');
+    const btnPostTax = document.getElementById('btnPostTax');
+    const badgeBar = document.getElementById('badgeBar');
+    const badgeText = document.getElementById('badgeText');
+    const badgeLabel = document.getElementById('badgeLabel');
+    const valPreTax = document.getElementById('valPreTax');
+    const valTax = document.getElementById('valTax');
+    const valPostTax = document.getElementById('valPostTax');
+    const taxDetail = document.getElementById('taxDetail');
+    const valTaxIncome = document.getElementById('valTaxIncome');
+    const valTaxLocal = document.getElementById('valTaxLocal');
+    const infoBox = document.getElementById('infoBox');
+    const historyList = document.getElementById('historyList');
+
+    // 초기화
+    window.addEventListener('DOMContentLoaded', () => {
+      // 콤마 및 입력 감지 바인딩
+      amountInput.addEventListener('input', handleInput);
+      
+      // 로컬스토리지 불러오기
+      renderHistory();
+
+      // 해시 데이터가 있는 경우 공유된 값 로드
+      loadSharedHash();
+    });
+
+    // 입력 처리
+    function handleInput() {
+      // 숫자 외 문자 제거
+      let val = amountInput.value.replace(/[^0-9]/g, '');
+      if (val === '') {
+        amountInput.value = '';
+        resetCalculations();
+        return;
+      }
+      
+      const num = parseInt(val, 10);
+      amountInput.value = formatNumber(num);
+      
+      calculate(num);
+    }
+
+    // 천단위 콤마 포맷
+    function formatNumber(num) {
+      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    // 모드 변경
+    function setMode(mode) {
+      currentMode = mode;
+      
+      // 세그먼트 버튼 활성화 처리
+      [btnAuto, btnPreTax, btnPostTax].forEach(btn => btn.classList.remove('active'));
+      if (mode === 'auto') btnAuto.classList.add('active');
+      else if (mode === 'preTax') btnPreTax.classList.add('active');
+      else if (mode === 'postTax') btnPostTax.classList.add('active');
+
+      // 입력된 값이 있다면 재계산
+      const rawVal = amountInput.value.replace(/[^0-9]/g, '');
+      if (rawVal !== '') {
+        calculate(parseInt(rawVal, 10));
+      }
+    }
+
+    // 계산 및 판별 핵심 로직
+    function calculate(num) {
+      if (!num || num <= 0) {
+        resetCalculations();
+        return;
+      }
+
+      let modeToUse = currentMode;
+      let judgedAs = '';
+
+      // 1. 자동 판별 적용인 경우
+      if (currentMode === 'auto') {
+        // 천원 단위 미만이 0이 아니면 세후로 판단, 0이면 세전으로 판단
+        if (num % 1000 !== 0) {
+          modeToUse = 'postTax';
+          judgedAs = 'postTax';
+        } else {
+          modeToUse = 'preTax';
+          judgedAs = 'preTax';
+        }
+      }
+
+      let preTax = 0;
+      let tax = 0;
+      let postTax = 0;
+      let taxIncome = 0;
+      let taxLocal = 0;
+      let isTaxExempt = false;
+
+      // 2. 세전 기준 계산
+      if (modeToUse === 'preTax') {
+        preTax = num;
+        if (preTax <= 125000) {
+          isTaxExempt = true;
+          tax = 0;
+          postTax = preTax;
+        } else {
+          isTaxExempt = false;
+          // 소득세 10원 미만 절사
+          taxIncome = Math.floor((preTax * 0.08) / 10) * 10;
+          // 지방소득세 10원 미만 절사
+          taxLocal = Math.floor((taxIncome * 0.1) / 10) * 10;
+          tax = taxIncome + taxLocal;
+          // 최종 실수령액 10원 미만 절사
+          postTax = Math.floor((preTax - tax) / 10) * 10;
+        }
+      } 
+      // 3. 세후 기준 계산 (역산)
+      else {
+        postTax = num;
+        // 세전 125,000원 이하는 비과세이므로 세전 = 세후 동일
+        if (postTax <= 125000) {
+          isTaxExempt = true;
+          preTax = postTax;
+          tax = 0;
+        } else {
+          isTaxExempt = false;
+          // 역산 수식: X = Y / 0.912 를 구한 뒤, 원천징수 원단위 절사 규칙에 맞게 보정
+          let estimatedPreTax = Math.round(postTax / 0.912);
+          
+          // 역산된 세전 금액으로 다시 세금을 정방향 계산하여 세후가 일치하는지 미세 검증
+          let tempTaxIncome = Math.floor((estimatedPreTax * 0.08) / 10) * 10;
+          let tempTaxLocal = Math.floor((tempTaxIncome * 0.1) / 10) * 10;
+          let tempTax = tempTaxIncome + tempTaxLocal;
+          let tempPost = Math.floor((estimatedPreTax - tempTax) / 10) * 10;
+
+          // 오차 보정 (+1/-1원 등)
+          if (tempPost !== postTax) {
+            const diff = postTax - tempPost;
+            estimatedPreTax += Math.round(diff / 0.912);
+            
+            // 보정 후 다시 계산
+            tempTaxIncome = Math.floor((estimatedPreTax * 0.08) / 10) * 10;
+            tempTaxLocal = Math.floor((tempTaxIncome * 0.1) / 10) * 10;
+            tempTax = tempTaxIncome + tempTaxLocal;
+            tempPost = Math.floor((estimatedPreTax - tempTax) / 10) * 10;
+          }
+
+          preTax = Math.floor(estimatedPreTax / 10) * 10; // 세전 금액도 10원 단위로 공제/절사 처리
+          taxIncome = tempTaxIncome;
+          taxLocal = tempTaxLocal;
+          tax = tempTax;
+          postTax = Math.floor((preTax - tax) / 10) * 10;
+        }
+      }
+
+      // 상태 저장
+      calculatedData = {
+        preTax,
+        tax,
+        postTax,
+        taxIncome,
+        taxLocal,
+        isTaxExempt,
+        judgedAs: judgedAs || modeToUse
+      };
+
+      // UI 업데이트
+      updateUI();
+    }
+
+    // UI 동적 갱신
+    function updateUI() {
+      // 1. 값 표시
+      valPreTax.innerHTML = `${formatNumber(calculatedData.preTax)} <span class="unit">원</span>`;
+      valTax.innerHTML = `${formatNumber(calculatedData.tax)} <span class="unit">원</span>`;
+      valPostTax.innerHTML = `${formatNumber(calculatedData.postTax)} <span class="unit">원</span>`;
+
+      // 2. 세부 세금 내역 표시
+      if (calculatedData.tax > 0) {
+        valTaxIncome.textContent = formatNumber(calculatedData.taxIncome);
+        valTaxLocal.textContent = formatNumber(calculatedData.taxLocal);
+        taxDetail.style.display = 'block';
+      } else {
+        taxDetail.style.display = 'none';
+      }
+
+      // 3. 상태 바 텍스트 및 배지 처리
+      badgeBar.className = 'badge-bar';
+      if (currentMode === 'auto') {
+        badgeBar.classList.add('auto-active');
+        badgeLabel.className = 'pill-badge blue';
+        badgeLabel.textContent = 'AUTO';
+        if (calculatedData.judgedAs === 'preTax') {
+          badgeText.innerHTML = `천원 단위 미만이 0이므로 <b>세전 금액(원금)</b>으로 판별함.`;
+        } else {
+          badgeText.innerHTML = `천원 단위 미만이 존재하여 <b>세후 금액(수령액)</b>으로 판별함.`;
+        }
+      } else {
+        badgeBar.classList.add('manual-active');
+        badgeLabel.className = 'pill-badge purple';
+        badgeLabel.textContent = 'MANUAL';
+        if (currentMode === 'preTax') {
+          badgeText.textContent = '사용자 지정: 세전 금액 기준 계산';
+        } else {
+          badgeText.textContent = '사용자 지정: 세후 금액 기준 계산';
+        }
+      }
+
+      // 4. 과세최저한 안내 박스 강조
+      if (calculatedData.isTaxExempt) {
+        infoBox.className = 'info-box tax-exempt';
+        infoBox.innerHTML = '✅ <b>세금 미공제 대상</b>: 세전 수당이 125,000원 이하이므로 세금이 0원 처리되었습니다.';
+      } else {
+        infoBox.className = 'info-box';
+        infoBox.innerHTML = '💡 <b>기타소득 과세최저한</b>: 세전 수당이 125,000원을 초과하여 8.8%의 원천징수 세금(기타소득세 8% + 지방소득세 0.8%)이 공제되었습니다.';
+      }
+    }
+
+    function resetCalculations() {
+      valPreTax.innerHTML = `0 <span class="unit">원</span>`;
+      valTax.innerHTML = `0 <span class="unit">원</span>`;
+      valPostTax.innerHTML = `0 <span class="unit">원</span>`;
+      taxDetail.style.display = 'none';
+      
+      badgeBar.className = 'badge-bar auto-active';
+      badgeLabel.className = 'pill-badge blue';
+      badgeLabel.textContent = 'AUTO';
+      badgeText.textContent = '금액을 입력하면 자동으로 판별합니다.';
+      
+      infoBox.className = 'info-box';
+      infoBox.innerHTML = '💡 <b>기타소득 과세최저한</b>: 세전 금액이 125,000원 이하인 경우 세금이 부과되지 않으므로 세전과 세후 금액이 동일합니다.';
+      
+      calculatedData = {
+        preTax: 0,
+        tax: 0,
+        postTax: 0,
+        taxIncome: 0,
+        taxLocal: 0,
+        isTaxExempt: true,
+        judgedAs: 'preTax'
+      };
+    }
+
+    // 💾 로컬스토리지 저장
+    function saveCurrentCalculation() {
+      const rawVal = amountInput.value.replace(/[^0-9]/g, '');
+      if (rawVal === '' || calculatedData.preTax === 0) {
+        showToast('먼저 올바른 금액을 입력해 주세요.');
+        return;
+      }
+
+      const history = getHistory();
+      
+      // 중복 계산 내역 검출 및 최신화
+      const newEntry = {
+        id: Date.now(),
+        amount: parseInt(rawVal, 10),
+        mode: currentMode,
+        preTax: calculatedData.preTax,
+        tax: calculatedData.tax,
+        postTax: calculatedData.postTax,
+        date: new Date().toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      };
+
+      // 동일한 금액 계산 내역이 있으면 기존 데이터 제거 후 맨 위로 올림
+      const filtered = history.filter(item => !(item.preTax === newEntry.preTax && item.postTax === newEntry.postTax));
+      filtered.unshift(newEntry);
+      
+      // 최대 20개 저장
+      if (filtered.length > 20) {
+        filtered.pop();
+      }
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+      renderHistory();
+      showToast('계산 내역이 저장되었습니다.');
+    }
+
+    // 최근 내역 렌더링
+    function renderHistory() {
+      const history = getHistory();
+      if (history.length === 0) {
+        historyList.innerHTML = '<div class="empty-history">최근 계산한 내역이 없습니다.</div>';
+        return;
+      }
+
+      historyList.innerHTML = '';
+      history.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        div.setAttribute('onclick', `loadHistoryItem(${item.preTax}, '${item.mode}')`);
+        
+        // 자동판별 모드로 저장했어도 다시 로드할 때 판별할 수 있게 로드
+        div.innerHTML = `
+          <div class="history-info">
+            <span class="history-main-text">세전: ${formatNumber(item.preTax)}원 ➜ 실수령: ${formatNumber(item.postTax)}원</span>
+            <span class="history-sub-text">세금: ${formatNumber(item.tax)}원 (${item.date})</span>
+          </div>
+          <button class="delete-btn" onclick="deleteHistoryItem(event, ${item.id})">삭제</button>
+        `;
+        historyList.appendChild(div);
+      });
+    }
+
+    // 히스토리 항목 로드
+    function loadHistoryItem(preTaxAmount, mode) {
+      setMode(mode);
+      amountInput.value = formatNumber(preTaxAmount);
+      calculate(preTaxAmount);
+      showToast('이전 계산 내역을 불러왔습니다.');
+    }
+
+    // 히스토리 아이템 삭제
+    function deleteHistoryItem(e, id) {
+      e.stopPropagation(); // 부모 클릭(로드) 이벤트 전파 방지
+      const history = getHistory();
+      const filtered = history.filter(item => item.id !== id);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+      renderHistory();
+      showToast('내역을 삭제했습니다.');
+    }
+
+    // 히스토리 전체 삭제
+    function clearAllHistory() {
+      if (confirm('모든 계산 내역을 삭제하시겠습니까?')) {
+        localStorage.removeItem(STORAGE_KEY);
+        renderHistory();
+        showToast('모든 내역이 삭제되었습니다.');
+      }
+    }
+
+    // 히스토리 가져오기 헬퍼
+    function getHistory() {
+      const data = localStorage.getItem(STORAGE_KEY);
+      return data ? JSON.parse(data) : [];
+    }
+
+    // vives-share 공유 기능 연동
+    function loadSharedHash() {
+      if (!window.location.hash) return;
+      try {
+        const hash = window.location.hash.substring(1);
+        const decoded = JSON.parse(decodeURIComponent(atob(hash)));
+        if (decoded && decoded.amount) {
+          setMode(decoded.mode || 'auto');
+          amountInput.value = formatNumber(decoded.amount);
+          calculate(decoded.amount);
+          showToast('공유된 계산 내역을 로드했습니다.');
+        }
+      } catch (err) {
+        console.error('Failed to parse shared hash:', err);
+      }
+    }
+
+    // 공유를 위한 해시 생성 오버라이드
+    window.buildSharePayload = function() {
+      const rawVal = amountInput.value.replace(/[^0-9]/g, '');
+      if (rawVal === '' || calculatedData.preTax === 0) return null;
+      
+      return {
+        amount: parseInt(rawVal, 10),
+        mode: currentMode
+      };
+    };
+  </script>
+</body>
+</html>

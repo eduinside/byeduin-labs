@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blocks Universe — eduin</title>
+  <link rel="icon" href="/logo.jpg" type="image/jpeg">
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
+  <meta property="og:image" content="https://eduin.info/og-default.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Blocks Universe — 에피소드 탐색기 | eduin VIVES">
+  <meta name="twitter:description" content="넘버블록스·알파블록스·컬러블록스·원더블록스 351편의 에피소드를 탐색하세요. AI 검색·즐겨찾기·재생목록·순차재생 지원.">
+  <meta name="twitter:image" content="https://eduin.info/og-default.png">
+  <link rel="canonical" href="https://eduin.info/apps/blocks-universe/">
+  <meta property="og:url" content="https://eduin.info/apps/blocks-universe/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Blocks Universe","description":"넘버블록스·알파블록스·컬러블록스·원더블록스 351편의 에피소드를 탐색하세요. AI 검색·즐겨찾기·재생목록·순차재생 지원.","url":"https://eduin.info/apps/blocks-universe/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+</head>
+<body>
+
+<div class="top-overlay-left">
+  <a href="/" class="overlay-btn" title="홈">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    <span>Home</span>
+  </a>
+  <button id="welcomeBack" class="overlay-btn" onclick="goToWelcome()" hidden>← 시리즈 선택</button>
+</div>
+
+<div class="top-overlay">
+  <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+  <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+      <polyline points="16 6 12 2 8 6"/>
+      <line x1="12" x2="12" y1="2" y2="15"/>
+    </svg>
+    <span>공유</span>
+  </button>
+</div>
+
+<div class="bu-root">
+  <header class="app-header">
+    <span class="app-badge">◆ 학습지원</span>
+    <h1 class="app-title">🧱 Blocks Universe</h1>
+    <p class="app-desc">넘버블록스 · 알파블록스 · 컬러블록스 · 원더블록스 — 4개 시리즈 · 351편 에피소드 탐색</p>
+  </header>
+
+  <nav class="series-tabs" id="seriesTabs" aria-label="시리즈 선택"></nav>
+
+  <div id="toolbarSentinel" aria-hidden="true"></div>
+  <div class="toolbar" id="toolbar">
+    <div class="season-chips" id="seasonChips"></div>
+    <div class="filter-row">
+      <div class="level-seg" id="levelSeg"></div>
+      <button class="fav-toggle" id="favToggle">★ 즐겨찾기</button>
+      <div class="search-box">
+        <input id="searchInput" type="search" placeholder="제목·설명 검색 (한글/영문)">
+        <button class="ai-btn" id="aiSearchBtn" title="AI 검색">✨ AI 검색</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-info" id="resultInfo"></div>
+  <div class="ep-grid" id="epGrid"></div>
+  <div class="empty-state" id="emptyState" hidden>조건에 맞는 에피소드가 없습니다 🤔</div>
+</div>
+
+<!-- 에피소드 상세 모달 -->
+<div class="modal-backdrop" id="epModal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true">
+    <div class="modal-video">
+      <div id="modalVideoWrap" style="width:100%;height:100%"></div>
+      <button class="modal-close" id="modalCloseBtn" title="닫기">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-tags" id="modalTags"></div>
+      <h2 class="modal-title" id="modalTitle"></h2>
+      <div class="modal-title-sub" id="modalTitleSub"></div>
+      <p class="modal-desc" id="modalDesc"></p>
+      <div class="modal-actions" id="modalActions"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 재생목록 FAB -->
+<button class="pl-fab" id="plFab" title="재생목록">
+  ▶ 재생목록 <span class="pl-count" id="plCount">0</span>
+</button>
+
+<!-- 재생목록 드로어 -->
+<aside class="pl-drawer" id="plDrawer">
+  <div class="pl-head">
+    <h2>📋 내 재생목록 <small class="pl-total" id="plTotal"></small></h2>
+    <button class="pl-close-btn" id="plCloseBtn" title="닫기">✕</button>
+  </div>
+  <div class="pl-list" id="plList"></div>
+  <div class="pl-foot">
+    <button class="hero-btn pl-play-btn" id="plPlayBtn">▶ 순차재생</button>
+    <div class="pl-foot-row">
+      <button class="hero-btn-ghost pl-sec-btn" id="plShareBtn">🔗 공유</button>
+      <button class="hero-btn-ghost pl-sec-btn pl-clear-btn" id="plClearBtn">🗑 비우기</button>
+    </div>
+  </div>
+</aside>
+
+<!-- 순차재생 오버레이 -->
+<div class="player-overlay" id="playerOverlay" hidden>
+  <div class="player-head">
+    <h2 id="playerTitle">재생목록</h2>
+    <button id="playerCloseBtn">✕ 닫기</button>
+  </div>
+  <div class="player-stage" id="playerStage"></div>
+  <div class="player-controls">
+    <button class="hero-btn-ghost" id="pcPrev" style="color:#fff;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.08)">⏮ 이전</button>
+    <span class="pc-info" id="pcInfo"></span>
+    <button class="hero-btn-ghost" id="pcNext" style="color:#fff;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.08)">다음 ⏭</button>
+  </div>
+  <div class="player-queue" id="playerQueue"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+<script src="/common/seo-injector.js" defer></script>
+</body>
+</html>

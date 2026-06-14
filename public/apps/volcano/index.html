@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>화산 탐험대 — 3D 세계 화산 탐험 | eduin VIVES</title>
+<script src="/common/init.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="/common/hero-theme.css">
+<script src="/common/theme.js"></script>
+<style>
+:root{
+  --lava:#ff5a36;
+  --lava-deep:#d63a17;
+  --magma:#ffb347;
+  --rock:#2b2420;
+  --ash:#6b5d52;
+  --cream:#fdf6ec;
+  --paper:#fffdf8;
+  --leaf:#3d9970;
+  --leaf-deep:#2c7a54;
+  --shadow:0 8px 24px rgba(43,36,32,.12);
+  --radius:22px;
+  --side-w:400px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:'Gowun Dodum',sans-serif;
+  background:var(--cream);
+  color:var(--rock);
+  min-height:100vh;
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(255,179,71,.12) 0, transparent 30%),
+    radial-gradient(circle at 85% 70%, rgba(255,90,54,.08) 0, transparent 35%);
+}
+body.exploring{overflow:hidden}
+h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
+
+/* ===== 인트로 ===== */
+.wrap{max-width:560px;margin:0 auto;padding:20px 16px 60px}
+.intro{text-align:center;padding-top:56px;animation:fadeUp .6s ease both}
+.intro .volcano-art{font-size:84px;line-height:1;animation:bounce 2.4s ease-in-out infinite}
+.intro h1{font-size:34px;margin:14px 0 6px;color:var(--lava-deep)}
+.intro .sub{font-size:16px;color:var(--ash);margin-bottom:22px;line-height:1.7}
+.lesson-tag{
+  display:inline-block;background:var(--rock);color:var(--magma);
+  font-size:13px;padding:6px 16px;border-radius:99px;margin-bottom:18px
+}
+.mission-card{
+  background:var(--paper);border:3px dashed var(--magma);border-radius:var(--radius);
+  padding:20px 22px;text-align:left;margin:0 auto 26px;box-shadow:var(--shadow)
+}
+.mission-card h3{color:var(--lava-deep);font-size:19px;margin-bottom:10px}
+.mission-card li{margin:8px 0 8px 20px;line-height:1.6;font-size:15px}
+.mission-card b{color:var(--lava-deep)}
+
+/* ===== 버튼 ===== */
+.btn{
+  font-family:'Jua',sans-serif;font-size:19px;border:none;cursor:pointer;
+  border-radius:99px;padding:15px 36px;transition:transform .15s;
+  -webkit-tap-highlight-color:transparent
+}
+.btn:active{transform:scale(.96)}
+.btn-primary{
+  background:linear-gradient(135deg,var(--lava) 0%,var(--lava-deep) 100%);
+  color:#fff;box-shadow:0 6px 0 #a32a0e
+}
+.btn-primary:active{box-shadow:0 2px 0 #a32a0e;transform:translateY(4px)}
+
+/* ===== 탐험 레이아웃: 지도(좌) + 사이드바(우) ===== */
+.explore{
+  display:grid;grid-template-columns:1fr var(--side-w);
+  width:100vw;height:100vh;height:100dvh;
+  animation:fadeUp .4s ease both
+}
+.map-zone{position:relative;background:#0c1420;min-width:0}
+#map{width:100%;height:100%}
+.viewer-title{
+  position:absolute;top:56px;left:14px;z-index:5;
+  background:rgba(20,14,10,.72);backdrop-filter:blur(6px);
+  color:#fff;border-radius:14px;padding:9px 16px;
+  font-family:'Jua';font-size:19px;display:flex;align-items:center;gap:9px;
+  border:1px solid rgba(255,255,255,.25)
+}
+.viewer-title .num{
+  background:var(--lava);width:26px;height:26px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;font-size:14px
+}
+.cam-bar{
+  position:absolute;bottom:44px;left:50%;transform:translateX(-50%);z-index:5;
+  display:flex;gap:8px;width:max-content;max-width:calc(100% - 20px)
+}
+.cam-btn{
+  font-family:'Jua';font-size:15px;color:#fff;cursor:pointer;
+  background:rgba(20,14,10,.72);backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:10px 16px;
+  transition:background .15s,transform .12s;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent
+}
+.cam-btn:active{transform:scale(.94)}
+.cam-btn.active{background:var(--lava);border-color:var(--lava)}
+.cam-btn.return-btn{background:rgba(43,36,32,.85);border-color:rgba(255,179,71,.6)}
+.cam-btn.return-btn:hover{background:rgba(70,55,45,.9);border-color:var(--magma)}
+.map-loading{
+  position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;
+  background:#0c1420;color:#ffd9a8;font-family:'Jua';font-size:16px;
+  transition:opacity .5s;pointer-events:none
+}
+.map-loading.hide{opacity:0}
+.map-loading .spin{font-size:40px;animation:spin 1.6s linear infinite}
+.hint-chip{
+  position:absolute;top:60px;right:14px;z-index:5;
+  background:rgba(255,255,255,.92);color:var(--rock);
+  font-size:12.5px;border-radius:99px;padding:7px 13px;
+  animation:fadeOutLater 7s ease forwards
+}
+
+/* ===== 사이드바 ===== */
+.side{
+  background:var(--paper);border-left:3px solid var(--rock);
+  overflow-y:auto;display:flex;flex-direction:column;
+  box-shadow:-8px 0 24px rgba(43,36,32,.15)
+}
+.side-head{
+  background:linear-gradient(135deg,#5d4037 0%,#3e2723 100%);
+  color:#fff;padding:20px 22px 16px;position:relative;overflow:hidden;flex-shrink:0
+}
+.side-head::after{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 80% -20%, rgba(255,179,71,.35) 0, transparent 55%)
+}
+.side-head .flag{font-size:14px;opacity:.85;position:relative;z-index:1}
+.side-head h2{font-size:27px;margin:3px 0 2px;position:relative;z-index:1}
+.side-head .height{font-size:13px;opacity:.8;position:relative;z-index:1}
+.side-body{padding:18px 20px 26px;flex:1}
+.progress-zone{margin-bottom:16px}
+.progress-track{height:12px;background:#eadfce;border-radius:99px;overflow:hidden}
+.progress-fill{
+  height:100%;border-radius:99px;min-width:12px;
+  background:linear-gradient(90deg,var(--magma),var(--lava));
+  transition:width .5s cubic-bezier(.6,0,.3,1.4)
+}
+.progress-label{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ash);margin-top:5px}
+
+.observe-box{
+  background:#fff7e8;border:2px solid var(--magma);border-radius:16px;
+  padding:14px 16px;margin-bottom:14px
+}
+.observe-box h3{font-size:16px;color:#b06a00;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.observe-box p{font-size:15px;line-height:1.7}
+.tip-box{
+  background:#eef4fb;border:2px solid #9cc0e8;border-radius:16px;
+  padding:12px 15px;margin-bottom:14px;font-size:13.5px;line-height:1.65;color:#2c5685
+}
+.tip-box b{color:#1f4f8c}
+.earth-link{
+  display:block;text-align:center;font-size:13px;color:var(--ash);
+  text-decoration:underline;margin-top:14px
+}
+
+.quiz-zone{margin-top:6px}
+.quiz-q{text-align:center;font-family:'Jua';font-size:19px;margin-bottom:12px}
+.quiz-btns{display:flex;flex-direction:column;gap:10px}
+.quiz-btn{
+  font-family:'Jua';font-size:17px;padding:15px 8px;border-radius:18px;
+  border:3px solid;cursor:pointer;background:#fff;transition:transform .12s;
+  -webkit-tap-highlight-color:transparent
+}
+.quiz-btn:active{transform:scale(.97)}
+.quiz-btn.yes{border-color:var(--lava);color:var(--lava-deep)}
+.quiz-btn.no{border-color:var(--leaf);color:var(--leaf-deep)}
+
+.reveal{animation:popIn .45s cubic-bezier(.5,0,.3,1.5) both}
+.reveal-banner{
+  text-align:center;border-radius:18px;padding:12px;font-family:'Jua';font-size:18px;margin-bottom:11px
+}
+.reveal-banner.correct{background:#e3f5ea;color:var(--leaf-deep);border:2px solid var(--leaf)}
+.reveal-banner.wrong{background:#fdeaea;color:#c0392b;border:2px solid #e74c3c}
+.answer-chip{display:flex;align-items:center;gap:10px;border-radius:16px;padding:12px 14px;margin-bottom:11px}
+.answer-chip.is-volcano{background:linear-gradient(135deg,#ffe8e0,#ffd9c4);border:2px solid var(--lava)}
+.answer-chip.not-volcano{background:linear-gradient(135deg,#e6f4ec,#d8eede);border:2px solid var(--leaf)}
+.answer-chip .icon{font-size:26px}
+.answer-chip .label{font-family:'Jua';font-size:16.5px}
+.answer-chip.is-volcano .label{color:var(--lava-deep)}
+.answer-chip.not-volcano .label{color:var(--leaf-deep)}
+.explain{font-size:14.5px;line-height:1.75;background:#f7f2e9;border-radius:14px;padding:13px 15px}
+.explain b{color:var(--lava-deep)}
+.next-zone{text-align:center;margin-top:16px}
+.next-zone .btn{font-size:17px;padding:13px 30px}
+
+/* ===== 결과 (사이드바 안) ===== */
+.result{text-align:center;animation:fadeUp .5s ease both}
+.result h1{font-size:26px;color:var(--lava-deep);margin:6px 0 2px}
+.result .score{font-family:'Jua';font-size:19px;color:var(--ash);margin-bottom:16px}
+.sort-cols{display:flex;gap:10px;text-align:left;margin-bottom:14px}
+.sort-col{flex:1;border-radius:16px;padding:12px}
+.sort-col.vol{background:linear-gradient(160deg,#fff0e8,#ffe2d2)}
+.sort-col.non{background:linear-gradient(160deg,#eaf6ef,#dcefe2)}
+.sort-col h3{font-size:14.5px;margin-bottom:8px;text-align:center}
+.sort-col.vol h3{color:var(--lava-deep)}
+.sort-col.non h3{color:var(--leaf-deep)}
+.sort-col ul{list-style:none}
+.sort-col li{
+  background:rgba(255,255,255,.78);border-radius:9px;padding:6px 8px;margin-bottom:5px;
+  font-size:12.5px;cursor:pointer;transition:transform .1s
+}
+.sort-col li:hover{transform:translateX(2px)}
+.revisit-hint{font-size:12px;color:var(--ash);margin-bottom:14px}
+.summary-box{
+  background:var(--rock);color:#f5ead8;border-radius:18px;
+  padding:16px 18px;text-align:left;margin-bottom:18px
+}
+.summary-box h3{color:var(--magma);font-size:16px;margin-bottom:8px}
+.summary-box p{font-size:13.5px;line-height:1.8}
+.summary-box b{color:#ffcf8a}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeOutLater{0%,70%{opacity:1}100%{opacity:0;visibility:hidden}}
+
+/* ===== 태블릿·모바일: 지도 위 / 패널 아래 ===== */
+@media (max-width:900px){
+  body.exploring{overflow:auto}
+  .explore{display:flex;flex-direction:column;height:auto;min-height:100vh}
+  .map-zone{position:sticky;top:0;z-index:40;height:48vh;min-height:300px;flex-shrink:0}
+  .side{border-left:none;border-top:3px solid var(--rock)}
+  .quiz-btns{flex-direction:row}
+  .quiz-btn{flex:1;font-size:15.5px}
+  .intro h1{font-size:28px}
+  .cam-btn{font-size:13.5px;padding:9px 12px}
+  .viewer-title{font-size:16px;padding:8px 13px}
+  .cam-bar{flex-wrap:wrap;justify-content:center}
+}
+</style>
+  <meta property="og:image" content="https://eduin.info/og-images/volcano.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="화산 탐험대 — 3D 지도 세계 화산 여행 | eduin VIVES">
+  <meta name="twitter:description" content="세계 화산 11개를 3D 위성지도로 직접 탐험해요. 백두산·한라산·후지산 등을 관찰하고 화산인지 맞혀 보세요. 초등 과학 4학년 화산 단원 연계.">
+  <meta name="twitter:image" content="https://eduin.info/og-images/volcano.png">
+  <link rel="canonical" href="https://eduin.info/apps/volcano/">
+  <meta property="og:url" content="https://eduin.info/apps/volcano/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"화산 탐험대","description":"세계 화산 11개를 3D 위성지도로 직접 탐험해요. 백두산·한라산·후지산 등을 관찰하고 화산인지 맞혀 보세요. 초등 과학 4학년 화산 단원 연계.","url":"https://eduin.info/apps/volcano/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script src="/common/seo-injector.js" defer></script>
+</head>
+<body>
+
+<!-- VIVES 네비게이션 오버레이 -->
+<div class="top-overlay-left">
+  <a href="/" class="overlay-btn" title="eduin VIVES 홈">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    <span>Home</span>
+  </a>
+</div>
+<div class="top-overlay">
+  <button class="overlay-btn" onclick="shareCurrentPage()" title="공유">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+    </svg>
+    <span>공유</span>
+  </button>
+</div>
+
+<div id="app"></div>
+
+<script>
+/* ============ 산 데이터 ============ */
+const MOUNTAINS = [
+ { name:"백두산", country:"한반도", height:"2,744m", emoji:"🏔️", isVolcano:true,
+   lat:41.9931, lng:128.0768, zoom:11.6,
+   observe:"산꼭대기를 위에서 내려다보세요. 가운데가 움푹 파여 있고, 그 안에 커다란 호수가 보이나요?",
+   tip:"⬇️ <b>위에서 분화구 찾기</b> 버튼을 누르면 호수가 잘 보여요.",
+   explain:"백두산은 <b>화산</b>이에요! 산꼭대기의 큰 호수 <b>천지</b>는 화산이 분출한 뒤 분화구에 물이 고여 만들어진 거예요. 지금도 활동 가능성이 있는 화산이랍니다." },
+ { name:"킬라우에아 산", country:"미국 하와이", height:"1,247m", emoji:"🌋", isVolcano:true,
+   lat:19.4069, lng:-155.2834, zoom:11.6,
+   observe:"산 주변의 땅 색깔을 살펴보세요. 검은색 땅이 넓게 펼쳐져 있죠? 무엇이 굳어서 생긴 걸까요?",
+   tip:"지도를 끌어서 주변 바닷가까지 내려가 보세요. 검은 땅이 어디까지 이어지나요?",
+   explain:"킬라우에아는 지금도 용암이 흘러나오는 <b>활화산</b>이에요! 주변의 검은 땅은 모두 <b>용암이 식어서 굳은 것</b>이랍니다. 세계에서 가장 활발한 화산 중 하나예요." },
+ { name:"설악산", country:"대한민국", height:"1,708m", emoji:"⛰️", isVolcano:false,
+   lat:38.1191, lng:128.4654, zoom:11.8,
+   observe:"산꼭대기와 능선을 살펴보세요. 뾰족뾰족한 바위 능선이 이어지죠? 분화구처럼 움푹 파인 곳이 있나요?",
+   tip:"🔄 <b>한 바퀴</b> 버튼으로 빙 돌면서 울퉁불퉁한 능선을 관찰해 보세요.",
+   explain:"설악산은 <b>화산이 아니에요</b>. 단단한 <b>화강암</b>이 땅속에서 솟아오른 뒤 오랜 시간 깎여서 만들어진 산이에요. 분화구가 없고 꼭대기가 뾰족해요." },
+ { name:"에베레스트 산", country:"네팔·중국", height:"8,849m", emoji:"🗻", isVolcano:false,
+   lat:27.9881, lng:86.9250, zoom:10.8,
+   observe:"세계에서 가장 높은 산이에요! 날카로운 봉우리와 빙하가 보이나요? 분화구는 보이나요?",
+   tip:"🔄 <b>한 바퀴</b> 돌면서 봉우리가 얼마나 뾰족한지 살펴보세요.",
+   explain:"에베레스트는 <b>화산이 아니에요</b>. 두 개의 커다란 땅덩어리(대륙)가 <b>서로 부딪치면서 땅이 밀려 올라가</b> 만들어진 산이에요. 그래서 분화구가 없답니다." },
+ { name:"지리산", country:"대한민국", height:"1,915m", emoji:"🌄", isVolcano:false,
+   lat:35.3370, lng:127.7306, zoom:11.0,
+   observe:"산세가 부드럽고 웅장하죠? 천천히 둘러보며 분화구나 검은 용암 지형이 있는지 찾아보세요.",
+   tip:"⬇️ 위에서도 보고 ⛰️ 옆에서도 보면서 백두산과 비교해 보세요.",
+   explain:"지리산도 <b>화산이 아니에요</b>. 오랜 세월 비바람에 깎여 부드러운 모양이 되었지만, 분화구도 없고 화산 활동으로 만들어진 산이 아니랍니다." },
+ { name:"킬로토아", country:"에콰도르", height:"3,914m", emoji:"🌊", isVolcano:true,
+   lat:-0.8583, lng:-78.9003, zoom:12.6,
+   observe:"위에서 내려다보면 정말 신기한 모양이에요! 동그란 테두리 안에 무엇이 들어 있나요?",
+   tip:"⬇️ <b>위에서 분화구 찾기</b>를 꼭 눌러 보세요. 깜짝 놀랄 거예요!",
+   explain:"킬로토아는 <b>화산</b>이에요! 약 800년 전 큰 폭발로 산꼭대기가 무너져 거대한 <b>분화구(칼데라)</b>가 생겼고, 그 안에 에메랄드빛 호수가 만들어졌어요." },
+ { name:"한라산", country:"대한민국 제주도", height:"1,947m", emoji:"🍊", isVolcano:true,
+   lat:33.3617, lng:126.5292, zoom:10.8,
+   observe:"산 전체 모양을 보세요. 방패를 엎어 놓은 것처럼 완만하죠? 꼭대기를 위에서 보면 무엇이 있나요?",
+   tip:"확대(+)해서 꼭대기 백록담을 찾아보고, 주변의 작은 오름들도 세어 보세요.",
+   explain:"한라산은 <b>화산</b>이에요! 꼭대기의 <b>백록담</b>이 바로 분화구랍니다. 제주도 곳곳의 작은 오름들도 모두 화산 활동으로 생긴 거예요." },
+ { name:"마우나 로아", country:"미국 하와이", height:"4,169m", emoji:"🛡️", isVolcano:true,
+   lat:19.4756, lng:-155.6081, zoom:9.6,
+   observe:"산이 엄청나게 넓고 경사가 완만해요. 마치 방패를 엎어 놓은 모양 같지 않나요?",
+   tip:"축소(−)해서 섬 전체를 보세요. 산 하나가 섬의 절반이에요!",
+   explain:"마우나 로아는 세계에서 가장 큰 <b>화산</b> 중 하나예요! 묽은 용암이 멀리까지 흘러 퍼지면서 <b>방패 모양의 완만한 산</b>이 되었어요. 2022년에도 분화했답니다." },
+ { name:"후지 산", country:"일본", height:"3,776m", emoji:"🎌", isVolcano:true,
+   lat:35.3606, lng:138.7274, zoom:11.2,
+   observe:"산의 전체 모양이 아주 예쁜 세모(원뿔) 모양이에요. 꼭대기를 위에서 내려다보세요. 무엇이 보이나요?",
+   tip:"🔄 한 바퀴 돌면 어느 방향에서 봐도 똑같은 세모 모양이에요. 왜 그럴까요?",
+   explain:"후지산은 <b>화산</b>이에요! 용암과 화산재가 여러 번 번갈아 쌓이면서 아름다운 <b>원뿔 모양</b>이 되었어요. 꼭대기에는 분화구가 뚜렷하게 남아 있답니다." },
+ { name:"세인트헬렌스 산", country:"미국", height:"2,549m", emoji:"💥", isVolcano:true,
+   lat:46.1914, lng:-122.1956, zoom:11.4,
+   observe:"산의 한쪽이 뻥 뚫린 것처럼 보여요! 어쩌다 이런 모양이 되었을까요?",
+   tip:"🔄 한 바퀴 돌면서 무너진 쪽과 멀쩡한 쪽을 비교해 보세요.",
+   explain:"세인트헬렌스는 <b>화산</b>이에요! <b>1980년 큰 폭발</b>로 산꼭대기와 한쪽 면이 통째로 날아가 버렸어요. 화산 폭발이 얼마나 강력한지 보여 주는 산이랍니다." },
+ { name:"태산", country:"중국", height:"1,545m", emoji:"🪨", isVolcano:false,
+   lat:36.2562, lng:117.1014, zoom:11.6,
+   observe:"마지막 산이에요! 지금까지 본 화산들과 비교해 보세요. 분화구나 용암의 흔적이 보이나요?",
+   tip:"지금까지 본 화산 3가지 특징(분화구·완만한 모양·용암 흔적)을 떠올리며 살펴보세요.",
+   explain:"태산은 <b>화산이 아니에요</b>. 설악산처럼 단단한 <b>화강암</b>으로 이루어진 바위산이에요. 분화구도, 용암이 흐른 흔적도 없답니다." }
+];
+
+/* ============ 상태 ============ */
+let idx = 0;
+let answers = [];
+let map = null;
+let orbiting = false;
+let mapFailed = false;
+const app = document.getElementById('app');
+
+function earthUrl(m){
+  return `https://earth.google.com/web/@${m.lat},${m.lng},1500a,30000d,35y,0h,60t,0r`;
+}
+
+/* ============ 3D 지도 ============ */
+function mapFallback(msg){
+  const zone = document.querySelector('.map-zone');
+  if(!zone) return;
+  zone.innerHTML = `
+    <div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+                text-align:center;color:#ffd9a8;padding:20px">
+      <div style="font-size:46px;margin-bottom:10px">🛰️</div>
+      <p style="font-size:15px;line-height:1.7;margin-bottom:16px">
+        이 기기/환경에서는 내장 3D 지도를 열 수 없어요.<br>
+        <span style="opacity:.7;font-size:12px">(${msg})</span><br>
+        대신 구글 어스로 탐험을 계속할 수 있어요!
+      </p>
+      <button class="btn btn-primary" style="font-size:16px;padding:12px 26px"
+        onclick="window.open(earthUrl(MOUNTAINS[idx]),'_blank')">🌍 구글 어스로 이 산 보기</button>
+    </div>`;
+  mapFailed = true;
+}
+
+function buildMap(){
+  if(typeof maplibregl === 'undefined'){
+    mapFallback('지도 라이브러리 로딩 실패 - 인터넷 연결 또는 차단 정책 확인');
+    return;
+  }
+  try{
+    map = new maplibregl.Map({
+      container:'map',
+      center:[MOUNTAINS[0].lng, MOUNTAINS[0].lat],
+      zoom:3, pitch:0, bearing:0,
+      attributionControl:{compact:true},
+      maxPitch:80,
+      style:{
+        version:8,
+        sources:{
+          sat:{
+            type:'raster', tileSize:256, maxzoom:18,
+            attribution:'위성영상 © Esri · 지형 © Mapzen/AWS',
+            tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}']
+          },
+          dem:{
+            type:'raster-dem', tileSize:256, maxzoom:13, encoding:'terrarium',
+            tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png']
+          },
+          demShade:{
+            type:'raster-dem', tileSize:256, maxzoom:13, encoding:'terrarium',
+            tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png']
+          }
+        },
+        layers:[
+          {id:'sat', type:'raster', source:'sat'},
+          {id:'shade', type:'hillshade', source:'demShade',
+           paint:{'hillshade-exaggeration':0.35,'hillshade-shadow-color':'#1a120c'}}
+        ]
+      }
+    });
+    map.addControl(new maplibregl.NavigationControl({visualizePitch:true}), 'bottom-left');
+    map.on('load', ()=>{
+      map.setTerrain({source:'dem', exaggeration:1.4});
+      try{ map.setSky({ 'sky-color':'#79b3e6','horizon-color':'#fdebd0','fog-color':'#e8ddca','sky-horizon-blend':.6 }); }catch(e){}
+      document.getElementById('mapLoading')?.classList.add('hide');
+      flyToMountain(MOUNTAINS[0]);
+    });
+    map.on('error', e => console.warn('map tile error', e?.error?.message||e));
+    ['mousedown','touchstart','wheel'].forEach(ev => map.on(ev, stopOrbit));
+  }catch(err){
+    console.error('지도 초기화 실패:', err);
+    mapFallback(err && err.message ? err.message : 'WebGL 미지원 가능성');
+  }
+}
+
+function flyToMountain(m){
+  if(mapFailed || !map) return;
+  stopOrbit();
+  map.flyTo({ center:[m.lng, m.lat], zoom:m.zoom, pitch:65, bearing:20, duration:4500, essential:true });
+}
+function camTilt(){ if(mapFailed||!map)return; stopOrbit(); map.easeTo({pitch:65, zoom:MOUNTAINS[idx].zoom, duration:1200}); }
+function camTop(){ if(mapFailed||!map)return; stopOrbit(); map.easeTo({pitch:0, bearing:0, zoom:MOUNTAINS[idx].zoom+0.4, duration:1200}); }
+function toggleOrbit(){
+  if(mapFailed||!map)return;
+  orbiting = !orbiting;
+  document.getElementById('orbitBtn')?.classList.toggle('active', orbiting);
+  if(orbiting){
+    if(map.getPitch() < 30) map.easeTo({pitch:65, duration:800});
+    orbitFrame();
+  }
+}
+function orbitFrame(){
+  if(!orbiting) return;
+  map.setBearing(map.getBearing() + 0.12);
+  requestAnimationFrame(orbitFrame);
+}
+function stopOrbit(){
+  if(!orbiting) return;
+  orbiting = false;
+  document.getElementById('orbitBtn')?.classList.remove('active');
+}
+
+/* ============ 화면 ============ */
+function renderIntro(){
+  document.body.classList.remove('exploring');
+  app.innerHTML = `
+  <div class="wrap">
+    <div class="intro">
+      <div class="volcano-art">🌋</div>
+      <h1>화산 탐험대</h1>
+      <div class="lesson-tag">과학 4학년 · 화산과 화산이 아닌 산은 무엇이 다를까요? (70~71쪽)</div>
+      <p class="sub">화산은 직접 가 보기 어려워요.<br>이 앱 안에서 바로 <b>3D 지도</b>를 움직이며<br>세계의 산 11개를 탐험해 봐요!</p>
+      <div class="mission-card">
+        <h3>🧭 탐험 방법</h3>
+        <ol>
+          <li>지도를 <b>마우스/손가락으로 끌면</b> 움직여요. <b>오른쪽 버튼 드래그</b>(또는 두 손가락)로 돌리고 기울일 수 있어요.</li>
+          <li><b>🔄 한 바퀴</b>, <b>⬇️ 위에서 보기</b> 버튼으로 산을 구석구석 관찰해요.</li>
+          <li>오른쪽 안내를 읽고, <b>화산인지 아닌지</b> 맞혀 봐요!</li>
+        </ol>
+      </div>
+      <button class="btn btn-primary" onclick="start()">탐험 시작! 🚀</button>
+    </div>
+  </div>`;
+}
+
+function renderExplore(){
+  document.body.classList.add('exploring');
+  app.innerHTML = `
+  <div class="explore">
+    <div class="map-zone">
+      <div class="viewer-title" id="viewerTitle"></div>
+      <div class="hint-chip">🖐️ 지도를 끌어서 직접 둘러보세요!</div>
+      <div id="map"></div>
+      <div class="map-loading" id="mapLoading"><div class="spin">🌍</div>3D 지형을 불러오는 중...</div>
+      <div class="cam-bar">
+        <button class="cam-btn return-btn" onclick="flyToMountain(MOUNTAINS[idx])" title="현재 산으로 돌아가기">🏠 돌아가기</button>
+        <button class="cam-btn" id="orbitBtn" onclick="toggleOrbit()">🔄 한 바퀴</button>
+        <button class="cam-btn" onclick="camTop()">⬇️ 위에서 분화구 찾기</button>
+        <button class="cam-btn" onclick="camTilt()">⛰️ 3D 보기</button>
+      </div>
+    </div>
+    <aside class="side">
+      <div class="side-head" id="sideHead"></div>
+      <div class="side-body" id="sideBody"></div>
+    </aside>
+  </div>`;
+  buildMap();
+  renderPanel();
+}
+
+function renderPanel(){
+  const m = MOUNTAINS[idx];
+  const vt = document.getElementById('viewerTitle');
+  if(vt) vt.innerHTML = `<span class="num">${idx+1}</span> ${m.emoji} ${m.name}`;
+  document.getElementById('sideHead').innerHTML = `
+    <div class="flag">${m.country}</div>
+    <h2>${m.emoji} ${m.name}</h2>
+    <div class="height">높이 ${m.height} · ${idx+1}번째 산</div>`;
+  document.getElementById('sideBody').innerHTML = `
+    <div class="progress-zone">
+      <div class="progress-track"><div class="progress-fill" style="width:${idx/MOUNTAINS.length*100}%"></div></div>
+      <div class="progress-label"><span>탐험 진행 중</span><span>${idx+1} / ${MOUNTAINS.length}</span></div>
+    </div>
+    <div class="observe-box">
+      <h3>🔍 관찰 포인트</h3>
+      <p>${m.observe}</p>
+    </div>
+    <div class="tip-box">💡 <b>탐험 팁</b> · ${m.tip}</div>
+    <div class="quiz-zone" id="quiz">
+      <div class="quiz-q">충분히 관찰했나요?<br>이 산은 화산일까요?</div>
+      <div class="quiz-btns">
+        <button class="quiz-btn yes" onclick="answer(true)">🌋 화산이에요!</button>
+        <button class="quiz-btn no" onclick="answer(false)">⛰️ 화산이 아니에요!</button>
+      </div>
+    </div>
+    <a class="earth-link" href="${earthUrl(m)}" target="_blank" rel="noopener">더 실감나게 보고 싶다면? 구글 어스로 열기 ↗</a>`;
+  document.querySelector('.side')?.scrollTo({top:0});
+}
+
+function answer(guess){
+  const m = MOUNTAINS[idx];
+  const correct = guess === m.isVolcano;
+  answers[idx] = {correct};
+  document.getElementById('quiz').innerHTML = `
+  <div class="reveal">
+    <div class="reveal-banner ${correct?'correct':'wrong'}">
+      ${correct ? '🎉 딩동댕! 정답이에요!' : '🤔 아쉬워요! 지도를 다시 살펴봐요'}
+    </div>
+    <div class="answer-chip ${m.isVolcano?'is-volcano':'not-volcano'}">
+      <span class="icon">${m.isVolcano?'🌋':'⛰️'}</span>
+      <span class="label">${m.name}은(는) ${m.isVolcano?'화산이에요!':'화산이 아니에요!'}</span>
+    </div>
+    <div class="explain">${m.explain}</div>
+    <div class="next-zone">
+      <button class="btn btn-primary" onclick="next()">
+        ${idx === MOUNTAINS.length-1 ? '탐험 결과 보기 🏁' : '다음 산으로 출발! ✈️'}
+      </button>
+    </div>
+  </div>`;
+}
+
+function next(){
+  idx++;
+  if(idx >= MOUNTAINS.length){ renderResult(); return; }
+  renderPanel();
+  flyToMountain(MOUNTAINS[idx]);
+}
+
+function renderResult(){
+  stopOrbit();
+  if(map && !mapFailed){ map.easeTo({zoom:2.2, pitch:0, duration:3000}); }
+  const vt = document.getElementById('viewerTitle');
+  if(vt) vt.innerHTML = `🏆 탐험 완료!`;
+  const score = answers.filter(a=>a&&a.correct).length;
+  const vol = MOUNTAINS.map((m,i)=>({m,i})).filter(x=>x.m.isVolcano);
+  const non = MOUNTAINS.map((m,i)=>({m,i})).filter(x=>!x.m.isVolcano);
+  const li = x => `<li onclick="revisit(${x.i})">${x.m.emoji} ${x.m.name}</li>`;
+  document.getElementById('sideHead').innerHTML = `
+    <div class="flag">세계 화산 탐험</div>
+    <h2>🏆 탐험 완료!</h2>
+    <div class="height">11개 산을 모두 방문했어요</div>`;
+  document.getElementById('sideBody').innerHTML = `
+  <div class="result">
+    <div class="score">${MOUNTAINS.length}개 중 ${score}개 맞혔어요</div>
+    <div class="sort-cols">
+      <div class="sort-col vol"><h3>🌋 화산 (${vol.length})</h3><ul>${vol.map(li).join('')}</ul></div>
+      <div class="sort-col non"><h3>⛰️ 화산이 아닌 산 (${non.length})</h3><ul>${non.map(li).join('')}</ul></div>
+    </div>
+    <p class="revisit-hint">산 이름을 누르면 3D 지도로 다시 가 볼 수 있어요</p>
+    <div class="summary-box">
+      <h3>📚 오늘의 배움 정리</h3>
+      <p>화산은 <b>마그마가 분출하여 만들어진 산</b>이에요.
+      그래서 산꼭대기에 <b>분화구</b>가 있고, 분화구에 물이 고여 <b>호수</b>가 되기도 해요(백두산 천지, 한라산 백록담).
+      화산이 아닌 산은 분화구가 없고, 땅이 솟아오르거나 깎여서 만들어졌어요.</p>
+    </div>
+    <button class="btn btn-primary" style="font-size:17px" onclick="location.reload()">다시 탐험하기 🔄</button>
+  </div>`;
+  document.querySelector('.side')?.scrollTo({top:0});
+}
+
+function revisit(i){
+  const m = MOUNTAINS[i];
+  const vt = document.getElementById('viewerTitle');
+  if(vt) vt.innerHTML = `<span class="num">${i+1}</span> ${m.emoji} ${m.name}`;
+  idx = i;
+  flyToMountain(m);
+}
+
+function start(){ idx=0; answers=[]; renderExplore(); }
+
+renderIntro();
+</script>
+</body>
+</html>

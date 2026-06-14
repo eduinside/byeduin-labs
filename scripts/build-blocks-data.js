@@ -1,4 +1,4 @@
-// BlocksUniverse_Episodes_Final.xlsx → public/blocks-universe/episodes.json
+// BlocksUniverse_Episodes_Final.xlsx → public/apps/blocks-universe/episodes.json
 // 사용법: node scripts/build-blocks-data.js [xlsx경로]
 // xlsx 패키지 필요: npm install xlsx --no-save
 const XLSX = require('xlsx');
@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 
 const SRC = process.argv[2] || 'C:/Users/NT940XGQ/Downloads/BlocksUniverse_Episodes_Final.xlsx';
-const OUT = path.join(__dirname, '..', 'public', 'blocks-universe', 'episodes.json');
+const OUT = path.join(__dirname, '..', 'public', 'apps', 'blocks-universe', 'episodes.json');
 
 const SERIES = {
   Numberblocks: { id: 'numberblocks', ko: '넘버블록스' },
