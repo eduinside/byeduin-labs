@@ -565,10 +565,9 @@
   }
   window.makeHomeShortcut = function () {
     if (!sheetItem) return;
-    closeSheet();
-    history.replaceState(null, '', buildOpenerURL(sheetItem));   // 주소창을 오프너 URL로 (홈 화면에 추가용)
-    renderOpener(openerPayload(sheetItem));
-    window.scrollTo(0, 0);
+    sessionStorage.setItem('__making', '1');   // 이번 로드는 '만들기' → 자동 실행 억제
+    location.hash = '#open=' + encodeURIComponent(JSON.stringify(openerPayload(sheetItem)));
+    location.reload();   // 새로 로드해야 제목·파비콘이 '홈 화면에 추가'에 제대로 잡힘
   };
   window.downloadSheetShortcut = function () { if (sheetItem) downloadUrlShortcut(sheetItem.name, sheetItem.rawUrl || sheetItem.url); };
   window.closeSheet = function () { $('sheetOverlay').classList.remove('show'); };
@@ -592,14 +591,17 @@
       return c.toDataURL('image/png');
     } catch (e) { return ''; }
   }
-  function setPageIcon(href) {   // 탭 파비콘 + 홈 아이콘을 선택한 로고로 교체 (이 페이지만)
+  function setPageIcon(href, hiRes) {   // 탭 파비콘 + 홈 아이콘을 선택한 로고로 교체 (이 페이지만)
     if (!href) return;
     document.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]').forEach(l => l.remove());
-    ['icon', 'apple-touch-icon'].forEach(rel => { const l = document.createElement('link'); l.rel = rel; l.href = href; document.head.appendChild(l); });
+    const fav = document.createElement('link'); fav.rel = 'icon'; fav.href = href; document.head.appendChild(fav);
+    const ati = document.createElement('link'); ati.rel = 'apple-touch-icon'; ati.href = hiRes || href; document.head.appendChild(ati);
   }
   function renderOpener(data) {
     document.title = (data.n || '바로가기') + ' 바로가기';
-    setPageIcon(data.f || (data.e ? emojiPng(data.e, 180) : ''));
+    const iconUrl = data.f || (data.e ? emojiPng(data.e, 192) : '');
+    const hiRes = data.f ? data.f.replace(/([?&]sz=)\d+/, '$1128') : iconUrl;   // 홈 아이콘은 더 큰 favicon
+    setPageIcon(iconUrl, hiRes);
     const root = document.querySelector('.dl-root'); if (root) root.style.display = 'none';
     const sheet = $('sheetOverlay'); if (sheet) sheet.classList.remove('show');
     $('opener').classList.add('show');
@@ -613,9 +615,11 @@
     if (!location.hash.startsWith('#open=')) return false;
     let data; try { data = JSON.parse(decodeURIComponent(location.hash.slice(6))); } catch { data = null; }
     if (!data || !data.u) return false;
+    const making = sessionStorage.getItem('__making');   // '만들기'로 들어온 로드면 자동 실행하지 않음
+    sessionStorage.removeItem('__making');
     renderOpener(data);
-    // 홈 아이콘에서 새로 열릴 때 자동 실행 (차단되면 '앱 열기' 탭이 폴백)
-    setTimeout(() => { try { window.location.href = appTarget(data.u); } catch (e) { } }, 60);
+    // 홈 아이콘에서 새로 열릴 때만 자동 실행 (차단되면 '앱 열기' 탭이 폴백)
+    if (!making) setTimeout(() => { try { window.location.href = appTarget(data.u); } catch (e) { } }, 60);
     return true;
   }
 
