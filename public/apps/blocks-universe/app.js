@@ -342,7 +342,7 @@ function openEpisode(id, updateHash = true) {
   const ep = byId.get(id);
   if (!ep) return;
   modalEp = ep;
-  modalLang = (ep.ytKo || ep.titleKo || ep.descKo) ? 'ko' : 'en';
+  modalLang = ep.ytKo ? 'ko' : 'en'; // 한글 영상 있을 때만 한글 기본값
   renderModal();
   $('epModal').hidden = false;
   document.body.style.overflow = 'hidden';
@@ -381,8 +381,13 @@ function renderModal(skipVideo = false) {
     ${ep.theme === 'TimesTables' ? '<span class="mtag">✖️ 구구단</span>' : ''}
     ${showLangToggle ? `
       <span class="lang-toggle">
-        <button id="langKo" class="${useKo ? 'active' : ''}${isAiDesc ? ' ai-lang' : ''}"${isAiDesc ? ' title="AI 번역 설명"' : ''}>${isAiDesc ? '🤖 한글번역' : '한글'}</button>
-        <button id="langEn" class="${useKo ? '' : 'active'}">EN</button>
+        ${isAiDesc ? `
+          <button id="langEn" class="${useKo ? '' : 'active'}">EN</button>
+          <button id="langKo" class="${useKo ? 'active' : ''} ai-lang" title="AI 번역 설명">🤖 한글번역</button>
+        ` : `
+          <button id="langKo" class="${useKo ? 'active' : ''}">한글</button>
+          <button id="langEn" class="${useKo ? '' : 'active'}">EN</button>
+        `}
       </span>` : ''}`;
   if (showLangToggle) {
     $('langKo').onclick = async () => {
