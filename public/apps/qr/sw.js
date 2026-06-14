@@ -1,13 +1,15 @@
-const CACHE = 'qr-master-v2';
+const CACHE = 'qr-master-v3';
 
 const ASSETS = [
-  '/qr/',
-  '/qr/index.html',
-  '/qr/manifest.json',
-  '/qr/icons/qr-icon.svg',
+  '/apps/qr/',
+  '/apps/qr/index.html',
+  '/apps/qr/manifest.json',
+  '/apps/qr/icons/qr-icon.svg',
   '/common/hero-theme.css',
+  '/common/app-shell.css',
   '/common/theme.js',
   '/common/init.js',
+  '/common/app-shell.js',
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
   'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',
 ];
@@ -48,7 +50,7 @@ self.addEventListener('fetch', e => {
       }).catch(() => {
         // Network failed. For navigation requests, serve the cached shell.
         if (request.mode === 'navigate') {
-          return caches.match('/qr/index.html');
+          return caches.match('/apps/qr/index.html');
         }
         // For other asset requests, return a minimal error response
         // rather than returning undefined (which breaks the fetch pipeline).

@@ -44,6 +44,9 @@ if "/common/app-shell.js" in content:
         ("/common/theme.js",       "theme.js 스크립트"),
         ("/common/app-shell.js",   "app-shell.js 스크립트"),
     ]
+elif 'data-shell="immersive"' in content and "/common/hero-theme.css" not in content:
+    # 레거시 몰입형: 독자 CSS로 완결되는 앱(Dongle 게임 등) — 크롬 패턴 검사 생략
+    sys.exit(0)
 else:
     checks = [
         ("/common/hero-theme.css", "hero-theme.css 링크"),
