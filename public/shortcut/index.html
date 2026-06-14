@@ -282,7 +282,7 @@
       <div class="dl-opener-name" id="openerName"></div>
       <a class="fd-btn fd-btn-primary" id="openerOpen" style="width:100%">📲 앱 열기</a>
       <p class="dl-opener-help">홈 화면에 이 바로가기를 만들려면<br>크롬 <b>⋮ 메뉴 → '홈 화면에 추가'</b>를 누르세요.<br><span style="color:var(--fg-muted)">만든 아이콘을 누르면 이 앱이 열려요.</span></p>
-      <a href="/shortcut/" class="dl-opener-back">← 빠른 버튼 런처로</a>
+      <a href="/shortcut/" class="dl-opener-back">← 빠른 버튼 만들기</a>
     </div>
   </div>
 
@@ -513,7 +513,7 @@
   }
 
   window.openApp = function (url) {
-    const a = document.createElement('a'); a.href = url; a.rel = 'noopener';
+    const a = document.createElement('a'); a.href = appTarget(url); a.rel = 'noopener';
     document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 120);
   };
   window.deleteItem = function (id) { saveItems(loadItems().filter(i => i.id !== id)); renderList(); };
@@ -539,7 +539,7 @@
     const item = loadItems().find(i => i.id === id);
     if (!item) return;
     sheetUrl = item.url; sheetName = item.name; sheetItem = item;
-    $('sheetOpen').href = item.url;   // 앵커 직접 탭 → 더 안정적으로 앱 열림
+    $('sheetOpen').href = appTarget(item.url);   // 앵커 직접 탭(안드로이드는 intent://)으로 안정적으로 앱 열림
     const body = $('sheetBody');
     if (isDesktop) {
       $('sheetTitle').textContent = `'${esc(item.name)}' — 데스크톱`;
@@ -569,6 +569,14 @@
   window.closeSheet = function () { $('sheetOverlay').classList.remove('show'); };
 
   // ── 바로가기 오프너 (#open=) — 홈 아이콘에서 앱 열기 ──
+  // 안드로이드는 raw 스킴 자동 이동을 잘 막아, intent:// 로 변환해 실행 성공률을 높임
+  function appTarget(url) {
+    if (/Android/i.test(navigator.userAgent)) {
+      const m = url.match(/^([a-z][a-z0-9+.\-]*):\/\/(.*)$/i);
+      if (m) return 'intent://' + m[2] + '#Intent;scheme=' + m[1] + ';end';
+    }
+    return url;
+  }
   function renderOpener(data) {
     document.title = (data.n || '바로가기') + ' 바로가기';
     if (data.f && !document.querySelector('link[rel="apple-touch-icon"]')) { const l = document.createElement('link'); l.rel = 'apple-touch-icon'; l.href = data.f; document.head.appendChild(l); }
@@ -579,13 +587,15 @@
     $('openerIcon').innerHTML = data.f
       ? `<img src="${esc(data.f)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none">📲</span>`
       : '📲';
-    $('openerOpen').href = data.u;   // '앱 열기' 탭(사용자 제스처)으로 안정적으로 실행 — 안드로이드는 자동 이동을 차단함
+    $('openerOpen').href = appTarget(data.u);
   }
   function tryOpener() {
     if (!location.hash.startsWith('#open=')) return false;
     let data; try { data = JSON.parse(decodeURIComponent(location.hash.slice(6))); } catch { data = null; }
     if (!data || !data.u) return false;
     renderOpener(data);
+    // 홈 아이콘에서 새로 열릴 때 자동 실행 (차단되면 '앱 열기' 탭이 폴백)
+    setTimeout(() => { try { window.location.href = appTarget(data.u); } catch (e) { } }, 60);
     return true;
   }
 
