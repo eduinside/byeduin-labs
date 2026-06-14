@@ -819,21 +819,7 @@
       });
     }
 
-    /* ── 서브카테고리 정의 (apps.json 없이 JS 하드코딩) ── */
-    const SUBCATS = {
-      edu: [
-        { id: 'edu-sim',   label: '🌐 시뮬레이션', appIds: ['moon-phase', 'volcano', 'step-squad', 'clubs'] },
-        { id: 'edu-learn', label: '📖 학습지원',   appIds: ['blocks-universe', 'flash-deck', 'chalkboard', 'math-sheet'] },
-        { id: 'edu-work',  label: '💼 업무경감',   appIds: ['scoring-table', 'file-tools', 'timer', 'allowance-calculator', 'login-helper', 'search'] },
-      ],
-      utility: [
-        { id: 'util-life',     label: '🔧 생활편의',     appIds: ['md-editor', 'qr'] },
-        { id: 'util-chrome',   label: '🧩 크롬확장',     appIds: ['content-id-viewer', 'mp4-finder'] },
-        { id: 'util-social',   label: '💬 소셜',         appIds: ['book-share', 'bubble-chat', 'edulink'] },
-        { id: 'util-creative', label: '🎨 크리에이티브', appIds: ['yt-thumb', 'grid-maker', 'signage-maker'] },
-        { id: 'util-notion',   label: '📐 노션도구',     appIds: ['embed', 'notion-image-downloader', 'notion-styler', 'shortcut'] },
-      ],
-    };
+    /* ── 서브카테고리는 apps.json의 categories[].subcategories + 앱별 subcategory에서 옴 ── */
 
     function buildSidebar(categories) {
       const sidebar = document.createElement('nav');
@@ -856,7 +842,8 @@
       sidebar.appendChild(ul);
 
       categories.forEach(cat => {
-        const hasChildren = !!(SUBCATS[cat.id] && SUBCATS[cat.id].length > 0);
+        const subcats = cat.subcategories || [];
+        const hasChildren = subcats.length > 0;
         const li = document.createElement('li');
         li.className = 'tree-node' + (hasChildren ? ' is-open' : '');
         li.dataset.catId = cat.id;
@@ -877,7 +864,7 @@
         if (hasChildren) {
           const sub = document.createElement('ul');
           sub.className = 'subtree';
-          SUBCATS[cat.id].forEach(sc => {
+          subcats.forEach(sc => {
             const sli = document.createElement('li');
             const sbtn = document.createElement('button');
             sbtn.className = 'subtree-item';
@@ -976,7 +963,7 @@
         const allItems = APPS.filter(a => a.category === cat.id);
         if (allItems.length === 0) return;
 
-        const subcats = SUBCATS[cat.id];
+        const subcats = cat.subcategories;
 
         const section = document.createElement('section');
         section.className = 'category-section';
@@ -995,11 +982,11 @@
           content.appendChild(section);
 
           // 서브카테고리별 섹션
-          const assignedIds = new Set(subcats.flatMap(sc => sc.appIds));
-          const unassigned = allItems.filter(a => !assignedIds.has(a.id));
+          const subIds = new Set(subcats.map(sc => sc.id));
+          const unassigned = allItems.filter(a => !a.subcategory || !subIds.has(a.subcategory));
 
           subcats.forEach(sc => {
-            const scItems = sc.appIds.map(id => APPS.find(a => a.id === id)).filter(Boolean);
+            const scItems = allItems.filter(a => a.subcategory === sc.id);
             if (!scItems.length) return;
 
             const scSec = document.createElement('section');

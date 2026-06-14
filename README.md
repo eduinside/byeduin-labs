@@ -15,64 +15,64 @@
 #### 🌐 시뮬레이션
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **Moon Phase** | `/moon-phase/` | 달의 위상 시뮬레이터 |
-| **화산 탐험대** | `/volcano/` | 3D 위성지도로 세계 화산 11개 탐험 · 초등 과학 4학년 연계 |
-| **Step Squad** | `/blocks-universe/step-squad.html` | 계단수 개념 블록 시각화 + 퀴즈 |
-| **Club Badge** | `/blocks-universe/clubs.html` | 1~100 수의 넘버블록스 클럽 탐색 + 퀴즈 |
+| **Moon Phase** | `/apps/moon-phase/` | 달의 위상 시뮬레이터 |
+| **화산 탐험대** | `/apps/volcano/` | 3D 위성지도로 세계 화산 11개 탐험 · 초등 과학 4학년 연계 |
+| **Step Squad** | `/apps/blocks-universe/step-squad.html` | 계단수 개념 블록 시각화 + 퀴즈 |
+| **Club Badge** | `/apps/blocks-universe/clubs.html` | 1~100 수의 넘버블록스 클럽 탐색 + 퀴즈 |
 
 #### 📖 학습지원
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **Blocks Universe** | `/blocks-universe/` | 넘버블록스·알파블록스·컬러블록스·원더블록스 351편 에피소드 탐색 · AI 검색 · 순차재생 |
-| **Flash Deck** | `/flash-deck/` | 플래시카드 학습 앱 |
-| **Chalkboard** | `/chalkboard/` | 칠판/화이트보드 메모 |
-| **연산연습지** | `/math-sheet/` | 사칙연산 세로셈 학습지 생성·A4 인쇄·링크/QR 공유·세트 저장 |
+| **Blocks Universe** | `/apps/blocks-universe/` | 넘버블록스·알파블록스·컬러블록스·원더블록스 351편 에피소드 탐색 · AI 검색 · 순차재생 |
+| **Flash Deck** | `/apps/flash-deck/` | 플래시카드 학습 앱 |
+| **Chalkboard** | `/apps/chalkboard/` | 칠판/화이트보드 메모 |
+| **연산연습지** | `/apps/math-sheet/` | 사칙연산 세로셈 학습지 생성·A4 인쇄·링크/QR 공유·세트 저장 |
 
 #### 💼 업무경감
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **채점표** | `/scoring-table/` | 대회·발표 채점 양식 배포, 공동 채점, 결과 수합 (링크 공유 + xlsx) |
-| **파일 최적화 도구** | `/file-tools/` | 스캔 이미지 및 대용량 PPTX 이미지 최적화 |
-| **Smart Timer** | `/timer/` | 반복 알람 타이머 · 다음 알람 표시 · 알람 켜기/끄기 |
-| **수당 계산기** | `/allowance-calculator/` | 세전·세후 수당 및 기타소득 세금(8.8%) 자동 판별 계산기 |
+| **채점표** | `/apps/scoring-table/` | 대회·발표 채점 양식 배포, 공동 채점, 결과 수합 (링크 공유 + xlsx) |
+| **파일 최적화 도구** | `/apps/file-tools/` | 스캔 이미지 및 대용량 PPTX 이미지 최적화 |
+| **Smart Timer** | `/apps/timer/` | 반복 알람 타이머 · 다음 알람 표시 · 알람 켜기/끄기 |
+| **수당 계산기** | `/apps/allowance-calculator/` | 세전·세후 수당 및 기타소득 세금(8.8%) 자동 판별 계산기 |
 | **Login Helper** | `https://blog.eduin.info/450` | 에듀나비 교원업무지원 자동 로그인 프로그램 (모달) |
-| **에듀서치** | `/search/` | 교육문서 AI 검색 (Gemini RAG) |
+| **에듀서치** | `/apps/search/` | 교육문서 AI 검색 (Gemini RAG) |
 
 ### 🛠 유틸리티 (14)
 
 #### 🔧 생활편의
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **MD Editor** | `/md-editor/` | 마크다운 편집기 (JSON·CSV·XML·HTML 불러오기, **HWP·PDF·DOCX·PPTX·XLSX 변환** via Corepin API, 파일 공유) |
-| **QR Master** | `/qr/` | QR 코드 생성, 카메라/이미지 스캔, 단축주소 |
+| **MD Editor** | `/apps/md-editor/` | 마크다운 편집기 (JSON·CSV·XML·HTML 불러오기, **HWP·PDF·DOCX·PPTX·XLSX 변환** via Corepin API, 파일 공유) |
+| **QR Master** | `/apps/qr/` | QR 코드 생성, 카메라/이미지 스캔, 단축주소 |
 
 #### 🧩 크롬확장
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **Content ID Viewer** | `/chrome-extentions/content-id-viewer-for-edunavi.zip` | 에듀나비 콘텐츠 ID 조회 (Chrome 확장) |
-| **MP4 Finder** | `/chrome-extentions/mp4-finder.zip` | 웹페이지 내 MP4 링크 자동 감지 및 클립보드 복사 (Chrome 확장) |
+| **Content ID Viewer** | `/downloads/content-id-viewer-for-edunavi.zip` | 에듀나비 콘텐츠 ID 조회 (Chrome 확장) |
+| **MP4 Finder** | `/downloads/mp4-finder.zip` | 웹페이지 내 MP4 링크 자동 감지 및 클립보드 복사 (Chrome 확장) |
 
 #### 💬 소셜
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **도서 정보 나눔** | `/book-share/` | ISBN으로 도서 정보 조회 및 공유 |
-| **Bubble Chat** | `/bubble-chat/` | P2P 실시간 채팅 |
+| **도서 정보 나눔** | `/apps/book-share/` | ISBN으로 도서 정보 조회 및 공유 |
+| **Bubble Chat** | `/apps/bubble-chat/` | P2P 실시간 채팅 |
 | **에듀링크** | `https://dgedu.link/` | 교육용 단축주소·설문조사·체험 지도 서비스 |
 
 #### 🎨 크리에이티브
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **YT Thumbnail** | `/yt-thumb/` | 유튜브 썸네일 추출 및 아카이빙 |
-| **Grid Maker** | `/grid-maker/` | 이미지 그리드 분할 |
-| **Signage Maker** | `/signage-maker/` | 학교 사이니지용 AI 세로 이미지 생성기 (Gemini) |
+| **YT Thumbnail** | `/apps/yt-thumb/` | 유튜브 썸네일 추출 및 아카이빙 |
+| **Grid Maker** | `/apps/grid-maker/` | 이미지 그리드 분할 |
+| **Signage Maker** | `/apps/signage-maker/` | 학교 사이니지용 AI 세로 이미지 생성기 (Gemini) |
 
 #### 📐 노션도구
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **임베드 생성기** | `/embed/` | 외부 URL을 반응형 iframe으로 감싸 노션 임베드 블록에 삽입 (base64url 해시, 서버 상태 없음) |
-| **Notion Image DL** | `/notion-image-downloader/` | Notion DB 이미지 일괄 다운로드 |
-| **Notion Styler** | `/notion-styler/` | LaTeX 수식 스타일링 및 HTML 생성 |
-| **빠른 버튼 만들기** | `/shortcut/` | 복사한 웹 링크를 앱을 바로 여는 딥링크 버튼으로 변환·저장 (모바일 런처) |
+| **임베드 생성기** | `/apps/embed/` | 외부 URL을 반응형 iframe으로 감싸 노션 임베드 블록에 삽입 (base64url 해시, 서버 상태 없음) |
+| **Notion Image DL** | `/apps/notion-image-downloader/` | Notion DB 이미지 일괄 다운로드 |
+| **Notion Styler** | `/apps/notion-styler/` | LaTeX 수식 스타일링 및 HTML 생성 |
+| **빠른 버튼 만들기** | `/apps/shortcut/` | 복사한 웹 링크를 앱을 바로 여는 딥링크 버튼으로 변환·저장 (모바일 런처) |
 
 > 홈 화면에는 외부 연동·확장 항목(에듀링크, Content ID Viewer, MP4 Finder, Login Helper)도 모달로 노출됩니다.
 
@@ -92,15 +92,23 @@
 
 ## 공통 리소스
 
+앱은 `public/apps/<id>/`에 폴더 단위로 모여 있고(URL = `/apps/<id>/`), 다운로드 자산은 `public/downloads/`에 둡니다.
+
 ```
 public/common/
-├── hero-theme.css   — HeroUI CSS 변수, 공통 컴포넌트 (.top-overlay, .app-header 등)
+├── hero-theme.css   — HeroUI CSS 변수, 공통 컴포넌트 (.app-header, .overlay-btn 등)
+├── app-shell.css    — 셸 레이아웃 (베이스 5종 + 캐논 폭 + focus + print)
+├── app-shell.js     — 플로팅 크롬 자동 주입 + 사이드바 드로어 + focus 유틸
 ├── theme.js         — 테마 전환 (auto/light/dark), 페이지 공유 기능
 ├── init.js          — 공통 파비콘 강제 설정 및 구글 애널리틱스 초기화
 └── seo-injector.js  — 런타임 클라이언트 사이드 동적 SEO 및 JSON-LD 메타태그 완성
 ```
 
-모든 앱은 좌상단 홈 버튼 + 우상단 테마 전환·공유 버튼을 공통으로 사용하며, 페이지 로드 시 `seo-injector.js`를 통해 SEO 메타데이터가 동적으로 완성됩니다.
+**셸 유형 시스템**: 앱은 `<body data-shell="...">`로 레이아웃 베이스를 고릅니다.
+- 베이스(5): `column`(중앙 컬럼) · `split`(2-페인) · `sidebar`(내비+메인) · `gallery`(카드 그리드) · `immersive`(풀뷰포트, 크롬만)
+- 직교 플래그: `data-width="narrow|medium|wide"`(캐논 480/720/1120) · `data-print`(A4) · `data-focus`+`enterFocus()`(아이템→전체화면)
+
+좌상단 홈 + 우상단 테마·공유 버튼은 `app-shell.js`가 자동 주입하므로 앱이 마크업을 복붙하지 않습니다. 페이지 로드 시 `seo-injector.js`가 SEO 메타데이터를 완성합니다.
 
 ---
 
@@ -109,9 +117,9 @@ public/common/
 프로젝트에는 개발 편의성과 SEO 배포 자동화를 위해 아래와 같은 패키지 스크립트들이 준비되어 있습니다:
 
 - **로컬 개발 서버 실행**: `npm run dev`
-- **신규 미니 앱 스캐폴딩 생성**: `npm run scaffold` (대화형 CLI를 통한 앱 생성 및 `apps.json` 자동 추가)
-- **각 하위 앱 HTML에 SEO 태그 일괄 정적 주입**: `npm run inject`
-- **OG 이미지 빌드 (앱별 + 홈 기본 `og-default.png`, 소스 `brand/logo-seo.png`)**: `npm run og`
+- **신규 미니 앱 스캐폴딩 생성**: `npm run scaffold` — 베이스/폭/플래그/카테고리·서브카테고리를 고르면 `public/apps/<id>/` 생성 + `apps.json` 등록 + **inject·og·sitemap 자동 실행**(한 커맨드). 비대화형: `node scripts/scaffold-app.js --id ... --base column --width narrow --category edu --subcategory edu-work ...`. 모달/외부 항목: `--kind modal`.
+- **각 하위 앱 HTML에 SEO 태그 일괄 정적 주입**: `npm run inject` (canonical/og/JSON-LD 멱등 갱신)
+- **OG 이미지 빌드 (전체 또는 `--id <id>` 단일, 홈 기본 `og-default.png`)**: `npm run og` / `node scripts/generate-og.js --id <id>`
 - **브랜드 로고·파비콘 재생성 (소스 `brand/logo.png`)**: `node scripts/generate-icons.js`
 - **`sitemap.xml` 재생성 및 업데이트**: `npm run sitemap`
 

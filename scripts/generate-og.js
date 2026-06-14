@@ -241,6 +241,17 @@ function main() {
   var data = JSON.parse(fs.readFileSync(APPS_JSON, 'utf8'));
   var apps = data.apps || [];
 
+  // --id <id>: 해당 앱 1개만 생성 (스캐폴드 후처리용). 없으면 전체.
+  var idIdx = process.argv.indexOf('--id');
+  if (idIdx !== -1 && process.argv[idIdx + 1]) {
+    var onlyId = process.argv[idIdx + 1];
+    apps = apps.filter(function (a) { return a.id === onlyId; });
+    if (apps.length === 0) {
+      console.error('❌ --id "' + onlyId + '" 에 해당하는 앱이 apps.json에 없습니다.');
+      process.exit(1);
+    }
+  }
+
   // Ensure output directory
   if (!fs.existsSync(OG_DIR)) {
     fs.mkdirSync(OG_DIR, { recursive: true });
