@@ -429,7 +429,7 @@ function renderModalActions() {
 }
 
 async function shareEpisode(ep) {
-  const url = `${location.origin}/blocks-universe/#v=${ep.id}`;
+  const url = location.href.split('#')[0] + `#v=${ep.id}`;
   if (navigator.share) {
     try { await navigator.share({ title: dispTitle(ep), url }); return; } catch { /* 취소 시 무시 */ }
   }
@@ -552,7 +552,7 @@ async function sharePlaylist() {
   if (playlist.ids.length === 0) { toast('재생목록이 비어 있습니다'); return; }
   savePl();
   const payload = b64uEncode({ t: playlist.title, ids: playlist.ids });
-  const longURL = `${location.origin}/blocks-universe/#list=${payload}`;
+  const longURL = location.href.split('#')[0] + `#list=${payload}`;
   toast('⏳ 공유 링크 생성 중…', 0);
   let url = longURL;
   try {
