@@ -58,13 +58,12 @@ function main() {
   var count = 0;
 
   apps.forEach(function (app) {
-    // Skip external links and modal-type apps with external flag
+    // Skip external links and all modal-type entries (no crawlable page)
     if (app.external) return;
-    if (app.type === 'modal' && !app.href.startsWith('/')) return;
+    if (app.type === 'modal') return;
 
-    // Only include internal paths, skipping Chrome extensions
+    // Only include internal app pages
     if (!app.href || !app.href.startsWith('/')) return;
-    if (app.href.startsWith('/chrome-extentions')) return;
 
     var fullUrl = siteUrl + app.href;
     urls.push(buildUrl(fullUrl, lastmod, 'monthly', '0.8'));

@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moon Phase — eduin VIVES</title>
+    <script src="/common/init.js"></script>
+    <link rel="stylesheet" href="/common/hero-theme.css">
+    <link rel="stylesheet" href="/common/app-shell.css">
+    <script src="/common/theme.js"></script>
+    <script src="/common/app-shell.js" defer></script>
+    <style>
+        :root {
+            --bg-base: #030509;
+            --panel-bg: rgba(21, 25, 43, 0.85);
+            --text-color: #e0e6ed;
+            --accent-color: #4cc9f0;
+            --moon-lit: #fdfdfd;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(1px 1px at 20px 30px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 40px 70px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 50px 160px, #ddd, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 80px 120px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 110px 210px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 150px 30px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 190px 90px, #ddd, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 240px 10px, #fff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 400px 400px;
+            color: var(--text-color);
+            font-family: 'Pretendard', -apple-system, system-ui, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.8s ease;
+            overflow-x: hidden;
+        }
+
+        .dashboard {
+            width: 95%;
+            max-width: 1240px;
+            display: grid;
+            grid-template-columns: 440px 1fr;
+            gap: 25px;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Simulation Layout (Right Side) */
+        .visual-section {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .card {
+            background-color: var(--panel-bg);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.08);
+            transition: transform 0.3s ease;
+        }
+
+        .main-display {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .moon-canvas-container {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        /* 3D Orbit Display */
+        .orbit-display {
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            perspective: 1000px;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.5), 0 20px 50px rgba(0,0,0,0.4);
+            transform: translateZ(0);
+        }
+
+        /* 4. '천체 위치 시뮬레이션' 텍스트 스타일 조정 (위치 이동 대응) */
+        .orbit-label {
+            font-size: 0.95rem;
+            color: #8d99ae;
+            margin-top: 15px; /* 위쪽 여백 추가 (캔버스 아래로 이동했으므로) */
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* Right Panel Info (Swapped to Left) */
+        .info-section {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .info-card {
+            padding: 25px;
+            height: fit-content; /* 최소 높이 제거하여 콘텐츠에 맞춤 */
+        }
+
+        /* 3. 사이드바 상단 정보 가운데 정렬을 위한 컨테이너 */
+        .moon-status-header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .phase-title {
+            font-size: 2.4rem;
+            font-weight: 800;
+            color: var(--accent-color);
+            margin: 0 0 8px 0;
+            text-shadow: 0 0 15px rgba(76, 201, 240, 0.4);
+        }
+
+        .moon-age-text {
+            font-size: 1.15rem;
+            color: #bdc3c7;
+            margin-bottom: 15px; /* 간격 약간 조정 */
+        }
+
+        .guide-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* 관측 방향 섹션 고정 높이 */
+        .obs-direction-box {
+            min-height: 100px;
+        }
+
+        /* 관측 포인트 섹션 고정 높이 */
+        .obs-points-box {
+            min-height: 140px;
+        }
+
+        .guide-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .guide-title {
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+        }
+
+        .guide-content {
+            font-size: 0.92rem;
+            line-height: 1.4; 
+            color: #bdc3c7;
+        }
+
+        /* 2. Sky Simulation Box - 아래 영역 축소 */
+        .sky-sim-container {
+            background: linear-gradient(180deg, #0a1020 0%, #152040 100%);
+            border-radius: 12px;
+            padding: 12px 12px 8px 12px; /* 하단 패딩 더 축소 */
+            margin-top: 10px;
+            border: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
+        }
+        
+        .sky-sim-label {
+            font-size: 0.8rem;
+            color: #4cc9f0;
+            margin-bottom: 8px; /* 마진 축소 */
+            font-weight: 600;
+        }
+
+        /* 시뮬레이션 설명 텍스트 마진 조정 */
+        #skySimDesc {
+            font-size: 0.85rem; 
+            color: #bdc3c7; 
+            margin-top: 6px; /* 마진 축소 */
+            line-height: 1.3;
+        }
+
+        .direction-tag {
+            display: inline-flex;
+            background: rgba(76, 201, 240, 0.2);
+            color: var(--accent-color);
+            padding: 3px 10px;
+            border-radius: 5px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 0;
+        }
+
+        /* Controls */
+        .controls {
+            padding: 25px;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            box-sizing: border-box;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            width: 100%;
+        }
+
+        input[type="date"] {
+            background-color: #2b3040;
+            border: 1px solid #3f4455;
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            flex-grow: 1;
+            cursor: pointer;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .btn {
+            background-color: var(--accent-color);
+            color: #05070a;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-secondary {
+            background-color: #3f4455;
+            color: white;
+        }
+
+        .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+        .btn:active { transform: translateY(0); }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #2b3040;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px; height: 22px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid #15192b;
+            box-shadow: 0 0 10px rgba(76, 201, 240, 0.5);
+        }
+
+        @media (max-width: 1000px) {
+            .dashboard { grid-template-columns: 1fr; }
+            .info-card { min-height: auto; }
+        }
+    </style>
+  <meta property="og:image" content="https://eduin.info/og-images/moon-phase.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="달의 위상 시뮬레이터 | eduin VIVES">
+  <meta name="twitter:description" content="태양-지구-달의 위치 관계를 3D 시뮬레이션으로 직관적으로 이해. 월령 계산 포함.">
+  <meta name="twitter:image" content="https://eduin.info/og-images/moon-phase.png">
+  <link rel="canonical" href="https://eduin.info/apps/moon-phase/">
+  <meta property="og:url" content="https://eduin.info/apps/moon-phase/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Moon Phase","description":"태양-지구-달의 위치 관계를 3D 시뮬레이션으로 직관적으로 이해. 월령 계산 포함.","url":"https://eduin.info/apps/moon-phase/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script src="/common/seo-injector.js" defer></script>
+</head>
+<body data-shell="immersive">
+
+    <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입 -->
+
+    <div class="dashboard">
+        <!-- Information Section (Left) -->
+        <div class="info-section">
+            <div class="card info-card">
+                <!-- 3. 사이드바 상단 정보 가운데 정렬 -->
+                <div class="moon-status-header">
+                    <div style="color:#8d99ae; font-size:0.9rem; margin-bottom: 5px;">현재 달의 상태</div>
+                    <h1 class="phase-title" id="phaseName">보름달</h1>
+                    <div class="moon-age-text" id="moonAgeInfo">월령 14.8일 (음력 15일경)</div>
+                </div>
+
+                <div class="guide-section obs-direction-box">
+                    <div class="guide-header">
+                        <div class="guide-title">📍 관측 방향</div>
+                        <div id="observationDirection" class="direction-tag">남쪽 하늘 (자정)</div>
+                    </div>
+                    <div id="observationSky" class="guide-content">
+                        해 질 녘 동쪽에서 떠올라 자정 무렵 남쪽 하늘에서 가장 높게 보이며, 새벽에 서쪽으로 집니다.
+                    </div>
+                </div>
+
+                <div class="guide-section obs-points-box">
+                    <div class="guide-header">
+                        <div class="guide-title">🔍 주요 관측 포인트</div>
+                    </div>
+                    <ul id="observationPoints" class="guide-content" style="padding-left: 18px; margin: 0;">
+                        <li>달이 가장 밝아 맨눈이나 쌍안경 관측에 좋습니다.</li>
+                        <li>'토끼 모양'이라 불리는 달의 무늬를 가장 선명하게 볼 수 있습니다.</li>
+                    </ul>
+                </div>
+
+                <div class="guide-section">
+                    <div class="guide-header">
+                        <div class="guide-title" id="skySimTitle">🕒 초저녁 달의 위치</div>
+                    </div>
+                    <!-- 2. 아래 영역 축소된 시뮬레이션 컨테이너 -->
+                    <div class="sky-sim-container">
+                        <div class="sky-sim-label" id="skySimLabel">시뮬레이션 중인 날짜의 초저녁 하늘 모습</div>
+                        <canvas id="skySimCanvas" width="320" height="120"></canvas>
+                        <div id="skySimDesc">
+                            보름달은 초저녁에 동쪽 하늘에서 막 떠오릅니다.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card info-card" style="padding: 20px; min-height: auto;">
+                <div class="guide-title">💡 알아두기</div>
+                <div class="guide-content" style="font-size: 0.85rem; margin-top: 10px; line-height: 1.4;">
+                    달의 모양은 태양-지구-달의 기하학적 위치에 따라 결정됩니다. 본 시뮬레이션은 북반구 관측 시점을 기준으로 하며, 재생 속도는 세밀한 관찰을 위해 실제보다 매우 느리게 설정되어 있습니다.
+                </div>
+            </div>
+        </div>
+
+        <!-- Visual Section (Right) -->
+        <div class="visual-section">
+            <div class="card main-display">
+                <div class="moon-canvas-container">
+                    <canvas id="moonCanvas" width="340" height="340"></canvas>
+                </div>
+                <div class="controls">
+                    <div class="btn-row">
+                        <input type="date" id="dateInput">
+                        <button class="btn" id="todayBtn">오늘</button>
+                        <button class="btn btn-secondary" id="playBtn">▶ 재생</button>
+                    </div>
+                    <input type="range" id="phaseSlider" min="0" max="29.53" step="0.01">
+                </div>
+            </div>
+
+            <div class="card orbit-display">
+                <!-- 4. '천체 위치 시뮬레이션' 텍스트를 시뮬레이션(Canvas) 아래로 이동 -->
+                <canvas id="orbitCanvas" width="550" height="220"></canvas>
+                <div class="orbit-label">천체 위치 시뮬레이션 (위에서 본 모습)</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const moonCanvas = document.getElementById('moonCanvas');
+        const mCtx = moonCanvas.getContext('2d');
+        const orbitCanvas = document.getElementById('orbitCanvas');
+        const oCtx = orbitCanvas.getContext('2d');
+        const skySimCanvas = document.getElementById('skySimCanvas');
+        const sCtx = skySimCanvas.getContext('2d');
+
+        const phaseNameEl = document.getElementById('phaseName');
+        const moonAgeInfoEl = document.getElementById('moonAgeInfo');
+        const obsDirectionEl = document.getElementById('observationDirection');
+        const obsSkyEl = document.getElementById('observationSky');
+        const obsPointsEl = document.getElementById('observationPoints');
+        const skySimDescEl = document.getElementById('skySimDesc');
+        const skySimLabelEl = document.getElementById('skySimLabel');
+        const dateInput = document.getElementById('dateInput');
+        const phaseSlider = document.getElementById('phaseSlider');
+        const playBtn = document.getElementById('playBtn');
+
+        let isPlaying = false;
+        let animationId = null;
+        let moonSurfacePattern = null;
+        let currentSimDate = new Date();
+
+        const SYNODIC_MONTH = 29.53058867;
+        // 기존 단순 EPOCH 방식 제거 -> Julian Date 계산으로 대체
+
+        function init() {
+            createMoonTexture();
+            setToday();
+            
+            dateInput.addEventListener('change', () => {
+                stopPlayback();
+                currentSimDate = new Date(dateInput.value);
+                calculateFromDate(currentSimDate);
+            });
+
+            document.getElementById('todayBtn').addEventListener('click', setToday);
+            
+            phaseSlider.addEventListener('input', () => {
+                stopPlayback();
+                const age = parseFloat(phaseSlider.value);
+                update(age, false); 
+            });
+
+            playBtn.addEventListener('click', togglePlayback);
+            
+            calculateFromDate(currentSimDate);
+        }
+
+        function createMoonTexture() {
+            const buffer = document.createElement('canvas');
+            buffer.width = 400; buffer.height = 400;
+            const bCtx = buffer.getContext('2d');
+            bCtx.fillStyle = '#e5e5e5';
+            bCtx.beginPath(); bCtx.arc(200, 200, 190, 0, Math.PI*2); bCtx.fill();
+            
+            for(let i=0; i<25; i++) {
+                bCtx.fillStyle = 'rgba(130, 130, 140, 0.25)';
+                bCtx.beginPath();
+                bCtx.arc(Math.random()*400, Math.random()*400, Math.random()*35+10, 0, Math.PI*2);
+                bCtx.fill();
+            }
+            moonSurfacePattern = bCtx.createPattern(buffer, 'no-repeat');
+        }
+
+        function setToday() {
+            stopPlayback();
+            const now = new Date();
+            currentSimDate = now;
+            syncDateInput(now);
+            calculateFromDate(now);
+        }
+
+        function syncDateInput(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            dateInput.value = `${year}-${month}-${day}`;
+        }
+
+        // 과학적 근거: Julian Date(율리우스일)를 사용하여 천문학적으로 정밀한 평균 이각(Mean Elongation) 계산
+        // 기존의 단순 차이 계산(diffDays % 29.53)은 수십 년 단위에서 오차가 발생할 수 있음.
+        // 이 방식은 J2000.0(2000년 1월 1.5일)을 기준으로 달의 궤도 운동을 더 정확히 반영함.
+        function getJulianDate(date) {
+            return (date.getTime() / 86400000) - (date.getTimezoneOffset() / 1440) + 2440587.5;
+        }
+
+        function calculateFromDate(date) {
+            const jd = getJulianDate(date);
+            // J2000.0 부터 경과한 세기 (Julian Centuries)
+            const T = (jd - 2451545.0) / 36525;
+            
+            // 달의 평균 이각 (Mean Elongation of the Moon): D
+            // 공식: D = 297.85019 + 445267.111403*T - 0.0019142*T^2 + T^3/189474
+            let D = 297.85019 + 445267.111403 * T - 0.0019142 * T * T + T * T * T / 189474;
+            
+            // 0~360도로 정규화
+            D = D % 360;
+            if (D < 0) D += 360;
+            
+            // 이각(D)을 기준으로 월령(Age) 계산
+            // D=0도(삭) -> Age=0, D=180도(망) -> Age=14.76...
+            const age = (D / 360) * SYNODIC_MONTH;
+            
+            update(age, true);
+        }
+
+        function togglePlayback() {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                playBtn.innerHTML = "|| 정지";
+                animate();
+            } else {
+                stopPlayback();
+            }
+        }
+
+        function stopPlayback() {
+            isPlaying = false;
+            playBtn.innerHTML = "▶ 재생";
+            if (animationId) cancelAnimationFrame(animationId);
+        }
+
+        function animate() {
+            if (!isPlaying) return;
+            currentSimDate.setTime(currentSimDate.getTime() + (0.44 * 60 * 60 * 1000));
+            syncDateInput(currentSimDate);
+            calculateFromDate(currentSimDate);
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function update(age, syncSlider = true) {
+            if (syncSlider) phaseSlider.value = age;
+            const phase = age / SYNODIC_MONTH;
+            
+            const info = getMoonInfo(age);
+            phaseNameEl.textContent = info.name;
+            moonAgeInfoEl.textContent = `월령 ${age.toFixed(1)}일 (음력 ${Math.floor(age)+1}일경)`;
+            obsDirectionEl.textContent = info.dir;
+            obsSkyEl.textContent = info.sky;
+            obsPointsEl.innerHTML = info.points.map(p => `<li>${p}</li>`).join('');
+            skySimDescEl.textContent = info.skySim;
+
+            const month = currentSimDate.getMonth() + 1;
+            const day = currentSimDate.getDate();
+            skySimLabelEl.textContent = `${month}월 ${day}일의 초저녁 하늘 모습`;
+
+            // 1. 음력 15일에 가까워지면 배경이 밝아졌다가 어두워지는 로직 강화
+            // illumination: 0(New Moon) ~ 1(Full Moon)
+            const illumination = phase <= 0.5 ? phase * 2 : (1 - phase) * 2;
+            // 기존 4+(illum*14) -> 4+(illum*24) 로 변경하여 밝기 변화폭 확대
+            const bgBrightness = 4 + (illumination * 24); 
+            document.body.style.backgroundColor = `hsl(220, 35%, ${bgBrightness}%)`;
+
+            drawMoon(age);
+            drawOrbit(age);
+            drawSkySim(age);
+        }
+
+        function getMoonInfo(age) {
+            const p = age / SYNODIC_MONTH;
+            if (p < 0.03 || p > 0.97) return {
+                name: "삭 (New Moon)", dir: "관측 불가", 
+                sky: "태양과 같은 방향에 있어 지구에서 보이지 않습니다.",
+                points: ["달이 태양과 함께 뜨고 지기 때문에 볼 수 없습니다.", "이 시기 전후로 개기일식이 일어날 수 있습니다."],
+                skySim: "삭에는 초저녁에도 달이 보이지 않습니다."
+            };
+            if (p < 0.22) return {
+                name: "초승달", dir: "저녁 서쪽 하늘",
+                sky: "해 진 직후 서쪽 하늘 낮은 곳에서 잠시 보이다가 곧 집니다.",
+                points: ["눈썹 모양의 아주 가는 달을 관찰할 수 있습니다.", "지구조(Earthshine) 현상을 보기 가장 좋은 시기입니다."],
+                skySim: "초저녁에 서쪽 지평선 근처에서 낮게 보입니다."
+            };
+            if (p < 0.28) return {
+                name: "상현달", dir: "저녁 남쪽 하늘",
+                sky: "낮에 떠서 해 질 녘 남쪽 하늘에 보이며, 자정 무렵 서쪽으로 집니다.",
+                points: ["달의 오른쪽 반이 밝게 보입니다.", "해질 무렵 남쪽 하늘 높은 곳에서 가장 잘 보입니다."],
+                skySim: "초저녁에 남쪽 하늘 높은 곳에 위치합니다."
+            };
+            if (p < 0.47) return {
+                name: "차가는 달", dir: "밤 남동쪽 하늘",
+                sky: "오후에 떠올라 밤새도록 밝게 빛나며 새벽에 집니다.",
+                points: ["보름달이 되기 직전의 배부른 모양입니다.", "달의 바다 지형이 입체적으로 보이기 시작합니다."],
+                skySim: "초저녁에 남동쪽 하늘에서 높이 떠 있습니다."
+            };
+            if (p < 0.53) return {
+                name: "보름달 (Full Moon)", dir: "밤새도록 (남쪽)",
+                sky: "해 질 때 동쪽에서 떠서, 자정에 남쪽, 해 뜰 때 서쪽으로 집니다.",
+                points: ["달의 전면이 밝게 빛나 밤새도록 세상을 비춥니다.", "달의 전체적인 지형을 감상하기 가장 좋은 시기입니다."],
+                skySim: "초저녁에 동쪽 지평선에서 막 떠오릅니다."
+            };
+            if (p < 0.72) return {
+                name: "이지러지는 달", dir: "심야 남서쪽 하늘",
+                sky: "저녁 늦게 떠올라 새벽 내내 남쪽과 서쪽 하늘을 비춥니다.",
+                points: ["왼쪽 부분이 조금씩 깎이기 시작하는 위상입니다.", "새벽 일찍 관측하기 좋은 대상입니다."],
+                skySim: "초저녁에는 아직 지평선 아래에 있어 보이지 않습니다."
+            };
+            if (p < 0.78) return {
+                name: "하현달", dir: "새벽 남쪽 하늘",
+                sky: "자정 무렵 동쪽에서 떠서, 해 뜰 무렵 남쪽 하늘에서 보입니다.",
+                points: ["달의 왼쪽 반이 밝게 보입니다.", "이른 아침 서쪽 하늘에서도 달을 찾을 수 있습니다."],
+                skySim: "초저녁에는 보이지 않으며 자정쯤 동쪽에서 뜹니다."
+            };
+            return {
+                name: "그믐달", dir: "새벽 동쪽 하늘",
+                sky: "해 뜨기 직전 동쪽 하늘 낮은 곳에서 잠깐 보이다 해와 함께 뜹니다.",
+                points: ["가장 가느다란 왼쪽 눈썹 모양의 달입니다.", "동트기 전 짧은 시간 동안만 관측 가능한 신비로운 모습입니다."],
+                skySim: "초저녁에는 보이지 않습니다."
+            };
+        }
+
+        function drawMoon(age) {
+            const r = 150; const cx = 170; const cy = 170;
+            mCtx.clearRect(0,0,340,340);
+            
+            mCtx.beginPath(); mCtx.arc(cx,cy,r,0,Math.PI*2);
+            mCtx.fillStyle = '#0d111d'; mCtx.fill();
+
+            const phase = age / SYNODIC_MONTH;
+            mCtx.save();
+            mCtx.beginPath();
+            
+            if (phase <= 0.5) {
+                mCtx.arc(cx, cy, r, -Math.PI/2, Math.PI/2, false);
+                const s = 1 - (phase / 0.25);
+                if (phase < 0.25) mCtx.ellipse(cx, cy, r*s, r, 0, Math.PI/2, -Math.PI/2, true);
+                else mCtx.ellipse(cx, cy, r*Math.abs(s), r, 0, Math.PI/2, -Math.PI/2, false);
+            } else {
+                mCtx.arc(cx, cy, r, Math.PI/2, -Math.PI/2, false);
+                const s = (phase - 0.75) / 0.25;
+                if (phase < 0.75) mCtx.ellipse(cx, cy, r*Math.abs(s), r, 0, -Math.PI/2, Math.PI/2, false);
+                else mCtx.ellipse(cx, cy, r*s, r, 0, -Math.PI/2, Math.PI/2, true);
+            }
+            mCtx.clip();
+            mCtx.translate(cx-200, cy-200);
+            mCtx.fillStyle = moonSurfacePattern; mCtx.fillRect(0,0,400,400);
+            mCtx.restore();
+
+            const illum = phase <= 0.5 ? phase*2 : (1-phase)*2;
+            mCtx.shadowBlur = 25 * illum;
+            mCtx.shadowColor = "rgba(255,255,255,0.4)";
+            mCtx.strokeStyle = "rgba(255,255,255,0.15)";
+            mCtx.lineWidth = 1;
+            mCtx.stroke();
+        }
+
+        function drawOrbit(age) {
+            oCtx.clearRect(0,0,550,220);
+            const cx = 130; const cy = 110;
+            
+            // 1. 태양
+            oCtx.save();
+            const sunX = 500, sunY = 110;
+            const sunGrd = oCtx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 45);
+            sunGrd.addColorStop(0, "#fffbd5");
+            sunGrd.addColorStop(0.3, "#ffcc33");
+            sunGrd.addColorStop(1, "transparent");
+            oCtx.fillStyle = sunGrd;
+            oCtx.beginPath(); oCtx.arc(sunX, sunY, 45, 0, Math.PI*2); oCtx.fill();
+            
+            oCtx.strokeStyle = "rgba(255, 204, 51, 0.5)";
+            oCtx.lineWidth = 2;
+            for(let i=0; i<12; i++) {
+                const ang = (i / 12) * Math.PI * 2;
+                oCtx.beginPath();
+                oCtx.moveTo(sunX + Math.cos(ang)*25, sunY + Math.sin(ang)*25);
+                oCtx.lineTo(sunX + Math.cos(ang)*40, sunY + Math.sin(ang)*40);
+                oCtx.stroke();
+            }
+            oCtx.fillStyle = "#ffcc33";
+            oCtx.font = "bold 13px sans-serif";
+            oCtx.fillText("태양", sunX - 12, sunY + 65);
+            oCtx.restore();
+
+            // 2. 리얼한 지구
+            const earthR = 26;
+            oCtx.save();
+            oCtx.shadowColor = "rgba(100, 200, 255, 0.8)";
+            oCtx.shadowBlur = 18;
+            oCtx.beginPath(); oCtx.arc(cx, cy, earthR + 1, 0, Math.PI * 2);
+            oCtx.fillStyle = "rgba(10, 20, 40, 0.8)"; oCtx.fill();
+            oCtx.shadowBlur = 0;
+            
+            oCtx.beginPath(); oCtx.arc(cx, cy, earthR, 0, Math.PI * 2);
+            oCtx.fillStyle = "#02040a"; oCtx.fill();
+
+            oCtx.save();
+            oCtx.beginPath(); oCtx.arc(cx, cy, earthR, -Math.PI / 2, Math.PI / 2, false);
+            oCtx.clip();
+            
+            const oceanGrd = oCtx.createRadialGradient(cx + 10, cy - 10, 2, cx, cy, earthR);
+            oceanGrd.addColorStop(0, "#3a9fff");
+            oceanGrd.addColorStop(0.6, "#1a66b4");
+            oceanGrd.addColorStop(1, "#0a3a7a");
+            oCtx.fillStyle = oceanGrd;
+            oCtx.fillRect(cx - earthR, cy - earthR, earthR * 2, earthR * 2);
+
+            oCtx.fillStyle = "#55a630";
+            oCtx.beginPath(); oCtx.ellipse(cx+10, cy-6, 14, 8, 0.4, 0, Math.PI*2); oCtx.fill();
+            oCtx.beginPath(); oCtx.ellipse(cx+4, cy-12, 10, 6, -0.2, 0, Math.PI*2); oCtx.fill();
+            oCtx.beginPath(); oCtx.ellipse(cx+8, cy+10, 11, 14, -0.1, 0, Math.PI*2); oCtx.fill();
+            
+            oCtx.fillStyle = "#f0f8ff";
+            oCtx.beginPath(); oCtx.ellipse(cx+5, cy-22, 12, 5, 0.1, 0, Math.PI*2); oCtx.fill();
+            
+            oCtx.fillStyle = "rgba(255, 255, 255, 0.35)";
+            oCtx.beginPath(); oCtx.ellipse(cx+12, cy-14, 18, 5, 0.2, 0, Math.PI*2); oCtx.fill();
+            oCtx.beginPath(); oCtx.ellipse(cx+2, cy+7, 14, 4, -0.4, 0, Math.PI*2); oCtx.fill();
+            oCtx.restore(); 
+
+            oCtx.beginPath(); oCtx.arc(cx, cy, earthR, 0, Math.PI * 2);
+            const glossGrd = oCtx.createLinearGradient(cx - earthR, cy - earthR, cx + earthR, cy + earthR);
+            glossGrd.addColorStop(0, "rgba(255,255,255,0.15)");
+            glossGrd.addColorStop(0.4, "rgba(255,255,255,0)");
+            glossGrd.addColorStop(1, "rgba(0,0,0,0.3)");
+            oCtx.fillStyle = glossGrd;
+            oCtx.fill();
+            oCtx.strokeStyle = "rgba(120, 210, 255, 0.4)"; oCtx.lineWidth = 1.2; oCtx.stroke();
+            oCtx.restore();
+
+            // 3. 달 궤도
+            oCtx.beginPath(); oCtx.ellipse(cx, cy, 110, 60, 0, 0, Math.PI*2);
+            oCtx.strokeStyle = "rgba(255,255,255,0.18)"; oCtx.setLineDash([6, 4]);
+            oCtx.stroke();
+            oCtx.setLineDash([]);
+
+            // 4. 달 위치 계산 (북반구 기준: 시계 반대 방향 공전)
+            // 삭(0)일 때 태양 방향(오른쪽)에서 시작하여 반시계로 공전
+            const angle = -(age / SYNODIC_MONTH) * Math.PI * 2; 
+            const mx = cx + Math.cos(angle) * 110;
+            const my = cy + Math.sin(angle) * 60;
+
+            const moonR = 12;
+            oCtx.save();
+            oCtx.beginPath(); oCtx.arc(mx, my, moonR, 0, Math.PI*2);
+            oCtx.fillStyle = "#0d111d"; oCtx.fill();
+            oCtx.strokeStyle = "rgba(255,255,255,0.5)"; oCtx.lineWidth = 1; oCtx.stroke();
+
+            // 달의 밝은 면은 항상 태양 방향(오른쪽)
+            oCtx.beginPath(); oCtx.arc(mx, my, moonR, -Math.PI/2, Math.PI/2, false);
+            oCtx.clip();
+            oCtx.fillStyle = "#fdfdfd"; oCtx.fill();
+            oCtx.restore();
+            
+            oCtx.fillStyle = "#4cc9f0"; oCtx.font = "bold 13px sans-serif";
+            oCtx.shadowColor = "black"; oCtx.shadowBlur = 4;
+            oCtx.fillText("달", mx - 6, my - 18);
+            oCtx.shadowBlur = 0;
+        }
+
+        function drawSkySim(age) {
+            sCtx.clearRect(0,0,320,120);
+            sCtx.beginPath();
+            sCtx.moveTo(20, 100);
+            sCtx.lineTo(300, 100);
+            sCtx.strokeStyle = "rgba(255,255,255,0.2)";
+            sCtx.stroke();
+
+            sCtx.fillStyle = "#8d99ae";
+            sCtx.font = "10px sans-serif";
+            sCtx.fillText("동(East)", 20, 115);
+            sCtx.fillText("남(South)", 145, 115);
+            sCtx.fillText("서(West)", 270, 115);
+
+            const p = age / SYNODIC_MONTH;
+            let angle = -1;
+            // 초저녁(해 질 녘) 기준:
+            // 삭(0)~상현(0.25)~보름(0.5) 까지는 서->남->동 순으로 위치 이동
+            if (p <= 0.5) angle = 270 - (p / 0.5) * 250;
+            
+            // 수정: 음력 29~30일(그믐)은 해보다 먼저 지므로 초저녁에 보이지 않아야 함.
+            // 따라서 0.5(보름) 이후로는 해 질 때 달이 지평선 아래에 있으므로 그리지 않음.
+
+            if (angle !== -1 && angle < 300) {
+                const mx = angle;
+                const my = 100 - Math.sin((angle-20)/250 * Math.PI) * 60;
+                sCtx.beginPath(); sCtx.arc(mx, my, 8, 0, Math.PI*2);
+                sCtx.fillStyle = "rgba(255,255,255,0.15)"; sCtx.fill();
+                
+                sCtx.save();
+                sCtx.beginPath(); sCtx.arc(mx, my, 6, 0, Math.PI*2); sCtx.clip();
+                sCtx.fillStyle = "#111"; sCtx.fill();
+                
+                sCtx.beginPath();
+                if (p <= 0.5) {
+                    sCtx.arc(mx, my, 6, -Math.PI/2, Math.PI/2, false);
+                    const s = 1 - (p / 0.25);
+                    if (p < 0.25) sCtx.ellipse(mx, my, 6*s, 6, 0, Math.PI/2, -Math.PI/2, true);
+                    else sCtx.ellipse(mx, my, 6*Math.abs(s), 6, 0, Math.PI/2, -Math.PI/2, false);
+                } else {
+                    sCtx.arc(mx, my, 6, Math.PI/2, -Math.PI/2, false);
+                    const s = (p - 0.75) / 0.25;
+                    if (p < 0.75) sCtx.ellipse(mx, my, 6*Math.abs(s), 6, 0, -Math.PI/2, Math.PI/2, false);
+                    else sCtx.ellipse(mx, my, 6*s, 6, 0, -Math.PI/2, Math.PI/2, true);
+                }
+                sCtx.fillStyle = "#fff"; sCtx.fill();
+                sCtx.restore();
+                
+                sCtx.shadowBlur = 10; sCtx.shadowColor = "white";
+                sCtx.strokeStyle = "rgba(255,255,255,0.5)"; sCtx.stroke();
+            } else {
+                sCtx.fillStyle = "rgba(255,255,255,0.3)";
+                sCtx.font = "italic 11px sans-serif";
+                sCtx.fillText("달이 지평선 아래에 있습니다", 100, 60);
+            }
+        }
+
+        window.onload = init;
+    </script>
+
+    <!-- 홈·공유 버튼은 app-shell.js가 주입(중복 제거). 공유 피드백은 아래 #mpToast 사용 -->
+
+    <!-- 토스트 -->
+    <div id="mpToast" style="position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(1rem);
+         background:#e0e6ed;color:#030509;padding:0.6rem 1.2rem;border-radius:999px;
+         font-size:0.85rem;font-weight:600;opacity:0;pointer-events:none;
+         transition:opacity 0.2s,transform 0.2s;z-index:9000;white-space:nowrap;font-family:sans-serif;"></div>
+
+    <script>
+    (function() {
+      let _mpTimer;
+      function mpToast(msg) {
+        const el = document.getElementById('mpToast');
+        el.textContent = msg;
+        el.style.opacity = '1';
+        el.style.transform = 'translateX(-50%) translateY(0)';
+        clearTimeout(_mpTimer);
+        _mpTimer = setTimeout(() => {
+          el.style.opacity = '0';
+          el.style.transform = 'translateX(-50%) translateY(1rem)';
+        }, 2500);
+      }
+      window.shareMoonPhase = function() {
+        const url = location.href;
+        if (navigator.share) {
+          navigator.share({ title: '달의 위상 관찰 시뮬레이터', url });
+        } else if (navigator.clipboard) {
+          navigator.clipboard.writeText(url)
+            .then(() => mpToast('링크가 복사되었습니다 ✓'))
+            .catch(() => fallback(url));
+        } else {
+          fallback(url);
+        }
+      };
+      function fallback(url) {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select();
+        try { document.execCommand('copy'); mpToast('링크가 복사되었습니다 ✓'); }
+        catch { mpToast('복사에 실패했습니다.'); }
+        document.body.removeChild(ta);
+      }
+    })();
+    </script>
+</body>
+</html>

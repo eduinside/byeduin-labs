@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>채점표 — eduin VIVES</title>
+  <link rel="icon" href="/logo.jpg" type="image/jpeg">
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <link rel="stylesheet" href="/common/app-shell.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
+  <script src="/common/app-shell.js" defer></script>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      padding: 56px 1rem 5rem;
+      font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', 'Segoe UI', sans-serif;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; position: relative; z-index: 1; }
+
+    /* ── Tabs (file-tools 패턴) ── */
+    .tabs { display:flex; gap:.25rem; border-bottom:1px solid var(--border); margin-bottom:1.25rem; }
+    .tab-btn {
+      padding:.6rem 1.1rem; font-size:.85rem; font-weight:600;
+      background:none; border:none; border-bottom:2px solid transparent;
+      color:var(--fg-muted); cursor:pointer; font-family:inherit;
+      transition:color 0.15s, border-color 0.15s;
+    }
+    .tab-btn.active { color:var(--primary); border-bottom-color:var(--primary); }
+    .tab-btn:hover  { color:var(--fg); }
+    .panel { display:none; }
+    .panel.active { display:block; }
+
+    /* ── Card ── */
+    .st-card {
+      background:var(--card-bg); border:1px solid var(--border);
+      border-radius:14px; padding:18px 20px; margin-bottom:12px;
+    }
+
+    /* ── Section title ── */
+    .st-sec {
+      font-size:11px; font-weight:700; letter-spacing:.12em;
+      text-transform:uppercase; color:var(--fg-muted); margin-bottom:12px;
+      display:flex; align-items:center; gap:8px;
+    }
+    .st-sec::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* ── Stepper ── */
+    .stepper { display:inline-flex; align-items:center; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .stp-btn {
+      width:30px; height:32px; background:var(--card-bg); border:none;
+      cursor:pointer; font-size:17px; color:var(--fg-muted); font-family:inherit;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+      transition:background .12s, color .12s; line-height:1;
+    }
+    .stp-btn:hover { background:rgba(0,111,238,0.08); color:var(--primary); }
+    .stp-inp {
+      width:52px; height:32px; border:none;
+      border-left:1px solid var(--border); border-right:1px solid var(--border);
+      text-align:center; font-size:13px; font-weight:700;
+      background:var(--bg); color:var(--fg); font-family:inherit; outline:none;
+      -moz-appearance:textfield;
+    }
+    .stp-inp::-webkit-outer-spin-button,
+    .stp-inp::-webkit-inner-spin-button { -webkit-appearance:none; }
+
+    /* ── Settings layout ── */
+    .settings-row { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; margin-bottom:16px; }
+    .sf { display:flex; flex-direction:column; gap:6px; }
+    .sf-label { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--fg-muted); }
+    .area-rows { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+    .area-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .area-idx { font-size:11px; font-weight:700; color:var(--fg-muted); min-width:44px; }
+
+    /* ── Award range ── */
+    .award-toggle-row {
+      display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+      padding:12px 0 0; border-top:1px solid var(--border); margin-top:4px;
+    }
+    .award-toggle-label { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--fg-muted); cursor:pointer; }
+    .award-range-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .award-range-row.disabled { opacity:.35; pointer-events:none; }
+
+    /* ── Buttons ── */
+    .st-btn {
+      display:inline-flex; align-items:center; justify-content:center; gap:6px;
+      padding:9px 16px; border-radius:9px; border:none;
+      font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+      transition:all .15s; min-height:38px; white-space:nowrap;
+    }
+    .st-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .st-btn-primary { background:var(--primary); color:#fff; }
+    .st-btn-primary:hover:not(:disabled) { background:var(--primary-h); }
+    .st-btn-ghost { background:var(--card-bg); color:var(--fg-muted); border:1px solid var(--border); }
+    .st-btn-ghost:hover { border-color:var(--primary); color:var(--primary); }
+    .st-btn-ghost.on { border-color:var(--primary); color:var(--primary); background:rgba(0,111,238,.08); }
+    .st-btn-danger { background:rgba(243,18,96,.1); color:var(--danger); border:1px solid rgba(243,18,96,.2); }
+    .st-btn-danger:hover { background:rgba(243,18,96,.18); }
+    .st-btn-sm { padding:5px 11px; font-size:12px; min-height:30px; border-radius:7px; }
+    .act-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+
+    /* ── Input ── */
+    .st-input {
+      background:var(--bg); border:1px solid var(--border); border-radius:8px;
+      padding:8px 12px; font-size:13px; color:var(--fg); outline:none;
+      font-family:inherit; transition:border-color .2s;
+    }
+    .st-input:focus { border-color:var(--primary); }
+
+    /* ── Table ── */
+    .tbl-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+    .grid-wrap { overflow-x:auto; overflow-y:auto; max-height:480px; border:1px solid var(--border); border-radius:10px; }
+    .st-grid { border-collapse:collapse; width:100%; font-size:13px; }
+    .st-grid th, .st-grid td { border:1px solid var(--border); padding:6px 10px; text-align:center; white-space:nowrap; }
+    .st-grid th {
+      background:var(--bg-sec); font-weight:700; font-size:11px;
+      letter-spacing:.04em; text-transform:uppercase; color:var(--fg-muted);
+      position:sticky; top:0; z-index:2;
+    }
+    /* 총점/합계 헤더 — 불투명 배경(스크롤 시 본문 비침 방지) */
+    .st-grid th.total-th {
+      background:linear-gradient(0deg, rgba(0,111,238,.10), rgba(0,111,238,.10)), var(--bg-sec);
+      color:var(--primary);
+    }
+    .st-grid td.name-td { text-align:left; font-weight:600; min-width:80px; }
+    .st-grid td.score-td { min-width:64px; }
+    .st-grid td.total-td { font-weight:700; background:rgba(0,111,238,.04) !important; }
+    .st-grid td.rank-td  { font-size:12px; font-weight:700; color:var(--fg-muted); min-width:40px; }
+    .st-grid td.award-td { min-width:40px; }
+    .st-grid tr.award-row td { background:rgba(0,111,238,.07); }
+    .st-grid tr.award-row td.total-td { background:rgba(0,111,238,.13) !important; }
+    /* contenteditable */
+    .st-grid td[contenteditable=true] { cursor:text; }
+    .st-grid td[contenteditable=true]:hover { background:rgba(0,111,238,.03) !important; }
+    .st-grid td[contenteditable=true]:focus { outline:2px solid var(--primary); outline-offset:-1px; background:rgba(0,111,238,.07) !important; }
+    /* number input */
+    .score-num {
+      width:56px; text-align:center; background:transparent;
+      border:none; outline:none; font-size:13px; font-weight:600;
+      color:var(--fg); font-family:inherit; padding:0;
+    }
+    .score-num:focus { color:var(--primary); }
+    .st-grid td:has(.score-num) { padding:3px 6px; }
+
+    /* ── Progress ── */
+    .prog-wrap { margin:8px 0; }
+    .prog-bar { height:4px; background:var(--border); border-radius:99px; overflow:hidden; }
+    .prog-fill { height:100%; background:var(--primary); border-radius:99px; transition:width .3s; }
+    .prog-label { font-size:11px; color:var(--fg-muted); text-align:right; margin-top:3px; }
+
+    /* ── Chips ── */
+    .chip-list { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; min-height:28px; }
+    .chip {
+      display:inline-flex; align-items:center; gap:5px;
+      background:rgba(0,111,238,.08); border:1px solid rgba(0,111,238,.2);
+      color:var(--primary); border-radius:99px; padding:4px 10px;
+      font-size:12px; font-weight:600;
+    }
+    .chip-del { background:none; border:none; cursor:pointer; color:var(--primary); font-size:15px; line-height:1; padding:0; opacity:.55; }
+    .chip-del:hover { opacity:1; }
+
+    /* ── Signature ── */
+    .sig-section { margin-top:24px; padding-top:16px; border-top:1px dashed var(--border); }
+    .sig-title { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--fg-muted); margin-bottom:12px; }
+    .sig-rows { display:flex; flex-direction:column; gap:14px; }
+    .sig-row { display:flex; align-items:center; gap:24px; flex-wrap:wrap; }
+    .sig-field { display:flex; align-items:center; gap:8px; }
+    .sig-lbl { font-size:12px; font-weight:600; color:var(--fg-muted); white-space:nowrap; }
+    .sig-name { font-size:12px; font-weight:700; color:var(--fg); min-width:60px; }
+    .sig-line { display:inline-block; width:110px; height:1px; border-bottom:1px solid var(--fg-muted); }
+
+    /* ── Detail toggle ── */
+    .detail-toggle {
+      display:flex; align-items:center; gap:8px;
+      font-size:12px; font-weight:600; color:var(--fg-muted);
+      cursor:pointer; padding:8px 0; background:none; border:none;
+      font-family:inherit; user-select:none;
+    }
+    .detail-toggle svg { transition:transform .2s; }
+    .detail-toggle.open svg { transform:rotate(180deg); }
+    .detail-body { display:none; }
+    .detail-body.open { display:block; }
+
+    /* ── Empty / info ── */
+    .empty { text-align:center; padding:40px 16px; color:var(--fg-muted); font-size:13px; }
+    .empty-ico { font-size:36px; margin-bottom:10px; }
+    .info-badge {
+      display:inline-flex; align-items:center; gap:5px;
+      background:rgba(0,111,238,.08); border:1px solid rgba(0,111,238,.2);
+      color:var(--primary); border-radius:99px; padding:3px 10px;
+      font-size:11px; font-weight:700;
+    }
+
+    /* ── Toast ── */
+    #st-toast {
+      position:fixed; bottom:2rem; left:50%;
+      transform:translateX(-50%) translateY(1rem);
+      background:var(--fg); color:var(--bg);
+      padding:10px 18px; border-radius:10px;
+      font-size:13px; font-weight:600; opacity:0; pointer-events:none;
+      transition:opacity .2s, transform .2s; z-index:9999; white-space:nowrap;
+    }
+    #st-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+    /* ── Print ── */
+    @media print {
+      .no-print { display:none !important; }
+      body { padding:0; background:#fff; }
+      body::before { display:none; }
+      .wrap { max-width:none; padding:16px; }
+      .app-header { margin-bottom:10px; }
+      .panel { display:block !important; }
+      #panel-score, #panel-collect { display:none !important; }
+      body[data-print=score]  #panel-make, body[data-print=score]  #panel-collect { display:none !important; }
+      body[data-print=score]  #panel-score { display:block !important; }
+      body[data-print=collect] #panel-make, body[data-print=collect] #panel-score { display:none !important; }
+      body[data-print=collect] #panel-collect { display:block !important; }
+      .settings-card { display:none !important; }
+      .tbl-header .act-row, .mk-btn-row, .sc-btn-row, .cl-btn-row { display:none !important; }
+      .grid-wrap { overflow:visible; border:none; border-radius:0; max-height:none; }
+      .st-grid th, .st-grid td { border-color:#888; font-size:11px; padding:4px 8px; }
+      .st-grid th { background:#efefef !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      .st-grid tr.award-row td { background:#dbeafe !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      .st-grid tr.award-row td.total-td { background:#bfdbfe !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      .sig-section { margin-top:20px; border-top:1px solid #aaa; }
+      .sig-line { border-bottom-color:#333; }
+      .detail-body { display:block !important; }
+    }
+
+    @media (max-width:600px) {
+      .settings-row { gap:12px; }
+    }
+  </style>
+  <meta property="og:image" content="https://eduin.info/og-images/scoring-table.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="채점표 — 대회·발표 채점을 스마트하게 | eduin VIVES">
+  <meta name="twitter:description" content="온라인 채점 양식을 만들고 링크 하나로 공유하세요. 공동 채점, 실시간 결과 수합, xlsx 다운로드까지 한 번에.">
+  <meta name="twitter:image" content="https://eduin.info/og-images/scoring-table.png">
+  <link rel="canonical" href="https://eduin.info/apps/scoring-table/">
+  <meta property="og:url" content="https://eduin.info/apps/scoring-table/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"채점표","description":"온라인 채점 양식을 만들고 링크 하나로 공유하세요. 공동 채점, 실시간 결과 수합, xlsx 다운로드까지 한 번에.","url":"https://eduin.info/apps/scoring-table/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script src="/common/seo-injector.js" defer></script>
+</head>
+<body data-shell="column" data-width="wide" data-print>
+
+
+<div class="wrap">
+  <header class="app-header">
+    <span class="app-badge">◆ 업무경감</span>
+    <h1 class="app-title">채점표</h1>
+    <p class="app-desc">대회·발표 채점 양식 배포, 공동 채점, 결과 수합 — 서버 없이 링크 하나로</p>
+  </header>
+
+  <div class="tabs no-print">
+    <button class="tab-btn active" data-tab="make" onclick="switchTab('make')">📋 표 만들기</button>
+    <button class="tab-btn" data-tab="score" onclick="switchTab('score')">✏️ 채점하기</button>
+    <button class="tab-btn" data-tab="collect" onclick="switchTab('collect')">📊 수합하기</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       탭 1: 표 만들기
+  ═══════════════════════════════════════ -->
+  <section class="panel active" id="panel-make">
+    <div class="st-card settings-card no-print" id="mk-settings-card">
+      <!-- renderMkSettings() 로 채움 -->
+    </div>
+    <div id="mk-table-wrap">
+      <!-- renderMkTable() 로 채움 -->
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       탭 2: 채점하기
+  ═══════════════════════════════════════ -->
+  <section class="panel" id="panel-score">
+    <div class="st-card no-print" id="sc-setup-card">
+      <div class="st-sec">채점 정보</div>
+      <div class="settings-row" style="align-items:flex-start">
+        <div class="sf">
+          <label class="sf-label" for="sc-scorer">채점자 이름</label>
+          <input id="sc-scorer" class="st-input" type="text" placeholder="예) 김선생님, 이선생님, 박선생님" style="width:200px">
+        </div>
+        <div class="sf" style="flex:1;min-width:240px">
+          <label class="sf-label" for="sc-form-url">채점 양식 링크</label>
+          <div style="display:flex;gap:8px">
+            <input id="sc-form-url" class="st-input" type="text" placeholder="양식 공유 링크를 붙여넣으세요" style="flex:1">
+            <button class="st-btn st-btn-primary" onclick="scLoadFromInput()">불러오기</button>
+          </div>
+          <span style="font-size:11px;color:var(--fg-muted);margin-top:4px">링크를 직접 열면 자동으로 불러옵니다</span>
+        </div>
+      </div>
+      <div style="margin-top:16px;padding:14px 16px;background:rgba(0,111,238,.05);border:1px solid rgba(0,111,238,.15);border-radius:10px;font-size:12.5px;line-height:1.7;color:var(--fg-muted)">
+        <strong style="color:var(--fg)">이 탭은 채점자용입니다.</strong><br>
+        ① 주최자가 <b>표 만들기</b> 탭에서 만든 <b>채점 양식 링크</b>를 받아 엽니다.<br>
+        ② <b>채점자 이름</b>을 입력하고 참가자별 점수를 매깁니다. (규칙에 따른 자동배점도 가능)<br>
+        ③ 입력이 끝나면 <b>수합자에게 공유</b> 버튼으로 결과 링크를 만들어 전달하거나, 엑셀로 내려받습니다.<br>
+        <span style="display:inline-block;margin-top:6px">아직 양식이 없다면, 위 입력란에 받은 링크를 붙여넣고 <b>불러오기</b>를 눌러주세요.</span>
+      </div>
+    </div>
+    <div id="sc-content-wrap" style="display:none">
+      <!-- renderScTable() 로 채움 -->
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════
+       탭 3: 수합하기
+  ═══════════════════════════════════════ -->
+  <section class="panel" id="panel-collect">
+    <div class="st-card no-print" id="cl-input-card">
+      <div class="st-sec">채점 결과 링크 수집</div>
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <textarea id="cl-url-input" class="st-input" style="flex:1;min-height:96px;resize:vertical;line-height:1.6"
+          placeholder="채점자들이 보낸 결과 링크를 붙여넣으세요.&#10;줄바꿈·쉼표로 여러 개 입력 가능.&#10;&#10;예) https://go.eduin.info/Ab3xZ"></textarea>
+        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+          <button class="st-btn st-btn-primary" id="cl-merge-btn" onclick="clMergeFromInput()">🧩 합치기</button>
+          <button class="st-btn st-btn-danger st-btn-sm" onclick="clClearAll()">초기화</button>
+          <span id="cl-merge-status" style="font-size:12px;color:var(--fg-muted);text-align:center"></span>
+        </div>
+      </div>
+      <div class="chip-list" id="cl-chip-list" style="margin-top:10px"></div>
+      <div style="font-size:11px;color:var(--fg-muted)">동일한 채점자명 링크는 덮어씁니다 · 단축주소·공유링크 모두 지원</div>
+    </div>
+    <div id="cl-result-wrap" style="display:none">
+      <!-- renderClTable() 로 채움 -->
+    </div>
+  </section>
+</div>
+
+<div id="st-toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  유틸
+// ════════════════════════════════════════════════════════
+const clamp = (v, a, b) => Math.min(b, Math.max(a, +v || 0));
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
+function today() { return new Date().toISOString().slice(0, 10); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function rowTotal(row) { return (row.scores || []).reduce((s, v) => s + (v ?? 0), 0); }
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+let _toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('st-toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ════════════════════════════════════════════════════════
+//  탭 전환
+// ════════════════════════════════════════════════════════
+let currentTab = 'make';
+function switchTab(id) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + id));
+  currentTab = id;
+}
+
+// ════════════════════════════════════════════════════════
+//  공유 URL 인코딩/디코딩 (vives-share 패턴)
+// ════════════════════════════════════════════════════════
+function buildShareURL(data, permission) {
+  const payload = JSON.stringify({ data, permission });
+  const encoded = btoa(encodeURIComponent(payload))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  return `${location.origin}/scoring-table/#share=${encoded}`;
+}
+
+function decodeSharePayload(encoded) {
+  const attempts = [
+    // 현재 인코딩: btoa(encodeURIComponent(payload)) + base64url
+    () => JSON.parse(decodeURIComponent(atob(padB64(encoded.replace(/-/g,'+').replace(/_/g,'/'))))),
+    // 구버전 호환: btoa(payload) + base64url (encodeURIComponent 없음)
+    () => JSON.parse(atob(padB64(encoded.replace(/-/g,'+').replace(/_/g,'/'))))
+  ];
+  for (const fn of attempts) {
+    try {
+      const p = fn();
+      if (p && p.data && p.permission) return p;
+    } catch {}
+  }
+  return null;
+}
+function padB64(s) { return s + '='.repeat((4 - s.length % 4) % 4); }
+
+async function doShare(data, permission) {
+  const longURL = buildShareURL(data, permission);
+  try {
+    const res = await fetch('/api/shorten', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: longURL }),
+    });
+    const j = await res.json();
+    if (!res.ok || !j.shortURL) { console.error('[shorten] failed:', res.status, j); throw new Error((j && j.error) || 'shorten failed'); }
+    await navigator.clipboard.writeText(j.shortURL);
+    showToast('링크가 복사되었습니다 ✓');
+  } catch {
+    try {
+      await navigator.clipboard.writeText(longURL);
+      showToast('링크가 복사되었습니다 (단축 미적용)');
+    } catch { showToast('공유에 실패했습니다.'); }
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  점수 분배 알고리즘
+// ════════════════════════════════════════════════════════
+function distributeScore(target, areas) {
+  const n = areas.length;
+  if (!n) return [];
+  const maxT = areas.reduce((s, a) => s + a.max, 0);
+  target = clamp(target, 0, maxT);
+  const base = areas.map(a => Math.floor(target * a.max / maxT));
+  let rem = target - base.reduce((s, v) => s + v, 0);
+  shuffle([...Array(n).keys()]).forEach(i => {
+    if (rem <= 0) return;
+    const room = areas[i].max - base[i];
+    const add = Math.min(room, rem);
+    base[i] += add; rem -= add;
+  });
+  return base;
+}
+
+function generateScores(rows, areas, ratio, awardRange) {
+  if (!rows.length || !areas.length) return;
+  const maxT = areas.reduce((s, a) => s + a.max, 0);
+  const awardN = Math.round(rows.length * ratio / 100);
+  let totals;
+
+  if (awardRange.enabled && awardN > 0 && maxT > 0) {
+    const aMin = Math.round(maxT * awardRange.min / 100);
+    const aMax = Math.min(maxT, Math.round(maxT * awardRange.max / 100));
+    const lo = Math.min(aMin, aMax), hi = Math.max(aMin, aMax);
+    const awardTotals = Array.from({ length: awardN }, () =>
+      lo + Math.round(Math.random() * (hi - lo)));
+    const otherTotals = Array.from({ length: rows.length - awardN }, () =>
+      Math.round(Math.random() * Math.max(0, lo - 1)));
+    totals = shuffle([...awardTotals, ...otherTotals]);
+  } else {
+    totals = Array.from({ length: rows.length }, () => Math.round(Math.random() * maxT));
+  }
+
+  rows.forEach((row, i) => { row.scores = distributeScore(totals[i], areas); });
+}
+
+// ════════════════════════════════════════════════════════
+//  순위/시상 계산
+// ════════════════════════════════════════════════════════
+function computeRanksAwards(rows, ratio) {
+  const awardN = Math.round(rows.length * ratio / 100);
+  const sorted = [...rows].sort((a, b) => rowTotal(b) - rowTotal(a));
+  const rankMap = new Map();
+  let rank = 1, prev = -1, prevRank = 1;
+  sorted.forEach((r, i) => {
+    const t = rowTotal(r);
+    if (t !== prev) { prevRank = rank; }
+    rankMap.set(r, prevRank);
+    prev = t; rank++;
+  });
+  const awardSet = new Set(sorted.slice(0, awardN));
+  return { rankMap, awardSet };
+}
+
+// ════════════════════════════════════════════════════════
+//  ── 탭 1: 표 만들기 ──
+// ════════════════════════════════════════════════════════
+const mk = {
+  title: '',
+  count: 5,
+  ratio: 20,
+  areaCount: 2,
+  areas: [{ name: '영역1', max: 30 }, { name: '영역2', max: 20 }],
+  rows: [],
+  awardRange: { enabled: false, min: 80, max: 100 },
+  sortMode: 'desc'  // 'desc'(높은순) | 'asc'(낮은순) | 'name'(이름순)
+};
+const MK_KEY = 'vives-scoring-make';
+
+function mkInit() {
+  mk.rows = Array.from({ length: mk.count }, (_, i) => ({
+    name: `참가자${i + 1}`,
+    scores: mk.areas.map(() => null)
+  }));
+}
+
+// ── 스테퍼 ──
+function mkStep(field, delta) {
+  const cfg = { count:{min:1,max:300,step:1}, ratio:{min:0,max:100,step:5}, areaCount:{min:1,max:12,step:1} };
+  const c = cfg[field]; if (!c) return;
+  const cur = field === 'areaCount' ? mk.areaCount : mk[field];
+  mkSetField(field, clamp(cur + delta * c.step, c.min, c.max));
+}
+function mkStepAward(field, delta) {
+  mk.awardRange[field] = clamp(mk.awardRange[field] + delta * 5, 0, 100);
+  document.getElementById(`mk-${field}-inp`).value = mk.awardRange[field];
+  document.getElementById(`mk-${field}-val`).textContent = mk.awardRange[field];
+}
+function mkSetField(field, raw) {
+  const val = +raw;
+  if (field === 'count') {
+    mk.count = val;
+    while (mk.rows.length < val) mk.rows.push({ name: `참가자${mk.rows.length + 1}`, scores: mk.areas.map(() => null) });
+    mk.rows = mk.rows.slice(0, val);
+    renderMkSettings(); renderMkTable();
+  } else if (field === 'areaCount') {
+    mk.areaCount = val;
+    while (mk.areas.length < val) mk.areas.push({ name: `영역${mk.areas.length + 1}`, max: 20 });
+    mk.areas = mk.areas.slice(0, val);
+    mk.rows.forEach(r => {
+      while (r.scores.length < val) r.scores.push(null);
+      r.scores = r.scores.slice(0, val);
+    });
+    renderMkSettings(); renderMkTable();
+  } else if (field === 'ratio') {
+    mk.ratio = val;
+    document.getElementById('mk-ratio-inp').value = val;
+    document.getElementById('mk-ratio-val').textContent = val;
+    mkUpdateRanksAwards();
+    mkUpdateInfoBadge();
+  }
+  mkSaveLocal();
+}
+
+function mkUpdateInfoBadge() {
+  const el = document.getElementById('mk-info-badge');
+  if (el) {
+    const awardN = Math.round(mk.rows.length * mk.ratio / 100);
+    el.textContent = `총 ${mk.rows.length}명 · 시상 ${awardN}명`;
+  }
+}
+
+function mkUpdateMaxTotal() {
+  const el = document.getElementById('mk-maxtotal');
+  if (el) el.textContent = mk.areas.reduce((s, a) => s + a.max, 0);
+}
+function mkOnAreaName(i, v)  { mk.areas[i].name = v; renderMkTableHead(); mkSaveLocal(); }
+function mkOnAreaMax(i, inp) {
+  mk.areas[i].max = clamp(+inp.value, 1, 200);
+  inp.value = mk.areas[i].max;
+  mkUpdateMaxTotal(); renderMkTableHead(); mkSaveLocal();
+}
+function mkAreaMaxStep(i, delta) {
+  mk.areas[i].max = clamp(mk.areas[i].max + delta * 5, 1, 200);
+  document.getElementById(`mk-amax-inp-${i}`).value = mk.areas[i].max;
+  mkUpdateMaxTotal(); renderMkTableHead(); mkSaveLocal();
+}
+
+// ── 설정 패널 렌더 ──
+function renderMkSettings() {
+  const el = document.getElementById('mk-settings-card');
+  el.innerHTML = `
+    <div class="st-sec">대회 정보</div>
+    <div class="sf" style="margin-bottom:16px">
+      <label class="sf-label" for="mk-title">대회 제목</label>
+      <input id="mk-title" class="st-input" type="text" value="${esc(mk.title)}"
+        placeholder="예) 2026 교내 발표 대회" style="max-width:360px"
+        oninput="mk.title=this.value;mkSaveLocal()">
+    </div>
+
+    <div class="st-sec">기본 설정</div>
+    <div class="settings-row">
+      <div class="sf">
+        <span class="sf-label">참가 인원</span>
+        <div class="stepper">
+          <button class="stp-btn" onclick="mkStep('count',-1)">−</button>
+          <input class="stp-inp" id="mk-count-inp" type="number" min="1" max="300" value="${mk.count}"
+            onchange="mkSetField('count',this.value)" style="width:56px">
+          <button class="stp-btn" onclick="mkStep('count',1)">+</button>
+        </div>
+      </div>
+      <div class="sf">
+        <span class="sf-label">시상 비율 (<span id="mk-ratio-val">${mk.ratio}</span>%)</span>
+        <div class="stepper">
+          <button class="stp-btn" onclick="mkStep('ratio',-1)">−</button>
+          <input class="stp-inp" id="mk-ratio-inp" type="number" min="0" max="100" step="5" value="${mk.ratio}"
+            onchange="mkSetField('ratio',this.value)">
+          <button class="stp-btn" onclick="mkStep('ratio',1)">+</button>
+        </div>
+      </div>
+      <div class="sf">
+        <span class="sf-label">영역 수</span>
+        <div class="stepper">
+          <button class="stp-btn" onclick="mkStep('areaCount',-1)">−</button>
+          <input class="stp-inp" id="mk-acount-inp" type="number" min="1" max="12" value="${mk.areaCount}"
+            onchange="mkSetField('areaCount',this.value)">
+          <button class="stp-btn" onclick="mkStep('areaCount',1)">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="st-sec">영역 설정 · 만점 합계 <span id="mk-maxtotal" style="color:var(--primary);font-weight:800">${mk.areas.reduce((s,a)=>s+a.max,0)}</span>점</div>
+    <div class="area-rows">
+      ${mk.areas.map((a, i) => `
+        <div class="area-row">
+          <span class="area-idx">영역 ${i + 1}</span>
+          <input class="st-input" type="text" value="${esc(a.name)}" placeholder="영역 이름"
+            style="width:130px" oninput="mkOnAreaName(${i},this.value)">
+          <span style="font-size:12px;font-weight:600;color:var(--fg-muted)">만점</span>
+          <div class="stepper">
+            <button class="stp-btn" onclick="mkAreaMaxStep(${i},-1)">−</button>
+            <input class="stp-inp" id="mk-amax-inp-${i}" type="number" min="1" max="200" value="${a.max}"
+              onchange="mkOnAreaMax(${i},this)" style="width:56px">
+            <button class="stp-btn" onclick="mkAreaMaxStep(${i},1)">+</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="award-toggle-row">
+      <label class="award-toggle-label">
+        <input type="checkbox" class="st-checkbox" id="mk-award-chk"
+          ${mk.awardRange.enabled ? 'checked' : ''} onchange="mkToggleAwardRange(this.checked)">
+        시상자 점수 범위 지정
+      </label>
+      <div class="award-range-row ${mk.awardRange.enabled ? '' : 'disabled'}" id="mk-award-fields">
+        <span style="font-size:12px;font-weight:600;color:var(--fg-muted)">최저</span>
+        <div class="stepper">
+          <button class="stp-btn" onclick="mkStepAward('min',-1)">−</button>
+          <input class="stp-inp" id="mk-min-inp" type="number" min="0" max="100" step="5" value="${mk.awardRange.min}"
+            onchange="mk.awardRange.min=clamp(this.value,0,100);this.value=mk.awardRange.min;document.getElementById('mk-min-val').textContent=mk.awardRange.min">
+          <button class="stp-btn" onclick="mkStepAward('min',1)">+</button>
+        </div>
+        <span id="mk-min-val" style="font-size:12px;color:var(--fg-muted)">${mk.awardRange.min}%</span>
+        <span style="font-size:12px;font-weight:600;color:var(--fg-muted)">최고</span>
+        <div class="stepper">
+          <button class="stp-btn" onclick="mkStepAward('max',-1)">−</button>
+          <input class="stp-inp" id="mk-max-inp" type="number" min="0" max="100" step="5" value="${mk.awardRange.max}"
+            onchange="mk.awardRange.max=clamp(this.value,0,100);this.value=mk.awardRange.max;document.getElementById('mk-max-val').textContent=mk.awardRange.max">
+          <button class="stp-btn" onclick="mkStepAward('max',1)">+</button>
+        </div>
+        <span id="mk-max-val" style="font-size:12px;color:var(--fg-muted)">${mk.awardRange.max}%</span>
+      </div>
+    </div>
+  `;
+}
+
+function mkToggleAwardRange(on) {
+  mk.awardRange.enabled = on;
+  const f = document.getElementById('mk-award-fields');
+  if (f) f.classList.toggle('disabled', !on);
+}
+
+// ── 표 렌더 ──
+function renderMkTable() {
+  const el = document.getElementById('mk-table-wrap');
+  const { rows, areas, ratio, sortMode } = mk;
+  if (!rows.length) { el.innerHTML = ''; return; }
+
+  const { rankMap, awardSet } = computeRanksAwards(rows, ratio);
+  const awardN = Math.round(rows.length * ratio / 100);
+
+  const sorted = [...rows].sort((a, b) =>
+    sortMode === 'name' ? a.name.localeCompare(b.name, 'ko')
+    : sortMode === 'asc' ? rowTotal(a) - rowTotal(b)
+    : rowTotal(b) - rowTotal(a));
+  const sortLabel = sortMode === 'name' ? '이름순 ⇅' : sortMode === 'asc' ? '낮은순 ↑' : '높은순 ↓';
+
+  const thead = `<thead><tr>
+    <th class="rank-td">순위</th>
+    <th style="text-align:left;min-width:80px">이름</th>
+    ${areas.map(a => `<th class="area-th">${esc(a.name)}<br><span style="font-weight:400;font-size:10px;color:var(--fg-muted)">(${a.max}점)</span></th>`).join('')}
+    <th class="total-th">총점</th>
+    <th class="award-td">시상</th>
+  </tr></thead>`;
+
+  const tbody = `<tbody id="mk-tbody">${sorted.map(row => {
+    const rIdx = rows.indexOf(row);
+    const total = rowTotal(row);
+    const isAward = awardSet.has(row);
+    return `<tr data-ridx="${rIdx}" class="${isAward ? 'award-row' : ''}">
+      <td class="rank-td">${rankMap.get(row) ?? ''}</td>
+      <td class="name-td" contenteditable="true" data-ridx="${rIdx}" data-field="name"
+        oninput="mkOnNameEdit(${rIdx},this.textContent)"
+        onblur="mkNameBlur(${rIdx},this)">${esc(row.name)}</td>
+      ${areas.map((a, ai) => {
+        const v = row.scores[ai];
+        return `<td class="score-td" contenteditable="true"
+          data-ridx="${rIdx}" data-ai="${ai}" data-max="${a.max}"
+          oninput="mkOnScoreEdit(this)"
+          onblur="mkScoreBlur(this)">${v != null ? v : ''}</td>`;
+      }).join('')}
+      <td class="total-td">${total}</td>
+      <td class="award-td">${isAward ? '🏅' : ''}</td>
+    </tr>`;
+  }).join('')}</tbody>`;
+
+  el.innerHTML = `
+    ${mk.title ? `<h2 style="font-size:1.05rem;font-weight:800;margin:0 0 10px;text-align:center">${esc(mk.title)}</h2>` : ''}
+    <div class="tbl-header no-print">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700">채점 결과</span>
+        <span class="info-badge" id="mk-info-badge">총 ${rows.length}명 · 시상 ${awardN}명</span>
+        <button class="st-btn st-btn-ghost st-btn-sm on" onclick="mkCycleSort()">${sortLabel}</button>
+      </div>
+      <div class="act-row mk-btn-row">
+        <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkRandom()">🎲 점수 랜덤</button>
+        <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkShareForm()">🔗 양식 공유</button>
+        <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkExportXlsx()">📥 xlsx</button>
+        <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkSaveLocal(true)">💾 임시저장</button>
+      </div>
+    </div>
+    <div class="grid-wrap"><table class="st-grid">${thead}${tbody}</table></div>
+  `;
+}
+
+function renderMkTableHead() {
+  // 헤더 영역명·만점만 업데이트 (전체 재렌더 대신)
+  renderMkTable();
+}
+
+function mkCycleSort() {
+  mk.sortMode = mk.sortMode === 'desc' ? 'asc' : mk.sortMode === 'asc' ? 'name' : 'desc';
+  renderMkTable();
+}
+
+function mkRandom() {
+  generateScores(mk.rows, mk.areas, mk.ratio, mk.awardRange);
+  renderMkTable();
+  mkSaveLocal();
+}
+
+// contenteditable 핸들러
+function mkOnScoreEdit(el) {
+  const rIdx = +el.dataset.ridx;
+  const ai   = +el.dataset.ai;
+  const max  = +el.dataset.max;
+  const raw  = el.textContent.trim();
+  const val  = raw === '' ? null : clamp(parseInt(raw, 10) || 0, 0, max);
+  mk.rows[rIdx].scores[ai] = val;
+  // total 업데이트
+  const tr = el.closest('tr');
+  tr.querySelector('.total-td').textContent = rowTotal(mk.rows[rIdx]);
+  mkUpdateRanksAwards();
+}
+function mkScoreBlur(el) {
+  const rIdx = +el.dataset.ridx;
+  const ai   = +el.dataset.ai;
+  const max  = +el.dataset.max;
+  const raw  = el.textContent.trim();
+  const val  = raw === '' ? null : clamp(parseInt(raw, 10) || 0, 0, max);
+  mk.rows[rIdx].scores[ai] = val;
+  el.textContent = val != null ? val : '';
+  const tr = el.closest('tr');
+  tr.querySelector('.total-td').textContent = rowTotal(mk.rows[rIdx]);
+  mkUpdateRanksAwards();
+  mkSaveLocal();
+}
+function mkOnNameEdit(rIdx, text) { mk.rows[rIdx].name = text; }
+function mkNameBlur(rIdx, el) { mk.rows[rIdx].name = el.textContent.trim(); el.textContent = mk.rows[rIdx].name; mkSaveLocal(); }
+
+function mkUpdateRanksAwards() {
+  const { rankMap, awardSet } = computeRanksAwards(mk.rows, mk.ratio);
+  document.querySelectorAll('#mk-tbody tr').forEach(tr => {
+    const rIdx = +tr.dataset.ridx;
+    const row  = mk.rows[rIdx];
+    if (!row) return;
+    tr.querySelector('.rank-td').textContent = rankMap.get(row) ?? '';
+    const isAward = awardSet.has(row);
+    tr.querySelector('.award-td').textContent = isAward ? '🏅' : '';
+    tr.classList.toggle('award-row', isAward);
+  });
+}
+
+// 양식 공유 — 제목·이름 목록·시상 규칙 포함 (점수는 비움)
+function mkShareForm() {
+  const data = {
+    title: mk.title,
+    ratio: mk.ratio,
+    areas: mk.areas.map(a => [a.name, a.max]),
+    names: mk.rows.map(r => r.name),
+    award: [mk.awardRange.enabled, mk.awardRange.min, mk.awardRange.max],
+  };
+  doShare(data, 'form');
+}
+
+// 임시저장 (localStorage)
+function mkSaveLocal(notify) {
+  try {
+    localStorage.setItem(MK_KEY, JSON.stringify({
+      title: mk.title, count: mk.count, ratio: mk.ratio,
+      areaCount: mk.areaCount, areas: mk.areas, rows: mk.rows,
+      awardRange: mk.awardRange, sortMode: mk.sortMode,
+    }));
+    if (notify) showToast('표 만들기 내용을 임시저장했습니다 💾');
+  } catch {}
+}
+function mkLoadLocal() {
+  try {
+    const d = JSON.parse(localStorage.getItem(MK_KEY));
+    if (!d || !Array.isArray(d.areas) || !Array.isArray(d.rows)) return false;
+    mk.title = d.title || '';
+    mk.count = d.count ?? d.rows.length;
+    mk.ratio = d.ratio ?? 20;
+    mk.areaCount = d.areaCount ?? d.areas.length;
+    mk.areas = d.areas;
+    mk.rows = d.rows;
+    mk.awardRange = d.awardRange || { enabled: false, min: 80, max: 100 };
+    mk.sortMode = d.sortMode || 'desc';
+    return true;
+  } catch { return false; }
+}
+
+// xlsx 내보내기
+function mkExportXlsx() {
+  if (typeof XLSX === 'undefined') { showToast('SheetJS 로딩 중...'); return; }
+  const { rows, areas, ratio } = mk;
+  if (!rows.length) { showToast('표가 비어 있습니다.'); return; }
+  const { rankMap, awardSet } = computeRanksAwards(rows, ratio);
+  const sorted = [...rows].sort((a, b) => rowTotal(b) - rowTotal(a));
+  const header = ['순위', '이름', ...areas.map(a => `${a.name}(${a.max}점)`), '총점', '시상'];
+  const data = sorted.map(row => [
+    rankMap.get(row), row.name,
+    ...row.scores.map(s => s ?? ''),
+    rowTotal(row), awardSet.has(row) ? '★' : ''
+  ]);
+  const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
+  ws['!cols'] = [{ wch:5 }, { wch:14 }, ...areas.map(() => ({ wch:10 })), { wch:8 }, { wch:6 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '채점 결과');
+  XLSX.writeFile(wb, `채점표_${today()}.xlsx`);
+  showToast('xlsx 내려받기 완료');
+}
+
+// ════════════════════════════════════════════════════════
+//  ── 탭 2: 채점하기 ──
+// ════════════════════════════════════════════════════════
+const sc = { title: '', scorer: '', areas: [], rows: [], ratio: 20,
+  awardRange: { enabled: true, min: 80, max: 100 }, loaded: false };
+const SC_KEY = 'vives-scoring-draft';
+
+async function scLoadFromInput() {
+  const url = document.getElementById('sc-form-url').value.trim();
+
+  // 직접 공유 링크
+  if (url.includes('#share=')) {
+    const payload = decodeSharePayload(url.split('#share=')[1]);
+    if (!payload || payload.permission !== 'form') { showToast('양식 링크를 읽을 수 없습니다.'); return; }
+    scApplyForm(payload.data);
+    return;
+  }
+
+  // 단축 URL → 서버에서 원본 URL 조회
+  if (/^https?:\/\//.test(url)) {
+    showToast('링크를 불러오는 중…');
+    try {
+      const res = await fetch('/api/resolve-short-url', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shortURL: url }),
+      });
+      const j = await res.json();
+      if (res.ok && j.resolvedURL && j.resolvedURL.includes('#share=')) {
+        const payload = decodeSharePayload(j.resolvedURL.split('#share=')[1]);
+        if (!payload || payload.permission !== 'form') { showToast('양식 링크를 읽을 수 없습니다.'); return; }
+        scApplyForm(payload.data);
+        return;
+      }
+    } catch {}
+    showToast('링크를 불러올 수 없습니다.');
+    return;
+  }
+
+  showToast('올바른 양식 링크가 아닙니다.');
+}
+
+function scApplyForm(data) {
+  sc.title  = data.title || '';
+  sc.areas  = (data.areas || []).map(([name, max]) => ({ name, max }));
+  sc.ratio  = data.ratio ?? 20;
+  if (Array.isArray(data.award)) sc.awardRange = { enabled: !!data.award[0], min: data.award[1] ?? 80, max: data.award[2] ?? 100 };
+  sc.rows   = (data.names || []).map(name => ({ name, scores: sc.areas.map(() => null) }));
+  // 기존 초안 복구
+  const draft = scLoadDraft();
+  if (draft && draft.scorerName &&
+      JSON.stringify(draft.areas) === JSON.stringify(sc.areas) &&
+      JSON.stringify(draft.rows.map(r => r.name)) === JSON.stringify(sc.rows.map(r => r.name))) {
+    sc.scorer = draft.scorerName;
+    sc.rows   = draft.rows;
+    document.getElementById('sc-scorer').value = sc.scorer;
+    showToast('이전 채점 내용을 복구했습니다');
+  }
+  sc.loaded = true;
+  renderScTable();
+}
+
+function scLoadDraft() {
+  try { return JSON.parse(localStorage.getItem(SC_KEY)); } catch { return null; }
+}
+function scSaveDraft(notify) {
+  localStorage.setItem(SC_KEY, JSON.stringify({
+    scorerName: sc.scorer, title: sc.title, ratio: sc.ratio,
+    awardRange: sc.awardRange, areas: sc.areas, rows: sc.rows,
+  }));
+  if (notify === true) showToast('채점 내용을 임시저장했습니다 💾');
+}
+function scClearAll() {
+  if (!confirm('채점 내용을 초기화할까요?')) return;
+  localStorage.removeItem(SC_KEY);
+  sc.loaded = false; sc.rows = []; sc.scorer = '';
+  document.getElementById('sc-content-wrap').style.display = 'none';
+  document.getElementById('sc-setup-card').style.display = '';
+  document.getElementById('sc-scorer').value = '';
+  document.getElementById('sc-form-url').value = '';
+  showToast('초기화되었습니다.');
+}
+
+function scUpdateProgress() {
+  const total = sc.rows.length;
+  const done  = sc.rows.filter(r => r.scores.every(s => s != null)).length;
+  const pct   = total ? Math.round(done / total * 100) : 0;
+  const fill  = document.getElementById('sc-prog-fill');
+  const lbl   = document.getElementById('sc-prog-label');
+  if (fill)  fill.style.width  = pct + '%';
+  if (lbl)   lbl.textContent   = `${done} / ${total} 명 입력 완료`;
+}
+
+function renderScTable() {
+  document.getElementById('sc-setup-card').style.display = 'none';
+  const wrap = document.getElementById('sc-content-wrap');
+  wrap.style.display = '';
+  sc.scorer = document.getElementById('sc-scorer').value.trim() || sc.scorer;
+
+  const thead = `<thead><tr>
+    <th style="text-align:left;min-width:80px">이름</th>
+    ${sc.areas.map(a => `<th class="area-th">${esc(a.name)}<br><span style="font-weight:400;font-size:10px;color:var(--fg-muted)">(${a.max}점)</span></th>`).join('')}
+    <th class="total-th">총점</th>
+  </tr></thead>`;
+
+  const tbody = `<tbody>${sc.rows.map((row, ri) => `
+    <tr data-ri="${ri}">
+      <td class="name-td">${esc(row.name)}</td>
+      ${sc.areas.map((a, ai) => `
+        <td style="padding:3px 6px">
+          <input class="score-num" type="number" min="0" max="${a.max}"
+            value="${row.scores[ai] != null ? row.scores[ai] : ''}"
+            placeholder="0" data-ri="${ri}" data-ai="${ai}"
+            oninput="scOnInput(this)" onblur="scOnBlur(this)">
+        </td>
+      `).join('')}
+      <td class="total-td" id="sc-total-${ri}">${rowTotal(row)}</td>
+    </tr>`).join('')}</tbody>`;
+
+  wrap.innerHTML = `
+    ${sc.title ? `<h2 style="font-size:1.05rem;font-weight:800;margin:0 0 10px;text-align:center">${esc(sc.title)}</h2>` : ''}
+    <div class="st-card no-print" style="padding:12px 20px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <label class="sf-label" for="sc-scorer-inline" style="margin:0">채점자</label>
+        <input id="sc-scorer-inline" class="st-input" type="text" placeholder="채점자 이름" value="${esc(sc.scorer)}"
+          style="width:160px" oninput="sc.scorer=this.value;scSaveDraft()">
+        <span class="info-badge">${sc.rows.length}명 · ${sc.areas.length}개 영역</span>
+      </div>
+      <div class="prog-wrap">
+        <div class="prog-bar"><div class="prog-fill" id="sc-prog-fill" style="width:0%"></div></div>
+        <div class="prog-label" id="sc-prog-label">0 / ${sc.rows.length} 명 입력 완료</div>
+      </div>
+    </div>
+    <div class="grid-wrap"><table class="st-grid">${thead}${tbody}</table></div>
+    <div class="act-row sc-btn-row no-print" style="margin-top:12px;gap:8px">
+      <button class="st-btn st-btn-primary" onclick="scSubmit()">🔗 수합자에게 공유</button>
+      <button class="st-btn st-btn-ghost" onclick="scExportXlsx()">📥 xlsx</button>
+      <button class="st-btn st-btn-ghost" onclick="scAutoFill()">🎲 규칙에 따른 자동배점</button>
+      <button class="st-btn st-btn-ghost" onclick="scSaveDraft(true)">💾 임시저장</button>
+      <button class="st-btn st-btn-danger st-btn-sm" onclick="scClearAll()">초기화</button>
+    </div>
+  `;
+  scUpdateProgress();
+}
+
+function scAutoFill() {
+  if (!sc.rows.length) return;
+  generateScores(sc.rows, sc.areas, sc.ratio, sc.awardRange);
+  renderScTable();
+  scSaveDraft();
+  showToast('규칙에 따라 점수를 자동배점했습니다');
+}
+
+function scOnInput(inp) {
+  const ri = +inp.dataset.ri, ai = +inp.dataset.ai;
+  const max = sc.areas[ai].max;
+  const raw = inp.value.trim();
+  const val = raw === '' ? null : clamp(parseInt(raw, 10) || 0, 0, max);
+  sc.rows[ri].scores[ai] = val;
+  document.getElementById(`sc-total-${ri}`).textContent = rowTotal(sc.rows[ri]);
+  scUpdateProgress();
+  scSaveDraft();
+}
+function scOnBlur(inp) {
+  const ri = +inp.dataset.ri, ai = +inp.dataset.ai;
+  const max = sc.areas[ai].max;
+  const raw = inp.value.trim();
+  const val = raw === '' ? null : clamp(parseInt(raw, 10) || 0, 0, max);
+  sc.rows[ri].scores[ai] = val;
+  inp.value = val != null ? val : '';
+  document.getElementById(`sc-total-${ri}`).textContent = rowTotal(sc.rows[ri]);
+  scSaveDraft();
+}
+
+async function scSubmit() {
+  const inline = document.getElementById('sc-scorer-inline');
+  if (inline) sc.scorer = inline.value.trim();
+  if (!sc.scorer) { showToast('채점자 이름을 입력해 주세요.'); return; }
+  const hasEmpty = sc.rows.some(r => r.scores.some(s => s == null));
+  if (hasEmpty && !confirm('미입력 칸이 있습니다. 계속 진행할까요?')) return;
+  const data = {
+    scorer: sc.scorer,
+    ratio:  sc.ratio,
+    areas:  sc.areas.map(a => [a.name, a.max]),
+    rows:   sc.rows.map(r => [r.name, r.scores.map(s => s ?? 0)]),
+  };
+  await doShare(data, 'result');
+}
+
+function scExportXlsx() {
+  if (typeof XLSX === 'undefined') { showToast('SheetJS 로딩 중...'); return; }
+  if (!sc.rows.length) { showToast('채점 내용이 없습니다.'); return; }
+  const header = ['이름', ...sc.areas.map(a => `${a.name}(${a.max}점)`), '총점'];
+  const data   = sc.rows.map(r => [r.name, ...r.scores.map(s => s ?? ''), rowTotal(r)]);
+  const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
+  ws['!cols'] = [{ wch:14 }, ...sc.areas.map(() => ({ wch:10 })), { wch:8 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, `채점_${sc.scorer || '결과'}`);
+  XLSX.writeFile(wb, `채점_${sc.scorer || '결과'}_${today()}.xlsx`);
+  showToast('xlsx 내려받기 완료');
+}
+
+// ════════════════════════════════════════════════════════
+//  ── 탭 3: 수합하기 ──
+// ════════════════════════════════════════════════════════
+const cl = { results: [], aggregateBy: 'avg', sortMode: 'desc' };
+const CL_KEY = 'vives-scoring-collect';
+
+// 한 줄 → 결과 payload 디코드 (단축주소는 서버에서 역추적)
+async function clResolveLine(line) {
+  if (line.includes('#share=')) {
+    return decodeSharePayload(line.split('#share=')[1]);
+  }
+  if (/^https?:\/\//.test(line)) {
+    try {
+      const res = await fetch('/api/resolve-short-url', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shortURL: line }),
+      });
+      const j = await res.json();
+      if (res.ok && j.resolvedURL && j.resolvedURL.includes('#share=')) {
+        return decodeSharePayload(j.resolvedURL.split('#share=')[1]);
+      }
+    } catch {}
+  }
+  return null;
+}
+
+async function clMergeFromInput() {
+  const text = document.getElementById('cl-url-input').value;
+  const lines = [...new Set(text.split(/[\n\r,]+/).map(s => s.trim()).filter(Boolean))];
+  if (!lines.length) { showToast('링크를 입력해 주세요.'); return; }
+
+  const btn = document.getElementById('cl-merge-btn');
+  const status = document.getElementById('cl-merge-status');
+  btn.disabled = true;
+  let ok = 0, fail = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (status) status.textContent = `처리 중… ${i + 1}/${lines.length}`;
+    const payload = await clResolveLine(lines[i]);
+    if (payload && payload.permission === 'result') { clAddResult(payload.data, true); ok++; }
+    else fail++;
+  }
+  btn.disabled = false;
+  if (status) status.textContent = '';
+  renderClChips();
+  renderClTable();
+  clSaveLocal();
+  if (ok) {
+    document.getElementById('cl-url-input').value = '';
+    showToast(`✓ ${ok}명 수합 완료${fail ? ` (실패 ${fail}건)` : ''}`);
+  } else {
+    showToast('읽을 수 있는 결과 링크가 없습니다.');
+  }
+}
+
+function clSaveLocal(notify) {
+  try {
+    localStorage.setItem(CL_KEY, JSON.stringify({
+      results: cl.results, aggregateBy: cl.aggregateBy, sortMode: cl.sortMode,
+    }));
+    if (notify) showToast('수합 내용을 임시저장했습니다 💾');
+  } catch {}
+}
+function clLoadLocal() {
+  try {
+    const d = JSON.parse(localStorage.getItem(CL_KEY));
+    if (!d || !Array.isArray(d.results) || !d.results.length) return false;
+    cl.results = d.results;
+    cl.aggregateBy = d.aggregateBy || 'avg';
+    cl.sortMode = d.sortMode || (d.sortAsc ? 'asc' : 'desc'); // 구버전 호환
+    return true;
+  } catch { return false; }
+}
+
+function clClearAll() {
+  if (cl.results.length && !confirm('수합 내용을 초기화할까요?')) return;
+  cl.results = [];
+  cl.aggregateBy = 'avg';
+  cl.sortMode = 'desc';
+  try { localStorage.removeItem(CL_KEY); } catch {}
+  renderClChips();
+  renderClTable();
+  showToast('초기화되었습니다.');
+}
+
+function clAddResult(data, silent) {
+  const scorer = data.scorer || '알 수 없음';
+  // 동일 채점자 덮어쓰기
+  const idx = cl.results.findIndex(r => r.scorer === scorer);
+  const entry = {
+    scorer,
+    ratio:  data.ratio ?? 20,
+    areas:  (data.areas || []).map(([name, max]) => ({ name, max })),
+    rows:   (data.rows || []).map(([name, scores]) => ({ name, scores: scores.map(Number) })),
+  };
+  if (idx >= 0) cl.results[idx] = entry; else cl.results.push(entry);
+  if (!silent) {
+    renderClChips();
+    renderClTable();
+    clSaveLocal();
+    showToast(`${scorer} 채점 결과 추가됨`);
+  }
+}
+
+function clRemoveResult(scorer) {
+  cl.results = cl.results.filter(r => r.scorer !== scorer);
+  renderClChips();
+  renderClTable();
+  clSaveLocal();
+}
+
+function renderClChips() {
+  const el = document.getElementById('cl-chip-list');
+  el.innerHTML = cl.results.map(r =>
+    `<span class="chip">${esc(r.scorer)}
+      <button class="chip-del" onclick="clRemoveResult('${esc(r.scorer)}')" title="제거">×</button>
+    </span>`
+  ).join('');
+}
+
+// 종합 집계 계산
+function clAggregate() {
+  if (!cl.results.length) return { names:[], scorerList:[], aggRows:[], ratio:20 };
+  const ratio = cl.results[0].ratio;
+  const scorerList = cl.results.map(r => r.scorer);
+  // 전체 참가자명 합집합 (순서 보존)
+  const nameSet = new Map();
+  cl.results.forEach(r => r.rows.forEach(row => {
+    if (!nameSet.has(row.name)) nameSet.set(row.name, nameSet.size);
+  }));
+  const names = [...nameSet.keys()];
+
+  // 각 참가자 × 채점자 총점 map
+  const scoreMap = new Map(); // name → { scorer: total }
+  cl.results.forEach(r => {
+    r.rows.forEach(row => {
+      if (!scoreMap.has(row.name)) scoreMap.set(row.name, {});
+      const ov = r._ov && r._ov[row.name];
+      scoreMap.get(row.name)[r.scorer] = ov != null ? ov : row.scores.reduce((s, v) => s + (v ?? 0), 0);
+    });
+  });
+
+  const aggRows = names.map(name => {
+    const byScorer = scoreMap.get(name) || {};
+    const vals = scorerList.map(s => byScorer[s] != null ? byScorer[s] : null);
+    const filled = vals.filter(v => v != null);
+    const sum = filled.reduce((s, v) => s + v, 0);
+    const avg = filled.length ? sum / filled.length : 0;
+    return { name, vals, sum, avg };
+  });
+
+  return { names, scorerList, aggRows, ratio };
+}
+
+function renderClTable() {
+  const wrap = document.getElementById('cl-result-wrap');
+  if (!cl.results.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+
+  const { scorerList, aggRows, ratio } = clAggregate();
+  const awardN = Math.round(aggRows.length * ratio / 100);
+
+  // 집계 기준에 따라 정렬
+  const getSortVal = r => cl.aggregateBy === 'sum' ? r.sum : r.avg;
+  const sorted = [...aggRows].sort((a, b) =>
+    cl.sortMode === 'name' ? a.name.localeCompare(b.name, 'ko')
+    : cl.sortMode === 'asc' ? getSortVal(a) - getSortVal(b)
+    : getSortVal(b) - getSortVal(a));
+
+  // 석차 계산
+  const rankSorted = [...aggRows].sort((a, b) => getSortVal(b) - getSortVal(a));
+  const rankMap = new Map();
+  rankSorted.forEach((r, i) => rankMap.set(r.name, i + 1));
+  const awardNames = new Set(rankSorted.slice(0, awardN).map(r => r.name));
+
+  const thead = `<thead><tr>
+    <th class="rank-td">순위</th>
+    <th style="text-align:left;min-width:80px">이름</th>
+    ${scorerList.map(s => `<th style="min-width:80px">${esc(s)}</th>`).join('')}
+    <th class="total-th">합계</th>
+    <th style="min-width:64px">평균</th>
+    <th class="award-td">시상</th>
+  </tr></thead>`;
+
+  const tbody = `<tbody id="cl-tbody">${sorted.map(row => {
+    const isAward = awardNames.has(row.name);
+    return `<tr data-name="${esc(row.name)}" class="${isAward ? 'award-row' : ''}">
+      <td class="rank-td">${rankMap.get(row.name) ?? ''}</td>
+      <td class="name-td">${esc(row.name)}</td>
+      ${row.vals.map((v, si) => `<td class="score-td cl-score-cell"
+        contenteditable="true" data-name="${esc(row.name)}" data-si="${si}"
+        oninput="clOnScoreEdit(this)" onblur="clOnScoreBlur(this)">${v != null ? v : '-'}</td>`).join('')}
+      <td class="total-td" id="cl-sum-${esc(row.name)}">${row.sum}</td>
+      <td id="cl-avg-${esc(row.name)}">${row.avg.toFixed(1)}</td>
+      <td class="award-td">${isAward ? '🏅' : ''}</td>
+    </tr>`;
+  }).join('')}</tbody>`;
+
+  wrap.innerHTML = `
+    <div class="tbl-header no-print">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700">종합 결과</span>
+        <span class="info-badge">채점자 ${scorerList.length}명 · 참가자 ${aggRows.length}명 · 시상 ${awardN}명</span>
+        <button class="st-btn st-btn-ghost st-btn-sm ${cl.aggregateBy==='avg'?'on':''}" onclick="clSetAggregate('avg')">평균 기준</button>
+        <button class="st-btn st-btn-ghost st-btn-sm ${cl.aggregateBy==='sum'?'on':''}" onclick="clSetAggregate('sum')">합계 기준</button>
+        <button class="st-btn st-btn-ghost st-btn-sm ${cl.sortMode!=='name'?'on':''}" onclick="clCycleSort()">
+          ${ cl.sortMode === 'name' ? '이름순 ⇅' : cl.sortMode === 'asc' ? '낮은순 ↑' : '높은순 ↓' }
+        </button>
+      </div>
+      <div class="act-row cl-btn-row">
+        <button class="st-btn st-btn-ghost st-btn-sm" onclick="clExportXlsx()">📥 xlsx</button>
+        <button class="st-btn st-btn-ghost st-btn-sm" onclick="clSaveLocal(true)">💾 임시저장</button>
+      </div>
+    </div>
+    <div class="grid-wrap"><table class="st-grid">${thead}${tbody}</table></div>
+
+    <!-- 채점자별 상세 -->
+    <div class="detail-section" id="cl-detail-section">
+      <button class="detail-toggle no-print" id="cl-detail-toggle" onclick="clToggleDetail()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        채점자별 상세
+      </button>
+      <div class="detail-body" id="cl-detail-body">
+        ${clBuildDetailTables()}
+      </div>
+    </div>
+  `;
+}
+
+function clBuildDetailTables() {
+  return cl.results.map(r => {
+    const thead = `<thead><tr>
+      <th style="text-align:left">이름</th>
+      ${r.areas.map(a => `<th>${esc(a.name)}<br><span style="font-weight:400;font-size:10px">(${a.max}점)</span></th>`).join('')}
+      <th>총점</th>
+    </tr></thead>`;
+    const sorted = [...r.rows].sort((a, b) => rowTotal(b) - rowTotal(a));
+    const tbody = `<tbody>${sorted.map(row => `<tr>
+      <td class="name-td">${esc(row.name)}</td>
+      ${row.scores.map(s => `<td class="score-td">${s}</td>`).join('')}
+      <td class="total-td">${rowTotal(row)}</td>
+    </tr>`).join('')}</tbody>`;
+    return `<div style="margin-bottom:20px">
+      <div class="detail-scorer-name" style="font-size:12px;font-weight:700;color:var(--fg-muted);margin:10px 0 6px">
+        ◆ ${esc(r.scorer)}
+      </div>
+      <div class="grid-wrap"><table class="st-grid">${thead}${tbody}</table></div>
+    </div>`;
+  }).join('');
+}
+
+function clToggleDetail() {
+  const toggle = document.getElementById('cl-detail-toggle');
+  const body   = document.getElementById('cl-detail-body');
+  if (!toggle || !body) return;
+  const open = body.classList.toggle('open');
+  toggle.classList.toggle('open', open);
+}
+
+function clSetAggregate(mode) { cl.aggregateBy = mode; renderClTable(); clSaveLocal(); }
+function clCycleSort() {
+  cl.sortMode = cl.sortMode === 'desc' ? 'asc' : cl.sortMode === 'asc' ? 'name' : 'desc';
+  renderClTable(); clSaveLocal();
+}
+
+// contenteditable 핸들러 — DOM 기반으로 in-place 업데이트
+function clOnScoreEdit(el) {
+  // 입력 중에는 행 합계/평균만 실시간 갱신
+  _clRefreshRowTotals(el.closest('tr'));
+  clUpdateAllRanksAwards();
+}
+function clOnScoreBlur(el) {
+  const raw = el.textContent.trim();
+  const val = (raw === '-' || raw === '') ? null : Math.max(0, parseInt(raw, 10) || 0);
+  el.textContent = val != null ? val : '-';
+  // 편집 총점을 해당 채점자의 오버라이드로 저장 (상세표 per-영역 점수는 보존)
+  const name = el.dataset.name;
+  const scorer = clAggregate().scorerList[+el.dataset.si];
+  const result = cl.results.find(r => r.scorer === scorer);
+  if (result) {
+    result._ov = result._ov || {};
+    if (val == null) delete result._ov[name]; else result._ov[name] = val;
+  }
+  _clRefreshRowTotals(el.closest('tr'));
+  clUpdateAllRanksAwards();
+  clSaveLocal();
+}
+
+function _clRefreshRowTotals(tr) {
+  if (!tr) return;
+  const vals = [...tr.querySelectorAll('.cl-score-cell')].map(td => {
+    const t = td.textContent.trim();
+    return (t === '-' || t === '') ? null : (parseInt(t, 10) || 0);
+  });
+  const filled = vals.filter(v => v != null);
+  const sum = filled.reduce((s, v) => s + v, 0);
+  const avg = filled.length ? sum / filled.length : 0;
+  // 합계: 뒤에서 3번째 td, 평균: 2번째, 시상: 1번째
+  const tds = tr.querySelectorAll('td');
+  const n = tds.length;
+  tds[n - 3].textContent = sum;
+  tds[n - 2].textContent = avg.toFixed(1);
+}
+
+function clUpdateAllRanksAwards() {
+  const tbody = document.getElementById('cl-tbody');
+  if (!tbody) return;
+  const { ratio } = clAggregate();
+  const trs = [...tbody.querySelectorAll('tr')];
+  const rowData = trs.map(tr => {
+    const tds = tr.querySelectorAll('td');
+    const n = tds.length;
+    const sum = parseFloat(tds[n - 3].textContent) || 0;
+    const avg = parseFloat(tds[n - 2].textContent) || 0;
+    return { tr, val: cl.aggregateBy === 'sum' ? sum : avg };
+  });
+  const sorted = [...rowData].sort((a, b) => b.val - a.val);
+  const awardN = Math.round(trs.length * ratio / 100);
+  sorted.forEach(({ tr }, i) => {
+    const rank = i + 1;
+    const isAward = i < awardN;
+    tr.querySelector('.rank-td').textContent = rank;
+    tr.querySelector('.award-td').textContent = isAward ? '🏅' : '';
+    tr.classList.toggle('award-row', isAward);
+  });
+}
+
+function clExportXlsx() {
+  if (typeof XLSX === 'undefined') { showToast('SheetJS 로딩 중...'); return; }
+  if (!cl.results.length) { showToast('수집된 결과가 없습니다.'); return; }
+  const wb = XLSX.utils.book_new();
+  const { scorerList, aggRows, ratio } = clAggregate();
+  const getSortVal = r => cl.aggregateBy === 'sum' ? r.sum : r.avg;
+  const sorted = [...aggRows].sort((a, b) => getSortVal(b) - getSortVal(a));
+  const awardN = Math.round(aggRows.length * ratio / 100);
+  const awardNames = new Set(sorted.slice(0, awardN).map(r => r.name));
+  const rankMap = new Map(sorted.map((r, i) => [r.name, i + 1]));
+
+  // 시트1: 종합
+  const header1 = ['순위', '이름', ...scorerList, '합계', '평균', '시상'];
+  const data1   = sorted.map(r => [
+    rankMap.get(r.name), r.name,
+    ...r.vals.map(v => v != null ? v : ''),
+    r.sum, r.avg.toFixed(1), awardNames.has(r.name) ? '★' : ''
+  ]);
+  const ws1 = XLSX.utils.aoa_to_sheet([header1, ...data1]);
+  ws1['!cols'] = [{ wch:5 }, { wch:14 }, ...scorerList.map(() => ({ wch:10 })), { wch:8 }, { wch:8 }, { wch:5 }];
+  XLSX.utils.book_append_sheet(wb, ws1, '종합 결과');
+
+  // 시트2~: 채점자별
+  cl.results.forEach(r => {
+    const h = ['이름', ...r.areas.map(a => `${a.name}(${a.max}점)`), '총점'];
+    const d = [...r.rows].sort((a, b) => rowTotal(b) - rowTotal(a))
+      .map(row => [row.name, ...row.scores.map(s => s ?? ''), rowTotal(row)]);
+    const ws = XLSX.utils.aoa_to_sheet([h, ...d]);
+    ws['!cols'] = [{ wch:14 }, ...r.areas.map(() => ({ wch:10 })), { wch:8 }];
+    XLSX.utils.book_append_sheet(wb, ws, r.scorer.slice(0, 31));
+  });
+
+  XLSX.writeFile(wb, `채점표_수합_${today()}.xlsx`);
+  showToast('xlsx 내려받기 완료');
+}
+
+// ════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════
+// 탭 2 임시저장 복구
+function scInitRestore() {
+  const d = scLoadDraft();
+  if (d && Array.isArray(d.areas) && d.areas.length && Array.isArray(d.rows) && d.rows.length) {
+    sc.title = d.title || '';
+    sc.scorer = d.scorerName || '';
+    sc.ratio = d.ratio ?? 20;
+    sc.awardRange = d.awardRange || sc.awardRange;
+    sc.areas = d.areas;
+    sc.rows = d.rows;
+    sc.loaded = true;
+    renderScTable();
+    return true;
+  }
+  return false;
+}
+
+(function init() {
+  // 탭 1 — 임시저장 복구 또는 기본값
+  if (!mkLoadLocal()) mkInit();
+  renderMkSettings();
+  renderMkTable();
+
+  // 탭 2 — 임시저장 복구
+  scInitRestore();
+
+  // 탭 3 — 임시저장 복구
+  if (clLoadLocal()) { renderClChips(); renderClTable(); }
+
+  const hash = location.hash;
+  if (hash.startsWith('#share=')) {
+    const payload = decodeSharePayload(hash.slice(7));
+    history.replaceState(null, '', location.pathname);
+    if (payload) {
+      if (payload.permission === 'form') {
+        switchTab('score');
+        scApplyForm(payload.data);
+        showToast('채점 양식을 불러왔습니다');
+        return;
+      }
+      if (payload.permission === 'result') {
+        switchTab('collect');
+        clAddResult(payload.data);
+        return;
+      }
+    }
+    showToast('공유 링크를 읽을 수 없습니다.');
+  }
+})();
+</script>
+</body>
+</html>

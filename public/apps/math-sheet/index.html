@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>연산연습지 — eduin VIVES</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <link rel="stylesheet" href="/common/app-shell.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
+  <script src="/common/app-shell.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }   /* 클래스 display 규칙이 hidden 속성을 덮어쓰지 않도록 */
+
+    body {
+      min-height: 100vh;
+      padding: 54px 1rem 5rem;
+      font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', 'Segoe UI', sans-serif;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .ms-root { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; }
+
+    .app-header { margin-bottom: 18px; }
+
+    /* ── 공통 버튼 (전 영역 통일) ── */
+    .ms-tb-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 8px 13px; border-radius: 9px; border: 1px solid var(--border);
+      background: var(--card-bg); color: var(--fg);
+      font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+      white-space: nowrap; transition: all 0.15s; min-height: 38px; text-decoration: none;
+    }
+    .ms-tb-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .ms-tb-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .ms-tb-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .ms-tb-btn.primary:hover { background: var(--primary-h); color: #fff; }
+    .ms-tb-btn.active { background: rgba(0,111,238,0.1); border-color: var(--primary); color: var(--primary); }
+    .ms-tb-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+    #ansToggleBtn, #ansToggle { min-width: 96px; }   /* 라벨 바뀌어도 폭 유지 */
+    /* 설정 변경 후 재생성 유도 하이라이트 */
+    @keyframes msAttn { 0%, 100% { box-shadow: 0 0 0 0 rgba(0,111,238,0.55); } 50% { box-shadow: 0 0 0 7px rgba(0,111,238,0); } }
+    .ms-tb-btn.ms-attn { animation: msAttn 1.25s ease-in-out infinite; }
+
+    /* ── 상단 툴바 (md-editor 형식) ── */
+    .ms-editor { margin-bottom: 22px; }
+    .ms-toolbar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 10px; border: 1px solid var(--border); border-radius: 13px; background: var(--card-bg);
+      box-shadow: var(--shadow);
+    }
+    .ms-title-input {
+      flex: 1 1 170px; min-width: 130px; background: var(--input-bg); border: 1px solid var(--border);
+      border-radius: 9px; padding: 9px 13px; font-size: 14px; font-weight: 700; color: var(--fg);
+      font-family: inherit; outline: none; transition: border-color 0.15s;
+    }
+    .ms-title-input:focus { border-color: var(--primary); }
+    .ms-tb-spacer { flex: 1 1 0; min-width: 0; }
+    .ms-tb-divider { width: 1px; align-self: stretch; background: var(--border); margin: 2px 2px; }
+
+    .ms-dd-wrap { position: relative; }
+    .ms-dropdown {
+      position: absolute; top: calc(100% + 6px); right: 0; display: none; flex-direction: column; gap: 3px;
+      padding: 6px; border-radius: 11px; background: var(--card-bg); border: 1px solid var(--border);
+      z-index: 9500; min-width: 200px; box-shadow: 0 8px 26px rgba(0,0,0,0.2);
+    }
+    .ms-dropdown.open { display: flex; }
+    .ms-dd-opt {
+      display: flex; align-items: center; gap: 9px; padding: 10px 12px; border-radius: 8px; border: none;
+      background: none; color: var(--fg); font-size: 13px; font-weight: 600; cursor: pointer;
+      font-family: inherit; text-align: left; white-space: nowrap;
+    }
+    .ms-dd-opt:hover { background: var(--bg-sec); color: var(--primary); }
+    .ms-dd-opt small { color: var(--fg-muted); font-weight: 500; margin-left: auto; }
+
+    /* ── 설정 영역 (새 문제 → 펼침) ── */
+    .ms-settings {
+      margin-top: 12px; padding: 16px; border: 1px solid var(--border);
+      border-radius: 13px; background: var(--bg-sec);
+    }
+    .ms-set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px 11px; }
+    .ms-set-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .ms-set-field > span { font-size: 10.5px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.01em; }
+    .ms-set-field select.hero-input { font-size: 12.5px; padding: 7px 8px; border-radius: 9px; cursor: pointer; width: 100%; }
+    .ms-set-bottom { display: flex; align-items: center; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
+
+    /* 스테퍼 / 라디오 */
+    .ms-stepper { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; background: var(--card-bg); width: fit-content; }
+    .ms-stepper button { width: 32px; height: 38px; border: none; background: transparent; color: var(--primary); font-size: 18px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background 0.12s; }
+    .ms-stepper button:hover { background: rgba(0,111,238,0.1); }
+    .ms-stepper input { width: 42px; height: 38px; border: none; border-left: 1px solid var(--border); border-right: 1px solid var(--border); background: transparent; text-align: center; font-size: 15px; font-weight: 700; color: var(--fg); font-family: inherit; -moz-appearance: textfield; }
+    .ms-stepper input::-webkit-outer-spin-button, .ms-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .ms-radio-group { display: inline-flex; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; width: fit-content; background: var(--card-bg); }
+    .ms-radio input { position: absolute; opacity: 0; pointer-events: none; }
+    .ms-radio span { display: flex; align-items: center; justify-content: center; width: 33px; height: 38px; cursor: pointer; font-size: 14px; font-weight: 700; color: var(--fg-muted); border-left: 1px solid var(--border); transition: background 0.12s, color 0.12s; }
+    .ms-radio:first-child span { border-left: none; }
+    .ms-radio input:checked + span { background: var(--primary); color: #fff; }
+    .ms-radio input:disabled + span { cursor: not-allowed; }
+    .ms-radio-group.ms-locked { opacity: 0.5; }
+    .ms-check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--fg); cursor: pointer; }
+    .ms-check input { width: 16px; height: 16px; accent-color: var(--primary); }
+
+    .ms-storage-note { margin: 12px 2px 0; font-size: 12px; color: var(--fg-muted); line-height: 1.55; }
+    .ms-storage-note b { color: var(--fg); }
+    .ms-notice {
+      background: rgba(243,18,96,0.08); border: 1px solid rgba(243,18,96,0.25);
+      color: var(--danger); padding: 11px 14px; border-radius: 10px;
+      font-size: 13px; margin-top: 14px; line-height: 1.5;
+    }
+
+    /* ── 뷰어 바 ── */
+    .ms-viewer-bar {
+      display: flex; gap: 9px; align-items: center; flex-wrap: wrap;
+      margin-bottom: 20px; padding: 12px 16px;
+      background: var(--card-bg); border: 1px solid var(--border); border-radius: 13px; box-shadow: var(--shadow);
+    }
+    .ms-viewer-tag { font-weight: 700; color: var(--primary); margin-right: auto; font-size: 14px; }
+
+    /* ── 빈 상태 (사용법 안내) ── */
+    .ms-empty { text-align: center; padding: 46px 24px; border: 1.5px dashed var(--border); border-radius: 16px; background: var(--card-bg); }
+    .ms-empty-icon { font-size: 46px; margin-bottom: 14px; }
+    .ms-empty-title { font-size: 18px; font-weight: 800; color: var(--fg); margin: 0 0 22px; letter-spacing: -0.01em; }
+    .ms-empty-steps { list-style: none; margin: 0 auto 24px; padding: 0; max-width: 410px; display: flex; flex-direction: column; gap: 13px; text-align: left; }
+    .ms-empty-steps li { display: flex; align-items: flex-start; gap: 11px; font-size: 13.5px; color: var(--fg); line-height: 1.55; }
+    .ms-empty-steps b { font-weight: 700; }
+    .ms-empty-n { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+
+    /* ── 학습지 (종이) ── */
+    .ms-sheet {
+      background: #fff; color: #11181c;
+      border: 1px solid var(--border); border-radius: 14px;
+      padding: 28px 26px 32px; box-shadow: var(--shadow);
+    }
+    .sheet-head { position: relative; border-bottom: 2.5px solid #11181c; padding-bottom: 14px; margin-bottom: 24px; min-height: 64px; }
+    .sheet-title { font-size: 23px; font-weight: 800; text-align: center; margin: 4px 0 18px; padding: 0 70px; color: #11181c; letter-spacing: -0.01em; }
+    .sheet-meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13.5px; color: #11181c; padding-right: 72px; }
+    .sheet-qr { position: absolute; top: 0; right: 0; width: 58px; height: 58px; }
+    .sheet-qr:empty { display: none; }
+    .sheet-qr img, .sheet-qr canvas { width: 58px; height: 58px; display: block; }
+
+    .sheet-grid { display: grid; grid-template-columns: repeat(var(--cols, 4), 1fr); gap: var(--row-gap, 14px) 14px; }
+
+    .prob {
+      position: relative; border: 1px solid #e1e6ee; border-radius: 11px;
+      padding: var(--prob-pad, 18px) 12px; min-height: var(--prob-minh, 130px);
+      display: flex; align-items: flex-start; justify-content: center;
+      background: #fff; break-inside: avoid;
+    }
+    .prob-no { position: absolute; top: 7px; left: 10px; font-size: 11px; font-weight: 800; color: #006fee; }
+
+    /* 세로식 (덧·뺄·곱) */
+    .vcalc {
+      font-variant-numeric: tabular-nums; font-size: var(--num-fs, 27px);
+      line-height: 1.3; text-align: right; color: #11181c; letter-spacing: 0.2em;
+      position: relative; padding-left: 1.8em;
+      min-width: calc(var(--cellw, 3) * 1ch + var(--cellw, 3) * 0.2em + 2.3em);
+    }
+    .vrow { white-space: nowrap; }
+    .vbot { position: relative; }
+    .vop { position: absolute; left: -1.45em; color: #006fee; font-weight: 700; }
+    .vline { border-bottom: 2.5px solid #11181c; margin: 7px -0.5em 7px -1.7em; }
+    .vans { min-height: 1.3em; color: transparent; }
+
+    /* 장제법 (나눗셈) */
+    .ldiv {
+      display: inline-grid; grid-template-columns: auto auto auto; column-gap: 2px;
+      font-variant-numeric: tabular-nums; font-size: var(--num-fs, 27px);
+      line-height: 1.3; color: #11181c; letter-spacing: 0.2em;
+    }
+    .lspace { grid-row: 1; grid-column: 1; }
+    .lquot { grid-row: 1; grid-column: 2; text-align: right; padding: 0 9px 3px; min-height: 1.3em; color: transparent; white-space: nowrap; }
+    .ldivisor { grid-row: 2; grid-column: 1; align-self: end; text-align: right; padding: 0 7px 5px 0; }
+    .ldividend { grid-row: 2; grid-column: 2; border-top: 2.5px solid #11181c; border-left: 2.5px solid #11181c; padding: 5px 9px 5px 12px; text-align: right; white-space: nowrap; }
+    .lrem { grid-row: 1; grid-column: 3; align-self: end; padding: 0 0 3px 6px; color: transparent; white-space: nowrap; letter-spacing: normal; }
+    .ms-sheet.show-ans .lrem { color: #f31260; }   /* 나머지: 정답 표시 때만, 몫 오른쪽(상단) */
+
+    .ms-sheet.show-ans .vans { color: #f31260; }
+    .ms-sheet.show-ans .lquot { color: #f31260; }
+
+    /* ── 모달 (공유 + 불러오기) ── */
+    .ms-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
+    .ms-modal-overlay.show { display: flex; }
+    .ms-modal {
+      background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px;
+      padding: 24px; max-width: 380px; width: 100%;
+      display: flex; flex-direction: column; gap: 14px; box-shadow: var(--shadow);
+      max-height: 86vh; overflow-y: auto;
+    }
+    .ms-modal h3 { margin: 0; font-size: 17px; color: var(--fg); }
+    .ms-modal-desc { margin: 0; font-size: 12.5px; color: var(--fg-muted); line-height: 1.55; }
+    .ms-share-result { display: flex; flex-direction: column; gap: 12px; }
+    .ms-share-status { font-size: 13px; color: var(--fg-muted); text-align: center; padding: 20px 0; line-height: 1.5; }
+    .ms-qr { display: flex; justify-content: center; padding: 14px; background: #fff; border-radius: 12px; min-height: 100px; }
+    .ms-qr img, .ms-qr canvas { display: block; }
+    .ms-link-row { display: flex; gap: 8px; }
+    .ms-link-input { flex: 1; min-width: 0; background: var(--input-bg); border: 1px solid var(--border); border-radius: 9px; padding: 9px 11px; font-size: 12.5px; color: var(--fg); font-family: inherit; }
+
+    .ms-doc-list { list-style: none; margin: 0; padding: 0; }
+    .ms-doc-item { display: flex; align-items: center; gap: 8px; padding: 11px 2px; border-bottom: 1px solid var(--border); }
+    .ms-doc-main { flex: 1; cursor: pointer; min-width: 0; }
+    .ms-doc-name { font-size: 14px; font-weight: 600; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ms-doc-meta { font-size: 11.5px; color: var(--fg-muted); margin-top: 2px; }
+    .ms-doc-empty { padding: 26px 0; text-align: center; color: var(--fg-muted); font-size: 13px; line-height: 1.6; }
+
+    /* ── 토스트 ── */
+    #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--fg); color: var(--bg); padding: 10px 18px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; transition: all 0.25s; z-index: 9999; max-width: 90vw; }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── 인쇄 (빈 페이지 방지) ── */
+    @page { size: A4; margin: 14mm; }
+    @media print {
+      html, body { height: auto !important; min-height: 0 !important; }
+      .no-print, .top-overlay, .top-overlay-left, #toast, .ms-modal-overlay { display: none !important; }
+      body { padding: 0 !important; margin: 0 !important; background: #fff; }
+      body::before { display: none !important; }
+      .ms-root { max-width: none; margin: 0; padding: 0; min-height: 0; }
+      .app-header { display: none !important; }
+      .ms-sheet { border: none; border-radius: 0; box-shadow: none; padding: 0; break-after: avoid; }
+      .sheet-grid { gap: 10px; }
+      .vop, .vline, .ldividend, .prob-no, .ldiv, .vcalc,
+      .ms-sheet.show-ans .vans, .ms-sheet.show-ans .lquot, .lrem {
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+    }
+  </style>
+  <meta property="og:image" content="https://eduin.info/og-images/math-sheet.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="연산연습지 — 사칙연산 세로셈 학습지 생성기 | eduin VIVES">
+  <meta name="twitter:description" content="덧셈·뺄셈·곱셈·나눗셈 세로셈 문제지를 조건별로 만들어 A4로 인쇄하고, 링크·QR로 공유하세요. 받아올림/내림·나머지·자릿수 유형 설정, 정답지 토글 지원.">
+  <meta name="twitter:image" content="https://eduin.info/og-images/math-sheet.png">
+  <link rel="canonical" href="https://eduin.info/apps/math-sheet/">
+  <meta property="og:url" content="https://eduin.info/apps/math-sheet/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"연산연습지","description":"덧셈·뺄셈·곱셈·나눗셈 세로셈 문제지를 조건별로 만들어 A4로 인쇄하고, 링크·QR로 공유하세요. 받아올림/내림·나머지·자릿수 유형 설정, 정답지 토글 지원.","url":"https://eduin.info/apps/math-sheet/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script src="/common/seo-injector.js" defer></script>
+</head>
+<body data-shell="column" data-width="wide" data-print>
+
+
+  <div class="ms-root">
+
+    <header class="app-header">
+      <span class="app-badge">◆ 학습지원</span>
+      <h1 class="app-title">🔢 연산<span>연습지</span></h1>
+      <p class="app-desc">덧셈·뺄셈·곱셈·나눗셈 세로셈 학습지를 만들어 A4로 인쇄하고, 링크·QR로 공유하세요.</p>
+    </header>
+
+    <!-- 뷰어 바 (공유 링크 접속 시) -->
+    <div id="viewerBar" class="ms-viewer-bar no-print" hidden>
+      <span class="ms-viewer-tag">📄 공유된 학습지</span>
+      <button class="ms-tb-btn" id="practiceBtn" onclick="practiceAgain()">🎲 이 유형의 다른 문제</button>
+      <button class="ms-tb-btn" id="ansToggle" onclick="toggleAns()">정답 보기</button>
+      <button class="ms-tb-btn" onclick="printSheet()">🖨️ 인쇄</button>
+      <button class="ms-tb-btn" onclick="exitViewerToNew()">📝 새 문제</button>
+    </div>
+
+    <!-- 편집 UI (툴바 + 설정) -->
+    <section id="panel" class="ms-editor no-print">
+      <div class="ms-toolbar">
+        <input id="titleInput" class="ms-title-input" type="text" maxlength="40" placeholder="학습지 제목">
+        <button class="ms-tb-btn" onclick="newWorksheet()" id="newBtn">📝 새 문제</button>
+        <button class="ms-tb-btn" onclick="openLoadModal()">📂 열기</button>
+        <div class="ms-dd-wrap">
+          <button class="ms-tb-btn" id="saveBtn" onclick="toggleSaveMenu(event)">💾 저장 ▾</button>
+          <div class="ms-dropdown" id="saveMenu">
+            <button class="ms-dd-opt" onclick="printSheet()">📄 PDF로 저장 <small>인쇄</small></button>
+            <button class="ms-dd-opt" onclick="saveSet()">💾 브라우저에 저장 <small>로컬</small></button>
+          </div>
+        </div>
+        <button class="ms-tb-btn" onclick="openShare()">🔗 공유</button>
+        <span class="ms-tb-spacer"></span>
+        <button class="ms-tb-btn" id="ansToggleBtn" onclick="toggleAnsMain()">정답 보기</button>
+      </div>
+
+      <div class="ms-settings" id="settingsRow">
+        <div class="ms-set-grid">
+          <label class="ms-set-field">
+            <span>연산</span>
+            <select id="opSel" class="hero-input">
+              <option value="add">덧셈 +</option>
+              <option value="sub" selected>뺄셈 −</option>
+              <option value="mul">곱셈 ×</option>
+              <option value="div">나눗셈 ÷</option>
+              <option value="mix">섞기</option>
+            </select>
+          </label>
+          <label class="ms-set-field">
+            <span>피연산자 (A·위)</span>
+            <select id="aTypeSel" class="hero-input">
+              <option value="x">한 자리 수</option>
+              <option value="x0">몇십</option>
+              <option value="1y">십몇</option>
+              <option value="xy" selected>두 자리 수</option>
+              <option value="x00">몇백</option>
+              <option value="xyz">세 자리 수</option>
+              <option value="x000">몇천</option>
+              <option value="xyzq">네 자리 수</option>
+            </select>
+          </label>
+          <label class="ms-set-field">
+            <span>연산자 (B·아래)</span>
+            <select id="bTypeSel" class="hero-input">
+              <option value="x" selected>한 자리 수</option>
+              <option value="x0">몇십</option>
+              <option value="1y">십몇</option>
+              <option value="xy">두 자리 수</option>
+              <option value="x00">몇백</option>
+              <option value="xyz">세 자리 수</option>
+              <option value="x000">몇천</option>
+              <option value="xyzq">네 자리 수</option>
+            </select>
+          </label>
+          <label class="ms-set-field" id="carryRow">
+            <span id="carryLabel">받아내림</span>
+            <select id="carrySel" class="hero-input">
+              <option value="no">없음</option>
+              <option value="yes" selected>있음</option>
+              <option value="mix">섞기</option>
+            </select>
+          </label>
+          <label class="ms-set-field" id="remRow" hidden>
+            <span>나눗셈 나머지</span>
+            <select id="remSel" class="hero-input">
+              <option value="exact" selected>나누어떨어짐</option>
+              <option value="remain">나머지 있음</option>
+              <option value="mix">섞기</option>
+            </select>
+          </label>
+          <label class="ms-set-field">
+            <span>문제 수 (4–60)</span>
+            <div class="ms-stepper">
+              <button type="button" onclick="bumpCount(-1)" aria-label="줄이기">−</button>
+              <input id="countInput" type="number" min="4" max="60" value="12" inputmode="numeric">
+              <button type="button" onclick="bumpCount(1)" aria-label="늘리기">+</button>
+            </div>
+          </label>
+          <label class="ms-set-field">
+            <span>한 줄 칸 수</span>
+            <div class="ms-radio-group" id="colsGroup">
+              <label class="ms-radio"><input type="radio" name="cols" value="3"><span>3</span></label>
+              <label class="ms-radio"><input type="radio" name="cols" value="4" checked><span>4</span></label>
+              <label class="ms-radio"><input type="radio" name="cols" value="5"><span>5</span></label>
+            </div>
+          </label>
+        </div>
+        <div class="ms-set-bottom">
+          <label class="ms-check" id="addLimitWrap" title="켜면 합의 자리수가 더 큰 수보다 늘지 않아요. 예) 23+45=68 ⭕  67+89=156 ❌"><input type="checkbox" id="addLimitChk"> 합이 자리수 안 늘게</label>
+          <span class="ms-tb-spacer"></span>
+          <button class="ms-tb-btn primary" id="genBtn" onclick="doGenerate()">🎲 만들기</button>
+        </div>
+      </div>
+
+      <div id="notice" class="ms-notice" hidden></div>
+      <p class="ms-storage-note">💡 제목은 자동으로 채워져요(직접 수정 가능). <b>'브라우저에 저장'</b>한 세트는 이 기기·브라우저(로컬)에만 보관되고, <b>열기</b> 버튼으로 불러올 수 있어요.</p>
+    </section>
+
+    <!-- 빈 상태: 사용법 안내 -->
+    <section id="emptyState" class="ms-empty no-print" hidden>
+      <div class="ms-empty-icon">🔢</div>
+      <h2 class="ms-empty-title">연산 학습지를 만들어 보세요</h2>
+      <ol class="ms-empty-steps">
+        <li><span class="ms-empty-n">1</span><span><b>📝 새 문제</b>를 누르면 무작위 유형으로 바로 출제돼요.</span></li>
+        <li><span class="ms-empty-n">2</span><span>위 설정에서 <b>연산·자릿수·문제 수</b>를 직접 고르고 <b>🎲 만들기</b>를 눌러도 돼요. <b>정답 보기</b>로 정답 확인.</span></li>
+        <li><span class="ms-empty-n">3</span><span><b>💾 저장</b>(PDF·브라우저)·<b>🔗 공유</b>(단축 링크·QR)로 학생에게 보낼 수 있어요.</span></li>
+      </ol>
+      <button class="ms-tb-btn primary" onclick="newWorksheet()">📝 새 문제</button>
+    </section>
+
+    <!-- 학습지 -->
+    <section id="sheet" class="ms-sheet" hidden></section>
+
+  </div>
+
+  <!-- 공유 모달 -->
+  <div id="shareModal" class="ms-modal-overlay no-print" onclick="closeShare(event)">
+    <div class="ms-modal" onclick="event.stopPropagation()">
+      <h3>🔗 공유</h3>
+      <p class="ms-modal-desc">단축 링크·QR로 공유하세요. 링크로 접속하면 같은 문제를 보고 <b>'정답'</b>·<b>'다른 문제'</b>를 쓸 수 있어요.</p>
+      <div id="shareStatus" class="ms-share-status">⏳ 단축 링크 만드는 중…</div>
+      <div class="ms-share-result" id="shareResult" hidden>
+        <div class="ms-qr" id="qrcode"></div>
+        <div class="ms-link-row">
+          <input id="shareLink" class="ms-link-input" readonly>
+          <button class="ms-tb-btn" onclick="copyShareLink()">복사</button>
+        </div>
+      </div>
+      <button class="ms-tb-btn" onclick="closeShare()">닫기</button>
+    </div>
+  </div>
+
+  <!-- 불러오기 모달 -->
+  <div id="loadModal" class="ms-modal-overlay no-print" onclick="closeLoad(event)">
+    <div class="ms-modal" onclick="event.stopPropagation()">
+      <h3>📂 저장한 세트</h3>
+      <p class="ms-modal-desc">이 브라우저(로컬)에 저장된 학습지예요. 누르면 조건과 문제가 그대로 복원돼요.</p>
+      <ul class="ms-doc-list" id="docList"></ul>
+      <button class="ms-tb-btn" onclick="closeLoad()">닫기</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+  /* =========================================================
+     연산연습지 (math-sheet) — 사칙연산 세로셈 학습지 생성기
+     ========================================================= */
+
+  const LS_KEY = 'math-sheet-sets';
+  const OPS = ['add', 'sub', 'mul', 'div'];
+  const OP_SYM = { add: '+', sub: '−', mul: '×', div: '÷' };
+  const OP_NAME = { add: '덧셈', sub: '뺄셈', mul: '곱셈', div: '나눗셈', mix: '사칙연산' };
+  const TYPE_LEN = { x: 1, x0: 2, '1y': 2, xy: 2, x00: 3, xyz: 3, x000: 4, xyzq: 4 };
+  const TYPE_LABEL = { x: '한 자리', x0: '몇십', '1y': '십몇', xy: '두 자리', x00: '몇백', xyz: '세 자리', x000: '몇천', xyzq: '네 자리' };
+
+  let currentProblems = [];
+  let currentConfig = null;
+  let viewerMode = false;
+  let ansShown = false;
+
+  const $ = id => document.getElementById(id);
+  const opSel = $('opSel'), carrySel = $('carrySel'), remSel = $('remSel');
+  const aTypeSel = $('aTypeSel'), bTypeSel = $('bTypeSel');
+  const carryRow = $('carryRow'), remRow = $('remRow'), carryLabel = $('carryLabel'), addLimitWrap = $('addLimitWrap');
+  const countInput = $('countInput'), titleInput = $('titleInput'), addLimitChk = $('addLimitChk');
+  const sheetEl = $('sheet'), noticeEl = $('notice'), settingsRow = $('settingsRow'), emptyEl = $('emptyState');
+
+  function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+  function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+  function rd() { return 1 + Math.floor(Math.random() * 9); }
+  function digits(n) { return String(Math.abs(n)).length; }
+
+  // ── 숫자 유형 (§4) ──
+  function genType(t) {
+    switch (t) {
+      case 'x':    return rd();
+      case 'x0':   return rd() * 10;
+      case '1y':   return 10 + rd();          // 십몇 (11–19)
+      case 'xy':   return rd() * 10 + rd();
+      case 'x00':  return rd() * 100;
+      case 'xyz':  return rd() * 100 + rd() * 10 + rd();
+      case 'x000': return rd() * 1000;
+      case 'xyzq': return rd() * 1000 + rd() * 100 + rd() * 10 + rd();
+      default:     return rd();
+    }
+  }
+  function anyCarryAdd(a, b) { while (a > 0 || b > 0) { if ((a % 10) + (b % 10) >= 10) return true; a = (a / 10) | 0; b = (b / 10) | 0; } return false; }
+  function anyBorrowSub(a, b) { while (a > 0 || b > 0) { if ((a % 10) < (b % 10)) return true; a = (a / 10) | 0; b = (b / 10) | 0; } return false; }
+
+  // ── 단일 문제 생성 (§5) ──
+  function makeProblem(op, opt, aType, bType) {
+    for (let i = 0; i < 600; i++) {
+      if (op === 'add') {
+        const a = genType(aType), b = genType(bType);
+        const carry = anyCarryAdd(a, b);
+        if (opt.carry === 'yes' && !carry) continue;
+        if (opt.carry === 'no' && carry) continue;
+        const res = a + b;
+        if (opt.addLimit && digits(res) > Math.max(digits(a), digits(b))) continue;
+        return { a, b, op, res, q: null, r: null };
+      }
+      if (op === 'sub') {
+        const a = genType(aType), b = genType(bType);
+        if (a < b || a - b === 0) continue;
+        const borrow = anyBorrowSub(a, b);
+        if (opt.carry === 'yes' && !borrow) continue;
+        if (opt.carry === 'no' && borrow) continue;
+        return { a, b, op, res: a - b, q: null, r: null };
+      }
+      if (op === 'mul') {
+        const a = genType(aType), b = genType(bType);
+        return { a, b, op, res: a * b, q: null, r: null };
+      }
+      if (op === 'div') {
+        if (opt.rem === 'exact') {
+          const b = genType(bType);
+          if (b < 2) continue;
+          const L = TYPE_LEN[aType];
+          const low = Math.pow(10, L - 1), high = Math.pow(10, L) - 1;
+          const qLow = Math.max(2, Math.ceil(low / b));
+          const qHigh = Math.floor(high / b);
+          if (qHigh < qLow) continue;
+          const q = qLow + Math.floor(Math.random() * (qHigh - qLow + 1));
+          const a = b * q;
+          return { a, b, op, res: q, q, r: 0 };
+        } else {
+          const a = genType(aType), b = genType(bType);
+          if (b < 2 || a < b || a % b === 0) continue;
+          return { a, b, op, res: (a / b) | 0, q: (a / b) | 0, r: a % b };
+        }
+      }
+    }
+    return null;
+  }
+
+  function expandOpts(cfg) {
+    return {
+      ops: cfg.op === 'mix' ? OPS.slice() : [cfg.op],
+      carries: cfg.carry === 'mix' ? ['yes', 'no'] : [cfg.carry],
+      rems: cfg.rem === 'mix' ? ['exact', 'remain'] : [cfg.rem],
+    };
+  }
+  function canGenerate(cfg) {
+    const { ops, carries, rems } = expandOpts(cfg);
+    for (const op of ops) for (const aType of cfg.aTypes) for (const bType of cfg.bTypes) {
+      if (op === 'mul') { if (makeProblem('mul', {}, aType, bType)) return true; }
+      else if (op === 'add' || op === 'sub') { for (const c of carries) if (makeProblem(op, { carry: c, addLimit: cfg.addLimit }, aType, bType)) return true; }
+      else if (op === 'div') { for (const r of rems) if (makeProblem('div', { rem: r }, aType, bType)) return true; }
+    }
+    return false;
+  }
+  function generate(cfg) {
+    if (!canGenerate(cfg)) return null;
+    const { ops, carries, rems } = expandOpts(cfg);
+    const problems = [], seen = new Set();
+    const maxAttempts = cfg.count * 300;
+    let attempts = 0;
+    while (problems.length < cfg.count && attempts < maxAttempts) {
+      attempts++;
+      const op = pick(ops);
+      const opt = { carry: (op === 'add' || op === 'sub') ? pick(carries) : null, rem: (op === 'div') ? pick(rems) : null, addLimit: cfg.addLimit };
+      const p = makeProblem(op, opt, pick(cfg.aTypes), pick(cfg.bTypes));
+      if (!p) continue;
+      const key = p.a + '_' + p.op + '_' + p.b;
+      if (seen.has(key) && attempts < maxAttempts * 0.7) continue;
+      seen.add(key); problems.push(p);
+    }
+    return problems;
+  }
+
+  // ── 자동 제목 ──
+  function makeTitle(op, aType, bType) {
+    if (op === 'mix') return '사칙연산 섞기 연습';
+    return `${TYPE_LABEL[aType]} ${OP_SYM[op]} ${TYPE_LABEL[bType]} ${OP_NAME[op]}`;
+  }
+
+  // ── 렌더링 (§7) ──
+  function sheetMaxLen(problems) {
+    let m = 1;
+    for (const p of problems) {
+      const nums = [p.a, p.b];
+      if (p.op === 'mul') nums.push(p.res); else if (p.op === 'div') nums.push(p.a); else nums.push(p.res);
+      for (const n of nums) m = Math.max(m, digits(n));
+    }
+    return m;
+  }
+  function chooseCols(maxLen, want) { if (maxLen >= 7) return Math.min(want, 3); if (maxLen >= 6) return Math.min(want, 4); return want; }
+  function chooseFs(maxLen) { if (maxLen <= 3) return 28; if (maxLen === 4) return 26; if (maxLen === 5) return 24; if (maxLen === 6) return 22; if (maxLen === 7) return 20; return 18; }
+
+  function renderProblem(p, idx) {
+    const no = `<span class="prob-no">${idx + 1}</span>`;
+    if (p.op === 'div') {
+      const rem = p.r ? `<span class="lrem">… ${p.r}</span>` : '';
+      return `<div class="prob">${no}<div class="ldiv"><span class="lspace"></span><span class="lquot">${p.q}</span><span class="ldivisor">${p.b}</span><span class="ldividend">${p.a}</span>${rem}</div></div>`;
+    }
+    return `<div class="prob">${no}<div class="vcalc"><div class="vrow">${p.a}</div><div class="vrow vbot"><span class="vop">${OP_SYM[p.op]}</span>${p.b}</div><div class="vline"></div><div class="vrow vans">${p.res}</div></div></div>`;
+  }
+
+  function renderSheet() {
+    if (!currentProblems.length) { sheetEl.hidden = true; sheetEl.innerHTML = ''; return; }
+    if (emptyEl) emptyEl.hidden = true;
+    sheetEl.hidden = false;
+    const maxLen = sheetMaxLen(currentProblems);
+    sheetEl.style.setProperty('--cols', chooseCols(maxLen, currentConfig.cols || 4));
+    sheetEl.style.setProperty('--cellw', maxLen);
+    sheetEl.style.setProperty('--num-fs', chooseFs(maxLen) + 'px');
+    const extra = Math.max(0, maxLen - 2);
+    const hasDiv = currentProblems.some(p => p.op === 'div');
+    let minh = 122 + extra * 18;
+    if (hasDiv) minh += maxLen * 38;   // 나눗셈: 아래 계산 과정 공간을 피연산자 자리수에 비례해 확보
+    sheetEl.style.setProperty('--prob-pad', (16 + extra * 6) + 'px');
+    sheetEl.style.setProperty('--prob-minh', minh + 'px');
+    sheetEl.style.setProperty('--row-gap', (14 + extra * 6) + 'px');   // 자리수 많을수록 문항 간 세로 간격 ↑
+    const head = `<div class="sheet-head"><div class="sheet-qr" id="sheetQR"></div><h2 class="sheet-title">${esc(currentConfig.title)}</h2><div class="sheet-meta"><span>날짜: ______월 ______일</span><span>점수: ______ / ${currentProblems.length}</span><span>이름: ____________</span></div></div>`;
+    sheetEl.innerHTML = head + `<div class="sheet-grid">${currentProblems.map(renderProblem).join('')}</div>`;
+  }
+
+  function applyAns(on) { sheetEl.classList.toggle('show-ans', !!on); }
+
+  // ── 정답 토글 (편집 화면) ──
+  function updateAnsBtn() { const b = $('ansToggleBtn'); b.classList.toggle('active', ansShown); b.textContent = ansShown ? '정답 숨기기' : '정답 보기'; }
+  window.toggleAnsMain = function () { ansShown = !ansShown; applyAns(ansShown); updateAnsBtn(); };
+
+  // ── 컨트롤 ──
+  function updateControls() {
+    const op = opSel.value;
+    carryRow.hidden = !(op === 'add' || op === 'sub' || op === 'mix');
+    remRow.hidden = !(op === 'div' || op === 'mix');
+    addLimitWrap.hidden = !(op === 'add' || op === 'mix');
+    carryLabel.textContent = op === 'add' ? '받아올림' : op === 'sub' ? '받아내림' : '받아올림 · 받아내림';
+    // 한 줄 칸 수 3 고정: 나머지 있음(장제법) 또는 4자리(몇천·네 자리 수)처럼 넓은 문제
+    const big = v => v === 'x000' || v === 'xyzq';
+    const forceCol3 = (!remRow.hidden && (remSel.value === 'remain' || remSel.value === 'mix'))
+      || big(aTypeSel.value) || big(bTypeSel.value);
+    document.querySelectorAll('input[name="cols"]').forEach(r => {
+      r.disabled = forceCol3;
+      if (forceCol3 && r.value === '3') r.checked = true;
+    });
+    const cg = $('colsGroup'); if (cg) cg.classList.toggle('ms-locked', forceCol3);
+    updateTitle();
+  }
+  function updateTitle() { titleInput.value = makeTitle(opSel.value, aTypeSel.value, bTypeSel.value); }
+  function getCols() { const r = document.querySelector('input[name="cols"]:checked'); return r ? parseInt(r.value) : 4; }
+
+  function getConfig() {
+    return {
+      op: opSel.value, carry: carrySel.value, rem: remSel.value,
+      aTypes: [aTypeSel.value], bTypes: [bTypeSel.value],
+      count: clamp(parseInt(countInput.value) || 12, 4, 60), cols: getCols(),
+      title: titleInput.value.trim() || makeTitle(opSel.value, aTypeSel.value, bTypeSel.value),
+      addLimit: addLimitChk.checked, showAns: ansShown,
+    };
+  }
+  function setConfig(cfg) {
+    opSel.value = cfg.op; carrySel.value = cfg.carry; remSel.value = cfg.rem;
+    aTypeSel.value = (cfg.aTypes && cfg.aTypes[0]) || 'xy';
+    bTypeSel.value = (cfg.bTypes && cfg.bTypes[0]) || 'x';
+    countInput.value = cfg.count;
+    const r = document.querySelector('input[name="cols"][value="' + cfg.cols + '"]'); if (r) r.checked = true;
+    addLimitChk.checked = !!cfg.addLimit;
+    ansShown = !!cfg.showAns; updateAnsBtn();
+    updateControls();
+    if (cfg.title) titleInput.value = cfg.title;
+  }
+
+  window.bumpCount = function (d) { countInput.value = clamp((parseInt(countInput.value) || 12) + d * 2, 4, 60); markStale(); };
+  function markStale() { const b = $('genBtn'); if (b) b.classList.add('ms-attn'); }   // 설정 변경 → 재생성 유도
+  function markFresh() { const b = $('genBtn'); if (b) b.classList.remove('ms-attn'); }
+  window.newWorksheet = function () {   // 처음 로드처럼: 랜덤 조건으로 새 문제 생성
+    settingsRow.hidden = false;
+    const def = document.querySelector('input[name="cols"][value="4"]'); if (def) def.checked = true;   // 한 줄 칸 수 기본 4로 리셋
+    randomizeControls();
+    updateControls();   // 새 조건이 강제 3(나머지·4자리)이면 여기서 다시 3으로 잠금
+    doGenerate();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  function showNotice(msg) { noticeEl.textContent = msg; noticeEl.hidden = false; }
+  function hideNotice() { noticeEl.hidden = true; }
+
+  window.doGenerate = function (collapse) {
+    const cfg = getConfig();
+    const probs = generate(cfg);
+    if (probs === null) { showNotice('선택한 조건으로 만들 수 있는 문제가 없습니다. A·B 유형이나 연산 조건을 바꿔 주세요. (예: 뺄셈에서 A가 B보다 항상 작은 경우)'); return; }
+    hideNotice();
+    currentConfig = cfg; currentProblems = probs;
+    renderSheet(); applyAns(ansShown);
+    if (probs.length < cfg.count) showNotice(`조건을 만족하는 서로 다른 문제가 부족해 ${probs.length}개만 생성했습니다.`);
+    markFresh();
+  };
+
+  // ── 저장 / 불러오기 (localStorage, md-editor 스타일) ──
+  function loadSets() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { return []; } }
+  function saveSets(s) { localStorage.setItem(LS_KEY, JSON.stringify(s)); }
+
+  window.saveSet = function () {
+    closeSaveMenu();
+    if (!currentProblems.length) { showToast('먼저 문제를 생성하세요.'); return; }
+    const sets = loadSets();
+    const d = new Date();
+    const stamp = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+    sets.unshift({ id: Date.now(), title: currentConfig.title, config: currentConfig, problems: currentProblems, savedAt: stamp });
+    saveSets(sets.slice(0, 40));
+    showToast('이 브라우저(로컬)에 저장됐어요 ✓');
+  };
+  window.openLoadModal = function () {
+    const sets = loadSets(), list = $('docList');
+    list.innerHTML = sets.length ? sets.map(s => `
+      <li class="ms-doc-item">
+        <div class="ms-doc-main" onclick="loadSet(${s.id})"><div class="ms-doc-name">${esc(s.title)}</div><div class="ms-doc-meta">${s.problems.length}문항 · ${s.savedAt}</div></div>
+        <button class="ms-tb-btn danger" style="min-height:32px;padding:5px 11px" onclick="deleteSet(${s.id}, event)">삭제</button>
+      </li>`).join('') : '<div class="ms-doc-empty">저장된 세트가 없어요.<br>문제를 만든 뒤 <b>저장 → 브라우저에 저장</b>을 눌러 보세요.</div>';
+    $('loadModal').classList.add('show');
+  };
+  window.closeLoad = function () { $('loadModal').classList.remove('show'); };
+  window.loadSet = function (id) {
+    const item = loadSets().find(s => s.id === id);
+    if (!item) return;
+    currentConfig = item.config; currentProblems = item.problems;
+    setConfig(item.config); renderSheet(); applyAns(ansShown);
+    hideNotice(); closeLoad(); markFresh();
+    sheetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  window.deleteSet = function (id, ev) { ev.stopPropagation(); saveSets(loadSets().filter(s => s.id !== id)); openLoadModal(); };
+
+  // ── 저장 드롭다운 ──
+  window.toggleSaveMenu = function (e) { e.stopPropagation(); $('saveMenu').classList.toggle('open'); };
+  function closeSaveMenu() { $('saveMenu').classList.remove('open'); }
+  document.addEventListener('click', e => { if (!e.target.closest('.ms-dd-wrap')) closeSaveMenu(); });
+
+  // ── 출력 / 공유 ──
+  async function renderSheetQR() {
+    const box = $('sheetQR'); if (!box) return;
+    const longURL = buildShareURL();
+    let url = longURL;
+    try {
+      const res = await fetch('/api/shorten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: longURL }) });
+      if (res.ok) { const d = await res.json(); if (d.shortURL) url = d.shortURL; }
+    } catch { /* 단축 실패 시 원본 URL로 QR */ }
+    box.innerHTML = '';
+    if (typeof QRCode !== 'undefined') { try { new QRCode(box, { text: url, width: 58, height: 58, correctLevel: QRCode.CorrectLevel.M }); } catch {} }
+  }
+  window.printSheet = async function () {
+    closeSaveMenu();
+    if (!currentProblems.length) { showToast('먼저 문제를 생성하세요.'); return; }
+    await renderSheetQR();   // 우상단 단축 링크 QR 준비 (출력할 때마다 생성)
+    const prevTitle = document.title;
+    document.title = (currentConfig.title || '연산연습지').trim();   // PDF 저장 기본 파일명 = 학습지 제목
+    const restore = () => { document.title = prevTitle; window.removeEventListener('afterprint', restore); };
+    window.addEventListener('afterprint', restore);   // 인쇄/저장이 끝난 뒤에 복원(파일명 보존)
+    window.print();
+  };
+
+  function encodeSheet() {
+    const c = currentConfig;
+    const p = currentProblems.map(x => [x.a, x.b, OPS.indexOf(x.op)]);
+    const cfg = { o: c.op, cy: c.carry, rm: c.rem, a: c.aTypes[0], b: c.bTypes[0], n: c.count, al: c.addLimit ? 1 : 0 };
+    return b64uEncode({ t: c.title, c: c.cols, p, cfg });
+  }
+  function buildShareURL() { return location.origin + '/apps/math-sheet/#share=' + encodeSheet(); }
+
+  function renderQR(url) {
+    const el = $('qrcode'); el.innerHTML = '';
+    if (typeof QRCode === 'undefined') return;
+    try { new QRCode(el, { text: url, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M }); }
+    catch (e) { el.innerHTML = '<div style="font-size:12px;color:var(--fg-muted);padding:24px;text-align:center;line-height:1.5">QR이 너무 길어 표시할 수 없어요.<br>아래 링크를 복사해 사용하세요.</div>'; }
+  }
+
+  window.openShare = async function () {
+    if (!currentProblems.length) { showToast('먼저 문제를 생성하세요.'); return; }
+    const status = $('shareStatus');
+    $('shareResult').hidden = true; status.hidden = false; status.textContent = '⏳ 단축 링크 만드는 중…';
+    $('shareModal').classList.add('show');
+    const longURL = buildShareURL();
+    let url = longURL, ok = false;
+    try {
+      const res = await fetch('/api/shorten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: longURL }) });
+      if (res.ok) { const data = await res.json(); if (data.shortURL) { url = data.shortURL; ok = true; } }
+    } catch { /* 단축 실패 → 원본 링크 폴백 */ }
+    if (!$('shareModal').classList.contains('show')) return;   // 도중에 닫혔으면 중단
+    $('shareLink').value = url; renderQR(url);
+    status.hidden = ok;
+    if (!ok) status.textContent = '⚠️ 단축에 실패해 원본(긴) 링크로 보여줘요.';
+    $('shareResult').hidden = false;
+  };
+  window.closeShare = function () { $('shareModal').classList.remove('show'); };
+  window.copyShareLink = function () {
+    const i = $('shareLink'); i.select();
+    navigator.clipboard.writeText(i.value).then(() => showToast('링크 복사됨 ✓')).catch(() => showToast('복사 실패'));
+  };
+
+  // ── 공유 인코딩 헬퍼 ──
+  function b64uEncode(obj) { return btoa(encodeURIComponent(JSON.stringify(obj))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, ''); }
+  function b64uDecode(str) { try { const raw = str.replace(/-/g, '+').replace(/_/g, '/'); const pad = (4 - raw.length % 4) % 4; return JSON.parse(decodeURIComponent(atob(raw + '='.repeat(pad)))); } catch { return null; } }
+
+  // ── 뷰어 모드 ──
+  function decodeProblems(arr) {
+    return arr.map(x => {
+      const a = x[0], b = x[1], op = OPS[x[2]] || 'add';
+      let res, q = null, r = null;
+      if (op === 'add') res = a + b; else if (op === 'sub') res = a - b; else if (op === 'mul') res = a * b; else { q = (a / b) | 0; r = a % b; res = q; }
+      return { a, b, op, res, q, r };
+    });
+  }
+  window.toggleAns = function () {
+    const on = !sheetEl.classList.contains('show-ans');
+    applyAns(on);
+    $('ansToggle').textContent = on ? '정답 숨기기' : '정답 보기';
+    $('ansToggle').classList.toggle('active', on);
+  };
+  window.practiceAgain = function () {
+    if (!currentConfig) return;
+    const probs = generate(currentConfig);
+    if (!probs || !probs.length) { showToast('문제를 다시 만들 수 없어요.'); return; }
+    currentProblems = probs;
+    renderSheet(); applyAns(false);
+    $('ansToggle').textContent = '정답 보기'; $('ansToggle').classList.remove('active');
+    showToast('이 유형의 다른 문제를 만들었어요 🎲');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  window.exitViewerToNew = function () {   // 공유 뷰어 → 내 편집 화면(새 문제 상태)
+    viewerMode = false;
+    history.replaceState(null, '', location.pathname);   // 공유 해시 제거 → 이후 새로고침은 편집 화면
+    $('viewerBar').hidden = true;
+    $('panel').hidden = false;
+    newWorksheet();
+  };
+  function tryViewer() {
+    const h = location.hash;
+    if (!h.startsWith('#share=')) return false;
+    const data = b64uDecode(h.slice(7));
+    if (!data || !Array.isArray(data.p)) { history.replaceState(null, '', location.pathname); showToast('공유 링크를 읽을 수 없습니다.'); return false; }
+    // 성공 시 해시 유지 → 새로고침해도 공유된 학습지 화면이 그대로 유지됨 ('새 문제' 누르면 해제)
+    currentProblems = decodeProblems(data.p);
+    const g = data.cfg;
+    currentConfig = {
+      title: data.t || '세로셈 연습', cols: data.c || 4, count: g ? g.n : currentProblems.length,
+      op: g ? g.o : 'mix', carry: g ? g.cy : 'mix', rem: g ? g.rm : 'mix',
+      aTypes: g ? [g.a] : ['xy'], bTypes: g ? [g.b] : ['x'], addLimit: g ? !!g.al : false, showAns: false,
+    };
+    viewerMode = true;
+    $('panel').hidden = true;
+    $('viewerBar').hidden = false;
+    $('practiceBtn').hidden = !g;
+    renderSheet(); applyAns(false);
+    return true;
+  }
+
+  // ── 토스트 ──
+  let toastTimer;
+  function showToast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200); }
+
+  // ── 상단 공유 버튼: 현재 페이지 URL 공유/복사 ──
+  window.shareCurrentPage = function () {
+    const url = location.href;
+    const copy = () => navigator.clipboard.writeText(url).then(() => showToast('링크가 복사되었습니다.')).catch(() => showToast('복사에 실패했습니다.'));
+    if (navigator.share) navigator.share({ title: '연산연습지', url }).catch(copy); else copy();
+  };
+
+  // ── 초기화 ──
+  opSel.addEventListener('change', updateControls);
+  remSel.addEventListener('change', updateControls);
+  aTypeSel.addEventListener('change', updateControls);
+  bTypeSel.addEventListener('change', updateControls);
+  countInput.addEventListener('change', () => { countInput.value = clamp(parseInt(countInput.value) || 12, 4, 60); });
+  ['opSel', 'carrySel', 'remSel', 'aTypeSel', 'bTypeSel', 'countInput', 'addLimitChk'].forEach(id => { const e = $(id); if (e) e.addEventListener('change', markStale); });
+  document.querySelectorAll('input[name="cols"]').forEach(r => r.addEventListener('change', markStale));
+  updateAnsBtn();
+
+  function showEmpty() { emptyEl.hidden = false; sheetEl.hidden = true; }
+
+  // 처음 로드: 연산·피연산자·연산자를 무작위로 (유효한 조합만 채택)
+  function randomizeControls() {
+    const types = ['x', 'x0', '1y', 'xy', 'x00', 'xyz', 'x000', 'xyzq'];
+    for (let i = 0; i < 50; i++) {
+      const op = pick(['add', 'sub', 'mul', 'div']);
+      const aType = pick(types), bType = pick(types);
+      if (canGenerate({ op, carry: carrySel.value, rem: remSel.value, aTypes: [aType], bTypes: [bType], count: 1, addLimit: false })) {
+        opSel.value = op; aTypeSel.value = aType; bTypeSel.value = bType; return;
+      }
+    }
+  }
+
+  updateControls();
+  if (!tryViewer()) {
+    showEmpty();   // 처음 로드: 준비된 안내 메시지만 표시 — '새 문제'를 눌러야 무작위 출제
+  }
+  </script>
+</body>
+</html>

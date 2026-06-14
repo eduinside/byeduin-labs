@@ -1,0 +1,188 @@
+/* =====================================================
+   eduin VIVES — 공통 앱 셸 레이아웃
+   /common/app-shell.css
+
+   hero-theme.css(토큰·헤더·overlay) 위에서 동작.
+   레이아웃은 전부 [data-shell]/[data-width] 속성 선택자로 처리(무JS).
+   app-shell.js는 크롬 주입·드로어·focus 토글만 담당.
+
+   사용:
+     <link rel="stylesheet" href="/common/hero-theme.css">
+     <link rel="stylesheet" href="/common/app-shell.css">
+     ...
+     <body data-shell="column" data-width="narrow">
+   ===================================================== */
+
+:root {
+  /* 캐논 폭 3값 — 한 곳에서 바꾸면 전 앱 반영 */
+  --app-w-narrow: 480px;
+  --app-w-medium: 720px;
+  --app-w-wide:   1120px;
+
+  --app-pad-x:      1rem;
+  --app-pad-top:    56px;   /* 플로팅 크롬(top:12px + ~36px) 아래로 본문 시작 */
+  --app-pad-bottom: 5rem;
+  --app-sidebar-w:  280px;
+  --app-gap:        1.25rem;
+}
+
+/* 셸을 쓰는 페이지는 최소 전체 높이 (immersive 제외) */
+body[data-shell="column"],
+body[data-shell="split"],
+body[data-shell="sidebar"],
+body[data-shell="gallery"] { min-height: 100vh; }
+
+/* ─────────────────────────────────────────────
+   column / gallery — 중앙 단일 컬럼
+   ───────────────────────────────────────────── */
+[data-shell="column"] .app-main,
+[data-shell="gallery"] .app-main {
+  width: 100%;
+  max-width: var(--app-w-medium);   /* 기본 medium */
+  margin: 0 auto;
+  padding: var(--app-pad-top) var(--app-pad-x) var(--app-pad-bottom);
+  position: relative;
+  z-index: 1;
+}
+
+/* 폭 캐논 스냅 (실측 미세차이 무시) */
+[data-width="narrow"] .app-main { max-width: var(--app-w-narrow); }
+[data-width="medium"] .app-main { max-width: var(--app-w-medium); }
+[data-width="wide"]   .app-main { max-width: var(--app-w-wide); }
+
+/* gallery 카드 그리드 헬퍼 */
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--app-gap);
+}
+
+/* ─────────────────────────────────────────────
+   split — 2-페인 (입력 | 미리보기)
+   ───────────────────────────────────────────── */
+[data-shell="split"] .app-main {
+  width: 100%;
+  max-width: var(--app-w-wide);
+  margin: 0 auto;
+  padding: var(--app-pad-top) var(--app-pad-x) var(--app-pad-bottom);
+  position: relative;
+  z-index: 1;
+}
+[data-shell="split"] .app-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--app-gap);
+}
+@media (max-width: 760px) {
+  [data-shell="split"] .app-split { grid-template-columns: 1fr; }
+}
+
+/* ─────────────────────────────────────────────
+   sidebar — 내비/목록 + 메인 (모바일 드로어)
+   .app-shell-layout > .app-aside + .app-main
+   ───────────────────────────────────────────── */
+[data-shell="sidebar"] .app-shell-layout {
+  display: grid;
+  grid-template-columns: var(--app-sidebar-w) 1fr;
+  min-height: 100vh;
+}
+[data-shell="sidebar"] .app-aside {
+  border-right: 1px solid var(--border);
+  background: var(--bg-sec);
+  padding: var(--app-pad-top) 1rem 2rem;
+  overflow-y: auto;
+}
+[data-shell="sidebar"] .app-main {
+  padding: var(--app-pad-top) var(--app-pad-x) var(--app-pad-bottom);
+  min-width: 0;   /* grid 자식 overflow 방지 */
+  position: relative;
+  z-index: 1;
+}
+
+/* 모바일: 사이드바 오프캔버스 */
+.app-drawer-backdrop { display: none; }
+@media (max-width: 768px) {
+  [data-shell="sidebar"] .app-shell-layout { grid-template-columns: 1fr; }
+  [data-shell="sidebar"] .app-aside {
+    position: fixed;
+    top: 0; bottom: 0; left: 0;
+    width: min(82vw, 320px);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 9990;
+    box-shadow: var(--shadow);
+  }
+  body.sidebar-open[data-shell="sidebar"] .app-aside { transform: none; }
+  [data-shell="sidebar"] .app-drawer-backdrop {
+    display: block;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+    z-index: 9989;
+  }
+  body.sidebar-open[data-shell="sidebar"] .app-drawer-backdrop {
+    opacity: 1; pointer-events: auto;
+  }
+}
+
+/* 햄버거 토글 — 데스크톱 숨김, 모바일(sidebar)만 표시 */
+.app-drawer-toggle { display: none !important; }
+@media (max-width: 768px) {
+  [data-shell="sidebar"] .app-drawer-toggle { display: flex !important; }
+}
+
+/* ─────────────────────────────────────────────
+   immersive — 레이아웃 미적용(앱이 뷰포트 소유). 크롬만 주입.
+   자체/고정 테마를 쓰는 풀스크린 앱이라 라이트·다크 토글은 숨김.
+   ───────────────────────────────────────────── */
+body[data-shell="immersive"] #themeToggleBtn { display: none !important; }
+
+/* ─────────────────────────────────────────────
+   focus — 아이템→전체화면 전환 (크롬 숨김)
+   앱: 아이템 클릭 시 enterFocus(), 닫기 시 exitFocus()
+   ───────────────────────────────────────────── */
+.focus-stage { display: none; }
+body.in-focus { overflow: hidden; }
+body.in-focus .focus-stage {
+  display: block;
+  position: fixed; inset: 0;
+  z-index: 9000;
+  background: var(--bg);
+  overflow: auto;
+}
+body.in-focus .top-overlay,
+body.in-focus .top-overlay-left { display: none !important; }
+
+/* focus 닫기 버튼 — 셸 주입(.overlay-btn), focus 중에만 표시. 우상단 고정.
+   앱이 자체 .focus-close를 두면 그것을 사용(스킵). */
+.focus-close { display: none; }
+body.in-focus .focus-close {
+  display: inline-flex;
+  position: fixed;
+  top: 12px; right: 12px;
+  z-index: 9100;
+}
+
+/* ─────────────────────────────────────────────
+   .app-actions — 헤더 우상단 추가 버튼 슬롯
+   (앱이 본문에 두면 app-shell.js가 .top-overlay로 이동)
+   ───────────────────────────────────────────── */
+.app-actions { display: flex; gap: 8px; align-items: center; }
+
+/* 모션 민감 사용자 — 드로어/백드롭 전환 제거 */
+@media (prefers-reduced-motion: reduce) {
+  [data-shell="sidebar"] .app-aside,
+  .app-drawer-backdrop { transition: none !important; }
+}
+
+/* ─────────────────────────────────────────────
+   print — [data-print] 베이스라인 (앱별 @media print는 추가로)
+   ───────────────────────────────────────────── */
+@media print {
+  [data-print] .top-overlay,
+  [data-print] .top-overlay-left,
+  [data-print] .app-header,
+  [data-print] .no-print { display: none !important; }
+  [data-print] .app-main { max-width: none; padding: 0; }
+}

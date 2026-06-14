@@ -12,7 +12,7 @@
 
 ```mermaid
 flowchart TD
-    A[1. CLI 스캐폴딩 실행] -->|npm run scaffold| B[2. public/앱-ID/index.html 생성<br>및 apps.json 자동 등록]
+    A[1. CLI 스캐폴딩 실행] -->|npm run scaffold| B[2. public/apps/앱-ID/index.html 생성<br>및 apps.json 자동 등록]
     B --> C[3. 비즈니스 로직 및 UI 개발<br>디자인 토큰 & 공통 컴포넌트 활용]
     C --> D[4. 로컬 테스트 및 동작 검증<br>npm run dev]
     D --> E[5. 정적 SEO 태그 주입<br>npm run inject]
@@ -31,24 +31,32 @@ flowchart TD
 npm run scaffold
 ```
 
-실행 시 터미널에서 다음 정보를 순차적으로 입력받습니다:
-1. **App ID**: URL 경로명이 될 영문 슬러그 (예: `my-calculator`)
-2. **App Name**: 화면 및 카드에 노출될 앱 한글/영문 이름 (예: `스마트 계산기`)
-3. **Category**: `apps.json`에 정의된 카테고리 중 선택 (`edu`, `utility`, `social`, `creative`, `notion`)
-4. **Emoji**: 앱을 대표하는 이모지 1개 (예: `🧮`)
-5. **Short Description**: 메인 카드에 표시될 한 줄 요약 문구
-6. **SEO Title**: 검색 포털 노출용 타이틀
-7. **SEO Description**: 검색 결과 미리보기에 표시될 최적화된 상세 설명
+**유형을 먼저 고르고 기능을 채우는** 방식입니다. 실행 시 입력받는 정보:
+1. **App ID**: URL 경로명이 될 영문 슬러그 (예: `my-calculator` → `/apps/my-calculator/`)
+2. **App Name** · **Emoji** · **Short Description**
+3. **Category / Subcategory**: `apps.json`의 `categories`(`edu`·`utility`)와 그 `subcategories` 중 선택 → 홈에 자동 배치
+4. **Base(셸 유형)**: `column` · `split` · `sidebar` · `gallery` · `immersive`
+5. **Width**: `narrow`(480) · `medium`(720) · `wide`(1120) — column/gallery에만
+6. **플래그**: `focus`(아이템→전체화면) · `print`(A4)
+7. **SEO Title / Description**
 
-### 결과물
-- **디렉토리 생성**: `public/[app-id]/index.html` 표준 템플릿 파일 생성
-- **중앙 레지스트리 등록**: [apps.json](file:///d:/Hwan/Documents/Web/byeduin-labs/public/apps.json)의 `apps` 배열에 메타데이터 정보 자동 추가
+비대화형 한 줄 실행도 가능:
+```bash
+node scripts/scaffold-app.js --id my-app --name "내 앱" --base column --width narrow \
+  --category edu --subcategory edu-work --emoji 🧮 --desc "..." [--focus] [--print]
+# 모달/외부/다운로드 항목: --kind modal --href https://... --link-label "바로가기 ↗" [--external]
+```
+
+### 결과물 (한 커맨드로 완결)
+- **디렉토리 생성**: `public/apps/[app-id]/index.html` — 선택한 베이스의 셸 골격
+- **레지스트리 등록**: [apps.json](file:///d:/Hwan/Documents/Web/byeduin-labs/public/apps.json) `apps` 배열에 `subcategory` 포함 메타데이터 추가
+- **후처리 자동 실행**: `inject-seo` → `generate-og --id <id>` → `generate-sitemap` 순차 실행 (canvas 미설치 시 OG만 경고 후 계속)
 
 ---
 
 ## 3. Phase 2: 기본 템플릿 구조와 리소스 참조
 
-생성된 `public/[app-id]/index.html`은 아래와 같은 기본 뼈대를 갖습니다.
+생성된 `public/apps/[app-id]/index.html`은 아래와 같은 기본 뼈대를 갖습니다.
 
 ```html
 <!DOCTYPE html>
@@ -66,30 +74,29 @@ npm run scaffold
   
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   
-  <!-- 1. 공통 스타일 및 테마 스크립트 (필수) -->
+  <!-- 공통 스타일·셸·스크립트 (필수) -->
   <link rel="stylesheet" href="/common/hero-theme.css">
+  <link rel="stylesheet" href="/common/app-shell.css">
   <script src="/common/theme.js"></script>
   <script src="/common/init.js"></script>
-  
-  <!-- 2. 동적 SEO 보완 스크립트 (런타임용) -->
+  <script src="/common/app-shell.js" defer></script>
   <script src="/common/seo-injector.js" defer></script>
-  
+
   <style>
-    /* 앱 전용 스타일은 여기에 작성하거나 별도 CSS 파일 참조 */
+    /* 앱 전용 스타일 */
   </style>
 </head>
-<body>
-  <!-- 좌상단 홈가기 / 우상단 테마 및 공유 플로팅 레이아웃은 공통 CSS가 처리 -->
-  
-  <!-- 앱 상단 헤더 영역 -->
-  <div class="app-header">
-    <div class="app-badge">◆ CATEGORY</div>
-    <h1 class="app-title">🎭 앱이름</h1>
-    <p class="app-desc">짧은 앱 설명</p>
-  </div>
-  
-  <!-- 메인 콘텐츠 영역 (상대 위치 지정 z-index: 1 필수) -->
-  <main class="container" style="max-width:720px;margin:0 auto;padding:0 1rem 4rem;position:relative;z-index:1;">
+<!-- data-shell: column | split | sidebar | gallery | immersive
+     data-width: narrow | medium | wide  (column/gallery에만)
+     플래그: data-focus(아이템→전체화면, enterFocus()) · data-print(A4 인쇄) -->
+<body data-shell="column" data-width="medium">
+  <!-- 플로팅 크롬(좌상단 홈 / 우상단 테마·공유)은 app-shell.js가 자동 주입 — 복붙하지 않음 -->
+  <main class="app-main">
+    <div class="app-header">
+      <div class="app-badge">◆ CATEGORY</div>
+      <h1 class="app-title">🎭 앱이름</h1>
+      <p class="app-desc">짧은 앱 설명</p>
+    </div>
     <!-- 이 부분에 UI 구현 -->
   </main>
 </body>
