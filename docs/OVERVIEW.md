@@ -1,0 +1,164 @@
+# eduin VIVES — 프로젝트 개요
+
+> **배포**: Cloudflare Pages · `pages_build_output_dir = "public"` · 폴더 경로 = URL 경로  
+> **빌드**: 번들러·라우터 없음. 정적 파일 직접 서빙.
+
+---
+
+## 폴더 구조
+
+```
+public/
+├── apps/              ← 앱 페이지 (22개 폴더)
+│   ├── blocks-universe/
+│   ├── timer/
+│   └── …
+├── common/            ← 공통 CSS·JS
+│   ├── hero-theme.css
+│   ├── app-shell.css
+│   ├── app-shell.js
+│   ├── theme.js
+│   ├── init.js
+│   └── seo-injector.js
+├── og-images/         ← 앱별 OG 이미지 (1200×630)
+├── downloads/         ← 크롬 확장 zip 등 다운로드 파일
+├── index.html         ← 홈 (카테고리 트리 사이드바)
+└── apps.json          ← 앱 메타데이터 단일 소스
+
+functions/api/         ← Cloudflare Workers (서버리스 API)
+scripts/               ← 빌드·생성 스크립트 (Node.js)
+docs/                  ← 개발 문서
+```
+
+---
+
+## 앱 목록
+
+### 교육 · 시뮬레이션 (`edu-sim`)
+| ID | 이름 | 설명 |
+|---|---|---|
+| `moon-phase` | 달 위상 시뮬레이터 | 오늘의 달 위상 시뮬레이터 |
+| `volcano` | 화산 지도 | 3D 위성지도로 세계 화산 11개 탐험 |
+| `step-squad` | 계단수 | 계단수 개념을 블록으로 시각화 + 퀴즈 |
+| `clubs` | 넘버블록스 클럽 | 1~100 수의 클럽 탐색 + 퀴즈 |
+
+### 교육 · 학습지원 (`edu-learn`)
+| ID | 이름 | 설명 |
+|---|---|---|
+| `blocks-universe` | Blocks Universe | BBC 블록스 4개 시리즈 351편 · AI 검색 · 재생목록 |
+| `flash-deck` | 플래시덱 | 플래시카드 덱 제작 및 학습 |
+| `chalkboard` | 칠판 | 텍스트·선으로 자유 판서 |
+| `math-sheet` | 연산연습지 | 사칙연산 세로셈 학습지 생성·PDF 출력·공유 |
+
+### 교육 · 업무경감 (`edu-work`)
+| ID | 이름 | 설명 |
+|---|---|---|
+| `scoring-table` | 채점표 | 대회·발표 채점 양식 배포·공동 채점·결과 수합 |
+| `file-tools` | 파일 도구 | 스캔 이미지·PPTX 이미지 최적화 |
+| `timer` | 타이머 | 반복 알람 타이머 |
+| `allowance-calculator` | 수당 계산기 | 세전·세후 수당·기타소득 세금 자동 계산 |
+| `search` | 교육문서 검색 | AI 기반 교육문서 검색·출처 확인 |
+| `login-helper` | 에듀나비 로그인 | 에듀나비 교원업무지원 로그인 도우미 (모달·외부 링크) |
+
+### 생활편의 (`util-life`)
+| ID | 이름 | 설명 |
+|---|---|---|
+| `md-editor` | 마크다운 편집기 | 마크다운 열기·편집·미리보기·공유 |
+| `qr` | QR | QR 생성·스캔·단축주소 (PWA 지원) |
+
+### 크롬 확장 (`util-chrome`)
+| ID | 이름 | 설명 |
+|---|---|---|
+| `content-id-viewer` | 콘텐츠 ID 조회 | 에듀나비 콘텐츠 ID 조회 크롬 확장 (다운로드) |
+| `mp4-finder` | MP4 파인더 | 웹페이지 숨겨진 MP4 링크 발견 (다운로드) |
+
+### 소셜 (`util-social`)
+| ID | 이름 | 설명 |
+|---|---|---|
+| `book-share` | 도서 공유 | ISBN 도서 정보 조회·파일 저장·공유 |
+| `bubble-chat` | 버블챗 | P2P 실시간 채팅 |
+| `edulink` | 에듀링크 | 교육용 단축주소·설문·체험 지도 (모달·외부 링크) |
+
+### 크리에이티브 (`util-creative`)
+| ID | 이름 | 설명 |
+|---|---|---|
+| `yt-thumb` | 유튜브 썸네일 | 유튜브 썸네일 추출기 |
+| `grid-maker` | 그리드 메이커 | 이미지 그리드 분할 저장 |
+| `signage-maker` | 사이니지 메이커 | 사이니지용 세로 이미지 AI 생성기 |
+
+### 노션 도구 (`util-notion`)
+| ID | 이름 | 설명 |
+|---|---|---|
+| `embed` | 임베드 | 외부 URL → 반응형 iframe → 노션 임베드 |
+| `notion-image-downloader` | 노션 이미지 다운로드 | 노션 DB 이미지 일괄 다운로드 |
+| `notion-styler` | 노션 스타일러 | 노션 수식 LaTeX 스타일러 |
+| `shortcut` | 빠른 버튼 | 웹 링크 → 딥링크 버튼 변환·저장 |
+
+---
+
+## 셸 유형 시스템
+
+`app-shell.js`가 `<body data-shell="…">` 속성을 읽어 레이아웃·크롬을 자동 주입.
+
+| `data-shell` | 레이아웃 | 대표 앱 |
+|---|---|---|
+| `column` | 중앙 단일 컬럼 | qr, timer, math-sheet 등 다수 |
+| `split` | 2-페인 (입력 \| 미리보기) | md-editor, notion-styler |
+| `sidebar` | 내비 사이드바 + 메인 | search |
+| `gallery` | 반응형 카드 그리드 | blocks-universe, chalkboard, bubble-chat |
+| `immersive` | 풀뷰포트 (크롬만 주입) | moon-phase, volcano, step-squad, clubs |
+
+**폭 플래그** (`data-width`): `narrow`(480px) · `medium`(720px) · `wide`(1120px)  
+**기능 플래그**: `data-focus`(아이템→전체화면 `enterFocus()`) · `data-print`(A4 인쇄 베이스라인)
+
+### 공통 파일 (모든 앱 `<head>` 필수)
+```html
+<link rel="stylesheet" href="/common/hero-theme.css">
+<link rel="stylesheet" href="/common/app-shell.css">
+<script src="/common/theme.js"></script>
+<script src="/common/init.js"></script>
+<script src="/common/app-shell.js" defer></script>
+<script src="/common/seo-injector.js" defer></script>
+```
+
+> **예외**: `immersive` 유형 중 step-squad·clubs는 독자 CSS(Dongle 폰트·`--bg`)를 사용하므로 `hero-theme.css`·`app-shell.css`를 포함하지 않음.
+
+---
+
+## 주요 API 엔드포인트
+
+| 경로 | 역할 |
+|---|---|
+| `POST /api/bu-translate` | 에피소드 설명 AI 한국어 번역 |
+| `POST /api/bu-recommend` | 에피소드 AI 추천 검색 |
+| `POST /api/signage-prompt` | 사이니지 이미지 AI 생성 |
+| `POST /api/flash-recommend` | 플래시덱 카드 AI 추천 |
+| `GET /api/yt-playlist` | 유튜브 재생목록 파싱 |
+| `GET /api/yt-video-info` | 유튜브 영상 정보 |
+| `POST /api/shorten` | 단축 URL 생성 (short.io) |
+| `GET /api/search` | 교육문서 벡터 검색 |
+| `GET /api/notices` | 공지사항 |
+
+---
+
+## 주요 변경 이력
+
+### 2026-06 — Blocks Universe 개선
+- **AI 번역 사전 적재**: 영문 전용 231편·한글 영상+영문 설명 31편 → `descKo` / `titleKo` 번역 추가 (전체 351편 완비)
+- **3유형 UI**: 영문 카드 제목 유지 / 모달 EN 기본값 / 토글 순서 `EN | 🤖 한글번역` / 언어 전환 시 영상 재시작 없음
+- **공유 URL 수정**: 하드코딩 `/blocks-universe/` → `location.href` 기반으로 경로 변경에 견고하게 대응
+
+### 2026-06 — 앱 모듈화 + 셸 시스템
+- `public/<id>/` 22개 앱 → `public/apps/<id>/` 통합 이동
+- `public/common/app-shell.css` + `app-shell.js` 신규: 셸 유형 5종 + 폭·focus·print 플래그
+- 플로팅 크롬(홈·테마·공유 버튼) 자동 주입 → 각 앱 복붙 제거
+- `qr` PWA: `/qr/` → `/apps/qr/` 경로 갱신 및 재활성화
+- `public/chrome-extentions/` → `public/downloads/` 이름 변경
+- `generate-sitemap.js`: `app.type === 'modal'` 기준 스킵으로 일반화
+- `scripts/scaffold-app.js`: 새 경로·셸 유형·서브카테고리 선택 지원
+
+### 2026-06 — 홈 데이터화
+- `apps.json`에 `categories[].subcategories` 중첩 구조 추가
+- 각 앱에 `subcategory` 필드 추가
+- `index.html` 하드코딩 `SUBCATS` 제거 → `apps.json` 단일 소스 기반 렌더링
+- 새 앱 스캐폴드 시 홈 서브카테고리에 자동 배치

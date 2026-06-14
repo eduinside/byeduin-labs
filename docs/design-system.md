@@ -5,21 +5,25 @@
 
 ---
 
-## 1. 공통 파일 3종
-
-모든 앱의 `<head>`에 아래 순서대로 삽입한다.
+## 1. 공통 파일 (모든 앱 `<head>` 필수)
 
 ```html
 <link rel="stylesheet" href="/common/hero-theme.css">
+<link rel="stylesheet" href="/common/app-shell.css">
 <script src="/common/theme.js"></script>   <!-- FOUC 방지: CSS 직후 동기 로드 -->
 <script src="/common/init.js"></script>    <!-- 파비콘 + GA4 -->
+<script src="/common/app-shell.js" defer></script>
+<script src="/common/seo-injector.js" defer></script>
 ```
 
 | 파일 | 역할 |
 |------|------|
 | `hero-theme.css` | CSS 변수(토큰) + 공통 컴포넌트 클래스 |
+| `app-shell.css` | 셸 유형(column/split/sidebar/gallery/immersive) + 폭·focus·print 레이아웃 |
 | `theme.js` | `cycleTheme()` · `shareCurrentPage()` · `data-theme` 자동 적용 |
 | `init.js` | 파비콘 `/favicon.svg` 강제 설정 · GA4 초기화 (localhost 제외) |
+| `app-shell.js` | `data-shell` 속성 읽어 플로팅 크롬 자동 주입 · `enterFocus()/exitFocus()` 전역 제공 |
+| `seo-injector.js` | 런타임에 `apps.json`에서 SEO 메타·canonical 보완 |
 
 ---
 
