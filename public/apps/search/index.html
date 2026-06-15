@@ -209,6 +209,8 @@
       transition: color 0.12s;
     }
     .sidebar-label-btn:hover { color: var(--danger); }
+    .sidebar-label-btn.refresh:hover { color: var(--primary); }
+    .sidebar-label-btn:disabled { opacity: 0.5; cursor: default; }
 
     /* 대화 목록 */
     .conv-item {
@@ -1162,6 +1164,10 @@
 
         <!-- 문서 목록 탭 -->
         <div id="documents-tab" class="sidebar-tab-content">
+          <div class="sidebar-section-label">
+            <span>문서 목록</span>
+            <button class="sidebar-label-btn refresh" onclick="refreshTree(this)" title="GitHub에서 문서 목록 새로고침">↻ 새로고침</button>
+          </div>
           <div id="treePanel">
             <div class="tree-loading"></div>
           </div>
@@ -1464,10 +1470,11 @@
     /* ─────────────────────────────────────────
        최근 업데이트 문서 로드 (서버사이드 API 사용)
     ───────────────────────────────────────── */
-    async function loadRecentDocs() {
+    async function loadRecentDocs(force = false) {
       try {
         // 서버사이드 API 호출 (GitHub rate limit 회피)
-        const res = await fetch('/api/recent-docs');
+        // force: 새로고침 버튼 — 고유 쿼리로 브라우저/엣지 HTTP 캐시(max-age=3600) 우회
+        const res = await fetch(force ? `/api/recent-docs?_=${Date.now()}` : '/api/recent-docs');
         if (!res.ok) {
           console.error('Recent docs API failed:', res.status, res.statusText);
           throw new Error('API 호출 실패');
@@ -1513,15 +1520,19 @@
     ───────────────────────────────────────── */
     let treeData = null;
 
-    async function loadTree() {
-      const ts = parseInt(localStorage.getItem(LS_TREE_TS) || '0');
-      if (Date.now() - ts < TREE_TTL) {
-        const cached = localStorage.getItem(LS_TREE);
-        if (cached) { treeData = JSON.parse(cached); renderTree(); return; }
+    async function loadTree(force = false) {
+      // force가 아니면 24h 클라이언트 캐시 우선
+      if (!force) {
+        const ts = parseInt(localStorage.getItem(LS_TREE_TS) || '0');
+        if (Date.now() - ts < TREE_TTL) {
+          const cached = localStorage.getItem(LS_TREE);
+          if (cached) { treeData = JSON.parse(cached); renderTree(); return; }
+        }
       }
 
       try {
-        const res = await fetch(TREE_API);
+        // force 시 고유 쿼리로 /api/tree의 max-age=3600 HTTP 캐시까지 우회
+        const res = await fetch(force ? `${TREE_API}?_=${Date.now()}` : TREE_API);
         if (!res.ok) throw new Error();
         const json = await res.json();
 
@@ -1544,6 +1555,23 @@
       } catch {
         document.getElementById('treePanel').innerHTML =
           '<div class="tree-empty">문서 목록을 불러오지<br>못했습니다.</div>';
+      }
+    }
+
+    /* GitHub에서 문서 목록 강제 새로고침 (클라이언트 24h 캐시 + HTTP 캐시 우회) */
+    async function refreshTree(btn) {
+      if (btn) { btn.disabled = true; btn.dataset.orig = btn.textContent; btn.textContent = '새로고침 중…'; }
+      localStorage.removeItem(LS_TREE);
+      localStorage.removeItem(LS_TREE_TS);
+      document.getElementById('treePanel').innerHTML = '<div class="tree-loading"></div>';
+      try {
+        await loadTree(true);
+        await loadRecentDocs(true);
+        showToast('문서 목록을 새로고침했습니다');
+      } catch {
+        showToast('새로고침에 실패했습니다');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = btn.dataset.orig || '↻ 새로고침'; }
       }
     }
 
