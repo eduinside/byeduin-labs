@@ -1060,6 +1060,11 @@
         transition: transform 0.3s ease;
         z-index: 999;
         box-shadow: 0 0 0 9999px rgba(0,0,0,0);
+        /* 드로어로 떠 있을 때 채팅 내용이 비치지 않도록 불투명 배경 강제
+           (기본 .app-sidebar 배경은 rgba(…,0.02)로 거의 투명 → 데스크톱에선 무방하나
+            모바일 오버레이에선 본문이 비쳐 '겹침'처럼 보임) */
+        background: var(--bg);
+        background-color: var(--bg);
       }
       .app-sidebar.sidebar-open {
         transform: translateX(0);
@@ -1284,6 +1289,10 @@
 
     let currentChatTitle = '새 대화';
 
+    // 현재 대화의 멀티턴 맥락 버퍼 (서버에 history로 전달 → 후속 질문 해석용)
+    // { role: 'user' | 'ai', content: string }
+    let activeMessages = [];
+
     /* ─────────────────────────────────────────
        대화 제목 관리
     ───────────────────────────────────────── */
@@ -1442,6 +1451,7 @@
     function newChat() {
       document.getElementById('chatArea').innerHTML = '';
       document.getElementById('searchInput').value = '';
+      activeMessages = [];  // 대화 맥락 초기화
       document.querySelectorAll('.conv-item').forEach(i => i.classList.remove('active'));
       selectedCats.clear();
       document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('selected'));
@@ -1687,7 +1697,8 @@
         const res = await fetch('/api/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, categories: Array.from(selectedCats) }),
+          // history: 직전까지의 대화 맥락(최근 8턴)을 함께 전달
+          body: JSON.stringify({ query, categories: Array.from(selectedCats), history: activeMessages.slice(-8) }),
         });
 
         const elapsed = (performance.now() - startTime).toFixed(0);
@@ -1704,6 +1715,9 @@
 
         thinkingEl.remove();
         appendAiMsg(query, data.answer, data.sources || [], data.allProvided);
+        // 멀티턴 맥락 버퍼 갱신
+        activeMessages.push({ role: 'user', content: query });
+        activeMessages.push({ role: 'ai', content: data.answer });
         saveHistory(query, data.answer, data.sources || []);
         console.log('🎉 [search] Search completed successfully');
       } catch (err) {
@@ -1836,6 +1850,11 @@
       document.getElementById('chatArea').innerHTML = '';
       appendUserMsg(item.query);
       appendAiMsg(item.query, item.answer, item.sources || []);
+      // 저장된 단일 Q&A를 맥락 버퍼로 복원 → 이어서 후속 질문 가능
+      activeMessages = [
+        { role: 'user', content: item.query },
+        { role: 'ai', content: item.answer }
+      ];
       showView('chat');
     }
 
@@ -1915,6 +1934,9 @@
         thinkingEl.remove();
         const label = type === 'summarize' ? `📄 [요약] ${docPath}` : `❓ [질문] ${docPath}`;
         appendAiMsg(label, data.answer, data.sources || []);
+        // 문서 질문/요약도 맥락 버퍼에 반영 → 이어지는 자유 질문이 맥락 유지
+        activeMessages.push({ role: 'user', content: `${label}${question ? ' — ' + question : ''}` });
+        activeMessages.push({ role: 'ai', content: data.answer });
         saveHistory(label, data.answer, data.sources || []);
       } catch (err) {
         console.error('❌ [doc-request] Error:', err.message);

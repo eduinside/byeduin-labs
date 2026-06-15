@@ -2,7 +2,11 @@ export async function generateContent({
   systemPrompt,
   userMessage,
   env,
-  temperature = 0.8
+  temperature = 0.8,
+  // 모델 오버라이드(선택). 기본값은 가장 저렴한 flash-lite 유지 → 기존 호출부 동작 불변.
+  // 무거운 작업(예: 검색 최종 답변)은 'google/gemini-2.5-flash' / 'gemini-flash-latest'로 승격.
+  timelyModel = 'google/gemini-2.5-flash-lite',
+  geminiModel = 'gemini-flash-lite-latest'
 }) {
   const timelyKey = env.TIMELY_API_KEY;
   const geminiKey = env.GEMINI_API_KEY;
@@ -10,8 +14,7 @@ export async function generateContent({
   // 1. Try Timely GPT first if key exists
   if (timelyKey) {
     try {
-      console.log('🤖 [AI Service] Trying Timely GPT API...');
-      const timelyModel = 'google/gemini-2.5-flash-lite';
+      console.log('🤖 [AI Service] Trying Timely GPT API...', { model: timelyModel });
       const res = await fetch('https://hello.timelygpt.co.kr/api/v2/chat/bridge/openai/chat/completions', {
         method: 'POST',
         headers: {
@@ -47,8 +50,7 @@ export async function generateContent({
     throw new Error('서버 환경변수(GEMINI_API_KEY 및 TIMELY_API_KEY)가 설정되지 않았습니다.');
   }
 
-  console.log('🤖 [AI Service] Calling direct Gemini API...');
-  const geminiModel = 'gemini-flash-lite-latest';
+  console.log('🤖 [AI Service] Calling direct Gemini API...', { model: geminiModel });
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`, {
     method: 'POST',
     headers: {

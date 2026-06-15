@@ -137,12 +137,35 @@ docs/                  ← 개발 문서
 | `GET /api/yt-playlist` | 유튜브 재생목록 파싱 |
 | `GET /api/yt-video-info` | 유튜브 영상 정보 |
 | `POST /api/shorten` | 단축 URL 생성 (short.io) |
-| `GET /api/search` | 교육문서 벡터 검색 |
+| `POST /api/search` | 교육문서 RAG 검색(2단계 라우터) + 단일 문서 요약·질문 |
+| `GET /api/tree` | 교육문서 리포 파일 트리(서버사이드, GitHub rate limit 회피) |
+| `GET /api/recent-docs` | 최근 업데이트된 교육문서 (커밋 기반) |
 | `GET /api/notices` | 공지사항 |
 
 ---
 
 ## 주요 변경 이력
+
+### 2026-06 — 에듀서치 검색 품질 개선 (1단계)
+**문제**: "양이 적은데도 검색이 안 되고, 특정 문서 답변도 부정확". 원인은 `search.js`가 사실상 검색(retrieval)을 하지 않고 **GitHub 트리 순서 앞 10개 파일(`files.slice(0, 10)`)을 질문과 무관하게** 컨텍스트로 넣고 있었음. 게다가 파일당 4000자(문서 Q&A 6000자)로 잘려 긴 문서 뒷부분 답변이 손실되고, '대화'인데 이전 맥락을 서버에 전달하지 않아 후속 질문이 매번 단발성으로 처리됨.
+
+**1단계 개선 (임베딩/벡터DB 없이)**:
+- **2단계 라우터 검색**: `slice(0,10)` 폐기 → ① 후보 본문 fetch 후 *제목·소제목·미리보기* 카탈로그 생성 → ② 카탈로그로 관련 문서 최대 5개를 LLM(lite)이 선별 → ③ 선택 문서 **전체 본문**으로 최종 답변. 문서 수가 5개 이하면 선별을 건너뛰고 전부 사용.
+- **잘림 상한 완화**: 답변 문서 4000→12000자, 단일 문서 요약·질문 6000→24000자.
+- **대화 맥락 전달**: 클라이언트에 멀티턴 버퍼(`activeMessages`) 추가 → 최근 8턴을 `history`로 전송, 라우터·답변 프롬프트가 후속 질문을 맥락으로 해석. `newChat`에서 초기화, `loadConv`/문서 질문에서 복원.
+- **답변 모델 승격**: 선별은 `gemini-flash-lite`(비용), 최종 답변·단일 문서 분석은 `gemini-flash`로. `_ai.js`의 `generateContent`에 `timelyModel`/`geminiModel` 오버라이드 추가(기본값 lite 유지 → 기존 호출부 영향 없음).
+- **인용 안정화**: 취약한 `**출처:**` 정규식 추출 폐기 → 라우터가 선별한 경로를 참조 문서로 반환.
+- **대용량 방어**: 후보가 30개 초과면 경로 어휘 점수로 사전 컷(타임아웃/비용 방지). 라우터 실패 시 어휘 상위로 폴백.
+- **모바일 사이드바 겹침 수정**: 폭 ≤640px에서 자체 사이드바(`.app-sidebar`)가 `position:fixed` 드로어로 뜰 때 기본 배경이 `rgba(…,0.02)`(거의 투명)이라 채팅 본문이 비쳐 '겹침'처럼 보이던 문제 → 드로어 상태에서 `background: var(--bg)` 불투명 강제. 공유 셸(`app-shell.css` `.app-aside`)은 불투명 `--bg-sec` + 별도 백드롭이라 정상이며, 자체 사이드바를 쓰는 앱은 search가 유일.
+
+**관련 파일**: [`functions/api/search.js`](../functions/api/search.js) · [`functions/api/_ai.js`](../functions/api/_ai.js) · [`public/apps/search/index.html`](../public/apps/search/index.html)
+
+**2단계 가능 방향 (백로그 — 문서가 수십~수백 개로 늘면)**: 진짜 NotebookLM식 시맨틱 RAG.
+- **임베딩 + 벡터 검색**: Cloudflare **Workers AI**(`@cf/baai/bge-m3`, 한국어 강함)로 임베딩 → **Vectorize**에 저장(코퍼스가 작으면 KV에 벡터 JSON도 가능). 질문도 임베딩해 코사인 유사도 top-K **청크**만 검색 → 라우터의 "본문 전부 fetch" 비용·지연 제거.
+- **청킹**: 문서를 헤딩/문단 단위로 분할 색인 → 잘림 없이 관련 부분만 정밀 검색.
+- **재색인**: GitHub push 웹훅 또는 cron으로 증분 색인.
+- **질의 재작성/HyDE**: 후속 질문을 검색 전 독립형 질의로 재작성(현재는 라우터 프롬프트에 history만 주입).
+- **평가셋**: "정답이 있는 질문 N개" 회귀 테스트로 변경 전후 적중률 비교.
 
 ### 2026-06 — Break & Make 신규 + 효과음 확대
 - **Break & Make**(`break-make`) 신규: 구슬 교구로 수 가르기·모으기 조작 학습 (개념/가르기/모으기/나의 기록 탭, 한자리·10·십몇 단계, 도전 모드, 별·도장 도감, `localStorage` 저장). step-squad 인라인 홈·공유 영역 계승
