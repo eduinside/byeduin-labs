@@ -1345,13 +1345,18 @@
     ───────────────────────────────────────── */
     let pendingQuestionData = null;
 
-    function showQuestionModal(type = 'question', docPath = '', docContent = '') {
-      pendingQuestionData = { type, docPath, docContent };
+    function showQuestionModal(type = 'question', docPath = '', docContent = '', selection = '') {
+      pendingQuestionData = { type, docPath, docContent, selection };
       const modal = document.getElementById('questionModal');
       const title = document.getElementById('questionModalTitle');
       const input = document.getElementById('questionInput');
 
-      if (type === 'summarize') {
+      if (selection) {
+        // 문서에서 드래그한 키워드 — 무엇이 궁금한지 먼저 묻기
+        const kw = selection.length > 24 ? selection.slice(0, 24) + '…' : selection;
+        title.textContent = `「${kw}」 — 무엇이 궁금하세요?`;
+        input.placeholder = '예: 무슨 뜻인가요? / 왜 중요한가요? (비우면 설명)';
+      } else if (type === 'summarize') {
         title.textContent = '문서 요약';
         input.placeholder = '추가로 알고 싶은 내용이 있으신가요? (선택)';
       } else {
@@ -1376,14 +1381,16 @@
       const input = document.getElementById('questionInput');
       const question = input.value.trim();
 
-      if (!question && pendingQuestionData.type === 'question') {
+      const { type, docPath, docContent, selection } = pendingQuestionData;
+
+      // 일반 문서 질문은 질문 필수. 선택(키워드) 질문은 비워도 됨(설명 기본).
+      if (!question && type === 'question' && !selection) {
         input.focus();
         return;
       }
 
       closeQuestionModal();
 
-      const { type, docPath, docContent } = pendingQuestionData;
       const docName = docPath.split('/').pop();
 
       // 채팅 화면으로 전환
@@ -1392,14 +1399,33 @@
         showView('chat');
       }
 
+      // LLM 전달용 질문 / 화면 표시용 질문 구성
+      let llmQuestion, displayQuestion;
+      if (selection) {
+        // 선택한 키워드를 현재 문서 맥락으로 질문 (서버가 해당 문서를 먼저 읽고 답변)
+        llmQuestion = question
+          ? `이 문서에서 선택한 부분 "${selection}"에 대한 질문입니다.\n\n질문: ${question}`
+          : `이 문서에서 선택한 부분 "${selection}"이(가) 어떤 의미인지, 이 문서 맥락에서 왜 중요한지 설명해 주세요.`;
+        const kw = selection.length > 20 ? selection.slice(0, 20) + '…' : selection;
+        displayQuestion = question ? `「${kw}」 ${question}` : `「${kw}」 설명`;
+        document.getElementById('chatTitleText').textContent = `「${kw}」`;
+      } else {
+        llmQuestion = question || undefined;
+        displayQuestion = question;
+        if (type === 'question' && question) {
+          document.getElementById('chatTitleText').textContent =
+            question.length > 20 ? question.slice(0, 20) : question;
+        }
+      }
+
       // 문서 카드 추가
-      appendDocumentQueryCard(docName, type, question);
+      appendDocumentQueryCard(docName, type, displayQuestion);
 
       // 로딩 표시
       const thinkingEl = appendThinking();
 
-      // API 요청
-      sendDocumentRequest(type, docPath, thinkingEl, question || undefined);
+      // API 요청 (documentPath 기반 → 서버가 해당 문서를 맥락으로 답변)
+      sendDocumentRequest(type, docPath, thinkingEl, llmQuestion);
     }
 
     function appendDocumentQueryCard(docName, type, question) {
@@ -1920,17 +1946,12 @@
     }
 
     function askAboutSelection() {
-      const selected = window.getSelection().toString().trim();
+      const selected = window.getSelection().toString().trim().slice(0, 2000);
       if (!selected) return;
       hideSelectionPopup();
-      showView('chat');
-      appendUserMsg(`선택한 텍스트에 대해 설명 중...`);
-      const thinkingEl = appendThinking();
-      const query = `다음 텍스트에 대해 설명해 주세요:\n\n"${selected}"`;
-
-      // 선택 부분은 기존 방식 (전체 문서로 처리)
-      document.getElementById('searchInput').value = query;
-      setTimeout(() => { thinkingEl.remove(); doSearch(); }, 100);
+      if (!currentPath) return;  // 문서 뷰가 아니면 무시(맥락이 될 문서가 없음)
+      // 현재 문서를 맥락으로, 선택한 키워드에 대해 무엇이 궁금한지 먼저 묻기
+      showQuestionModal('question', currentPath, currentDocContent, selected);
     }
 
     async function sendDocumentRequest(type, docPath, thinkingEl, question = null) {
