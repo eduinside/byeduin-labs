@@ -1526,7 +1526,7 @@
         const ts = parseInt(localStorage.getItem(LS_TREE_TS) || '0');
         if (Date.now() - ts < TREE_TTL) {
           const cached = localStorage.getItem(LS_TREE);
-          if (cached) { treeData = JSON.parse(cached); renderTree(); return; }
+          if (cached) { treeData = JSON.parse(cached); renderTree(); return true; }
         }
       }
 
@@ -1552,9 +1552,11 @@
         localStorage.setItem(LS_TREE_TS, String(Date.now()));
         renderTree();
         buildCatFilter(Object.keys(cats));
+        return true;
       } catch {
         document.getElementById('treePanel').innerHTML =
           '<div class="tree-empty">문서 목록을 불러오지<br>못했습니다.</div>';
+        return false;
       }
     }
 
@@ -1565,9 +1567,9 @@
       localStorage.removeItem(LS_TREE_TS);
       document.getElementById('treePanel').innerHTML = '<div class="tree-loading"></div>';
       try {
-        await loadTree(true);
+        const ok = await loadTree(true);
         await loadRecentDocs(true);
-        showToast('문서 목록을 새로고침했습니다');
+        showToast(ok ? '문서 목록을 새로고침했습니다' : '문서 목록을 불러오지 못했습니다');
       } catch {
         showToast('새로고침에 실패했습니다');
       } finally {
@@ -1672,6 +1674,7 @@
 
     function buildCatFilter(catNames) {
       const filter = document.getElementById('catFilter');
+      if (!filter) return;  // 현재 레이아웃엔 카테고리 필터 UI(#catFilter)가 없음 → null 참조 예외 방지
       catNames.forEach(name => {
         const btn = document.createElement('button');
         btn.className = 'cat-chip';
