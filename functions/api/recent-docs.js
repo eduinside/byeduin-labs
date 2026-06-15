@@ -95,6 +95,10 @@ export async function onRequest(ctx) {
         // Skip duplicates
         if (seen.has(file.filename)) continue;
 
+        // 삭제된 파일 제외 (커밋을 최신→과거 순으로 보므로, seen에 기록해
+        //  더 오래된 커밋의 수정 이력으로 다시 살아나지 않게 함)
+        if (file.status === 'removed') { seen.add(file.filename); continue; }
+
         seen.add(file.filename);
         recent.push({
           path: file.filename,
