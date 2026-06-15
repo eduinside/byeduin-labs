@@ -1614,6 +1614,15 @@
       }
     }
 
+    // 카테고리 열림 상태 영속화 (리로드·새로고침·탭 전환에도 고정)
+    const LS_OPEN_CATS = 'edu-search-open-cats';
+    function getOpenCats() {
+      const raw = localStorage.getItem(LS_OPEN_CATS);
+      if (raw === null) return null;  // 미설정 → 기본값(첫 카테고리) 사용
+      try { return new Set(JSON.parse(raw)); } catch { return new Set(); }
+    }
+    function saveOpenCats(set) { try { localStorage.setItem(LS_OPEN_CATS, JSON.stringify([...set])); } catch {} }
+
     function renderTree() {
       const panel = document.getElementById('treePanel');
       const cats  = treeData.categories;
@@ -1626,7 +1635,7 @@
 
       panel.innerHTML = names.map(cat => `
         <div class="tree-category">
-          <div class="tree-cat-header" onclick="toggleCatTree(this)">
+          <div class="tree-cat-header" data-cat="${cat}" onclick="toggleCatTree(this)">
             <span class="arrow">▶</span>
             <span>${catIcon(cat)} ${cat}</span>
             <span style="margin-left:auto;font-size:10px;opacity:.4">${cats[cat].length}</span>
@@ -1642,8 +1651,14 @@
         </div>
       `).join('');
 
-      const firstHeader = panel.querySelector('.tree-cat-header');
-      if (firstHeader) toggleCatTree(firstHeader);
+      // 저장된 열림 상태 복원 (미설정이면 첫 카테고리만 기본 오픈)
+      const open = getOpenCats() || new Set(names.length ? [names[0]] : []);
+      panel.querySelectorAll('.tree-cat-header').forEach(h => {
+        if (open.has(h.dataset.cat)) {
+          h.classList.add('open');
+          if (h.nextElementSibling) h.nextElementSibling.classList.add('open');
+        }
+      });
     }
 
     function catIcon(name) {
@@ -1654,6 +1669,11 @@
       header.classList.toggle('open');
       const files = header.nextElementSibling;
       if (files) files.classList.toggle('open');
+      // 열림 상태 영속화
+      const open = getOpenCats() || new Set();
+      if (header.classList.contains('open')) open.add(header.dataset.cat);
+      else open.delete(header.dataset.cat);
+      saveOpenCats(open);
     }
 
     /* ─────────────────────────────────────────
