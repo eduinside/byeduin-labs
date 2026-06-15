@@ -89,6 +89,9 @@ export async function onRequest(ctx) {
         // Exclude README.md
         if (file.filename.toLowerCase().endsWith('readme.md')) continue;
 
+        // Exclude pdf-to-md helper folder
+        if (file.filename.startsWith('pdf-to-md/')) continue;
+
         // Skip duplicates
         if (seen.has(file.filename)) continue;
 

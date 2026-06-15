@@ -469,6 +469,9 @@
       margin-top: 24px;
     }
     .recent-docs-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       font-size: 11px;
       font-weight: 700;
       color: var(--fg-muted);
@@ -1167,7 +1170,7 @@
         <div id="documents-tab" class="sidebar-tab-content">
           <div class="sidebar-section-label">
             <span>문서 목록</span>
-            <button class="sidebar-label-btn refresh" onclick="refreshTree(this)" title="GitHub에서 문서 목록 새로고침">↻ 새로고침</button>
+            <button class="sidebar-label-btn refresh" onclick="refreshAll(this)" title="GitHub에서 문서 목록 새로고침">↻ 새로고침</button>
           </div>
           <div id="treePanel">
             <div class="tree-loading"></div>
@@ -1205,7 +1208,10 @@
           </div>
           <!-- 최근 업데이트 문서 -->
           <div class="recent-docs-wrap" id="recentDocsWrap">
-            <div class="recent-docs-label">최근 업데이트 문서</div>
+            <div class="recent-docs-label">
+              <span>최근 업데이트 문서</span>
+              <button class="sidebar-label-btn refresh" onclick="refreshAll(this)" title="GitHub에서 새로고침" style="text-transform:none">↻ 새로고침</button>
+            </div>
             <div id="recentDocsList"><div style="padding: 12px 16px; font-size: 12px; color: var(--fg-muted); text-align: center;">로드 중...</div></div>
           </div>
         </div>
@@ -1594,14 +1600,15 @@
       }
     }
 
-    /* GitHub에서 문서 목록 강제 새로고침 (클라이언트 24h 캐시 + HTTP 캐시 우회) */
-    async function refreshTree(btn) {
+    /* GitHub에서 전체 새로고침 (문서 트리 + 최근 문서). 어느 버튼을 눌러도 동일 동작.
+       클라이언트 24h 캐시 + HTTP 캐시 우회, 실패해도 기존 목록 보존 */
+    async function refreshAll(btn) {
       if (btn) { btn.disabled = true; btn.dataset.orig = btn.textContent; btn.textContent = '새로고침 중…'; }
       // localStorage를 미리 지우지 않음 → 실패해도 기존 목록 보존(loadTree가 성공 시 갱신)
       try {
         const ok = await loadTree(true);
-        loadRecentDocs(true);  // 최근 문서도 갱신(실패해도 트리에 영향 없음)
-        showToast(ok ? '문서 목록을 새로고침했습니다' : '새로고침 실패 — 기존 목록을 유지합니다');
+        await loadRecentDocs(true);  // 최근 문서도 함께 갱신
+        showToast(ok ? '문서를 새로고침했습니다' : '새로고침 실패 — 기존 목록을 유지합니다');
       } finally {
         if (btn) { btn.disabled = false; btn.textContent = btn.dataset.orig || '↻ 새로고침'; }
       }
