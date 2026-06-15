@@ -1685,7 +1685,7 @@
         const text = await res.text();
 
         currentDocContent = text;
-        document.getElementById('docContent').innerHTML = marked.parse(text);
+        document.getElementById('docContent').innerHTML = renderMarkdown(text);
         document.getElementById('docOpenBtn').onclick = () => openMdEditor(text, path.split('/').pop());
 
         // 텍스트 선택 이벤트
@@ -1846,7 +1846,7 @@
           <button class="chat-action-btn" onclick='shareAnswer(${queryJson}, ${answerJson}, ${srcJson})'>MD Editor로 공유</button>
         </div>`;
 
-      el.querySelector('.chat-ai-body').innerHTML = marked.parse(answer);
+      el.querySelector('.chat-ai-body').innerHTML = renderMarkdown(answer);
       area.appendChild(el);
       el.scrollIntoView({ behavior: 'smooth', block: 'end' });
       return el;
@@ -2031,6 +2031,15 @@
     /* ─────────────────────────────────────────
        유틸
     ───────────────────────────────────────── */
+    /* 마크다운 렌더링 — marked가 단일 물결표(~)를 (범위 표기인데도) 취소선으로
+       오인하는 문제 방지. 단일 ~만 보호 문자로 치환해 파싱한 뒤 복원한다.
+       이중 물결표(~~…~~)는 그대로 둬서 의도된 취소선은 유지. */
+    const TILDE_SENTINEL = '@@TILDE_RANGE@@';
+    function renderMarkdown(text) {
+      const src = String(text == null ? '' : text).replace(/(?<!~)~(?!~)/g, TILDE_SENTINEL);
+      return marked.parse(src).split(TILDE_SENTINEL).join('~');
+    }
+
     function escHtml(s) {
       return String(s)
         .replace(/&/g, '&amp;')
