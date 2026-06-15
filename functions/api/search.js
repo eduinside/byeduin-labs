@@ -181,7 +181,7 @@ export async function onRequest(ctx) {
     const treeData = await treeRes.json();
     // MD 파일만, 폴더 안에 있는 파일만 (루트 레벨 readme.md 등 제외)
     let files = (treeData.tree || [])
-      .filter(f => f.type === 'blob' && f.path.endsWith('.md') && f.path.includes('/'));
+      .filter(f => f.type === 'blob' && f.path.endsWith('.md') && f.path.includes('/') && !f.path.startsWith('pdf-to-md/'));
 
     console.log('📂 [search] Total MD files found:', files.length);
 

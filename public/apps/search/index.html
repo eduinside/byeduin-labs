@@ -274,18 +274,19 @@
 
     .tree-file {
       display: flex;
-      align-items: center;
+      align-items: flex-start;   /* 멀티라인 시 아이콘을 첫 줄에 정렬 */
       gap: 6px;
       padding: 5px 14px 5px 22px;
       font-size: 12px;
+      line-height: 1.45;
       cursor: pointer;
       color: var(--fg);
       border-radius: 6px;
       margin: 1px 6px;
       transition: background 0.12s;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;       /* 줄바꿈 허용 → 전체 이름 표시 */
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .tree-file:hover { background: var(--card-bg); }
     .tree-file.active {
@@ -1564,7 +1565,7 @@
 
         const cats = {};
         (json.tree || [])
-          .filter(f => f.type === 'blob' && f.path.endsWith('.md') && f.path.includes('/') && !f.path.endsWith('README.md'))
+          .filter(f => f.type === 'blob' && f.path.endsWith('.md') && f.path.includes('/') && !f.path.endsWith('README.md') && !f.path.startsWith('pdf-to-md/'))
           .forEach(f => {
             const parts = f.path.split('/');
             const cat = parts.length > 1 ? parts[0] : '기타';
@@ -1577,11 +1578,18 @@
         localStorage.setItem(LS_TREE, JSON.stringify(treeData));
         localStorage.setItem(LS_TREE_TS, String(Date.now()));
         renderTree();
-        buildCatFilter(Object.keys(cats));
+        try { buildCatFilter(Object.keys(cats)); } catch (e) { console.warn('buildCatFilter:', e); }
         return true;
       } catch {
-        document.getElementById('treePanel').innerHTML =
-          '<div class="tree-empty">문서 목록을 불러오지<br>못했습니다.</div>';
+        // 실패 시: 기존 목록(또는 localStorage 캐시)이 있으면 유지, 없을 때만 안내
+        const cached = localStorage.getItem(LS_TREE);
+        if (!treeData && cached) { try { treeData = JSON.parse(cached); } catch {} }
+        if (treeData && Object.keys(treeData.categories || {}).length) {
+          renderTree();
+        } else {
+          document.getElementById('treePanel').innerHTML =
+            '<div class="tree-empty">문서 목록을 불러오지<br>못했습니다.</div>';
+        }
         return false;
       }
     }
@@ -1589,15 +1597,11 @@
     /* GitHub에서 문서 목록 강제 새로고침 (클라이언트 24h 캐시 + HTTP 캐시 우회) */
     async function refreshTree(btn) {
       if (btn) { btn.disabled = true; btn.dataset.orig = btn.textContent; btn.textContent = '새로고침 중…'; }
-      localStorage.removeItem(LS_TREE);
-      localStorage.removeItem(LS_TREE_TS);
-      document.getElementById('treePanel').innerHTML = '<div class="tree-loading"></div>';
+      // localStorage를 미리 지우지 않음 → 실패해도 기존 목록 보존(loadTree가 성공 시 갱신)
       try {
         const ok = await loadTree(true);
-        await loadRecentDocs(true);
-        showToast(ok ? '문서 목록을 새로고침했습니다' : '문서 목록을 불러오지 못했습니다');
-      } catch {
-        showToast('새로고침에 실패했습니다');
+        loadRecentDocs(true);  // 최근 문서도 갱신(실패해도 트리에 영향 없음)
+        showToast(ok ? '문서 목록을 새로고침했습니다' : '새로고침 실패 — 기존 목록을 유지합니다');
       } finally {
         if (btn) { btn.disabled = false; btn.textContent = btn.dataset.orig || '↻ 새로고침'; }
       }
@@ -1623,8 +1627,8 @@
           <div class="tree-files">
             ${cats[cat].map(f => `
               <div class="tree-file" data-path="${f.path}" onclick="openFile(this)" title="${f.name}">
-                <span style="font-size:11px">📄</span>
-                <span style="overflow:hidden;text-overflow:ellipsis">${f.name}</span>
+                <span style="font-size:11px;flex-shrink:0;margin-top:1px">📄</span>
+                <span style="flex:1;overflow-wrap:anywhere">${f.name}</span>
               </div>
             `).join('')}
           </div>
@@ -1636,7 +1640,7 @@
     }
 
     function catIcon(name) {
-      return { '교육법규': '⚖️', '교육과정': '📘', '실무지침': '📋', '교육청계획': '🏫' }[name] || '📁';
+      return { '교육법규': '⚖️', '교육과정': '📘', '실무지침': '📋', '업무계획': '📅' }[name] || '📁';
     }
 
     function toggleCatTree(header) {
