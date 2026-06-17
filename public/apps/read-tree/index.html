@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Read Tree — eduin VIVES</title>
+  <meta name="description" content="Oxford Reading Tree 읽기 진도를 코드 하나로 기록. 레벨별 Magic Chart로 읽은 책을 확인하고 뱃지를 모으세요. 로그인·개인정보 없이.">
+  <meta property="og:title" content="Read Tree — ORT 읽기 진도 트래커 | eduin VIVES">
+  <meta property="og:description" content="Oxford Reading Tree 읽기 진도를 코드 하나로 기록. 레벨별 Magic Chart로 읽은 책을 확인하고 뱃지를 모으세요. 로그인·개인정보 없이.">
+  <meta property="og:image" content="https://eduin.info/og-images/read-tree.png">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <link rel="stylesheet" href="/common/app-shell.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
+  <script src="/common/app-shell.js" defer></script>
+  <script src="/common/seo-injector.js" defer></script>
+  <!-- fuzzy 검색 (오프라인이면 부분일치로 자동 폴백) -->
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+
+  <style>
+    /* ===== Read Tree — 앱 전용 스타일 (색은 공용 토큰 + 레벨 액센트) ===== */
+    .app-main { padding-bottom: 6rem; }
+
+    .view { display: none; }
+    .view.active { display: block; animation: fade .18s ease; }
+    @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    .view-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 4px 0 16px; }
+    .view-head h2 { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
+    .muted { color: var(--fg-muted); font-size: 12px; }
+    .section-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+                     color: var(--fg-muted); margin: 22px 0 10px; }
+
+    /* ===== 로그인 ===== */
+    #view-login .app-header { text-align: center; margin-top: 24px; }
+    #view-login .app-badge { margin-left: auto; margin-right: auto; }
+    .login-card { padding: 18px; margin-bottom: 12px; }
+    .login-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+    .login-card .hero-input { margin-bottom: 10px; text-align: center; letter-spacing: 0.18em; font-weight: 700; }
+    .login-card .hero-btn, .login-card .hero-btn-ghost { width: 100%; }
+    .or { text-align: center; color: var(--fg-muted); font-size: 12px; margin: 6px 0 12px; }
+    .err { color: var(--danger); font-size: 12px; min-height: 16px; margin-top: 8px; text-align: center; }
+    .new-code { margin-top: 14px; text-align: center; }
+    .new-code-val { font-size: 30px; font-weight: 800; letter-spacing: 0.24em; color: var(--primary);
+                    margin-bottom: 12px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    .hint { font-size: 12px; color: var(--fg-muted); margin-top: 10px; line-height: 1.5; }
+
+    /* ===== 홈 ===== */
+    .home-top { display: flex; align-items: flex-start; justify-content: space-between; margin: 6px 0 16px; }
+    .greet { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+    .code-chip { margin-top: 6px; background: rgba(0,111,238,0.08); border: 1px solid rgba(0,111,238,0.2);
+                 color: var(--primary); border-radius: 99px; padding: 4px 12px; font-size: 13px; cursor: pointer;
+                 font-family: inherit; }
+    .code-chip b { font-family: 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 0.1em; }
+    .link-btn { background: none; border: none; color: var(--fg-muted); font-size: 13px; cursor: pointer;
+                padding: 6px 4px; font-family: inherit; text-decoration: underline; }
+
+    .stat-card { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .stat-num { font-size: 40px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+    .stat-num small { font-size: 15px; font-weight: 600; color: var(--fg-muted); margin-left: 6px; }
+    .focus-label { font-size: 13px; color: var(--fg-muted); margin-bottom: 8px; }
+    .focus-label b { color: var(--fg); }
+    .bar { height: 10px; background: var(--bg-sec); border: 1px solid var(--border); border-radius: 99px; overflow: hidden; }
+    .bar i { display: block; height: 100%; width: 0; border-radius: 99px;
+             background: var(--lv, var(--primary)); transition: width .4s ease; }
+
+    .badge-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 12px;
+             font-size: 13px; font-weight: 700; border: 1px solid var(--border); background: var(--card-bg); }
+    .badge.on { border-color: transparent; color: #fff; }
+    .badge.off { color: var(--fg-muted); opacity: .65; }
+    .badge .b-ico { font-size: 15px; }
+    .cta { width: 100%; margin-top: 22px; font-size: 15px; padding: 14px; }
+
+    /* ===== 검색 ===== */
+    #searchInput { margin-bottom: 14px; }
+    .result-list { display: flex; flex-direction: column; gap: 8px; }
+    .result { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
+              text-align: left; padding: 12px 14px; border: 1px solid var(--border); background: var(--card-bg);
+              border-radius: 12px; cursor: pointer; font-family: inherit; transition: border-color .15s; }
+    .result:hover { border-color: var(--primary); }
+    .r-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .r-title { font-size: 14px; font-weight: 600; color: var(--fg); }
+    .r-sub { font-size: 12px; color: var(--fg-muted); }
+    .r-lvdot { display: inline-block; width: 8px; height: 8px; border-radius: 99px; margin-right: 5px; vertical-align: middle; }
+    .r-check { flex: none; font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 99px;
+               border: 1px solid var(--border); color: var(--fg-muted); white-space: nowrap; }
+    .result.read .r-check { background: var(--success); border-color: var(--success); color: #fff; }
+    .result.read .r-title { color: var(--fg-muted); }
+    .search-empty { text-align: center; color: var(--fg-muted); font-size: 13px; padding: 30px 0; }
+
+    /* ===== 책장 (Magic Chart) ===== */
+    .level-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; margin: 0 -2px 6px;
+                  scrollbar-width: none; }
+    .level-tabs::-webkit-scrollbar { display: none; }
+    .lv-tab { flex: none; min-width: 44px; height: 38px; border-radius: 11px; border: 2px solid var(--border);
+              background: var(--card-bg); color: var(--fg-muted); font-weight: 800; font-size: 14px; cursor: pointer;
+              font-family: inherit; transition: transform .1s; }
+    .lv-tab:active { transform: scale(.95); }
+    .lv-tab.active { color: #fff; border-color: transparent; }
+
+    .series-card { border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 12px;
+                   background: var(--card-bg); }
+    .series-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .series-name { font-size: 14px; font-weight: 700; }
+    .series-count { font-size: 12px; font-weight: 700; color: var(--fg-muted); }
+    .series-bar { height: 6px; background: var(--bg-sec); border-radius: 99px; overflow: hidden; margin-bottom: 12px; }
+    .series-bar i { display: block; height: 100%; width: 0; background: var(--lv); border-radius: 99px; transition: width .3s; }
+
+    .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+    .book-cell { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 6px 4px 4px;
+                 border: none; background: none; cursor: pointer; font-family: inherit; border-radius: 10px;
+                 transition: background .15s; }
+    .book-cell:hover { background: var(--bg-sec); }
+    .cell-sq { position: relative; width: 100%; aspect-ratio: 1 / 1; max-width: 66px; border-radius: 12px;
+               border: 2px solid var(--border); display: flex; align-items: center; justify-content: center;
+               font-weight: 800; font-size: 16px; color: var(--fg-muted); background: var(--bg); transition: all .15s; }
+    .book-cell.read .cell-sq { background: var(--lv); border-color: var(--lv); color: #fff; }
+    .book-cell.read .cell-n { display: none; }
+    .book-cell.read .cell-sq::after { content: '✓'; font-size: 22px; }
+    .cell-t { font-size: 11px; line-height: 1.3; color: var(--fg-muted); text-align: center;
+              display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+              max-height: 2.6em; word-break: break-word; }
+    .book-cell.read .cell-t { color: var(--fg); }
+
+    /* ===== 하단 탭바 ===== */
+    .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 8000;
+              border-top: 1px solid var(--border); background: color-mix(in srgb, var(--bg) 88%, transparent);
+              backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+              padding-bottom: env(safe-area-inset-bottom, 0); }
+    .tabbar-inner { max-width: var(--app-w-narrow); margin: 0 auto; display: flex; }
+    .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 0 8px;
+           background: none; border: none; cursor: pointer; font-family: inherit; font-size: 11px; font-weight: 600;
+           color: var(--fg-muted); transition: color .15s; }
+    .tab .ti { font-size: 19px; line-height: 1; }
+    .tab.active { color: var(--primary); }
+
+    .loading { text-align: center; color: var(--fg-muted); padding: 40px 0; font-size: 14px; }
+  </style>
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Read Tree — ORT 읽기 진도 트래커 | eduin VIVES">
+  <meta name="twitter:description" content="Oxford Reading Tree 읽기 진도를 코드 하나로 기록. 레벨별 Magic Chart로 읽은 책을 확인하고 뱃지를 모으세요. 로그인·개인정보 없이.">
+  <meta name="twitter:image" content="https://eduin.info/og-images/read-tree.png">
+  <link rel="canonical" href="https://eduin.info/apps/read-tree/">
+  <meta property="og:url" content="https://eduin.info/apps/read-tree/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Read Tree","description":"Oxford Reading Tree 읽기 진도를 코드 하나로 기록. 레벨별 Magic Chart로 읽은 책을 확인하고 뱃지를 모으세요. 로그인·개인정보 없이.","url":"https://eduin.info/apps/read-tree/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+</head>
+<body data-shell="column" data-width="narrow">
+  <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입 -->
+  <main class="app-main">
+
+    <!-- ===== 로그인 ===== -->
+    <section id="view-login" class="view active">
+      <div class="app-header">
+        <div class="app-badge">◆ 학습지원</div>
+        <h1 class="app-title">🌳 Read <span>Tree</span></h1>
+        <p class="app-desc">ORT 읽기 진도를 코드 하나로.<br>로그인도, 개인정보도 없이.</p>
+      </div>
+
+      <div class="hero-card login-card">
+        <div class="login-title">코드가 있어요</div>
+        <input id="codeInput" class="hero-input" placeholder="예: RT48K2" maxlength="6"
+               autocomplete="off" autocapitalize="characters" inputmode="text">
+        <button class="hero-btn" id="loginBtn">시작</button>
+        <div id="loginErr" class="err"></div>
+      </div>
+
+      <div class="or">또는</div>
+
+      <div class="hero-card login-card">
+        <div class="login-title">새 코드 받기</div>
+        <button class="hero-btn hero-btn-ghost" id="genBtn">코드 생성</button>
+        <div id="newCodeBox" class="new-code" hidden>
+          <div class="new-code-val" id="newCodeVal">------</div>
+          <button class="hero-btn" id="useCodeBtn">이 코드로 시작</button>
+          <div class="hint">이 코드를 꼭 적어 두세요.<br>같은 코드를 입력하면 어느 기기에서든 이어집니다.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 홈 ===== -->
+    <section id="view-home" class="view">
+      <div class="home-top">
+        <div>
+          <div class="greet">안녕하세요 👋</div>
+          <button class="code-chip" id="codeChip" title="코드 복사">코드: <b id="homeCode">------</b></button>
+        </div>
+        <button class="link-btn" id="logoutBtn">로그아웃</button>
+      </div>
+
+      <div class="hero-card stat-card">
+        <div class="stat-num"><span id="readCount">0</span><small>권 읽음 · 전체 <span id="totalCount">0</span>권</small></div>
+        <div>
+          <div class="focus-label">집중 레벨 <b id="focusLevel">–</b> · <span id="focusProg">0/0</span></div>
+          <div class="bar"><i id="focusBar"></i></div>
+        </div>
+      </div>
+
+      <div class="section-label">🏅 뱃지</div>
+      <div id="badgeRow" class="badge-row"></div>
+
+      <button class="hero-btn cta" id="goSearch">＋ 읽은 책 추가</button>
+    </section>
+
+    <!-- ===== 검색 ===== -->
+    <section id="view-search" class="view">
+      <div class="view-head"><h2>🔍 읽은 책 추가</h2></div>
+      <input id="searchInput" class="hero-input" placeholder="책 이름 검색 (예: Water Fight)"
+             autocomplete="off" autocapitalize="off">
+      <div id="searchResults" class="result-list"></div>
+    </section>
+
+    <!-- ===== 책장 ===== -->
+    <section id="view-shelf" class="view">
+      <div class="view-head"><h2>📚 책장</h2><span id="shelfHint" class="muted"></span></div>
+      <div id="levelTabs" class="level-tabs"></div>
+      <div id="shelfBody" class="shelf-body"><div class="loading">불러오는 중…</div></div>
+    </section>
+
+  </main>
+
+  <!-- ===== 하단 탭바 ===== -->
+  <nav class="tabbar" id="tabbar" hidden>
+    <div class="tabbar-inner">
+      <button class="tab" data-view="home"><span class="ti">🏠</span>홈</button>
+      <button class="tab" data-view="search"><span class="ti">🔍</span>검색</button>
+      <button class="tab" data-view="shelf"><span class="ti">📚</span>책장</button>
+    </div>
+  </nav>
+
+  <script>
+  (function () {
+    'use strict';
+
+    /* ───────── 상수 ───────── */
+    const LEVELS = ['1+', '2', '3', '4', '5', '6', '7', '8', '9'];
+    const LEVEL_COLORS = {
+      '1+': '#ec6aa6', '2': '#e3424d', '3': '#dca100', '4': '#3a8fd0', '5': '#34a85a',
+      '6': '#ec7c2a', '7': '#1fab9b', '8': '#8257c4', '9': '#b8860b'
+    };
+    // ORT Magic Chart 시리즈 진행 순서
+    const SERIES_ORDER = [
+      'First Sentences', 'More First Sentences A', 'More First Sentences B', 'More First Sentences C',
+      'Stories', 'More Stories A', 'More Stories B', 'More Stories C',
+      'Patterned Stories', 'More Patterned Stories',
+      'Decode and Develop', 'More A Decode and Develop',
+      "Floppy's Fiction", "Floppy's Fiction A"
+    ];
+    const MILESTONES = [10, 25, 50, 100];
+    const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 혼동문자 0/O/1/I 제외
+    const CODE_LEN = 6;
+
+    /* ───────── 저장소 추상화 (Phase 1: localStorage / Phase 2: /api/readtree) ───────── */
+    const LocalStore = {
+      _code: null,
+      _reads: {},
+      _load() {
+        try { this._reads = JSON.parse(localStorage.getItem('readtree:reads:' + this._code) || '{}') || {}; }
+        catch { this._reads = {}; }
+      },
+      _save() {
+        try { localStorage.setItem('readtree:reads:' + this._code, JSON.stringify(this._reads)); } catch {}
+      },
+      getCode() { return this._code || localStorage.getItem('readtree:code') || null; },
+      setCode(code) { this._code = code; try { localStorage.setItem('readtree:code', code); } catch {} this._load(); },
+      clearCode() { try { localStorage.removeItem('readtree:code'); } catch {} this._code = null; this._reads = {}; },
+      getReads() { return this._reads; },
+      isRead(id) { return !!this._reads[id]; },
+      toggle(id) {
+        if (this._reads[id]) { delete this._reads[id]; } else { this._reads[id] = today(); }
+        this._save();
+        return !!this._reads[id];
+      }
+    };
+    const Store = LocalStore;
+
+    /* ───────── 서버 동기화 (Phase 2: byeduin 전용 D1 /api/readtree) ─────────
+       로컬(localStorage)이 항상 우선. 로그인 시 pull(서버→로컬 머지·로컬→서버 보충),
+       토글 시 push(단건 PUT/DELETE). 오프라인/엔드포인트 없으면 자동 무시(로컬만 동작). */
+    const API_URL = '/api/readtree';
+    const Sync = {
+      on: true,
+      async pull(code) {
+        if (!this.on || !code) return false;
+        let server;
+        try {
+          const r = await fetch(API_URL + '?code=' + encodeURIComponent(code), { cache: 'no-store' });
+          if (!r.ok) return false;
+          server = (await r.json()).reads || {};
+        } catch { return false; }
+        const local = Store.getReads();
+        let changed = false;
+        for (const id in server) {
+          if (!local[id] || server[id] > local[id]) { local[id] = server[id]; changed = true; }
+        }
+        if (changed) Store._save();
+        // 로컬에만 있거나 더 최신인 항목 → 서버로 보충
+        for (const id in local) {
+          if (!(id in server) || local[id] > server[id]) this.push(code, id, true, local[id]);
+        }
+        return changed;
+      },
+      push(code, bookId, isRead, readAt) {
+        if (!this.on || !code) return;
+        fetch(API_URL, {
+          method: isRead ? 'PUT' : 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, bookId, readAt }),
+        }).catch(() => { /* 오프라인: 로컬 유지, 다음 로그인 동기화 때 재시도 */ });
+      }
+    };
+
+    function today() {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, '0');
+      return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    }
+    function genCode() {
+      let out = '';
+      const rnd = (window.crypto && crypto.getRandomValues)
+        ? crypto.getRandomValues(new Uint32Array(CODE_LEN))
+        : Array.from({ length: CODE_LEN }, () => Math.floor(Math.random() * 4294967296));
+      for (let i = 0; i < CODE_LEN; i++) out += CODE_ALPHABET[rnd[i] % CODE_ALPHABET.length];
+      return out;
+    }
+
+    /* ───────── 데이터 ───────── */
+    let BOOKS = [];
+    let GROUPED = {};         // { level: { series: [books] } }
+    let SERIES_KEYS = {};     // { level: [series, ...] }
+    let fuse = null;
+    let activeLevel = '1+';
+
+    function groupData() {
+      GROUPED = {}; SERIES_KEYS = {};
+      LEVELS.forEach(l => { GROUPED[l] = {}; });
+      BOOKS.forEach(b => {
+        if (!GROUPED[b.level]) GROUPED[b.level] = {};
+        (GROUPED[b.level][b.series] = GROUPED[b.level][b.series] || []).push(b);
+      });
+      LEVELS.forEach(l => {
+        Object.values(GROUPED[l]).forEach(arr => arr.sort((a, c) => a.id.localeCompare(c.id)));
+        SERIES_KEYS[l] = Object.keys(GROUPED[l]).sort((a, c) => {
+          const ia = SERIES_ORDER.indexOf(a), ic = SERIES_ORDER.indexOf(c);
+          return (ia < 0 ? 99 : ia) - (ic < 0 ? 99 : ic) || a.localeCompare(c);
+        });
+      });
+    }
+    function buildFuse() {
+      if (window.Fuse) fuse = new Fuse(BOOKS, { keys: [{ name: 'title', weight: 0.8 }, { name: 'series', weight: 0.2 }], threshold: 0.3, ignoreLocation: true, minMatchCharLength: 2 });
+    }
+    function searchBooks(q) {
+      q = q.trim();
+      if (!q) return [];
+      if (fuse) return fuse.search(q).slice(0, 50).map(r => r.item);
+      const lq = q.toLowerCase();
+      return BOOKS.filter(b => b.title.toLowerCase().includes(lq) || b.series.toLowerCase().includes(lq)).slice(0, 50);
+    }
+
+    function readCount() { return Object.keys(Store.getReads()).length; }
+    function levelTotal(l) { return (BOOKS.filter(b => b.level === l)).length; }
+    function levelRead(l) { return BOOKS.filter(b => b.level === l && Store.isRead(b.id)).length; }
+
+    /* ───────── 렌더링 ───────── */
+    const $ = (s, r) => (r || document).querySelector(s);
+    const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+
+    function renderHome() {
+      $('#homeCode').textContent = Store.getCode() || '------';
+      $('#readCount').textContent = readCount();
+      $('#totalCount').textContent = BOOKS.length;
+
+      // 집중 레벨 = 아직 다 못 읽은 가장 낮은 레벨 (전부 완독이면 마지막 레벨)
+      let focus = LEVELS.find(l => levelRead(l) < levelTotal(l)) || LEVELS[LEVELS.length - 1];
+      const fr = levelRead(focus), ft = levelTotal(focus) || 1;
+      $('#focusLevel').textContent = focus;
+      $('#focusProg').textContent = fr + '/' + ft;
+      const bar = $('#focusBar');
+      bar.style.setProperty('--lv', LEVEL_COLORS[focus]);
+      bar.parentElement.style.setProperty('--lv', LEVEL_COLORS[focus]);
+      bar.style.width = Math.round((fr / ft) * 100) + '%';
+
+      renderBadges();
+    }
+
+    function renderBadges() {
+      const row = $('#badgeRow'); row.innerHTML = '';
+      const total = readCount();
+      // 레벨 완독 뱃지
+      LEVELS.forEach(l => {
+        const done = levelTotal(l) > 0 && levelRead(l) === levelTotal(l);
+        const b = el('span', 'badge ' + (done ? 'on' : 'off'), '<span class="b-ico">' + (done ? '🏅' : '🔒') + '</span>Lv ' + l);
+        if (done) b.style.background = LEVEL_COLORS[l];
+        row.appendChild(b);
+      });
+      // 마일스톤 뱃지
+      MILESTONES.forEach(m => {
+        const done = total >= m;
+        const b = el('span', 'badge ' + (done ? 'on' : 'off'), '<span class="b-ico">' + (done ? '⭐' : '☆') + '</span>' + m + '권');
+        if (done) b.style.background = 'var(--primary)';
+        row.appendChild(b);
+      });
+    }
+
+    function renderSearch() {
+      const q = $('#searchInput').value;
+      const box = $('#searchResults');
+      box.innerHTML = '';
+      if (!q.trim()) { box.innerHTML = '<div class="search-empty">읽은 책 이름을 검색해 체크하세요.</div>'; return; }
+      const res = searchBooks(q);
+      if (!res.length) { box.innerHTML = '<div class="search-empty">검색 결과가 없어요.</div>'; return; }
+      res.forEach(b => {
+        const read = Store.isRead(b.id);
+        const r = el('button', 'result' + (read ? ' read' : ''));
+        r.dataset.id = b.id;
+        r.setAttribute('aria-pressed', String(read));
+        r.innerHTML =
+          '<span class="r-main"><span class="r-title">' + esc(b.title) + '</span>' +
+          '<span class="r-sub"><span class="r-lvdot" style="background:' + LEVEL_COLORS[b.level] + '"></span>Lv ' +
+          esc(b.level) + ' · ' + esc(b.series) + '</span></span>' +
+          '<span class="r-check">' + (read ? '읽음 ✓' : '읽었어요') + '</span>';
+        r.addEventListener('click', () => { toggleRead(b.id); });
+        box.appendChild(r);
+      });
+    }
+
+    function renderLevelTabs() {
+      const tabs = $('#levelTabs'); tabs.innerHTML = '';
+      LEVELS.forEach(l => {
+        const t = el('button', 'lv-tab' + (l === activeLevel ? ' active' : ''), l);
+        if (l === activeLevel) t.style.background = LEVEL_COLORS[l];
+        t.addEventListener('click', () => { activeLevel = l; renderLevelTabs(); renderShelf(); });
+        tabs.appendChild(t);
+      });
+    }
+
+    function renderShelf() {
+      const body = $('#shelfBody');
+      body.style.setProperty('--lv', LEVEL_COLORS[activeLevel]);
+      body.innerHTML = '';
+      $('#shelfHint').textContent = 'Lv ' + activeLevel + ' · ' + levelRead(activeLevel) + '/' + levelTotal(activeLevel) + '권';
+      (SERIES_KEYS[activeLevel] || []).forEach(series => {
+        const books = GROUPED[activeLevel][series];
+        const card = el('div', 'series-card');
+        card.dataset.key = activeLevel + '|' + series;
+        const readN = books.filter(b => Store.isRead(b.id)).length;
+        card.innerHTML =
+          '<div class="series-head"><span class="series-name">' + esc(series) + '</span>' +
+          '<span class="series-count">' + readN + '/' + books.length + '</span></div>' +
+          '<div class="series-bar"><i style="width:' + Math.round(readN / books.length * 100) + '%"></i></div>';
+        const grid = el('div', 'book-grid');
+        books.forEach((b, i) => {
+          const read = Store.isRead(b.id);
+          const cell = el('button', 'book-cell' + (read ? ' read' : ''));
+          cell.dataset.id = b.id;
+          cell.setAttribute('aria-pressed', String(read));
+          cell.title = b.title;
+          cell.innerHTML = '<span class="cell-sq"><span class="cell-n">' + (i + 1) + '</span></span>' +
+                           '<span class="cell-t">' + esc(b.title) + '</span>';
+          cell.addEventListener('click', () => { toggleRead(b.id); });
+          grid.appendChild(cell);
+        });
+        card.appendChild(grid);
+        body.appendChild(card);
+      });
+    }
+
+    /* ───────── 읽음 토글 (모든 표시 위치 동기화) ───────── */
+    function toggleRead(id) {
+      const now = Store.toggle(id);
+      const book = BOOKS.find(b => b.id === id);
+      // 셀/결과 동기화
+      document.querySelectorAll('[data-id="' + cssEsc(id) + '"]').forEach(node => {
+        node.classList.toggle('read', now);
+        if (node.hasAttribute('aria-pressed')) node.setAttribute('aria-pressed', String(now));
+        const chk = node.querySelector('.r-check');
+        if (chk) chk.textContent = now ? '읽음 ✓' : '읽었어요';
+      });
+      // 해당 시리즈 카드 진행도 갱신
+      if (book) {
+        const card = document.querySelector('.series-card[data-key="' + cssEsc(book.level + '|' + book.series) + '"]');
+        if (card) {
+          const books = GROUPED[book.level][book.series];
+          const rn = books.filter(b => Store.isRead(b.id)).length;
+          card.querySelector('.series-count').textContent = rn + '/' + books.length;
+          card.querySelector('.series-bar i').style.width = Math.round(rn / books.length * 100) + '%';
+        }
+        if (book.level === activeLevel)
+          $('#shelfHint').textContent = 'Lv ' + activeLevel + ' · ' + levelRead(activeLevel) + '/' + levelTotal(activeLevel) + '권';
+      }
+      renderHome(); // 통계·뱃지 즉시 반영
+      Sync.push(Store.getCode(), id, now, Store.getReads()[id]); // 서버 동기화(베스트에포트)
+    }
+
+    /* ───────── 라우팅 ───────── */
+    function show(view) {
+      document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+      if (view === 'home') renderHome();
+      if (view === 'search') renderSearch();
+      if (view === 'shelf') { renderLevelTabs(); renderShelf(); }
+      window.scrollTo(0, 0);
+    }
+    function enterApp() {
+      $('#tabbar').hidden = false;
+      renderHome();
+      show('home');
+      Sync.pull(Store.getCode()).then((changed) => { if (changed) refreshAfterSync(); });
+    }
+    function refreshAfterSync() {
+      renderHome();
+      if (document.querySelector('#view-shelf.active')) { renderLevelTabs(); renderShelf(); }
+      if (document.querySelector('#view-search.active')) renderSearch();
+    }
+
+    /* ───────── 이벤트 ───────── */
+    function login(code) {
+      code = (code || '').toUpperCase().replace(/\s/g, '');
+      const err = $('#loginErr');
+      if (!/^[A-Z0-9]{6}$/.test(code)) { err.textContent = '6자리 코드를 입력해 주세요 (영문·숫자).'; return; }
+      err.textContent = '';
+      Store.setCode(code);
+      enterApp();
+    }
+
+    function wire() {
+      $('#loginBtn').addEventListener('click', () => login($('#codeInput').value));
+      $('#codeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') login($('#codeInput').value); });
+      $('#genBtn').addEventListener('click', () => {
+        const c = genCode();
+        $('#newCodeVal').textContent = c;
+        $('#newCodeBox').hidden = false;
+        $('#useCodeBtn').onclick = () => login(c);
+      });
+      $('#logoutBtn').addEventListener('click', () => {
+        Store.clearCode();
+        $('#tabbar').hidden = true;
+        $('#codeInput').value = '';
+        $('#newCodeBox').hidden = true;
+        show('login');
+      });
+      $('#goSearch').addEventListener('click', () => { show('search'); $('#searchInput').focus(); });
+      $('#searchInput').addEventListener('input', renderSearch);
+      $('#codeChip').addEventListener('click', () => {
+        const c = Store.getCode(); if (!c) return;
+        if (navigator.clipboard) navigator.clipboard.writeText(c).catch(() => {});
+        const chip = $('#codeChip'); const old = chip.innerHTML;
+        chip.innerHTML = '복사됨 ✓';
+        setTimeout(() => { chip.innerHTML = old; }, 1200);
+      });
+      document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => show(t.dataset.view)));
+    }
+
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function cssEsc(s) { return (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/["\\]/g, '\\$&'); }
+
+    /* ───────── 부트 ───────── */
+    async function boot() {
+      wire();
+      try {
+        const res = await fetch('./booklist.json', { cache: 'no-cache' });
+        const data = await res.json();
+        BOOKS = (data.books || []).filter(b => b && b.id && b.title && b.level);
+      } catch (e) {
+        $('#shelfBody').innerHTML = '<div class="loading">도서 데이터를 불러오지 못했어요.</div>';
+        BOOKS = [];
+      }
+      groupData();
+      buildFuse();
+      if (Store.getCode()) { Store.setCode(Store.getCode()); enterApp(); }
+      else { show('login'); }
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
+  })();
+  </script>
+</body>
+</html>
