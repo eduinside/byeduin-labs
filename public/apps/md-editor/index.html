@@ -780,6 +780,70 @@
     return marked.parse(src).split(TILDE_SENTINEL).join('~');
   }
 
+  // 변환된 마크다운 표의 머리글 행이 통째로 비어 있을 때(변환 과정에서 제목 줄이 본문으로 밀린 경우)
+  // 첫 본문 행을 머리글로 끌어올린다. 라이브 편집을 방해하지 않도록 파일/변환 로드 시에만 호출.
+  function normalizeTableHeaders(md) {
+    if (!md || md.indexOf('|') === -1) return md;
+
+    const splitCells = (line) => {
+      let s = line.trim();
+      if (s.startsWith('|')) s = s.slice(1);
+      if (s.endsWith('|')) s = s.slice(0, -1);
+      return s.split('|').map(c => c.trim());
+    };
+    const isRow = (line) => line != null && line.indexOf('|') !== -1;
+    const isSeparator = (line) => {
+      if (!isRow(line)) return false;
+      const cells = splitCells(line);
+      return cells.length > 0 && cells.every(c => /^:?-{1,}:?$/.test(c));
+    };
+
+    const lines = md.split('\n');
+    const out = [];
+    let fence = null;  // 코드펜스 마커(``` 또는 ~~~) 안에서는 표 처리를 건너뜀
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const fenceM = line.trim().match(/^(`{3,}|~{3,})/);
+      if (fenceM) {
+        if (!fence) fence = fenceM[1][0];
+        else if (fenceM[1][0] === fence) fence = null;
+        out.push(line);
+        continue;
+      }
+      if (fence) { out.push(line); continue; }
+
+      // 표 시작 패턴: 현재 줄=행, 다음 줄=구분선
+      if (isRow(line) && !isSeparator(line) && isSeparator(lines[i + 1])) {
+        const sep = lines[i + 1];
+        const body = [];
+        let j = i + 2;
+        while (j < lines.length && isRow(lines[j]) && !isSeparator(lines[j])) {
+          body.push(lines[j]);
+          j++;
+        }
+        const headerCells = splitCells(line);
+        const headerEmpty = headerCells.length > 0 && headerCells.every(c => c === '');
+        const firstBodyHasText = body.length > 0 && splitCells(body[0]).some(c => c !== '');
+
+        if (headerEmpty && firstBodyHasText) {
+          out.push(body[0]);                 // 첫 본문 행 → 머리글로 승격
+          out.push(sep);
+          for (let k = 1; k < body.length; k++) out.push(body[k]);
+        } else {
+          out.push(line);
+          out.push(sep);
+          for (const b of body) out.push(b);
+        }
+        i = j - 1;
+        continue;
+      }
+
+      out.push(line);
+    }
+    return out.join('\n');
+  }
+
   function renderPreview() {
     document.getElementById('preview').innerHTML = renderMarkdown(mdContent);
   }
@@ -792,7 +856,7 @@
     document.getElementById('filenameInput').value = file.name;
     const reader = new FileReader();
     reader.onload = (e) => {
-      mdContent = e.target.result;
+      mdContent = normalizeTableHeaders(e.target.result);
       document.getElementById('editor').value = mdContent;
       renderPreview();
       showToast('✓ 파일이 로드되었습니다.');
@@ -863,7 +927,7 @@
       }
 
       // 성공: mdContent 업데이트
-      mdContent = result.markdown;
+      mdContent = normalizeTableHeaders(result.markdown);
       currentFilename = filename.replace(/\.(html|htm)$/i, '.md');
       document.getElementById('filenameInput').value = currentFilename;
       document.getElementById('editor').value = mdContent;
@@ -941,7 +1005,7 @@
         throw new Error('변환 결과가 없습니다 — 파일 내용을 확인해주세요.');
       }
 
-      mdContent = data.markdown;
+      mdContent = normalizeTableHeaders(data.markdown);
       currentFilename = file.name.replace(/\.[^.]+$/, '') + '.md';
       document.getElementById('filenameInput').value = currentFilename;
       editor.value = mdContent;
@@ -1035,7 +1099,7 @@
         toast = '✓ HTML → 마크다운으로 변환했습니다.';
       }
       if (md === null) { input.value = ''; return; }
-      mdContent = md;
+      mdContent = normalizeTableHeaders(md);
       currentFilename = file.name.replace(/\.[^.]+$/, '.md');
       document.getElementById('filenameInput').value = currentFilename;
       document.getElementById('editor').value = mdContent;
