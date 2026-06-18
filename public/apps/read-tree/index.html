@@ -62,14 +62,16 @@
 
     /* ===== 책장 툴바 (레벨 칩 + 검색) — blocks-universe toolbar 패턴 ===== */
     .toolbar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
-    .level-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .level-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; cursor: grab; }
+    .level-chips::-webkit-scrollbar { display: none; }
+    .level-chips.dragging { cursor: grabbing; }
     .lv-chip { flex: 0 0 auto; padding: 6px 11px; border-radius: 10px; border: 2px solid var(--border);
                background: var(--card-bg); color: var(--fg-muted); font-weight: 800; font-size: 13px; cursor: pointer;
-               font-family: inherit; transition: transform .1s; }
+               font-family: inherit; transition: transform .1s; user-select: none; }
     .lv-chip:active { transform: scale(.95); }
     .lv-chip.active { color: #fff; border-color: transparent; background: var(--lv); }
-    .toolbar-row { display: flex; align-items: flex-start; gap: 8px; }
-    .toolbar-row .level-chips { flex: 1; }
+    .toolbar-row { display: flex; align-items: center; gap: 8px; }
+    .toolbar-row .level-chips { flex: 1; min-width: 0; }
     .icon-btn { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
                 border: 1px solid var(--border); background: var(--card-bg); border-radius: 10px; font-size: 17px; cursor: pointer; color: var(--fg); font-family: inherit; }
     .icon-btn:hover { border-color: var(--primary); color: var(--primary); }
@@ -383,7 +385,7 @@
       const wrap = $('#levelChips'); wrap.innerHTML = '';
       LEVELS.forEach(l => {
         const active = !q && l === activeLevel;
-        const t = el('button', 'lv-chip' + (active ? ' active' : ''), 'Lv ' + l);
+        const t = el('button', 'lv-chip' + (active ? ' active' : ''), l);
         t.style.setProperty('--lv', LEVEL_COLORS[l]);
         t.addEventListener('click', () => { $('#searchInput').value = ''; $('#searchBox').hidden = true; activeLevel = l; render(); });
         wrap.appendChild(t);
@@ -518,6 +520,19 @@
       });
       $('#searchInput').addEventListener('input', render);
       $('#searchToggle').addEventListener('click', () => { $('#searchBox').hidden = false; $('#searchInput').focus(); });
+      // 레벨 칩 마우스 드래그 스크롤
+      (function() {
+        const nav = $('#levelChips');
+        let ox = 0, sl = 0, active = false, drag = false;
+        nav.addEventListener('mousedown', e => { active = true; ox = e.pageX; sl = nav.scrollLeft; drag = false; });
+        window.addEventListener('mouseup', () => { active = false; nav.classList.remove('dragging'); });
+        window.addEventListener('mousemove', e => {
+          if (!active) return;
+          const dx = e.pageX - ox;
+          if (Math.abs(dx) > 4) { drag = true; nav.classList.add('dragging'); nav.scrollLeft = sl - dx; }
+        });
+        nav.addEventListener('click', e => { if (drag) { e.stopPropagation(); drag = false; } }, true);
+      })();
       $('#searchClose').addEventListener('click', () => { $('#searchInput').value = ''; $('#searchBox').hidden = true; render(); });
       $('#badgeToggle').addEventListener('click', () => {
         const row = $('#badgeRow'); const open = row.hidden;
