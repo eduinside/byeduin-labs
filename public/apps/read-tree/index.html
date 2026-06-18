@@ -69,7 +69,18 @@
                font-family: inherit; transition: transform .1s; }
     .lv-chip:active { transform: scale(.95); }
     .lv-chip.active { color: #fff; border-color: transparent; background: var(--lv); }
-    .search-box input { width: 100%; padding: 11px 14px; border: 1px solid var(--border); border-radius: 11px;
+    .toolbar-row { display: flex; align-items: center; gap: 8px; }
+    .toolbar-row .level-chips { flex: 1; min-width: 0; }
+    .icon-btn { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+                border: 1px solid var(--border); background: var(--card-bg); border-radius: 10px; font-size: 17px; cursor: pointer; color: var(--fg); font-family: inherit; }
+    .icon-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .reveal-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; background: var(--bg-sec);
+                  border: 1px solid var(--border); border-radius: 99px; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 700; color: var(--fg); cursor: pointer; }
+    .reveal-btn .reveal-meta { color: var(--fg-muted); font-weight: 600; }
+    .reveal-btn .caret { color: var(--fg-muted); transition: transform .15s; }
+    .reveal-btn[aria-expanded="true"] .caret { transform: rotate(180deg); }
+    .search-box { display: flex; gap: 8px; align-items: center; }
+    .search-box input { flex: 1; min-width: 0; padding: 11px 14px; border: 1px solid var(--border); border-radius: 11px;
                         background: var(--input-bg); color: var(--fg); font: inherit; font-size: 16px; }
     .search-box input:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
     .result-info { font-size: 12px; color: var(--fg-muted); margin: 2px 0 12px; }
@@ -169,14 +180,19 @@
           <div class="prog-label">읽은 책 <span class="count" id="readCount">0</span> / <span id="totalCount">0</span>권 · 집중 레벨 <b id="focusLevel">–</b> (<span id="focusProg">0/0</span>)</div>
           <div class="bar"><i id="focusBar"></i></div>
         </div>
-        <div class="badge-row" id="badgeRow"></div>
+        <button class="reveal-btn" id="badgeToggle" aria-expanded="false">🏅 뱃지 <span class="reveal-meta" id="badgeCount"></span> <span class="caret">▾</span></button>
+        <div class="badge-row" id="badgeRow" hidden></div>
       </div>
 
       <!-- 책장 툴바: 레벨 칩 + 검색 -->
       <div class="toolbar">
-        <nav class="level-chips" id="levelChips" aria-label="레벨 선택"></nav>
-        <div class="search-box">
+        <div class="toolbar-row">
+          <nav class="level-chips" id="levelChips" aria-label="레벨 선택"></nav>
+          <button class="icon-btn" id="searchToggle" title="검색" aria-label="검색 열기">🔍</button>
+        </div>
+        <div class="search-box" id="searchBox" hidden>
           <input id="searchInput" type="search" placeholder="책 이름으로 검색 (예: Magic Key)" autocomplete="off" autocapitalize="off">
+          <button class="icon-btn" id="searchClose" title="검색 닫기" aria-label="검색 닫기">✕</button>
         </div>
       </div>
 
@@ -342,18 +358,22 @@
     function renderBadges() {
       const row = $('#badgeRow'); row.innerHTML = '';
       const total = readCount();
+      let earned = 0;
       LEVELS.forEach(l => {
         const done = levelTotal(l) > 0 && levelRead(l) === levelTotal(l);
+        if (done) earned++;
         const b = el('span', 'badge ' + (done ? 'on' : 'off'), (done ? '🏅' : '🔒') + ' Lv ' + l);
         if (done) b.style.background = LEVEL_COLORS[l];
         row.appendChild(b);
       });
       MILESTONES.forEach(m => {
         const done = total >= m;
+        if (done) earned++;
         const b = el('span', 'badge ' + (done ? 'on' : 'off'), (done ? '⭐' : '☆') + ' ' + m + '권');
         if (done) b.style.background = 'var(--primary)';
         row.appendChild(b);
       });
+      const bc = $('#badgeCount'); if (bc) bc.textContent = earned + '/' + (LEVELS.length + MILESTONES.length);
     }
 
     /* ───────── 레벨 칩 ───────── */
@@ -364,7 +384,7 @@
         const active = !q && l === activeLevel;
         const t = el('button', 'lv-chip' + (active ? ' active' : ''), 'Lv ' + l);
         t.style.setProperty('--lv', LEVEL_COLORS[l]);
-        t.addEventListener('click', () => { $('#searchInput').value = ''; activeLevel = l; render(); });
+        t.addEventListener('click', () => { $('#searchInput').value = ''; $('#searchBox').hidden = true; activeLevel = l; render(); });
         wrap.appendChild(t);
       });
     }
@@ -460,6 +480,10 @@
     function enterApp() {
       $('#loginView').hidden = true;
       $('#appView').hidden = false;
+      $('#badgeRow').hidden = true;
+      $('#badgeToggle').setAttribute('aria-expanded', 'false');
+      $('#searchBox').hidden = true;
+      $('#searchInput').value = '';
       renderSummary();
       render();
       Sync.pull(Store.getCode()).then((changed) => { if (changed) { renderSummary(); render(); } });
@@ -492,6 +516,13 @@
         $('#searchInput').value = '';
       });
       $('#searchInput').addEventListener('input', render);
+      $('#searchToggle').addEventListener('click', () => { $('#searchBox').hidden = false; $('#searchInput').focus(); });
+      $('#searchClose').addEventListener('click', () => { $('#searchInput').value = ''; $('#searchBox').hidden = true; render(); });
+      $('#badgeToggle').addEventListener('click', () => {
+        const row = $('#badgeRow'); const open = row.hidden;
+        row.hidden = !open;
+        $('#badgeToggle').setAttribute('aria-expanded', String(open));
+      });
       $('#codeChip').addEventListener('click', () => {
         const c = Store.getCode(); if (!c) return;
         if (navigator.clipboard) navigator.clipboard.writeText(c).catch(() => {});
