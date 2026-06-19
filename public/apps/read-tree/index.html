@@ -17,6 +17,7 @@
   <script src="/common/init.js"></script>
   <script src="/common/app-shell.js" defer></script>
   <script src="/common/seo-injector.js" defer></script>
+  <script src="/common/sync.js"></script>
   <!-- fuzzy 검색 (오프라인이면 부분일치로 자동 폴백) -->
   <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
 
@@ -27,9 +28,8 @@
     .muted { color: var(--fg-muted); font-size: 12px; }
 
     /* ===== 로그인 ===== */
-    #loginView { max-width: 360px; margin: 0 auto; }
-    #loginView .app-header { text-align: center; margin-top: 16px; }
-    #loginView .app-badge { margin-left: auto; margin-right: auto; }
+    /* 헤더는 다른 앱처럼 좌측정렬·전체폭. 로그인 카드만 좁은 중앙 컬럼. */
+    #loginView .login-body { max-width: 360px; margin: 16px auto 0; }
     .login-card { padding: 18px; margin-bottom: 12px; }
     .login-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
     .login-card .hero-input { margin-bottom: 10px; text-align: center; letter-spacing: 0.18em; font-weight: 700; }
@@ -144,21 +144,23 @@
         <h1 class="app-title">🌳 Read <span>Tree</span></h1>
         <p class="app-desc">ORT 읽기 진도를 코드 하나로.<br>로그인도, 개인정보도 없이.</p>
       </div>
-      <div class="hero-card login-card">
-        <div class="login-title">코드가 있어요</div>
-        <input id="codeInput" class="hero-input" placeholder="예: RT48K2" maxlength="6"
-               autocomplete="off" autocapitalize="characters" inputmode="text">
-        <button class="hero-btn" id="loginBtn">시작</button>
-        <div id="loginErr" class="err"></div>
-      </div>
-      <div class="or">또는</div>
-      <div class="hero-card login-card">
-        <div class="login-title">새 코드 받기</div>
-        <button class="hero-btn hero-btn-ghost" id="genBtn">코드 생성</button>
-        <div id="newCodeBox" class="new-code" hidden>
-          <div class="new-code-val" id="newCodeVal">------</div>
-          <button class="hero-btn" id="useCodeBtn">이 코드로 시작</button>
-          <div class="hint">이 코드를 꼭 적어 두세요.<br>같은 코드를 입력하면 어느 기기에서든 이어집니다.</div>
+      <div class="login-body">
+        <div class="hero-card login-card">
+          <div class="login-title">코드가 있어요</div>
+          <input id="codeInput" class="hero-input" placeholder="예: RT48K2" maxlength="6"
+                 autocomplete="off" autocapitalize="characters" inputmode="text">
+          <button class="hero-btn" id="loginBtn">시작</button>
+          <div id="loginErr" class="err"></div>
+        </div>
+        <div class="or">또는</div>
+        <div class="hero-card login-card">
+          <div class="login-title">새 코드 받기</div>
+          <button class="hero-btn hero-btn-ghost" id="genBtn">코드 생성</button>
+          <div id="newCodeBox" class="new-code" hidden>
+            <div class="new-code-val" id="newCodeVal">------</div>
+            <button class="hero-btn" id="useCodeBtn">이 코드로 시작</button>
+            <div class="hint">이 코드를 꼭 적어 두세요.<br>같은 코드를 입력하면 어느 기기에서든 이어집니다.</div>
+          </div>
         </div>
       </div>
     </section>
@@ -238,9 +240,9 @@
       _save() {
         try { localStorage.setItem('readtree:reads:' + this._code, JSON.stringify(this._reads)); } catch {}
       },
-      getCode() { return this._code || localStorage.getItem('readtree:code') || null; },
-      setCode(code) { this._code = code; try { localStorage.setItem('readtree:code', code); } catch {} this._load(); },
-      clearCode() { try { localStorage.removeItem('readtree:code'); } catch {} this._code = null; this._reads = {}; },
+      getCode() { return this._code || VivesSync.getCode(); },
+      setCode(code) { this._code = code; VivesSync.setCode(code); this._load(); },
+      clearCode() { VivesSync.clearCode(); this._code = null; this._reads = {}; },
       getReads() { return this._reads; },
       isRead(id) { return !!this._reads[id]; },
       toggle(id) {
@@ -251,40 +253,15 @@
     };
     const Store = LocalStore;
 
-    /* ───────── 서버 동기화 (Phase 2: byeduin 전용 D1 /api/readtree) ─────────
-       로컬(localStorage)이 항상 우선. 로그인 시 pull(서버→로컬 머지·로컬→서버 보충),
-       토글 시 push(단건 PUT/DELETE). 오프라인/엔드포인트 없으면 자동 무시(로컬만 동작). */
-    const API_URL = '/api/readtree';
-    const Sync = {
-      on: true,
-      async pull(code) {
-        if (!this.on || !code) return false;
-        let server;
-        try {
-          const r = await fetch(API_URL + '?code=' + encodeURIComponent(code), { cache: 'no-store' });
-          if (!r.ok) return false;
-          server = (await r.json()).reads || {};
-        } catch { return false; }
-        const local = Store.getReads();
-        let changed = false;
-        for (const id in server) {
-          if (!local[id] || server[id] > local[id]) { local[id] = server[id]; changed = true; }
-        }
-        if (changed) Store._save();
-        for (const id in local) {
-          if (!(id in server) || local[id] > server[id]) this.push(code, id, true, local[id]);
-        }
-        return changed;
-      },
-      push(code, bookId, isRead, readAt) {
-        if (!this.on || !code) return;
-        fetch(API_URL, {
-          method: isRead ? 'PUT' : 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, bookId, readAt }),
-        }).catch(() => { /* 오프라인: 로컬 유지, 다음 로그인 동기화 때 재시도 */ });
-      }
-    };
+    /* ───────── 서버 동기화 (VivesSync set 모드, byeduin 전용 D1 /api/readtree) ─────────
+       로컬(localStorage)이 항상 우선. 통합 코드(vives:code) 기준. 로그인 시 pull(머지),
+       토글 시 put/del. 오프라인/엔드포인트 없으면 자동 무시(로컬만 동작). */
+    const Sync = VivesSync.createSet({
+      apiUrl: '/api/readtree',
+      valueIsTimestamp: true,            // value=읽은날짜=LWW키
+      getItems: () => Store.getReads(),
+      setItems: (m) => { Store._reads = m; Store._save(); },
+    });
 
     function today() {
       const d = new Date();
@@ -476,7 +453,8 @@
           $('#resultInfo').textContent = 'Lv ' + activeLevel + ' · 읽음 ' + levelRead(activeLevel) + '/' + levelTotal(activeLevel) + '권';
       }
       renderSummary();
-      Sync.push(Store.getCode(), id, now, Store.getReads()[id]);
+      const _code = Store.getCode();
+      if (now) Sync.put(_code, id, Store.getReads()[id]); else Sync.del(_code, id);
     }
 
     /* ───────── 로그인 / 진입 ───────── */
@@ -560,6 +538,10 @@
       }
       groupData();
       buildFuse();
+      // 구버전(앱별) 코드 → 통합 코드 일회성 이관(같은 코드값 유지 → 서버 데이터 보존)
+      if (!VivesSync.getCode()) {
+        try { const old = (localStorage.getItem('readtree:code') || ''); if (VivesSync.isCode(old)) VivesSync.setCode(old); } catch {}
+      }
       if (Store.getCode()) { Store.setCode(Store.getCode()); enterApp(); }
       else { $('#loginView').hidden = false; $('#appView').hidden = true; }
     }

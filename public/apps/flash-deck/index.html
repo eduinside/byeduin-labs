@@ -574,6 +574,7 @@
   <meta property="og:url" content="https://eduin.info/apps/flash-deck/">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Flash Deck","description":"나만의 플래시카드를 만들고 AI로 자동 생성하세요. 링크 공유로 친구와 함께 학습.","url":"https://eduin.info/apps/flash-deck/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   <script src="/common/seo-injector.js" defer></script>
+  <script src="/common/sync.js"></script>
 </head>
 <body data-shell="column" data-width="medium">
 
@@ -1652,6 +1653,14 @@ function cloneAndOpen() {
     setTimeout(openAiPromptModal, 300);
   }
 })();
+
+// 선택 동기화: 헤더 '동기화' 버튼 + 코드 패널 (코드 연결 시 덱을 기기 간 이어쓰기)
+VivesSync.mountDocSync({
+  apiUrl: '/api/flash-deck',
+  keys: [STORAGE_KEY],
+  appName: '카드 덱',
+  onApplied: () => { if (currentView === 'home') renderHome(); else if (currentView === 'deck') renderDeckView(); },
+});
 </script>
 </body>
 </html>

@@ -89,7 +89,16 @@
       margin-top: 12px; padding: 16px; border: 1px solid var(--border);
       border-radius: 13px; background: var(--bg-sec);
     }
-    .ms-set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px 11px; }
+    /* 1행=연산 공통(고정), 2행=연산별 옵션 + 만들기 */
+    .ms-set-row-main { display: flex; gap: 11px; align-items: flex-end; flex-wrap: wrap; }
+    .ms-set-row-main .ms-set-field { flex: 1 1 120px; }   /* 핵심 필드 균등 분배 — 연산 바뀌어도 불변 */
+    .ms-set-row-opts {
+      display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap;
+      margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
+    }
+    .ms-set-row-opts .ms-set-field { flex: 0 1 180px; }
+    .ms-set-row-opts .ms-check { margin-bottom: 9px; }   /* 셀렉트 하단선에 맞춤 */
+    .ms-opts-empty { font-size: 12.5px; color: var(--fg-muted); line-height: 1.5; margin-bottom: 9px; }
     .ms-set-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
     .ms-set-field > span { font-size: 10.5px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.01em; }
     .ms-set-field select.hero-input { font-size: 12.5px; padding: 7px 8px; border-radius: 9px; cursor: pointer; width: 100%; }
@@ -283,7 +292,8 @@
       </div>
 
       <div class="ms-settings" id="settingsRow">
-        <div class="ms-set-grid">
+        <!-- 1행: 연산 공통 (고정 — 연산이 바뀌어도 위치·크기 불변) -->
+        <div class="ms-set-row-main">
           <label class="ms-set-field">
             <span>연산</span>
             <select id="opSel" class="hero-input">
@@ -322,22 +332,6 @@
               <option value="xyzq">네 자리 수</option>
             </select>
           </label>
-          <label class="ms-set-field" id="carryRow">
-            <span id="carryLabel">받아내림</span>
-            <select id="carrySel" class="hero-input">
-              <option value="no">없음</option>
-              <option value="yes" selected>있음</option>
-              <option value="mix">섞기</option>
-            </select>
-          </label>
-          <label class="ms-set-field" id="remRow" hidden>
-            <span>나눗셈 나머지</span>
-            <select id="remSel" class="hero-input">
-              <option value="exact" selected>나누어떨어짐</option>
-              <option value="remain">나머지 있음</option>
-              <option value="mix">섞기</option>
-            </select>
-          </label>
           <label class="ms-set-field">
             <span>문제 수 (4–60)</span>
             <div class="ms-stepper">
@@ -355,8 +349,27 @@
             </div>
           </label>
         </div>
-        <div class="ms-set-bottom">
+
+        <!-- 2행: 연산별 옵션 + 만들기 -->
+        <div class="ms-set-row-opts">
+          <label class="ms-set-field" id="carryRow">
+            <span id="carryLabel">받아내림</span>
+            <select id="carrySel" class="hero-input">
+              <option value="no">없음</option>
+              <option value="yes" selected>있음</option>
+              <option value="mix">섞기</option>
+            </select>
+          </label>
+          <label class="ms-set-field" id="remRow" hidden>
+            <span>나눗셈 나머지</span>
+            <select id="remSel" class="hero-input">
+              <option value="exact" selected>나누어떨어짐</option>
+              <option value="remain">나머지 있음</option>
+              <option value="mix">섞기</option>
+            </select>
+          </label>
           <label class="ms-check" id="addLimitWrap" title="켜면 합의 자리수가 더 큰 수보다 늘지 않아요. 예) 23+45=68 ⭕  67+89=156 ❌"><input type="checkbox" id="addLimitChk"> 합이 자리수 안 늘게</label>
+          <div class="ms-opts-empty" id="optsEmpty" hidden>이 연산에는 추가 옵션이 없어요.</div>
           <span class="ms-tb-spacer"></span>
           <button class="ms-tb-btn primary" id="genBtn" onclick="doGenerate()">🎲 만들기</button>
         </div>
@@ -601,6 +614,9 @@
     remRow.hidden = !(op === 'div' || op === 'mix');
     addLimitWrap.hidden = !(op === 'add' || op === 'mix');
     carryLabel.textContent = op === 'add' ? '받아올림' : op === 'sub' ? '받아내림' : '받아올림 · 받아내림';
+    // 곱셈처럼 추가 옵션이 없으면 안내 표시(오른쪽 열이 비어 보이지 않도록)
+    const optsEmpty = $('optsEmpty');
+    if (optsEmpty) optsEmpty.hidden = !(carryRow.hidden && remRow.hidden && addLimitWrap.hidden);
     // 한 줄 칸 수 3 고정: 나머지 있음(장제법) 또는 4자리(몇천·네 자리 수)처럼 넓은 문제
     const big = v => v === 'x000' || v === 'xyzq';
     const forceCol3 = (!remRow.hidden && (remSel.value === 'remain' || remSel.value === 'mix'))

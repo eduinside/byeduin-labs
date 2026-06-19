@@ -303,6 +303,7 @@
   <meta property="og:url" content="https://eduin.info/apps/timer/">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Smart Timer","description":"수업, 회의, 운동에 딱 맞는 반복 알람 타이머. 구간별 시간 설정과 알림음 커스텀.","url":"https://eduin.info/apps/timer/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   <script src="/common/seo-injector.js" defer></script>
+  <script src="/common/sync.js"></script>
 </head>
 <body data-shell="column" data-width="narrow">
 
@@ -692,6 +693,18 @@
     });
 
     renderAlarms();
+
+    // 선택 동기화: 헤더 '동기화' 버튼 (알람·기록을 코드 하나로 기기 간 이어쓰기)
+    if (window.VivesSync) VivesSync.mountDocSync({
+      apiUrl: '/api/timer',
+      keys: ['alarms', 'alarm_logs'],
+      appName: '알람',
+      onApplied: function () {
+        try { alarms = JSON.parse(localStorage.getItem('alarms') || '[]'); } catch (e) {}
+        try { logs = JSON.parse(localStorage.getItem('alarm_logs') || '[]'); } catch (e) {}
+        renderAlarms();
+      },
+    });
   </script>
 </body>
 </html>

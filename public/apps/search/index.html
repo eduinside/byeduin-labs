@@ -1104,6 +1104,7 @@
   <meta property="og:url" content="https://eduin.info/apps/search/">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"에듀서치","description":"교육과정, 고시, 훈령 등 교육 문서를 Gemini AI가 분석하여 정확한 답변을 제공합니다.","url":"https://eduin.info/apps/search/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   <script src="/common/seo-injector.js" defer></script>
+  <script src="/common/sync.js"></script>
 </head>
 <body data-shell="sidebar">
 
@@ -2082,6 +2083,14 @@
     loadTree();
     renderConvList();
     loadRecentDocs();
+
+    // 선택 동기화: 헤더 '동기화' 버튼 (검색 기록을 코드 하나로 기기 간 이어쓰기)
+    if (window.VivesSync) VivesSync.mountDocSync({
+      apiUrl: '/api/search-sync',
+      keys: [LS_HISTORY],
+      appName: '검색 기록',
+      onApplied: renderConvList,
+    });
   </script>
 </body>
 </html>

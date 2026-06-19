@@ -814,3 +814,17 @@ function bind() {
 
 bind();
 init();
+
+// 선택 동기화: 헤더 '동기화' 버튼 (즐겨찾기·재생목록·최근을 코드 하나로 기기 간 이어쓰기)
+function reloadSyncedState() {
+  try { favs = new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]')); } catch (e) {}
+  try { recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch (e) {}
+  try { playlist = JSON.parse(localStorage.getItem(PL_KEY) || '{"title":"","ids":[]}'); } catch (e) {}
+  if (DATA) { renderToolbar(); renderGrid(); }
+}
+if (window.VivesSync) VivesSync.mountDocSync({
+  apiUrl: '/api/blocks-universe',
+  keys: [FAV_KEY, PL_KEY, RECENT_KEY],
+  appName: '즐겨찾기·재생목록',
+  onApplied: reloadSyncedState,
+});
