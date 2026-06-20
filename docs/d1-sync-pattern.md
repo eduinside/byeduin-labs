@@ -11,6 +11,21 @@ read-tree(`/api/readtree`)에서 검증된 **"로그인 없는 코드 기반 + �
 > Pages 프로젝트는 각자의 D1을 둔다(같은 패턴을 복제할 수는 있음). 아래 적합도 분석도
 > byeduin 내부 앱만 대상으로 한다.
 
+### VivesSync 적용 앱 (요약, 7개)
+
+| 앱 | 모드(API) | 엔드포인트 | D1 테이블 | 동기화 대상 |
+|---|---|---|---|---|
+| read-tree | `createSet` | `/api/readtree` | `read_tree_reads` | 읽음 기록(통합코드 전환) |
+| flash-deck | `mountDocSync` | `/api/flash-deck` | `flash_deck_docs` | 카드 덱 |
+| blocks-universe | `mountDocSync` | `/api/blocks-universe` | `blocks_universe_docs` | 즐겨찾기·재생목록·최근 |
+| timer | `mountDocSync` | `/api/timer` | `timer_docs` | 알람·기록 |
+| search | `mountDocSync` | `/api/search-sync` | `search_docs` | 검색 기록 |
+| math-sheet | `docStore` | `/api/math-sheet` | `math_sheet_sets` | 학습지 세트(다중) |
+| md-editor | `docStore` | `/api/md-editor` | `md_editor_docs` | 문서(다중) |
+
+- **createSet**: 항목별 동기화(읽음 토글 등). **mountDocSync**: 현재 상태 통째 + 헤더 '동기화' 버튼(선택). **docStore**: 코드별 다중 문서 저장/열기.
+- 모두 통합 익명 코드 `vives:code` 공유(로그인·개인정보 0).
+
 ---
 
 ## 1. 핵심 설계 원칙 (read-tree에서 추출)
@@ -128,6 +143,21 @@ sync.push(code);
 > 코드는 `VivesSync.ensureCode()`로 전 앱이 공유한다(공용 키 `vives:code`).
 > 사용자가 다른 기기의 코드를 가져올 때만 `VivesSync.setCode(입력값)`으로 교체.
 
+### ②-2 코드별 다중 문서는 `docStore`(set 모드)
+
+현재 상태를 통째 동기화하는 게 아니라, 코드별로 **저장된 문서 여러 개**를 저장/열기/삭제하는
+"문서 라이브러리"용. math-sheet 세트·md-editor 문서처럼 다중 문서를 코드로 보관할 때 사용.
+서버는 `createSetSync({ table, valueMax })`(문서 값이 크므로 `valueMax` 상향).
+
+```js
+const lib = VivesSync.docStore({ apiUrl: '/api/math-sheet' });
+await lib.list(code);            // [{ id, value(파싱됨), at }] 최신순
+await lib.save(code, id, obj);   // 항목(문서) 저장 — value=JSON.stringify(obj)
+await lib.remove(code, id);      // 항목 삭제
+```
+- UI는 앱의 기존 '저장/열기'에 통합: 저장 메뉴에 "코드로 저장", 열기 모달에 코드 바 +
+  "☁️ 코드(서버)" 목록을 덧붙이는 식. 코드는 통합 `vives:code` 공유.
+
 ---
 
 ## 4. byeduin 앱 서버-DB 적합도 분석
@@ -163,7 +193,8 @@ sync.push(code);
 - ✅ **flash-deck · blocks-universe · timer · search** — 선택 동기화(헤더 '동기화' 버튼, `mountDocSync`, doc 모드) 적용. 원격 테이블 생성(0003) 완료.
   - search 기록 동기화는 `/api/search`(RAG 검색)와 충돌 피해 `/api/search-sync` 사용.
   - blocks-universe는 즐겨찾기·재생목록·최근만 동기화(영상 길이 캐시 제외).
-- ⏳ **math-sheet · md-editor** — 코드 다중문서 + 서버 열기(set 모드) 예정.
+- ✅ **math-sheet · md-editor** — 코드별 다중 문서 + 서버에서 열기(set 모드, `docStore`) 적용.
+  저장 메뉴 "코드로 저장" + 열기 모달 코드 바/서버 목록. 테이블 0004(`math_sheet_sets`·`md_editor_docs`, valueMax 200KB).
 
 > **참고 적용 순서: scoring-table → flash-deck → allowance-calculator.**
 > 셋 다 doc 모드라 `_sync.js` + `/common/sync.js`로 거의 그대로 붙는다.

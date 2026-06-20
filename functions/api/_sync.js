@@ -148,6 +148,7 @@ export function createSetSync(opts = {}) {
   if (!table) throw new Error('_sync: createSetSync에는 { table }이 필요합니다.');
   const binding = opts.binding || 'BYEDUIN_DB';
   const itemRe = opts.itemRe || DEFAULT_ITEM_RE;
+  const valueMax = opts.valueMax || VAL_MAX_BYTES;   // 문서 라이브러리(set)는 항목 값이 클 수 있어 상향 가능
 
   return async function onRequest(ctx) {
     const { request, env } = ctx;
@@ -186,7 +187,7 @@ export function createSetSync(opts = {}) {
         }
         // PUT
         const value = typeof body.value === 'string' ? body.value : '';
-        if (byteLen(value) > VAL_MAX_BYTES) return json({ error: `값이 너무 큽니다(>${VAL_MAX_BYTES}B).` }, 413);
+        if (byteLen(value) > valueMax) return json({ error: `값이 너무 큽니다(>${valueMax}B).` }, 413);
         const at = typeof body.updatedAt === 'string' ? body.updatedAt : nowIso();
         await db.prepare(
           `INSERT INTO ${table} (code, item_id, value, updated_at) VALUES (?, ?, ?, ?)

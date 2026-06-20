@@ -507,6 +507,7 @@
   <meta property="og:url" content="https://eduin.info/apps/md-editor/">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"MD Editor","description":"JSON, CSV, XML, HTML을 마크다운으로 자동 변환. 중첩 테이블 정리, 실시간 미리보기, 파일 공유까지.","url":"https://eduin.info/apps/md-editor/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   <script src="/common/seo-injector.js" defer></script>
+  <script src="/common/sync.js"></script>
 </head>
 <body data-shell="split" data-width="wide">
 
@@ -579,6 +580,12 @@
       <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
     </svg>
     브라우저에 저장
+  </button>
+  <button class="dropdown-opt" id="saveServerOpt" onclick="saveDocToServer()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
+    </svg>
+    코드로 저장 <span class="beta-badge">다른 기기</span>
   </button>
 </div>
 
@@ -712,8 +719,14 @@
 <!-- 저장된 파일 로드 모달 -->
 <div id="loadModalBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000;" onclick="if(event.target === this) closeLoadModal()"></div>
 <div id="loadModal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:var(--bg); border:1px solid var(--border); border-radius:1rem; padding:2rem; z-index:1001; width:90%; max-width:400px; max-height:80vh; overflow-y:auto;">
-  <div style="font-weight:600; margin-bottom:1rem; font-size:1.1rem;">저장된 파일 목록</div>
+  <div style="font-weight:600; margin-bottom:0.75rem; font-size:1.1rem;">저장된 파일 열기</div>
+  <div id="mdCodeBar" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; padding:0.6rem 0.7rem; background:var(--card-bg); border:1px solid var(--border); border-radius:0.6rem; font-size:0.8rem; margin-bottom:0.5rem;"></div>
+  <div style="font-size:0.72rem; font-weight:800; color:var(--fg-muted); margin:0.6rem 0 0.2rem;">📱 이 기기(로컬)</div>
   <ul id="docsList" style="list-style:none; padding:0; margin:0;"></ul>
+  <div id="mdServerSection" hidden>
+    <div style="font-size:0.72rem; font-weight:800; color:var(--fg-muted); margin:0.8rem 0 0.2rem;">☁️ 코드(<span id="mdCodeTag"></span>)</div>
+    <ul id="serverDocsList" style="list-style:none; padding:0; margin:0;"></ul>
+  </div>
   <button onclick="closeLoadModal()" style="width:100%; margin-top:1rem; padding:0.5rem; border:1px solid var(--border); background:var(--card-bg); border-radius:0.5rem; cursor:pointer; font-family:inherit; font-weight:600; color:var(--fg);">닫기</button>
 </div>
 
@@ -1527,13 +1540,8 @@
       if (raw) allDocs = JSON.parse(raw);
     } catch { allDocs = []; }
 
-    if (allDocs.length === 0) {
-      showToast('저장된 파일이 없습니다');
-      return;
-    }
-
     const docsList = document.getElementById('docsList');
-    docsList.innerHTML = allDocs
+    docsList.innerHTML = allDocs.length ? allDocs
       .sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt))
       .map(doc => `
         <li style="padding:0.75rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
@@ -1543,7 +1551,10 @@
           </div>
           <button onclick="deleteDocById('${doc.id}')" style="padding:0.25rem 0.5rem; font-size:0.85rem; background:none; border:1px solid var(--border); cursor:pointer; border-radius:0.25rem;">삭제</button>
         </li>
-      `).join('');
+      `).join('') : '<li style="padding:0.75rem 0; color:var(--fg-muted); font-size:0.85rem;">이 기기에 저장된 파일이 없어요.</li>';
+
+    renderMdCodeBar();
+    renderMdServerDocs();
 
     document.getElementById('loadModalBackdrop').style.display = 'block';
     document.getElementById('loadModal').style.display = 'block';
@@ -1568,18 +1579,19 @@
       showToast('문서를 찾을 수 없습니다');
       return;
     }
+    applyMdDoc(doc);
+  }
 
+  function applyMdDoc(doc) {
     if (mdContent.trim() && !confirm('현재 문서를 버릴까요?')) return;
-
-    mdContent = doc.content;
-    currentFilename = doc.filename;
+    mdContent = doc.content || '';
+    currentFilename = doc.filename || 'untitled.md';
     document.getElementById('filenameInput').value = currentFilename;
     document.getElementById('editor').value = mdContent;
     renderPreview();
     updateSaveButtonState();
-
     closeLoadModal();
-    showToast(`"${doc.filename}"을(를) 불러왔습니다`);
+    showToast(`"${currentFilename}"을(를) 불러왔습니다`);
   }
 
   function deleteDocById(id) {
@@ -1596,6 +1608,74 @@
 
     openLoadModal(); // 모달 새로고침
   }
+
+  // ── 코드(서버) 저장/열기 — VivesSync set 모드 라이브러리 ──
+  const mdLib = window.VivesSync ? VivesSync.docStore({ apiUrl: '/api/md-editor' }) : null;
+  let serverDocs = [];
+
+  async function saveDocToServer() {
+    _closeSaveMenu();
+    if (!mdContent.trim()) { showToast('저장할 내용이 없습니다'); return; }
+    if (!mdLib) { showToast('동기화를 사용할 수 없어요'); return; }
+    const code = VivesSync.getCode() || VivesSync.ensureCode();
+    const filename = document.getElementById('filenameInput').value.trim() || 'untitled.md';
+    const id = Date.now().toString();
+    const ok = await mdLib.save(code, id, { id, content: mdContent, filename, savedAt: new Date().toISOString() });
+    showToast(ok ? `코드 ${code}에 저장됐어요 ☁️ 다른 기기에서 '열기'로 불러오세요` : '서버 저장 실패');
+  }
+
+  function renderMdCodeBar() {
+    const bar = document.getElementById('mdCodeBar'); if (!bar) return;
+    const code = window.VivesSync && VivesSync.getCode();
+    if (code) {
+      bar.innerHTML = `<span style="color:var(--fg-muted)">코드</span> <b style="font-family:ui-monospace,monospace; letter-spacing:.12em; color:var(--primary)">${code}</b>
+        <span style="flex:1"></span>
+        <button onclick="mdCopyCode()" style="padding:0.35rem 0.6rem; font-size:0.78rem; border:1px solid var(--border); background:var(--bg); border-radius:0.4rem; cursor:pointer; color:var(--fg); font-family:inherit;">복사</button>
+        <button onclick="mdDisconnect()" style="padding:0.35rem 0.6rem; font-size:0.78rem; border:1px solid var(--border); background:var(--bg); border-radius:0.4rem; cursor:pointer; color:var(--fg); font-family:inherit;">해제</button>`;
+    } else {
+      bar.innerHTML = `<input id="mdCodeInput" maxlength="6" placeholder="코드 입력 (예: AB12CD)" style="flex:1; min-width:90px; text-transform:uppercase; text-align:center; letter-spacing:.12em; font-weight:700; padding:0.4rem; border-radius:0.4rem; border:1px solid var(--border); background:var(--card-bg); color:var(--fg); font-family:inherit;">
+        <button onclick="mdConnect()" style="padding:0.4rem 0.7rem; font-size:0.78rem; border:1px solid var(--primary); background:var(--primary); color:#fff; border-radius:0.4rem; cursor:pointer; font-family:inherit; font-weight:700;">연결</button>
+        <button onclick="mdNewCode()" style="padding:0.4rem 0.7rem; font-size:0.78rem; border:1px solid var(--border); background:var(--bg); color:var(--fg); border-radius:0.4rem; cursor:pointer; font-family:inherit;">새 코드</button>`;
+    }
+  }
+  async function renderMdServerDocs() {
+    const sec = document.getElementById('mdServerSection'), list = document.getElementById('serverDocsList');
+    const code = window.VivesSync && VivesSync.getCode();
+    if (!code || !mdLib) { sec.hidden = true; return; }
+    sec.hidden = false; document.getElementById('mdCodeTag').textContent = code;
+    list.innerHTML = '<li style="padding:0.6rem 0; color:var(--fg-muted); font-size:0.85rem;">불러오는 중…</li>';
+    serverDocs = await mdLib.list(code);
+    list.innerHTML = serverDocs.length ? serverDocs.map(s => {
+      const v = s.value || {};
+      const when = v.savedAt ? new Date(v.savedAt).toLocaleString('ko-KR') : '';
+      return `<li style="padding:0.75rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+        <div style="flex:1; cursor:pointer;" onclick="loadServerDoc('${s.id}')">
+          <div style="font-weight:500;">${(v.filename || '제목 없음')}</div>
+          <div style="font-size:0.85rem; color:var(--fg-muted);">${when}</div>
+        </div>
+        <button onclick="deleteServerDoc('${s.id}')" style="padding:0.25rem 0.5rem; font-size:0.85rem; background:none; border:1px solid var(--border); cursor:pointer; border-radius:0.25rem;">삭제</button>
+      </li>`;
+    }).join('') : '<li style="padding:0.6rem 0; color:var(--fg-muted); font-size:0.85rem;">이 코드로 저장한 문서가 없어요. <b>저장 → 코드로 저장</b></li>';
+  }
+  window.loadServerDoc = function (id) {
+    const s = serverDocs.find(x => String(x.id) === String(id));
+    if (s && s.value && typeof s.value.content === 'string') applyMdDoc(s.value);
+    else showToast('문서를 불러올 수 없어요');
+  };
+  window.deleteServerDoc = async function (id) {
+    if (!confirm('이 문서를 삭제하시겠습니까?')) return;
+    const code = VivesSync.getCode(); if (!code) return;
+    await mdLib.remove(code, id); renderMdServerDocs();
+  };
+  window.mdConnect = function () {
+    const v = (document.getElementById('mdCodeInput').value || '').toUpperCase();
+    if (!VivesSync.isCode(v)) { showToast('6자리 코드를 입력하세요'); return; }
+    VivesSync.setCode(v); renderMdCodeBar(); renderMdServerDocs();
+  };
+  window.mdNewCode = function () { VivesSync.setCode(VivesSync.genCode()); renderMdCodeBar(); renderMdServerDocs(); showToast('새 코드 발급됨'); };
+  window.mdDisconnect = function () { VivesSync.clearCode(); renderMdCodeBar(); renderMdServerDocs(); };
+  window.mdCopyCode = function () { const c = VivesSync.getCode(); if (c && navigator.clipboard) navigator.clipboard.writeText(c).then(() => showToast('코드 복사됨 ✓')); };
+  window.saveDocToServer = saveDocToServer;
 
   // ── Markdown 저장 ──
   function downloadMd() {

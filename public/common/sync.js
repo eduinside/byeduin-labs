@@ -337,9 +337,53 @@
     return { push: doPush, refresh: render, connect: connect };
   }
 
+  // ── 코드 기반 문서 라이브러리 (set 모드, 서버 직접 조회) ────
+  // mountDocSync(현재 상태 통째 동기화)와 달리, 코드별 '저장된 문서 여러 개'를
+  // 직접 저장/열기/삭제한다. math-sheet 세트·md-editor 문서처럼 다중 문서용.
+  //   const lib = VivesSync.docStore({ apiUrl:'/api/math-sheet' });
+  //   await lib.list(code)  -> [{ id, value(파싱됨), at }] 최신순
+  //   await lib.save(code, id, obj);  await lib.remove(code, id);
+  function docStore(cfg) {
+    if (!cfg || !cfg.apiUrl) throw new Error('VivesSync.docStore: { apiUrl } 필요');
+    var url = cfg.apiUrl;
+    return {
+      list: async function (code) {
+        if (!isCode(code)) return [];
+        try {
+          var r = await fetch(url + '?code=' + encodeURIComponent(code), { cache: 'no-store' });
+          if (!r.ok) return [];
+          var items = (await r.json()).items || {};
+          var out = [];
+          for (var id in items) {
+            var v = null; try { v = JSON.parse(items[id].v); } catch (e) {}
+            out.push({ id: id, value: v, at: items[id].at });
+          }
+          out.sort(function (a, b) { return String(b.at || '').localeCompare(String(a.at || '')); });
+          return out;
+        } catch (e) { return []; }
+      },
+      save: async function (code, id, valueObj) {
+        if (!isCode(code)) return false;
+        try {
+          var r = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code, itemId: String(id), value: JSON.stringify(valueObj), updatedAt: nowIso() }) });
+          return r.ok;
+        } catch (e) { return false; }
+      },
+      remove: async function (code, id) {
+        if (!isCode(code)) return false;
+        try {
+          var r = await fetch(url, { method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code, itemId: String(id) }) });
+          return r.ok;
+        } catch (e) { return false; }
+      },
+    };
+  }
+
   global.VivesSync = {
     isCode: isCode, genCode: genCode,
     getCode: getCode, setCode: setCode, clearCode: clearCode, ensureCode: ensureCode,
-    createDoc: createDoc, createSet: createSet, mountDocSync: mountDocSync,
+    createDoc: createDoc, createSet: createSet, mountDocSync: mountDocSync, docStore: docStore,
   };
 })(typeof window !== 'undefined' ? window : this);
