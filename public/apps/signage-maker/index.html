@@ -177,6 +177,7 @@
   <meta property="og:url" content="https://eduin.info/apps/signage-maker/">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Signage Maker","description":"Gemini AI로 학교 행사·안내용 세로 이미지를 자동 생성. 사이니지에 바로 사용 가능.","url":"https://eduin.info/apps/signage-maker/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   <script src="/common/seo-injector.js" defer></script>
+  <script src="/common/sync.js"></script>
 </head>
 <body data-shell="column" data-width="medium">
 
@@ -435,6 +436,8 @@
 
     async function saveData(d) {
       if (!dbInstance) await initDB();
+      // 메타데이터(이미지 제외) 미러 → localStorage. mountDocSync가 이 키를 코드로 동기화.
+      try { localStorage.setItem('signage-meta', JSON.stringify((d.items || []).map(metaOf))); } catch (e) {}
       return new Promise((resolve, reject) => {
         const tx = dbInstance.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
@@ -550,7 +553,12 @@
     async function renderGallery() {
       const wrap = document.getElementById('gallery-wrap');
       const data = await loadData();
-      if (!data.items.length) {
+      const local = [...(data.items || [])];
+      const localIds = new Set(local.map(i => i.id));
+      // 코드로 동기화된 메타 중 이 기기에 이미지가 없는 항목(= 다른 기기에서 만든 것)
+      let meta = []; try { meta = JSON.parse(localStorage.getItem('signage-meta') || '[]'); } catch {}
+      const remoteOnly = (Array.isArray(meta) ? meta : []).filter(m => m && !localIds.has(m.id));
+      if (!local.length && !remoteOnly.length) {
         wrap.innerHTML = `<div class="empty">
           <div class="empty-icon">🖼️</div>
           <div class="empty-title">아직 생성된 이미지가 없어요</div>
@@ -558,20 +566,27 @@
         </div>`;
         return;
       }
-      const items = [...data.items].sort((a, b) => b.createdAt - a.createdAt);
-      wrap.innerHTML = `<div class="gallery-grid">${items.map(it => {
+      const localCards = local.sort((a, b) => b.createdAt - a.createdAt).map(it => {
         const thumb = (it.images && it.images.length > 0) ? it.images[it.images.length - 1] : it.imageDataUrl;
         return `
         <div class="gallery-item" data-id="${it.id}">
           <img class="gallery-thumb" src="${thumb}" alt="" loading="lazy" />
-          <div class="gallery-meta">
-            <div class="d">${fmtDate(it.createdAt)}</div>
-          </div>
+          <div class="gallery-meta"><div class="d">${fmtDate(it.createdAt)}</div></div>
         </div>`;
-      }).join('')}</div>`;
-      wrap.querySelectorAll('.gallery-item').forEach(el => {
-        el.addEventListener('click', () => openItem(el.dataset.id));
       });
+      // 다른 기기 항목: 이미지 없이 메타만 표시(눌러서 같은 텍스트로 다시 생성)
+      const remoteCards = remoteOnly.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).map(m => `
+        <div class="gallery-item" data-meta-id="${escapeHtml(String(m.id))}" title="다른 기기에서 만든 항목 · 눌러서 다시 생성">
+          <div class="gallery-thumb" style="aspect-ratio:9/16;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:var(--bg-sec,#eef2f7);color:var(--fg-muted,#64748b);text-align:center;padding:8px;">
+            <div style="font-size:26px;">☁️</div>
+            <div style="font-size:12px;line-height:1.4;">${escapeHtml((m.sourceText || '(텍스트 없음)').slice(0, 24))}</div>
+            <div style="font-size:10px;opacity:.8;">다른 기기 · 다시 생성</div>
+          </div>
+          <div class="gallery-meta"><div class="d">${m.createdAt ? fmtDate(m.createdAt) : ''}</div></div>
+        </div>`);
+      wrap.innerHTML = `<div class="gallery-grid">${localCards.join('')}${remoteCards.join('')}</div>`;
+      wrap.querySelectorAll('.gallery-item[data-id]').forEach(el => el.addEventListener('click', () => openItem(el.dataset.id)));
+      wrap.querySelectorAll('.gallery-item[data-meta-id]').forEach(el => el.addEventListener('click', () => openMetaItem(el.dataset.metaId)));
     }
     function escapeHtml(s) {
       return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -951,9 +966,39 @@
     ══════════════════════════════════ */
     (async () => {
       await initDB();
+      // 메타 미러 구성(이미지 제외) → 코드 동기화 대상
+      try { const d0 = await loadData(); localStorage.setItem('signage-meta', JSON.stringify((d0.items || []).map(metaOf))); } catch (e) {}
       await renderGallery();
       if (!handleHashShare()) showView('home');
     })();
+
+    /* ══════════════════════════════════
+       코드 동기화 (메타데이터만 — 이미지 제외)
+    ══════════════════════════════════ */
+    function metaOf(it) {
+      return { id: it.id, sourceText: it.sourceText || '', style: it.style || '', finalPrompt: it.finalPrompt || '', createdAt: it.createdAt || 0 };
+    }
+    function openMetaItem(id) {
+      let meta = []; try { meta = JSON.parse(localStorage.getItem('signage-meta') || '[]'); } catch {}
+      const m = (meta || []).find(x => String(x.id) === String(id));
+      if (!m) return;
+      const ta = document.getElementById('src-text'); if (ta) ta.value = m.sourceText || '';
+      const preset = document.getElementById('style-preset'), custom = document.getElementById('style-custom');
+      if (preset) {
+        const opts = [...preset.options].map(o => o.value);
+        if (m.style && opts.includes(m.style)) { preset.value = m.style; if (custom) custom.style.display = 'none'; }
+        else if (m.style) { preset.value = '__custom__'; if (custom) { custom.style.display = 'block'; custom.value = m.style; } }
+      }
+      showView('compose');
+      if (typeof toast === 'function') toast('다른 기기 항목의 텍스트를 불러왔어요. 다시 생성해 주세요.');
+    }
+    // 우상단 통합 '동기화' 버튼: 갤러리 메타데이터를 코드로 기기 간 공유(이미지는 제외)
+    if (window.VivesSync) VivesSync.mountDocSync({
+      apiUrl: '/api/signage',
+      keys: ['signage-meta'],
+      appName: '사이니지 갤러리(메타데이터)',
+      onApplied: () => { renderGallery(); },
+    });
 
     window.addEventListener('hashchange', async () => {
       if (location.hash === '' || location.hash === '#') {
