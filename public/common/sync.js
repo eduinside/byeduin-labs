@@ -337,6 +337,72 @@
     return { push: doPush, refresh: render, connect: connect };
   }
 
+  // ── 우상단 코드 버튼만(상태 자동동기화 없음) ───────────────
+  // 통합 코드(vives:code)를 헤더 버튼/패널로 연결·발급·해제만 한다.
+  // docStore(다중 문서)·createSet(항목) 앱이 이 버튼으로 코드를 관리하고,
+  // onChange(code|null)에서 자기 화면(모달·목록·동기화)을 갱신한다.
+  function mountCodeButton(cfg) {
+    cfg = cfg || {};
+    function notify() { if (cfg.onChange) try { cfg.onChange(getCode()); } catch (e) {} }
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+    function bcss(g) { return 'padding:9px;border-radius:9px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;border:1px solid var(--border,#e2e8f0);' + (g ? 'background:transparent;color:var(--fg,#11181c);' : 'background:var(--primary,#006fee);color:#fff;border-color:var(--primary,#006fee);'); }
+
+    var btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'overlay-btn vs-sync-btn'; btn.title = '기기 간 동기화'; btn.style.cssText = 'gap:5px;';
+    var panel = document.createElement('div');
+    panel.className = 'vs-sync-panel';
+    panel.style.cssText = 'position:fixed;top:52px;right:12px;z-index:9600;width:260px;display:none;flex-direction:column;gap:10px;padding:14px;border-radius:13px;background:var(--card-bg,#fff);border:1px solid var(--border,#e2e8f0);box-shadow:0 10px 30px rgba(0,0,0,0.22);color:var(--fg,#11181c);font-family:inherit;font-size:13px;';
+
+    function render() {
+      var code = getCode(), app = esc(cfg.appName || '내용');
+      btn.innerHTML = code ? '🔄 <span>' + esc(code) + '</span>' : '🔄 <span>동기화</span>';
+      btn.classList.toggle('vs-on', !!code);
+      if (code) {
+        panel.innerHTML =
+          '<div style="font-weight:800;font-size:12px;color:var(--primary,#006fee)">기기 간 동기화 켜짐</div>' +
+          '<div style="line-height:1.5">이 코드를 다른 기기에 입력하면 ' + app + '을(를) 이어서 쓸 수 있어요.</div>' +
+          '<div style="font-size:20px;font-weight:800;letter-spacing:.18em;text-align:center;font-family:ui-monospace,monospace;color:var(--primary,#006fee)">' + esc(code) + '</div>' +
+          '<button class="vs-act" data-act="copy" style="' + bcss() + '">코드 복사</button>' +
+          '<button class="vs-act" data-act="off" style="' + bcss(1) + '">연결 해제(이 기기만)</button>';
+      } else {
+        panel.innerHTML =
+          '<div style="font-weight:800;font-size:12px;color:var(--primary,#006fee)">기기 간 동기화</div>' +
+          '<div style="line-height:1.5">코드 하나로 여러 기기에서 ' + app + '을(를) 이어쓰세요. 로그인·개인정보 없음.</div>' +
+          '<input class="vs-code-in" maxlength="6" placeholder="코드 입력 (예: AB12CD)" style="text-transform:uppercase;text-align:center;letter-spacing:.16em;font-weight:700;padding:9px;border-radius:9px;border:1px solid var(--border,#e2e8f0);background:var(--input-bg,#fff);color:var(--fg,#11181c);font-family:inherit">' +
+          '<button class="vs-act" data-act="connect" style="' + bcss() + '">연결</button>' +
+          '<button class="vs-act" data-act="new" style="' + bcss(1) + '">새 코드 발급</button>';
+      }
+    }
+    function open() { render(); panel.style.display = 'flex'; var i = panel.querySelector('.vs-code-in'); if (i) i.focus(); }
+    function close() { panel.style.display = 'none'; }
+    function toast(msg) { var t = document.createElement('div'); t.textContent = msg; t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--fg,#11181c);color:var(--bg,#fff);padding:9px 16px;border-radius:9px;font-size:13px;z-index:9999;'; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 1800); }
+
+    panel.addEventListener('click', function (e) {
+      var b = e.target.closest('.vs-act'); if (!b) return;
+      var act = b.getAttribute('data-act');
+      if (act === 'connect') { var v = (panel.querySelector('.vs-code-in').value || '').toUpperCase(); if (!isCode(v)) { toast('6자리 코드를 입력하세요.'); return; } setCode(v); render(); notify(); toast('동기화 연결됨 ✓'); }
+      else if (act === 'new') { setCode(genCode()); render(); notify(); toast('새 코드 발급됨 ✓'); }
+      else if (act === 'copy') { navigator.clipboard && navigator.clipboard.writeText(getCode()).then(function () { toast('코드 복사됨 ✓'); }); }
+      else if (act === 'off') { clearCode(); render(); notify(); toast('이 기기에서 동기화 해제'); }
+    });
+    panel.addEventListener('keydown', function (e) { if (e.key === 'Enter') { var b = panel.querySelector('[data-act="connect"]'); if (b) b.click(); } });
+    btn.addEventListener('click', function (e) { e.stopPropagation(); panel.style.display === 'flex' ? close() : open(); });
+    document.addEventListener('click', function (e) { if (!panel.contains(e.target) && e.target !== btn) close(); });
+
+    function mountButton() {
+      var bar = document.querySelector('.top-overlay');
+      if (bar) bar.insertBefore(btn, bar.firstChild);
+      else { btn.style.cssText += 'position:fixed;top:12px;right:12px;z-index:9600;'; document.body.appendChild(btn); }
+      document.body.appendChild(panel);
+      render();
+      notify();   // 로드 시 현재 코드 상태 1회 통지(코드 있으면 앱이 초기 동기화)
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountButton);
+    else mountButton();
+
+    return { getCode: getCode, refresh: render };
+  }
+
   // ── 코드 기반 문서 라이브러리 (set 모드, 서버 직접 조회) ────
   // mountDocSync(현재 상태 통째 동기화)와 달리, 코드별 '저장된 문서 여러 개'를
   // 직접 저장/열기/삭제한다. math-sheet 세트·md-editor 문서처럼 다중 문서용.
@@ -384,6 +450,7 @@
   global.VivesSync = {
     isCode: isCode, genCode: genCode,
     getCode: getCode, setCode: setCode, clearCode: clearCode, ensureCode: ensureCode,
-    createDoc: createDoc, createSet: createSet, mountDocSync: mountDocSync, docStore: docStore,
+    createDoc: createDoc, createSet: createSet,
+    mountDocSync: mountDocSync, mountCodeButton: mountCodeButton, docStore: docStore,
   };
 })(typeof window !== 'undefined' ? window : this);

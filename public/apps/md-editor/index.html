@@ -719,8 +719,8 @@
 <!-- 저장된 파일 로드 모달 -->
 <div id="loadModalBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000;" onclick="if(event.target === this) closeLoadModal()"></div>
 <div id="loadModal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:var(--bg); border:1px solid var(--border); border-radius:1rem; padding:2rem; z-index:1001; width:90%; max-width:400px; max-height:80vh; overflow-y:auto;">
-  <div style="font-weight:600; margin-bottom:0.75rem; font-size:1.1rem;">저장된 파일 열기</div>
-  <div id="mdCodeBar" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; padding:0.6rem 0.7rem; background:var(--card-bg); border:1px solid var(--border); border-radius:0.6rem; font-size:0.8rem; margin-bottom:0.5rem;"></div>
+  <div style="font-weight:600; margin-bottom:0.5rem; font-size:1.1rem;">저장된 파일 열기</div>
+  <div style="font-size:0.78rem; color:var(--fg-muted); margin-bottom:0.4rem; line-height:1.5;">우상단 <b>🔄 동기화</b> 버튼으로 코드를 연결하면 다른 기기에 저장한 문서도 보여요.</div>
   <div style="font-size:0.72rem; font-weight:800; color:var(--fg-muted); margin:0.6rem 0 0.2rem;">📱 이 기기(로컬)</div>
   <ul id="docsList" style="list-style:none; padding:0; margin:0;"></ul>
   <div id="mdServerSection" hidden>
@@ -1553,8 +1553,7 @@
         </li>
       `).join('') : '<li style="padding:0.75rem 0; color:var(--fg-muted); font-size:0.85rem;">이 기기에 저장된 파일이 없어요.</li>';
 
-    renderMdCodeBar();
-    renderMdServerDocs();
+    renderMdServerDocs();   // 코드 연결 시에만 서버 목록 표시(미연결이면 로컬만)
 
     document.getElementById('loadModalBackdrop').style.display = 'block';
     document.getElementById('loadModal').style.display = 'block';
@@ -1617,27 +1616,15 @@
     _closeSaveMenu();
     if (!mdContent.trim()) { showToast('저장할 내용이 없습니다'); return; }
     if (!mdLib) { showToast('동기화를 사용할 수 없어요'); return; }
-    const code = VivesSync.getCode() || VivesSync.ensureCode();
+    const hadCode = VivesSync.getCode();
+    const code = hadCode || VivesSync.ensureCode();
     const filename = document.getElementById('filenameInput').value.trim() || 'untitled.md';
     const id = Date.now().toString();
     const ok = await mdLib.save(code, id, { id, content: mdContent, filename, savedAt: new Date().toISOString() });
-    showToast(ok ? `코드 ${code}에 저장됐어요 ☁️ 다른 기기에서 '열기'로 불러오세요` : '서버 저장 실패');
+    if (!hadCode && mdCodeBtn) mdCodeBtn.refresh();   // 자동 발급 코드를 상단 버튼에 반영
+    showToast(ok ? `코드 ${code}에 저장됐어요 ☁️ 우상단 버튼의 코드를 다른 기기에 입력하면 열려요` : '서버 저장 실패');
   }
 
-  function renderMdCodeBar() {
-    const bar = document.getElementById('mdCodeBar'); if (!bar) return;
-    const code = window.VivesSync && VivesSync.getCode();
-    if (code) {
-      bar.innerHTML = `<span style="color:var(--fg-muted)">코드</span> <b style="font-family:ui-monospace,monospace; letter-spacing:.12em; color:var(--primary)">${code}</b>
-        <span style="flex:1"></span>
-        <button onclick="mdCopyCode()" style="padding:0.35rem 0.6rem; font-size:0.78rem; border:1px solid var(--border); background:var(--bg); border-radius:0.4rem; cursor:pointer; color:var(--fg); font-family:inherit;">복사</button>
-        <button onclick="mdDisconnect()" style="padding:0.35rem 0.6rem; font-size:0.78rem; border:1px solid var(--border); background:var(--bg); border-radius:0.4rem; cursor:pointer; color:var(--fg); font-family:inherit;">해제</button>`;
-    } else {
-      bar.innerHTML = `<input id="mdCodeInput" maxlength="6" placeholder="코드 입력 (예: AB12CD)" style="flex:1; min-width:90px; text-transform:uppercase; text-align:center; letter-spacing:.12em; font-weight:700; padding:0.4rem; border-radius:0.4rem; border:1px solid var(--border); background:var(--card-bg); color:var(--fg); font-family:inherit;">
-        <button onclick="mdConnect()" style="padding:0.4rem 0.7rem; font-size:0.78rem; border:1px solid var(--primary); background:var(--primary); color:#fff; border-radius:0.4rem; cursor:pointer; font-family:inherit; font-weight:700;">연결</button>
-        <button onclick="mdNewCode()" style="padding:0.4rem 0.7rem; font-size:0.78rem; border:1px solid var(--border); background:var(--bg); color:var(--fg); border-radius:0.4rem; cursor:pointer; font-family:inherit;">새 코드</button>`;
-    }
-  }
   async function renderMdServerDocs() {
     const sec = document.getElementById('mdServerSection'), list = document.getElementById('serverDocsList');
     const code = window.VivesSync && VivesSync.getCode();
@@ -1667,15 +1654,13 @@
     const code = VivesSync.getCode(); if (!code) return;
     await mdLib.remove(code, id); renderMdServerDocs();
   };
-  window.mdConnect = function () {
-    const v = (document.getElementById('mdCodeInput').value || '').toUpperCase();
-    if (!VivesSync.isCode(v)) { showToast('6자리 코드를 입력하세요'); return; }
-    VivesSync.setCode(v); renderMdCodeBar(); renderMdServerDocs();
-  };
-  window.mdNewCode = function () { VivesSync.setCode(VivesSync.genCode()); renderMdCodeBar(); renderMdServerDocs(); showToast('새 코드 발급됨'); };
-  window.mdDisconnect = function () { VivesSync.clearCode(); renderMdCodeBar(); renderMdServerDocs(); };
-  window.mdCopyCode = function () { const c = VivesSync.getCode(); if (c && navigator.clipboard) navigator.clipboard.writeText(c).then(() => showToast('코드 복사됨 ✓')); };
   window.saveDocToServer = saveDocToServer;
+
+  // 우상단 통합 '동기화' 버튼으로 코드 관리. 연결/해제 시 열기 모달이 떠 있으면 서버 목록 갱신.
+  const mdCodeBtn = window.VivesSync ? VivesSync.mountCodeButton({
+    appName: '문서',
+    onChange: () => { if (document.getElementById('loadModal').style.display === 'block') renderMdServerDocs(); },
+  }) : null;
 
   // ── Markdown 저장 ──
   function downloadMd() {

@@ -137,40 +137,12 @@
   <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입 -->
   <main class="app-main">
 
-    <!-- ===== 로그인 ===== -->
-    <section id="loginView">
-      <div class="app-header">
-        <div class="app-badge">◆ 학습지원</div>
-        <h1 class="app-title">🌳 Read <span>Tree</span></h1>
-        <p class="app-desc">ORT 읽기 진도를 코드 하나로.<br>로그인도, 개인정보도 없이.</p>
-      </div>
-      <div class="login-body">
-        <div class="hero-card login-card">
-          <div class="login-title">코드가 있어요</div>
-          <input id="codeInput" class="hero-input" placeholder="예: RT48K2" maxlength="6"
-                 autocomplete="off" autocapitalize="characters" inputmode="text">
-          <button class="hero-btn" id="loginBtn">시작</button>
-          <div id="loginErr" class="err"></div>
-        </div>
-        <div class="or">또는</div>
-        <div class="hero-card login-card">
-          <div class="login-title">새 코드 받기</div>
-          <button class="hero-btn hero-btn-ghost" id="genBtn">코드 생성</button>
-          <div id="newCodeBox" class="new-code" hidden>
-            <div class="new-code-val" id="newCodeVal">------</div>
-            <button class="hero-btn" id="useCodeBtn">이 코드로 시작</button>
-            <div class="hint">이 코드를 꼭 적어 두세요.<br>같은 코드를 입력하면 어느 기기에서든 이어집니다.</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- ===== 앱 (단일 화면) ===== -->
     <section id="appView" hidden>
       <header class="app-header">
         <div class="app-badge">◆ 학습지원</div>
         <h1 class="app-title">🌳 Read <span>Tree</span></h1>
-        <p class="app-desc">읽은 책을 검색하거나 레벨별 책장에서 톡 눌러 체크하세요.</p>
+        <p class="app-desc">읽은 책을 레벨별 책장에서 톡 눌러 체크하세요. 기록은 이 기기에 저장되고, 우상단 <b>🔄 동기화</b> 버튼으로 코드를 연결하면 다른 기기에서도 이어집니다(로그인·개인정보 없음).</p>
       </header>
 
       <!-- 요약: 코드 · 진행 · 뱃지 -->
@@ -229,20 +201,30 @@
     const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     const CODE_LEN = 6;
 
-    /* ───────── 저장소 (Phase 1: localStorage) ───────── */
+    /* ───────── 저장소 (localStorage) ─────────
+       코드 없이도 동작(로컬 기본 키 _local). 코드 연결 시 그 코드 키로 전환하고,
+       처음 연결이면 로컬 진도를 코드로 옮겨 이어쓰기. 통합 코드(vives:code) 공유. */
     const LocalStore = {
       _code: null,
       _reads: {},
+      _key() { return 'readtree:reads:' + (this._code || '_local'); },
       _load() {
-        try { this._reads = JSON.parse(localStorage.getItem('readtree:reads:' + this._code) || '{}') || {}; }
+        try { this._reads = JSON.parse(localStorage.getItem(this._key()) || '{}') || {}; }
         catch { this._reads = {}; }
       },
       _save() {
-        try { localStorage.setItem('readtree:reads:' + this._code, JSON.stringify(this._reads)); } catch {}
+        try { localStorage.setItem(this._key(), JSON.stringify(this._reads)); } catch {}
       },
-      getCode() { return this._code || VivesSync.getCode(); },
-      setCode(code) { this._code = code; VivesSync.setCode(code); this._load(); },
-      clearCode() { VivesSync.clearCode(); this._code = null; this._reads = {}; },
+      getCode() { return this._code; },
+      setCode(code) {
+        const prev = this._reads, wasLocal = !this._code;
+        this._code = code; VivesSync.setCode(code); this._load();
+        // 처음 코드 연결: 로컬(_local) 진도를 코드로 시드(서버 pull 전에)
+        if (wasLocal && !Object.keys(this._reads).length && Object.keys(prev).length) {
+          this._reads = Object.assign({}, prev); this._save();
+        }
+      },
+      clearCode() { VivesSync.clearCode(); this._code = null; this._load(); },
       getReads() { return this._reads; },
       isRead(id) { return !!this._reads[id]; },
       toggle(id) {
@@ -252,6 +234,7 @@
       }
     };
     const Store = LocalStore;
+    let codeBtn = null;   // 우상단 동기화 버튼 핸들(boot에서 생성)
 
     /* ───────── 서버 동기화 (VivesSync set 모드, byeduin 전용 D1 /api/readtree) ─────────
        로컬(localStorage)이 항상 우선. 통합 코드(vives:code) 기준. 로그인 시 pull(머지),
@@ -323,7 +306,10 @@
 
     /* ───────── 요약 (코드 · 진행 · 뱃지) ───────── */
     function renderSummary() {
-      $('#homeCode').textContent = Store.getCode() || '------';
+      const code = Store.getCode();
+      $('#homeCode').textContent = code || '동기화 꺼짐';
+      const lo = $('#logoutBtn'); if (lo) lo.hidden = !code;   // 연결됐을 때만 해제 버튼
+      const chip = $('#codeChip'); if (chip) chip.title = code ? '코드 복사' : '우상단 동기화 버튼으로 코드 연결';
       $('#readCount').textContent = readCount();
       $('#totalCount').textContent = BOOKS.length;
       const focus = LEVELS.find(l => levelRead(l) < levelTotal(l)) || LEVELS[LEVELS.length - 1];
@@ -457,9 +443,8 @@
       if (now) Sync.put(_code, id, Store.getReads()[id]); else Sync.del(_code, id);
     }
 
-    /* ───────── 로그인 / 진입 ───────── */
+    /* ───────── 진입 ───────── */
     function enterApp() {
-      $('#loginView').hidden = true;
       $('#appView').hidden = false;
       $('#badgeRow').hidden = true;
       $('#badgeToggle').setAttribute('aria-expanded', 'false');
@@ -467,34 +452,16 @@
       $('#searchInput').value = '';
       renderSummary();
       render();
-      Sync.pull(Store.getCode()).then((changed) => { if (changed) { renderSummary(); render(); } });
-    }
-    function login(code) {
-      code = (code || '').toUpperCase().replace(/\s/g, '');
-      const err = $('#loginErr');
-      if (!/^[A-Z0-9]{6}$/.test(code)) { err.textContent = '6자리 코드를 입력해 주세요 (영문·숫자).'; return; }
-      err.textContent = '';
-      Store.setCode(code);
-      enterApp();
     }
 
     /* ───────── 이벤트 ───────── */
     function wire() {
-      $('#loginBtn').addEventListener('click', () => login($('#codeInput').value));
-      $('#codeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') login($('#codeInput').value); });
-      $('#genBtn').addEventListener('click', () => {
-        const c = genCode();
-        $('#newCodeVal').textContent = c;
-        $('#newCodeBox').hidden = false;
-        $('#useCodeBtn').onclick = () => login(c);
-      });
-      $('#logoutBtn').addEventListener('click', () => {
+      // '로그아웃' → 동기화 해제(이 기기 로컬만). 코드 연결은 우상단 동기화 버튼.
+      const lo = $('#logoutBtn');
+      if (lo) lo.addEventListener('click', () => {
         Store.clearCode();
-        $('#appView').hidden = true;
-        $('#loginView').hidden = false;
-        $('#codeInput').value = '';
-        $('#newCodeBox').hidden = true;
-        $('#searchInput').value = '';
+        if (codeBtn) codeBtn.refresh();
+        renderSummary(); render();
       });
       $('#searchInput').addEventListener('input', render);
       $('#searchToggle').addEventListener('click', () => { $('#searchBox').hidden = false; $('#searchInput').focus(); });
@@ -542,8 +509,19 @@
       if (!VivesSync.getCode()) {
         try { const old = (localStorage.getItem('readtree:code') || ''); if (VivesSync.isCode(old)) VivesSync.setCode(old); } catch {}
       }
-      if (Store.getCode()) { Store.setCode(Store.getCode()); enterApp(); }
-      else { $('#loginView').hidden = false; $('#appView').hidden = true; }
+      const code0 = VivesSync.getCode();
+      if (code0) Store.setCode(code0); else Store._load();   // 코드 있으면 그 키, 없으면 _local
+      enterApp();   // 로그인 게이트 없음 — 항상 앱 표시(로컬 우선)
+
+      // 우상단 통합 '동기화' 버튼으로 코드 연결/해제 → 항목 동기화
+      if (window.VivesSync) codeBtn = VivesSync.mountCodeButton({
+        appName: '읽기 기록',
+        onChange: (code) => {
+          if (code) Store.setCode(code); else Store.clearCode();
+          renderSummary(); render();
+          if (code) Sync.pull(code).then((changed) => { if (changed) { renderSummary(); render(); } });
+        },
+      });
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

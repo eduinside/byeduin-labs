@@ -383,6 +383,7 @@
   <meta property="og:url" content="https://eduin.info/apps/chalkboard/">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Chalkboard","description":"분필 느낌의 디지털 칠판으로 아이디어를 자유롭게 기록. 수업 판서, 브레인스토밍에 최적화.","url":"https://eduin.info/apps/chalkboard/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   <script src="/common/seo-injector.js" defer></script>
+  <script src="/common/sync.js"></script>
 </head>
 <body data-shell="gallery" data-width="medium">
 
@@ -1656,6 +1657,17 @@
       }
       showView('home');
       renderHome();
+
+      // 선택 동기화: 헤더 '동기화' 버튼 (보드를 코드 하나로 기기 간 이어쓰기)
+      if (window.VivesSync) VivesSync.mountDocSync({
+        apiUrl: '/api/chalkboard',
+        keys: ['vives-chalkboard'],
+        appName: '칠판·화이트보드',
+        onApplied: function () {
+          renderHome();
+          if (currentBoardId && document.body.classList.contains('in-board')) openBoard(currentBoardId);
+        },
+      });
     })();
   </script>
 </body>

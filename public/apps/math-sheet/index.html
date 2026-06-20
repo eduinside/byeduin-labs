@@ -427,8 +427,7 @@
   <div id="loadModal" class="ms-modal-overlay no-print" onclick="closeLoad(event)">
     <div class="ms-modal" onclick="event.stopPropagation()">
       <h3>📂 저장한 세트 열기</h3>
-      <p class="ms-modal-desc">누르면 조건과 문제가 그대로 복원돼요. <b>코드</b>로 저장하면 다른 기기에서도 같은 코드로 열 수 있어요(로그인·개인정보 없음).</p>
-      <div id="msCodeBar" class="ms-code-bar"></div>
+      <p class="ms-modal-desc">누르면 조건과 문제가 그대로 복원돼요. 우상단 <b>🔄 동기화</b> 버튼으로 코드를 연결하면 다른 기기에 저장한 세트도 보여요(로그인·개인정보 없음).</p>
       <div class="ms-doc-sec-title">📱 이 기기(로컬)</div>
       <ul class="ms-doc-list" id="docList"></ul>
       <div id="serverSection" hidden>
@@ -715,8 +714,7 @@
         <div class="ms-doc-main" onclick="loadSet(${s.id})"><div class="ms-doc-name">${esc(s.title)}</div><div class="ms-doc-meta">${s.problems.length}문항 · ${s.savedAt}</div></div>
         <button class="ms-tb-btn danger" style="min-height:32px;padding:5px 11px" onclick="deleteSet(${s.id}, event)">삭제</button>
       </li>`).join('') : '<div class="ms-doc-empty">저장된 세트가 없어요.<br>문제를 만든 뒤 <b>저장 → 브라우저에 저장</b>을 눌러 보세요.</div>';
-    renderCodeBar();
-    renderServerSets();
+    renderServerSets();   // 코드 연결 시에만 서버 목록 표시(미연결이면 로컬만)
     $('loadModal').classList.add('show');
   };
   window.closeLoad = function () { $('loadModal').classList.remove('show'); };
@@ -740,28 +738,16 @@
     closeSaveMenu();
     if (!currentProblems.length) { showToast('먼저 문제를 생성하세요.'); return; }
     if (!mathLib) { showToast('동기화를 사용할 수 없어요.'); return; }
-    let code = VivesSync.getCode() || VivesSync.ensureCode();   // 없으면 자동 발급
+    const hadCode = VivesSync.getCode();
+    let code = hadCode || VivesSync.ensureCode();   // 없으면 자동 발급
     const id = Date.now();
     const d = new Date();
     const stamp = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
     const ok = await mathLib.save(code, id, { id, title: currentConfig.title, config: currentConfig, problems: currentProblems, savedAt: stamp });
-    showToast(ok ? `코드 ${code}에 저장됐어요 ☁️ 다른 기기에서 '열기'로 불러오세요` : '서버 저장 실패');
+    if (!hadCode && msCodeBtn) msCodeBtn.refresh();   // 자동 발급된 코드를 상단 버튼에 반영
+    showToast(ok ? `코드 ${code}에 저장됐어요 ☁️ 우상단 버튼의 코드를 다른 기기에 입력하면 열려요` : '서버 저장 실패');
   };
 
-  function renderCodeBar() {
-    const bar = $('msCodeBar'); if (!bar) return;
-    const code = VivesSync && VivesSync.getCode();
-    if (code) {
-      bar.innerHTML = `<span class="ms-code-lead">코드</span> <span class="ms-code-val">${esc(code)}</span>
-        <span style="flex:1"></span>
-        <button class="ms-tb-btn ms-btn-sm" onclick="msCopyCode()">복사</button>
-        <button class="ms-tb-btn ms-btn-sm" onclick="msDisconnect()">해제</button>`;
-    } else {
-      bar.innerHTML = `<input id="msCodeInput" maxlength="6" placeholder="코드 입력 (예: AB12CD)">
-        <button class="ms-tb-btn ms-btn-sm primary" onclick="msConnect()">연결</button>
-        <button class="ms-tb-btn ms-btn-sm" onclick="msNewCode()">새 코드</button>`;
-    }
-  }
   async function renderServerSets() {
     const sec = $('serverSection'), list = $('serverDocList');
     const code = VivesSync && VivesSync.getCode();
@@ -787,14 +773,11 @@
     const code = VivesSync.getCode(); if (!code) return;
     await mathLib.remove(code, id); renderServerSets();
   };
-  window.msConnect = function () {
-    const v = ($('msCodeInput').value || '').toUpperCase();
-    if (!VivesSync.isCode(v)) { showToast('6자리 코드를 입력하세요.'); return; }
-    VivesSync.setCode(v); renderCodeBar(); renderServerSets();
-  };
-  window.msNewCode = function () { VivesSync.setCode(VivesSync.genCode()); renderCodeBar(); renderServerSets(); showToast('새 코드 발급됨'); };
-  window.msDisconnect = function () { VivesSync.clearCode(); renderCodeBar(); renderServerSets(); };
-  window.msCopyCode = function () { const c = VivesSync.getCode(); if (c && navigator.clipboard) navigator.clipboard.writeText(c).then(() => showToast('코드 복사됨 ✓')); };
+  // 우상단 통합 '동기화' 버튼으로 코드 관리. 연결/해제 시 열기 모달이 떠 있으면 서버 목록 갱신.
+  const msCodeBtn = window.VivesSync ? VivesSync.mountCodeButton({
+    appName: '학습지 세트',
+    onChange: () => { if ($('loadModal').classList.contains('show')) renderServerSets(); },
+  }) : null;
 
   // ── 저장 드롭다운 ──
   window.toggleSaveMenu = function (e) { e.stopPropagation(); $('saveMenu').classList.toggle('open'); };

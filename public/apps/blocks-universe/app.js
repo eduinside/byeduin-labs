@@ -828,3 +828,10 @@ if (window.VivesSync) VivesSync.mountDocSync({
   appName: '즐겨찾기·재생목록',
   onApplied: reloadSyncedState,
 });
+
+// '← 시리즈 선택' 버튼을 좌상단 홈 버튼 옆으로 이동(셸 주입 이후)
+document.addEventListener('DOMContentLoaded', function () {
+  var back = document.getElementById('welcomeBack');
+  var left = document.querySelector('.top-overlay-left');
+  if (back && left) left.appendChild(back);
+});
