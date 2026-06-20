@@ -137,7 +137,26 @@
   <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입 -->
   <main class="app-main">
 
-    <!-- ===== 앱 (단일 화면) ===== -->
+    <!-- ===== 소개 (코드 연결 전) ===== -->
+    <section id="introView">
+      <header class="app-header">
+        <div class="app-badge">◆ 학습지원</div>
+        <h1 class="app-title">🌳 Read <span>Tree</span></h1>
+        <p class="app-desc">Oxford Reading Tree 읽기 진도를 코드 하나로 기록하세요. 레벨별 Magic Chart로 읽은 책을 확인하고 뱃지를 모읍니다. 로그인·개인정보 없이.</p>
+      </header>
+      <div class="hero-card" style="padding:20px; max-width:440px; display:flex; flex-direction:column; gap:12px;">
+        <div style="font-weight:700; font-size:15px;">시작하기</div>
+        <p class="muted" style="line-height:1.65; font-size:13px;">우상단 <b>🔄 동기화</b> 버튼에서 <b>코드를 입력</b>하거나 <b>새로 발급</b>하면 읽기 기록이 시작되고, 같은 코드를 입력하면 어느 기기에서든 이어집니다.</p>
+        <button class="hero-btn" id="introStartBtn">🔄 코드 연결 · 새 코드 발급</button>
+        <ul class="muted" style="margin:4px 0 0; padding-left:18px; line-height:1.8; font-size:12.5px;">
+          <li>레벨별 책장에서 톡 눌러 읽음 체크</li>
+          <li>읽은 권수·집중 레벨·뱃지 자동 집계</li>
+          <li>코드만 알면 다기기에서 같은 진도</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===== 앱 (코드 연결 후) ===== -->
     <section id="appView" hidden>
       <header class="app-header">
         <div class="app-badge">◆ 학습지원</div>
@@ -443,8 +462,9 @@
       if (now) Sync.put(_code, id, Store.getReads()[id]); else Sync.del(_code, id);
     }
 
-    /* ───────── 진입 ───────── */
-    function enterApp() {
+    /* ───────── 진입 / 화면 전환 ───────── */
+    function enterApp() {   // 코드 연결됨 → 읽기 트리(저장 모드)
+      $('#introView').hidden = true;
       $('#appView').hidden = false;
       $('#badgeRow').hidden = true;
       $('#badgeToggle').setAttribute('aria-expanded', 'false');
@@ -453,16 +473,33 @@
       renderSummary();
       render();
     }
+    function showIntro() {   // 코드 없음 → 소개 화면(저장 안 함)
+      $('#appView').hidden = true;
+      $('#introView').hidden = false;
+    }
+    // 코드 유무에 따라 화면 전환(연결 시 서버 머지, 해제 시 소개로)
+    function applyCode(code) {
+      if (code) {
+        Store.setCode(code);
+        enterApp();
+        Sync.pull(code).then((changed) => { if (changed) { renderSummary(); render(); } });
+      } else {
+        Store.clearCode();
+        showIntro();
+      }
+    }
 
     /* ───────── 이벤트 ───────── */
     function wire() {
-      // '로그아웃' → 동기화 해제(이 기기 로컬만). 코드 연결은 우상단 동기화 버튼.
+      // '로그아웃' → 코드 해제 → 소개 화면으로. 코드 연결은 우상단 동기화 버튼.
       const lo = $('#logoutBtn');
       if (lo) lo.addEventListener('click', () => {
-        Store.clearCode();
+        VivesSync.clearCode();
         if (codeBtn) codeBtn.refresh();
-        renderSummary(); render();
+        applyCode(null);
       });
+      const introBtn = $('#introStartBtn');
+      if (introBtn) introBtn.addEventListener('click', (e) => { e.stopPropagation(); if (codeBtn && codeBtn.open) codeBtn.open(); });
       $('#searchInput').addEventListener('input', render);
       $('#searchToggle').addEventListener('click', () => { $('#searchBox').hidden = false; $('#searchInput').focus(); });
       // 레벨 칩 마우스 드래그 스크롤
@@ -510,17 +547,13 @@
         try { const old = (localStorage.getItem('readtree:code') || ''); if (VivesSync.isCode(old)) VivesSync.setCode(old); } catch {}
       }
       const code0 = VivesSync.getCode();
-      if (code0) Store.setCode(code0); else Store._load();   // 코드 있으면 그 키, 없으면 _local
-      enterApp();   // 로그인 게이트 없음 — 항상 앱 표시(로컬 우선)
+      if (code0) { Store.setCode(code0); enterApp(); }   // 코드 있으면 읽기 트리
+      else showIntro();                                  // 없으면 소개 화면(저장 안 함)
 
-      // 우상단 통합 '동기화' 버튼으로 코드 연결/해제 → 항목 동기화
+      // 우상단 통합 '동기화' 버튼: 연결 시 트리(저장 모드), 해제 시 소개 화면
       if (window.VivesSync) codeBtn = VivesSync.mountCodeButton({
         appName: '읽기 기록',
-        onChange: (code) => {
-          if (code) Store.setCode(code); else Store.clearCode();
-          renderSummary(); render();
-          if (code) Sync.pull(code).then((changed) => { if (changed) { renderSummary(); render(); } });
-        },
+        onChange: (code) => applyCode(code),
       });
     }
 

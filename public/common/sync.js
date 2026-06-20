@@ -400,7 +400,7 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountButton);
     else mountButton();
 
-    return { getCode: getCode, refresh: render };
+    return { getCode: getCode, refresh: render, open: open, close: close };
   }
 
   // ── 코드 기반 문서 라이브러리 (set 모드, 서버 직접 조회) ────
