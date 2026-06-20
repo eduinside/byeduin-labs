@@ -4,13 +4,13 @@
 
 **로컬 실행**: `npm run dev` (Cloudflare Pages Functions 로컬 서버 기동)  
 **배포**: [Cloudflare Pages](https://byeduin-vives.pages.dev) (자동 배포: main 브랜치)  
-**개발 진행**: [`docs/DEVPLAN.md`](docs/DEVPLAN.md) 및 [`docs/app-development-guide.md`](docs/app-development-guide.md) 참고  
+**개발 진행**: [`docs/OVERVIEW.md`](docs/OVERVIEW.md)(아키텍처·API·변경 이력) 및 [`docs/app-development-guide.md`](docs/app-development-guide.md) 참고  
 
 ---
 
-## 앱 목록 (29개)
+## 앱 목록 (30개)
 
-### 📚 교육 (15)
+### 📚 교육 (16)
 
 #### 🌐 시뮬레이션
 | 앱 | 경로 | 설명 |
@@ -26,8 +26,9 @@
 |---|---|---|
 | **Blocks Universe** | `/apps/blocks-universe/` | 넘버블록스·알파블록스·컬러블록스·원더블록스 351편 에피소드 탐색 · AI 검색 · 순차재생 |
 | **Flash Deck** | `/apps/flash-deck/` | 플래시카드 학습 앱 |
-| **Chalkboard** | `/apps/chalkboard/` | 칠판/화이트보드 메모 |
-| **연산연습지** | `/apps/math-sheet/` | 사칙연산 세로셈 학습지 생성·A4 인쇄·링크/QR 공유·세트 저장 |
+| **Chalkboard** | `/apps/chalkboard/` | 칠판/화이트보드 메모 (코드 동기화) |
+| **연산연습지** | `/apps/math-sheet/` | 사칙연산 세로셈 학습지 생성·A4 인쇄·링크/QR 공유·세트 저장(코드 동기화) |
+| **Read Tree** | `/apps/read-tree/` | ORT(옥스포드 리딩 트리) 읽기 진도를 코드 하나로 기록 (로그인·개인정보 없음) |
 
 #### 💼 업무경감
 | 앱 | 경로 | 설명 |
@@ -102,7 +103,8 @@ public/common/
 ├── app-shell.js     — 플로팅 크롬 자동 주입 + 사이드바 드로어 + focus 유틸
 ├── theme.js         — 테마 전환 (auto/light/dark), 페이지 공유 기능
 ├── init.js          — 공통 파비콘 강제 설정 및 구글 애널리틱스 초기화
-└── seo-injector.js  — 런타임 클라이언트 사이드 동적 SEO 및 JSON-LD 메타태그 완성
+├── seo-injector.js  — 런타임 클라이언트 사이드 동적 SEO 및 JSON-LD 메타태그 완성
+└── sync.js          — 코드 기반 다기기 동기화 (전역 VivesSync) → 아래 "코드 동기화" 참고
 ```
 
 **셸 유형 시스템**: 앱은 `<body data-shell="...">`로 레이아웃 베이스를 고릅니다.
@@ -126,9 +128,22 @@ public/common/
 
 ---
 
+## 🔄 코드 동기화 (VivesSync · D1)
+
+로그인·개인정보 없이 **6자리 익명 코드 하나**로 여러 기기에서 앱 상태를 이어쓰는 공용 계층. 우상단 **🔄 동기화 버튼**으로 코드를 연결/발급/해제합니다.
+
+- **저장소**: byeduin 전용 Cloudflare **D1** 1개(`BYEDUIN_DB`, [`wrangler.toml`](wrangler.toml)) — 앱별 테이블 접두사로 공유. 스키마는 [`migrations/`](migrations/).
+- **서버**: [`functions/api/_sync.js`](functions/api/_sync.js) — `createDocSync`(문서 1개)·`createSetSync`(다수 항목). LWW 머지·멱등 upsert·검증·용량 상한 내장. 각 앱 엔드포인트는 한 줄 래퍼.
+- **클라이언트**: [`public/common/sync.js`](public/common/sync.js) → 전역 `VivesSync`. 헬퍼: `mountDocSync`(상태 자동 동기화)·`mountCodeButton`(코드 버튼)·`docStore`(다중 문서)·`createSet`(항목). 로컬 우선, 오프라인·장애 시 무시.
+- **적용 앱(9)**: read-tree · flash-deck · blocks-universe · timer · search · chalkboard · signage-maker(메타데이터만) · math-sheet · md-editor.
+- **상세 설계·적용 가이드**: [`docs/d1-sync-pattern.md`](docs/d1-sync-pattern.md)
+
+---
+
 ## 📖 개발 문서
 
-* [개발 계획 및 진행 현황](docs/DEVPLAN.md) — 과거 개발 마일스톤, 성능 분석, 알려진 이슈
+* [프로젝트 개요](docs/OVERVIEW.md) — 폴더 구조, 셸 시스템, API 엔드포인트, 데이터 동기화, 변경 이력
+* [코드 동기화 패턴](docs/d1-sync-pattern.md) — D1·VivesSync 설계 원칙, 모드(doc/set), 새 앱 적용 가이드
 * [디자인 시스템 사양](docs/design-system.md) — 색상 토큰, 타이포그래피, 반응형 크기, 공통 컴포넌트 마크업 규칙
 * [신규 앱 개발 가이드](docs/app-development-guide.md) — 신규 미니 앱 추가를 위한 스캐폴딩 가이드 및 체크리스트
 

@@ -15,16 +15,18 @@ read-tree(`/api/readtree`)에서 검증된 **"로그인 없는 코드 기반 + �
 
 | 앱 | 모드(API) | 엔드포인트 | D1 테이블 | 동기화 대상 |
 |---|---|---|---|---|
-| read-tree | `createSet` | `/api/readtree` | `read_tree_reads` | 읽음 기록(통합코드 전환) |
+| read-tree | `createSet` + `mountCodeButton` | `/api/readtree` | `read_tree_reads` | 읽음 기록(로그인 없음·로컬 우선) |
 | flash-deck | `mountDocSync` | `/api/flash-deck` | `flash_deck_docs` | 카드 덱 |
 | blocks-universe | `mountDocSync` | `/api/blocks-universe` | `blocks_universe_docs` | 즐겨찾기·재생목록·최근 |
 | timer | `mountDocSync` | `/api/timer` | `timer_docs` | 알람·기록 |
 | search | `mountDocSync` | `/api/search-sync` | `search_docs` | 검색 기록 |
-| math-sheet | `docStore` | `/api/math-sheet` | `math_sheet_sets` | 학습지 세트(다중) |
-| md-editor | `docStore` | `/api/md-editor` | `md_editor_docs` | 문서(다중) |
+| chalkboard | `mountDocSync` | `/api/chalkboard` | `chalkboard_docs` | 칠판·화이트보드 |
+| signage-maker | `mountDocSync` | `/api/signage` | `signage_docs` | 갤러리 **메타데이터만**(이미지 제외) |
+| math-sheet | `docStore` + `mountCodeButton` | `/api/math-sheet` | `math_sheet_sets` | 학습지 세트(다중) |
+| md-editor | `docStore` + `mountCodeButton` | `/api/md-editor` | `md_editor_docs` | 문서(다중) |
 
-- **createSet**: 항목별 동기화(읽음 토글 등). **mountDocSync**: 현재 상태 통째 + 헤더 '동기화' 버튼(선택). **docStore**: 코드별 다중 문서 저장/열기.
-- 모두 통합 익명 코드 `vives:code` 공유(로그인·개인정보 0).
+- **createSet**: 항목별 동기화(읽음 토글 등). **mountDocSync**: 현재 상태 통째 + 헤더 '동기화' 버튼(자동 push/pull). **docStore**: 코드별 다중 문서 저장/열기. **mountCodeButton**: 우상단 코드 버튼만(상태 자동동기화 없이 코드 연결/발급/해제 → `onChange`로 앱이 갱신).
+- 모두 우상단 통합 **🔄 동기화 버튼**으로 코드를 관리하고, 통합 익명 코드 `vives:code`를 공유(로그인·개인정보 0).
 
 ---
 
@@ -187,15 +189,17 @@ await lib.remove(code, id);      // 항목 삭제
 `volcano`·`file-tools`·`md-editor`·`notion-*`·`signage-maker`·`yt-thumb` 등 —
 저장 상태가 로컬 설정 수준이거나 서버 동기화 수요가 낮아 현시점 D1 대상 아님.
 
-### 적용 현황 (2026-06-20)
+### 적용 현황 (2026-06, 적용 앱 9개)
 
-- ✅ **read-tree** — set 모드로 전환 완료(통합 코드 + `createSetSync`). 로컬·원격 마이그레이션 적용.
-- ✅ **flash-deck · blocks-universe · timer · search** — 선택 동기화(헤더 '동기화' 버튼, `mountDocSync`, doc 모드) 적용. 원격 테이블 생성(0003) 완료.
+모든 앱은 우상단 통합 **🔄 동기화 버튼**으로 코드를 관리한다(상단 §요약 표 참고).
+
+- ✅ **read-tree** — `createSet`(항목 동기화). **로그인 화면 제거** → 랜딩은 설명, 로컬 우선(`_local` 키, 코드 없이도 동작). 우상단 버튼 연결 시 항목 동기화, 첫 연결 시 로컬 진도를 코드로 이관. 마이그레이션 0001→0002(데이터 보존).
+- ✅ **flash-deck · blocks-universe · timer · search** — `mountDocSync`(현재 상태 자동 동기화). 마이그레이션 0003.
   - search 기록 동기화는 `/api/search`(RAG 검색)와 충돌 피해 `/api/search-sync` 사용.
-  - blocks-universe는 즐겨찾기·재생목록·최근만 동기화(영상 길이 캐시 제외).
-- ✅ **math-sheet · md-editor** — 코드별 다중 문서 + 서버에서 열기(set 모드, `docStore`) 적용.
-  저장 메뉴 "코드로 저장" + 열기 모달 코드 바/서버 목록. 테이블 0004(`math_sheet_sets`·`md_editor_docs`, valueMax 200KB).
+  - blocks-universe는 즐겨찾기·재생목록·최근만(영상 길이 캐시 제외).
+- ✅ **chalkboard** — `mountDocSync`(보드 자동 동기화). 마이그레이션 0005.
+- ✅ **signage-maker** — `mountDocSync`로 **메타데이터만**(텍스트·스타일·프롬프트·생성일) 동기화. 이미지(IndexedDB)는 용량상 제외 → 다른 기기 항목은 "☁️ 다른 기기 · 다시 생성" 카드로 표시, 클릭 시 텍스트/스타일을 불러와 재생성. 마이그레이션 0005.
+- ✅ **math-sheet · md-editor** — `docStore`(코드별 다중 문서). 우상단 버튼으로 코드 연결 → 열기/저장 모달이 **싱크 중이면 서버+로컬, 미싱크면 로컬만** 표시. 마이그레이션 0004(valueMax 200KB).
 
-> **참고 적용 순서: scoring-table → flash-deck → allowance-calculator.**
-> 셋 다 doc 모드라 `_sync.js` + `/common/sync.js`로 거의 그대로 붙는다.
-> (실시간 협업이 필요한 chalkboard/bubble-chat은 D1이 아니라 Durable Objects 검토.)
+> **남은 후보(미적용)**: scoring-table(채점표) · allowance-calculator(용돈) — doc 모드로 동일하게 붙일 수 있음.
+> 실시간 협업(chalkboard 동시 편집·bubble-chat)은 D1이 아니라 Durable Objects 영역.

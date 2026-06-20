@@ -50,6 +50,7 @@ docs/                  ← 개발 문서
 | `flash-deck` | 플래시덱 | 플래시카드 덱 제작 및 학습 |
 | `chalkboard` | 칠판 | 텍스트·선으로 자유 판서 |
 | `math-sheet` | 연산연습지 | 사칙연산 세로셈 학습지 생성·PDF 출력·공유 |
+| `read-tree` | Read Tree | ORT 읽기 진도를 코드 하나로 기록(로그인 없음) |
 
 ### 교육 · 업무경감 (`edu-work`)
 | ID | 이름 | 설명 |
@@ -141,10 +142,35 @@ docs/                  ← 개발 문서
 | `GET /api/tree` | 교육문서 리포 파일 트리(서버사이드, GitHub rate limit 회피) |
 | `GET /api/recent-docs` | 최근 업데이트된 교육문서 (커밋 기반) |
 | `GET /api/notices` | 공지사항 |
+| `GET·PUT·DELETE /api/readtree` | Read Tree 읽음 기록 동기화 (D1, set 모드) |
+| `GET·PUT·DELETE /api/flash-deck`·`/api/blocks-universe`·`/api/timer`·`/api/search-sync`·`/api/chalkboard`·`/api/signage` | 앱 상태 코드 동기화 (D1, doc 모드) |
+| `GET·PUT·DELETE /api/math-sheet`·`/api/md-editor` | 코드별 다중 문서 라이브러리 (D1, set 모드) |
+
+> 위 동기화 엔드포인트는 모두 `functions/api/_sync.js`(createDocSync/createSetSync)의 한 줄 래퍼다.
+
+---
+
+## 데이터 동기화 (D1 · VivesSync)
+
+로그인·개인정보 없이 **6자리 익명 코드 하나**로 여러 기기에서 앱 상태를 이어쓰는 공용 계층.
+
+- **DB**: byeduin 전용 Cloudflare **D1** 1개(`BYEDUIN_DB`, [`wrangler.toml`](../wrangler.toml)). 앱별 테이블 접두사로 한 DB를 공유. 마이그레이션은 [`migrations/`](../migrations/).
+- **서버**: [`functions/api/_sync.js`](../functions/api/_sync.js) — `createDocSync`(코드당 문서 1개)·`createSetSync`(코드당 다수 항목). LWW 머지·멱등 upsert·정규식 검증·용량 상한 내장.
+- **클라이언트**: [`public/common/sync.js`](../public/common/sync.js) → 전역 `VivesSync`. 통합 코드 `vives:code` 공유. 헬퍼: `mountDocSync`(상태 자동 동기화 + 헤더 버튼)·`mountCodeButton`(코드 버튼만)·`docStore`(다중 문서)·`createSet`(항목).
+- **원칙**: 로컬(localStorage/IndexedDB) 우선, 서버는 백업·다기기 채널. 오프라인·장애 시 조용히 무시(앱은 항상 동작).
+- **적용 앱(9)**: read-tree·flash-deck·blocks-universe·timer·search·chalkboard·signage-maker·math-sheet·md-editor.
+- 상세: [`docs/d1-sync-pattern.md`](d1-sync-pattern.md)
 
 ---
 
 ## 주요 변경 이력
+
+### 2026-06 — D1 코드 동기화 도입 (VivesSync)
+로그인·개인정보 없이 6자리 익명 코드로 다기기 동기화하는 공용 계층을 도입. byeduin 전용 D1 1개(`BYEDUIN_DB`)에 앱별 테이블 접두사로 공유. 공용 헬퍼 [`functions/api/_sync.js`](../functions/api/_sync.js)·[`public/common/sync.js`](../public/common/sync.js)(`VivesSync`). 우상단 통합 **🔄 동기화 버튼**으로 코드 관리 통일.
+- read-tree는 **로그인 화면을 제거**하고 로컬 우선 + 버튼 동기화로 전환.
+- math-sheet·md-editor는 코드별 다중 문서(열기/저장에 싱크 시 서버+로컬·미싱크 시 로컬만).
+- signage-maker는 이미지 제외 **메타데이터만** 동기화.
+- 마이그레이션 0001~0005, 적용 앱 9개. 상세: [`docs/d1-sync-pattern.md`](d1-sync-pattern.md).
 
 ### 2026-06 — 에듀서치 검색 품질 개선 (1단계)
 **문제**: "양이 적은데도 검색이 안 되고, 특정 문서 답변도 부정확". 원인은 `search.js`가 사실상 검색(retrieval)을 하지 않고 **GitHub 트리 순서 앞 10개 파일(`files.slice(0, 10)`)을 질문과 무관하게** 컨텍스트로 넣고 있었음. 게다가 파일당 4000자(문서 Q&A 6000자)로 잘려 긴 문서 뒷부분 답변이 손실되고, '대화'인데 이전 맥락을 서버에 전달하지 않아 후속 질문이 매번 단발성으로 처리됨.

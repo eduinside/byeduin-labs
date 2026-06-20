@@ -158,6 +158,9 @@ node scripts/scaffold-app.js --id my-app --name "내 앱" --base column --width 
 showToast("클립보드에 복사되었습니다!");
 ```
 
+### 5-3. 코드 기반 다기기 동기화(선택)
+로그인·개인정보 없이 6자리 코드 하나로 여러 기기에서 상태를 이어쓰려면 `VivesSync`(`/common/sync.js`)를 쓴다. `<head>`에 `<script src="/common/sync.js"></script>`를 추가하고, 서버는 `functions/api/<app>.js`에서 `_sync.js`의 `createDocSync`/`createSetSync`를 한 줄로 래핑한 뒤 `migrations/`에 테이블을 추가한다. 클라이언트는 상태 자동 동기화면 `VivesSync.mountDocSync`, 다중 문서면 `VivesSync.docStore` + `mountCodeButton`을 사용한다. 자세한 설계·적용 절차는 [`docs/d1-sync-pattern.md`](d1-sync-pattern.md) 참고.
+
 ---
 
 ## 6. Phase 5: 배포 전 필수 배포용 스크립트 구동
