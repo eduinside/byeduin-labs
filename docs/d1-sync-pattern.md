@@ -203,3 +203,20 @@ await lib.remove(code, id);      // 항목 삭제
 
 > **남은 후보(미적용)**: scoring-table(채점표) · allowance-calculator(용돈) — doc 모드로 동일하게 붙일 수 있음.
 > 실시간 협업(chalkboard 동시 편집·bubble-chat)은 D1이 아니라 Durable Objects 영역.
+
+---
+
+## 5. 마당(madang) — board 파티션 전용 모듈 (이 패턴과 별개)
+
+마당(`/api/madang` · `/apps/madang/`)은 "여러 사람의 카드가 **한 보드에 모이고** 소유권·접근제어가
+필요"해서 doc/set(개인 코드 = 그 사람 데이터) 모델로는 맞지 않는다. 그래서 _sync.js를 쓰지 않고
+별도 모듈([`functions/api/madang.js`](../functions/api/madang.js))로 구현했다.
+
+- **board_id 파티션** + 2테이블(`madang_boards` · `madang_cards`, [`migrations/0006_madang.sql`](../migrations/0006_madang.sql)).
+- **신원 = 코드 HMAC**: 통합 코드(vives:code)를 그대로 저장하지 않고 `HMAC(MADANG_PEPPER, …)` 해시로
+  개설자(owner_token)·작성자(author_token)를 판정 → D1이 유출돼도 코드가 새지 않음. 닉네임은 표시용 자유입력.
+- **실시간 = 폴링**(2.8초, 탭 숨김 시 정지) — DO 없이 D1로. **검열 = OpenAI Moderation**
+  (omni-moderation-latest, 키 없음·오류 시 가용성 우선 통과). **HTML = sandbox iframe** 격리 렌더.
+- 통합 코드는 마당에서 "신원"으로만 재사용하고, 마당 상태 자체는 doc/set 동기화 대상이 아니다.
+- 프로덕션 선행: `migrations/0006_madang.sql` `--remote` 적용 + Pages 시크릿 `OPENAI_API_KEY`(검열)·
+  `MADANG_PEPPER`(미설정 시 기본 pepper로 동작하나 보안상 등록 권장).

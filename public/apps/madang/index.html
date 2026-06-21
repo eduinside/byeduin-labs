@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>마당 — eduin VIVES</title>
+  <meta name="description" content="코드·QR로 초대하면 참여자 응답이 실시간 카드로 쌓이는 패들렛형 보드. 로그인 없이 마당을 열고 텍스트·링크·HTML로 답하세요. 개설자는 공유/공유중단으로 접근을 관리합니다.">
+  <meta property="og:title" content="마당 — 실시간 응답 보드 | eduin VIVES">
+  <meta property="og:description" content="코드·QR로 초대하면 참여자 응답이 실시간 카드로 쌓이는 패들렛형 보드. 로그인 없이 마당을 열고 텍스트·링크·HTML로 답하세요. 개설자는 공유/공유중단으로 접근을 관리합니다.">
+  <meta property="og:image" content="https://eduin.info/og-images/madang.png">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <link rel="stylesheet" href="/common/app-shell.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
+  <script src="/common/app-shell.js" defer></script>
+  <script src="/common/seo-injector.js" defer></script>
+  <script src="/common/sync.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    /* ── 배경 격자(flash-deck 스타일) ── */
+    body::before {
+      content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(0,111,238,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,111,238,.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* ── 랜딩(첫 화면) ── */
+    .land-hero { text-align: center; padding: 18px 0 26px; }
+    .land-emoji { font-size: 46px; line-height: 1; margin-bottom: 8px; }
+    .land-title { font-size: 30px; font-weight: 800; letter-spacing: -.03em; margin: 0 0 8px; }
+    .land-sub { color: var(--fg-muted); font-size: 15px; line-height: 1.6; margin: 0 auto; max-width: 520px; }
+    .land-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; max-width: 720px; margin: 6px auto 0; }
+    .land-card {
+      background: var(--card-bg); border: 1px solid var(--border); border-radius: 18px;
+      padding: 24px 22px; text-align: left; cursor: pointer; transition: transform .12s, box-shadow .2s, border-color .2s;
+    }
+    .land-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,111,238,.12); border-color: var(--primary); }
+    .land-card h3 { margin: 0 0 6px; font-size: 19px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    .land-card p { margin: 0; color: var(--fg-muted); font-size: 13.5px; line-height: 1.55; }
+    .land-card .lc-go { margin-top: 14px; display: inline-flex; align-items: center; gap: 6px; color: var(--primary); font-weight: 700; font-size: 13px; }
+    .land-note { text-align: center; color: var(--fg-muted); font-size: 12.5px; margin-top: 20px; line-height: 1.6; }
+
+    /* ── 보드 헤더 ── */
+    .bd-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .bd-titles { flex: 1 1 220px; min-width: 0; }
+    .bd-title { font-size: 22px; font-weight: 800; letter-spacing: -.02em; margin: 0; word-break: break-word; }
+    .bd-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 5px; }
+    .bd-code { font-family: ui-monospace, monospace; font-weight: 800; letter-spacing: .14em; background: rgba(0,111,238,.08);
+      color: var(--primary); border: 1px solid rgba(0,111,238,.2); border-radius: 8px; padding: 3px 9px; font-size: 13px; }
+    .bd-stat { font-size: 12.5px; color: var(--fg-muted); }
+    .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; border-radius: 99px; padding: 3px 10px; border: 1px solid var(--border); }
+    .pill.on { background: rgba(23,201,100,.1); color: var(--success); border-color: rgba(23,201,100,.3); }
+    .pill.off { background: rgba(243,18,96,.08); color: var(--danger); border-color: rgba(243,18,96,.3); }
+    .bd-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 10px; padding: 9px 14px;
+      font-size: 13.5px; font-weight: 700; cursor: pointer; font-family: inherit; border: 1px solid var(--border);
+      background: var(--card-bg); color: var(--fg); transition: background .15s, border-color .15s, transform .1s, color .15s; min-height: 40px; }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn:active { transform: scale(.98); }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-h); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+    .btn-danger:hover { background: var(--danger); color: #fff; filter: brightness(1.05); }
+    .btn-ghost { background: transparent; }
+    .btn-sm { padding: 6px 10px; min-height: 32px; font-size: 12.5px; }
+
+    /* ── 카드 벽(마소너리) ── */
+    .wall { columns: 248px; column-gap: 14px; }
+    .wall-empty { text-align: center; color: var(--fg-muted); padding: 60px 16px; font-size: 14px; line-height: 1.7; }
+    .mcard {
+      break-inside: avoid; -webkit-column-break-inside: avoid; margin: 0 0 14px;
+      background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 14px 15px;
+      animation: pop .22s ease; overflow: hidden;
+    }
+    @keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .mcard-body { font-size: 14px; line-height: 1.6; }
+    .mcard-text { white-space: pre-wrap; word-break: break-word; }
+    .mcard-link { display: inline-flex; align-items: center; gap: 7px; color: var(--primary); font-weight: 700; text-decoration: none; word-break: break-all; }
+    .mcard-link:hover { text-decoration: underline; }
+    .mcard-frame { width: 100%; border: 0; border-radius: 8px; background: #fff; display: block; min-height: 60px; }
+    .mcard-foot { display: flex; align-items: center; gap: 8px; margin-top: 11px; padding-top: 9px; border-top: 1px dashed var(--border); }
+    .mcard-who { font-weight: 700; font-size: 12.5px; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mcard-when { font-size: 11.5px; color: var(--fg-muted); }
+    .mcard-acts { margin-left: auto; display: flex; gap: 4px; }
+    .mcard-acts button { background: none; border: 0; cursor: pointer; color: var(--fg-muted); font-size: 12px; padding: 3px 6px; border-radius: 6px; font-family: inherit; }
+    .mcard-acts button:hover { color: var(--fg); background: var(--bg-sec); }
+    .mcard-acts button.del:hover { color: var(--danger); }
+
+    /* ── 카드 올리기 FAB ── */
+    .fab { position: fixed; left: 50%; transform: translateX(-50%); bottom: 22px; z-index: 9000;
+      background: var(--primary); color: #fff; border: 0; border-radius: 99px; padding: 13px 24px; font-size: 15px; font-weight: 800;
+      cursor: pointer; box-shadow: 0 8px 26px rgba(0,111,238,.4); font-family: inherit; display: inline-flex; align-items: center; gap: 8px; }
+    .fab:hover { background: var(--primary-h); }
+    .fab:active { transform: translateX(-50%) scale(.97); }
+
+    /* ── 게이트(차단/없음) ── */
+    .gate { text-align: center; padding: 70px 16px; }
+    .gate-emoji { font-size: 44px; margin-bottom: 12px; }
+    .gate h2 { margin: 0 0 8px; font-size: 22px; font-weight: 800; }
+    .gate p { color: var(--fg-muted); margin: 0 0 20px; line-height: 1.6; }
+
+    /* ── 모달 ── */
+    .modal { position: fixed; inset: 0; z-index: 9700; display: none; align-items: center; justify-content: center; padding: 18px;
+      background: rgba(0,0,0,.5); backdrop-filter: blur(3px); }
+    .modal.open { display: flex; }
+    .modal-box { width: 100%; max-width: 440px; max-height: 90vh; overflow: auto; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 18px; padding: 22px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+    .modal-box h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
+    .modal-box .m-sub { color: var(--fg-muted); font-size: 13px; margin: 0 0 16px; line-height: 1.55; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 12.5px; font-weight: 700; color: var(--fg-muted); margin-bottom: 6px; }
+    .field .hint { font-size: 11.5px; color: var(--fg-muted); margin-top: 5px; line-height: 1.5; }
+    input.in, textarea.in, select.in { display: block; width: 100%; background: var(--input-bg); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--fg); font-size: 16px; padding: 11px 13px; outline: none; font-family: inherit; transition: border-color .15s; }
+    input.in:focus, textarea.in:focus, select.in:focus { border-color: var(--primary); }
+    textarea.in { min-height: 110px; resize: vertical; line-height: 1.55; }
+    .code-in { text-transform: uppercase; text-align: center; letter-spacing: .22em; font-weight: 800; font-family: ui-monospace, monospace; font-size: 22px; }
+    .modal-actions { display: flex; gap: 9px; margin-top: 18px; }
+    .modal-actions .btn { flex: 1; }
+    .m-err { color: var(--danger); font-size: 12.5px; margin-top: 10px; min-height: 16px; line-height: 1.5; }
+
+    /* 타입 탭 */
+    .type-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+    .type-tab { flex: 1; text-align: center; padding: 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--card-bg);
+      cursor: pointer; font-size: 13px; font-weight: 700; color: var(--fg-muted); font-family: inherit; }
+    .type-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* 초대 */
+    .invite-code { font-family: ui-monospace, monospace; font-size: 34px; font-weight: 800; letter-spacing: .2em; text-align: center;
+      color: var(--primary); margin: 4px 0 14px; }
+    #qrbox { display: flex; justify-content: center; margin: 8px 0 16px; }
+    #qrbox img, #qrbox canvas { border-radius: 10px; }
+
+    .checkrow { display: flex; gap: 14px; flex-wrap: wrap; }
+    .checkrow label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--fg); cursor: pointer; }
+
+    .hide { display: none !important; }
+
+    /* 토스트 */
+    .toast { position: fixed; bottom: 84px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg);
+      padding: 10px 18px; border-radius: 10px; font-size: 13.5px; font-weight: 600; z-index: 9999; box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+
+    @media (max-width: 540px) {
+      .land-title { font-size: 25px; }
+      .wall { columns: 160px; column-gap: 10px; }
+      .fab { bottom: 16px; }
+    }
+  </style>
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="마당 — 실시간 응답 보드 | eduin VIVES">
+  <meta name="twitter:description" content="코드·QR로 초대하면 참여자 응답이 실시간 카드로 쌓이는 패들렛형 보드. 로그인 없이 마당을 열고 텍스트·링크·HTML로 답하세요. 개설자는 공유/공유중단으로 접근을 관리합니다.">
+  <meta name="twitter:image" content="https://eduin.info/og-images/madang.png">
+  <link rel="canonical" href="https://eduin.info/apps/madang/">
+  <meta property="og:url" content="https://eduin.info/apps/madang/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"마당","description":"코드·QR로 초대하면 참여자 응답이 실시간 카드로 쌓이는 패들렛형 보드. 로그인 없이 마당을 열고 텍스트·링크·HTML로 답하세요. 개설자는 공유/공유중단으로 접근을 관리합니다.","url":"https://eduin.info/apps/madang/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+</head>
+<body data-shell="column" data-width="wide">
+  <!-- 플로팅 크롬(홈·테마·공유·🔄동기화)은 app-shell.js / sync.js가 주입합니다 -->
+  <main class="app-main">
+
+    <!-- ───────── 첫 화면 ───────── -->
+    <section id="landing">
+      <div class="land-hero">
+        <div class="land-emoji">🧱</div>
+        <h1 class="land-title">마당</h1>
+        <p class="land-sub">코드·QR로 초대하면 참여자 응답이 <b>실시간 카드</b>로 쌓이는 패들렛형 보드.
+          로그인 없이 마당을 열고, 텍스트·링크·HTML로 답하세요.</p>
+      </div>
+      <div class="land-cards">
+        <div class="land-card" id="card-create">
+          <h3>🧱 마당 만들기</h3>
+          <p>새 마당을 열고 참여자를 초대합니다. 동기화 코드로 내가 개설자가 되어 관리할 수 있어요.</p>
+          <span class="lc-go">만들기 →</span>
+        </div>
+        <div class="land-card" id="card-join">
+          <h3>🚪 마당 들어가기</h3>
+          <p>받은 <b>마당 코드</b>나 QR/링크로 입장해 카드를 올립니다. 별명만 정하면 바로 참여돼요.</p>
+          <span class="lc-go">들어가기 →</span>
+        </div>
+      </div>
+      <p class="land-note">개인정보 없이 익명 코드로 동작합니다 · 부적절한 내용은 자동 검열돼요</p>
+    </section>
+
+    <!-- ───────── 보드 ───────── -->
+    <section id="board" class="hide">
+      <div class="bd-head">
+        <div class="bd-titles">
+          <h1 class="bd-title" id="bdTitle">마당</h1>
+          <div class="bd-meta">
+            <span class="bd-code" id="bdCode">------</span>
+            <span class="pill on" id="bdShared">공유중</span>
+            <span class="bd-stat" id="bdCount">카드 0</span>
+          </div>
+        </div>
+        <div class="bd-actions" id="bdActions"><!-- 동적 --></div>
+      </div>
+      <div class="wall" id="wall"></div>
+      <div class="wall-empty hide" id="wallEmpty">아직 카드가 없어요.<br>아래 <b>＋ 카드 올리기</b>로 첫 응답을 남겨보세요.</div>
+    </section>
+
+    <!-- ───────── 게이트 ───────── -->
+    <section id="gate" class="hide">
+      <div class="gate">
+        <div class="gate-emoji" id="gateEmoji">🔒</div>
+        <h2 id="gateTitle">접근할 수 없습니다</h2>
+        <p id="gateMsg"></p>
+        <button class="btn btn-primary" onclick="location.href='/apps/madang/'">처음으로</button>
+      </div>
+    </section>
+  </main>
+
+  <button class="fab hide" id="fab">＋ 카드 올리기</button>
+
+  <!-- ───── 만들기 모달 ───── -->
+  <div class="modal" id="m-create">
+    <div class="modal-box">
+      <h2>마당 만들기</h2>
+      <p class="m-sub">제목과 (선택) PIN을 정하면 새 마당이 열립니다. 만든 사람이 개설자가 됩니다.</p>
+      <div class="field">
+        <label>마당 제목</label>
+        <input class="in" id="cTitle" maxlength="120" placeholder="예: 오늘 수업 한 줄 소감">
+      </div>
+      <div class="field">
+        <label>입장 PIN (선택)</label>
+        <input class="in" id="cPin" inputmode="numeric" maxlength="8" placeholder="숫자 4~8자리 · 비우면 PIN 없음">
+        <div class="hint">PIN을 정하면 마당 코드만으로는 못 들어오고 PIN을 함께 입력해야 합니다.</div>
+      </div>
+      <div class="m-err" id="cErr"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-close>취소</button>
+        <button class="btn btn-primary" id="cGo">마당 열기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───── 들어가기 모달 ───── -->
+  <div class="modal" id="m-join">
+    <div class="modal-box">
+      <h2>마당 들어가기</h2>
+      <p class="m-sub">받은 마당 코드와 사용할 별명을 입력하세요.</p>
+      <div class="field">
+        <label>마당 코드</label>
+        <input class="in code-in" id="jCode" maxlength="6" placeholder="------" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>별명</label>
+        <input class="in" id="jNick" maxlength="40" placeholder="예: 1모둠, 햇살반 지우">
+        <div class="hint">카드에 표시됩니다. <b>실명·학번 등 개인정보는 입력하지 마세요.</b></div>
+      </div>
+      <div class="field hide" id="jPinField">
+        <label>입장 PIN</label>
+        <input class="in" id="jPin" inputmode="numeric" maxlength="8" placeholder="숫자 PIN">
+      </div>
+      <div class="m-err" id="jErr"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-close>취소</button>
+        <button class="btn btn-primary" id="jGo">입장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───── 카드 작성/수정 모달 ───── -->
+  <div class="modal" id="m-card">
+    <div class="modal-box">
+      <h2 id="kTitle">카드 올리기</h2>
+      <p class="m-sub" id="kWho"></p>
+      <div class="type-tabs" id="kTabs">
+        <button class="type-tab active" data-type="text">📝 텍스트</button>
+        <button class="type-tab" data-type="link">🔗 링크</button>
+        <button class="type-tab" data-type="html">⟨⟩ HTML</button>
+      </div>
+      <div class="field" id="kTextField">
+        <textarea class="in" id="kText" maxlength="8000" placeholder="여기에 응답을 입력하세요…"></textarea>
+      </div>
+      <div class="field hide" id="kLinkField">
+        <input class="in" id="kLink" maxlength="2000" placeholder="https://...">
+      </div>
+      <div class="field hide" id="kHtmlField">
+        <textarea class="in" id="kHtml" maxlength="12000" placeholder="<b>HTML</b> 또는 임베드 코드…"></textarea>
+        <div class="hint">올린 HTML은 격리된 샌드박스에서 안전하게 표시됩니다.</div>
+      </div>
+      <div class="m-err" id="kErr"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-close>취소</button>
+        <button class="btn btn-primary" id="kGo">게시</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───── 초대 모달 ───── -->
+  <div class="modal" id="m-invite">
+    <div class="modal-box">
+      <h2>마당 초대</h2>
+      <p class="m-sub">아래 코드를 알려주거나 QR/링크를 공유하세요.</p>
+      <div class="invite-code" id="ivCode">------</div>
+      <div id="qrbox"></div>
+      <div class="m-err hide" id="ivPin"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-close>닫기</button>
+        <button class="btn btn-primary" id="ivCopy">링크 복사</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───── 설정 모달(개설자) ───── -->
+  <div class="modal" id="m-settings">
+    <div class="modal-box">
+      <h2>마당 설정</h2>
+      <p class="m-sub">개설자만 바꿀 수 있습니다.</p>
+      <div class="field">
+        <label>제목</label>
+        <input class="in" id="sTitle" maxlength="120">
+      </div>
+      <div class="field">
+        <label>허용 카드 유형</label>
+        <div class="checkrow">
+          <label><input type="checkbox" id="sT_text" value="text"> 📝 텍스트</label>
+          <label><input type="checkbox" id="sT_link" value="link"> 🔗 링크</label>
+          <label><input type="checkbox" id="sT_html" value="html"> ⟨⟩ HTML</label>
+        </div>
+      </div>
+      <div class="field">
+        <label>입장 PIN</label>
+        <input class="in" id="sPin" inputmode="numeric" maxlength="8" placeholder="숫자 4~8자리 · 비우면 PIN 해제">
+        <div class="hint" id="sPinHint"></div>
+      </div>
+      <div class="m-err" id="sErr"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-close>취소</button>
+        <button class="btn btn-primary" id="sGo">저장</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="sDelete" style="flex:1">이 마당 삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+    var API = '/api/madang';
+    var BOARD_RE = /^[A-HJ-NP-Z2-9]{6}$/;
+    var POLL_MS = 2800;
+
+    var state = {
+      boardId: null, isOwner: false, board: null,
+      pin: '', nickname: '', editingId: null, composeType: 'text',
+    };
+    var els = {};          // 렌더된 카드 노드 map: id -> el
+    var pollTimer = null;
+
+    /* ── 유틸 ── */
+    function $(id) { return document.getElementById(id); }
+    function show(el) { el.classList.remove('hide'); }
+    function hide(el) { el.classList.add('hide'); }
+    function code() { return VivesSync.getCode(); }
+    function toast(msg) {
+      var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+      document.body.appendChild(t); setTimeout(function () { t.remove(); }, 2200);
+    }
+    function openModal(id) { $(id).classList.add('open'); }
+    function closeModal(id) { $(id).classList.remove('open'); }
+    function closeAllModals() { Array.prototype.forEach.call(document.querySelectorAll('.modal.open'), function (m) { m.classList.remove('open'); }); }
+
+    function relTime(iso) {
+      var d = new Date(iso), now = new Date(), s = Math.floor((now - d) / 1000);
+      if (s < 30) return '방금';
+      if (s < 3600) return Math.floor(s / 60) + '분 전';
+      if (s < 86400 && d.toDateString() === now.toDateString())
+        return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+      return (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
+    }
+    function prettyUrl(u) { try { var x = new URL(u); return x.host + (x.pathname !== '/' ? x.pathname : ''); } catch (e) { return u; } }
+
+    function getNick() { try { return localStorage.getItem('madang:nick') || ''; } catch (e) { return ''; } }
+    function setNick(n) { state.nickname = n; try { localStorage.setItem('madang:nick', n); } catch (e) {} }
+
+    /* ── API ── */
+    function post(payload) {
+      payload.code = code();
+      return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        .then(function (r) { return r.json().then(function (d) { d.__status = r.status; return d; }); });
+    }
+    function fetchBoard() {
+      var q = '?board=' + encodeURIComponent(state.boardId);
+      var c = code(); if (c) q += '&code=' + encodeURIComponent(c);
+      if (state.pin) q += '&pin=' + encodeURIComponent(state.pin);
+      return fetch(API + q, { cache: 'no-store' }).then(function (r) { return r.json().then(function (d) { d.__status = r.status; return d; }); });
+    }
+
+    /* ── 카드 렌더(키 기반: 새 카드만 추가, 삭제·수정 반영) ── */
+    function wrapHtml(htmlStr) {
+      return '<!doctype html><html><head><meta charset="utf-8"><base target="_blank">' +
+        '<style>html,body{margin:0}body{padding:8px;font:14px/1.5 -apple-system,Segoe UI,sans-serif;color:#1a1a1a;background:#fff;word-break:break-word}' +
+        'img,video,iframe,svg{max-width:100%;height:auto}a{color:#006fee}</style></head><body>' + htmlStr +
+        '<scr' + 'ipt>(function(){function h(){try{parent.postMessage({__madang:1,h:document.documentElement.scrollHeight},"*")}catch(e){}}' +
+        'window.addEventListener("load",h);[150,600,1500].forEach(function(t){setTimeout(h,t)});}())</scr' + 'ipt></body></html>';
+    }
+    function fillBody(body, card) {
+      body.innerHTML = '';
+      if (card.type === 'link') {
+        var a = document.createElement('a'); a.className = 'mcard-link'; a.href = card.content;
+        a.target = '_blank'; a.rel = 'noopener noreferrer';
+        a.appendChild(document.createTextNode('🔗 ' + prettyUrl(card.content)));
+        body.appendChild(a);
+      } else if (card.type === 'html') {
+        var f = document.createElement('iframe'); f.className = 'mcard-frame';
+        f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('loading', 'lazy'); f.setAttribute('scrolling', 'no');
+        f.style.height = '80px'; f.srcdoc = wrapHtml(card.content);
+        body.appendChild(f);
+      } else {
+        var p = document.createElement('div'); p.className = 'mcard-text'; p.textContent = card.content;
+        body.appendChild(p);
+      }
+    }
+    function createCardEl(card) {
+      var el = document.createElement('div');
+      el.className = 'mcard mcard-' + card.type; el.dataset.id = card.id; el.dataset.up = card.updatedAt;
+      var body = document.createElement('div'); body.className = 'mcard-body'; fillBody(body, card);
+      var foot = document.createElement('div'); foot.className = 'mcard-foot';
+      var who = document.createElement('span'); who.className = 'mcard-who'; who.textContent = card.nickname || '익명';
+      var when = document.createElement('span'); when.className = 'mcard-when'; when.textContent = relTime(card.createdAt);
+      var acts = document.createElement('div'); acts.className = 'mcard-acts';
+      if (card.own) {
+        var be = document.createElement('button'); be.textContent = '수정'; be.onclick = function () { openEdit(card); };
+        acts.appendChild(be);
+      }
+      if (card.own || state.isOwner) {
+        var bd = document.createElement('button'); bd.className = 'del'; bd.textContent = '삭제'; bd.onclick = function () { delCard(card.id); };
+        acts.appendChild(bd);
+      }
+      foot.appendChild(who); foot.appendChild(when); foot.appendChild(acts);
+      el.appendChild(body); el.appendChild(foot);
+      el._card = card;
+      return el;
+    }
+    function reconcile(cards) {
+      var wall = $('wall');
+      var seen = {};
+      cards.forEach(function (c) { seen[c.id] = true; });
+      // 삭제 반영
+      Object.keys(els).forEach(function (id) {
+        if (!seen[id]) { var e = els[id]; if (e && e.parentNode) e.parentNode.removeChild(e); delete els[id]; }
+      });
+      // 추가/수정 — 새 카드는 오래된→새 순으로 prepend(최신이 맨 위)
+      cards.forEach(function (c) {
+        var ex = els[c.id];
+        if (!ex) {
+          var el = createCardEl(c); els[c.id] = el; wall.insertBefore(el, wall.firstChild);
+        } else if (ex.dataset.up !== c.updatedAt) {
+          ex.dataset.up = c.updatedAt; ex._card = c;
+          fillBody(ex.querySelector('.mcard-body'), c);
+        }
+      });
+      var n = cards.length;
+      $('bdCount').textContent = '카드 ' + n;
+      $('wallEmpty').classList.toggle('hide', n > 0);
+    }
+
+    // 샌드박스 iframe 높이 자동 맞춤
+    window.addEventListener('message', function (e) {
+      var d = e.data; if (!d || d.__madang !== 1) return;
+      var frames = document.querySelectorAll('iframe.mcard-frame');
+      for (var i = 0; i < frames.length; i++) {
+        if (frames[i].contentWindow === e.source) { frames[i].style.height = Math.max(60, Math.min(640, d.h)) + 'px'; break; }
+      }
+    });
+
+    /* ── 뷰 전환 ── */
+    function showLanding() { stopPolling(); show($('landing')); hide($('board')); hide($('gate')); hide($('fab')); }
+    function showGate(emoji, title, msg) {
+      stopPolling(); hide($('landing')); hide($('board')); hide($('fab'));
+      $('gateEmoji').textContent = emoji; $('gateTitle').textContent = title; $('gateMsg').textContent = msg; show($('gate'));
+    }
+    function renderHead() {
+      var b = state.board;
+      $('bdTitle').textContent = b.title || '마당';
+      $('bdCode').textContent = b.id;
+      var sh = $('bdShared');
+      sh.className = 'pill ' + (b.shared ? 'on' : 'off');
+      sh.textContent = b.shared ? '공유중' : '공유중단';
+      var acts = $('bdActions'); acts.innerHTML = '';
+      function mk(label, cls, fn) { var x = document.createElement('button'); x.className = 'btn btn-sm ' + (cls || ''); x.textContent = label; x.onclick = fn; acts.appendChild(x); }
+      mk('초대', '', openInvite);
+      if (state.isOwner) {
+        mk(b.shared ? '공유중단' : '공유 시작', b.shared ? 'btn-ghost' : 'btn-primary', toggleShare);
+        mk('설정', '', openSettings);
+      }
+    }
+    function enterBoard(res) {
+      state.board = res.board; state.isOwner = !!res.isOwner;
+      state.boardId = res.board.id;
+      els = {}; $('wall').innerHTML = '';
+      closeAllModals();
+      hide($('landing')); hide($('gate')); show($('board')); show($('fab'));
+      renderHead();
+      reconcile(res.cards || []);
+      startPolling();
+    }
+
+    /* ── 폴링 ── */
+    function tick() {
+      if (document.hidden || !state.boardId) return;
+      fetchBoard().then(function (res) {
+        if (res.error) {
+          if (res.closed) showGate('🔒', '공유가 중단된 마당', '개설자가 공유를 멈췄어요. 다시 열리면 입장할 수 있습니다.');
+          else if (res.notFound) showGate('🫥', '마당을 찾을 수 없음', '코드가 바뀌었거나 삭제된 마당입니다.');
+          return;
+        }
+        state.board = res.board; state.isOwner = !!res.isOwner;
+        renderHead();
+        reconcile(res.cards || []);
+      }).catch(function () {});
+    }
+    function startPolling() { stopPolling(); pollTimer = setInterval(tick, POLL_MS); }
+    function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && state.boardId && $('board').classList.contains('hide') === false) tick(); });
+
+    /* ── 만들기 ── */
+    function doCreate() {
+      $('cErr').textContent = '';
+      VivesSync.ensureCode();
+      var title = $('cTitle').value.trim();
+      var pin = $('cPin').value.trim();
+      if (pin && !/^[0-9]{4,8}$/.test(pin)) { $('cErr').textContent = 'PIN은 숫자 4~8자리여야 합니다.'; return; }
+      $('cGo').disabled = true;
+      post({ action: 'create', title: title, pin: pin }).then(function (res) {
+        $('cGo').disabled = false;
+        if (!res.ok) { $('cErr').textContent = res.error || '생성 실패'; return; }
+        if (!getNick()) setNick('개설자');
+        enterBoard({ board: res.board, isOwner: true, cards: [] });
+        openInvite();
+        toast('마당이 열렸어요 ✓');
+      }).catch(function () { $('cGo').disabled = false; $('cErr').textContent = '네트워크 오류'; });
+    }
+
+    /* ── 들어가기 ── */
+    function openJoin(prefillCode) {
+      $('jErr').textContent = '';
+      $('jCode').value = prefillCode || '';
+      $('jNick').value = getNick();
+      hide($('jPinField')); $('jPin').value = '';
+      openModal('m-join');
+      setTimeout(function () { ($(prefillCode ? 'jNick' : 'jCode')).focus(); }, 50);
+    }
+    function doJoin() {
+      $('jErr').textContent = '';
+      var bid = $('jCode').value.trim().toUpperCase();
+      var nick = $('jNick').value.trim();
+      if (!BOARD_RE.test(bid)) { $('jErr').textContent = '마당 코드 6자리를 확인하세요.'; return; }
+      if (!nick) { $('jErr').textContent = '별명을 입력하세요.'; return; }
+      VivesSync.ensureCode(); setNick(nick);
+      state.boardId = bid; state.pin = $('jPin').value.trim();
+      $('jGo').disabled = true;
+      fetchBoard().then(function (res) {
+        $('jGo').disabled = false;
+        if (res.error) {
+          if (res.pinRequired) { show($('jPinField')); $('jErr').textContent = 'PIN이 필요한 마당입니다.'; $('jPin').focus(); return; }
+          if (res.closed) { $('jErr').textContent = '공유가 중단된 마당입니다.'; return; }
+          if (res.notFound) { $('jErr').textContent = '마당을 찾을 수 없습니다.'; return; }
+          $('jErr').textContent = res.error; return;
+        }
+        enterBoard(res);
+      }).catch(function () { $('jGo').disabled = false; $('jErr').textContent = '네트워크 오류'; });
+    }
+
+    /* ── 카드 작성/수정 ── */
+    function setComposeType(t) {
+      state.composeType = t;
+      Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.classList.toggle('active', b.dataset.type === t); });
+      $('kTextField').classList.toggle('hide', t !== 'text');
+      $('kLinkField').classList.toggle('hide', t !== 'link');
+      $('kHtmlField').classList.toggle('hide', t !== 'html');
+    }
+    function openCompose() {
+      state.editingId = null;
+      $('kTitle').textContent = '카드 올리기';
+      $('kErr').textContent = '';
+      $('kText').value = ''; $('kLink').value = ''; $('kHtml').value = '';
+      $('kWho').innerHTML = '이름: <b>' + ((state.nickname || getNick() || '익명')).replace(/[<>&]/g, '') + '</b> · <a href="#" id="kChg" style="color:var(--primary)">변경</a>';
+      $('kChg').onclick = function (e) { e.preventDefault(); var n = prompt('별명', state.nickname || ''); if (n != null) { setNick(n.trim().slice(0, 40)); openCompose(); } };
+      var allowed = (state.board && state.board.allowedTypes) || ['text', 'link', 'html'];
+      Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.classList.toggle('hide', allowed.indexOf(b.dataset.type) < 0); });
+      setComposeType(allowed.indexOf('text') >= 0 ? 'text' : allowed[0]);
+      openModal('m-card');
+    }
+    function openEdit(card) {
+      state.editingId = card.id; state.composeType = card.type;
+      $('kTitle').textContent = '카드 수정';
+      $('kErr').textContent = '';
+      $('kWho').textContent = '';
+      Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.classList.add('hide'); });
+      $('kTextField').classList.toggle('hide', card.type !== 'text');
+      $('kLinkField').classList.toggle('hide', card.type !== 'link');
+      $('kHtmlField').classList.toggle('hide', card.type !== 'html');
+      if (card.type === 'text') $('kText').value = card.content;
+      else if (card.type === 'link') $('kLink').value = card.content;
+      else $('kHtml').value = card.content;
+      openModal('m-card');
+    }
+    function contentOf(t) { return t === 'link' ? $('kLink').value.trim() : t === 'html' ? $('kHtml').value : $('kText').value; }
+    function doCompose() {
+      var t = state.composeType, content = contentOf(t);
+      $('kErr').textContent = '';
+      if (!content.trim()) { $('kErr').textContent = '내용을 입력하세요.'; return; }
+      if (t === 'link' && !/^https?:\/\//i.test(content)) { $('kErr').textContent = '링크는 http(s)로 시작해야 합니다.'; return; }
+      $('kGo').disabled = true;
+      var req = state.editingId
+        ? post({ action: 'editCard', board: state.boardId, cardId: state.editingId, content: content })
+        : post({ action: 'post', board: state.boardId, type: t, content: content, nickname: state.nickname || getNick(), pin: state.pin });
+      req.then(function (res) {
+        $('kGo').disabled = false;
+        if (!res.ok) {
+          if (res.flagged) { $('kErr').textContent = '⚠️ 부적절한 내용으로 판단되어 게시할 수 없습니다.'; return; }
+          $('kErr').textContent = res.error || '실패'; return;
+        }
+        closeModal('m-card');
+        if (state.editingId) {
+          var ex = els[res.card.id];
+          if (ex) { ex.dataset.up = res.card.updatedAt; ex._card.content = res.card.content; fillBody(ex.querySelector('.mcard-body'), ex._card); }
+          toast('수정됐어요 ✓');
+        } else {
+          if (!els[res.card.id]) { var el = createCardEl(res.card); els[res.card.id] = el; var w = $('wall'); w.insertBefore(el, w.firstChild); $('wallEmpty').classList.add('hide'); $('bdCount').textContent = '카드 ' + Object.keys(els).length; }
+          toast('올렸어요 ✓');
+        }
+      }).catch(function () { $('kGo').disabled = false; $('kErr').textContent = '네트워크 오류'; });
+    }
+    function delCard(id) {
+      if (!confirm('이 카드를 삭제할까요?')) return;
+      post({ action: 'deleteCard', board: state.boardId, cardId: id }).then(function (res) {
+        if (res.ok) { var e = els[id]; if (e && e.parentNode) e.parentNode.removeChild(e); delete els[id]; reconcileCount(); toast('삭제됨'); }
+        else toast(res.error || '삭제 실패');
+      });
+    }
+    function reconcileCount() { var n = Object.keys(els).length; $('bdCount').textContent = '카드 ' + n; $('wallEmpty').classList.toggle('hide', n > 0); }
+
+    /* ── 공유 토글 ── */
+    function toggleShare() {
+      var next = !state.board.shared;
+      post({ action: 'settings', board: state.boardId, patch: { shared: next } }).then(function (res) {
+        if (!res.ok) { toast(res.error || '실패'); return; }
+        state.board = res.board; renderHead();
+        toast(next ? '공유를 시작했어요' : '공유를 중단했어요');
+      });
+    }
+
+    /* ── 초대 ── */
+    function inviteUrl() { return location.origin + '/apps/madang/#join=' + state.boardId; }
+    function openInvite() {
+      $('ivCode').textContent = state.boardId;
+      var box = $('qrbox'); box.innerHTML = '';
+      if (window.QRCode) { try { new QRCode(box, { text: inviteUrl(), width: 168, height: 168, correctLevel: QRCode.CorrectLevel.M }); } catch (e) {} }
+      var pinEl = $('ivPin');
+      if (state.board && state.board.hasPin) { pinEl.classList.remove('hide'); pinEl.style.color = 'var(--fg-muted)'; pinEl.textContent = '※ 이 마당은 PIN이 설정돼 있어요. PIN은 따로 알려주세요.'; }
+      else pinEl.classList.add('hide');
+      openModal('m-invite');
+    }
+    function copyInvite() {
+      var url = inviteUrl();
+      fetch('/api/shorten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: url }) })
+        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+        .then(function (d) {
+          var out = (d && d.shortURL) || url;
+          if (navigator.clipboard) navigator.clipboard.writeText(out).then(function () { toast('초대 링크 복사됨 ✓'); }, function () { toast('링크: ' + out); });
+          else toast('링크: ' + out);
+        });
+    }
+
+    /* ── 설정 ── */
+    function openSettings() {
+      var b = state.board;
+      $('sTitle').value = b.title || '';
+      var allowed = b.allowedTypes || ['text', 'link', 'html'];
+      $('sT_text').checked = allowed.indexOf('text') >= 0;
+      $('sT_link').checked = allowed.indexOf('link') >= 0;
+      $('sT_html').checked = allowed.indexOf('html') >= 0;
+      $('sPin').value = '';
+      $('sPinHint').textContent = b.hasPin ? '현재 PIN 설정됨 · 비우고 저장하면 PIN 해제' : '현재 PIN 없음';
+      $('sErr').textContent = '';
+      openModal('m-settings');
+    }
+    function doSettings() {
+      $('sErr').textContent = '';
+      var types = [];
+      if ($('sT_text').checked) types.push('text');
+      if ($('sT_link').checked) types.push('link');
+      if ($('sT_html').checked) types.push('html');
+      if (!types.length) { $('sErr').textContent = '카드 유형을 하나 이상 선택하세요.'; return; }
+      var pin = $('sPin').value.trim();
+      if (pin && !/^[0-9]{4,8}$/.test(pin)) { $('sErr').textContent = 'PIN은 숫자 4~8자리여야 합니다.'; return; }
+      var patch = { title: $('sTitle').value.trim(), allowedTypes: types, pin: pin };
+      $('sGo').disabled = true;
+      post({ action: 'settings', board: state.boardId, patch: patch }).then(function (res) {
+        $('sGo').disabled = false;
+        if (!res.ok) { $('sErr').textContent = res.error || '실패'; return; }
+        state.board = res.board; renderHead(); closeModal('m-settings'); toast('저장됨 ✓');
+      }).catch(function () { $('sGo').disabled = false; $('sErr').textContent = '네트워크 오류'; });
+    }
+    function doDeleteBoard() {
+      if (!confirm('이 마당과 모든 카드를 영구 삭제할까요? 되돌릴 수 없습니다.')) return;
+      post({ action: 'deleteBoard', board: state.boardId }).then(function (res) {
+        if (res.ok) { toast('마당이 삭제됐어요'); setTimeout(function () { location.href = '/apps/madang/'; }, 700); }
+        else toast(res.error || '삭제 실패');
+      });
+    }
+
+    /* ── 이벤트 와이어링 ── */
+    function wire() {
+      $('card-create').onclick = function () { $('cErr').textContent = ''; $('cTitle').value = ''; $('cPin').value = ''; openModal('m-create'); setTimeout(function () { $('cTitle').focus(); }, 50); };
+      $('card-join').onclick = function () { openJoin(''); };
+      $('cGo').onclick = doCreate;
+      $('jGo').onclick = doJoin;
+      $('kGo').onclick = doCompose;
+      $('ivCopy').onclick = copyInvite;
+      $('sGo').onclick = doSettings;
+      $('sDelete').onclick = doDeleteBoard;
+      $('fab').onclick = openCompose;
+      Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.onclick = function () { setComposeType(b.dataset.type); }; });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.onclick = function () { closeModal(b.closest('.modal').id); }; });
+      Array.prototype.forEach.call(document.querySelectorAll('.modal'), function (m) { m.addEventListener('click', function (e) { if (e.target === m) closeModal(m.id); }); });
+      $('jCode').addEventListener('input', function () { this.value = this.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 6); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAllModals(); });
+    }
+
+    /* ── 초기화 ── */
+    function init() {
+      wire();
+      state.nickname = getNick();
+      VivesSync.mountCodeButton({ appName: '마당 신원' });
+      var m = (location.hash || '').match(/#join=([A-Za-z2-9]{6})/);
+      if (m) {
+        history.replaceState(null, '', location.pathname);
+        openJoin(m[1].toUpperCase());
+      }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+  })();
+  </script>
+</body>
+</html>
