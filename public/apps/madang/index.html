@@ -73,16 +73,16 @@
 
     /* ── 풀스크린 보드 ── */
     #view-board {
-      --mb-bg: #f7f7f4; --mb-fg: #1a1a1a; --mb-card: #ffffff; --mb-border: rgba(0,0,0,.1); --mb-tb: #ececea; --mb-link: #006fee; --mb-muted: rgba(0,0,0,.5);
+      --mb-bg: #f7f7f4; --mb-fg: #1a1a1a; --mb-card: #ffffff; --mb-border: rgba(0,0,0,.1); --mb-tb: #ececea; --mb-link: #006fee; --mb-muted: rgba(0,0,0,.5); --mb-accent: #006fee;
       position: fixed; inset: 0; z-index: 500; display: none; flex-direction: column; overflow: hidden;
       background-color: var(--mb-bg); color: var(--mb-fg);
     }
     #view-board.active { display: flex; }
-    #view-board.mb-bg-chalkboard { --mb-bg:#1a3323; --mb-fg:#e6efe9; --mb-card:rgba(255,255,255,.07); --mb-border:rgba(255,255,255,.15); --mb-tb:#122418; --mb-link:#86c8ff; --mb-muted:rgba(255,255,255,.5); }
-    #view-board.mb-bg-dark { --mb-bg:#15161a; --mb-fg:#e8eaed; --mb-card:rgba(255,255,255,.05); --mb-border:rgba(255,255,255,.12); --mb-tb:#0f1013; --mb-link:#7cc0ff; --mb-muted:rgba(255,255,255,.45); }
-    #view-board.mb-bg-dots { --mb-bg:#fafafa; background-image: radial-gradient(rgba(0,0,0,.14) 1px, transparent 1px); background-size: 22px 22px; }
-    #view-board.mb-bg-grid { --mb-bg:#fbfbfb; background-image: linear-gradient(rgba(0,0,0,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.06) 1px, transparent 1px); background-size: 24px 24px; }
-    #view-board.mb-bg-kraft { --mb-bg:#dcc7a6; --mb-fg:#3a2f1c; --mb-card:rgba(255,255,255,.6); --mb-border:rgba(80,60,30,.2); --mb-tb:#cdb78a; --mb-link:#185a9d; --mb-muted:rgba(60,47,28,.6); }
+    #view-board.mb-bg-chalkboard { --mb-bg:#1a3323; --mb-fg:#e6efe9; --mb-card:rgba(255,255,255,.07); --mb-border:rgba(255,255,255,.15); --mb-tb:#122418; --mb-link:#86c8ff; --mb-muted:rgba(255,255,255,.5); --mb-accent:#d98e3a; }
+    #view-board.mb-bg-dark { --mb-bg:#15161a; --mb-fg:#e8eaed; --mb-card:rgba(255,255,255,.05); --mb-border:rgba(255,255,255,.12); --mb-tb:#0f1013; --mb-link:#7cc0ff; --mb-muted:rgba(255,255,255,.45); --mb-accent:#5b8def; }
+    #view-board.mb-bg-dots { --mb-bg:#fafafa; --mb-accent:#0d9488; background-image: radial-gradient(rgba(0,0,0,.14) 1px, transparent 1px); background-size: 22px 22px; }
+    #view-board.mb-bg-grid { --mb-bg:#fbfbfb; --mb-accent:#4f46e5; background-image: linear-gradient(rgba(0,0,0,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.06) 1px, transparent 1px); background-size: 24px 24px; }
+    #view-board.mb-bg-kraft { --mb-bg:#dcc7a6; --mb-fg:#3a2f1c; --mb-card:rgba(255,255,255,.6); --mb-border:rgba(80,60,30,.2); --mb-tb:#cdb78a; --mb-link:#185a9d; --mb-muted:rgba(60,47,28,.6); --mb-accent:#2f6f4e; }
 
     #mb-tb { display: flex; align-items: center; gap: 7px; padding: 8px 12px; min-height: 54px; flex-shrink: 0;
       background: var(--mb-tb); border-bottom: 1px solid var(--mb-border); flex-wrap: wrap; }
@@ -100,8 +100,8 @@
     .mb-btn { display: inline-flex; align-items: center; gap: 5px; height: 38px; padding: 0 13px; border-radius: 9px; border: 1px solid var(--mb-border);
       background: transparent; color: var(--mb-fg); cursor: pointer; font-size: 13px; font-weight: 700; font-family: inherit; white-space: nowrap; }
     .mb-btn:hover { background: rgba(128,128,128,.15); }
-    .mb-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
-    .mb-btn.primary:hover { background: var(--primary-h); }
+    .mb-btn.primary { background: var(--mb-accent); color: #fff; border-color: var(--mb-accent); }
+    .mb-btn.primary:hover { filter: brightness(1.08); }
     .mb-btn .caret { font-size: 10px; opacity: .7; }
     .mb-menu { position: relative; }
     .mb-dropdown { position: absolute; top: calc(100% + 6px); right: 0; min-width: 184px; background: var(--bg); border: 1px solid var(--border);
@@ -152,12 +152,17 @@
     .cmt-del:hover { color: var(--danger); }
     .cmt-text { white-space: pre-wrap; word-break: break-word; }
     .cmt-empty { color: var(--fg-muted); font-size: 13px; padding: 10px 2px; text-align: center; }
+    .info-rows { display: flex; flex-direction: column; gap: 2px; }
+    .info-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--border); }
+    .info-row:last-child { border-bottom: 0; }
+    .info-k { font-size: 13px; font-weight: 700; color: var(--fg-muted); }
+    .info-v { font-size: 14px; font-weight: 600; text-align: right; }
 
-    .fab { position: fixed; left: 50%; transform: translateX(-50%); bottom: 22px; z-index: 600; background: var(--primary); color: #fff; border: 0;
-      border-radius: 99px; padding: 13px 24px; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: 0 8px 26px rgba(0,111,238,.4);
+    .fab { position: fixed; left: 50%; transform: translateX(-50%); bottom: 22px; z-index: 600; background: var(--mb-accent); color: #fff; border: 0;
+      border-radius: 99px; padding: 13px 24px; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: 0 8px 26px rgba(0,0,0,.32);
       font-family: inherit; display: none; align-items: center; gap: 8px; }
     #view-board.active ~ .fab { display: inline-flex; }
-    .fab:hover { background: var(--primary-h); }
+    .fab:hover { filter: brightness(1.08); }
 
     /* ── 게이트 ── */
     .gate { text-align: center; padding: 70px 16px; color: var(--mb-fg); }
@@ -257,10 +262,6 @@
       <button class="mb-close" id="mbClose" title="목록으로">✕</button>
       <div class="mb-titlewrap">
         <span class="mb-title" id="mbTitle">마당</span>
-        <span class="mb-code" id="mbCode">------</span>
-        <span class="mb-pill on" id="mbShared">공유중</span>
-        <span class="mb-pill" id="mbExpiry" style="display:none"></span>
-        <span class="mb-pill" id="mbCount" style="border:0">카드 0</span>
       </div>
       <div class="tb-sep"></div>
       <button class="mb-btn primary" id="mbAdd">＋ <span class="lbl">카드</span></button>
@@ -275,6 +276,7 @@
       <div class="mb-menu">
         <button class="mb-btn" id="mbMoreBtn">⋯</button>
         <div class="mb-dropdown" id="mbMoreMenu">
+          <button data-act="info">ℹ️ 마당 정보</button>
           <button data-act="nick">🙂 닉네임 변경</button>
           <button data-act="members" class="owner-only">👥 참여자 보기</button>
           <button data-act="settings" class="owner-only">⚙ 마당 설정</button>
@@ -413,6 +415,15 @@
       </div>
       <p class="hint" style="margin-top:10px">※ 이미지 캡처는 보드 화면을 그대로 담습니다. HTML 카드(샌드박스)는 빈 영역으로 나올 수 있어요.</p>
       <div class="modal-actions"><button class="btn" data-close>닫기</button></div>
+    </div>
+  </div>
+
+  <!-- ───── 마당 정보 ───── -->
+  <div class="modal" id="m-info">
+    <div class="modal-box">
+      <h2>마당 정보</h2>
+      <div class="info-rows" id="infoRows"></div>
+      <div class="modal-actions"><button class="btn btn-primary" data-close>닫기</button></div>
     </div>
   </div>
 
@@ -618,7 +629,7 @@
         if (!ex) { var el = createCardEl(c); els[c.id] = el; insertSorted(cardTarget(c), el, c); }
         else { if (ex.dataset.up !== c.updatedAt) { ex.dataset.up = c.updatedAt; fillBody(ex.querySelector('.mcard-body'), c); } ex._card = c; ex.querySelector('.mcard-who').textContent = c.nickname || '익명'; refreshCardSocial(ex, c); }
       });
-      var n = cards.length; $('mbCount').textContent = '카드 ' + n; $('wallEmpty').classList.toggle('hide', n > 0 || (state.board && state.board.layout === 'sections'));
+      var n = cards.length; $('wallEmpty').classList.toggle('hide', n > 0 || (state.board && state.board.layout === 'sections')); if ($('m-info').classList.contains('open')) renderInfo();
       if ($('m-comments').classList.contains('open') && state.cmtCardId && els[state.cmtCardId]) renderComments(els[state.cmtCardId]._card);
     }
     window.addEventListener('message', function (e) {
@@ -628,7 +639,10 @@
     });
 
     /* ── 배경 ── */
-    function applyBackground(key) { var vb = $('view-board'); vb.className = (BG[key] ? 'mb-bg-' + key : 'mb-bg-whiteboard'); vb.classList.add('active'); }
+    function applyBackground(key) {
+      var vb = $('view-board'); vb.className = (BG[key] ? 'mb-bg-' + key : 'mb-bg-whiteboard'); vb.classList.add('active');
+      try { var acc = getComputedStyle(vb).getPropertyValue('--mb-accent').trim(); if (acc) $('fab').style.background = acc; } catch (e) {}
+    }
 
     /* ── 레이아웃(자유 벽돌 / 분류 칼럼) ── */
     function makeSectionCol(name) {
@@ -683,16 +697,22 @@
       var days = Math.ceil((new Date(b.expiresAt).getTime() - Date.now()) / 86400000);
       if (days <= 0) return '오늘 종료'; if (days === 1) return '내일 종료'; return days + '일 후 종료';
     }
+    function openInfo() { renderInfo(); openModal('m-info'); }
+    function renderInfo() {
+      var b = state.board; if (!b) return;
+      var status = b.expired ? '종료됨' : (b.shared ? '공유중' : '공유중단');
+      var expiry = b.expired ? '기간 종료됨' : (b.expiresAt ? expiryText(b) + ' · ' + new Date(b.expiresAt).toLocaleDateString('ko-KR') : '무기한');
+      var rows = [['마당 코드', '<b style="font-family:ui-monospace,monospace;letter-spacing:.12em;font-size:16px;color:var(--primary)">' + b.id + '</b>'],
+        ['공유 상태', status], ['자동 종료', expiry], ['카드 수', Object.keys(els).length + '개']];
+      $('infoRows').innerHTML = rows.map(function (r) { return '<div class="info-row"><span class="info-k">' + r[0] + '</span><span class="info-v">' + r[1] + '</span></div>'; }).join('');
+    }
     function renderToolbar() {
       var b = state.board;
       var vb = $('view-board'); vb.classList.toggle('likes-on', !!b.allowLikes); vb.classList.toggle('cmts-on', !!b.allowComments);
       $('mbTitle').textContent = b.title || '마당';
-      $('mbCode').textContent = b.id;
-      var sh = $('mbShared'); sh.className = 'mb-pill ' + (b.shared && !b.expired ? 'on' : 'off'); sh.textContent = b.expired ? '종료됨' : (b.shared ? '공유중' : '공유중단');
-      var ex = $('mbExpiry'), et = expiryText(b);
-      if (et && !b.expired) { ex.style.display = ''; ex.textContent = '⏰ ' + et; } else ex.style.display = 'none';
       vb.classList.toggle('is-owner', state.isOwner);
       $('mbToggleItem').textContent = b.shared ? '⏸ 공유 중단' : '▶ 공유 시작';
+      if ($('m-info').classList.contains('open')) renderInfo();
     }
     function enterBoard(res) {
       state.board = res.board; state.isOwner = !!res.isOwner; state.boardId = res.board.id;
@@ -874,7 +894,7 @@
           var ex = els[res.card.id]; if (ex) { ex.dataset.up = res.card.updatedAt; ex._card.content = res.card.content; fillBody(ex.querySelector('.mcard-body'), ex._card); }
           toast('수정됐어요 ✓');
         } else {
-          if (!els[res.card.id]) { var el = createCardEl(res.card); els[res.card.id] = el; insertSorted(cardTarget(res.card), el, res.card); $('wallEmpty').classList.add('hide'); $('mbCount').textContent = '카드 ' + Object.keys(els).length; }
+          if (!els[res.card.id]) { var el = createCardEl(res.card); els[res.card.id] = el; insertSorted(cardTarget(res.card), el, res.card); $('wallEmpty').classList.add('hide'); if ($('m-info').classList.contains('open')) renderInfo(); }
           toast('올렸어요 ✓');
         }
       }).catch(function () { $('kGo').disabled = false; $('kErr').textContent = '네트워크 오류'; });
@@ -882,7 +902,7 @@
     function delCard(id) {
       if (!confirm('이 카드를 삭제할까요?')) return;
       post({ action: 'deleteCard', board: state.boardId, cardId: id }).then(function (res) {
-        if (res.ok) { var e = els[id]; if (e && e.parentNode) e.parentNode.removeChild(e); delete els[id]; var n = Object.keys(els).length; $('mbCount').textContent = '카드 ' + n; $('wallEmpty').classList.toggle('hide', n > 0); toast('삭제됨'); }
+        if (res.ok) { var e = els[id]; if (e && e.parentNode) e.parentNode.removeChild(e); delete els[id]; var n = Object.keys(els).length; $('wallEmpty').classList.toggle('hide', n > 0); if ($('m-info').classList.contains('open')) renderInfo(); toast('삭제됨'); }
         else toast(res.error || '삭제 실패');
       });
     }
@@ -1086,7 +1106,7 @@
       $('ivCopy').onclick = copyInvite;
       wireDropdown('mbShareBtn', 'mbShareMenu'); wireDropdown('mbMoreBtn', 'mbMoreMenu');
       $('mbShareMenu').addEventListener('click', function (e) { var b = e.target.closest('button[data-act]'); if (!b) return; closeDropdowns(); var a = b.dataset.act; if (a === 'invite') openInvite(); else if (a === 'toggle') toggleShare(); else if (a === 'export') openExport(); });
-      $('mbMoreMenu').addEventListener('click', function (e) { var b = e.target.closest('button[data-act]'); if (!b) return; closeDropdowns(); var a = b.dataset.act; if (a === 'nick') openNick(); else if (a === 'members') openMembers(); else if (a === 'settings') openSettings(); });
+      $('mbMoreMenu').addEventListener('click', function (e) { var b = e.target.closest('button[data-act]'); if (!b) return; closeDropdowns(); var a = b.dataset.act; if (a === 'info') openInfo(); else if (a === 'nick') openNick(); else if (a === 'members') openMembers(); else if (a === 'settings') openSettings(); });
       document.addEventListener('click', closeDropdowns);
       $('nkGo').onclick = doSetNick;
       $('sGo').onclick = doSettings; $('sDelete').onclick = doDeleteBoard; $('exCsv').onclick = doExportCsv; $('exPdf').onclick = doExportPdf; $('exPng').onclick = doExportPng; $('cmtGo').onclick = doAddComment;
