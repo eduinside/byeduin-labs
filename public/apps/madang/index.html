@@ -102,15 +102,31 @@
     .mb-btn:hover { background: rgba(128,128,128,.15); }
     .mb-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
     .mb-btn.primary:hover { background: var(--primary-h); }
+    .mb-btn .caret { font-size: 10px; opacity: .7; }
+    .mb-menu { position: relative; }
+    .mb-dropdown { position: absolute; top: calc(100% + 6px); right: 0; min-width: 184px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 12px; box-shadow: 0 14px 38px rgba(0,0,0,.3); padding: 6px; display: none; flex-direction: column; gap: 2px; z-index: 700; }
+    .mb-dropdown.open { display: flex; animation: ddpop .14s ease; }
+    @keyframes ddpop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+    .mb-dropdown button { display: flex; align-items: center; gap: 9px; background: none; border: 0; cursor: pointer; color: var(--fg); font-family: inherit;
+      font-size: 13.5px; font-weight: 600; text-align: left; padding: 10px 11px; border-radius: 9px; white-space: nowrap; }
+    .mb-dropdown button:hover { background: var(--bg-sec); color: var(--primary); }
+    #view-board:not(.is-owner) .owner-only { display: none; }
 
     #mb-stage { flex: 1; overflow-y: auto; padding: 18px 16px 90px; }
     .wall { columns: 248px; column-gap: 14px; max-width: 1200px; margin: 0 auto; }
+    .wall.as-sections { columns: auto; display: flex; gap: 14px; max-width: none; margin: 0; overflow-x: auto; align-items: flex-start; padding-bottom: 10px; }
+    .section-col { flex: 0 0 280px; min-width: 240px; max-width: 320px; background: rgba(128,128,128,.06); border: 1px solid var(--mb-border); border-radius: 14px; padding: 10px 10px 4px; }
+    .section-col .sec-head { font-weight: 800; font-size: 13px; margin: 2px 4px 10px; color: var(--mb-fg); }
+    .section-col .sec-cards { display: flex; flex-direction: column; gap: 12px; }
+    .section-col .mcard { margin: 0; }
     .wall-empty { text-align: center; color: var(--mb-muted); padding: 70px 16px; font-size: 14px; line-height: 1.7; }
     .mcard { break-inside: avoid; -webkit-column-break-inside: avoid; margin: 0 0 14px; background: var(--mb-card); border: 1px solid var(--mb-border);
       border-radius: 14px; padding: 14px 15px; animation: pop .22s ease; overflow: hidden; }
     @keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
     .mcard-body { font-size: 14px; line-height: 1.6; }
     .mcard-text { white-space: pre-wrap; word-break: break-word; }
+    .mcard-inlink { color: var(--mb-link); font-weight: 600; word-break: break-all; }
     .mcard-link { display: inline-flex; align-items: center; gap: 7px; color: var(--mb-link); font-weight: 700; text-decoration: none; word-break: break-all; }
     .mcard-link:hover { text-decoration: underline; }
     .mcard-frame { width: 100%; border: 0; border-radius: 8px; background: #fff; display: block; min-height: 60px; }
@@ -248,10 +264,22 @@
       </div>
       <div class="tb-sep"></div>
       <button class="mb-btn primary" id="mbAdd">＋ <span class="lbl">카드</span></button>
-      <button class="mb-btn" id="mbInvite">🔗 <span class="lbl">초대</span></button>
-      <button class="mb-btn" id="mbShareToggle">공유중단</button>
-      <button class="mb-btn" id="mbExport">⬇ <span class="lbl">내보내기</span></button>
-      <button class="mb-btn" id="mbSettings">⚙ <span class="lbl">설정</span></button>
+      <div class="mb-menu">
+        <button class="mb-btn" id="mbShareBtn">🔗 <span class="lbl">공유</span> <span class="caret">▾</span></button>
+        <div class="mb-dropdown" id="mbShareMenu">
+          <button data-act="invite">📨 초대하기 (코드·QR)</button>
+          <button data-act="toggle" class="owner-only" id="mbToggleItem">⏸ 공유 중단</button>
+          <button data-act="export" class="owner-only">⬇ 내보내기 (CSV·PDF·PNG)</button>
+        </div>
+      </div>
+      <div class="mb-menu">
+        <button class="mb-btn" id="mbMoreBtn">⋯</button>
+        <div class="mb-dropdown" id="mbMoreMenu">
+          <button data-act="nick">🙂 닉네임 변경</button>
+          <button data-act="members" class="owner-only">👥 참여자 보기</button>
+          <button data-act="settings" class="owner-only">⚙ 마당 설정</button>
+        </div>
+      </div>
     </div>
     <div id="mb-stage">
       <div class="wall" id="wall"></div>
@@ -301,12 +329,11 @@
       <h2 id="kTitle">카드 올리기</h2>
       <p class="m-sub" id="kWho"></p>
       <div class="type-tabs" id="kTabs">
-        <button class="type-tab active" data-type="text">📝 텍스트</button>
-        <button class="type-tab" data-type="link">🔗 링크</button>
+        <button class="type-tab active" data-type="text">📝 텍스트 (URL은 자동 링크)</button>
         <button class="type-tab" data-type="html">⟨⟩ HTML</button>
       </div>
+      <div class="field hide" id="kSectionField"><label>분류</label><select class="in" id="kSection"></select></div>
       <div class="field" id="kTextField"><textarea class="in" id="kText" maxlength="8000" placeholder="여기에 응답을 입력하세요…"></textarea></div>
-      <div class="field hide" id="kLinkField"><input class="in" id="kLink" maxlength="2000" placeholder="https://..."></div>
       <div class="field hide" id="kHtmlField"><textarea class="in" id="kHtml" maxlength="12000" placeholder="<b>HTML</b> 또는 임베드 코드…"></textarea>
         <div class="hint">올린 HTML은 격리된 샌드박스에서 안전하게 표시됩니다.</div></div>
       <div class="m-err" id="kErr"></div>
@@ -333,10 +360,14 @@
       <p class="m-sub">개설자만 바꿀 수 있습니다.</p>
       <div class="field"><label>제목</label><input class="in" id="sTitle" maxlength="120"></div>
       <div class="field"><label>배경</label><div class="bg-grid" id="sBgGrid"></div></div>
+      <div class="field"><label>레이아웃</label>
+        <select class="in" id="sLayout"><option value="wall">자유 벽돌(마소너리)</option><option value="sections">분류 칼럼</option></select></div>
+      <div class="field hide" id="sSectionsField"><label>분류 칼럼(쉼표로 구분)</label>
+        <input class="in" id="sSections" maxlength="200" placeholder="예: 질문, 의견, 자료">
+        <div class="hint">‘분류 칼럼’에서 카드를 나눌 칼럼들. 카드 작성 시 칼럼을 고릅니다.</div></div>
       <div class="field"><label>허용 카드 유형</label>
         <div class="checkrow">
           <label><input type="checkbox" id="sT_text" value="text"> 📝 텍스트</label>
-          <label><input type="checkbox" id="sT_link" value="link"> 🔗 링크</label>
           <label><input type="checkbox" id="sT_html" value="html"> ⟨⟩ HTML</label>
         </div></div>
       <div class="field"><label>참여자 상호작용</label>
@@ -383,6 +414,28 @@
     </div>
   </div>
 
+  <!-- ───── 닉네임 변경 ───── -->
+  <div class="modal" id="m-nick">
+    <div class="modal-box">
+      <h2>닉네임 변경</h2>
+      <p class="m-sub">이 마당에서 보일 이름을 바꿉니다. 내가 올린 카드·댓글의 이름도 함께 바뀝니다.</p>
+      <div class="field"><label>별명</label><input class="in" id="nkInput" maxlength="40" placeholder="예: 1모둠, 햇살반 지우">
+        <div class="hint"><b>실명·학번 등 개인정보는 입력하지 마세요.</b></div></div>
+      <div class="m-err" id="nkErr"></div>
+      <div class="modal-actions"><button class="btn" data-close>취소</button><button class="btn btn-primary" id="nkGo">변경</button></div>
+    </div>
+  </div>
+
+  <!-- ───── 참여자(개설자) ───── -->
+  <div class="modal" id="m-members">
+    <div class="modal-box">
+      <h2>참여자 <span id="memCount" style="color:var(--fg-muted);font-weight:600;font-size:14px"></span></h2>
+      <p class="m-sub">이 마당에 입장한 참여자 닉네임입니다.</p>
+      <div class="cmt-list" id="memList"></div>
+      <div class="modal-actions"><button class="btn btn-primary" data-close>닫기</button></div>
+    </div>
+  </div>
+
   <script>
   (function () {
     'use strict';
@@ -398,14 +451,23 @@
       kraft: { name: '크라프트', sw: '#dcc7a6' },
     };
 
-    var state = { boardId: null, isOwner: false, board: null, pin: '', nickname: '', editingId: null, composeType: 'text', cmtCardId: null };
+    var state = { boardId: null, isOwner: false, board: null, pin: '', nickname: '', editingId: null, composeType: 'text', cmtCardId: null, sectionMap: null };
     var els = {};
     var pollTimer = null;
 
     function $(id) { return document.getElementById(id); }
     function show(el) { el.classList.remove('hide'); }
     function hide(el) { el.classList.add('hide'); }
-    function code() { return VivesSync.getCode(); }
+    function code() { return VivesSync.getCode(); }   // 동기화 신원(마당 생성 게이팅 전용)
+    // 마당 참여 신원: 동기화면 vives:code(백업), 로그아웃이면 madang:code 폴백 — 발급은 안 함.
+    function readCode() {
+      var v = VivesSync.getCode(), m = null;
+      try { m = (localStorage.getItem('madang:code') || '').toUpperCase(); if (!/^[A-Z0-9]{6}$/.test(m)) m = null; } catch (e) {}
+      if (v) { if (v !== m) { try { localStorage.setItem('madang:code', v); } catch (e) {} } return v; }
+      return m;
+    }
+    // 쓰기용: 신원 없으면 madang 전용 코드 발급(전역 vives:code 미변경) → 로그아웃해도 글쓰기·소유권 유지.
+    function writeCode() { var c = readCode(); if (c) return c; var nc = VivesSync.genCode(); try { localStorage.setItem('madang:code', nc); } catch (e) {} return nc; }
     function toast(msg) { var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 2200); }
     function openModal(id) { $(id).classList.add('open'); }
     function closeModal(id) { $(id).classList.remove('open'); }
@@ -435,13 +497,13 @@
 
     /* ── API ── */
     function post(payload) {
-      payload.code = code();
+      payload.code = writeCode();
       return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
         .then(function (r) { return r.json().then(function (d) { d.__status = r.status; return d; }); });
     }
     function fetchBoard(boardId, pin) {
       var q = '?board=' + encodeURIComponent(boardId || state.boardId);
-      var c = code(); if (c) q += '&code=' + encodeURIComponent(c);
+      var c = readCode(); if (c) q += '&code=' + encodeURIComponent(c);
       var p = (pin != null) ? pin : state.pin; if (p) q += '&pin=' + encodeURIComponent(p);
       return fetch(API + q, { cache: 'no-store' }).then(function (r) { return r.json().then(function (d) { d.__status = r.status; return d; }); });
     }
@@ -454,6 +516,15 @@
         '<scr' + 'ipt>(function(){function h(){try{parent.postMessage({__madang:1,h:document.documentElement.scrollHeight},"*")}catch(e){}}' +
         'window.addEventListener("load",h);[150,600,1500].forEach(function(t){setTimeout(h,t)});}())</scr' + 'ipt></body></html>';
     }
+    function linkifyInto(el, text) {
+      var re = /(https?:\/\/[^\s<]+)/g, last = 0, m;
+      while ((m = re.exec(text))) {
+        if (m.index > last) el.appendChild(document.createTextNode(text.slice(last, m.index)));
+        var a = document.createElement('a'); a.className = 'mcard-inlink'; a.href = m[0]; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = m[0];
+        el.appendChild(a); last = m.index + m[0].length;
+      }
+      if (last < text.length) el.appendChild(document.createTextNode(text.slice(last)));
+    }
     function fillBody(body, card) {
       body.innerHTML = '';
       if (card.type === 'link') {
@@ -462,7 +533,7 @@
       } else if (card.type === 'html') {
         var f = document.createElement('iframe'); f.className = 'mcard-frame'; f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('loading', 'lazy');
         f.setAttribute('scrolling', 'no'); f.style.height = '80px'; f.srcdoc = wrapHtml(card.content); body.appendChild(f);
-      } else { var p = document.createElement('div'); p.className = 'mcard-text'; p.textContent = card.content; body.appendChild(p); }
+      } else { var p = document.createElement('div'); p.className = 'mcard-text'; linkifyInto(p, card.content); body.appendChild(p); }
     }
     function createCardEl(card) {
       var el = document.createElement('div'); el.className = 'mcard mcard-' + card.type; el.dataset.id = card.id; el.dataset.up = card.updatedAt;
@@ -491,7 +562,6 @@
     }
     function toggleLike(cardId) {
       var el = els[cardId]; if (!el) return; var card = el._card;
-      if (!code()) VivesSync.ensureCode();
       var newLiked = !card.liked;
       card.liked = newLiked; card.likes = Math.max(0, (card.likes || 0) + (newLiked ? 1 : -1)); refreshCardSocial(el, card);
       post({ action: 'like', board: state.boardId, cardId: cardId, on: newLiked, pin: state.pin }).then(function (res) {
@@ -521,7 +591,6 @@
     function doAddComment() {
       var cardId = state.cmtCardId, text = $('cmtInput').value.trim(); $('cmtErr').textContent = '';
       if (!cardId) return; if (!text) { $('cmtErr').textContent = '댓글을 입력하세요.'; return; }
-      if (!code()) VivesSync.ensureCode();
       $('cmtGo').disabled = true;
       post({ action: 'addComment', board: state.boardId, cardId: cardId, text: text, nickname: state.nickname || getNick(), pin: state.pin }).then(function (res) {
         $('cmtGo').disabled = false;
@@ -544,10 +613,10 @@
       Object.keys(els).forEach(function (id) { if (!seen[id]) { var e = els[id]; if (e && e.parentNode) e.parentNode.removeChild(e); delete els[id]; } });
       cards.forEach(function (c) {
         var ex = els[c.id];
-        if (!ex) { var el = createCardEl(c); els[c.id] = el; wall.insertBefore(el, wall.firstChild); }
-        else { if (ex.dataset.up !== c.updatedAt) { ex.dataset.up = c.updatedAt; fillBody(ex.querySelector('.mcard-body'), c); } ex._card = c; refreshCardSocial(ex, c); }
+        if (!ex) { var el = createCardEl(c); els[c.id] = el; var tgt = cardTarget(c); tgt.insertBefore(el, tgt.firstChild); }
+        else { if (ex.dataset.up !== c.updatedAt) { ex.dataset.up = c.updatedAt; fillBody(ex.querySelector('.mcard-body'), c); } ex._card = c; ex.querySelector('.mcard-who').textContent = c.nickname || '익명'; refreshCardSocial(ex, c); }
       });
-      var n = cards.length; $('mbCount').textContent = '카드 ' + n; $('wallEmpty').classList.toggle('hide', n > 0);
+      var n = cards.length; $('mbCount').textContent = '카드 ' + n; $('wallEmpty').classList.toggle('hide', n > 0 || (state.board && state.board.layout === 'sections'));
       if ($('m-comments').classList.contains('open') && state.cmtCardId && els[state.cmtCardId]) renderComments(els[state.cmtCardId]._card);
     }
     window.addEventListener('message', function (e) {
@@ -558,6 +627,27 @@
 
     /* ── 배경 ── */
     function applyBackground(key) { var vb = $('view-board'); vb.className = (BG[key] ? 'mb-bg-' + key : 'mb-bg-whiteboard'); vb.classList.add('active'); }
+
+    /* ── 레이아웃(자유 벽돌 / 분류 칼럼) ── */
+    function makeSectionCol(name) {
+      var col = document.createElement('div'); col.className = 'section-col';
+      var head = document.createElement('div'); head.className = 'sec-head'; head.textContent = name;
+      var cards = document.createElement('div'); cards.className = 'sec-cards';
+      col.appendChild(head); col.appendChild(cards);
+      return { col: col, cards: cards };
+    }
+    function renderLayout() {
+      var wall = $('wall'), b = state.board; els = {}; wall.innerHTML = ''; state.sectionMap = null;
+      if (b && b.layout === 'sections') {
+        wall.classList.add('as-sections'); state.sectionMap = {};
+        (b.sections || []).forEach(function (name) { if (!state.sectionMap[name]) { var sc = makeSectionCol(name); state.sectionMap[name] = sc; wall.appendChild(sc.col); } });
+        var u = makeSectionCol('미분류'); state.sectionMap['__uncat__'] = u; wall.appendChild(u.col);
+      } else { wall.classList.remove('as-sections'); }
+    }
+    function cardTarget(card) {
+      if (state.sectionMap) { var s = card.section || ''; return (s && state.sectionMap[s]) ? state.sectionMap[s].cards : state.sectionMap['__uncat__'].cards; }
+      return $('wall');
+    }
 
     /* ── 뷰 전환 ── */
     function showHome() {
@@ -587,9 +677,8 @@
       var sh = $('mbShared'); sh.className = 'mb-pill ' + (b.shared && !b.expired ? 'on' : 'off'); sh.textContent = b.expired ? '종료됨' : (b.shared ? '공유중' : '공유중단');
       var ex = $('mbExpiry'), et = expiryText(b);
       if (et && !b.expired) { ex.style.display = ''; ex.textContent = '⏰ ' + et; } else ex.style.display = 'none';
-      $('mbShareToggle').style.display = state.isOwner ? '' : 'none';
-      $('mbSettings').style.display = state.isOwner ? '' : 'none';
-      $('mbShareToggle').textContent = b.shared ? '공유중단' : '공유시작';
+      vb.classList.toggle('is-owner', state.isOwner);
+      $('mbToggleItem').textContent = b.shared ? '⏸ 공유 중단' : '▶ 공유 시작';
     }
     function enterBoard(res) {
       state.board = res.board; state.isOwner = !!res.isOwner; state.boardId = res.board.id;
@@ -601,7 +690,9 @@
       show($('fab'));
       history.replaceState(null, '', '#' + res.board.id);
       rememberBoard(res.board.id, res.board.title, res.isOwner ? 'owner' : 'member');
+      if (state.nickname || getNick()) post({ action: 'join', board: res.board.id, nickname: state.nickname || getNick(), pin: state.pin });
       renderToolbar();
+      renderLayout();
       reconcile(res.cards || []);
       startPolling();
     }
@@ -631,7 +722,13 @@
           else if (res.notFound) gate('🫥', '마당을 찾을 수 없음', '코드가 바뀌었거나 삭제된 마당입니다.');
           return;
         }
-        state.board = res.board; state.isOwner = !!res.isOwner; renderToolbar(); reconcile(res.cards || []);
+        var prevBg = state.board && state.board.background;
+        var prevSig = state.board ? (state.board.layout + '|' + JSON.stringify(state.board.sections || [])) : '';
+        state.board = res.board; state.isOwner = !!res.isOwner;
+        if (res.board.background !== prevBg) applyBackground(res.board.background);
+        renderToolbar();
+        if ((res.board.layout + '|' + JSON.stringify(res.board.sections || [])) !== prevSig) renderLayout();
+        reconcile(res.cards || []);
       }).catch(function () {});
     }
     function startPolling() { stopPolling(); pollTimer = setInterval(tick, POLL_MS); }
@@ -701,7 +798,7 @@
       var bid = $('jCode').value.trim().toUpperCase(), nick = $('jNick').value.trim();
       if (!BOARD_RE.test(bid)) { $('jErr').textContent = '마당 코드 6자리를 확인하세요.'; return; }
       if (!nick) { $('jErr').textContent = '별명을 입력하세요.'; return; }
-      VivesSync.ensureCode(); setNick(nick);
+      setNick(nick);
       state.boardId = bid; state.pin = $('jPin').value.trim();
       $('jGo').disabled = true;
       fetchBoard(bid).then(function (res) {
@@ -721,34 +818,40 @@
     function setComposeType(t) {
       state.composeType = t;
       Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.classList.toggle('active', b.dataset.type === t); });
-      $('kTextField').classList.toggle('hide', t !== 'text'); $('kLinkField').classList.toggle('hide', t !== 'link'); $('kHtmlField').classList.toggle('hide', t !== 'html');
+      $('kTextField').classList.toggle('hide', t !== 'text'); $('kHtmlField').classList.toggle('hide', t !== 'html');
     }
     function openCompose() {
       state.editingId = null; $('kTitle').textContent = '카드 올리기'; $('kErr').textContent = '';
-      $('kText').value = ''; $('kLink').value = ''; $('kHtml').value = '';
+      $('kText').value = ''; $('kHtml').value = '';
       $('kWho').innerHTML = '이름: <b>' + ((state.nickname || getNick() || '익명')).replace(/[<>&]/g, '') + '</b> · <a href="#" id="kChg" style="color:var(--primary)">변경</a>';
       $('kChg').onclick = function (e) { e.preventDefault(); var n = prompt('별명', state.nickname || ''); if (n != null) { setNick(n.trim().slice(0, 40)); openCompose(); } };
-      var allowed = (state.board && state.board.allowedTypes) || ['text', 'link', 'html'];
+      var allowed = (state.board && state.board.allowedTypes) || ['text', 'html'];
       Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.classList.toggle('hide', allowed.indexOf(b.dataset.type) < 0); });
       setComposeType(allowed.indexOf('text') >= 0 ? 'text' : allowed[0]);
+      var secEl = $('kSectionField');
+      if (state.board && state.board.layout === 'sections') {
+        secEl.classList.remove('hide');
+        var sel = $('kSection'); sel.innerHTML = '';
+        (state.board.sections || []).forEach(function (s) { var o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
+        var ou = document.createElement('option'); ou.value = ''; ou.textContent = '미분류'; sel.appendChild(ou);
+      } else secEl.classList.add('hide');
       openModal('m-card');
     }
     function openEdit(card) {
       state.editingId = card.id; state.composeType = card.type; $('kTitle').textContent = '카드 수정'; $('kErr').textContent = ''; $('kWho').textContent = '';
       Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.classList.add('hide'); });
-      $('kTextField').classList.toggle('hide', card.type !== 'text'); $('kLinkField').classList.toggle('hide', card.type !== 'link'); $('kHtmlField').classList.toggle('hide', card.type !== 'html');
-      if (card.type === 'text') $('kText').value = card.content; else if (card.type === 'link') $('kLink').value = card.content; else $('kHtml').value = card.content;
+      $('kTextField').classList.toggle('hide', card.type === 'html'); $('kHtmlField').classList.toggle('hide', card.type !== 'html');
+      if (card.type === 'html') $('kHtml').value = card.content; else $('kText').value = card.content;
       openModal('m-card');
     }
-    function contentOf(t) { return t === 'link' ? $('kLink').value.trim() : t === 'html' ? $('kHtml').value : $('kText').value; }
+    function contentOf(t) { return t === 'html' ? $('kHtml').value : $('kText').value; }
     function doCompose() {
       var t = state.composeType, content = contentOf(t); $('kErr').textContent = '';
       if (!content.trim()) { $('kErr').textContent = '내용을 입력하세요.'; return; }
-      if (t === 'link' && !/^https?:\/\//i.test(content)) { $('kErr').textContent = '링크는 http(s)로 시작해야 합니다.'; return; }
       $('kGo').disabled = true;
       var req = state.editingId
         ? post({ action: 'editCard', board: state.boardId, cardId: state.editingId, content: content })
-        : post({ action: 'post', board: state.boardId, type: t, content: content, nickname: state.nickname || getNick(), pin: state.pin });
+        : post({ action: 'post', board: state.boardId, type: t, content: content, nickname: state.nickname || getNick(), pin: state.pin, section: (state.board && state.board.layout === 'sections') ? $('kSection').value : '' });
       req.then(function (res) {
         $('kGo').disabled = false;
         if (!res.ok) { if (res.flagged) { $('kErr').textContent = '⚠️ 부적절한 내용으로 판단되어 게시할 수 없습니다.'; return; } $('kErr').textContent = res.error || '실패'; return; }
@@ -757,7 +860,7 @@
           var ex = els[res.card.id]; if (ex) { ex.dataset.up = res.card.updatedAt; ex._card.content = res.card.content; fillBody(ex.querySelector('.mcard-body'), ex._card); }
           toast('수정됐어요 ✓');
         } else {
-          if (!els[res.card.id]) { var el = createCardEl(res.card); els[res.card.id] = el; var w = $('wall'); w.insertBefore(el, w.firstChild); $('wallEmpty').classList.add('hide'); $('mbCount').textContent = '카드 ' + Object.keys(els).length; }
+          if (!els[res.card.id]) { var el = createCardEl(res.card); els[res.card.id] = el; var w = cardTarget(res.card); w.insertBefore(el, w.firstChild); $('wallEmpty').classList.add('hide'); $('mbCount').textContent = '카드 ' + Object.keys(els).length; }
           toast('올렸어요 ✓');
         }
       }).catch(function () { $('kGo').disabled = false; $('kErr').textContent = '네트워크 오류'; });
@@ -873,8 +976,11 @@
       var b = state.board;
       $('sTitle').value = b.title || '';
       renderBgGrid(b.background || 'whiteboard');
-      var allowed = b.allowedTypes || ['text', 'link', 'html'];
-      $('sT_text').checked = allowed.indexOf('text') >= 0; $('sT_link').checked = allowed.indexOf('link') >= 0; $('sT_html').checked = allowed.indexOf('html') >= 0;
+      var allowed = b.allowedTypes || ['text', 'html'];
+      $('sT_text').checked = allowed.indexOf('text') >= 0; $('sT_html').checked = allowed.indexOf('html') >= 0;
+      $('sLayout').value = b.layout || 'wall';
+      $('sSections').value = (b.sections || []).join(', ');
+      $('sSectionsField').classList.toggle('hide', (b.layout || 'wall') !== 'sections');
       $('sAllowComments').checked = !!b.allowComments; $('sAllowLikes').checked = !!b.allowLikes;
       $('sExpiry').value = String(b.expiryDays || 0);
       $('sExpiryHint').textContent = b.expired ? '운영 기간 종료됨 · 다시 고르면 지금부터 재개됩니다.' : (b.expiresAt ? '현재: ' + expiryText(b) + ' · 바꾸면 지금부터 다시 계산' : '무기한');
@@ -883,7 +989,7 @@
     }
     function doSettings() {
       $('sErr').textContent = '';
-      var types = []; if ($('sT_text').checked) types.push('text'); if ($('sT_link').checked) types.push('link'); if ($('sT_html').checked) types.push('html');
+      var types = []; if ($('sT_text').checked) types.push('text'); if ($('sT_html').checked) types.push('html');
       if (!types.length) { $('sErr').textContent = '카드 유형을 하나 이상 선택하세요.'; return; }
       var pin = $('sPin').value.trim();
       if (pin && !/^[0-9]{4,8}$/.test(pin)) { $('sErr').textContent = 'PIN은 숫자 4~8자리여야 합니다.'; return; }
@@ -891,18 +997,65 @@
       var patch = {
         title: $('sTitle').value.trim(), allowedTypes: types, pin: pin, expiryDays: Number($('sExpiry').value),
         background: bgSel ? bgSel.dataset.bg : 'whiteboard', allowComments: $('sAllowComments').checked, allowLikes: $('sAllowLikes').checked,
+        layout: $('sLayout').value === 'sections' ? 'sections' : 'wall',
+        sections: $('sSections').value.split(',').map(function (s) { return s.trim(); }).filter(Boolean),
       };
       $('sGo').disabled = true;
       post({ action: 'settings', board: state.boardId, patch: patch }).then(function (res) {
         $('sGo').disabled = false;
         if (!res.ok) { $('sErr').textContent = res.error || '실패'; return; }
-        state.board = res.board; rememberBoard(res.board.id, res.board.title, 'owner'); applyBackground(res.board.background); renderToolbar(); closeModal('m-settings'); toast('저장됨 ✓');
+        state.board = res.board; rememberBoard(res.board.id, res.board.title, 'owner'); applyBackground(res.board.background); renderToolbar(); renderLayout(); closeModal('m-settings'); toast('저장됨 ✓'); tick();
       }).catch(function () { $('sGo').disabled = false; $('sErr').textContent = '네트워크 오류'; });
     }
     function doDeleteBoard() {
       if (!confirm('이 마당과 모든 카드를 영구 삭제할까요? 되돌릴 수 없습니다.')) return;
       post({ action: 'deleteBoard', board: state.boardId }).then(function (res) {
         if (res.ok) { forgetBoard(state.boardId); toast('마당이 삭제됐어요'); setTimeout(showHome, 600); } else toast(res.error || '삭제 실패');
+      });
+    }
+
+    /* ── 드롭다운 ── */
+    function closeDropdowns() { Array.prototype.forEach.call(document.querySelectorAll('.mb-dropdown.open'), function (d) { d.classList.remove('open'); }); }
+    function wireDropdown(btnId, menuId) {
+      $(btnId).onclick = function (e) { e.stopPropagation(); var m = $(menuId), was = m.classList.contains('open'); closeDropdowns(); if (!was) m.classList.add('open'); };
+      $(menuId).addEventListener('click', function (e) { e.stopPropagation(); });
+    }
+
+    /* ── 닉네임 변경 ── */
+    function openNick() { $('nkErr').textContent = ''; $('nkInput').value = state.nickname || getNick() || ''; openModal('m-nick'); setTimeout(function () { $('nkInput').focus(); $('nkInput').select(); }, 50); }
+    function doSetNick() {
+      var nick = $('nkInput').value.trim(); $('nkErr').textContent = '';
+      if (!nick) { $('nkErr').textContent = '별명을 입력하세요.'; return; }
+      $('nkGo').disabled = true;
+      post({ action: 'setNick', board: state.boardId, nickname: nick }).then(function (res) {
+        $('nkGo').disabled = false;
+        if (!res.ok) { $('nkErr').textContent = res.error || '실패'; return; }
+        setNick(res.nickname || nick);
+        Object.keys(els).forEach(function (id) { var el = els[id]; if (el._card && el._card.own) { el._card.nickname = state.nickname; var w = el.querySelector('.mcard-who'); if (w) w.textContent = state.nickname; } });
+        closeModal('m-nick'); toast('닉네임이 바뀌었어요 ✓');
+      }).catch(function () { $('nkGo').disabled = false; $('nkErr').textContent = '네트워크 오류'; });
+    }
+
+    /* ── 참여자(개설자) ── */
+    function openMembers() {
+      $('memList').innerHTML = '<div class="cmt-empty">불러오는 중…</div>'; $('memCount').textContent = ''; openModal('m-members');
+      post({ action: 'members', board: state.boardId }).then(function (res) {
+        if (!res.ok) { $('memList').innerHTML = '<div class="cmt-empty">' + (res.error || '실패') + '</div>'; return; }
+        renderMembers(res.members || []);
+      }).catch(function () { $('memList').innerHTML = '<div class="cmt-empty">네트워크 오류</div>'; });
+    }
+    function renderMembers(list) {
+      $('memCount').textContent = '· ' + list.length + '명';
+      var el = $('memList'); el.innerHTML = '';
+      if (!list.length) { el.innerHTML = '<div class="cmt-empty">아직 입장한 참여자가 없어요.</div>'; return; }
+      list.forEach(function (m) {
+        var row = document.createElement('div'); row.className = 'cmt-row';
+        var meta = document.createElement('div'); meta.className = 'cmt-meta';
+        var nk = document.createElement('span'); nk.className = 'cmt-nick'; nk.textContent = (m.nickname || '익명') + (m.isOwner ? ' 👑' : '');
+        var tm = document.createElement('span'); tm.className = 'cmt-time'; tm.textContent = relTime(m.joinedAt);
+        var cd = document.createElement('span'); cd.className = 'cmt-time'; cd.style.marginLeft = 'auto'; cd.textContent = '카드 ' + (m.cards || 0);
+        meta.appendChild(nk); meta.appendChild(tm); meta.appendChild(cd);
+        row.appendChild(meta); el.appendChild(row);
       });
     }
 
@@ -913,9 +1066,14 @@
       $('cGo').onclick = doCreate; $('jGo').onclick = doJoin; $('kGo').onclick = doCompose;
       $('mbClose').onclick = showHome; $('gateHome').onclick = showHome;
       $('mbAdd').onclick = openCompose; $('fab').onclick = openCompose;
-      $('mbInvite').onclick = openInvite; $('ivCopy').onclick = copyInvite;
-      $('mbShareToggle').onclick = toggleShare; $('mbExport').onclick = openExport; $('mbSettings').onclick = openSettings;
+      $('ivCopy').onclick = copyInvite;
+      wireDropdown('mbShareBtn', 'mbShareMenu'); wireDropdown('mbMoreBtn', 'mbMoreMenu');
+      $('mbShareMenu').addEventListener('click', function (e) { var b = e.target.closest('button[data-act]'); if (!b) return; closeDropdowns(); var a = b.dataset.act; if (a === 'invite') openInvite(); else if (a === 'toggle') toggleShare(); else if (a === 'export') openExport(); });
+      $('mbMoreMenu').addEventListener('click', function (e) { var b = e.target.closest('button[data-act]'); if (!b) return; closeDropdowns(); var a = b.dataset.act; if (a === 'nick') openNick(); else if (a === 'members') openMembers(); else if (a === 'settings') openSettings(); });
+      document.addEventListener('click', closeDropdowns);
+      $('nkGo').onclick = doSetNick;
       $('sGo').onclick = doSettings; $('sDelete').onclick = doDeleteBoard; $('exCsv').onclick = doExportCsv; $('exPdf').onclick = doExportPdf; $('exPng').onclick = doExportPng; $('cmtGo').onclick = doAddComment;
+      $('sLayout').onchange = function () { $('sSectionsField').classList.toggle('hide', this.value !== 'sections'); };
       Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.onclick = function () { setComposeType(b.dataset.type); }; });
       Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.onclick = function () { closeModal(b.closest('.modal').id); }; });
       Array.prototype.forEach.call(document.querySelectorAll('.modal'), function (m) { m.addEventListener('click', function (e) { if (e.target === m) closeModal(m.id); }); });
