@@ -79,6 +79,7 @@ docs/                  ← 개발 문서
 |---|---|---|
 | `book-share` | 도서 공유 | ISBN 도서 정보 조회·파일 저장·공유 |
 | `bubble-chat` | 버블챗 | P2P 실시간 채팅 |
+| `madang` | 마당 | 패들렛형 실시간 응답 보드 — QR 초대·코드 신원·자동검열·공유/공유중단·자동종료·CSV/PDF |
 | `edulink` | 에듀링크 | 교육용 단축주소·설문·체험 지도 (모달·외부 링크) |
 
 ### 크리에이티브 (`util-creative`)
@@ -145,8 +146,9 @@ docs/                  ← 개발 문서
 | `GET·PUT·DELETE /api/readtree` | Read Tree 읽음 기록 동기화 (D1, set 모드) |
 | `GET·PUT·DELETE /api/flash-deck`·`/api/blocks-universe`·`/api/timer`·`/api/search-sync`·`/api/chalkboard`·`/api/signage` | 앱 상태 코드 동기화 (D1, doc 모드) |
 | `GET·PUT·DELETE /api/math-sheet`·`/api/md-editor` | 코드별 다중 문서 라이브러리 (D1, set 모드) |
+| `GET·POST /api/madang` | 마당 — 실시간 응답 보드 (D1, `board_id` 파티션·HMAC 소유권·OpenAI 검열) |
 
-> 위 동기화 엔드포인트는 모두 `functions/api/_sync.js`(createDocSync/createSetSync)의 한 줄 래퍼다.
+> 위 코드 동기화 엔드포인트(`/api/readtree`~`/api/md-editor`)는 `functions/api/_sync.js`(createDocSync/createSetSync)의 한 줄 래퍼다. `/api/madang`은 패턴이 달라(여러 사용자 카드가 한 보드에 모임 + 소유권·접근제어) 전용 모듈 [`functions/api/madang.js`](../functions/api/madang.js)로 구현했다.
 
 ---
 
@@ -164,6 +166,13 @@ docs/                  ← 개발 문서
 ---
 
 ## 주요 변경 이력
+
+### 2026-06 — 마당(madang) 신규 — 실시간 응답 보드
+패들렛형 소셜 앱 추가([`/apps/madang/`](../public/apps/madang/index.html)). 싱크 사용자가 마당을 열고 QR·코드·PIN으로 초대하면 참여자 응답이 카드로 실시간(폴링 2.8s) 누적. **기존 doc/set 동기화와 달리** 여러 사용자 카드가 한 보드에 모이고 소유권·접근제어가 필요해 전용 모듈 [`functions/api/madang.js`](../functions/api/madang.js)로 구현(`board_id` 파티션, 코드 HMAC로 개설자/작성자 판정 — 코드 원본 미저장).
+- 카드 유형: 텍스트·링크·HTML(sandbox iframe 격리). **OpenAI Moderation**(omni-moderation-latest) 자동 검열 통과 시 즉시 게시.
+- 개설자: 공유/공유중단(중단 시 링크로도 진입 불가), PIN, 허용유형, **자동종료(기본 1주일)**, CSV/PDF 내보내기, 마당 삭제.
+- DB 마이그레이션 0006(`madang_boards`·`madang_cards`). 시크릿 `MADANG_PEPPER`(HMAC pepper). 상세: [`docs/d1-sync-pattern.md`](d1-sync-pattern.md) §5.
+- 추후: R2 첨부(이미지·파일), 가로/세로/분류 레이아웃.
 
 ### 2026-06 — D1 코드 동기화 도입 (VivesSync)
 로그인·개인정보 없이 6자리 익명 코드로 다기기 동기화하는 공용 계층을 도입. byeduin 전용 D1 1개(`BYEDUIN_DB`)에 앱별 테이블 접두사로 공유. 공용 헬퍼 [`functions/api/_sync.js`](../functions/api/_sync.js)·[`public/common/sync.js`](../public/common/sync.js)(`VivesSync`). 우상단 통합 **🔄 동기화 버튼**으로 코드 관리 통일.
