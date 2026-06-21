@@ -26,11 +26,13 @@ const PIN_RE    = /^[0-9]{4,8}$/;
 const TYPES     = ['text', 'link', 'html'];
 const NICK_MAX    = 40;
 const TITLE_MAX   = 120;
+const COMMENT_MAX = 2 * 1024;                  // 댓글 본문 상한
 const CONTENT_MAX = 12 * 1024;                // 카드 본문 상한(폭주·폴링 대역 보호)
 const CARDS_MAX   = 300;                       // 보드당 카드 상한
 const EXPIRY_PRESETS = [1, 3, 7, 14, 28];      // 자동종료 기간(일) 프리셋
 const EXPIRY_DEFAULT_DAYS = 7;                 // 기본 1주일
 const DAY_MS = 86400000;
+const BG_KEYS = ['whiteboard', 'chalkboard', 'dark', 'dots', 'grid', 'kraft'];  // 배경 패턴 키
 
 function json(body, status) {
   return new Response(JSON.stringify(body), {
@@ -100,8 +102,21 @@ function boardMeta(board, settings) {
     expiresAt: settings.expiresAt || null,
     expiryDays: settings.expiryDays || 0,
     expired: isExpired(settings),
+    background: settings.background || 'whiteboard',
+    allowComments: !!settings.allowComments,
+    allowLikes: !!settings.allowLikes,
     updatedAt: board.updated_at,
   };
+}
+
+// 공유중단·만료·PIN 접근 검사(개설자는 통과). 막히면 {error,status,...}, OK면 null.
+async function checkAccess(env, board, settings, isOwner, pin) {
+  if (!board.shared && !isOwner) return { error: '공유가 중단된 마당입니다.', closed: true, status: 403 };
+  if (isExpired(settings) && !isOwner) return { error: '운영 기간이 종료된 마당입니다.', expired: true, status: 403 };
+  if (settings.pinHash && !isOwner) {
+    if (!pin || (await pinHashOf(env, board.id, pin)) !== settings.pinHash) return { error: 'PIN이 필요합니다.', pinRequired: true, status: 401 };
+  }
+  return null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -145,6 +160,19 @@ async function handleGet(env, db, request) {
   ).bind(boardId).all();
 
   const myToken = CODE_RE.test(code) ? await authorToken(env, boardId, code) : null;
+
+  // 좋아요·댓글은 설정이 켜진 경우만 조회(폴링 비용 절약)
+  const likeCount = {}, likedByMe = {};
+  if (settings.allowLikes) {
+    const lr = await db.prepare('SELECT card_id, liker_token FROM madang_likes WHERE board_id = ?').bind(boardId).all();
+    for (const r of lr.results || []) { likeCount[r.card_id] = (likeCount[r.card_id] || 0) + 1; if (myToken && r.liker_token === myToken) likedByMe[r.card_id] = true; }
+  }
+  const cmtByCard = {};
+  if (settings.allowComments) {
+    const cr = await db.prepare('SELECT id, card_id, author_token, nickname, text, created_at FROM madang_comments WHERE board_id = ? ORDER BY created_at ASC').bind(boardId).all();
+    for (const r of cr.results || []) (cmtByCard[r.card_id] = cmtByCard[r.card_id] || []).push({ id: r.id, nickname: r.nickname, text: r.text, createdAt: r.created_at, own: isOwner || !!(myToken && r.author_token === myToken) });
+  }
+
   const cards = (results || []).map((r) => ({
     id: r.id,
     nickname: r.nickname,
@@ -153,6 +181,9 @@ async function handleGet(env, db, request) {
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     own: !!(myToken && r.author_token === myToken),  // 내가 쓴 카드(수정·삭제 가능)
+    likes: likeCount[r.id] || 0,
+    liked: !!likedByMe[r.id],
+    comments: cmtByCard[r.id] || [],
   }));
 
   return json({ board: boardMeta(board, settings), isOwner, cards });
@@ -267,6 +298,8 @@ async function handlePost(env, db, request) {
     const isAuthor = card.author_token === (await authorToken(env, boardId, code));
     if (!isOwner && !isAuthor) return json({ error: '삭제 권한이 없습니다.' }, 403);
     await db.prepare('DELETE FROM madang_cards WHERE board_id = ? AND id = ?').bind(boardId, cardId).run();
+    await db.prepare('DELETE FROM madang_comments WHERE board_id = ? AND card_id = ?').bind(boardId, cardId).run();
+    await db.prepare('DELETE FROM madang_likes WHERE board_id = ? AND card_id = ?').bind(boardId, cardId).run();
     return json({ ok: true, deleted: true });
   }
 
@@ -293,6 +326,9 @@ async function handlePost(env, db, request) {
       else if (EXPIRY_PRESETS.includes(days)) { settings.expiresAt = new Date(Date.now() + days * DAY_MS).toISOString(); settings.expiryDays = days; }
       else return json({ error: '허용되지 않은 종료 기간입니다.' }, 400);
     }
+    if (typeof patch.background === 'string') settings.background = BG_KEYS.includes(patch.background) ? patch.background : 'whiteboard';
+    if (typeof patch.allowComments === 'boolean') settings.allowComments = patch.allowComments;
+    if (typeof patch.allowLikes === 'boolean') settings.allowLikes = patch.allowLikes;
     const at = nowIso();
     await db.prepare('UPDATE madang_boards SET title = ?, shared = ?, settings = ?, updated_at = ? WHERE id = ?')
       .bind(title, shared, JSON.stringify(settings), at, boardId).run();
@@ -303,8 +339,63 @@ async function handlePost(env, db, request) {
   if (action === 'deleteBoard') {
     if (!isOwner) return json({ error: '개설자만 마당을 삭제할 수 있습니다.' }, 403);
     await db.prepare('DELETE FROM madang_cards WHERE board_id = ?').bind(boardId).run();
+    await db.prepare('DELETE FROM madang_comments WHERE board_id = ?').bind(boardId).run();
+    await db.prepare('DELETE FROM madang_likes WHERE board_id = ?').bind(boardId).run();
     await db.prepare('DELETE FROM madang_boards WHERE id = ?').bind(boardId).run();
     return json({ ok: true, deleted: true });
+  }
+
+  // ── 댓글 달기(참여자/개설자) ──
+  if (action === 'addComment') {
+    if (!settings.allowComments) return json({ error: '이 마당은 댓글이 꺼져 있습니다.' }, 403);
+    if (!CODE_RE.test(code)) return json({ error: '코드가 필요합니다.' }, 400);
+    const acc = await checkAccess(env, board, settings, isOwner, String(body.pin || ''));
+    if (acc) return json(acc, acc.status);
+    const cardId = String(body.cardId || '');
+    const card = await db.prepare('SELECT id FROM madang_cards WHERE board_id = ? AND id = ?').bind(boardId, cardId).first();
+    if (!card) return json({ error: '카드를 찾을 수 없습니다.' }, 404);
+    const text = String(body.text || '').trim();
+    if (!text) return json({ error: '댓글을 입력하세요.' }, 400);
+    if (byteLen(text) > COMMENT_MAX) return json({ error: '댓글이 너무 깁니다.' }, 413);
+    const nickname = String(body.nickname || '').trim().slice(0, NICK_MAX);
+    const mod = await moderate(env, text);
+    if (mod.flagged) return json({ ok: false, flagged: true, error: '부적절한 내용으로 판단되어 게시할 수 없습니다.', categories: mod.categories }, 422);
+    const id = crypto.randomUUID(), at = nowIso();
+    await db.prepare('INSERT INTO madang_comments (id, board_id, card_id, author_token, nickname, text, created_at) VALUES (?,?,?,?,?,?,?)')
+      .bind(id, boardId, cardId, await authorToken(env, boardId, code), nickname, text, at).run();
+    return json({ ok: true, comment: { id: id, cardId: cardId, nickname: nickname, text: text, createdAt: at, own: true } });
+  }
+
+  // ── 댓글 삭제(작성자 또는 개설자) ──
+  if (action === 'deleteComment') {
+    if (!CODE_RE.test(code)) return json({ error: '코드가 필요합니다.' }, 400);
+    const commentId = String(body.commentId || '');
+    const cm = await db.prepare('SELECT author_token FROM madang_comments WHERE board_id = ? AND id = ?').bind(boardId, commentId).first();
+    if (!cm) return json({ ok: true, deleted: true });
+    const isAuthor = cm.author_token === (await authorToken(env, boardId, code));
+    if (!isOwner && !isAuthor) return json({ error: '삭제 권한이 없습니다.' }, 403);
+    await db.prepare('DELETE FROM madang_comments WHERE board_id = ? AND id = ?').bind(boardId, commentId).run();
+    return json({ ok: true, deleted: true });
+  }
+
+  // ── 좋아요 토글(on:true 추가 / on:false 취소) ──
+  if (action === 'like') {
+    if (!settings.allowLikes) return json({ error: '이 마당은 좋아요가 꺼져 있습니다.' }, 403);
+    if (!CODE_RE.test(code)) return json({ error: '코드가 필요합니다.' }, 400);
+    const acc = await checkAccess(env, board, settings, isOwner, String(body.pin || ''));
+    if (acc) return json(acc, acc.status);
+    const cardId = String(body.cardId || '');
+    const card = await db.prepare('SELECT id FROM madang_cards WHERE board_id = ? AND id = ?').bind(boardId, cardId).first();
+    if (!card) return json({ error: '카드를 찾을 수 없습니다.' }, 404);
+    const tok = await authorToken(env, boardId, code);
+    if (body.on === false) {
+      await db.prepare('DELETE FROM madang_likes WHERE board_id = ? AND card_id = ? AND liker_token = ?').bind(boardId, cardId, tok).run();
+    } else {
+      await db.prepare('INSERT INTO madang_likes (board_id, card_id, liker_token, created_at) VALUES (?,?,?,?) ON CONFLICT(board_id, card_id, liker_token) DO NOTHING')
+        .bind(boardId, cardId, tok, nowIso()).run();
+    }
+    const cnt = await db.prepare('SELECT COUNT(*) AS n FROM madang_likes WHERE board_id = ? AND card_id = ?').bind(boardId, cardId).first();
+    return json({ ok: true, likes: (cnt && cnt.n) || 0, liked: body.on !== false });
   }
 
   return json({ error: '알 수 없는 action입니다.' }, 400);

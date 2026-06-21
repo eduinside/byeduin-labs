@@ -167,6 +167,12 @@ docs/                  ← 개발 문서
 
 ## 주요 변경 이력
 
+### 2026-06 — 마당 chalkboard식 개편 + 댓글·좋아요
+- UI를 chalkboard 패턴으로 재구성: 랜딩(내가 만든/참여중 마당 목록·localStorage), **풀스크린 보드**(URL에 코드 `#CODE`·상단 크롬 숨김), 동기화 코드 있을 때만 마당 생성(없으면 방문만).
+- **배경 패턴 6종**(화이트보드·칠판·다크·점선·모눈·크라프트) 개설자 설정 선택.
+- **댓글·좋아요**(개설자 토글로 켜면 노출) — 마이그레이션 0007(`madang_comments`·`madang_likes`), OpenAI 검열, 코드 HMAC 권한, 카드 삭제·마당 삭제 시 cascade.
+- 초대 QR은 단축 없이 원본 URL. 내보내기에 PNG(전체화면 캡처) 추가.
+
 ### 2026-06 — 마당(madang) 신규 — 실시간 응답 보드
 패들렛형 소셜 앱 추가([`/apps/madang/`](../public/apps/madang/index.html)). 싱크 사용자가 마당을 열고 QR·코드·PIN으로 초대하면 참여자 응답이 카드로 실시간(폴링 2.8s) 누적. **기존 doc/set 동기화와 달리** 여러 사용자 카드가 한 보드에 모이고 소유권·접근제어가 필요해 전용 모듈 [`functions/api/madang.js`](../functions/api/madang.js)로 구현(`board_id` 파티션, 코드 HMAC로 개설자/작성자 판정 — 코드 원본 미저장).
 - 카드 유형: 텍스트·링크·HTML(sandbox iframe 격리). **OpenAI Moderation**(omni-moderation-latest) 자동 검열 통과 시 즉시 게시.
