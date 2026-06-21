@@ -28,6 +28,9 @@ const NICK_MAX    = 40;
 const TITLE_MAX   = 120;
 const CONTENT_MAX = 12 * 1024;                // 카드 본문 상한(폭주·폴링 대역 보호)
 const CARDS_MAX   = 300;                       // 보드당 카드 상한
+const EXPIRY_PRESETS = [1, 3, 7, 14, 28];      // 자동종료 기간(일) 프리셋
+const EXPIRY_DEFAULT_DAYS = 7;                 // 기본 1주일
+const DAY_MS = 86400000;
 
 function json(body, status) {
   return new Response(JSON.stringify(body), {
@@ -38,6 +41,8 @@ function json(body, status) {
 function nowIso() { return new Date().toISOString(); }
 function byteLen(s) { return new TextEncoder().encode(s).length; }
 function parseSettings(s) { try { return JSON.parse(s || '{}') || {}; } catch { return {}; } }
+// 자동종료: settings.expiresAt(ISO) 지난 보드는 만료. 무기한이면 expiresAt 없음.
+function isExpired(settings) { return !!(settings.expiresAt && new Date(settings.expiresAt).getTime() < Date.now()); }
 
 // ── HMAC(pepper) 해시 — 코드 원본 미저장 ──
 function pepperOf(env) { return env.MADANG_PEPPER || 'madang-default-pepper-v1'; }
@@ -92,6 +97,9 @@ function boardMeta(board, settings) {
     shared: !!board.shared,
     hasPin: !!settings.pinHash,
     allowedTypes: Array.isArray(settings.allowedTypes) && settings.allowedTypes.length ? settings.allowedTypes : TYPES.slice(),
+    expiresAt: settings.expiresAt || null,
+    expiryDays: settings.expiryDays || 0,
+    expired: isExpired(settings),
     updatedAt: board.updated_at,
   };
 }
@@ -125,6 +133,7 @@ async function handleGet(env, db, request) {
   const isOwner = CODE_RE.test(code) && (await ownerToken(env, boardId, code)) === board.owner_token;
 
   if (!board.shared && !isOwner) return json({ error: '공유가 중단된 마당입니다.', closed: true }, 403);
+  if (isExpired(settings) && !isOwner) return json({ error: '운영 기간이 종료된 마당입니다.', expired: true }, 403);
   if (settings.pinHash && !isOwner) {
     if (!pin || (await pinHashOf(env, boardId, pin)) !== settings.pinHash) {
       return json({ error: 'PIN이 필요합니다.', pinRequired: true }, 401);
@@ -167,7 +176,7 @@ async function handlePost(env, db, request) {
       const id = genBoardId();
       const exists = await db.prepare('SELECT 1 FROM madang_boards WHERE id = ?').bind(id).first();
       if (exists) continue;
-      const settings = {};
+      const settings = { expiresAt: new Date(Date.now() + EXPIRY_DEFAULT_DAYS * DAY_MS).toISOString(), expiryDays: EXPIRY_DEFAULT_DAYS };
       if (pin) settings.pinHash = await pinHashOf(env, id, pin);
       const ownerTok = await ownerToken(env, id, code);
       try {
@@ -191,6 +200,7 @@ async function handlePost(env, db, request) {
   if (action === 'post') {
     if (!CODE_RE.test(code)) return json({ error: '참여 코드가 필요합니다.' }, 400);
     if (!board.shared && !isOwner) return json({ error: '공유가 중단된 마당입니다.', closed: true }, 403);
+    if (isExpired(settings) && !isOwner) return json({ error: '운영 기간이 종료된 마당입니다.', expired: true }, 403);
     if (settings.pinHash && !isOwner) {
       const pin = String(body.pin || '');
       if (!pin || (await pinHashOf(env, boardId, pin)) !== settings.pinHash) return json({ error: 'PIN이 필요합니다.', pinRequired: true }, 401);
@@ -276,6 +286,12 @@ async function handlePost(env, db, request) {
     if (Array.isArray(patch.allowedTypes)) {
       const filtered = patch.allowedTypes.filter((t) => TYPES.includes(t));
       settings.allowedTypes = filtered.length ? filtered : TYPES.slice();
+    }
+    if (typeof patch.expiryDays !== 'undefined') {
+      const days = Number(patch.expiryDays);
+      if (!days || days <= 0) { delete settings.expiresAt; delete settings.expiryDays; }            // 무기한
+      else if (EXPIRY_PRESETS.includes(days)) { settings.expiresAt = new Date(Date.now() + days * DAY_MS).toISOString(); settings.expiryDays = days; }
+      else return json({ error: '허용되지 않은 종료 기간입니다.' }, 400);
     }
     const at = nowIso();
     await db.prepare('UPDATE madang_boards SET title = ?, shared = ?, settings = ?, updated_at = ? WHERE id = ?')

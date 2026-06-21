@@ -194,6 +194,7 @@
           <div class="bd-meta">
             <span class="bd-code" id="bdCode">------</span>
             <span class="pill on" id="bdShared">공유중</span>
+            <span class="pill" id="bdExpiry" style="display:none"></span>
             <span class="bd-stat" id="bdCount">카드 0</span>
           </div>
         </div>
@@ -325,6 +326,18 @@
         </div>
       </div>
       <div class="field">
+        <label>자동 종료</label>
+        <select class="in" id="sExpiry">
+          <option value="1">1일 후</option>
+          <option value="3">3일 후</option>
+          <option value="7">1주 후</option>
+          <option value="14">2주 후</option>
+          <option value="28">4주 후</option>
+          <option value="0">무기한</option>
+        </select>
+        <div class="hint" id="sExpiryHint"></div>
+      </div>
+      <div class="field">
         <label>입장 PIN</label>
         <input class="in" id="sPin" inputmode="numeric" maxlength="8" placeholder="숫자 4~8자리 · 비우면 PIN 해제">
         <div class="hint" id="sPinHint"></div>
@@ -336,6 +349,19 @@
       </div>
       <div class="modal-actions">
         <button class="btn btn-danger" id="sDelete" style="flex:1">이 마당 삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───── 내보내기 모달(개설자) ───── -->
+  <div class="modal" id="m-export">
+    <div class="modal-box">
+      <h2>내보내기</h2>
+      <p class="m-sub">현재 마당의 카드를 파일로 저장합니다. (첨부파일 내보내기는 추후 지원)</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-close>취소</button>
+        <button class="btn" id="exCsv">📄 CSV</button>
+        <button class="btn btn-primary" id="exPdf">🖨 PDF(인쇄)</button>
       </div>
     </div>
   </div>
@@ -477,18 +503,30 @@
       stopPolling(); hide($('landing')); hide($('board')); hide($('fab'));
       $('gateEmoji').textContent = emoji; $('gateTitle').textContent = title; $('gateMsg').textContent = msg; show($('gate'));
     }
+    function expiryText(b) {
+      if (b.expired) return '종료됨';
+      if (!b.expiresAt) return '';
+      var days = Math.ceil((new Date(b.expiresAt).getTime() - Date.now()) / 86400000);
+      if (days <= 0) return '오늘 종료';
+      if (days === 1) return '내일 종료';
+      return days + '일 후 종료';
+    }
     function renderHead() {
       var b = state.board;
       $('bdTitle').textContent = b.title || '마당';
       $('bdCode').textContent = b.id;
       var sh = $('bdShared');
-      sh.className = 'pill ' + (b.shared ? 'on' : 'off');
-      sh.textContent = b.shared ? '공유중' : '공유중단';
+      sh.className = 'pill ' + (b.shared && !b.expired ? 'on' : 'off');
+      sh.textContent = b.expired ? '종료됨' : (b.shared ? '공유중' : '공유중단');
+      var ex = $('bdExpiry'), et = expiryText(b);
+      if (et && !b.expired) { ex.style.display = ''; ex.className = 'pill'; ex.textContent = '⏰ ' + et; }
+      else ex.style.display = 'none';
       var acts = $('bdActions'); acts.innerHTML = '';
       function mk(label, cls, fn) { var x = document.createElement('button'); x.className = 'btn btn-sm ' + (cls || ''); x.textContent = label; x.onclick = fn; acts.appendChild(x); }
       mk('초대', '', openInvite);
       if (state.isOwner) {
         mk(b.shared ? '공유중단' : '공유 시작', b.shared ? 'btn-ghost' : 'btn-primary', toggleShare);
+        mk('내보내기', '', openExport);
         mk('설정', '', openSettings);
       }
     }
@@ -508,7 +546,8 @@
       if (document.hidden || !state.boardId) return;
       fetchBoard().then(function (res) {
         if (res.error) {
-          if (res.closed) showGate('🔒', '공유가 중단된 마당', '개설자가 공유를 멈췄어요. 다시 열리면 입장할 수 있습니다.');
+          if (res.expired) showGate('⏰', '종료된 마당', '운영 기간이 끝났어요. 개설자가 기간을 연장하면 다시 입장할 수 있습니다.');
+          else if (res.closed) showGate('🔒', '공유가 중단된 마당', '개설자가 공유를 멈췄어요. 다시 열리면 입장할 수 있습니다.');
           else if (res.notFound) showGate('🫥', '마당을 찾을 수 없음', '코드가 바뀌었거나 삭제된 마당입니다.');
           return;
         }
@@ -561,6 +600,7 @@
         $('jGo').disabled = false;
         if (res.error) {
           if (res.pinRequired) { show($('jPinField')); $('jErr').textContent = 'PIN이 필요한 마당입니다.'; $('jPin').focus(); return; }
+          if (res.expired) { $('jErr').textContent = '운영 기간이 종료된 마당입니다.'; return; }
           if (res.closed) { $('jErr').textContent = '공유가 중단된 마당입니다.'; return; }
           if (res.notFound) { $('jErr').textContent = '마당을 찾을 수 없습니다.'; return; }
           $('jErr').textContent = res.error; return;
@@ -671,6 +711,55 @@
         });
     }
 
+    /* ── 내보내기(CSV·PDF) ── */
+    function openExport() { openModal('m-export'); }
+    function exportFetch() { return fetchBoard().then(function (res) { return (res && res.cards) || []; }); }
+    function downloadBlob(name, type, content) {
+      var blob = new Blob([content], { type: type });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+    function stamp() { var d = new Date(), p = function (n) { return ('0' + n).slice(-2); }; return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()); }
+    function escHtml(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+    function doExportCsv() {
+      exportFetch().then(function (cards) {
+        var rows = [['번호', '닉네임', '유형', '내용', '작성시각']];
+        cards.forEach(function (c, i) { rows.push([i + 1, c.nickname || '익명', c.type, c.content, new Date(c.createdAt).toLocaleString('ko-KR')]); });
+        var esc = function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; };
+        var csv = String.fromCharCode(0xFEFF) + rows.map(function (r) { return r.map(esc).join(','); }).join('\r\n');
+        downloadBlob('마당_' + state.boardId + '_' + stamp() + '.csv', 'text/csv;charset=utf-8', csv);
+        closeModal('m-export'); toast('CSV 저장됨 ✓');
+      });
+    }
+    function doExportPdf() {
+      exportFetch().then(function (cards) {
+        var title = (state.board.title || '마당') + ' (' + state.boardId + ')';
+        // 참여자 HTML은 인쇄창에서도 escape(텍스트)로만 출력 → 스크립트 미실행(안전)
+        var items = cards.map(function (c, i) {
+          var who = escHtml(c.nickname || '익명'), when = new Date(c.createdAt).toLocaleString('ko-KR'), body;
+          if (c.type === 'link') body = '<a href="' + escHtml(c.content) + '">' + escHtml(c.content) + '</a>';
+          else if (c.type === 'html') body = '<pre class="src">' + escHtml(c.content) + '</pre>';
+          else body = '<div class="tx">' + escHtml(c.content) + '</div>';
+          return '<div class="card"><div class="meta">' + (i + 1) + '. <b>' + who + '</b> · ' + escHtml(when) + ' · ' + c.type + '</div>' + body + '</div>';
+        }).join('');
+        var html = '<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>' + escHtml(title) + '</title>' +
+          '<style>body{font:13px/1.6 -apple-system,Segoe UI,sans-serif;color:#111;margin:24px;max-width:760px}' +
+          'h1{font-size:20px;margin:0 0 4px}.sub{color:#666;margin:0 0 16px;font-size:12px}' +
+          '.card{border:1px solid #ddd;border-radius:8px;padding:10px 12px;margin:0 0 10px;page-break-inside:avoid}' +
+          '.meta{color:#555;font-size:11px;margin-bottom:6px}.tx{white-space:pre-wrap;word-break:break-word}' +
+          '.src{white-space:pre-wrap;word-break:break-word;background:#f6f6f6;border-radius:6px;padding:8px;font-size:11px;margin:0}' +
+          'a{color:#006fee;word-break:break-all}@media print{body{margin:0}}</style></head><body>' +
+          '<h1>' + escHtml(title) + '</h1><p class="sub">카드 ' + cards.length + '개 · ' + escHtml(new Date().toLocaleString('ko-KR')) + '</p>' +
+          (items || '<p>카드가 없습니다.</p>') +
+          '<scr' + 'ipt>window.onload=function(){setTimeout(function(){window.print()},350)}</scr' + 'ipt></body></html>';
+        var w = window.open('', '_blank');
+        if (!w) { toast('팝업이 차단되었습니다. 허용 후 다시 시도하세요.'); return; }
+        w.document.open(); w.document.write(html); w.document.close();
+        closeModal('m-export');
+      });
+    }
+
     /* ── 설정 ── */
     function openSettings() {
       var b = state.board;
@@ -679,6 +768,9 @@
       $('sT_text').checked = allowed.indexOf('text') >= 0;
       $('sT_link').checked = allowed.indexOf('link') >= 0;
       $('sT_html').checked = allowed.indexOf('html') >= 0;
+      $('sExpiry').value = String(b.expiryDays || 0);
+      $('sExpiryHint').textContent = b.expired ? '운영 기간 종료됨 · 다시 고르면 지금부터 재개됩니다.'
+        : (b.expiresAt ? '현재: ' + expiryText(b) + ' · 바꾸면 지금부터 다시 계산' : '무기한');
       $('sPin').value = '';
       $('sPinHint').textContent = b.hasPin ? '현재 PIN 설정됨 · 비우고 저장하면 PIN 해제' : '현재 PIN 없음';
       $('sErr').textContent = '';
@@ -693,7 +785,7 @@
       if (!types.length) { $('sErr').textContent = '카드 유형을 하나 이상 선택하세요.'; return; }
       var pin = $('sPin').value.trim();
       if (pin && !/^[0-9]{4,8}$/.test(pin)) { $('sErr').textContent = 'PIN은 숫자 4~8자리여야 합니다.'; return; }
-      var patch = { title: $('sTitle').value.trim(), allowedTypes: types, pin: pin };
+      var patch = { title: $('sTitle').value.trim(), allowedTypes: types, pin: pin, expiryDays: Number($('sExpiry').value) };
       $('sGo').disabled = true;
       post({ action: 'settings', board: state.boardId, patch: patch }).then(function (res) {
         $('sGo').disabled = false;
@@ -719,6 +811,8 @@
       $('ivCopy').onclick = copyInvite;
       $('sGo').onclick = doSettings;
       $('sDelete').onclick = doDeleteBoard;
+      $('exCsv').onclick = doExportCsv;
+      $('exPdf').onclick = doExportPdf;
       $('fab').onclick = openCompose;
       Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.onclick = function () { setComposeType(b.dataset.type); }; });
       Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.onclick = function () { closeModal(b.closest('.modal').id); }; });
