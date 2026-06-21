@@ -101,6 +101,7 @@ function boardMeta(board, settings) {
     allowedTypes: (function () { var a = Array.isArray(settings.allowedTypes) ? settings.allowedTypes.filter(function (t) { return TYPES.includes(t); }) : []; return a.length ? a : TYPES.slice(); })(),
     layout: settings.layout === 'sections' ? 'sections' : 'wall',
     sections: Array.isArray(settings.sections) ? settings.sections : [],
+    sort: ['newest', 'oldest', 'shuffle'].includes(settings.sort) ? settings.sort : 'newest',
     expiresAt: settings.expiresAt || null,
     expiryDays: settings.expiryDays || 0,
     expired: isExpired(settings),
@@ -335,6 +336,7 @@ async function handlePost(env, db, request) {
     if (typeof patch.allowLikes === 'boolean') settings.allowLikes = patch.allowLikes;
     if (typeof patch.layout === 'string') settings.layout = patch.layout === 'sections' ? 'sections' : 'wall';
     if (Array.isArray(patch.sections)) settings.sections = patch.sections.map(function (s) { return String(s).trim().slice(0, 40); }).filter(Boolean).slice(0, 12);
+    if (typeof patch.sort === 'string') settings.sort = ['newest', 'oldest', 'shuffle'].includes(patch.sort) ? patch.sort : 'newest';
     const at = nowIso();
     await db.prepare('UPDATE madang_boards SET title = ?, shared = ?, settings = ?, updated_at = ? WHERE id = ?')
       .bind(title, shared, JSON.stringify(settings), at, boardId).run();

@@ -115,9 +115,9 @@
 
     #mb-stage { flex: 1; overflow-y: auto; padding: 18px 16px 90px; }
     .wall { columns: 248px; column-gap: 14px; max-width: 1200px; margin: 0 auto; }
-    .wall.as-sections { columns: auto; display: flex; gap: 14px; max-width: none; margin: 0; overflow-x: auto; align-items: flex-start; padding-bottom: 10px; }
-    .section-col { flex: 0 0 280px; min-width: 240px; max-width: 320px; background: rgba(128,128,128,.06); border: 1px solid var(--mb-border); border-radius: 14px; padding: 10px 10px 4px; }
-    .section-col .sec-head { font-weight: 800; font-size: 13px; margin: 2px 4px 10px; color: var(--mb-fg); }
+    .wall.as-sections { columns: auto; display: flex; gap: 18px; max-width: none; margin: 0; overflow-x: auto; align-items: flex-start; padding-bottom: 10px; }
+    .section-col { flex: 0 0 262px; min-width: 220px; max-width: 300px; }
+    .section-col .sec-head { font-weight: 800; font-size: 14px; margin: 0 2px 12px; color: var(--mb-fg); padding-bottom: 8px; border-bottom: 2px solid var(--mb-border); }
     .section-col .sec-cards { display: flex; flex-direction: column; gap: 12px; }
     .section-col .mcard { margin: 0; }
     .wall-empty { text-align: center; color: var(--mb-muted); padding: 70px 16px; font-size: 14px; line-height: 1.7; }
@@ -365,6 +365,8 @@
       <div class="field hide" id="sSectionsField"><label>분류 칼럼(쉼표로 구분)</label>
         <input class="in" id="sSections" maxlength="200" placeholder="예: 질문, 의견, 자료">
         <div class="hint">‘분류 칼럼’에서 카드를 나눌 칼럼들. 카드 작성 시 칼럼을 고릅니다.</div></div>
+      <div class="field"><label>카드 정렬</label>
+        <select class="in" id="sSort"><option value="newest">최신순</option><option value="oldest">오래된순</option><option value="shuffle">무작위(자유 배치)</option></select></div>
       <div class="field"><label>허용 카드 유형</label>
         <div class="checkrow">
           <label><input type="checkbox" id="sT_text" value="text"> 📝 텍스트</label>
@@ -451,7 +453,7 @@
       kraft: { name: '크라프트', sw: '#dcc7a6' },
     };
 
-    var state = { boardId: null, isOwner: false, board: null, pin: '', nickname: '', editingId: null, composeType: 'text', cmtCardId: null, sectionMap: null };
+    var state = { boardId: null, isOwner: false, board: null, pin: '', nickname: '', editingId: null, composeType: 'text', cmtCardId: null, sectionMap: null, firstSection: null };
     var els = {};
     var pollTimer = null;
 
@@ -613,7 +615,7 @@
       Object.keys(els).forEach(function (id) { if (!seen[id]) { var e = els[id]; if (e && e.parentNode) e.parentNode.removeChild(e); delete els[id]; } });
       cards.forEach(function (c) {
         var ex = els[c.id];
-        if (!ex) { var el = createCardEl(c); els[c.id] = el; var tgt = cardTarget(c); tgt.insertBefore(el, tgt.firstChild); }
+        if (!ex) { var el = createCardEl(c); els[c.id] = el; insertSorted(cardTarget(c), el, c); }
         else { if (ex.dataset.up !== c.updatedAt) { ex.dataset.up = c.updatedAt; fillBody(ex.querySelector('.mcard-body'), c); } ex._card = c; ex.querySelector('.mcard-who').textContent = c.nickname || '익명'; refreshCardSocial(ex, c); }
       });
       var n = cards.length; $('mbCount').textContent = '카드 ' + n; $('wallEmpty').classList.toggle('hide', n > 0 || (state.board && state.board.layout === 'sections'));
@@ -637,16 +639,28 @@
       return { col: col, cards: cards };
     }
     function renderLayout() {
-      var wall = $('wall'), b = state.board; els = {}; wall.innerHTML = ''; state.sectionMap = null;
-      if (b && b.layout === 'sections') {
+      var wall = $('wall'), b = state.board; els = {}; wall.innerHTML = ''; state.sectionMap = null; state.firstSection = null;
+      var secs = (b && b.layout === 'sections' && Array.isArray(b.sections)) ? b.sections.filter(Boolean) : [];
+      if (secs.length) {
         wall.classList.add('as-sections'); state.sectionMap = {};
-        (b.sections || []).forEach(function (name) { if (!state.sectionMap[name]) { var sc = makeSectionCol(name); state.sectionMap[name] = sc; wall.appendChild(sc.col); } });
-        var u = makeSectionCol('미분류'); state.sectionMap['__uncat__'] = u; wall.appendChild(u.col);
+        secs.forEach(function (name) { if (!state.sectionMap[name]) { var sc = makeSectionCol(name); state.sectionMap[name] = sc; if (!state.firstSection) state.firstSection = sc; wall.appendChild(sc.col); } });
       } else { wall.classList.remove('as-sections'); }
     }
     function cardTarget(card) {
-      if (state.sectionMap) { var s = card.section || ''; return (s && state.sectionMap[s]) ? state.sectionMap[s].cards : state.sectionMap['__uncat__'].cards; }
+      if (state.sectionMap && state.firstSection) { var s = card.section || ''; return (s && state.sectionMap[s]) ? state.sectionMap[s].cards : state.firstSection.cards; }
       return $('wall');
+    }
+    function hashId(id) { var h = 0, i; id = String(id); for (i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0; return h; }
+    function sortKey(card) {
+      var s = (state.board && state.board.sort) || 'newest';
+      if (s === 'oldest') return new Date(card.createdAt).getTime();
+      if (s === 'shuffle') return hashId(card.id);
+      return -new Date(card.createdAt).getTime();
+    }
+    function insertSorted(container, el, card) {
+      var key = sortKey(card), kids = container.children, i;
+      for (i = 0; i < kids.length; i++) { var c = kids[i]._card; if (c && sortKey(c) > key) { container.insertBefore(el, kids[i]); return; } }
+      container.appendChild(el);
     }
 
     /* ── 뷰 전환 ── */
@@ -723,11 +737,11 @@
           return;
         }
         var prevBg = state.board && state.board.background;
-        var prevSig = state.board ? (state.board.layout + '|' + JSON.stringify(state.board.sections || [])) : '';
+        var prevSig = state.board ? (state.board.layout + '|' + (state.board.sort || '') + '|' + JSON.stringify(state.board.sections || [])) : '';
         state.board = res.board; state.isOwner = !!res.isOwner;
         if (res.board.background !== prevBg) applyBackground(res.board.background);
         renderToolbar();
-        if ((res.board.layout + '|' + JSON.stringify(res.board.sections || [])) !== prevSig) renderLayout();
+        if ((res.board.layout + '|' + (res.board.sort || '') + '|' + JSON.stringify(res.board.sections || [])) !== prevSig) renderLayout();
         reconcile(res.cards || []);
       }).catch(function () {});
     }
@@ -829,11 +843,11 @@
       Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.classList.toggle('hide', allowed.indexOf(b.dataset.type) < 0); });
       setComposeType(allowed.indexOf('text') >= 0 ? 'text' : allowed[0]);
       var secEl = $('kSectionField');
-      if (state.board && state.board.layout === 'sections') {
+      var secs = (state.board && state.board.layout === 'sections' && state.board.sections) ? state.board.sections.filter(Boolean) : [];
+      if (secs.length) {
         secEl.classList.remove('hide');
         var sel = $('kSection'); sel.innerHTML = '';
-        (state.board.sections || []).forEach(function (s) { var o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
-        var ou = document.createElement('option'); ou.value = ''; ou.textContent = '미분류'; sel.appendChild(ou);
+        secs.forEach(function (s) { var o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
       } else secEl.classList.add('hide');
       openModal('m-card');
     }
@@ -860,7 +874,7 @@
           var ex = els[res.card.id]; if (ex) { ex.dataset.up = res.card.updatedAt; ex._card.content = res.card.content; fillBody(ex.querySelector('.mcard-body'), ex._card); }
           toast('수정됐어요 ✓');
         } else {
-          if (!els[res.card.id]) { var el = createCardEl(res.card); els[res.card.id] = el; var w = cardTarget(res.card); w.insertBefore(el, w.firstChild); $('wallEmpty').classList.add('hide'); $('mbCount').textContent = '카드 ' + Object.keys(els).length; }
+          if (!els[res.card.id]) { var el = createCardEl(res.card); els[res.card.id] = el; insertSorted(cardTarget(res.card), el, res.card); $('wallEmpty').classList.add('hide'); $('mbCount').textContent = '카드 ' + Object.keys(els).length; }
           toast('올렸어요 ✓');
         }
       }).catch(function () { $('kGo').disabled = false; $('kErr').textContent = '네트워크 오류'; });
@@ -979,6 +993,7 @@
       var allowed = b.allowedTypes || ['text', 'html'];
       $('sT_text').checked = allowed.indexOf('text') >= 0; $('sT_html').checked = allowed.indexOf('html') >= 0;
       $('sLayout').value = b.layout || 'wall';
+      $('sSort').value = b.sort || 'newest';
       $('sSections').value = (b.sections || []).join(', ');
       $('sSectionsField').classList.toggle('hide', (b.layout || 'wall') !== 'sections');
       $('sAllowComments').checked = !!b.allowComments; $('sAllowLikes').checked = !!b.allowLikes;
@@ -999,12 +1014,14 @@
         background: bgSel ? bgSel.dataset.bg : 'whiteboard', allowComments: $('sAllowComments').checked, allowLikes: $('sAllowLikes').checked,
         layout: $('sLayout').value === 'sections' ? 'sections' : 'wall',
         sections: $('sSections').value.split(',').map(function (s) { return s.trim(); }).filter(Boolean),
+        sort: $('sSort').value,
       };
       $('sGo').disabled = true;
       post({ action: 'settings', board: state.boardId, patch: patch }).then(function (res) {
         $('sGo').disabled = false;
         if (!res.ok) { $('sErr').textContent = res.error || '실패'; return; }
-        state.board = res.board; rememberBoard(res.board.id, res.board.title, 'owner'); applyBackground(res.board.background); renderToolbar(); renderLayout(); closeModal('m-settings'); toast('저장됨 ✓'); tick();
+        state.board = res.board; rememberBoard(res.board.id, res.board.title, 'owner'); applyBackground(res.board.background); renderToolbar(); closeModal('m-settings'); toast('저장됨 ✓');
+        fetchBoard().then(function (r2) { if (r2 && r2.board) { state.board = r2.board; state.isOwner = !!r2.isOwner; renderToolbar(); renderLayout(); reconcile(r2.cards || []); } });
       }).catch(function () { $('sGo').disabled = false; $('sErr').textContent = '네트워크 오류'; });
     }
     function doDeleteBoard() {
