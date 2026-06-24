@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 맞춤법 검사 — eduin VIVES</title>
+  <link rel="icon" href="/logo.jpg" type="image/jpeg">
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <link rel="stylesheet" href="/common/app-shell.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/app-shell.js" defer></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif; }
+
+    .sc-root { max-width: 760px; margin: 0 auto; padding: 0 1rem 3rem; }
+
+    .app-header { padding: 48px 0 20px; }
+    .app-badge { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--primary); opacity: .8; display: block; margin-bottom: 6px; }
+    .app-title { font-size: 26px; font-weight: 700; color: var(--fg); margin: 0 0 4px; }
+    .app-desc { font-size: 13px; color: var(--fg-muted); margin: 0; }
+
+    .input-area {
+      margin-top: 20px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      padding: 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+      color: var(--fg);
+      font-size: 15px;
+      line-height: 1.7;
+      resize: vertical;
+      outline: none;
+      transition: border-color .2s;
+    }
+    textarea:focus { border-color: var(--primary); }
+
+    .input-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .char-count { font-size: 12px; color: var(--fg-muted); }
+    .char-count.warn { color: #f59e0b; }
+
+    .btn-check {
+      padding: 10px 28px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn-check:hover { opacity: .85; }
+    .btn-check:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── 결과 패널 ── */
+    .result-panel {
+      display: none;
+      margin-top: 28px;
+      animation: fadeIn .25s ease;
+    }
+    .result-panel.show { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .result-badge {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .badge-ok { background: #dcfce7; color: #166534; }
+    .badge-err { background: #fee2e2; color: #991b1b; }
+    [data-theme="dark"] .badge-ok { background: #14532d; color: #86efac; }
+    [data-theme="dark"] .badge-err { background: #7f1d1d; color: #fca5a5; }
+
+    .corrected-box {
+      position: relative;
+      padding: 14px 14px 14px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface, var(--bg));
+      font-size: 15px;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .corrected-box mark {
+      background: #fef08a;
+      color: #713f12;
+      border-radius: 3px;
+      padding: 0 2px;
+      text-decoration: underline wavy #ea580c;
+    }
+    [data-theme="dark"] .corrected-box mark {
+      background: #422006;
+      color: #fde68a;
+    }
+
+    .btn-copy {
+      margin-top: 8px;
+      padding: 7px 18px;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: 7px;
+      color: var(--fg-muted);
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    .btn-copy:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── 오류 목록 ── */
+    .error-list {
+      margin-top: 20px;
+    }
+    .error-list-title { font-size: 13px; font-weight: 600; color: var(--fg-muted); margin-bottom: 8px; }
+    .error-item {
+      display: flex;
+      gap: 12px;
+      align-items: baseline;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: var(--surface, var(--bg));
+      border: 1px solid var(--border);
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .err-before {
+      color: #dc2626;
+      text-decoration: line-through;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .err-arrow { color: var(--fg-muted); flex-shrink: 0; }
+    .err-after { color: #16a34a; font-weight: 600; white-space: nowrap; }
+    .err-reason { color: var(--fg-muted); font-size: 12px; flex: 1; }
+
+    /* ── GAS 안내 ── */
+    .gas-section {
+      margin-top: 40px;
+      padding: 16px 18px;
+      border: 1.5px dashed var(--border);
+      border-radius: 10px;
+    }
+    .gas-section summary {
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--fg-muted);
+      user-select: none;
+    }
+    .gas-section summary:hover { color: var(--fg); }
+    .gas-code {
+      margin-top: 12px;
+      padding: 12px 14px;
+      background: var(--surface, var(--bg));
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: "Fira Code", "Consolas", monospace;
+      font-size: 12px;
+      color: var(--fg);
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    /* ── 로딩 ── */
+    .loading-msg {
+      display: none;
+      text-align: center;
+      padding: 24px;
+      color: var(--fg-muted);
+      font-size: 14px;
+    }
+    .loading-msg.show { display: block; }
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      display: none;
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #fee2e2;
+      color: #991b1b;
+      font-size: 14px;
+    }
+    .error-msg.show { display: block; }
+    [data-theme="dark"] .error-msg { background: #7f1d1d; color: #fca5a5; }
+  </style>
+</head>
+<body>
+  <div class="sc-root">
+    <header class="app-header">
+      <span class="app-badge">AI 도구</span>
+      <h1 class="app-title">✍️ AI 맞춤법 검사</h1>
+      <p class="app-desc">AI가 한국어 맞춤법·문법을 교정하고 이유를 설명합니다. GAS·외부 앱에서 API로 호출 가능.</p>
+    </header>
+
+    <div class="input-area">
+      <textarea id="inputText" placeholder="교정할 텍스트를 입력하세요 (최대 3000자)…" maxlength="3000"></textarea>
+      <div class="input-footer">
+        <span class="char-count" id="charCount">0 / 3000</span>
+        <button class="btn-check" id="checkBtn" onclick="runCheck()">검사하기</button>
+      </div>
+    </div>
+
+    <div class="loading-msg" id="loadingMsg">
+      <span class="spinner"></span>AI가 교정 중입니다…
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+
+    <div class="result-panel" id="resultPanel">
+      <div class="result-header">
+        <span class="result-badge" id="resultBadge"></span>
+        <span id="resultSummary" style="font-size:13px;color:var(--fg-muted)"></span>
+      </div>
+      <div class="corrected-box" id="correctedBox"></div>
+      <button class="btn-copy" onclick="copyResult()">교정본 복사</button>
+
+      <div class="error-list" id="errorList"></div>
+    </div>
+
+    <details class="gas-section">
+      <summary>📋 Google Apps Script(GAS)에서 API 사용하기</summary>
+      <div class="gas-code" id="gasCode"></div>
+    </details>
+  </div>
+
+  <script>
+    const API_URL = '/api/spell-check';
+
+    const inputText = document.getElementById('inputText');
+    const charCount = document.getElementById('charCount');
+    const checkBtn = document.getElementById('checkBtn');
+    const loadingMsg = document.getElementById('loadingMsg');
+    const errorMsg = document.getElementById('errorMsg');
+    const resultPanel = document.getElementById('resultPanel');
+    const resultBadge = document.getElementById('resultBadge');
+    const resultSummary = document.getElementById('resultSummary');
+    const correctedBox = document.getElementById('correctedBox');
+    const errorList = document.getElementById('errorList');
+
+    inputText.addEventListener('input', () => {
+      const len = inputText.value.length;
+      charCount.textContent = `${len.toLocaleString()} / 3,000`;
+      charCount.classList.toggle('warn', len > 2500);
+    });
+
+    async function runCheck() {
+      const text = inputText.value.trim();
+      if (!text) return;
+
+      checkBtn.disabled = true;
+      loadingMsg.classList.add('show');
+      errorMsg.classList.remove('show');
+      resultPanel.classList.remove('show');
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `오류 ${res.status}`);
+        renderResult(data);
+      } catch (e) {
+        errorMsg.textContent = `⚠️ ${e.message}`;
+        errorMsg.classList.add('show');
+      } finally {
+        checkBtn.disabled = false;
+        loadingMsg.classList.remove('show');
+      }
+    }
+
+    function renderResult(data) {
+      const { original, corrected, changed, errors } = data;
+
+      if (changed) {
+        resultBadge.textContent = `${errors.length}건 교정`;
+        resultBadge.className = 'result-badge badge-err';
+        resultSummary.textContent = '교정된 내용이 있습니다.';
+      } else {
+        resultBadge.textContent = '맞춤법 이상 없음';
+        resultBadge.className = 'result-badge badge-ok';
+        resultSummary.textContent = '오류를 발견하지 못했습니다.';
+      }
+
+      correctedBox.innerHTML = highlightDiffs(corrected, errors);
+
+      if (errors.length > 0) {
+        errorList.innerHTML = `<p class="error-list-title">교정 내역 (${errors.length}건)</p>` +
+          errors.map(e => `
+            <div class="error-item">
+              <span class="err-before">${esc(e.original)}</span>
+              <span class="err-arrow">→</span>
+              <span class="err-after">${esc(e.corrected)}</span>
+              <span class="err-reason">${esc(e.reason)}</span>
+            </div>`).join('');
+      } else {
+        errorList.innerHTML = '';
+      }
+
+      resultPanel.classList.add('show');
+    }
+
+    function highlightDiffs(corrected, errors) {
+      let html = esc(corrected);
+      errors.forEach(({ corrected: c }) => {
+        const safe = esc(c);
+        html = html.replace(safe, `<mark>${safe}</mark>`);
+      });
+      return html;
+    }
+
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function copyResult() {
+      const text = correctedBox.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('.btn-copy');
+        btn.textContent = '복사됨 ✓';
+        setTimeout(() => { btn.textContent = '교정본 복사'; }, 1500);
+      });
+    }
+
+    // GAS 코드 예시 주입
+    document.getElementById('gasCode').textContent =
+`// Google Apps Script에서 맞춤법 검사 API 호출 예시
+function spellCheck(text) {
+  const res = UrlFetchApp.fetch('https://eduin.info/api/spell-check', {
+    method: 'POST',
+    contentType: 'application/json',
+    payload: JSON.stringify({ text: text }),
+    muteHttpExceptions: true
+  });
+  const data = JSON.parse(res.getContentText());
+  if (data.error) throw new Error(data.error);
+  return data; // { original, corrected, changed, errors }
+}
+
+// 스프레드시트에서 일괄 교정 예시
+function correctSheet() {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const range = sheet.getDataRange();
+  const values = range.getValues();
+
+  values.forEach((row, r) => {
+    row.forEach((cell, c) => {
+      if (typeof cell === 'string' && cell.trim()) {
+        const result = spellCheck(cell);
+        if (result.changed) {
+          range.getCell(r + 1, c + 1).setValue(result.corrected);
+        }
+      }
+    });
+  });
+}`;
+  </script>
+</body>
+</html>
