@@ -8,7 +8,7 @@
 
 ---
 
-## 앱 목록 (31개)
+## 앱 목록 (32개)
 
 ### 📚 교육 (16)
 
@@ -40,13 +40,14 @@
 | **Login Helper** | `https://blog.eduin.info/450` | 에듀나비 교원업무지원 자동 로그인 프로그램 (모달) |
 | **에듀서치** | `/apps/search/` | 교육문서 AI 검색 (Gemini RAG) |
 
-### 🛠 유틸리티 (15)
+### 🛠 유틸리티 (16)
 
 #### 🔧 생활편의
 | 앱 | 경로 | 설명 |
 |---|---|---|
 | **MD Editor** | `/apps/md-editor/` | 마크다운 편집기 (JSON·CSV·XML·HTML 불러오기, **HWP·PDF·DOCX·PPTX·XLSX 변환** via Corepin API, 파일 공유) |
 | **QR Master** | `/apps/qr/` | QR 코드 생성, 카메라/이미지 스캔, 단축주소 |
+| **AI 맞춤법 검사** | `/apps/spell-checker/` | AI가 한국어 맞춤법·문법을 교정하고 이유를 설명합니다. GAS·외부 앱에서 `/api/spell-check` API로도 호출 가능. |
 
 #### 🧩 크롬확장
 | 앱 | 경로 | 설명 |
