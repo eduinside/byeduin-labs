@@ -8,7 +8,7 @@
 
 ---
 
-## 앱 목록 (32개)
+## 앱 목록 (33개)
 
 ### 📚 교육 (16)
 
@@ -40,7 +40,7 @@
 | **Login Helper** | `https://blog.eduin.info/450` | 에듀나비 교원업무지원 자동 로그인 프로그램 (모달) |
 | **에듀서치** | `/apps/search/` | 교육문서 AI 검색 (Gemini RAG) |
 
-### 🛠 유틸리티 (16)
+### 🛠 유틸리티 (17)
 
 #### 🔧 생활편의
 | 앱 | 경로 | 설명 |
@@ -69,6 +69,7 @@
 | **YT Thumbnail** | `/apps/yt-thumb/` | 유튜브 썸네일 추출 및 아카이빙 |
 | **Grid Maker** | `/apps/grid-maker/` | 이미지 그리드 분할 |
 | **Signage Maker** | `/apps/signage-maker/` | 학교 사이니지용 AI 세로 이미지 생성기 (Gemini) |
+| **패들렛 일괄 업로더** | `/apps/padlet-bulk-uploader/` | 텍스트를 붙여넣으면 내 패들렛 보드에 게시물을 한 번에 업로드 (Padlet API) |
 
 #### 📐 노션도구
 | 앱 | 경로 | 설명 |
