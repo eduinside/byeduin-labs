@@ -231,6 +231,21 @@
     .emoji-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
     .emoji-opt { border: 2px solid var(--border); border-radius: 10px; padding: 10px 6px; cursor: pointer; text-align: center; font-size: 22px; background: var(--card-bg); }
     .emoji-opt.sel { border-color: var(--primary); background: rgba(0,111,238,.08); }
+    /* 사진·그림 카드 */
+    .mcard-img { width: 100%; border-radius: 8px; display: block; max-height: 420px; object-fit: contain; background: rgba(128,128,128,.08); }
+    /* 승인 대기 배지 */
+    .mcard.mcard-pending { opacity: .8; border-style: dashed; }
+    .mcard-pending-badge { display: block; font-size: 11px; font-weight: 700; color: #d97706; margin-bottom: 6px; }
+    /* 발표 모드 */
+    body.presenting #mb-tb, body.presenting .fab { display: none !important; }
+    .present { display: none; position: absolute; inset: 0; z-index: 900; background: var(--mb-bg); flex-direction: column; }
+    body.presenting .present { display: flex; }
+    .present-exit { position: absolute; top: 16px; right: 16px; z-index: 10; background: rgba(0,0,0,.5); color: #fff; border: 0; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-family: inherit; font-size: 13px; }
+    .present-stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 16px; overflow: auto; }
+    .present-stage .mcard.present-card { width: min(640px, 92vw); font-size: 1.15em; margin: 0; }
+    .present-nav { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 14px; color: var(--mb-fg); flex-wrap: wrap; }
+    .present-nav button { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--mb-border); background: rgba(128,128,128,.12); color: inherit; font-size: 19px; cursor: pointer; }
+    .present-auto { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; margin-left: 8px; }
     @media (max-width: 540px) {
       .wall { columns: 160px; column-gap: 10px; }
       .mb-title { max-width: 28vw; }
@@ -289,6 +304,7 @@
       <button class="mb-close" id="mbClose" title="목록으로">✕</button>
       <div class="mb-titlewrap">
         <span class="mb-title" id="mbTitle">마당</span>
+        <span class="mb-pill hide" id="mbFrozenBadge">🔒 잠금</span>
       </div>
       <div class="tb-sep"></div>
       <button class="mb-btn primary" id="mbAdd">＋ <span class="lbl">카드</span></button>
@@ -306,6 +322,7 @@
           <button data-act="info">ℹ️ 마당 정보</button>
           <button data-act="nick">🙂 닉네임 변경</button>
           <button data-act="members" class="owner-only">👥 참여자 보기</button>
+          <button data-act="present" class="owner-only">🖥 발표 모드</button>
           <button data-act="settings" class="owner-only">⚙ 마당 설정</button>
         </div>
       </div>
@@ -320,6 +337,16 @@
           <p id="gateMsg"></p>
           <button class="btn btn-primary" id="gateHome" style="max-width:200px;margin:0 auto">처음으로</button>
         </div>
+      </div>
+    </div>
+    <div class="present" id="presentView">
+      <button class="present-exit" id="presentExit">✕ 발표 모드 종료</button>
+      <div class="present-stage" id="presentStage"></div>
+      <div class="present-nav">
+        <button id="presentPrev" title="이전">‹</button>
+        <span id="presentCounter">0 / 0</span>
+        <button id="presentNext" title="다음">›</button>
+        <label class="present-auto"><input type="checkbox" id="presentAuto"> 자동 넘김</label>
       </div>
     </div>
   </div>
@@ -372,13 +399,30 @@
       <h2 id="kTitle">카드 올리기</h2>
       <p class="m-sub" id="kWho"></p>
       <div class="type-tabs" id="kTabs">
-        <button class="type-tab active" data-type="text">📝 텍스트 (URL은 자동 링크)</button>
-        <button class="type-tab" data-type="html">⟨⟩ HTML</button>
+        <button class="type-tab active" data-key="text" data-type="text">📝 텍스트</button>
+        <button class="type-tab" data-key="html" data-type="html">⟨⟩ HTML</button>
+        <button class="type-tab" data-key="image-photo" data-type="image" data-sub="photo">📷 사진</button>
+        <button class="type-tab" data-key="image-draw" data-type="image" data-sub="draw">🎨 그림</button>
       </div>
       <div class="field hide" id="kSectionField"><label>분류</label><select class="in" id="kSection"></select></div>
       <div class="field" id="kTextField"><textarea class="in" id="kText" maxlength="8000" placeholder="여기에 응답을 입력하세요…"></textarea></div>
       <div class="field hide" id="kHtmlField"><textarea class="in" id="kHtml" maxlength="12000" placeholder="<b>HTML</b> 또는 임베드 코드…"></textarea>
         <div class="hint">올린 HTML은 격리된 샌드박스에서 안전하게 표시됩니다.</div></div>
+      <div class="field hide" id="kImageField">
+        <input type="file" accept="image/*" capture="environment" id="kImageInput" class="hide">
+        <button type="button" class="btn" id="kImagePick" style="width:100%">📷 사진 찍기 / 선택</button>
+        <div class="hide" id="kImagePreviewWrap" style="margin-top:10px"><img id="kImagePreview" style="max-width:100%;border-radius:8px"></div>
+        <div class="hint">최대 1280px로 자동 축소되어 올라갑니다.</div>
+      </div>
+      <div class="field hide" id="kDrawField">
+        <canvas id="kDrawCanvas" width="500" height="320" style="width:100%;aspect-ratio:500/320;border:1px solid var(--border);border-radius:8px;background:#fff;touch-action:none;display:block"></canvas>
+        <div class="checkrow" id="kDrawColors" style="margin-top:8px"></div>
+        <div class="modal-actions" style="margin-top:8px">
+          <button type="button" class="btn" id="kDrawUndo">↩ 되돌리기</button>
+          <button type="button" class="btn" id="kDrawErase">🧹 지우개</button>
+          <button type="button" class="btn" id="kDrawClear">전체 지우기</button>
+        </div>
+      </div>
       <div class="m-err" id="kErr"></div>
       <div class="modal-actions"><button class="btn" data-close>취소</button><button class="btn btn-primary" id="kGo">게시</button></div>
     </div>
@@ -427,6 +471,7 @@
         <div class="checkrow">
           <label><input type="checkbox" id="sT_text" value="text"> 📝 텍스트</label>
           <label><input type="checkbox" id="sT_html" value="html"> ⟨⟩ HTML</label>
+          <label><input type="checkbox" id="sT_image" value="image"> 🖼 사진/그림</label>
         </div></div>
       <div class="field"><label>참여자 상호작용</label>
         <div class="checkrow">
@@ -438,6 +483,12 @@
         <div class="checkrow">
           <label><input type="radio" name="sAudience" id="sAudienceGeneral"> 일반</label>
           <label><input type="radio" name="sAudience" id="sAudienceKid"> 저학년용(자동 별명 · 쉬운 안내)</label>
+        </div></div>
+      <div class="field"><label>교사 통제</label>
+        <div class="checkrow">
+          <label><input type="checkbox" id="sApproval"> ✅ 사전 승인(올린 카드는 승인 후 공개)</label>
+          <label><input type="checkbox" id="sFrozen"> 🔒 보드 잠금(새 카드·댓글 금지)</label>
+          <label><input type="checkbox" id="sHideNames"> 🙈 이름 숨김</label>
         </div></div>
       <div class="field"><label>자동 종료</label>
         <select class="in" id="sExpiry">
@@ -513,7 +564,11 @@
   (function () {
     'use strict';
     var API = '/api/madang';
+    var API_UPLOAD = '/api/madang-upload';
     var BOARD_RE = /^[A-HJ-NP-Z2-9]{6}$/;
+    var IMAGE_MAX_DIM = 1280;         // 사진 리사이즈 최대 변 길이
+    var IMAGE_MAX_BYTES = 400 * 1024; // 리사이즈 후 목표 용량
+    var DRAW_COLORS = ['#1a1a1a', '#e53935', '#1e88e5', '#43a047', '#fb8c00', '#8e24aa'];
     var POLL_MS_MIN = 2000;    // 활동 중 기본 간격
     var POLL_MS_MID = 5000;    // 20초 이상 무변경
     var POLL_MS_MAX = 8000;    // 60초 이상 무변경
@@ -532,11 +587,17 @@
       kraft: { name: '크라프트', sw: '#dcc7a6' },
     };
 
-    var state = { boardId: null, isOwner: false, board: null, pin: '', nickname: '', editingId: null, composeType: 'text', cmtCardId: null, sectionMap: null, firstSection: null, rev: null, pollMs: POLL_MS_MIN, unchangedSince: null, autoNick: null };
+    var state = {
+      boardId: null, isOwner: false, board: null, pin: '', nickname: '', editingId: null, composeType: 'text', composeSub: '',
+      cmtCardId: null, sectionMap: null, firstSection: null, rev: null, pollMs: POLL_MS_MIN, unchangedSince: null, autoNick: null,
+      pickedImageBlob: null, presenting: false, presentIndex: 0, autoPresent: false,
+    };
     var els = {};
     var pollTimer = null;
     var htmlObserver = null;
     var activeFrames = [];
+    var presentAutoTimer = null;
+    var drawState = { ctx: null, drawing: false, color: DRAW_COLORS[0], erase: false, undoSnapshot: null };
 
     function $(id) { return document.getElementById(id); }
     function show(el) { el.classList.remove('hide'); }
@@ -605,6 +666,39 @@
       var p = state.pin; if (p) q += '&pin=' + encodeURIComponent(p);
       return fetch(API + q, { cache: 'no-store' }).then(function (r) { return r.json(); });
     }
+    /* ── 사진·그림 업로드(R2) ── */
+    function imgSrc(content) {
+      var q = '?code=' + encodeURIComponent(readCode() || '');
+      if (state.pin) q += '&pin=' + encodeURIComponent(state.pin);
+      return '/api/madang-img/' + state.boardId + '/' + encodeURIComponent(content) + q;
+    }
+    function uploadImageBlob(blob) {
+      var q = '?board=' + encodeURIComponent(state.boardId);
+      var c = readCode(); if (c) q += '&code=' + encodeURIComponent(c);
+      if (state.pin) q += '&pin=' + encodeURIComponent(state.pin);
+      return fetch(API_UPLOAD + q, { method: 'POST', headers: { 'Content-Type': blob.type }, body: blob }).then(function (r) { return r.json(); });
+    }
+    // 사진을 canvas로 최대 IMAGE_MAX_DIM에 맞춰 리사이즈 후 IMAGE_MAX_BYTES 이하가 될 때까지 품질을 낮춰가며 인코딩.
+    function resizeImageToBlob(file) {
+      return createImageBitmap(file).then(function (bitmap) {
+        var w = bitmap.width, h = bitmap.height;
+        var scale = Math.min(1, IMAGE_MAX_DIM / Math.max(w, h));
+        var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+        var canvas = document.createElement('canvas'); canvas.width = cw; canvas.height = ch;
+        var ctx = canvas.getContext('2d'); ctx.drawImage(bitmap, 0, 0, cw, ch);
+        var qualities = [0.8, 0.6, 0.4, 0.25];
+        function tryQuality(i) {
+          return new Promise(function (resolve, reject) {
+            canvas.toBlob(function (blob) {
+              if (!blob) { reject(new Error('encode failed')); return; }
+              if (blob.size <= IMAGE_MAX_BYTES || i >= qualities.length - 1) resolve(blob);
+              else tryQuality(i + 1).then(resolve, reject);
+            }, 'image/webp', qualities[i]);
+          });
+        }
+        return tryQuality(0);
+      });
+    }
 
     /* ── 카드 렌더 ── */
     function wrapHtml(htmlStr) {
@@ -657,11 +751,21 @@
         f.setAttribute('scrolling', 'no'); f.style.height = '80px'; f.dataset.raw = card.content;
         wrap.appendChild(loading); wrap.appendChild(f); body.appendChild(wrap);
         getHtmlObserver().observe(f);
+      } else if (card.type === 'image') {
+        var img = document.createElement('img'); img.className = 'mcard-img'; img.loading = 'lazy'; img.alt = ''; img.src = imgSrc(card.content);
+        body.appendChild(img);
       } else { var p = document.createElement('div'); p.className = 'mcard-text'; linkifyInto(p, card.content); body.appendChild(p); }
     }
     function createCardEl(card) {
       var el = document.createElement('div'); el.className = 'mcard mcard-' + card.type; el.dataset.id = card.id; el.dataset.up = card.updatedAt;
-      var body = document.createElement('div'); body.className = 'mcard-body'; fillBody(body, card);
+      var body = document.createElement('div'); body.className = 'mcard-body';
+      fillBody(body, card);
+      if (card.pending) {
+        el.classList.add('mcard-pending');
+        var badge = document.createElement('span'); badge.className = 'mcard-pending-badge';
+        badge.textContent = state.isOwner ? '⏳ 승인 대기' : '⏳ 선생님 확인 중';
+        body.insertBefore(badge, body.firstChild);
+      }
       var foot = document.createElement('div'); foot.className = 'mcard-foot';
       var who = document.createElement('span'); who.className = 'mcard-who'; who.textContent = card.nickname || '익명';
       var when = document.createElement('span'); when.className = 'mcard-when'; when.textContent = relTime(card.createdAt);
@@ -670,14 +774,30 @@
       var cmt = document.createElement('button'); cmt.className = 'mcard-cmt'; cmt.title = '댓글'; cmt.innerHTML = '💬 <span class="n">0</span>'; cmt.onclick = function () { openComments(card.id); };
       right.appendChild(reacts); right.appendChild(cmt);
       var acts = document.createElement('div'); acts.className = 'mcard-acts';
-      if (card.own) { var be = document.createElement('button'); be.textContent = '수정'; be.onclick = function () { openEdit(el._card); }; acts.appendChild(be); }
+      if (card.own && card.type !== 'image') { var be = document.createElement('button'); be.textContent = '수정'; be.onclick = function () { openEdit(el._card); }; acts.appendChild(be); }
       if (card.own || state.isOwner) { var bd = document.createElement('button'); bd.className = 'del'; bd.textContent = '삭제'; bd.onclick = function () { delCard(card.id); }; acts.appendChild(bd); }
+      if (state.isOwner && card.pending) {
+        var ap = document.createElement('button'); ap.textContent = '승인'; ap.onclick = function () { approveCard(card.id); }; acts.appendChild(ap);
+        var rj = document.createElement('button'); rj.className = 'del'; rj.textContent = '거절'; rj.onclick = function () { rejectCard(card.id); }; acts.appendChild(rj);
+      }
       right.appendChild(acts);
       foot.appendChild(who); foot.appendChild(when); foot.appendChild(right);
       el.appendChild(body); el.appendChild(foot); el._card = card;
       renderReactions(reacts, card);
       refreshCardSocial(el, card);
       return el;
+    }
+    function approveCard(cardId) {
+      post({ action: 'approve', board: state.boardId, cardId: cardId }).then(function (res) {
+        if (res.ok) { toast('승인했어요 ✓'); nudgePolling(); } else toast(res.error || '실패');
+      });
+    }
+    function rejectCard(cardId) {
+      if (!confirm('이 카드를 거절(삭제)할까요?')) return;
+      post({ action: 'reject', board: state.boardId, cardId: cardId }).then(function (res) {
+        if (res.ok) { var e = els[cardId]; if (e && e.parentNode) e.parentNode.removeChild(e); delete els[cardId]; toast('거절했어요'); nudgePolling(); }
+        else toast(res.error || '실패');
+      });
     }
     function refreshCardSocial(el, card) {
       var cmt = el.querySelector('.mcard-cmt');
@@ -773,8 +893,16 @@
       var cmtNeedsRefetch = false;
       cards.forEach(function (c) {
         var ex = els[c.id];
-        if (!ex) { var el = createCardEl(c); els[c.id] = el; insertSorted(cardTarget(c), el, c); }
-        else {
+        // 승인/거절로 pending 상태가 바뀌면 배지·버튼 구성이 달라지므로 통째로 재생성.
+        if (ex && !!ex._card.pending !== !!c.pending) {
+          var f = ex.querySelector && ex.querySelector('iframe.mcard-frame'); if (f && htmlObserver) htmlObserver.unobserve(f);
+          if (ex.parentNode) ex.parentNode.removeChild(ex);
+          delete els[c.id]; ex = null;
+        }
+        if (!ex) {
+          var el = createCardEl(c); els[c.id] = el; insertSorted(cardTarget(c), el, c);
+          if (state.presenting) presentAnnounceNew(c);
+        } else {
           if (ex.dataset.up !== c.updatedAt) { ex.dataset.up = c.updatedAt; fillBody(ex.querySelector('.mcard-body'), c); }
           // 댓글 전문은 폴링에 포함되지 않음 — 개수가 그대로면 캐시 유지, 바뀌었으면 모달 열려 있을 때만 재조회
           if (ex._card && ex._card.comments && ex._card.commentCount === c.commentCount) c.comments = ex._card.comments;
@@ -882,6 +1010,7 @@
       var vb = $('view-board'); vb.classList.toggle('likes-on', !!b.allowLikes); vb.classList.toggle('cmts-on', !!b.allowComments);
       $('mbTitle').textContent = b.title || '마당';
       vb.classList.toggle('is-owner', state.isOwner);
+      $('mbFrozenBadge').classList.toggle('hide', !b.frozen);
       $('mbToggleItem').textContent = b.shared ? '⏸ 공유 중단' : '▶ 공유 시작';
       if ($('m-info').classList.contains('open')) renderInfo();
     }
@@ -902,11 +1031,12 @@
       renderLayout();
       reconcile(res.cards || []);
       startPolling();
+      if (state.autoPresent) { state.autoPresent = false; enterPresentMode(); }
     }
-    function enterByCode(c, pin) {
+    function enterByCode(c, pin, present) {
       c = String(c || '').toUpperCase();
       if (!BOARD_RE.test(c)) { toast('잘못된 마당 코드'); return; }
-      state.boardId = c; state.pin = pin || '';
+      state.boardId = c; state.pin = pin || ''; state.autoPresent = !!present;
       fetchBoard(c, state.pin).then(function (res) {
         if (res.error) {
           if (res.pinRequired) { openJoin(c); return; }
@@ -956,6 +1086,41 @@
     function nudgePolling() { state.pollMs = POLL_MS_MIN; state.unchangedSince = null; if (state.boardId) startPolling(); }
     document.addEventListener('visibilitychange', function () { if (!document.hidden && state.boardId && $('view-board').classList.contains('active')) tick(); });
 
+    /* ── 발표 모드(클라이언트 전용) — 폴링은 그대로 유지, 새 카드 도착 시 토스트 하이라이트 ── */
+    function presentableCards() { return Array.prototype.slice.call($('wall').querySelectorAll('.mcard')); }
+    function enterPresentMode() {
+      state.presenting = true; state.presentIndex = 0;
+      document.body.classList.add('presenting');
+      $('presentAuto').checked = false; stopPresentAuto();
+      renderPresentCard();
+    }
+    function exitPresentMode() {
+      state.presenting = false; stopPresentAuto();
+      document.body.classList.remove('presenting');
+    }
+    function renderPresentCard() {
+      var cards = presentableCards();
+      var stage = $('presentStage'); stage.innerHTML = '';
+      if (!cards.length) { stage.innerHTML = '<div class="wall-empty">아직 카드가 없어요.</div>'; $('presentCounter').textContent = '0 / 0'; return; }
+      if (state.presentIndex >= cards.length) state.presentIndex = cards.length - 1;
+      if (state.presentIndex < 0) state.presentIndex = 0;
+      var big = createCardEl(cards[state.presentIndex]._card);
+      big.classList.add('present-card');
+      stage.appendChild(big);
+      $('presentCounter').textContent = (state.presentIndex + 1) + ' / ' + cards.length;
+    }
+    function presentNext() { state.presentIndex++; renderPresentCard(); }
+    function presentPrev() { state.presentIndex--; renderPresentCard(); }
+    function presentAnnounceNew(card) { toast('🆕 ' + (card.nickname || '익명') + ' 님의 새 카드가 도착했어요'); }
+    function startPresentAuto() {
+      stopPresentAuto();
+      presentAutoTimer = setInterval(function () {
+        var n = presentableCards().length; if (!n) return;
+        state.presentIndex = (state.presentIndex + 1) % n; renderPresentCard();
+      }, 6000);
+    }
+    function stopPresentAuto() { if (presentAutoTimer) { clearInterval(presentAutoTimer); presentAutoTimer = null; } }
+
     /* ── 랜딩 ── */
     function renderLanding() {
       var synced = !!code();
@@ -988,6 +1153,17 @@
           } else { forgetBoard(b.code); renderLanding(); toast('목록에서 제거'); }
         };
         card.appendChild(del);
+        if (owner) {
+          var dup = document.createElement('button'); dup.className = 'bc-del'; dup.style.right = '38px'; dup.title = '복제'; dup.textContent = '⧉';
+          dup.onclick = function (e) {
+            e.stopPropagation();
+            post({ action: 'duplicate', board: b.code }).then(function (r) {
+              if (r.ok) { rememberBoard(r.board.id, r.board.title, 'owner'); renderLanding(); toast('복제됐어요 ✓'); }
+              else toast(r.error || '복제 실패');
+            });
+          };
+          card.appendChild(dup);
+        }
         listEl.appendChild(card);
       });
     }
@@ -1061,10 +1237,51 @@
     }
 
     /* ── 카드 작성/수정 ── */
-    function setComposeType(t) {
-      state.composeType = t;
-      Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.classList.toggle('active', b.dataset.type === t); });
-      $('kTextField').classList.toggle('hide', t !== 'text'); $('kHtmlField').classList.toggle('hide', t !== 'html');
+    /* ── 그림 카드(간단 캔버스) ── */
+    function setupDrawCanvas() {
+      var canvas = $('kDrawCanvas'), ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      drawState.ctx = ctx; drawState.color = DRAW_COLORS[0]; drawState.erase = false; drawState.undoSnapshot = null; drawState.drawing = false;
+      var colorsEl = $('kDrawColors'); colorsEl.innerHTML = '';
+      DRAW_COLORS.forEach(function (c, i) {
+        var b = document.createElement('button'); b.type = 'button';
+        b.style.cssText = 'width:28px;height:28px;border-radius:50%;cursor:pointer;background:' + c + ';border:2px solid ' + (i === 0 ? 'var(--primary)' : 'transparent');
+        b.onclick = function () {
+          drawState.color = c; drawState.erase = false;
+          Array.prototype.forEach.call(colorsEl.children, function (x) { x.style.borderColor = 'transparent'; });
+          b.style.borderColor = 'var(--primary)';
+        };
+        colorsEl.appendChild(b);
+      });
+      function pos(e) {
+        var r = canvas.getBoundingClientRect();
+        return { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) };
+      }
+      canvas.onpointerdown = function (e) {
+        e.preventDefault(); drawState.undoSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height); drawState.drawing = true;
+        var p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y);
+      };
+      canvas.onpointermove = function (e) {
+        if (!drawState.drawing) return; e.preventDefault();
+        var p = pos(e); ctx.strokeStyle = drawState.erase ? '#ffffff' : drawState.color; ctx.lineTo(p.x, p.y); ctx.stroke();
+      };
+      canvas.onpointerup = function () { drawState.drawing = false; };
+      canvas.onpointerleave = function () { drawState.drawing = false; };
+    }
+    function setComposeType(key) {
+      var target = null;
+      Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) {
+        var match = b.dataset.key === key; b.classList.toggle('active', match); if (match) target = b;
+      });
+      if (!target) return;
+      state.composeType = target.dataset.type; state.composeSub = target.dataset.sub || '';
+      $('kTextField').classList.toggle('hide', state.composeType !== 'text');
+      $('kHtmlField').classList.toggle('hide', state.composeType !== 'html');
+      $('kImageField').classList.toggle('hide', !(state.composeType === 'image' && state.composeSub === 'photo'));
+      $('kDrawField').classList.toggle('hide', !(state.composeType === 'image' && state.composeSub === 'draw'));
+      if (state.composeType === 'image' && state.composeSub === 'photo') { state.pickedImageBlob = null; $('kImagePreviewWrap').classList.add('hide'); $('kImageInput').value = ''; }
+      if (state.composeType === 'image' && state.composeSub === 'draw') setupDrawCanvas();
     }
     function openCompose() {
       state.editingId = null; $('kTitle').textContent = '카드 올리기'; $('kErr').textContent = '';
@@ -1073,7 +1290,8 @@
       $('kChg').onclick = function (e) { e.preventDefault(); var n = prompt('별명', state.nickname || ''); if (n != null) { setNick(n.trim().slice(0, 40)); openCompose(); } };
       var allowed = (state.board && state.board.allowedTypes) || ['text', 'html'];
       Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.classList.toggle('hide', allowed.indexOf(b.dataset.type) < 0); });
-      setComposeType(allowed.indexOf('text') >= 0 ? 'text' : allowed[0]);
+      var defKey = allowed.indexOf('text') >= 0 ? 'text' : (allowed.indexOf('html') >= 0 ? 'html' : (allowed.indexOf('image') >= 0 ? 'image-photo' : 'text'));
+      setComposeType(defKey);
       var secEl = $('kSectionField');
       var secs = (state.board && state.board.layout === 'sections' && state.board.sections) ? state.board.sections.filter(Boolean) : [];
       if (secs.length) {
@@ -1084,9 +1302,10 @@
       openModal('m-card');
     }
     function openEdit(card) {
-      state.editingId = card.id; state.composeType = card.type; $('kTitle').textContent = '카드 수정'; $('kErr').textContent = ''; $('kWho').textContent = '';
+      state.editingId = card.id; state.composeType = card.type; state.composeSub = ''; $('kTitle').textContent = '카드 수정'; $('kErr').textContent = ''; $('kWho').textContent = '';
       Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.classList.add('hide'); });
       $('kTextField').classList.toggle('hide', card.type === 'html'); $('kHtmlField').classList.toggle('hide', card.type !== 'html');
+      $('kImageField').classList.add('hide'); $('kDrawField').classList.add('hide');
       if (card.type === 'html') $('kHtml').value = card.content; else $('kText').value = card.content;
       openModal('m-card');
     }
@@ -1110,6 +1329,7 @@
     window.addEventListener('online', flushPending);
     document.addEventListener('visibilitychange', function () { if (!document.hidden) flushPending(); });
     function doCompose() {
+      if (state.composeType === 'image' && !state.editingId) { doComposeImage(); return; }
       var t = state.composeType, content = contentOf(t); $('kErr').textContent = '';
       if (!content.trim()) { $('kErr').textContent = '내용을 입력하세요.'; return; }
       $('kGo').disabled = true;
@@ -1132,6 +1352,24 @@
         if (!state.editingId && isKidMode()) { savePending(state.boardId, payload); closeModal('m-card'); toast(friendlyMsg('network', '네트워크 오류')); }
         else { $('kErr').textContent = friendlyMsg('network', '네트워크 오류'); }
       });
+    }
+    function doComposeImage() {
+      $('kErr').textContent = ''; $('kGo').disabled = true;
+      function afterBlob(blob) {
+        if (!blob) { $('kGo').disabled = false; $('kErr').textContent = '이미지를 만들 수 없습니다.'; return; }
+        uploadImageBlob(blob).then(function (up) {
+          if (!up.ok) { $('kGo').disabled = false; $('kErr').textContent = up.error || '업로드 실패'; return; }
+          post({ action: 'post', board: state.boardId, type: 'image', content: up.key, nickname: state.nickname || getNick(), pin: state.pin, section: (state.board && state.board.layout === 'sections') ? $('kSection').value : '' }).then(function (res) {
+            $('kGo').disabled = false;
+            if (!res.ok) { if (res.flagged) { $('kErr').textContent = friendlyMsg('flagged', '⚠️ 부적절한 내용으로 판단되어 게시할 수 없습니다.'); return; } $('kErr').textContent = res.error || '실패'; return; }
+            closeModal('m-card'); nudgePolling();
+            if (!els[res.card.id]) { res.card.commentCount = 0; res.card.reactions = {}; res.card.myReactions = []; var el = createCardEl(res.card); els[res.card.id] = el; insertSorted(cardTarget(res.card), el, res.card); $('wallEmpty').classList.add('hide'); if ($('m-info').classList.contains('open')) renderInfo(); }
+            toast('올렸어요 ✓');
+          }).catch(function () { $('kGo').disabled = false; $('kErr').textContent = friendlyMsg('network', '네트워크 오류'); });
+        }).catch(function () { $('kGo').disabled = false; $('kErr').textContent = friendlyMsg('network', '업로드 실패'); });
+      }
+      if (state.composeSub === 'draw') { $('kDrawCanvas').toBlob(afterBlob, 'image/png'); }
+      else { if (!state.pickedImageBlob) { $('kGo').disabled = false; $('kErr').textContent = '사진을 선택하세요.'; return; } afterBlob(state.pickedImageBlob); }
     }
     function delCard(id) {
       if (!confirm('이 카드를 삭제할까요?')) return;
@@ -1282,7 +1520,7 @@
       $('sTitle').value = b.title || '';
       renderBgGrid(b.background || 'whiteboard');
       var allowed = b.allowedTypes || ['text', 'html'];
-      $('sT_text').checked = allowed.indexOf('text') >= 0; $('sT_html').checked = allowed.indexOf('html') >= 0;
+      $('sT_text').checked = allowed.indexOf('text') >= 0; $('sT_html').checked = allowed.indexOf('html') >= 0; $('sT_image').checked = allowed.indexOf('image') >= 0;
       $('sLayout').value = b.layout || 'wall';
       $('sSort').value = b.sort || 'newest';
       $('sSections').value = (b.sections || []).join(', ');
@@ -1290,6 +1528,7 @@
       $('sAllowComments').checked = !!b.allowComments; $('sAllowLikes').checked = !!b.allowLikes;
       renderReactGrid(b.reactions && b.reactions.length ? b.reactions : DEFAULT_REACTIONS);
       $('sAudienceKid').checked = !!b.kidMode; $('sAudienceGeneral').checked = !b.kidMode;
+      $('sApproval').checked = !!b.approval; $('sFrozen').checked = !!b.frozen; $('sHideNames').checked = !!b.hideNames;
       $('sExpiry').value = String(b.expiryDays || 0);
       $('sExpiryHint').textContent = b.expired ? '운영 기간 종료됨 · 다시 고르면 지금부터 재개됩니다.' : (b.expiresAt ? '현재: ' + expiryText(b) + ' · 바꾸면 지금부터 다시 계산' : '무기한');
       $('sPin').value = ''; $('sPinHint').textContent = b.hasPin ? '현재 PIN 설정됨 · 비우고 저장하면 PIN 해제' : '현재 PIN 없음';
@@ -1297,7 +1536,7 @@
     }
     function doSettings() {
       $('sErr').textContent = '';
-      var types = []; if ($('sT_text').checked) types.push('text'); if ($('sT_html').checked) types.push('html');
+      var types = []; if ($('sT_text').checked) types.push('text'); if ($('sT_html').checked) types.push('html'); if ($('sT_image').checked) types.push('image');
       if (!types.length) { $('sErr').textContent = '카드 유형을 하나 이상 선택하세요.'; return; }
       var pin = $('sPin').value.trim();
       if (pin && !/^[0-9]{4,8}$/.test(pin)) { $('sErr').textContent = 'PIN은 숫자 4~8자리여야 합니다.'; return; }
@@ -1308,6 +1547,7 @@
         background: bgSel ? bgSel.dataset.bg : 'whiteboard', allowComments: $('sAllowComments').checked, allowLikes: $('sAllowLikes').checked,
         reactions: reactSel.length ? reactSel : DEFAULT_REACTIONS.slice(),
         kidMode: $('sAudienceKid').checked,
+        approval: $('sApproval').checked, frozen: $('sFrozen').checked, hideNames: $('sHideNames').checked,
         layout: $('sLayout').value === 'sections' ? 'sections' : 'wall',
         sections: $('sSections').value.split(',').map(function (s) { return s.trim(); }).filter(Boolean),
         sort: $('sSort').value,
@@ -1389,20 +1629,44 @@
       $('jNickToAuto').onclick = function (e) { e.preventDefault(); setJoinNickMode(true); };
       wireDropdown('mbShareBtn', 'mbShareMenu'); wireDropdown('mbMoreBtn', 'mbMoreMenu');
       $('mbShareMenu').addEventListener('click', function (e) { var b = e.target.closest('button[data-act]'); if (!b) return; closeDropdowns(); var a = b.dataset.act; if (a === 'invite') openInvite(); else if (a === 'toggle') toggleShare(); else if (a === 'export') openExport(); });
-      $('mbMoreMenu').addEventListener('click', function (e) { var b = e.target.closest('button[data-act]'); if (!b) return; closeDropdowns(); var a = b.dataset.act; if (a === 'info') openInfo(); else if (a === 'nick') openNick(); else if (a === 'members') openMembers(); else if (a === 'settings') openSettings(); });
+      $('mbMoreMenu').addEventListener('click', function (e) { var b = e.target.closest('button[data-act]'); if (!b) return; closeDropdowns(); var a = b.dataset.act; if (a === 'info') openInfo(); else if (a === 'nick') openNick(); else if (a === 'members') openMembers(); else if (a === 'present') enterPresentMode(); else if (a === 'settings') openSettings(); });
       document.addEventListener('click', closeDropdowns);
       $('nkGo').onclick = doSetNick;
       $('sGo').onclick = doSettings; $('sDelete').onclick = doDeleteBoard; $('exCsv').onclick = doExportCsv; $('exPdf').onclick = doExportPdf; $('exPng').onclick = doExportPng; $('cmtGo').onclick = doAddComment;
       $('sLayout').onchange = function () { $('sSectionsField').classList.toggle('hide', this.value !== 'sections'); };
-      Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.onclick = function () { setComposeType(b.dataset.type); }; });
+      Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.onclick = function () { setComposeType(b.dataset.key); }; });
       Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.onclick = function () { closeModal(b.closest('.modal').id); }; });
       Array.prototype.forEach.call(document.querySelectorAll('.modal'), function (m) { m.addEventListener('click', function (e) { if (e.target === m) closeModal(m.id); }); });
       $('jCode').addEventListener('input', function () {
         this.value = this.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 6);
         if (this.value.length === 6) refreshJoinKidMode(this.value);
       });
+      $('kImagePick').onclick = function () { $('kImageInput').click(); };
+      $('kImageInput').onchange = function () {
+        var f = this.files && this.files[0]; if (!f) return;
+        $('kErr').textContent = '이미지 처리 중…';
+        resizeImageToBlob(f).then(function (blob) {
+          state.pickedImageBlob = blob; $('kErr').textContent = '';
+          var url = URL.createObjectURL(blob);
+          $('kImagePreview').src = url; $('kImagePreviewWrap').classList.remove('hide');
+        }).catch(function () { $('kErr').textContent = '이미지를 처리할 수 없습니다.'; });
+      };
+      $('kDrawUndo').onclick = function () { if (drawState.undoSnapshot) { drawState.ctx.putImageData(drawState.undoSnapshot, 0, 0); drawState.undoSnapshot = null; } };
+      $('kDrawErase').onclick = function () { drawState.erase = true; };
+      $('kDrawClear').onclick = function () {
+        var c = $('kDrawCanvas'); drawState.undoSnapshot = drawState.ctx.getImageData(0, 0, c.width, c.height);
+        drawState.ctx.fillStyle = '#fff'; drawState.ctx.fillRect(0, 0, c.width, c.height);
+      };
+      $('presentExit').onclick = exitPresentMode;
+      $('presentPrev').onclick = presentPrev; $('presentNext').onclick = presentNext;
+      $('presentAuto').onchange = function () { if (this.checked) startPresentAuto(); else stopPresentAuto(); };
       document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') { if ($('fullqr').classList.contains('open')) closeFullQr(); else if (document.querySelector('.modal.open')) closeAllModals(); }
+        if (e.key === 'Escape') {
+          if ($('fullqr').classList.contains('open')) closeFullQr();
+          else if (state.presenting) exitPresentMode();
+          else if (document.querySelector('.modal.open')) closeAllModals();
+        } else if (state.presenting && e.key === 'ArrowRight') presentNext();
+        else if (state.presenting && e.key === 'ArrowLeft') presentPrev();
       });
     }
 
@@ -1411,10 +1675,11 @@
       VivesSync.mountCodeButton({ appName: '마당 신원', onChange: function () { if ($('view-home').classList.contains('active')) renderLanding(); } });
       renderLanding();
       var hash = location.hash || '';
+      var wantPresent = /\?present=1/.test(hash);
       var mj = hash.match(/#join=([A-Za-z2-9]{6})(?::([0-9]{4,8}))?/);
-      var mb = hash.match(/^#([A-HJ-NP-Z2-9]{6})(?::([0-9]{4,8}))?$/);
+      var mb = hash.match(/^#([A-HJ-NP-Z2-9]{6})(?::([0-9]{4,8}))?(?:\?present=1)?$/);
       if (mj) { history.replaceState(null, '', location.pathname); openJoin(mj[1].toUpperCase(), mj[2] || ''); }
-      else if (mb) { enterByCode(mb[1].toUpperCase(), mb[2] || ''); }
+      else if (mb) { enterByCode(mb[1].toUpperCase(), mb[2] || '', wantPresent); }
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
   })();
