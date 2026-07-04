@@ -4,9 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Club Badge — eduin VIVES</title>
-<link href="https://fonts.googleapis.com/css2?family=Dongle&display=swap" rel="stylesheet">
 <script src="/common/init.js"></script>
 <script src="clubs-data.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Dongle:wght@300;400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/common/hero-theme.css">
+<link rel="stylesheet" href="/common/app-shell.css">
+<script src="/common/theme.js"></script>
+<script src="/common/app-shell.js" defer></script>
 <style>
   :root {
     --bg: #FFF9F0;
@@ -18,647 +22,296 @@
     --blue: #1E90FF;
     --purple: #A855F7;
     --dark: #2D2D2D;
+    --paper: #FFFDF8;
     --shadow: 4px 4px 0px #2D2D2D;
+    --side-w: 400px;
   }
-
-  html { font-size: 200%; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
+  html { -webkit-text-size-adjust: 100%; }
   body {
     font-family: 'Dongle', sans-serif;
     background: var(--bg);
+    color: var(--dark);
     min-height: 100vh;
-    overflow-x: hidden;
     background-image:
       radial-gradient(circle at 10% 20%, #FFE0B2 0%, transparent 40%),
       radial-gradient(circle at 90% 80%, #C8E6FF 0%, transparent 40%);
   }
+  body.exploring { overflow: hidden; }
+  h1, h2, h3 { font-weight: 700; }
 
-  /* ── Header ── */
-  header {
-    text-align: center;
-    padding: 28px 20px 12px;
-    position: relative;
+  /* ===== 인트로 ===== */
+  .wrap { max-width: 620px; margin: 0 auto; padding: 20px 16px 60px; }
+  .intro { text-align: center; padding-top: 56px; animation: fadeUp .6s ease both; }
+  .intro .hero-art { font-size: 84px; line-height: 1; animation: bounce 2.4s ease-in-out infinite; }
+  .intro h1 {
+    font-size: 60px; margin: 10px 0 2px; color: var(--dark);
+    letter-spacing: 1px; text-shadow: 4px 4px 0 var(--blue); line-height: 1;
   }
-  header h1 {
-    font-family: 'Dongle', sans-serif;
-    font-size: clamp(2rem, 6vw, 3.8rem);
-    color: var(--dark);
-    letter-spacing: 2px;
-    text-shadow: 4px 4px 0 var(--orange);
-    line-height: 1;
+  .intro .sub { font-size: 28px; color: #666; margin-bottom: 20px; line-height: 1.3; font-weight: 700; }
+  .lesson-tag {
+    display: inline-block; background: var(--dark); color: var(--sky);
+    font-size: 24px; padding: 4px 20px; border-radius: 99px; margin-bottom: 18px; line-height: 1.3;
   }
-  header p {
-    font-size: 1rem;
-    color: #666;
-    margin-top: 8px;
-    font-weight: 700;
+  .mission-card {
+    background: var(--paper); border: 3px dashed var(--blue); border-radius: 22px;
+    padding: 18px 22px; text-align: left; margin: 0 auto 26px; box-shadow: var(--shadow);
   }
+  .mission-card h3 { color: var(--blue); font-size: 30px; margin-bottom: 6px; line-height: 1.1; }
+  .mission-card li { margin: 4px 0 4px 22px; line-height: 1.25; font-size: 25px; }
+  .mission-card b { color: var(--red); }
 
-  /* ── Tabs ── */
-  .tabs {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-    padding: 16px 20px;
-    flex-wrap: wrap;
+  /* ===== 버튼 ===== */
+  .btn {
+    font-family: 'Dongle', sans-serif; font-size: 30px; line-height: 1.1;
+    border: 3px solid var(--dark); cursor: pointer;
+    border-radius: 99px; padding: 10px 36px; transition: transform .12s, box-shadow .12s;
+    box-shadow: var(--shadow); background: white; color: var(--dark);
+    -webkit-tap-highlight-color: transparent;
   }
-  .tab {
-    font-family: 'Dongle', sans-serif;
-    font-size: 1.1rem;
-    padding: 10px 28px;
-    border: 3px solid var(--dark);
-    border-radius: 999px;
-    cursor: pointer;
-    transition: transform 0.1s, box-shadow 0.1s, background 0.2s;
+  .btn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+  .btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--dark); }
+  .btn-primary { background: var(--green); }
+  .btn-blue { background: var(--blue); color: white; }
+
+  /* ===== 탐험 레이아웃 ===== */
+  .explore {
+    display: none;
+    grid-template-columns: 1fr var(--side-w);
+    width: 100vw; height: 100vh; height: 100dvh;
+    animation: fadeUp .4s ease both;
+  }
+  body.exploring .explore { display: grid; }
+  body.exploring .wrap { display: none; }
+  .stage-zone {
+    position: relative; min-width: 0; overflow: hidden;
+    background:
+      radial-gradient(circle at 20% 15%, rgba(30,144,255,.10) 0, transparent 35%),
+      radial-gradient(circle at 80% 85%, rgba(255,217,61,.28) 0, transparent 45%),
+      linear-gradient(180deg, #FFF9F0 0%, #EAF3FF 100%);
+  }
+  .viewer-title {
+    position: absolute; top: 56px; left: 14px; z-index: 5;
+    background: var(--dark); color: #fff; border-radius: 14px; padding: 4px 16px;
+    font-size: 27px; line-height: 1.2; display: flex; align-items: center; gap: 9px;
     box-shadow: var(--shadow);
-    background: white;
-    color: var(--dark);
   }
-  .tab:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
-  .tab.active { background: var(--yellow); transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
-
-  /* ── Sections ── */
-  .section { display: none; padding: 10px 20px 60px; max-width: 900px; margin: 0 auto; }
-  .section.visible { display: block; }
-
-  /* ── Overlay buttons ── */
-  .overlay-left, .overlay-right {
-    position: fixed;
-    top: 12px;
-    z-index: 999;
-    display: flex;
-    gap: 8px;
+  .viewer-title .num {
+    background: var(--blue); min-width: 26px; height: 26px; border-radius: 50%; padding: 0 4px;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 18px;
   }
-  .overlay-left { left: 12px; }
-  .overlay-right { right: 12px; }
-  .ov-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-family: 'Dongle', sans-serif;
-    font-size: 0.8rem;
-    padding: 6px 14px;
-    border: 2.5px solid var(--dark);
-    border-radius: 999px;
-    cursor: pointer;
-    background: rgba(255,249,240,0.88);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    color: var(--dark);
-    text-decoration: none;
-    box-shadow: 2px 2px 0 var(--dark);
-    transition: transform 0.1s, box-shadow 0.1s;
-    white-space: nowrap;
+  .stage-canvas {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    padding: 96px 28px 60px; overflow: auto;
   }
-  .ov-btn:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--dark); }
-  .ov-btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--dark); }
+  .stage-hint {
+    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 5;
+    background: rgba(45,45,45,.85); color: #fff; font-size: 23px; line-height: 1.2;
+    border-radius: 99px; padding: 6px 20px; white-space: nowrap; max-width: calc(100% - 24px);
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .stage-number {
+    font-family: 'Dongle', sans-serif; font-size: 130px; line-height: 1;
+    color: var(--orange); text-shadow: 6px 6px 0 var(--dark); animation: bounce .6s ease;
+  }
+  .stage-number.small { font-size: 90px; }
+  .hint { font-size: 30px; color: #999; font-weight: 700; text-align: center; line-height: 1.3; }
 
-  /* ── Toast ── */
-  #cbToast {
-    position: fixed;
-    bottom: 1.5rem;
-    left: 50%;
-    transform: translateX(-50%) translateY(1rem);
-    background: var(--dark);
+  /* 무대: 배지 그리드 */
+  .badge-grid { display: flex; flex-direction: column; gap: 10px; width: min(520px, 100%); }
+  .club-badge {
+    display: flex; align-items: stretch; border: 3px solid var(--dark); border-radius: 14px;
+    box-shadow: 3px 3px 0 var(--dark); overflow: hidden;
+    animation: popIn .4s cubic-bezier(.36,1.56,.64,1) both; min-height: 76px;
+  }
+  .badge-emoji {
+    flex-shrink: 0; width: 76px; min-width: 76px; padding: 12px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.05); border-right: 3px solid rgba(0,0,0,.1);
+  }
+  .badge-header { display: flex; flex-direction: column; justify-content: center; gap: 2px; flex: 1; padding: 8px 14px; }
+  .badge-name { font-size: 28px; line-height: 1.05; font-weight: 900; }
+  .badge-reason { font-size: 22px; line-height: 1.2; opacity: .9; word-break: keep-all; }
+  .no-club-msg { font-size: 30px; color: #999; text-align: center; padding: 10px; }
+
+  /* 무대: 클럽 상세 */
+  .club-detail {
+    background: var(--paper); border: 3px solid var(--dark); border-radius: 24px;
+    box-shadow: var(--shadow); padding: 24px 28px; width: min(560px, 100%);
+    animation: popIn .35s cubic-bezier(.36,1.56,.64,1) both;
+  }
+  .club-detail-head { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+  .club-detail-icon { width: 72px; height: 72px; flex-shrink: 0; border-radius: 18px; border: 3px solid var(--dark); display: flex; align-items: center; justify-content: center; padding: 8px; }
+  .club-detail-head h3 { font-size: 40px; line-height: 1; }
+  .club-detail-head p { font-size: 22px; color: #888; line-height: 1.1; }
+  .club-detail .desc-ko { font-size: 27px; line-height: 1.3; margin-bottom: 6px; word-break: keep-all; }
+  .club-detail .desc-en { font-size: 20px; color: #999; line-height: 1.3; margin-bottom: 12px; }
+  .examples-label { font-size: 24px; font-weight: 900; color: #555; margin-bottom: 6px; }
+  .examples-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 150px; overflow-y: auto; }
+  .num-chip {
+    font-size: 22px; line-height: 1.1; padding: 2px 12px; border-radius: 999px;
+    border: 2px solid var(--dark); background: var(--sky); box-shadow: 2px 2px 0 var(--dark); color: var(--dark);
+  }
+
+  /* ===== 사이드바 ===== */
+  .side {
+    background: var(--paper); border-left: 3px solid var(--dark);
+    overflow-y: auto; display: flex; flex-direction: column;
+    box-shadow: -8px 0 24px rgba(45,45,45,.12);
+  }
+  .side-head {
+    background: linear-gradient(135deg, var(--blue) 0%, #1565C0 100%);
+    color: #fff; padding: 18px 22px 14px; position: relative; overflow: hidden; flex-shrink: 0;
+  }
+  .side-head::after {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 80% -20%, rgba(255,217,61,.35) 0, transparent 55%);
+  }
+  .side-head .flag { font-size: 22px; line-height: 1.1; opacity: .9; position: relative; z-index: 1; }
+  .side-head h2 { font-size: 38px; line-height: 1.05; margin: 2px 0 0; position: relative; z-index: 1; }
+  .side-body { padding: 16px 20px 26px; flex: 1; }
+
+  .mode-pills { display: flex; gap: 8px; margin-bottom: 14px; }
+  .mode-pill {
+    flex: 1; font-family: 'Dongle', sans-serif; font-size: 25px; line-height: 1.1;
+    padding: 8px 4px; border: 3px solid var(--dark); border-radius: 99px; cursor: pointer;
+    background: white; color: var(--dark); box-shadow: 3px 3px 0 var(--dark);
+    transition: transform .1s, box-shadow .1s, background .2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mode-pill:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--dark); }
+  .mode-pill.active { background: var(--yellow); }
+
+  .observe-box {
+    background: #EAF3FF; border: 2px solid var(--blue); border-radius: 16px;
+    padding: 12px 16px 10px; margin-bottom: 14px;
+  }
+  .observe-box h3 { font-size: 26px; line-height: 1.1; color: #1565C0; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .observe-box p { font-size: 24px; line-height: 1.25; }
+  .tip-box {
+    background: #FFF7E0; border: 2px solid var(--orange); border-radius: 16px;
+    padding: 10px 15px; margin-bottom: 14px; font-size: 22px; line-height: 1.3; color: #8A5A00;
+  }
+  .tip-box b { color: #B06A00; }
+
+  /* 클럽 목록(사이드바) */
+  .club-list { display: flex; flex-direction: column; gap: 8px; }
+  .club-row {
+    display: flex; align-items: center; gap: 10px; padding: 6px 12px;
+    border: 3px solid var(--dark); border-radius: 14px; cursor: pointer;
+    box-shadow: 3px 3px 0 var(--dark); transition: transform .1s, box-shadow .1s;
     color: white;
-    padding: 0.45rem 1.2rem;
-    border-radius: 999px;
-    font-family: 'Dongle', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 700;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s, transform 0.2s;
-    z-index: 9000;
-    white-space: nowrap;
+  }
+  .club-row:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--dark); }
+  .club-row.sel { outline: 3px solid var(--yellow); outline-offset: -1px; }
+  .club-row .ic { width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .club-row .names { flex: 1; min-width: 0; }
+  .club-row .ko { font-size: 25px; line-height: 1; font-weight: 900; text-shadow: 1px 1px 0 rgba(0,0,0,.25); }
+  .club-row .en { font-size: 17px; line-height: 1.1; opacity: .85; }
+
+  /* 숫자 탐색: 넘패드 */
+  .num-display-box {
+    background: white; border: 3px solid var(--dark); border-radius: 18px;
+    box-shadow: var(--shadow); padding: 4px 20px; text-align: center; margin-bottom: 12px;
+  }
+  .num-display-val {
+    font-size: 62px; line-height: 1.15; color: var(--orange);
+    text-shadow: 3px 3px 0 var(--dark); min-height: 1.15em; letter-spacing: 3px;
+  }
+  .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .np-btn {
+    font-family: 'Dongle', sans-serif; font-size: 34px; line-height: 1; padding: 10px;
+    border: 3px solid var(--dark); border-radius: 14px; cursor: pointer;
+    box-shadow: 3px 3px 0 var(--dark); background: white; color: var(--dark);
+    transition: transform .08s, box-shadow .08s;
+  }
+  .np-btn:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--dark); }
+  .np-btn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--dark); }
+  .np-zero { background: var(--sky); }
+  .np-del { background: var(--yellow); }
+  .np-clear { background: var(--red); color: white; }
+  .check-row { text-align: center; }
+
+  /* 퀴즈 (volcano 계승) */
+  .progress-zone { margin-bottom: 14px; }
+  .progress-track { height: 12px; background: #E4ECF6; border: 2px solid var(--dark); border-radius: 99px; overflow: hidden; }
+  .progress-fill {
+    height: 100%; border-radius: 99px; min-width: 8px;
+    background: linear-gradient(90deg, var(--sky), var(--blue));
+    transition: width .5s cubic-bezier(.6,0,.3,1.4);
+  }
+  .progress-label { display: flex; justify-content: space-between; font-size: 21px; color: #888; margin-top: 4px; line-height: 1.1; }
+
+  .quiz-q { text-align: center; font-size: 28px; line-height: 1.2; margin-bottom: 12px; }
+  .quiz-choices { display: flex; flex-direction: column; gap: 10px; margin-bottom: 6px; }
+  .choice-btn {
+    font-family: 'Dongle', sans-serif; font-size: 26px; line-height: 1.1; padding: 8px 14px;
+    border: 3px solid var(--dark); border-radius: 14px; cursor: pointer;
+    box-shadow: 3px 3px 0 var(--dark); background: white; color: var(--dark);
+    transition: transform .1s, box-shadow .1s;
+    display: flex; align-items: center; gap: 10px; word-break: keep-all; text-align: left;
+  }
+  .choice-btn:hover:not(:disabled) { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--dark); }
+  .choice-btn:disabled { cursor: not-allowed; }
+  .choice-btn.correct-ans { background: var(--green) !important; }
+  .choice-btn.wrong-ans { background: var(--red) !important; color: white; }
+  .choice-emoji { width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+
+  .reveal { animation: popIn .45s cubic-bezier(.5,0,.3,1.5) both; }
+  .reveal-banner {
+    text-align: center; border-radius: 18px; padding: 8px; font-size: 29px; line-height: 1.15;
+    margin: 10px 0; border: 3px solid;
+  }
+  .reveal-banner.correct { background: #E3F5EA; color: #14813F; border-color: var(--green); }
+  .reveal-banner.wrong { background: #FDEAEA; color: #C0392B; border-color: var(--red); }
+  .explain { font-size: 24px; line-height: 1.35; background: #F2F6FB; border-radius: 14px; padding: 11px 15px; }
+  .explain b { color: #1565C0; }
+  .next-zone { text-align: center; margin-top: 12px; }
+
+  .result { text-align: center; animation: fadeUp .5s ease both; }
+  .result h2 { font-size: 40px; color: var(--blue); margin: 6px 0 0; line-height: 1.1; }
+  .result .score { font-size: 30px; color: #888; margin-bottom: 14px; line-height: 1.1; }
+  .summary-box {
+    background: var(--dark); color: #EAF3FF; border-radius: 18px;
+    padding: 14px 18px; text-align: left; margin-bottom: 16px;
+  }
+  .summary-box h3 { color: var(--yellow); font-size: 27px; line-height: 1.1; margin-bottom: 6px; }
+  .summary-box p { font-size: 23px; line-height: 1.35; }
+  .summary-box b { color: #FFD98A; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+  @keyframes popIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
+  @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+  /* ===== 토스트 ===== */
+  #cbToast {
+    position: fixed; bottom: 1.5rem; left: 50%;
+    transform: translateX(-50%) translateY(1rem);
+    background: var(--dark); color: white; padding: 4px 22px;
+    border-radius: 999px; font-family: 'Dongle', sans-serif; font-size: 25px; line-height: 1.3;
+    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+    z-index: 9000; white-space: nowrap;
   }
   #cbToast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  /* ── Animations ── */
-  @keyframes popIn {
-    from { transform: scale(0) rotate(-8deg); opacity: 0; }
-    to   { transform: scale(1) rotate(0deg); opacity: 1; }
-  }
-  @keyframes bounce {
-    0%,100% { transform: translateY(0); }
-    40%     { transform: translateY(-16px); }
-    60%     { transform: translateY(-8px); }
-  }
-
-  /* ══════════════════════════════
-     화면 1: 클럽 소개 (Info) — 모달
-  ══════════════════════════════ */
-
-  .club-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-    max-width: 600px;
-    margin: 0 auto;
-  }
-  @media (max-width: 640px) {
-    .club-grid { grid-template-columns: 1fr; }
+  /* ===== 태블릿·모바일 ===== */
+  @media (max-width: 900px) {
+    body.exploring { overflow: auto; }
+    body.exploring .explore { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
+    .stage-zone { position: sticky; top: 0; z-index: 40; height: 46vh; min-height: 300px; flex-shrink: 0; }
+    .stage-canvas { padding: 70px 14px 56px; justify-content: flex-start; }
+    .side { border-left: none; border-top: 3px solid var(--dark); }
+    .intro h1 { font-size: 44px; }
+    .viewer-title { font-size: 23px; padding: 3px 13px; }
+    .stage-number { font-size: 90px; }
+    .badge-emoji { width: 60px; min-width: 60px; padding: 9px; }
   }
 
-  .club-card {
-    border: 3px solid var(--dark);
-    border-radius: 18px;
-    box-shadow: var(--shadow);
-    overflow: hidden;
-    cursor: pointer;
-    transition: transform 0.1s, box-shadow 0.1s;
-    background: white;
-  }
-  .club-card:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 
-  .club-card-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    user-select: none;
-  }
-  .club-emoji { font-size: 1.5rem; flex-shrink: 0; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
-  .club-names { flex: 1; min-width: 0; }
-  .club-name-ko {
-    font-family: 'Dongle', sans-serif;
-    font-size: 1rem;
-    font-weight: 900;
-    color: white;
-    text-shadow: 1px 1px 0 rgba(0,0,0,0.25);
-    line-height: 1.2;
-    word-break: keep-all;
-  }
-  .club-name-en {
-    font-size: 0.68rem;
-    color: rgba(255,255,255,0.85);
-    font-weight: 700;
-    line-height: 1.2;
-    word-break: break-word;
-  }
-
-  /* 모달 배경 */
-  .club-modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(4px);
-    z-index: 998;
-    display: none;
-    align-items: center;
-    justify-content: center;
-  }
-  .club-modal-backdrop.show { display: flex; }
-  .club-modal-backdrop.show { animation: fadeIn 0.2s ease; }
-
-  .club-modal {
-    background: white;
-    border: 3px solid var(--dark);
-    border-radius: 24px;
-    padding: 28px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-    max-width: 500px;
-    max-height: 80vh;
-    overflow-y: scroll;
-    overflow-x: hidden;
-    animation: modalPopIn 0.3s cubic-bezier(.36,1.56,.64,1);
-    width: 90%;
-    position: relative;
-  }
-
-  .club-modal::-webkit-scrollbar {
-    width: 8px;
-  }
-  .club-modal::-webkit-scrollbar-track {
-    background: transparent;
-    margin-top: 20px;
-  }
-  .club-modal::-webkit-scrollbar-thumb {
-    background: #ccc;
-    border-radius: 4px;
-  }
-  .club-modal::-webkit-scrollbar-thumb:hover {
-    background: #999;
-  }
-
-  .club-modal-header {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 16px;
-    padding-right: 32px;
-  }
-  .club-modal-emoji { width: 60px; height: 60px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-  .club-modal-names h2 {
-    font-family: 'Dongle', sans-serif;
-    font-size: 1.3rem;
-    font-weight: 900;
-    color: var(--dark);
-    margin: 0 0 4px;
-  }
-  .club-modal-names p {
-    font-size: 0.8rem;
-    color: #666;
-    margin: 0;
-  }
-
-
-  .club-modal-footer {
-    position: sticky;
-    bottom: -28px;
-    left: -28px;
-    right: -28px;
-    margin-top: 20px;
-    padding: 16px 28px;
-    background: white;
-    border-top: 2px dashed rgba(0,0,0,0.1);
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-  }
-
-  .modal-close-bottom-btn {
-    font-family: 'Dongle', sans-serif;
-    font-size: 1rem;
-    padding: 10px 36px;
-    border: 3px solid var(--dark);
-    border-radius: 999px;
-    background: var(--red);
-    color: white;
-    cursor: pointer;
-    box-shadow: var(--shadow);
-    transition: transform 0.1s, box-shadow 0.1s;
-  }
-  .modal-close-bottom-btn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
-  .modal-close-bottom-btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--dark); }
-
-  .club-desc-ko {
-    font-family: 'Dongle', sans-serif;
-    font-size: 0.95rem;
-    line-height: 1.8;
-    color: var(--dark);
-    margin-bottom: 12px;
-    word-break: keep-all;
-  }
-  .club-desc-en {
-    font-size: 0.8rem;
-    color: #888;
-    line-height: 1.6;
-    margin-bottom: 16px;
-    word-break: break-word;
-  }
-  .examples-label {
-    font-family: 'Dongle', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 900;
-    color: #555;
-    margin-bottom: 10px;
-  }
-  .examples-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .num-chip {
-    font-family: 'Dongle', sans-serif;
-    font-size: 0.88rem;
-    padding: 4px 12px;
-    border-radius: 999px;
-    border: 2px solid var(--dark);
-    background: var(--sky);
-    box-shadow: 2px 2px 0 var(--dark);
-    color: var(--dark);
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
-  @keyframes modalPopIn {
-    from { transform: scale(0.8) rotate(-5deg); opacity: 0; }
-    to   { transform: scale(1) rotate(0deg); opacity: 1; }
-  }
-
-  /* ══════════════════════════════
-     화면 2: 숫자 탐색 (Explorer) — 2열
-  ══════════════════════════════ */
-
-  .explorer-wrap {
-    max-width: 900px;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1fr 1.2fr;
-    gap: 24px;
-    align-items: start;
-  }
-  @media (max-width: 700px) {
-    .explorer-wrap { grid-template-columns: 1fr; gap: 16px; }
-  }
-
-  .explorer-left {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    align-items: center;
-  }
-
-  .num-display-box {
-    background: white;
-    border: 3px solid var(--dark);
-    border-radius: 20px;
-    box-shadow: var(--shadow);
-    padding: 16px 40px;
-    min-width: 200px;
-    text-align: center;
-    width: 100%;
-  }
-  .num-display-val {
-    font-family: 'Dongle', sans-serif;
-    font-size: clamp(2.5rem, 10vw, 4.5rem);
-    color: var(--orange);
-    text-shadow: 4px 4px 0 var(--dark);
-    line-height: 1;
-    min-height: 1.2em;
-    letter-spacing: 4px;
-  }
-
-  .numpad {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    width: 100%;
-    max-width: 300px;
-  }
-  .np-btn {
-    font-family: 'Dongle', sans-serif;
-    font-size: 1.5rem;
-    padding: 16px;
-    border: 3px solid var(--dark);
-    border-radius: 14px;
-    cursor: pointer;
-    box-shadow: var(--shadow);
-    background: white;
-    color: var(--dark);
-    transition: transform 0.08s, box-shadow 0.08s;
-    line-height: 1;
-  }
-  .np-btn:hover  { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
-  .np-btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--dark); }
-  .np-zero { background: var(--sky); }
-  .np-del  { background: var(--yellow); }
-  .np-clear { background: var(--red); color: white; }
-
-  .check-btn {
-    font-family: 'Dongle', sans-serif;
-    font-size: 1.1rem;
-    padding: 12px 36px;
-    border: 3px solid var(--dark);
-    border-radius: 999px;
-    background: var(--green);
-    color: var(--dark);
-    cursor: pointer;
-    box-shadow: var(--shadow);
-    transition: transform 0.1s, box-shadow 0.1s;
-  }
-  .check-btn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
-  .check-btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--dark); }
-
-  .explorer-right {
-    background: white;
-    border: 3px solid var(--dark);
-    border-radius: 20px;
-    padding: 20px;
-    box-shadow: var(--shadow);
-  }
-
-  .explorer-result {
-    width: 100%;
-  }
-  .explorer-result[style*="display: none"] {
-    display: none !important;
-  }
-
-  .result-headline {
-    font-family: 'Dongle', sans-serif;
-    font-size: 1rem;
-    text-align: center;
-    color: var(--dark);
-    margin-bottom: 12px;
-    font-weight: 900;
-  }
-
-  .badge-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .club-badge {
-    display: flex;
-    flex-direction: row;
-    align-items: stretch;
-    gap: 0;
-    padding: 0;
-    border: 3px solid var(--dark);
-    border-radius: 14px;
-    box-shadow: 2px 2px 0 var(--dark);
-    overflow: hidden;
-    animation: popIn 0.4s cubic-bezier(.36,1.56,.64,1) both;
-    min-height: 100px;
-  }
-
-  .badge-emoji {
-    font-size: 2.5rem;
-    flex-shrink: 0;
-    width: 100px;
-    min-width: 100px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,0,0,0.05);
-    border-right: 3px solid rgba(0,0,0,0.1);
-  }
-
-  .badge-header {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 6px;
-    flex: 1;
-    padding: 12px 14px;
-  }
-
-  .badge-name {
-    font-family: 'Dongle', sans-serif;
-    font-size: 1rem;
-    font-weight: 900;
-    line-height: 1;
-  }
-
-  .badge-reason {
-    font-family: 'Dongle', sans-serif;
-    font-size: 0.85rem;
-    line-height: 1.4;
-    color: inherit;
-    word-break: keep-all;
-    opacity: 0.9;
-  }
-
-  .no-club-msg {
-    font-family: 'Dongle', sans-serif;
-    font-size: 0.95rem;
-    color: #999;
-    text-align: center;
-    padding: 20px;
-  }
-
-  /* ══════════════════════════════
-     화면 3: 퀴즈 (Quiz)
-  ══════════════════════════════ */
-
-  .score-bar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-  }
-  .score-chip {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: 'Dongle', sans-serif;
-    font-size: 1rem;
-    background: white;
-    border: 3px solid var(--dark);
-    border-radius: 999px;
-    padding: 6px 18px;
-    box-shadow: var(--shadow);
-  }
-  .dot {
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    border: 2px solid var(--dark);
-  }
-  .dot.g { background: var(--green); }
-  .dot.r { background: var(--red); }
-
-  .reset-btn {
-    font-family: 'Dongle', sans-serif;
-    font-size: 0.85rem;
-    padding: 6px 18px;
-    border: 3px solid var(--dark);
-    border-radius: 999px;
-    cursor: pointer;
-    box-shadow: var(--shadow);
-    background: var(--yellow);
-    color: var(--dark);
-    transition: transform 0.1s, box-shadow 0.1s;
-  }
-  .reset-btn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
-
-  .quiz-card {
-    background: white;
-    border: 3px solid var(--dark);
-    border-radius: 22px;
-    padding: 28px 24px;
-    box-shadow: var(--shadow);
-    text-align: center;
-    max-width: 600px;
-    margin: 0 auto;
-  }
-
-  .quiz-q {
-    font-family: 'Dongle', sans-serif;
-    font-size: clamp(0.9rem, 3vw, 1.3rem);
-    color: #666;
-    margin-bottom: 8px;
-  }
-
-  .quiz-number {
-    font-family: 'Dongle', sans-serif;
-    font-size: clamp(3rem, 10vw, 5rem);
-    color: var(--orange);
-    text-shadow: 4px 4px 0 var(--dark);
-    margin: 4px 0 24px;
-    display: block;
-    animation: bounce 0.6s ease;
-  }
-
-  .quiz-choices {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-  @media (max-width: 500px) {
-    .quiz-choices { grid-template-columns: 1fr; }
-  }
-
-  .choice-btn {
-    font-family: 'Dongle', sans-serif;
-    font-size: 0.88rem;
-    padding: 14px 12px;
-    border: 3px solid var(--dark);
-    border-radius: 14px;
-    cursor: pointer;
-    box-shadow: var(--shadow);
-    background: white;
-    color: var(--dark);
-    transition: transform 0.1s, box-shadow 0.1s;
-    line-height: 1.3;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    word-break: keep-all;
-  }
-  .choice-btn:hover:not(:disabled) { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
-  .choice-btn:active:not(:disabled) { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--dark); }
-  .choice-btn:disabled { cursor: not-allowed; }
-  .choice-btn.correct-ans { background: var(--green) !important; }
-  .choice-btn.wrong-ans   { background: var(--red) !important; color: white; }
-  .choice-emoji { font-size: 1.5rem; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
-
-  .quiz-feedback {
-    font-family: 'Dongle', sans-serif;
-    font-size: 1rem;
-    padding: 14px;
-    border-radius: 14px;
-    border: 3px solid var(--dark);
-    box-shadow: var(--shadow);
-    animation: popIn 0.4s cubic-bezier(.36,1.56,.64,1) both;
-    line-height: 1.6;
-    word-break: keep-all;
-  }
-  .quiz-feedback.correct { background: #D4EDDA; color: #155724; }
-  .quiz-feedback.wrong   { background: #F8D7DA; color: #721C24; }
-
-  .next-btn {
-    font-family: 'Dongle', sans-serif;
-    font-size: 1.1rem;
-    padding: 12px 36px;
-    border: 3px solid var(--dark);
-    border-radius: 999px;
-    background: var(--blue);
-    color: white;
-    cursor: pointer;
-    box-shadow: var(--shadow);
-    transition: transform 0.1s, box-shadow 0.1s;
-    margin-top: 16px;
-  }
-  .next-btn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
-  .next-btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--dark); }
-
-  /* 반응형 */
-  @media (max-width: 480px) {
-    .section { padding-left: 12px; padding-right: 12px; }
-    .tabs { gap: 8px; }
-    .tab { padding: 8px 18px; font-size: 1rem; }
-    .quiz-card { padding: 20px 14px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; }
   }
 </style>
   <meta property="og:image" content="https://eduin.info/og-default.png">
@@ -673,135 +326,53 @@
 </head>
 <body data-shell="immersive">
 
-<!-- 홈 버튼 -->
-<div class="overlay-left">
-  <a href="/" class="ov-btn" title="홈으로">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-      <polyline points="9 22 9 12 15 12 15 22"/>
-    </svg>
-    <span>Home</span>
-  </a>
-</div>
-
-<!-- 공유 버튼 -->
-<div class="overlay-right">
-  <button class="ov-btn" id="muteBtn" onclick="toggleMute()" title="소리 켜기/끄기" aria-label="소리 켜기/끄기" aria-pressed="false">🔊</button>
-  <button class="ov-btn" onclick="shareApp()" title="공유">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-      <polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/>
-    </svg>
-    <span>공유</span>
-  </button>
+<!-- 플로팅 크롬(홈·공유)은 app-shell.js가 주입 — 음소거 버튼은 크롬으로 끌어올려짐 -->
+<div class="app-actions">
+  <button class="overlay-btn" id="muteBtn" onclick="toggleMute()" title="소리 켜기/끄기" aria-label="소리 켜기/끄기" aria-pressed="false">🔊</button>
 </div>
 
 <div id="cbToast"></div>
 
-<header>
-  <h1>🏅 Club Badge</h1>
-  <p>넘버블록스 클럽 멤버십 탐색기</p>
-</header>
-
-<!-- 탭 -->
-<div class="tabs">
-  <button class="tab active" id="tab-info" onclick="showTab('info')">📖 클럽 소개</button>
-  <button class="tab" id="tab-explorer" onclick="showTab('explorer')">🔢 숫자 탐색</button>
-  <button class="tab" id="tab-quiz" onclick="showTab('quiz')">🎯 퀴즈</button>
-</div>
-
-<!-- ═══════════════════════════════════════
-     화면 1: 클럽 소개 (모달)
-══════════════════════════════════════════ -->
-<div id="info" class="section visible">
-  <div class="club-grid" id="clubGrid"></div>
-  <div class="club-modal-backdrop" id="clubModalBg" onclick="closeClubModal(event)">
-    <div class="club-modal" id="clubModal" onclick="event.stopPropagation()">
-      <div class="club-modal-header">
-        <div class="club-modal-emoji" id="clubModalEmoji"></div>
-        <div class="club-modal-names">
-          <h2 id="clubModalNameKo"></h2>
-          <p id="clubModalNameEn"></p>
-        </div>
-      </div>
-      <p class="club-desc-ko" id="clubModalDescKo"></p>
-      <p class="club-desc-en" id="clubModalDescEn"></p>
-      <div class="examples-label">1~100 멤버 예시:</div>
-      <div class="examples-chips" id="clubModalChips"></div>
-      <div class="club-modal-footer">
-        <button class="modal-close-bottom-btn" onclick="closeClubModal()">✕ 닫기</button>
-      </div>
+<!-- ===== 인트로 ===== -->
+<div class="wrap">
+  <div class="intro">
+    <div class="hero-art">🏅</div>
+    <h1>Club Badge</h1>
+    <p class="sub">넘버블록스 클럽 멤버십 탐색기</p>
+    <div class="lesson-tag">숫자마다 어떤 클럽에 속해 있을까요?</div>
+    <div class="mission-card">
+      <h3>🧭 탐험 방법</h3>
+      <ol>
+        <li><b>클럽 소개</b>에서 짝수 클럽, 세제곱 클럽 같은 16개 클럽을 구경해요.</li>
+        <li><b>숫자 탐색</b>에서 아무 숫자나 입력하면 그 수가 속한 <b>클럽 배지</b>가 무대에 나타나요!</li>
+        <li>준비가 되면 <b>퀴즈 10문제</b>로 클럽 찾기 실력을 확인해요!</li>
+      </ol>
     </div>
+    <button class="btn btn-primary" onclick="startExplore()">탐험 시작! 🚀</button>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════
-     화면 2: 숫자 탐색 (2열 좌우)
-══════════════════════════════════════════ -->
-<div id="explorer" class="section">
-  <div class="explorer-wrap">
-
-    <div class="explorer-left">
-      <div class="num-display-box">
-        <div class="num-display-val" id="explorerDisplay">—</div>
-      </div>
-
-      <div class="numpad">
-        <button class="np-btn" onclick="npInput('7')">7</button>
-        <button class="np-btn" onclick="npInput('8')">8</button>
-        <button class="np-btn" onclick="npInput('9')">9</button>
-        <button class="np-btn" onclick="npInput('4')">4</button>
-        <button class="np-btn" onclick="npInput('5')">5</button>
-        <button class="np-btn" onclick="npInput('6')">6</button>
-        <button class="np-btn" onclick="npInput('1')">1</button>
-        <button class="np-btn" onclick="npInput('2')">2</button>
-        <button class="np-btn" onclick="npInput('3')">3</button>
-        <button class="np-btn np-zero" onclick="npInput('0')">0</button>
-        <button class="np-btn np-del" onclick="npBackspace()">⌫</button>
-        <button class="np-btn np-clear" onclick="npClear()">C</button>
-      </div>
-
-      <button class="check-btn" onclick="checkClubs()">🔍 확인</button>
-    </div>
-
-    <div class="explorer-right">
-      <div id="explorerResult" class="explorer-result" style="display:none;">
-        <div class="result-headline" id="resultHeadline"></div>
-        <div class="badge-grid" id="badgeGrid"></div>
-      </div>
-      <div id="explorerEmpty" style="color:#aaa;font-size:0.9rem;text-align:center;padding:40px 20px;">숫자를 입력하고 확인을 눌러주세요</div>
-    </div>
-
+<!-- ===== 탐험: 무대 + 사이드바 ===== -->
+<div class="explore">
+  <div class="stage-zone">
+    <div class="viewer-title" id="viewerTitle"><span class="num">📖</span> 클럽 소개</div>
+    <div class="stage-canvas" id="stageCanvas"></div>
+    <div class="stage-hint" id="stageHint">👆 오른쪽에서 클럽을 골라 보세요!</div>
   </div>
-</div>
-
-<!-- ═══════════════════════════════════════
-     화면 3: 퀴즈
-══════════════════════════════════════════ -->
-<div id="quiz" class="section">
-
-  <div class="score-bar">
-    <div class="score-chip">
-      <div class="dot g"></div>
-      <span id="quizScoreOk">0</span>&nbsp;정답
+  <aside class="side">
+    <div class="side-head">
+      <div class="flag">넘버블럭스 · 수의 성질</div>
+      <h2>🏅 Club Badge</h2>
     </div>
-    <div class="score-chip">
-      <div class="dot r"></div>
-      <span id="quizScoreNo">0</span>&nbsp;오답
+    <div class="side-body">
+      <div class="mode-pills">
+        <button class="mode-pill active" id="pill-info" onclick="setMode('info')">📖 클럽</button>
+        <button class="mode-pill" id="pill-explorer" onclick="setMode('explorer')">🔢 탐색</button>
+        <button class="mode-pill" id="pill-quiz" onclick="setMode('quiz')">🎯 퀴즈</button>
+      </div>
+      <div id="sideContent"></div>
     </div>
-    <button class="reset-btn" onclick="resetQuiz()">🔄 초기화</button>
-  </div>
-
-  <div class="quiz-card" id="quizCard">
-    <div class="quiz-q">다음 중에서 <span id="quizNumDisplay" style="color:var(--orange);font-weight:900;">?</span>이(가) 멤버인 클럽을 고르세요!</div>
-    <span class="quiz-number" id="quizNum">?</span>
-    <div class="quiz-choices" id="quizChoices"></div>
-    <div class="quiz-feedback" id="quizFeedback" style="display:none;"></div>
-    <div id="quizNextWrap" style="display:none; text-align:center;">
-      <button class="next-btn" onclick="nextQuizQuestion()">➡️ 다음 문제</button>
-    </div>
-  </div>
-
+  </aside>
 </div>
 
 <script>
@@ -843,19 +414,17 @@ function toggleMute() {
   if (!muted) sfx('move');
 }
 
-/* ──────────────────────── 탭 전환 ──────────────────────── */
-
-function showTab(id) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(id).classList.add('visible');
-  const tabBtn = document.getElementById('tab-' + id);
-  if (tabBtn) tabBtn.classList.add('active');
-  if (id === 'quiz' && qzCurrentN === null) nextQuizQuestion();
+/* ──────────────────────── 토스트 ──────────────────────── */
+let cbToastTimer;
+function cbToast(msg) {
+  const el = document.getElementById('cbToast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(cbToastTimer);
+  cbToastTimer = setTimeout(() => el.classList.remove('show'), 2500);
 }
 
 /* ──────────────────────── 클럽 아이콘 SVG ──────────────────────── */
-
 let iconCallCount = 0;
 function getClubIcon(clubId, color = 'white') {
   iconCallCount++;
@@ -881,90 +450,8 @@ function getClubIcon(clubId, color = 'white') {
   return icons[clubId] || icons['made-of-ones'];
 }
 
-/* ──────────────────────── 화면 1: 클럽 소개 — 모달 ──────────────────────── */
-
-function renderInfoCards() {
-  const grid = document.getElementById('clubGrid');
-  grid.innerHTML = '';
-  CLUBS.forEach(club => {
-    const card = document.createElement('div');
-    card.className = 'club-card';
-    card.style.background = club.color;
-    card.style.color = club.textColor;
-    card.onclick = () => openClubModal(club);
-    card.innerHTML = `
-      <div class="club-card-header" style="background:${club.color};">
-        <div class="club-emoji">${getClubIcon(club.id, club.textColor)}</div>
-        <div class="club-names">
-          <div class="club-name-ko">${club.nameKo}</div>
-          <div class="club-name-en">${club.nameEn}</div>
-        </div>
-      </div>
-    `;
-    grid.appendChild(card);
-  });
-}
-
-function openClubModal(club) {
-  sfx('move');
-  document.getElementById('clubModalEmoji').innerHTML = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">${getClubIcon(club.id, club.color)}</div>`;
-  document.getElementById('clubModalNameKo').textContent = club.nameKo;
-  document.getElementById('clubModalNameEn').textContent = club.nameEn;
-  document.getElementById('clubModalDescKo').textContent = club.descKo;
-  document.getElementById('clubModalDescEn').textContent = club.descEn;
-
-  const chipsEl = document.getElementById('clubModalChips');
-  const nums = club.examples(100);
-  if (nums.length === 0) {
-    chipsEl.innerHTML = '<span style="color:#aaa;">해당 없음</span>';
-  } else {
-    chipsEl.innerHTML = nums.map(n => `<span class="num-chip">${n}</span>`).join('');
-  }
-
-  document.getElementById('clubModalBg').classList.add('show');
-}
-
-function closeClubModal(e) {
-  if (e && e.target !== document.getElementById('clubModalBg')) return;
-  document.getElementById('clubModalBg').classList.remove('show');
-}
-
-/* ──────────────────────── 화면 2: 숫자 탐색 ──────────────────────── */
-
-let explorerVal = '';
-
-function npInput(digit) {
-  if (explorerVal.length >= 5) return;
-  if (explorerVal === '0') explorerVal = digit;
-  else explorerVal += digit;
-  updateExplorerDisplay();
-  hideExplorerResult();
-  sfx('move');
-}
-
-function npBackspace() {
-  explorerVal = explorerVal.slice(0, -1);
-  updateExplorerDisplay();
-  hideExplorerResult();
-}
-
-function npClear() {
-  explorerVal = '';
-  updateExplorerDisplay();
-  hideExplorerResult();
-}
-
-function updateExplorerDisplay() {
-  document.getElementById('explorerDisplay').textContent = explorerVal === '' ? '—' : explorerVal;
-}
-
-function hideExplorerResult() {
-  document.getElementById('explorerResult').style.display = 'none';
-  document.getElementById('explorerEmpty').style.display = 'block';
-}
-
+/* ──────────────────────── 클럽 이유 ──────────────────────── */
 function getClubReason(club, n) {
-  // 클럽별 설명 생성
   if (club.id === 'made-of-ones') return '1 이상의 모든 수예요.';
   if (club.id === 'even-tops') return `${n} ÷ 2 = ${n/2} (나누어떨어짐)`;
   if (club.id === 'odd-tops') return `${n}은 홀수예요!`;
@@ -1017,54 +504,167 @@ function getClubReason(club, n) {
   return '';
 }
 
-function checkClubs() {
-  if (explorerVal === '') {
-    cbToast('숫자를 먼저 입력해주세요!');
+/* ──────────────────────── 상태/헬퍼 ──────────────────────── */
+const QUIZ_TOTAL = 10;
+let mode = 'info';
+let selClubId = null;
+let explorerVal = '';
+let quizIdx = 0, quizScore = 0, qzCurrentN = null, qzCorrectClub = null, qzAnswered = false;
+
+const sideContent = () => document.getElementById('sideContent');
+const stageCanvas = () => document.getElementById('stageCanvas');
+const stageHint = () => document.getElementById('stageHint');
+const viewerTitle = () => document.getElementById('viewerTitle');
+
+function badgeGridHtml(n, matches) {
+  if (matches.length === 0) {
+    return `<div class="badge-grid"><div class="no-club-msg">😔 ${n.toLocaleString('ko-KR')}은(는) 어떤 클럽에도 속하지 않아요!</div></div>`;
+  }
+  return `<div class="badge-grid">` + matches.map((club, i) => `
+    <div class="club-badge" style="background:${club.color};color:${club.textColor};animation-delay:${i * 0.06}s;">
+      <div class="badge-emoji">${getClubIcon(club.id, club.color)}</div>
+      <div class="badge-header">
+        <div class="badge-name">${club.nameKo}</div>
+        <div class="badge-reason">${getClubReason(club, n)}</div>
+      </div>
+    </div>`).join('') + `</div>`;
+}
+
+/* ──────────────────────── 모드 전환 ──────────────────────── */
+function setMode(m) {
+  mode = m;
+  ['info','explorer','quiz'].forEach(x => document.getElementById('pill-'+x).classList.toggle('active', x===m));
+  if (m === 'info') renderInfo();
+  else if (m === 'explorer') renderExplorer();
+  else startQuiz();
+  document.querySelector('.side').scrollTo({ top: 0 });
+}
+
+/* ──────────────────────── 클럽 소개 ──────────────────────── */
+function renderInfo() {
+  viewerTitle().innerHTML = '<span class="num">📖</span> 클럽 소개';
+  sideContent().innerHTML = `
+    <div class="observe-box">
+      <h3>🔍 관찰 포인트</h3>
+      <p>클럽을 누르면 무대에 <b>클럽 카드</b>가 나타나요. 어떤 수들이 멤버인지 살펴보세요!</p>
+    </div>
+    <div class="club-list" id="clubList"></div>`;
+  const list = document.getElementById('clubList');
+  CLUBS.forEach(club => {
+    const row = document.createElement('div');
+    row.className = 'club-row' + (club.id === selClubId ? ' sel' : '');
+    row.style.background = club.color;
+    row.innerHTML = `
+      <div class="ic">${getClubIcon(club.id, club.textColor)}</div>
+      <div class="names">
+        <div class="ko">${club.nameKo}</div>
+        <div class="en">${club.nameEn}</div>
+      </div>`;
+    row.onclick = () => showClubDetail(club);
+    list.appendChild(row);
+  });
+  if (selClubId) {
+    const c = CLUBS.find(c => c.id === selClubId);
+    if (c) { renderClubStage(c); return; }
+  }
+  stageCanvas().innerHTML = `<div style="text-align:center;">
+    <div style="font-size:90px;line-height:1;">🏅</div>
+    <p class="hint">클럽마다 특별한 숫자들이 모여 있어요!</p>
+  </div>`;
+  stageHint().textContent = '👆 오른쪽에서 클럽을 골라 보세요!';
+}
+function showClubDetail(club) {
+  selClubId = club.id;
+  document.querySelectorAll('.club-row').forEach(r => r.classList.remove('sel'));
+  const rows = document.querySelectorAll('.club-row');
+  CLUBS.forEach((c, i) => { if (c.id === club.id && rows[i]) rows[i].classList.add('sel'); });
+  sfx('move');
+  renderClubStage(club);
+}
+function renderClubStage(club) {
+  const nums = club.examples(100);
+  stageCanvas().innerHTML = `
+    <div class="club-detail">
+      <div class="club-detail-head">
+        <div class="club-detail-icon" style="background:${club.color};">${getClubIcon(club.id, club.textColor)}</div>
+        <div>
+          <h3>${club.nameKo}</h3>
+          <p>${club.nameEn}</p>
+        </div>
+      </div>
+      <p class="desc-ko">${club.descKo}</p>
+      <p class="desc-en">${club.descEn}</p>
+      <div class="examples-label">1~100 멤버 예시:</div>
+      <div class="examples-chips">${nums.length ? nums.map(n => `<span class="num-chip">${n}</span>`).join('') : '<span style="color:#aaa;">해당 없음</span>'}</div>
+    </div>`;
+  stageHint().textContent = '🔎 멤버 숫자들의 공통점을 찾아보세요!';
+}
+
+/* ──────────────────────── 숫자 탐색 ──────────────────────── */
+function renderExplorer() {
+  viewerTitle().innerHTML = '<span class="num">🔢</span> 숫자 탐색';
+  sideContent().innerHTML = `
+    <div class="observe-box">
+      <h3>🔍 이렇게 해요</h3>
+      <p>궁금한 수를 입력하고 <b>확인</b>을 누르면, 무대에 그 수의 <b>클럽 배지</b>가 모두 나타나요!</p>
+    </div>
+    <div class="num-display-box"><div class="num-display-val" id="explorerDisplay">${explorerVal === '' ? '—' : explorerVal}</div></div>
+    <div class="numpad">
+      <button class="np-btn" onclick="npInput('7')">7</button>
+      <button class="np-btn" onclick="npInput('8')">8</button>
+      <button class="np-btn" onclick="npInput('9')">9</button>
+      <button class="np-btn" onclick="npInput('4')">4</button>
+      <button class="np-btn" onclick="npInput('5')">5</button>
+      <button class="np-btn" onclick="npInput('6')">6</button>
+      <button class="np-btn" onclick="npInput('1')">1</button>
+      <button class="np-btn" onclick="npInput('2')">2</button>
+      <button class="np-btn" onclick="npInput('3')">3</button>
+      <button class="np-btn np-zero" onclick="npInput('0')">0</button>
+      <button class="np-btn np-del" onclick="npBackspace()">⌫</button>
+      <button class="np-btn np-clear" onclick="npClear()">C</button>
+    </div>
+    <div class="check-row"><button class="btn btn-primary" onclick="checkClubs()">🔍 확인</button></div>
+    <div class="tip-box" style="margin-top:14px;">💡 <b>탐험 팁</b> · 36처럼 여러 클럽에 속하는 <b>인기쟁이 수</b>도 있고, 어디에도 못 들어가는 수도 있어요!</div>`;
+  renderExplorerStage(null);
+}
+function renderExplorerStage(n) {
+  if (n == null) {
+    stageCanvas().innerHTML = `<div style="text-align:center;">
+      <div class="stage-number small">?</div>
+      <p class="hint">숫자를 입력하고 확인을 눌러 주세요</p>
+    </div>`;
+    stageHint().textContent = '🔢 어떤 수의 클럽이 궁금한가요?';
     return;
   }
+  const matches = CLUBS.filter(c => c.check(n));
+  stageCanvas().innerHTML = `
+    <div class="stage-number small">${n.toLocaleString('ko-KR')}</div>
+    ${badgeGridHtml(n, matches)}`;
+  stageHint().textContent = matches.length > 0
+    ? `🏅 ${matches.length}개 클럽의 멤버예요!`
+    : '😔 이 수는 클럽이 없네요. 다른 수도 넣어 보세요!';
+}
+function npInput(digit) {
+  if (explorerVal.length >= 5) return;
+  if (explorerVal === '0') explorerVal = digit;
+  else explorerVal += digit;
+  updateExplorerDisplay();
+  sfx('move');
+}
+function npBackspace() { explorerVal = explorerVal.slice(0, -1); updateExplorerDisplay(); }
+function npClear() { explorerVal = ''; updateExplorerDisplay(); renderExplorerStage(null); }
+function updateExplorerDisplay() {
+  document.getElementById('explorerDisplay').textContent = explorerVal === '' ? '—' : explorerVal;
+}
+function checkClubs() {
+  if (explorerVal === '') { cbToast('숫자를 먼저 입력해주세요!'); return; }
   const n = parseInt(explorerVal, 10);
   const matches = CLUBS.filter(c => c.check(n));
-
-  const resEl = document.getElementById('explorerResult');
-  const emptyEl = document.getElementById('explorerEmpty');
-  const headEl = document.getElementById('resultHeadline');
-  const gridEl = document.getElementById('badgeGrid');
-
-  const numStr = n.toLocaleString('ko-KR');
-  if (matches.length === 0) {
-    headEl.innerHTML = `<b>${numStr}</b>은(는) 어떤 클럽에도 속하지 않아요!`;
-    gridEl.innerHTML = '<div class="no-club-msg">😔</div>';
-  } else {
-    headEl.innerHTML = `<b>${numStr}</b> → <b>${matches.length}</b>개 클럽`;
-    gridEl.innerHTML = '';
-    matches.forEach((club, i) => {
-      const badge = document.createElement('div');
-      badge.className = 'club-badge';
-      badge.style.cssText = `background:${club.color}; color:${club.textColor}; animation-delay:${i * 0.06}s;`;
-      const reason = getClubReason(club, n);
-      badge.innerHTML = `
-        <div class="badge-emoji">${getClubIcon(club.id, club.color)}</div>
-        <div class="badge-header">
-          <div class="badge-name">${club.nameKo}</div>
-          <div class="badge-reason">${reason}</div>
-        </div>
-      `;
-      gridEl.appendChild(badge);
-    });
-  }
-
-  resEl.style.display = 'block';
-  emptyEl.style.display = 'none';
+  renderExplorerStage(n);
   sfx(matches.length > 0 ? 'star' : 'move');
 }
 
-/* ──────────────────────── 화면 3: 퀴즈 ──────────────────────── */
-
-let qzScoreOk = 0, qzScoreNo = 0;
-let qzCurrentN = null;
-let qzCorrectClub = null;
-let qzAnswered = false;
-
+/* ──────────────────────── 퀴즈 ──────────────────────── */
 function shuffleArray(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -1073,142 +673,123 @@ function shuffleArray(arr) {
   }
   return a;
 }
-
+function startQuiz() {
+  quizIdx = 0; quizScore = 0;
+  nextQuizQuestion();
+}
 function nextQuizQuestion() {
   qzAnswered = false;
   qzCurrentN = 1 + Math.floor(Math.random() * 100); // 1~100 (0은 짝수성 논쟁 소지로 제외)
-
-  const numEl = document.getElementById('quizNum');
-  const numDispEl = document.getElementById('quizNumDisplay');
-  numEl.textContent = qzCurrentN;
-  numDispEl.textContent = qzCurrentN;
-  numEl.style.animation = 'none';
-  void numEl.offsetWidth;
-  numEl.style.animation = 'bounce 0.6s ease';
-  sfx('move');
 
   // 정답 클럽 선정 (1로 이루어진 클럽 제외 - 모든 수가 포함되므로)
   const correctCandidates = CLUBS.filter(c => c.check(qzCurrentN) && c.id !== 'made-of-ones');
   qzCorrectClub = correctCandidates.length > 0
     ? correctCandidates[Math.floor(Math.random() * correctCandidates.length)]
-    : CLUBS.find(c => c.id === 'made-of-ones'); // 혹시 다른 클럽이 없으면 1클럽
+    : CLUBS.find(c => c.id === 'made-of-ones');
 
-  // 오답 2개 — 반드시 n이 속하지 '않는' 클럽에서만 선정 (속한 클럽이 오답으로 나오면 정답을 골라도 틀림 처리되는 버그 방지)
+  // 오답 2개 — 반드시 n이 속하지 '않는' 클럽에서만 선정
   let wrongPool = shuffleArray(CLUBS.filter(c => !c.check(qzCurrentN)));
   if (wrongPool.length < 2) {
-    // 이론상 도달 불가한 방어 코드: 부족하면 정답 후보가 아닌 클럽으로 보충
     wrongPool = wrongPool.concat(shuffleArray(CLUBS.filter(c => c.id !== qzCorrectClub.id && !wrongPool.includes(c))));
   }
   const choices = shuffleArray([qzCorrectClub, ...wrongPool.slice(0, 2)]);
 
+  viewerTitle().innerHTML = `<span class="num">${quizIdx + 1}</span> 퀴즈 ${quizIdx + 1} / ${QUIZ_TOTAL}`;
+  stageCanvas().innerHTML = `<div class="stage-number">${qzCurrentN}</div>`;
+  stageHint().textContent = '🤔 이 수는 어떤 클럽의 멤버일까요?';
+
+  sideContent().innerHTML = `
+    <div class="progress-zone">
+      <div class="progress-track"><div class="progress-fill" style="width:${quizIdx / QUIZ_TOTAL * 100}%"></div></div>
+      <div class="progress-label"><span>퀴즈 진행 중</span><span>${quizIdx + 1} / ${QUIZ_TOTAL}</span></div>
+    </div>
+    <div class="quiz-q">무대의 <b style="color:var(--orange);">${qzCurrentN}</b>이(가) 멤버인 클럽을 고르세요!</div>
+    <div class="quiz-choices" id="quizChoices"></div>
+    <div id="quizReveal"></div>`;
+
   const choicesEl = document.getElementById('quizChoices');
-  choicesEl.innerHTML = '';
   choices.forEach(club => {
     const btn = document.createElement('button');
     btn.className = 'choice-btn';
     btn.dataset.clubId = club.id;
-    btn.style.background = club.color + '22'; // 옅은 클럽 색
+    btn.style.background = club.color + '22';
     btn.innerHTML = `<div class="choice-emoji">${getClubIcon(club.id, club.textColor)}</div><span>${club.nameKo}</span>`;
     btn.addEventListener('click', () => selectChoice(club, btn));
     choicesEl.appendChild(btn);
   });
-
-  document.getElementById('quizFeedback').style.display = 'none';
-  document.getElementById('quizNextWrap').style.display = 'none';
+  sfx('move');
 }
-
 function selectChoice(club, btnEl) {
   if (qzAnswered) return;
   qzAnswered = true;
-
   const isCorrect = (club.id === qzCorrectClub.id);
-  if (isCorrect) { sfx('done'); setTimeout(function(){ sfx('star'); }, 220); } else { sfx('wrong'); }
+  if (isCorrect) { quizScore++; sfx('done'); setTimeout(() => sfx('star'), 220); } else { sfx('wrong'); }
 
-  // 모든 버튼 비활성화 + 정답 표시
   document.querySelectorAll('.choice-btn').forEach(b => {
     b.disabled = true;
-    if (b.dataset.clubId === qzCorrectClub.id) {
-      b.classList.add('correct-ans');
-      b.style.background = '';
-    }
+    if (b.dataset.clubId === qzCorrectClub.id) { b.classList.add('correct-ans'); b.style.background = ''; }
   });
+  if (!isCorrect) { btnEl.classList.add('wrong-ans'); btnEl.style.background = ''; }
 
-  if (!isCorrect) {
-    btnEl.classList.add('wrong-ans');
-    btnEl.style.background = '';
-    qzScoreNo++;
-    document.getElementById('quizScoreNo').textContent = qzScoreNo;
-  } else {
-    qzScoreOk++;
-    document.getElementById('quizScoreOk').textContent = qzScoreOk;
-  }
+  // 무대: 이 수가 속한 모든 클럽 배지 공개
+  const matches = CLUBS.filter(c => c.check(qzCurrentN));
+  stageCanvas().innerHTML = `
+    <div class="stage-number small">${qzCurrentN}</div>
+    ${badgeGridHtml(qzCurrentN, matches)}`;
+  stageHint().textContent = `🏅 ${qzCurrentN}의 클럽 배지가 모두 공개됐어요!`;
 
-  const fb = document.getElementById('quizFeedback');
-  fb.className = 'quiz-feedback ' + (isCorrect ? 'correct' : 'wrong');
-  fb.style.display = 'block';
   const reason = getClubReason(qzCorrectClub, qzCurrentN);
-
-  // 다른 클럽들 찾기 (아이콘 함께 표시)
-  const otherClubs = CLUBS.filter(c => c.id !== qzCorrectClub.id && c.check(qzCurrentN));
-  const otherClubsText = otherClubs.length > 0
-    ? `<div style="font-size:0.85rem; margin-top:12px; padding-top:12px; border-top:1px solid currentColor; opacity:0.9;">📌 다른 클럽: ${otherClubs.map(c => `<span style="display:inline-flex; align-items:center; gap:4px; margin-right:8px;"><span style="width:20px; height:20px; display:flex; align-items:center; justify-content:center;">${getClubIcon(c.id, 'currentColor')}</span>${c.nameKo}</span>`).join('')}</div>`
-    : '';
-
-  fb.innerHTML = isCorrect
-    ? `🎉 정답! <b>${qzCurrentN}</b>은(는) <b>${qzCorrectClub.nameKo}</b>의 멤버예요!<div style="font-size:0.9rem; margin-top:8px; opacity:0.8;">${reason}</div>${otherClubsText}`
-    : `😅 틀렸어요! <b>${qzCurrentN}</b>은(는) <b>${qzCorrectClub.nameKo}</b>의 멤버예요.<div style="font-size:0.9rem; margin-top:8px; opacity:0.8;">${reason}</div>${otherClubsText}`;
-
-  document.getElementById('quizNextWrap').style.display = 'block';
+  document.getElementById('quizReveal').innerHTML = `
+    <div class="reveal">
+      <div class="reveal-banner ${isCorrect ? 'correct' : 'wrong'}">
+        ${isCorrect ? '🎉 딩동댕! 정답이에요!' : '🤔 아쉬워요!'}
+      </div>
+      <div class="explain"><b>${qzCurrentN}</b>은(는) <b>${qzCorrectClub.nameKo}</b>의 멤버예요. ${reason}<br>무대에서 ${qzCurrentN}의 배지를 모두 확인해 보세요!</div>
+      <div class="next-zone">
+        <button class="btn btn-primary" onclick="afterQuestion()">
+          ${quizIdx === QUIZ_TOTAL - 1 ? '결과 보기 🏁' : '다음 문제! ➡️'}
+        </button>
+      </div>
+    </div>`;
 }
-
-function resetQuiz() {
-  qzScoreOk = 0; qzScoreNo = 0;
-  document.getElementById('quizScoreOk').textContent = '0';
-  document.getElementById('quizScoreNo').textContent = '0';
+function afterQuestion() {
+  quizIdx++;
+  if (quizIdx >= QUIZ_TOTAL) { renderResult(); return; }
   nextQuizQuestion();
 }
-
-/* ──────────────────────── Toast & Share ──────────────────────── */
-
-let cbToastTimer;
-function cbToast(msg) {
-  const el = document.getElementById('cbToast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(cbToastTimer);
-  cbToastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+function renderResult() {
+  viewerTitle().innerHTML = '🏆 탐험 완료!';
+  stageCanvas().innerHTML = `<div style="text-align:center;">
+    <div style="font-size:110px;line-height:1;">🏆</div>
+    <div class="stage-number small" style="font-size:64px;">${quizScore} / ${QUIZ_TOTAL}</div>
+  </div>`;
+  stageHint().textContent = '🏅 클럽 탐험을 완료했어요!';
+  if (quizScore >= 8) sfx('stamp');
+  sideContent().innerHTML = `
+    <div class="result">
+      <h2>🏆 퀴즈 완료!</h2>
+      <div class="score">${QUIZ_TOTAL}개 중 ${quizScore}개 맞혔어요</div>
+      <div class="summary-box">
+        <h3>📚 오늘의 배움 정리</h3>
+        <p>수마다 <b>나누어떨어짐(배수)</b>, <b>제곱수·삼각수</b>, <b>소수</b> 같은 성질이 있어요.
+        같은 성질을 가진 수들이 하나의 <b>클럽</b>이 되고, 한 수가 여러 클럽에 속하기도 해요!</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="btn btn-primary" onclick="startQuiz()">다시 도전하기 🔄</button>
+        <button class="btn" onclick="setMode('explorer')">🔢 숫자 탐색으로</button>
+      </div>
+    </div>`;
+  document.querySelector('.side').scrollTo({ top: 0 });
 }
 
-function fallbackCopy(text) {
-  const ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
-  document.body.appendChild(ta);
-  ta.focus(); ta.select();
-  try {
-    document.execCommand('copy');
-    cbToast('링크가 복사되었습니다 ✓');
-  } catch {
-    cbToast('복사에 실패했습니다.');
-  }
-  document.body.removeChild(ta);
-}
-
-function shareApp() {
-  const url = location.href;
-  if (navigator.share) {
-    navigator.share({ title: '🏅 Club Badge — Numberblocks', url });
-  } else if (navigator.clipboard) {
-    navigator.clipboard.writeText(url)
-      .then(() => cbToast('링크가 복사되었습니다 ✓'))
-      .catch(() => fallbackCopy(url));
-  } else {
-    fallbackCopy(url);
-  }
+/* ──────────────────────── 시작 ──────────────────────── */
+function startExplore() {
+  document.body.classList.add('exploring');
+  setMode('info');
+  sfx('done');
 }
 
 /* ──────────────────────── 초기화 ──────────────────────── */
-renderInfoCards();
 (function(){ var b=document.getElementById('muteBtn'); if(b){ b.textContent = muted ? '🔇' : '🔊'; b.setAttribute('aria-pressed', String(muted)); } })();
 </script>
 </body>
