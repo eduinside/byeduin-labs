@@ -946,12 +946,10 @@ function drawSegmentLine(svg, key, pos1, pos2) {
   svg.appendChild(group);
 }
 
-// 전선 통전 여부 판별 (양 끝단이 켜진 전구/배터리 회로 구성에 포함되는가)
+// 전선 통전 여부 판별 (전선 양쪽 노드가 불이 켜진 닫힌 회로에 포함되어 있는지 확인)
 function isWireEnergized(key) {
-  if (state.litBulbs.size === 0) return false;
-  // litBulbs가 하나라도 존재하고, 닫힌 루프가 유효하게 성립하는 경우 true 반환
-  // 전선 켜짐 시각화용
-  return true; 
+  const [p1, p2] = key.split('-');
+  return state.activeRawNodes && state.activeRawNodes.has(p1) && state.activeRawNodes.has(p2);
 }
 
 /* ══════════════════════════════════════
@@ -994,6 +992,8 @@ function solveCircuit() {
   state.hasShortCircuit = false;
   state.circuitType = 'unknown';
   state.bulbBrightness = 2;
+  state.activeRawNodes = new Set();
+  state.activeElectricNodes = new Set();
 
   // 1. union-find를 이용해 전선 및 닫힌 스위치로 연결된 노드 병합
   const parent = {};
@@ -1041,17 +1041,86 @@ function solveCircuit() {
   // 합선 위험 배너 토글
   $('#shortCircuitBanner').style.display = state.hasShortCircuit ? 'block' : 'none';
 
-  // 3. 전구별 닫힌 루프 판별
-  // 축약 그래프 G를 빌드: 전위 병합 노드를 정점으로 하고 전지와 전구를 간선으로 봄.
-  // 각 전구가 전지와 함께 닫힌 루프(사이클) 상에 존재하는지 확인.
+  // 3. 축약 그래프 인접 리스트 생성
+  const adj = {};
+  function addEdge(u, v, isBulb, key) {
+    if (!adj[u]) adj[u] = [];
+    adj[u].push({ to: v, isBulb, key });
+    if (!adj[v]) adj[v] = [];
+    adj[v].push({ to: u, isBulb, key });
+  }
+
+  activeBatteries.forEach(b => addEdge(b.u, b.v, false, b.key));
+  activeBulbs.forEach(b => addEdge(b.u, b.v, true, b.key));
+
+  // 4. 전구별 닫힌 루프 판별
   activeBulbs.forEach(bulb => {
-    // bulb를 포함하여 u ➔ v 경로가 있는가? (단, 이 bulb 간선을 제거한 상태에서 배터리를 경유한 경로 탐색)
-    if (hasClosedLoopWithBattery(bulb, activeBatteries, activeBulbs)) {
+    let found = false;
+    const visited = new Set();
+    function dfs(curr, hasBat) {
+      if (curr === bulb.v) {
+        if (hasBat) found = true;
+        return;
+      }
+      visited.add(curr);
+      const neighbors = adj[curr] || [];
+      for (let i = 0; i < neighbors.length; i++) {
+        const edge = neighbors[i];
+        if (edge.key === bulb.key) continue;
+        if (!visited.has(edge.to)) {
+          dfs(edge.to, hasBat || !edge.isBulb);
+          if (found) return;
+        }
+      }
+      visited.delete(curr);
+    }
+    dfs(bulb.u, false);
+    if (found) {
       state.litBulbs.add(bulb.key);
     }
   });
 
-  // 4. 표준형 분류 및 상대 밝기 연출
+  // 5. 전력을 공급받는 활성 전기 노드(activeElectricNodes) 및 격자 원 노드(activeRawNodes) 탐색
+  if (state.litBulbs.size > 0 && !state.hasShortCircuit) {
+    activeBatteries.forEach(bat => {
+      const path = [];
+      const visited = new Set();
+      function findPaths(curr, hasLitBulb) {
+        if (curr === bat.v) {
+          if (hasLitBulb) {
+            path.forEach(n => state.activeElectricNodes.add(n));
+            state.activeElectricNodes.add(bat.u);
+            state.activeElectricNodes.add(bat.v);
+          }
+          return;
+        }
+        visited.add(curr);
+        path.push(curr);
+        const neighbors = adj[curr] || [];
+        neighbors.forEach(edge => {
+          if (!visited.has(edge.to)) {
+            const isLit = edge.isBulb && state.litBulbs.has(edge.key);
+            findPaths(edge.to, hasLitBulb || isLit);
+          }
+        });
+        path.pop();
+        visited.delete(curr);
+      }
+      findPaths(bat.u, false);
+    });
+
+    // 활성화된 격자 노드 문자열 모으기
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        const nodeStr = `${x},${y}`;
+        if (state.activeElectricNodes.has(find(nodeStr))) {
+          state.activeRawNodes.add(nodeStr);
+        }
+      }
+    }
+  }
+
+  // 6. 표준형 분류 및 상대 밝기 연출
   if (state.litBulbs.size > 0 && !state.hasShortCircuit) {
     const M = activeBatteries.length;
     const N = state.litBulbs.size;
@@ -1082,52 +1151,6 @@ function solveCircuit() {
 
   // 캔버스 다시 그리기
   drawBoard();
-}
-
-// bulb를 우회하여 battery를 통과하는 u ➔ v 경로 존재 여부 탐색 (DFS)
-function hasClosedLoopWithBattery(targetBulb, batteries, bulbs) {
-  // 인접 리스트 생성
-  const adj = {};
-  function addEdge(u, v, isBat) {
-    if (!adj[u]) adj[u] = [];
-    adj[u].push({ to: v, isBat });
-    if (!adj[v]) adj[v] = [];
-    adj[v].push({ to: u, isBat });
-  }
-
-  // 배터리 간선 추가
-  batteries.forEach(b => addEdge(b.u, b.v, true));
-  
-  // targetBulb를 제외한 다른 전구 간선 추가
-  bulbs.forEach(b => {
-    if (b.key !== targetBulb.key) {
-      addEdge(b.u, b.v, false);
-    }
-  });
-
-  // targetBulb.u ➔ targetBulb.v 경로 탐색
-  const visited = new Set();
-  let found = false;
-
-  function dfs(curr, hasBat) {
-    if (curr === targetBulb.v) {
-      if (hasBat) found = true;
-      return;
-    }
-    visited.add(curr);
-    const neighbors = adj[curr] || [];
-    for (let i = 0; i < neighbors.length; i++) {
-      const edge = neighbors[i];
-      if (!visited.has(edge.to)) {
-        dfs(edge.to, hasBat || edge.isBat);
-        if (found) return;
-      }
-    }
-    visited.delete(curr);
-  }
-
-  dfs(targetBulb.u, false);
-  return found;
 }
 
 // 단일 루프 폐쇄 검사 (모든 노드의 차수가 정확히 2)
