@@ -856,13 +856,16 @@ function showTab(id) {
 
 /* ──────────────────────── 클럽 아이콘 SVG ──────────────────────── */
 
+let iconCallCount = 0;
 function getClubIcon(clubId, color = 'white') {
+  iconCallCount++;
+  const gradId = `rainbow-grad-${iconCallCount}`;
   const icons = {
     'made-of-ones': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="${color}" stroke-width="8"/><rect x="40" y="22" width="20" height="28" fill="${color}" rx="2"/><rect x="40" y="56" width="20" height="18" fill="${color}" rx="2"/></svg>`,
     'even-tops': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="20" y="50" width="60" height="30" fill="${color}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><rect x="20" y="30" width="60" height="20" fill="${color}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>`,
     'odd-tops': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M20,50 L80,50 L80,80 L20,80 Z" fill="${color}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M20,20 L50,20 L50,50 L20,50 Z" fill="${color}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>`,
     'three-club': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="55" r="35" fill="${color}" stroke="#fff" stroke-width="2"/><path d="M25,45 L35,20 L50,35 L65,20 L75,45 Z" fill="${color}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><text x="50" y="75" font-family="sans-serif" font-weight="900" font-size="32" text-anchor="middle" fill="#333">3</text></svg>`,
-    'rainbow-sevens': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="rainbow" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#e74c3c" /><stop offset="25%" stop-color="#f1c40f" /><stop offset="50%" stop-color="#2ecc71" /><stop offset="75%" stop-color="#3498db" /><stop offset="100%" stop-color="#9b59b6" /></linearGradient></defs><circle cx="50" cy="50" r="40" fill="#fff" opacity="0.9" stroke="url(#rainbow)" stroke-width="12"/><text x="50" y="68" font-family="sans-serif" font-weight="900" font-size="42" text-anchor="middle" fill="#333">7</text></svg>`,
+    'rainbow-sevens': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="${gradId}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#e74c3c" /><stop offset="25%" stop-color="#f1c40f" /><stop offset="50%" stop-color="#2ecc71" /><stop offset="75%" stop-color="#3498db" /><stop offset="100%" stop-color="#9b59b6" /></linearGradient></defs><circle cx="50" cy="50" r="40" fill="#fff" opacity="0.9" stroke="url(#${gradId})" stroke-width="12"/><text x="50" y="68" font-family="sans-serif" font-weight="900" font-size="42" text-anchor="middle" fill="#333">7</text></svg>`,
     'football-club': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="${color}" stroke-width="4"/><circle cx="50" cy="50" r="34" fill="none" stroke="${color}" stroke-width="4" stroke-dasharray="10 10"/><text x="50" y="68" font-family="sans-serif" font-weight="900" font-size="38" text-anchor="middle" fill="#333">11</text></svg>`,
     'falling-apart': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#fcf3cf" stroke="#909497" stroke-width="3"/><path d="M48,10 L55,30 L45,50 L55,70 L48,90" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><text x="35" y="68" font-family="sans-serif" font-weight="900" font-size="38" text-anchor="middle" fill="#333">1</text><text x="68" y="68" font-family="sans-serif" font-weight="900" font-size="38" text-anchor="middle" fill="#333">3</text></svg>`,
     'square-club': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="15" y="15" width="70" height="70" rx="15" fill="none" stroke="${color}" stroke-width="3"/><rect x="30" y="30" width="40" height="40" fill="none" stroke="#27ae60" stroke-width="6" stroke-linejoin="round"/></svg>`,
@@ -982,20 +985,31 @@ function getClubReason(club, n) {
     const cbrt = Math.round(Math.cbrt(n));
     return `∛${n} = ${cbrt} (완전세제곱수)`;
   }
-  if (club.id === 'squares-holes') return `${n} = a²-b² 형태`;
+  if (club.id === 'squares-holes') {
+    if (n % 2 !== 0) {
+      const a = (n + 1) / 2;
+      const b = (n - 1) / 2;
+      return `${n} = ${a}² - ${b}² (${a * a} - ${b * b})`;
+    } else if (n % 4 === 0) {
+      const a = (n / 4) + 1;
+      const b = (n / 4) - 1;
+      return `${n} = ${a}² - ${b}² (${a * a} - ${b * b})`;
+    }
+    return `${n} = a² - b² 형태`;
+  }
   if (club.id === 'super-rect') {
     let count = 0;
     for (let i = 1; i * i <= n; i++) {
       if (n % i === 0) count += (i === n/i) ? 1 : 2;
     }
-    return `약수 ${count}개`;
+    return `약수 ${count}개 (6개 이상으로 슈퍼 직사각형 모양 생성)`;
   }
   if (club.id === 'super-duper') {
     let count = 0;
     for (let i = 1; i * i <= n; i++) {
       if (n % i === 0) count += (i === n/i) ? 1 : 2;
     }
-    return `약수 ${count}개`;
+    return `약수 ${count}개 (8개 이상으로 초특급 직사각형 모양 생성)`;
   }
   if (club.id === 'prime-club') return '1과 자기 자신으로만 나누어떨어지는 수예요. (소수)';
   if (club.id === 'roaring-twenties') return '20 ≤ ' + n + ' ≤ 29';

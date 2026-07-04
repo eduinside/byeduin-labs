@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Step Squad — eduin VIVES</title>
-<link href="https://fonts.googleapis.com/css2?family=Dongle&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Dongle&family=Fredoka+One&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #FFF9F0;
@@ -207,79 +207,10 @@
     flex-wrap: wrap;
   }
 
-  .staircase {
-    display: flex;
-    align-items: flex-end;
-    gap: 6px;
-    min-height: 80px;
-    padding-bottom: 4px;
-  }
-
-  .column {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-  }
-  .column-label {
-    font-family: 'Dongle', sans-serif;
-    font-size: 0.95rem;
-    color: var(--dark);
-    margin-top: 6px;
-  }
-
-  .block {
-    width: 44px;
-    height: 44px;
-    border: 3px solid rgba(0,0,0,0.3);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Dongle', sans-serif;
-    font-size: 0.8rem;
-    color: white;
-    text-shadow: 1px 1px 0 rgba(0,0,0,0.3);
-    position: relative;
-    animation: popIn 0.3s cubic-bezier(.36,1.56,.64,1) both;
-    box-shadow: 0 3px 0 rgba(0,0,0,0.25);
-  }
-  .block::after {
-    content: '';
-    position: absolute;
-    inset: 3px 3px auto 3px;
-    height: 8px;
-    background: rgba(255,255,255,0.35);
-    border-radius: 4px 4px 0 0;
-  }
-
   @keyframes popIn {
     from { transform: scale(0) rotate(-10deg); opacity: 0; }
     to   { transform: scale(1) rotate(0deg);  opacity: 1; }
   }
-
-  /* ── Block colors by column index (1-indexed) ── */
-  .c1  { background: linear-gradient(135deg,#FF4757,#FF6B81); }
-  .c2  { background: linear-gradient(135deg,#FF8C00,#FFA040); }
-  .c3  { background: linear-gradient(135deg,#FFD93D,#FFE57A); border-color: rgba(0,0,0,0.2); color: #333; text-shadow: none; }
-  .c4  { background: linear-gradient(135deg,#2ED573,#55E888); }
-  .c5  { background: linear-gradient(135deg,#1E90FF,#48AAFF); }
-  .c6  { background: linear-gradient(135deg,#A855F7,#C084FC); }
-  .c7  { background: linear-gradient(135deg,#FF6EB4,#FF9ED4); }
-  .c8  { background: linear-gradient(135deg,#00CEC9,#3EE4DF); }
-  .c9  { background: linear-gradient(135deg,#FFA07A,#FFB899); color: #333; text-shadow: none; }
-  .c10 { background: linear-gradient(135deg,#2D2D2D,#555); }
-  /* repeat cycle */
-  .c11 { background: linear-gradient(135deg,#FF4757,#FF6B81); }
-  .c12 { background: linear-gradient(135deg,#FF8C00,#FFA040); }
-  .c13 { background: linear-gradient(135deg,#FFD93D,#FFE57A); border-color: rgba(0,0,0,0.2); color: #333; text-shadow: none; }
-  .c14 { background: linear-gradient(135deg,#2ED573,#55E888); }
-  .c15 { background: linear-gradient(135deg,#1E90FF,#48AAFF); }
-  .c16 { background: linear-gradient(135deg,#A855F7,#C084FC); }
-  .c17 { background: linear-gradient(135deg,#FF6EB4,#FF9ED4); }
-  .c18 { background: linear-gradient(135deg,#00CEC9,#3EE4DF); }
-  .c19 { background: linear-gradient(135deg,#FFA07A,#FFB899); color: #333; text-shadow: none; }
-  .c20 { background: linear-gradient(135deg,#2D2D2D,#555); }
 
   /* ── Info box ── */
   .info-box {
@@ -485,6 +416,16 @@
     gap: 16px;
     margin-top: 20px;
   }
+  @media (max-width: 768px) {
+    .explainer {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 480px) {
+    .explainer {
+      grid-template-columns: 1fr;
+    }
+  }
   .explainer-card {
     background: white;
     border: 3px solid var(--dark);
@@ -646,9 +587,11 @@
     <div class="slider-row">
       <input type="number" id="numInput" class="num-input" min="1" max="20" value="4"
         oninput="buildSingle()" onchange="buildSingle()">
-      <input type="range" id="numSlider" min="1" max="20" value="4" oninput="syncSlider()">
+      <div style="flex: 1; display: flex; flex-direction: column; min-width: 180px;">
+        <input type="range" id="numSlider" min="1" max="20" value="4" oninput="syncSlider()" style="width: 100%;">
+        <div class="range-labels"><span>1단</span><span>5단</span><span>10단</span><span>15단</span><span>20단</span></div>
+      </div>
     </div>
-    <div class="range-labels" style="padding-left:114px;"><span>1단</span><span>5단</span><span>10단</span><span>15단</span><span>20단</span></div>
   </div>
 
   <div class="multi-stage" id="multiStage">

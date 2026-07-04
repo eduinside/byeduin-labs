@@ -799,52 +799,5 @@
 
         window.onload = init;
     </script>
-
-    <!-- 홈·공유 버튼은 app-shell.js가 주입(중복 제거). 공유 피드백은 아래 #mpToast 사용 -->
-
-    <!-- 토스트 -->
-    <div id="mpToast" style="position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(1rem);
-         background:#e0e6ed;color:#030509;padding:0.6rem 1.2rem;border-radius:999px;
-         font-size:0.85rem;font-weight:600;opacity:0;pointer-events:none;
-         transition:opacity 0.2s,transform 0.2s;z-index:9000;white-space:nowrap;font-family:sans-serif;"></div>
-
-    <script>
-    (function() {
-      let _mpTimer;
-      function mpToast(msg) {
-        const el = document.getElementById('mpToast');
-        el.textContent = msg;
-        el.style.opacity = '1';
-        el.style.transform = 'translateX(-50%) translateY(0)';
-        clearTimeout(_mpTimer);
-        _mpTimer = setTimeout(() => {
-          el.style.opacity = '0';
-          el.style.transform = 'translateX(-50%) translateY(1rem)';
-        }, 2500);
-      }
-      window.shareMoonPhase = function() {
-        const url = location.href;
-        if (navigator.share) {
-          navigator.share({ title: '달의 위상 관찰 시뮬레이터', url });
-        } else if (navigator.clipboard) {
-          navigator.clipboard.writeText(url)
-            .then(() => mpToast('링크가 복사되었습니다 ✓'))
-            .catch(() => fallback(url));
-        } else {
-          fallback(url);
-        }
-      };
-      function fallback(url) {
-        const ta = document.createElement('textarea');
-        ta.value = url;
-        ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
-        document.body.appendChild(ta);
-        ta.focus(); ta.select();
-        try { document.execCommand('copy'); mpToast('링크가 복사되었습니다 ✓'); }
-        catch { mpToast('복사에 실패했습니다.'); }
-        document.body.removeChild(ta);
-      }
-    })();
-    </script>
 </body>
 </html>

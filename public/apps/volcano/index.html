@@ -324,6 +324,7 @@ let answers = [];
 let map = null;
 let orbiting = false;
 let mapFailed = false;
+let isRevisitMode = false;
 const app = document.getElementById('app');
 
 function earthUrl(m){
@@ -350,6 +351,10 @@ function mapFallback(msg){
 }
 
 function buildMap(){
+  if(map){
+    try{ map.remove(); }catch(e){}
+    map = null;
+  }
   if(typeof maplibregl === 'undefined'){
     mapFallback('지도 라이브러리 로딩 실패 - 인터넷 연결 또는 차단 정책 확인');
     return;
@@ -483,24 +488,42 @@ function renderPanel(){
     <div class="flag">${m.country}</div>
     <h2>${m.emoji} ${m.name}</h2>
     <div class="height">높이 ${m.height} · ${idx+1}번째 산</div>`;
-  document.getElementById('sideBody').innerHTML = `
-    <div class="progress-zone">
-      <div class="progress-track"><div class="progress-fill" style="width:${idx/MOUNTAINS.length*100}%"></div></div>
-      <div class="progress-label"><span>탐험 진행 중</span><span>${idx+1} / ${MOUNTAINS.length}</span></div>
-    </div>
+
+  let actionHtml = `
     <div class="observe-box">
       <h3>🔍 관찰 포인트</h3>
       <p>${m.observe}</p>
     </div>
-    <div class="tip-box">💡 <b>탐험 팁</b> · ${m.tip}</div>
-    <div class="quiz-zone" id="quiz">
-      <div class="quiz-q">충분히 관찰했나요?<br>이 산은 화산일까요?</div>
-      <div class="quiz-btns">
-        <button class="quiz-btn yes" onclick="answer(true)">🌋 화산이에요!</button>
-        <button class="quiz-btn no" onclick="answer(false)">⛰️ 화산이 아니에요!</button>
+    <div class="tip-box">💡 <b>탐험 팁</b> · ${m.tip}</div>`;
+
+  if (isRevisitMode) {
+    actionHtml += `
+      <div class="reveal" style="margin-top:20px;">
+        <div class="answer-chip ${m.isVolcano?'is-volcano':'not-volcano'}" style="margin-bottom:12px;">
+          <span class="icon">${m.isVolcano?'🌋':'⛰️'}</span>
+          <span class="label">${m.name}은(는) ${m.isVolcano?'화산이에요!':'화산이 아니에요!'}</span>
+        </div>
+        <div class="explain" style="margin-bottom:16px;">${m.explain}</div>
+        <a class="earth-link" href="${earthUrl(m)}" target="_blank" rel="noopener" style="margin-bottom:14px; display:block;">더 실감나게 보고 싶다면? 구글 어스로 열기 ↗</a>
+        <button class="btn btn-primary" onclick="backToResult()" style="width:100%;">🏆 결과 화면으로 돌아가기</button>
+      </div>`;
+  } else {
+    actionHtml = `
+      <div class="progress-zone">
+        <div class="progress-track"><div class="progress-fill" style="width:${idx/MOUNTAINS.length*100}%"></div></div>
+        <div class="progress-label"><span>탐험 진행 중</span><span>${idx+1} / ${MOUNTAINS.length}</span></div>
+      </div>` + actionHtml + `
+      <div class="quiz-zone" id="quiz" aria-live="polite">
+        <div class="quiz-q">충분히 관찰했나요?<br>이 산은 화산일까요?</div>
+        <div class="quiz-btns">
+          <button class="quiz-btn yes" onclick="answer(true)">🌋 화산이에요!</button>
+          <button class="quiz-btn no" onclick="answer(false)">⛰️ 화산이 아니에요!</button>
+        </div>
       </div>
-    </div>
-    <a class="earth-link" href="${earthUrl(m)}" target="_blank" rel="noopener">더 실감나게 보고 싶다면? 구글 어스로 열기 ↗</a>`;
+      <a class="earth-link" href="${earthUrl(m)}" target="_blank" rel="noopener">더 실감나게 보고 싶다면? 구글 어스로 열기 ↗</a>`;
+  }
+
+  document.getElementById('sideBody').innerHTML = actionHtml;
   document.querySelector('.side')?.scrollTo({top:0});
 }
 
@@ -534,6 +557,7 @@ function next(){
 }
 
 function renderResult(){
+  isRevisitMode = false;
   stopOrbit();
   if(map && !mapFailed){ map.easeTo({zoom:2.2, pitch:0, duration:3000}); }
   const vt = document.getElementById('viewerTitle');
@@ -560,20 +584,28 @@ function renderResult(){
       그래서 산꼭대기에 <b>분화구</b>가 있고, 분화구에 물이 고여 <b>호수</b>가 되기도 해요(백두산 천지, 한라산 백록담).
       화산이 아닌 산은 분화구가 없고, 땅이 솟아오르거나 깎여서 만들어졌어요.</p>
     </div>
-    <button class="btn btn-primary" style="font-size:17px" onclick="location.reload()">다시 탐험하기 🔄</button>
+    <button class="btn btn-primary" style="font-size:17px" onclick="start()">다시 탐험하기 🔄</button>
   </div>`;
   document.querySelector('.side')?.scrollTo({top:0});
 }
 
 function revisit(i){
-  const m = MOUNTAINS[i];
-  const vt = document.getElementById('viewerTitle');
-  if(vt) vt.innerHTML = `<span class="num">${i+1}</span> ${m.emoji} ${m.name}`;
+  isRevisitMode = true;
   idx = i;
-  flyToMountain(m);
+  renderPanel();
+  flyToMountain(MOUNTAINS[i]);
 }
 
-function start(){ idx=0; answers=[]; renderExplore(); }
+function backToResult() {
+  renderResult();
+}
+
+function start(){
+  isRevisitMode = false;
+  idx=0;
+  answers=[];
+  renderExplore();
+}
 
 renderIntro();
 </script>
