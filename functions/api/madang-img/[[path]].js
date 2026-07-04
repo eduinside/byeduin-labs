@@ -1,11 +1,14 @@
-// functions/api/madang-img/[board]/[key].js
+// functions/api/madang-img/[[path]].js
 // ─────────────────────────────────────────────────────────────────────────────
 // 마당 사진·그림 카드 스트리밍 — GET /api/madang-img/{boardId}/{key}?code=XX&pin=NN
 //   GET 폴링(madang.js handleGet)과 동일한 checkAccess를 재사용해 비공유/PIN 보드의
 //   이미지가 URL 직접 접근으로 열리지 않게 한다.
+//   catch-all 라우트([[path]])를 쓰는 이유: 폴더명 자체를 [board]로 만들면
+//   Cloudflare Pages Functions 빌드가 깨져 배포 전체가 정적 사이트로 떨어지는
+//   문제가 있었음(2026-07-04) — 단일 파일 catch-all로 우회.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { CODE_RE, BOARD_RE, ownerToken, parseSettings, checkAccess, madangR2Key } from '../../_madang-common.js';
+import { CODE_RE, BOARD_RE, ownerToken, parseSettings, checkAccess, madangR2Key } from '../_madang-common.js';
 
 export async function onRequestGet(ctx) {
   const { request, env, params } = ctx;
@@ -13,8 +16,9 @@ export async function onRequestGet(ctx) {
   const r2 = env.MEDIA_R2;
   if (!db || !r2) return new Response('Not configured', { status: 500 });
 
-  const boardId = String(params.board || '').toUpperCase();
-  const key = String(params.key || '');
+  const segs = Array.isArray(params.path) ? params.path : (params.path ? [params.path] : []);
+  const boardId = String(segs[0] || '').toUpperCase();
+  const key = String(segs[1] || '');
   if (!BOARD_RE.test(boardId) || !key) return new Response('Bad Request', { status: 400 });
 
   const url = new URL(request.url);
