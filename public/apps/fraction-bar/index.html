@@ -741,8 +741,8 @@ function renderSVG() {
   svg.setAttribute('viewBox', '0 0 600 500');
   svg.style.width = '100%';
   svg.style.height = '100%';
-  svg.style.maxWidth = '560px';
-  svg.style.maxHeight = '560px';
+  svg.style.maxWidth = '860px';
+  svg.style.maxHeight = 'min(88vh, 720px)';
 
   // 패턴 정의 (사선 채움 패턴 - B 대상 색약/구분용)
   const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
@@ -759,6 +759,13 @@ function renderSVG() {
   }
 
   zone.insertBefore(svg, zone.firstChild);
+
+  // 콘텐츠 실제 범위에 맞춰 viewBox 재계산 → 중앙 배치 + 최대 확대
+  const bb = svg.getBBox();
+  const pad = 28;
+  if (bb.width > 0 && bb.height > 0) {
+    svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${bb.width + pad * 2} ${bb.height + pad * 2}`);
+  }
 }
 
 function renderBarSVG(svg) {

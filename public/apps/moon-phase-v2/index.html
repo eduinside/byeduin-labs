@@ -552,15 +552,18 @@ function setupDragInteraction() {
     const pos = getEventPos(e);
     const center = { x: orbitCanvas.width / (2 * window.devicePixelRatio), y: orbitCanvas.height / (2 * window.devicePixelRatio) };
     
-    // 달의 현재 위치 계산
-    const rX = 220;
-    const rY = 90;
+    // 달의 현재 위치 계산 (drawLoop과 동일한 화면 배율 적용)
+    const cw = orbitCanvas.width / window.devicePixelRatio;
+    const ch = orbitCanvas.height / window.devicePixelRatio;
+    const k = Math.max(1, Math.min(cw / 620, ch / 440, 1.9));
+    const rX = 220 * k;
+    const rY = 90 * k;
     const moonX = center.x + rX * Math.cos(state.phaseAngle);
     const moonY = center.y + rY * Math.sin(state.phaseAngle);
 
-    // 클릭 거리가 32px 이내면 드래그 시작
+    // 클릭 거리가 달 반경 언저리면 드래그 시작
     const dist = Math.hypot(pos.x - moonX, pos.y - moonY);
-    if (dist < 38) {
+    if (dist < 38 * k) {
       state.isDraggingMoon = true;
       state.autoPlay = false;
       updatePlayButtonState();
@@ -617,31 +620,55 @@ function drawLoop() {
   const h = orbitCanvas.height / window.devicePixelRatio;
   orbitCtx.clearRect(0, 0, w, h);
 
-  // 시각화 센터
+  // 시각화 센터 (캔버스 크기에 비례해 궤도 확대)
   const cx = w / 2;
   const cy = h / 2;
-  const rX = 220;
-  const rY = 90;
+  const k = Math.max(1, Math.min(w / 620, h / 440, 1.9)); // 화면 배율
+  const rX = 220 * k;
+  const rY = 90 * k;
 
-  // 2. 태양빛 표현 (화면 왼쪽에서 노란 햇빛 줄기가 들어오는 연출)
-  const sunGrad = orbitCtx.createLinearGradient(0, cy, cx - 100, cy);
-  sunGrad.addColorStop(0, 'rgba(255, 209, 102, 0.15)');
-  sunGrad.addColorStop(1, 'rgba(255, 209, 102, 0)');
-  orbitCtx.fillStyle = sunGrad;
-  orbitCtx.fillRect(0, cy - 140, cx - 80, 280);
+  // 2. 태양빛 표현 — 왼쪽 화면 밖 태양에서 퍼지는 방사형 광원 + 광선 화살표
+  const sunX = -w * 0.18; // 화면 왼쪽 바깥의 가상 태양 위치
+  const radGrad = orbitCtx.createRadialGradient(sunX, cy, 0, sunX, cy, cx + w * 0.2);
+  radGrad.addColorStop(0, 'rgba(255, 209, 102, 0.28)');
+  radGrad.addColorStop(0.55, 'rgba(255, 209, 102, 0.08)');
+  radGrad.addColorStop(1, 'rgba(255, 209, 102, 0)');
+  orbitCtx.fillStyle = radGrad;
+  orbitCtx.fillRect(0, 0, w, h);
+
+  // 광선 화살표 3줄 (태양 → 오른쪽, 지구·달을 향해)
+  const rayEndX = cx - rX - 40 * k;
+  orbitCtx.strokeStyle = 'rgba(255, 209, 102, 0.55)';
+  orbitCtx.fillStyle = 'rgba(255, 209, 102, 0.55)';
+  orbitCtx.lineWidth = 2.5;
+  [-1, 0, 1].forEach(i => {
+    const ry = cy + i * 70 * k;
+    orbitCtx.beginPath();
+    orbitCtx.moveTo(16, ry);
+    orbitCtx.lineTo(rayEndX, ry);
+    orbitCtx.stroke();
+    // 화살촉
+    orbitCtx.beginPath();
+    orbitCtx.moveTo(rayEndX + 10, ry);
+    orbitCtx.lineTo(rayEndX - 4, ry - 6);
+    orbitCtx.lineTo(rayEndX - 4, ry + 6);
+    orbitCtx.closePath();
+    orbitCtx.fill();
+  });
 
   // 태양 이정표 표시
-  orbitCtx.font = 'bold 12px sans-serif';
+  orbitCtx.font = `bold ${Math.round(12 * k)}px sans-serif`;
   orbitCtx.fillStyle = '#ffd166';
-  orbitCtx.fillText('☀️ 햇빛 방향', 20, cy + 5);
+  orbitCtx.textAlign = 'left';
+  orbitCtx.fillText('☀️ 햇빛 방향', 20, cy - 70 * k - 12);
 
   // 3. 지구 그림자 뿔 표현 (태양 반대편인 오른쪽으로 길게 뻗는 어두운 암영대)
   if (state.mode === 3 && state.eclipseType === 'lunar') {
     orbitCtx.beginPath();
-    orbitCtx.moveTo(cx, cy - 25);
-    orbitCtx.lineTo(cx + w, cy - 35);
-    orbitCtx.lineTo(cx + w, cy + 35);
-    orbitCtx.lineTo(cx, cy + 25);
+    orbitCtx.moveTo(cx, cy - 25 * k);
+    orbitCtx.lineTo(cx + w, cy - 35 * k);
+    orbitCtx.lineTo(cx + w, cy + 35 * k);
+    orbitCtx.lineTo(cx, cy + 25 * k);
     orbitCtx.fillStyle = 'rgba(231,76,60,0.18)'; // 월식 지구 그림자 강조
     orbitCtx.fill();
   } else {
@@ -649,7 +676,7 @@ function drawLoop() {
     shadowGrad.addColorStop(0, 'rgba(11, 15, 36, 0.45)');
     shadowGrad.addColorStop(1, 'rgba(11, 15, 36, 0)');
     orbitCtx.fillStyle = shadowGrad;
-    orbitCtx.fillRect(cx, cy - 25, rX + 60, 50);
+    orbitCtx.fillRect(cx, cy - 25 * k, rX + 60 * k, 50 * k);
   }
 
   // 4. 공전 궤도선 (3D 타원 표현)
@@ -661,7 +688,7 @@ function drawLoop() {
 
   // 5. 중앙 지구 🌍 그리기 (자전 회전 연출)
   orbitCtx.beginPath();
-  orbitCtx.arc(cx, cy, 32, 0, Math.PI * 2);
+  orbitCtx.arc(cx, cy, 32 * k, 0, Math.PI * 2);
   orbitCtx.fillStyle = '#1e3d59';
   orbitCtx.fill();
   orbitCtx.strokeStyle = '#3a86c8';
@@ -670,7 +697,7 @@ function drawLoop() {
 
   // 지구 반구 명암 (왼쪽 햇빛 영역은 밝고, 오른쪽 반구는 그늘)
   orbitCtx.beginPath();
-  orbitCtx.arc(cx, cy, 32, -Math.PI/2, Math.PI/2);
+  orbitCtx.arc(cx, cy, 32 * k, -Math.PI/2, Math.PI/2);
   orbitCtx.fillStyle = 'rgba(0,0,0,0.5)';
   orbitCtx.fill();
 
@@ -687,24 +714,24 @@ function drawLoop() {
   // 궤도 경사 연출 시 y좌표 변조
   if (state.tiltOrbit) {
     // 5도 경사에 따른 달의 고도 상하 흔들림 표현 (삭 위치에서 올라가고 망 위치에서 내려감)
-    my += 24 * Math.sin(state.phaseAngle);
+    my += 24 * k * Math.sin(state.phaseAngle);
   }
 
   // 달 그림자 영역
   orbitCtx.beginPath();
-  orbitCtx.arc(mx, my, 13, 0, Math.PI * 2);
+  orbitCtx.arc(mx, my, 13 * k, 0, Math.PI * 2);
   orbitCtx.fillStyle = '#222533';
   orbitCtx.fill();
 
   // 달 햇빛 반사 반구 (항상 왼쪽 방향이 밝음)
   orbitCtx.beginPath();
-  orbitCtx.arc(mx, my, 13, Math.PI / 2, Math.PI * 1.5);
+  orbitCtx.arc(mx, my, 13 * k, Math.PI / 2, Math.PI * 1.5);
   orbitCtx.fillStyle = '#ffd166';
   orbitCtx.fill();
 
   // 드래그 링 외곽 원형 가이드
   orbitCtx.beginPath();
-  orbitCtx.arc(mx, my, 22, 0, Math.PI * 2);
+  orbitCtx.arc(mx, my, 22 * k, 0, Math.PI * 2);
   orbitCtx.strokeStyle = state.isDraggingMoon ? 'var(--mp-accent)' : 'rgba(255,255,255,0.2)';
   orbitCtx.lineWidth = 1.5;
   orbitCtx.stroke();

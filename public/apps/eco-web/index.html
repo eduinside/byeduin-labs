@@ -1117,6 +1117,19 @@ function renderPlacedNodes() {
   const curMission = getActiveMission();
   const isClassifyMode = curMission && curMission.id === 'm1_3';
 
+  // 빈 캔버스 안내 (카드가 하나도 없을 때만 표시)
+  if (!isClassifyMode && Object.keys(state.placedNodes).length === 0) {
+    const hint = document.createElement('div');
+    hint.id = 'canvasEmptyHint';
+    hint.style.cssText = 'position:absolute; left:50%; top:45%; transform:translate(-50%,-50%);'
+      + 'width:min(70%,420px); padding:36px 28px; border:2px dashed var(--eco-accent);'
+      + 'border-radius:20px; text-align:center; color:var(--fg-muted); pointer-events:none; opacity:0.75;';
+    hint.innerHTML = '<div style="font-size:40px; margin-bottom:12px;">🌱</div>'
+      + '<div style="font-size:15px; font-weight:700; line-height:1.6;">오른쪽 생물 카드를 이곳으로<br>끌어다 놓아 보세요</div>'
+      + '<div style="font-size:12px; margin-top:8px;">카드를 놓은 뒤 <b>연결 모드</b>로 먹이 관계 화살표를 이어요</div>';
+    container.appendChild(hint);
+  }
+
   // 만약 분류 미션인데 placedNodes가 비어 있다면 초기화 (기본 배치)
   if (isClassifyMode && Object.keys(state.placedNodes).length === 0) {
     // 화면 상단에 벼, 메뚜기, 개구리, 매, 버섯 등을 드래그할 수 있게 팔레트 형식 대신 캔버스 탑에 배치
