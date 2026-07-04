@@ -1,0 +1,1745 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>생태계 탐험대 — eduin VIVES</title>
+  <meta name="description" content="먹이그물 잇기·피라미드·평형 시나리오 종합 실험">
+  <meta property="og:title" content="생태계 탐험대 — 먹이그물·피라미드·평형 시뮬레이션 | eduin VIVES">
+  <meta property="og:description" content="먹이그물 잇기·피라미드·평형 시나리오 종합 실험">
+  <meta property="og:image" content="https://eduin.info/og-images/eco-web.png">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <link rel="stylesheet" href="/common/app-shell.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
+  <script src="/common/app-shell.js" defer></script>
+  <script src="/common/seo-injector.js" defer></script>
+  <style>
+/* ── eco-web 전용 스타일 (immersive 전체화면) ── */
+:root {
+  --role-producer: #2ecc71;
+  --role-consumer-1: #f1c40f;
+  --role-consumer-2: #e67e22;
+  --role-consumer-3: #e74c3c;
+  --role-decomposer: #95a5a6;
+
+  --eco-accent: #27ae60;
+  --eco-accent-h: #219653;
+  --eco-sidebar-w: 320px;
+  --eco-grid-bg: #f8f9fa;
+  --eco-card-bg: var(--card-bg);
+}
+[data-theme="dark"] {
+  --eco-grid-bg: #0f0f12;
+  --eco-card-bg: #1e1e24;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  background: var(--eco-grid-bg);
+  color: var(--fg);
+  min-height: 100vh;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.screen { display: none; }
+.screen.active { display: flex; }
+
+/* ── 인트로 스크린 ── */
+.intro-screen {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(46,204,113,0.06) 0, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(39,174,96,0.05) 0, transparent 35%),
+    var(--eco-grid-bg);
+}
+.intro-emoji {
+  font-size: 80px; margin-bottom: 12px;
+  animation: float 2.5s ease-in-out infinite;
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.intro-screen h1 { font-size: 32px; font-weight: 800; margin-bottom: 6px; }
+.intro-sub { font-size: 15px; color: var(--fg-muted); line-height: 1.7; margin-bottom: 24px; }
+.intro-card {
+  background: var(--eco-card-bg);
+  border: 2px dashed var(--eco-accent);
+  border-radius: 16px;
+  padding: 20px 24px;
+  max-width: 440px; width: 100%;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.05);
+}
+.intro-card h3 { font-size: 17px; font-weight: 700; color: var(--eco-accent); margin-bottom: 8px; }
+.intro-card p { font-size: 14px; line-height: 1.7; color: var(--fg-muted); }
+
+/* ── 메인 레이아웃 ── */
+.explore-screen {
+  width: 100vw; height: 100vh; height: 100dvh;
+}
+.explore-layout {
+  display: grid;
+  grid-template-columns: 1fr var(--eco-sidebar-w);
+  width: 100%; height: 100%;
+}
+
+/* 캔버스 영역 */
+.canvas-zone {
+  position: relative;
+  background: var(--eco-grid-bg);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.canvas-header {
+  position: absolute; top: 56px; left: 16px; right: 16px; z-index: 10;
+  display: flex; justify-content: space-between; align-items: center;
+  pointer-events: none;
+}
+.canvas-title-badge {
+  background: rgba(38,50,56,0.78); backdrop-filter: blur(6px);
+  color: #fff; border-radius: 14px; padding: 8px 16px;
+  font-size: 14px; font-weight: 700; border: 1px solid rgba(255,255,255,0.2);
+  display: flex; align-items: center; gap: 8px;
+}
+.canvas-title-badge .num {
+  background: var(--eco-accent); width: 22px; height: 22px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 11px;
+}
+
+.canvas-toolbar {
+  position: absolute; bottom: 16px; left: 16px; z-index: 10;
+  display: flex; gap: 8px;
+}
+.tool-btn {
+  background: rgba(255,255,255,0.9); border: 1px solid var(--border);
+  color: var(--fg); padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  pointer-events: auto; transition: all 0.15s;
+}
+[data-theme="dark"] .tool-btn { background: rgba(30,30,36,0.9); }
+.tool-btn:hover { background: var(--border); }
+.tool-btn.active {
+  background: var(--eco-accent); color: #fff; border-color: var(--eco-accent);
+}
+
+/* 캔버스 본체 */
+.canvas-viewport {
+  flex: 1; position: relative; width: 100%; height: 100%;
+}
+.canvas-svg {
+  position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;
+}
+
+/* 생물 노드(카드) */
+.node-card {
+  position: absolute; width: 84px; height: 106px;
+  background: var(--eco-card-bg); border: 2px solid var(--border);
+  border-radius: 14px; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 6px; cursor: grab; z-index: 3;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05); user-select: none;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.node-card:active { cursor: grabbing; transform: scale(1.04); }
+.node-card.selected { border-color: var(--eco-accent); box-shadow: 0 0 0 3px rgba(39,174,96,0.3); }
+.node-card.disabled { opacity: 0.3; pointer-events: none; }
+.node-emoji { font-size: 32px; margin-bottom: 4px; line-height: 1; }
+.node-name { font-size: 12px; font-weight: 800; text-align: center; }
+.node-role-dot {
+  position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%;
+}
+
+/* 분류 상자 */
+.classify-zones {
+  position: absolute; inset: 0; display: grid; grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr); padding: 76px 16px 64px 16px; gap: 16px;
+  pointer-events: none; z-index: 0;
+}
+.classify-box {
+  border: 2px dashed var(--border); border-radius: 16px;
+  background: rgba(0,0,0,0.015); display: flex; flex-direction: column;
+  padding: 12px; gap: 8px; pointer-events: auto; transition: background 0.15s;
+}
+[data-theme="dark"] .classify-box { background: rgba(255,255,255,0.01); }
+.classify-box.drag-over { background: rgba(39,174,96,0.05); border-color: var(--eco-accent); }
+.classify-box-title {
+  font-size: 13px; font-weight: 800; text-align: center; color: var(--fg-muted);
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+
+/* 피라미드 영역 */
+.pyramid-zone {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 76px 16px 64px;
+  z-index: 1;
+}
+.pyramid-container {
+  width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 8px;
+}
+.pyramid-tier {
+  width: 100%; border: 2px solid var(--border); border-radius: 12px;
+  background: var(--eco-card-bg); min-height: 80px; display: flex; flex-direction: column;
+  padding: 10px; align-items: center; gap: 8px; transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+.pyramid-tier.drag-over { border-color: var(--eco-accent); background: rgba(39,174,96,0.05); }
+.pyramid-tier-label { font-size: 12px; font-weight: 800; color: var(--fg-muted); }
+.pyramid-tier-slots { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; width: 100%; min-height: 48px; }
+.pyramid-tier-slots .node-card { position: static; transform: none !important; }
+
+/* 피라미드 크기 상대 시뮬레이션 */
+.pyramid-tier[data-tier="4"] { width: 45%; margin: 0 auto; }
+.pyramid-tier[data-tier="3"] { width: 65%; margin: 0 auto; }
+.pyramid-tier[data-tier="2"] { width: 85%; margin: 0 auto; }
+.pyramid-tier[data-tier="1"] { width: 100%; }
+
+.pyramid-shake { animation: shake 0.5s ease; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+/* 시나리오 연쇄 영역 */
+.scenario-zone {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 76px 16px 64px;
+  z-index: 1;
+}
+.scenario-species-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+  width: 100%; max-width: 440px; margin-bottom: 20px;
+}
+.sc-card {
+  background: var(--eco-card-bg); border: 2px solid var(--border);
+  border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.03); position: relative; transition: all 0.25s;
+}
+.sc-card.delta-up { border-color: var(--role-consumer-3); background: rgba(231,76,60,0.05); }
+.sc-card.delta-down { border-color: #2980b9; background: rgba(41,128,185,0.05); }
+.sc-emoji { font-size: 36px; }
+.sc-info { display: flex; flex-direction: column; }
+.sc-name { font-size: 15px; font-weight: 800; }
+.sc-role { font-size: 11px; color: var(--fg-muted); }
+.sc-delta-badge {
+  position: absolute; top: -8px; right: -8px; width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800;
+  color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.15); animation: popIn 0.3s ease;
+}
+.sc-delta-badge.up { background: var(--role-consumer-3); }
+.sc-delta-badge.down { background: #2980b9; }
+
+/* ── 우측 사이드바 ── */
+.sidebar {
+  background: var(--card-bg); border-left: 2px solid var(--border);
+  overflow-y: auto; display: flex; flex-direction: column;
+  box-shadow: -4px 0 24px rgba(0,0,0,0.06);
+}
+.side-head {
+  background: linear-gradient(135deg, var(--eco-accent) 0%, var(--eco-accent-h) 100%);
+  color: #fff; padding: 16px 20px 14px; position: relative; overflow: hidden; flex-shrink: 0;
+}
+.side-head::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 80% -20%, rgba(255,255,255,0.15) 0, transparent 55%);
+}
+.side-head h2 { font-size: 20px; font-weight: 700; position: relative; z-index: 1; }
+.side-head .side-sub { font-size: 12px; opacity: 0.8; position: relative; z-index: 1; margin-top: 2px; }
+
+.side-body { padding: 14px 16px 20px; flex: 1; display: flex; flex-direction: column; }
+
+/* 모드 선택 탭 */
+.mode-tabs { display: flex; gap: 4px; margin-bottom: 14px; flex-shrink: 0; }
+.mode-tab {
+  flex: 1; padding: 8px 4px; border-radius: 10px; border: 2px solid var(--border);
+  background: var(--bg-sec); text-align: center; cursor: pointer;
+  font-size: 11px; font-weight: 800; font-family: inherit; color: var(--fg-muted);
+  transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.mode-tab.active {
+  border-color: var(--eco-accent); background: rgba(46,204,113,0.1); color: var(--eco-accent);
+}
+.mode-tab .em { font-size: 16px; }
+
+/* 미션 패널 */
+.mission-card {
+  border: 1px solid var(--border); border-radius: 14px; background: var(--bg-sec);
+  padding: 12px 14px; margin-bottom: 14px;
+}
+.mission-title { font-size: 11px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.08em; margin-bottom: 8px; }
+.mission-desc { font-size: 13px; line-height: 1.5; font-weight: 600; }
+
+.mission-nav { display: flex; gap: 4px; margin-top: 10px; justify-content: center; }
+.mission-nav-btn {
+  width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--card-bg); font-size: 12px; font-weight: 700; cursor: pointer;
+  color: var(--fg-muted); transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+}
+.mission-nav-btn.active { border-color: var(--eco-accent); color: var(--eco-accent); }
+.mission-nav-btn.done { border-color: var(--eco-accent); color: var(--eco-accent); background: rgba(46,204,113,0.1); }
+
+/* 시나리오 컨트롤 */
+.scenario-selector { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.scenario-btn {
+  padding: 12px; border-radius: 10px; border: 2px solid var(--border);
+  background: var(--card-bg); text-align: left; cursor: pointer;
+  font-size: 13px; font-weight: 700; transition: all 0.15s; display: flex; align-items: center; gap: 8px;
+}
+.scenario-btn:hover { border-color: var(--eco-accent); }
+.scenario-btn.active { border-color: var(--eco-accent); background: rgba(46,204,113,0.05); }
+
+/* 예측 영역 */
+.prediction-box {
+  background: var(--bg-sec); border-radius: 12px; padding: 12px; margin-bottom: 14px;
+  border: 1px solid var(--border);
+}
+.prediction-title { font-size: 12px; font-weight: 800; margin-bottom: 8px; color: var(--fg-muted); }
+.prediction-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.prediction-row:last-child { margin-bottom: 0; }
+.prediction-label { font-size: 13px; font-weight: 700; }
+.prediction-btns { display: flex; gap: 4px; }
+.pred-btn {
+  width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--card-bg); font-size: 13px; font-weight: 800; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+}
+.pred-btn.active {
+  background: var(--eco-accent); color: #fff; border-color: var(--eco-accent);
+}
+
+/* 생물 리스트 팔레트 */
+.palette-section {
+  flex: 1; display: flex; flex-direction: column; min-height: 0;
+}
+.palette-title { font-size: 11px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.08em; margin-bottom: 8px; }
+.palette-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; overflow-y: auto; padding-right: 4px;
+}
+.palette-item {
+  padding: 8px 4px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--bg-sec); text-align: center; cursor: pointer;
+  font-size: 11px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.palette-item.placed { opacity: 0.4; }
+
+/* 액션 패널 */
+.action-panel { margin-top: auto; padding-top: 14px; flex-shrink: 0; }
+.action-btn {
+  width: 100%; padding: 12px; border-radius: 12px; border: none;
+  background: var(--eco-accent); color: #fff; font-size: 14px; font-weight: 700;
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  transition: background 0.15s;
+}
+.action-btn:hover:not(:disabled) { background: var(--eco-accent-h); }
+.action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.action-btn.secondary {
+  background: var(--bg-sec); color: var(--fg); border: 1px solid var(--border); margin-top: 6px;
+}
+
+.feedback-box {
+  padding: 10px; border-radius: 10px; font-size: 13px; line-height: 1.5; text-align: center; margin: 10px 0;
+}
+.feedback-box.ok { background: rgba(46,204,113,0.1); color: var(--eco-accent); }
+.feedback-box.no { background: rgba(231,76,60,0.1); color: var(--role-consumer-3); }
+
+/* ── 결과 화면 ── */
+.result-screen {
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100vh; padding: 24px; text-align: center;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(46,204,113,0.06) 0, transparent 40%),
+    radial-gradient(circle at 70% 70%, rgba(39,174,96,0.08) 0, transparent 35%),
+    var(--eco-grid-bg);
+}
+.result-stars { font-size: 40px; margin: 12px 0; }
+.result-summary {
+  background: var(--eco-card-bg); border: 1px solid var(--border); border-radius: 16px;
+  padding: 20px; font-size: 14px; line-height: 1.8; margin: 16px 0; text-align: left;
+  max-width: 440px; width: 100%; box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+}
+.result-summary strong { color: var(--eco-accent); }
+
+/* ── 모바일 반응형 ── */
+@media (max-width: 800px) {
+  body { overflow: auto; }
+  .explore-layout { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
+  .canvas-zone { position: sticky; top: 0; z-index: 40; height: 50vh; min-height: 320px; flex-shrink: 0; padding-top: 56px; }
+  .sidebar { border-left: none; border-top: 2px solid var(--border); height: auto; }
+  .classify-zones { padding: 48px 12px 48px; gap: 8px; }
+  .classify-box { padding: 6px; }
+  .node-card { width: 70px; height: 86px; }
+  .node-emoji { font-size: 24px; }
+  .node-name { font-size: 10px; }
+  .pyramid-container { max-width: 320px; }
+  .pyramid-tier { min-height: 60px; padding: 6px; }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+  </style>
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="생태계 탐험대 | eduin VIVES">
+  <meta name="twitter:description" content="먹이그물 잇기·피라미드·평형 시나리오 종합 실험">
+  <meta name="twitter:image" content="https://eduin.info/og-images/eco-web.png">
+  <link rel="canonical" href="https://eduin.info/apps/eco-web/">
+  <meta property="og:url" content="https://eduin.info/apps/eco-web/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"생태계 탐험대","description":"먹이그물 잇기·피라미드·평형 시나리오 종합 실험","url":"https://eduin.info/apps/eco-web/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+</head>
+<body data-shell="immersive">
+
+<!-- ============ 인트로 ============ -->
+<div id="screenIntro" class="screen active intro-screen">
+  <div class="intro-emoji">🌿</div>
+  <h1>생태계 탐험대</h1>
+  <p class="intro-sub">먹이그물 잇기 · 피라미드 쌓기 · 평형 시뮬레이션</p>
+
+  <div class="intro-card">
+    <h3>숲속 친구들은 어떻게 연결되어 있을까요?</h3>
+    <p>생물들이 먹고 먹히는 관계를 화살표로 직접 잇고, 생태피라미드를 올바르게 쌓아 보세요. 한 생물이 갑자기 사라졌을 때 어떤 연쇄 변화가 일어나는지도 실험실에서 예측하고 관찰해 봐요!</p>
+  </div>
+
+  <button class="fb-btn fb-btn-primary" id="btnStart">시작하기</button>
+</div>
+
+<!-- ============ 자유 탐험 및 미션 ============ -->
+<div id="screenExplore" class="screen explore-screen">
+  <div class="explore-layout">
+    <!-- 좌측 캔버스 -->
+    <div class="canvas-zone" id="canvasZone">
+      <div class="canvas-header">
+        <div class="canvas-title-badge" id="canvasBadge">
+          <span class="num" id="canvasBadgeNum">1</span>
+          <span id="canvasBadgeLabel">먹이그물 공방</span>
+        </div>
+      </div>
+
+      <!-- 뷰포트 (카드 및 간선) -->
+      <div class="canvas-viewport" id="canvasViewport">
+        <!-- 관계 화살표용 SVG -->
+        <svg class="canvas-svg" id="canvasSvg">
+          <defs>
+            <!-- 화살표 머리 장식 -->
+            <marker id="arrow" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--fg-muted)"></path>
+            </marker>
+            <marker id="arrow-green" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--eco-accent)"></path>
+            </marker>
+          </defs>
+          <g id="svgConnections"></g>
+          <line id="tempConnectionLine" x1="0" y1="0" x2="0" y2="0" stroke="var(--eco-accent)" stroke-width="2" stroke-dasharray="4 4" style="display:none;"></line>
+        </svg>
+
+        <!-- 모드 1: 먹이그물 캔버스 카드 배치 영역 -->
+        <div id="placedNodesContainer" style="position:absolute; inset:0; z-index:2;"></div>
+
+        <!-- 모드 1 미션 3: 생물 분류 상자 (기본 숨김) -->
+        <div class="classify-zones" id="classifyZones" style="display:none;">
+          <div class="classify-box" data-role="producer">
+            <div class="classify-box-title" style="color:var(--role-producer);">🌾 생산자</div>
+          </div>
+          <div class="classify-box" data-role="consumer-1">
+            <div class="classify-box-title" style="color:var(--role-consumer-1);">🦗 1차 소비자</div>
+          </div>
+          <div class="classify-box" data-role="consumer-2">
+            <div class="classify-box-title" style="color:var(--role-consumer-2);">🐸 2차 소비자</div>
+          </div>
+          <div class="classify-box" data-role="consumer-3">
+            <div class="classify-box-title" style="color:var(--role-consumer-3);">🦅 3차 소비자</div>
+          </div>
+          <div class="classify-box" data-role="decomposer" style="grid-column: span 2;">
+            <div class="classify-box-title" style="color:var(--role-decomposer);">🍄 분해자</div>
+          </div>
+        </div>
+
+        <!-- 모드 2: 피라미드 영역 -->
+        <div class="pyramid-zone" id="pyramidZone" style="display:none;">
+          <div class="pyramid-container" id="pyramidContainer">
+            <div class="pyramid-tier" data-tier="4">
+              <div class="pyramid-tier-label">🦅 3차 소비자</div>
+              <div class="pyramid-tier-slots" data-level="3"></div>
+            </div>
+            <div class="pyramid-tier" data-tier="3">
+              <div class="pyramid-tier-label">🐍 2차 소비자</div>
+              <div class="pyramid-tier-slots" data-level="2"></div>
+            </div>
+            <div class="pyramid-tier" data-tier="2">
+              <div class="pyramid-tier-label">🦗 1차 소비자</div>
+              <div class="pyramid-tier-slots" data-level="1"></div>
+            </div>
+            <div class="pyramid-tier" data-tier="1">
+              <div class="pyramid-tier-label">🌾 생산자</div>
+              <div class="pyramid-tier-slots" data-level="0"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 모드 3: 평형 시뮬레이션 생물 연쇄 뷰 -->
+        <div class="scenario-zone" id="scenarioZone" style="display:none;">
+          <div class="scenario-species-grid" id="scGrid">
+            <!-- 벼, 메뚜기, 개구리, 매가 그리드로 표시됨 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 하단 툴바 (자유 탐험 시 초기화 등) -->
+      <div class="canvas-toolbar" id="canvasToolbar">
+        <button class="tool-btn" id="btnConnectMode">
+          🔗 연결 모드 (2탭 연결)
+        </button>
+        <button class="tool-btn" id="btnEraserMode">
+          ✂️ 선 지우기
+        </button>
+        <button class="tool-btn" id="btnClearCanvas">
+          🔄 처음부터
+        </button>
+      </div>
+    </div>
+
+    <!-- 우측 사이드바 -->
+    <div class="sidebar" id="sidebar">
+      <div class="side-head">
+        <h2>🌿 생태계 탐험대</h2>
+        <div class="side-sub">먹이그물 · 피라미드 · 평형 시뮬레이션</div>
+      </div>
+      
+      <div class="side-body">
+        <!-- 모드 선택 탭 -->
+        <div class="mode-tabs" id="modeTabs">
+          <button class="mode-tab active" data-mode="1">
+            <span class="em">🕸️</span>먹이그물
+          </button>
+          <button class="mode-tab" data-mode="2">
+            <span class="em">🔺</span>피라미드
+          </button>
+          <button class="mode-tab" data-mode="3">
+            <span class="em">⚖️</span>평형 실험
+          </button>
+        </div>
+
+        <!-- 미션 진행 카드 -->
+        <div class="mission-card" id="missionCard">
+          <div class="mission-title" id="missionTypeTitle">미션 진행</div>
+          <div class="mission-desc" id="missionDescription">풀에서 시작하여 최상위 소비자 매로 끝나는 먹이사슬 하나를 완성하세요!</div>
+          <div class="mission-nav" id="missionNav">
+            <!-- 동적 버튼 생성 -->
+          </div>
+        </div>
+
+        <!-- 피드백 메시지 박스 -->
+        <div class="feedback-box" id="feedbackBox" style="display:none;"></div>
+
+        <!-- 시나리오 선택 영역 (모드 3에서만 활성화) -->
+        <div class="scenario-selector" id="scenarioSelector" style="display:none;">
+          <div class="ctrl-group-title">평형 시나리오 선택</div>
+          <button class="scenario-btn active" data-sc="A">🦗 메뚜기 폭증 시나리오</button>
+          <button class="scenario-btn" data-sc="B">🐸 개구리 전멸 시나리오</button>
+          <button class="scenario-btn" data-sc="C">☀️ 가뭄(식물 전멸) 시나리오</button>
+        </div>
+
+        <!-- 예측 버튼 그룹 (모드 3 미션에서 활성화) -->
+        <div class="prediction-box" id="predictionBox" style="display:none;">
+          <div class="prediction-title">🔮 결과 예측하기 (선택 후 실험 시작)</div>
+          <div class="prediction-row" data-species="🦗">
+            <span class="prediction-label">🦗 메뚜기 개체 수</span>
+            <div class="prediction-btns" data-sp="grasshopper">
+              <button class="pred-btn" data-val="up">▲</button>
+              <button class="pred-btn" data-val="down">▼</button>
+              <button class="pred-btn" data-val="flat">―</button>
+            </div>
+          </div>
+          <div class="prediction-row" data-species="🌾">
+            <span class="prediction-label">🌾 벼 개체 수</span>
+            <div class="prediction-btns" data-sp="rice">
+              <button class="pred-btn" data-val="up">▲</button>
+              <button class="pred-btn" data-val="down">▼</button>
+              <button class="pred-btn" data-val="flat">―</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 생물 토큰 팔레트 (드래그하여 캔버스에 추가) -->
+        <div class="palette-section" id="paletteSection">
+          <div class="palette-title">생물 카드 팔레트 (드래그 또는 터치하여 배치)</div>
+          <div class="palette-grid" id="paletteGrid">
+            <!-- 12종 카드가 동적으로 주입됨 -->
+          </div>
+        </div>
+
+        <!-- 우측 하단 공통 액션 패널 -->
+        <div class="action-panel">
+          <button class="action-btn" id="btnVerify">🏆 정답 검사하기</button>
+          <button class="action-btn secondary" id="btnNextScreen" style="display:none;">결과 보기 →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 결과 화면 ============ -->
+<div id="screenResult" class="screen result-screen">
+  <div style="font-size:72px;">🏆</div>
+  <h2 style="margin:8px 0; font-size:28px;">탐험 완료!</h2>
+  <div class="result-stars" id="resultStars"></div>
+  <div class="result-summary" id="resultSummary"></div>
+  <div class="result-actions">
+    <button class="fb-btn fb-btn-primary" id="btnRetry">다시 도전</button>
+    <button class="fb-btn fb-btn-primary" style="background:var(--bg-sec); color:var(--fg); border:1px solid var(--border);" id="btnBackToHub">모드 허브로</button>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   생태계 탐험대 — eco-web
+   순수 정적 SPA · localStorage만 사용 · 외부 의존성 0
+   ================================================================ */
+(function() {
+'use strict';
+
+/* ── 12종 생물 데이터베이스 ── */
+const SPECIES = [
+  { id: 'rice', name: '벼', emoji: '🌾', role: 'producer', level: 0 },
+  { id: 'clover', name: '토끼풀', emoji: '☘️', role: 'producer', level: 0 },
+  { id: 'grasshopper', name: '메뚜기', emoji: '🦗', role: 'consumer-1', level: 1 },
+  { id: 'rabbit', name: '토끼', emoji: '🐇', role: 'consumer-1', level: 1 },
+  { id: 'squirrel', name: '다람쥐', emoji: '🐿️', role: 'consumer-1', level: 1 },
+  { id: 'frog', name: '개구리', emoji: '🐸', role: 'consumer-2', level: 2 },
+  { id: 'sparrow', name: '참새', emoji: '🐦', role: 'consumer-2', level: 2 },
+  { id: 'snake', name: '뱀', emoji: '🐍', role: 'consumer-3', level: 3 },
+  { id: 'fox', name: '여우', emoji: '🦊', role: 'consumer-3', level: 3 },
+  { id: 'hawk', name: '매', emoji: '🦅', role: 'consumer-3', level: 3 },
+  { id: 'mushroom', name: '버섯', emoji: '🍄', role: 'decomposer', level: -1 },
+  { id: 'mold', name: '곰팡이', emoji: '🦠', role: 'decomposer', level: -1 },
+];
+const SPECIES_BY_ID = Object.fromEntries(SPECIES.map(s => [s.id, s]));
+
+// 올바른 먹고 먹히는 방향성 간선 정의 (preyId ➔ predatorId)
+const VALID_RELATIONS = [
+  ['rice', 'grasshopper'],
+  ['rice', 'sparrow'],
+  ['rice', 'rabbit'],
+  ['clover', 'grasshopper'],
+  ['clover', 'rabbit'],
+  ['clover', 'squirrel'],
+  ['grasshopper', 'frog'],
+  ['grasshopper', 'sparrow'],
+  ['squirrel', 'fox'],
+  ['squirrel', 'hawk'],
+  ['rabbit', 'fox'],
+  ['rabbit', 'hawk'],
+  ['frog', 'snake'],
+  ['sparrow', 'snake'],
+  ['sparrow', 'hawk'],
+  ['snake', 'hawk'],
+  ['snake', 'fox'],
+  // 분해자 연결 (모든 생물 ➔ 버섯 / 곰팡이)
+  ['rice', 'mushroom'], ['rice', 'mold'],
+  ['clover', 'mushroom'], ['clover', 'mold'],
+  ['grasshopper', 'mushroom'], ['grasshopper', 'mold'],
+  ['rabbit', 'mushroom'], ['rabbit', 'mold'],
+  ['squirrel', 'mushroom'], ['squirrel', 'mold'],
+  ['frog', 'mushroom'], ['frog', 'mold'],
+  ['sparrow', 'mushroom'], ['sparrow', 'mold'],
+  ['snake', 'mushroom'], ['snake', 'mold'],
+  ['fox', 'mushroom'], ['fox', 'mold'],
+  ['hawk', 'mushroom'], ['hawk', 'mold'],
+];
+
+// 관계 매핑 해시
+const RELATION_MAP = new Set(VALID_RELATIONS.map(r => `${r[0]}->${r[1]}`));
+
+/* ── 미션 리스트 정의 ── */
+const MISSIONS = {
+  // 모드 1 미션
+  m1: [
+    {
+      id: 'm1_1', title: '먹이사슬 완성',
+      desc: '풀(토끼풀)에서 시작해서 1차, 2차를 거쳐 3차 소비자(매)로 끝나는 일직선 먹이사슬 하나를 올바른 화살표 방향으로 완성하세요.',
+      verify: (placed, edges) => {
+        // 토끼풀(clover) -> (토끼/메뚜기/다람쥐) -> (여우/매/개구리/참새/뱀) -> 매(hawk) 형태의 올바른 체인이 있는지 확인
+        // DFS로 clover에서 hawk까지 연결 유효성 탐색
+        const adj = {};
+        edges.forEach(([u, v]) => {
+          if (!adj[u]) adj[u] = [];
+          adj[u].push(v);
+        });
+        const visited = new Set();
+        let found = false;
+        function dfs(node, path) {
+          if (node === 'hawk') {
+            if (path.length >= 4) { // clover, 1차, 2차(또는 3차), hawk 형태 (길이 4 이상)
+              found = true;
+            }
+            return;
+          }
+          if (visited.has(node)) return;
+          visited.add(node);
+          const nexts = adj[node] || [];
+          nexts.forEach(nxt => {
+            dfs(nxt, [...path, nxt]);
+          });
+          visited.delete(node);
+        }
+        dfs('clover', ['clover']);
+        return found;
+      }
+    },
+    {
+      id: 'm1_2', title: '참새의 먹이그물',
+      desc: '참새(🐦)를 중심으로 벼/메뚜기와 참새, 참새와 매/뱀 사이의 모든 먹고 먹히는 화살표 관계(벼➔참새, 메뚜기➔참새, 참새➔뱀, 참새➔매)를 완성하세요.',
+      verify: (placed, edges) => {
+        const edgeSet = new Set(edges.map(e => `${e[0]}->${e[1]}`));
+        const required = ['rice->sparrow', 'grasshopper->sparrow', 'sparrow->snake', 'sparrow->hawk'];
+        return required.every(r => edgeSet.has(r));
+      }
+    },
+    {
+      id: 'm1_3', title: '역할에 맞게 분류하기',
+      desc: '생물들을 역할에 맞게 화면의 5개 분류 상자(생산자, 1·2·3차 소비자, 분해자)로 드래그하여 알맞게 분류하세요. (각 상자에 1종 이상 배치)',
+      verify: (placed, edges) => {
+        // 각 상자별 드롭된 노드 체크
+        const boxes = document.querySelectorAll('.classify-box');
+        let allCorrect = true;
+        let count = 0;
+        boxes.forEach(box => {
+          const role = box.dataset.role;
+          const placedCards = box.querySelectorAll('.node-card');
+          if (placedCards.length === 0) { allCorrect = false; return; }
+          placedCards.forEach(card => {
+            count++;
+            const spId = card.dataset.id;
+            const sp = SPECIES_BY_ID[spId];
+            if (sp.role !== role) {
+              allCorrect = false;
+            }
+          });
+        });
+        return allCorrect && count >= 5;
+      }
+    }
+  ],
+  // 모드 2 미션
+  m2: [
+    {
+      id: 'm2_1', title: '생태 피라미드 완성',
+      desc: '벼, 토끼, 개구리, 매를 생태 피라미드의 알맞은 영양 단계(생산자 ➔ 1차 ➔ 2차 ➔ 3차)에 올바르게 드래그하여 쌓아 완성하세요.',
+      verify: (placed, edges) => {
+        const tiers = document.querySelectorAll('.pyramid-tier-slots');
+        let score = 0;
+        tiers.forEach(tier => {
+          const level = parseInt(tier.dataset.level);
+          const cards = tier.querySelectorAll('.node-card');
+          cards.forEach(card => {
+            const sp = SPECIES_BY_ID[card.dataset.id];
+            if (sp.level === level) score++;
+          });
+        });
+        return score >= 4; // 최소 4개 맞춤
+      }
+    },
+    {
+      id: 'm2_2', title: '피라미드 법칙 퀴즈',
+      desc: '일반적으로 생태 피라미드의 아래에서 위 단계로 갈수록 생물의 개체 수나 총에너지양은 어떻게 변할까요? 알맞은 설명을 고르세요.<br><br>1. 점점 늘어난다<br>2. 점점 줄어든다<br>3. 똑같이 유지된다',
+      verify: (placed, edges) => {
+        // 3지선다 선택형 퀴즈
+        const selected = document.querySelector('.m3-choice.selected');
+        return selected && selected.dataset.val === '2';
+      }
+    }
+  ],
+  // 모드 3 미션
+  m3: [
+    {
+      id: 'm3_1', title: '개구리 전멸의 영향 예측',
+      desc: '개구리가 전멸했을 때, 메뚜기와 벼의 개체 수 변화를 우측 패널에서 예측(▲/▼/―)한 다음 실험 시작 버튼을 눌러 평형 연쇄 결과를 확인하세요.',
+      verify: (placed, edges) => {
+        // 메뚜기: up(▲), 벼: down(▼) 예측 확인
+        const grassBtn = document.querySelector('.prediction-btns[data-sp="grasshopper"] .pred-btn.active');
+        const riceBtn = document.querySelector('.prediction-btns[data-sp="rice"] .pred-btn.active');
+        if (!grassBtn || !riceBtn) return false;
+        return grassBtn.dataset.val === 'up' && riceBtn.dataset.val === 'down';
+      }
+    }
+  ]
+};
+
+// 시나리오 연쇄 시뮬레이션 데이터
+const SCENARIOS = {
+  A: {
+    title: '메뚜기 폭증 시나리오',
+    steps: [
+      {
+        text: '날씨가 온화해져 메뚜기가 갑자기 엄청나게 늘어납니다.',
+        deltas: { grasshopper: 'up', frog: '', rice: '', hawk: '' }
+      },
+      {
+        text: '메뚜기가 늘어나자, 메뚜기가 먹는 벼가 급격히 줄어들고 개구리는 먹이가 풍부해져 늘어납니다.',
+        deltas: { grasshopper: 'up', frog: 'up', rice: 'down', hawk: '' }
+      },
+      {
+        text: '벼가 부족해져 메뚜기들이 굶기 시작하고, 늘어난 개구리가 메뚜기를 많이 잡아먹어 메뚜기가 줄어듭니다. 개구리가 많아지자 매도 늘어납니다.',
+        deltas: { grasshopper: 'down', frog: 'up', rice: 'down', hawk: 'up' }
+      },
+      {
+        text: '메뚜기가 줄어들자 벼가 다시 자라나기 시작하고, 개구리는 먹이가 줄어 감소합니다. 결국 생태계가 평형 상태로 돌아옵니다.',
+        deltas: { grasshopper: 'flat', frog: 'flat', rice: 'flat', hawk: 'flat' }
+      }
+    ]
+  },
+  B: {
+    title: '개구리 전멸 시나리오',
+    steps: [
+      {
+        text: '환경 오염으로 개구리가 생태계에서 완전히 사라집니다.',
+        deltas: { frog: 'down', grasshopper: '', rice: '', hawk: '' }
+      },
+      {
+        text: '개구리가 사라지자 천적이 없어진 메뚜기가 엄청나게 급증하고, 개구리를 먹던 매가 줄어듭니다.',
+        deltas: { frog: 'down', grasshopper: 'up', rice: '', hawk: 'down' }
+      },
+      {
+        text: '폭증한 메뚜기가 벼를 모두 갉아먹어 벼가 급감하고, 메뚜기 역시 먹이 부족으로 인해 대량으로 굶어 죽습니다.',
+        deltas: { frog: 'down', grasshopper: 'down', rice: 'down', hawk: 'down' }
+      },
+      {
+        text: '벼가 다시 서서히 자라나며, 시간이 흐름에 따라 외진 곳에서 개구리가 유입되거나 생태계가 새로운 안정을 찾으며 복구됩니다.',
+        deltas: { frog: 'flat', grasshopper: 'flat', rice: 'flat', hawk: 'flat' }
+      }
+    ]
+  },
+  C: {
+    title: '가뭄 시나리오',
+    steps: [
+      {
+        text: '심한 가뭄으로 비생물 환경 요소인 물이 부족해져 벼가 거의 다 마릅니다.',
+        deltas: { rice: 'down', grasshopper: '', frog: '', hawk: '' }
+      },
+      {
+        text: '생산자인 벼가 없어지자 먹이가 사라진 1차 소비자 메뚜기가 급격히 굶어 죽습니다.',
+        deltas: { rice: 'down', grasshopper: 'down', frog: '', hawk: '' }
+      },
+      {
+        text: '메뚜기가 사라지자 2차 소비자 개구리가 굶어 감소하고, 뒤이어 매도 굶어 줄어들며 생태계 전체가 위기에 빠집니다.',
+        deltas: { rice: 'down', grasshopper: 'down', frog: 'down', hawk: 'down' }
+      },
+      {
+        text: '비가 내려 다시 물이 풍부해지자 벼가 자라나며, 남은 생물들이 번식하여 점차 평형을 회복해 나갑니다.',
+        deltas: { rice: 'flat', grasshopper: 'flat', frog: 'flat', hawk: 'flat' }
+      }
+    ]
+  }
+};
+
+/* ── 앱 런타임 상태 ── */
+let state = {
+  mode: 1, // 1: 먹이그물, 2: 피라미드, 3: 평형
+  missionIdx: 0,
+  missionsCompleted: { m1_1: false, m1_2: false, m1_3: false, m2_1: false, m2_2: false, m3_1: false },
+  
+  // 모드 1 상태
+  placedNodes: {}, // id: { x, y }
+  edges: [], // [[fromId, toId]...]
+  
+  // 드래그/연결 도구 상태
+  connectMode: false,
+  eraserMode: false,
+  activeConnectSource: null,
+
+  // 시나리오 시뮬레이션 상태
+  activeScenario: 'A',
+  simulationStep: 0,
+  simulationInterval: null,
+  predictions: { grasshopper: null, rice: null }
+};
+
+/* ── 유틸 ── */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+/* ── 저장 / 불러오기 ── */
+const STORAGE_KEY = 'eco-web:v1';
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      missionsCompleted: state.missionsCompleted,
+      placedNodes: state.placedNodes,
+      edges: state.edges
+    }));
+  } catch(e) {}
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (saved.missionsCompleted) state.missionsCompleted = saved.missionsCompleted;
+    if (saved.placedNodes) state.placedNodes = saved.placedNodes;
+    if (saved.edges) state.edges = saved.edges;
+  } catch(e) {}
+}
+
+/* ── 공유 링크 ── */
+function parseShareLink() {
+  const hash = location.hash;
+  if (!hash.startsWith('#share=')) return;
+  try {
+    const payload = JSON.parse(decodeURIComponent(hash.slice(7)));
+    if (payload.v === 1 && payload.edges) {
+      state.edges = payload.edges;
+      state.placedNodes = payload.placedNodes || {};
+      state.mode = 1;
+    }
+  } catch(e) {}
+  history.replaceState(null, '', location.pathname);
+}
+
+/* ══════════════════════════════════════
+   모드 / 미션 화면 전환 및 셋업
+   ══════════════════════════════════════ */
+function switchMode(modeNum) {
+  state.mode = parseInt(modeNum);
+  state.missionIdx = 0;
+  
+  // 탭 활성화
+  $$('.mode-tab').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.mode) === state.mode);
+  });
+
+  // 미션 및 컨트롤 세팅
+  setupMissionUI();
+  resetTemporaryModes();
+  renderPalette();
+
+  // 모드별 캔버스 컴포넌트 토글
+  const placedCont = $('#placedNodesContainer');
+  const classifyZones = $('#classifyZones');
+  const pyramidZone = $('#pyramidZone');
+  const scenarioZone = $('#scenarioZone');
+  const canvasToolbar = $('#canvasToolbar');
+
+  // 기본 청소
+  placedCont.style.display = 'none';
+  classifyZones.style.display = 'none';
+  pyramidZone.style.display = 'none';
+  scenarioZone.style.display = 'none';
+  canvasToolbar.style.display = 'none';
+  $('#canvasSvg').style.display = 'none';
+  $('#predictionBox').style.display = 'none';
+  $('#scenarioSelector').style.display = 'none';
+  $('#paletteSection').style.display = 'flex';
+
+  if (state.mode === 1) {
+    placedCont.style.display = 'block';
+    canvasToolbar.style.display = 'flex';
+    $('#canvasSvg').style.display = 'block';
+    
+    // 미션 1-3일 때만 분류 상자 표시
+    const curMission = getActiveMission();
+    if (curMission && curMission.id === 'm1_3') {
+      classifyZones.style.display = 'grid';
+      canvasToolbar.style.display = 'none'; // 분류 미션 시 도구바 숨김
+    }
+    
+    renderPlacedNodes();
+    redrawConnections();
+  } else if (state.mode === 2) {
+    pyramidZone.style.display = 'flex';
+    const curMission = getActiveMission();
+    if (curMission && curMission.id === 'm2_2') {
+      // 퀴즈 미션인 경우 피라미드를 숨기고 퀴즈 전용 박스를 노출
+      pyramidZone.style.display = 'none';
+      $('#paletteSection').style.display = 'none';
+    }
+    renderPyramidSlots();
+  } else if (state.mode === 3) {
+    scenarioZone.style.display = 'flex';
+    $('#paletteSection').style.display = 'none';
+    $('#scenarioSelector').style.display = 'block';
+    
+    const curMission = getActiveMission();
+    if (curMission && curMission.id === 'm3_1') {
+      $('#predictionBox').style.display = 'block';
+    }
+    renderScenarioVisual();
+  }
+
+  hideFeedback();
+}
+
+function getActiveMission() {
+  const mList = MISSIONS['m' + state.mode];
+  return mList ? mList[state.missionIdx] : null;
+}
+
+function setupMissionUI() {
+  const mList = MISSIONS['m' + state.mode];
+  const nav = $('#missionNav');
+  nav.innerHTML = '';
+  
+  if (!mList) return;
+
+  mList.forEach((m, idx) => {
+    const isDone = state.missionsCompleted[m.id];
+    const btn = document.createElement('button');
+    btn.className = `mission-nav-btn ${idx === state.missionIdx ? 'active' : ''} ${isDone ? 'done' : ''}`;
+    btn.textContent = idx + 1;
+    btn.addEventListener('click', () => {
+      state.missionIdx = idx;
+      switchMode(state.mode); // 리셋 겸 재구축
+    });
+    nav.appendChild(btn);
+  });
+
+  const curMission = getActiveMission();
+  if (curMission) {
+    $('#missionDescription').innerHTML = curMission.desc;
+    
+    // 만약 피라미드 퀴즈라면 퀴즈 UI 주입
+    if (curMission.id === 'm2_2') {
+      $('#missionDescription').innerHTML += `
+        <div class="m3-choices" style="margin-top: 14px;">
+          <button class="m3-choice" data-val="1">1번</button>
+          <button class="m3-choice" data-val="2">2번</button>
+          <button class="m3-choice" data-val="3">3번</button>
+        </div>
+      `;
+      $$('.m3-choice').forEach(b => {
+        b.addEventListener('click', () => {
+          $$('.m3-choice').forEach(btn => btn.classList.remove('selected'));
+          b.classList.add('selected');
+        });
+      });
+    }
+  }
+
+  // 다음 스크린 버튼 제어
+  updateVerifyButtonText();
+}
+
+function updateVerifyButtonText() {
+  const allMissionsDone = Object.values(state.missionsCompleted).every(Boolean);
+  if (allMissionsDone) {
+    $('#btnNextScreen').style.display = 'block';
+  } else {
+    $('#btnNextScreen').style.display = 'none';
+  }
+}
+
+function resetTemporaryModes() {
+  state.connectMode = false;
+  state.eraserMode = false;
+  state.activeConnectSource = null;
+  $('#btnConnectMode').classList.remove('active');
+  $('#btnEraserMode').classList.remove('active');
+}
+
+/* ══════════════════════════════════════
+   모드 1: 먹이그물 공방 구현 (드래그, 연결)
+   ══════════════════════════════════════ */
+function renderPalette() {
+  const grid = $('#paletteGrid');
+  grid.innerHTML = '';
+  SPECIES.forEach(sp => {
+    // 생산자, 분해자, 소비자에 따라 필터링 할 수도 있지만 팔레트에 모두 표시
+    const isPlaced = !!state.placedNodes[sp.id];
+    
+    // 미션 1-3 (분류 미션) 시, 캔버스에 없는 물건만 팔레트에 노출
+    const card = document.createElement('div');
+    card.className = `palette-item ${isPlaced ? 'placed' : ''}`;
+    card.innerHTML = `<span style="font-size:24px;">${sp.emoji}</span><span>${sp.name}</span>`;
+    
+    // 드래그 지원
+    card.draggable = !isPlaced;
+    card.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', sp.id);
+    });
+
+    // 클릭 시 바로 배치하는 대체 수단도 함께 제공 (접근성)
+    card.addEventListener('click', () => {
+      if (!isPlaced) {
+        placeNodeToCanvas(sp.id);
+      }
+    });
+
+    grid.appendChild(card);
+  });
+}
+
+// 캔버스에 노드 임의 배치 (클릭 배치 시)
+function placeNodeToCanvas(id) {
+  const view = $('#canvasViewport');
+  const w = view.clientWidth;
+  const h = view.clientHeight;
+  const x = Math.max(20, Math.min(w - 100, Math.random() * (w - 120) + 10));
+  const y = Math.max(80, Math.min(h - 120, Math.random() * (h - 180) + 70));
+  state.placedNodes[id] = { x, y };
+  renderPalette();
+  renderPlacedNodes();
+  saveState();
+}
+
+function renderPlacedNodes() {
+  const container = $('#placedNodesContainer');
+  container.innerHTML = '';
+
+  const curMission = getActiveMission();
+  const isClassifyMode = curMission && curMission.id === 'm1_3';
+
+  // 만약 분류 미션인데 placedNodes가 비어 있다면 초기화 (기본 배치)
+  if (isClassifyMode && Object.keys(state.placedNodes).length === 0) {
+    // 화면 상단에 벼, 메뚜기, 개구리, 매, 버섯 등을 드래그할 수 있게 팔레트 형식 대신 캔버스 탑에 배치
+    const initialClassificationItems = ['rice', 'clover', 'grasshopper', 'rabbit', 'frog', 'hawk', 'mushroom'];
+    initialClassificationItems.forEach((id, i) => {
+      state.placedNodes[id] = { x: 30 + i * 90, y: 80 };
+    });
+  }
+
+  Object.entries(state.placedNodes).forEach(([id, pos]) => {
+    const sp = SPECIES_BY_ID[id];
+    const card = document.createElement('div');
+    card.className = `node-card ${state.activeConnectSource === id ? 'selected' : ''}`;
+    card.dataset.id = id;
+    card.style.left = `${pos.x}px`;
+    card.style.top = `${pos.y}px`;
+
+    // 역할 색상 표시 도트
+    let dotColor = 'var(--role-producer)';
+    if (sp.role === 'consumer-1') dotColor = 'var(--role-consumer-1)';
+    if (sp.role === 'consumer-2') dotColor = 'var(--role-consumer-2)';
+    if (sp.role === 'consumer-3') dotColor = 'var(--role-consumer-3)';
+    if (sp.role === 'decomposer') dotColor = 'var(--role-decomposer)';
+    card.innerHTML = `
+      <div class="node-role-dot" style="background:${dotColor}"></div>
+      <div class="node-emoji">${sp.emoji}</div>
+      <div class="node-name">${sp.name}</div>
+    `;
+
+    // Pointer 드래그 이벤트 바인딩
+    let isDragging = false;
+    let startX, startY;
+    let origX, origY;
+
+    card.addEventListener('pointerdown', (e) => {
+      if (state.connectMode) {
+        // 연결 로직
+        handleConnectTap(id);
+        return;
+      }
+      if (state.eraserMode) {
+        // 노드 제거는 하지 않고 노드 연결만 지움
+        return;
+      }
+
+      isDragging = true;
+      card.setPointerCapture(e.pointerId);
+      startX = e.clientX;
+      startY = e.clientY;
+      origX = parseInt(card.style.left);
+      origY = parseInt(card.style.top);
+    });
+
+    card.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      const view = $('#canvasViewport');
+      const newX = Math.max(0, Math.min(view.clientWidth - 84, origX + dx));
+      const newY = Math.max(0, Math.min(view.clientHeight - 106, origY + dy));
+      
+      card.style.left = `${newX}px`;
+      card.style.top = `${newY}px`;
+      state.placedNodes[id] = { x: newX, y: newY };
+      
+      // 실시간으로 연결 선 다시 그리기
+      if (!isClassifyMode) {
+        redrawConnections();
+      }
+    });
+
+    card.addEventListener('pointerup', (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      card.releasePointerCapture(e.pointerId);
+      saveState();
+
+      // 분류 미션일 때 박스 안으로 들어갔는지 판정
+      if (isClassifyMode) {
+        checkClassificationDrop(card);
+      }
+    });
+
+    container.appendChild(card);
+  });
+}
+
+// HTML5 드래그앤드롭 수신 (팔레트 ➔ 캔버스)
+const viewport = $('#canvasViewport');
+viewport.addEventListener('dragover', (e) => {
+  e.preventDefault();
+});
+viewport.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const id = e.dataTransfer.getData('text/plain');
+  if (id && SPECIES_BY_ID[id] && !state.placedNodes[id]) {
+    const rect = viewport.getBoundingClientRect();
+    const x = Math.max(0, Math.min(rect.width - 84, e.clientX - rect.left - 42));
+    const y = Math.max(0, Math.min(rect.height - 106, e.clientY - rect.top - 53));
+    state.placedNodes[id] = { x, y };
+    renderPalette();
+    renderPlacedNodes();
+    redrawConnections();
+    saveState();
+  }
+});
+
+/* ── 분류 상자 드롭 확인 ── */
+function checkClassificationDrop(cardEl) {
+  const rect = cardEl.getBoundingClientRect();
+  const cardCenterX = rect.left + rect.width / 2;
+  const cardCenterY = rect.top + rect.height / 2;
+
+  const boxes = $$('.classify-box');
+  let droppedBox = null;
+
+  boxes.forEach(box => {
+    const boxRect = box.getBoundingClientRect();
+    if (
+      cardCenterX >= boxRect.left && cardCenterX <= boxRect.right &&
+      cardCenterY >= boxRect.top && cardCenterY <= boxRect.bottom
+    ) {
+      droppedBox = box;
+    }
+  });
+
+  if (droppedBox) {
+    // 해당 박스로 DOM 이동시킴
+    // absolute 위치 대신 flex 자식으로 넣거나, 상자 안에 노드를 append
+    droppedBox.appendChild(cardEl);
+    cardEl.style.position = 'static'; // static으로 변경하여 박스 레이아웃 정렬
+    // placedNodes에서 제거하여 일반 드래그 대상에서 제외하거나 좌표를 정량화
+    delete state.placedNodes[cardEl.dataset.id];
+  } else {
+    // 캔버스 자유 영역으로 복귀
+    if (!state.placedNodes[cardEl.dataset.id]) {
+      // 만약 분류함에 들어갔다가 다시 나온 거라면
+      const viewportRect = viewport.getBoundingClientRect();
+      const x = Math.max(20, cardCenterX - viewportRect.left - 42);
+      const y = Math.max(80, cardCenterY - viewportRect.top - 53);
+      state.placedNodes[cardEl.dataset.id] = { x, y };
+      renderPlacedNodes();
+    }
+  }
+  renderPalette();
+}
+
+/* ── 연결 선 드로잉 및 처리 ── */
+function handleConnectTap(id) {
+  if (!state.activeConnectSource) {
+    state.activeConnectSource = id;
+    showToast('선택한 생물에서 먹이를 먹는 대상(포식자)을 클릭하세요.');
+    renderPlacedNodes();
+  } else {
+    const source = state.activeConnectSource;
+    state.activeConnectSource = null;
+    renderPlacedNodes();
+
+    if (source === id) return; // 자신과 연결 불가
+
+    // 방향 확인: 먹힘(source) ➔ 먹음(id)
+    // 에너지는 먹히는 것 -> 먹는 것
+    const key = `${source}->${id}`;
+    const reverseKey = `${id}->${source}`;
+
+    // 반대 방향 연결 시도 필터
+    if (RELATION_MAP.has(reverseKey)) {
+      showToast('⚠️ 화살표 방향 오류! 에너지는 먹히는 생물 ➔ 먹는 생물로 흘러가므로 방향이 반대여야 합니다.', 'no');
+      triggerNodeShake(id);
+      return;
+    }
+
+    // 유효 관계 검사
+    if (!RELATION_MAP.has(key)) {
+      showToast(`⚠️ ${SPECIES_BY_ID[source].name}와 ${SPECIES_BY_ID[id].name}은 직접 먹고 먹히는 관계가 아닙니다.`, 'no');
+      triggerNodeShake(id);
+      return;
+    }
+
+    // 이미 존재 검사
+    const alreadyExists = state.edges.some(e => e[0] === source && e[1] === id);
+    if (alreadyExists) {
+      showToast('이미 연결되어 있습니다.');
+      return;
+    }
+
+    // 통과: 화살표 추가
+    state.edges.push([source, id]);
+    redrawConnections();
+    saveState();
+  }
+}
+
+function triggerNodeShake(id) {
+  const card = document.querySelector(`.node-card[data-id="${id}"]`);
+  if (card) {
+    card.classList.add('pyramid-shake');
+    setTimeout(() => card.classList.remove('pyramid-shake'), 500);
+  }
+}
+
+function redrawConnections() {
+  const g = $('#svgConnections');
+  g.innerHTML = '';
+
+  state.edges.forEach(([fromId, toId], idx) => {
+    const fromPos = state.placedNodes[fromId];
+    const toPos = state.placedNodes[toId];
+
+    if (!fromPos || !toPos) return;
+
+    // 카드의 중심 좌표
+    const x1 = fromPos.x + 42;
+    const y1 = fromPos.y + 53;
+    const x2 = toPos.x + 42;
+    const y2 = toPos.y + 53;
+
+    // 선 그리기
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x1);
+    line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2);
+    line.setAttribute('y2', y2);
+    line.setAttribute('stroke', 'var(--fg-muted)');
+    line.setAttribute('stroke-width', '3');
+    line.setAttribute('marker-end', 'url(#arrow)');
+    line.style.cursor = state.eraserMode ? 'pointer' : 'default';
+    line.style.pointerEvents = 'auto';
+
+    // 지우개 모드 지원
+    line.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state.eraserMode) {
+        state.edges.splice(idx, 1);
+        redrawConnections();
+        saveState();
+      }
+    });
+
+    g.appendChild(line);
+  });
+}
+
+/* ══════════════════════════════════════
+   모드 2: 피라미드 쌓기 구현
+   ══════════════════════════════════════ */
+function renderPyramidSlots() {
+  const tiers = $$('.pyramid-tier-slots');
+  tiers.forEach(tier => {
+    tier.innerHTML = '';
+    
+    // HTML5 dragover/drop 바인딩
+    tier.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      tier.parentElement.classList.add('drag-over');
+    });
+    tier.addEventListener('dragleave', () => {
+      tier.parentElement.classList.remove('drag-over');
+    });
+    tier.addEventListener('drop', (e) => {
+      e.preventDefault();
+      tier.parentElement.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain');
+      if (id && SPECIES_BY_ID[id]) {
+        dropCardToPyramidTier(id, parseInt(tier.dataset.level));
+      }
+    });
+  });
+
+  // 배치 완료된 카드들 렌더링
+  // 피라미드에 배치된 카드 목록은 state.pyramid.layerOf 형태로 동적 확인
+  // 여기서는 영양 등급 분류에 맞게 카드를 렌더링
+  SPECIES.forEach(sp => {
+    // 퀴즈/피라미드 미션 진행 생물만 (벼, 토끼, 개구리, 매)
+    const allowed = ['rice', 'rabbit', 'frog', 'hawk'];
+    if (!allowed.includes(sp.id)) return;
+
+    // 만약 피라미드에 들어가지 않았다면 팔레트에만 남아있게 됨
+    // tier DOM을 찾아서 자식으로 넣어줌
+  });
+}
+
+function dropCardToPyramidTier(id, targetLevel) {
+  const sp = SPECIES_BY_ID[id];
+  const container = document.querySelector(`.pyramid-tier-slots[data-level="${targetLevel}"]`);
+  
+  // 이미 존재하는지 확인
+  const existing = container.querySelector(`.node-card[data-id="${id}"]`);
+  if (existing) return;
+
+  // 오개념 경고 체크: 상위 영양 단계에 하위보다 많은 종류/개체가 쌓일 때
+  // 초등 과정: "생산자(0)가 가장 많고, 최상위 소비자(3)가 가장 적어야 함"
+  // targetLevel이 높을수록(3) 개수가 적어야 하며, targetLevel이 낮을수록(0) 개수가 많아야 한다.
+  // 배치 후의 각 층 개수 계산
+  const tempCounts = [0, 0, 0, 0];
+  const tiers = $$('.pyramid-tier-slots');
+  tiers.forEach(t => {
+    const lvl = parseInt(t.dataset.level);
+    let count = t.querySelectorAll('.node-card').length;
+    if (lvl === targetLevel) count++; // 가상 증가
+    tempCounts[lvl] = count;
+  });
+
+  // 오개념 조건: 상위 레벨의 개체수가 하위 레벨의 개체수보다 크면 비평형!
+  let violates = false;
+  for (let i = 0; i < 3; i++) {
+    if (tempCounts[i] > 0 && tempCounts[i+1] > tempCounts[i]) {
+      violates = true;
+      break;
+    }
+  }
+
+  if (violates) {
+    showToast('⚠️ 경고: 상위 소비자의 수(양)가 먹이인 하위 단계 생물보다 많으면 피라미드가 무너져 생태계가 유지될 수 없어요!', 'no');
+    // 흔들림 연출
+    const py = $('#pyramidContainer');
+    py.classList.add('pyramid-shake');
+    setTimeout(() => py.classList.remove('pyramid-shake'), 500);
+  }
+
+  // 카드 DOM 생성 후 티어에 주입
+  const card = document.createElement('div');
+  card.className = 'node-card';
+  card.dataset.id = id;
+  card.draggable = true;
+  card.addEventListener('dragstart', (e) => {
+    e.dataTransfer.setData('text/plain', id);
+    // 드래그 시 티어에서 일단 뗌
+    setTimeout(() => card.remove(), 0);
+  });
+
+  card.innerHTML = `
+    <div class="node-emoji">${sp.emoji}</div>
+    <div class="node-name">${sp.name}</div>
+  `;
+  container.appendChild(card);
+}
+
+/* ══════════════════════════════════════
+   모드 3: 평형 시뮬레이션 구현 (예측 ➔ 확인)
+   ══════════════════════════════════════ */
+function renderScenarioVisual() {
+  const grid = $('#scGrid');
+  grid.innerHTML = '';
+  
+  // 시뮬레이션 대표 4종 (벼, 메뚜기, 개구리, 매)
+  const list = [
+    { id: 'rice', name: '벼', emoji: '🌾', role: '생산자' },
+    { id: 'grasshopper', name: '메뚜기', emoji: '🦗', role: '1차 소비자' },
+    { id: 'frog', name: '개구리', emoji: '🐸', role: '2차 소비자' },
+    { id: 'hawk', name: '매', emoji: '🦅', role: '3차 소비자' }
+  ];
+
+  list.forEach(sp => {
+    const card = document.createElement('div');
+    card.className = 'sc-card';
+    card.id = `scCard_${sp.id}`;
+    card.innerHTML = `
+      <div class="sc-emoji">${sp.emoji}</div>
+      <div class="sc-info">
+        <div class="sc-name">${sp.name}</div>
+        <div class="sc-role">${sp.role}</div>
+      </div>
+      <div class="sc-delta-badge" id="scBadge_${sp.id}" style="display:none;"></div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function startScenarioSimulation() {
+  const scKey = state.activeScenario;
+  const sc = SCENARIOS[scKey];
+  if (!sc) return;
+
+  // 인터벌 리셋
+  if (state.simulationInterval) clearInterval(state.simulationInterval);
+  state.simulationStep = 0;
+
+  // 피드백 초기화
+  showFeedback('👀 실험 관찰 중...', 'ok');
+
+  runSimulationStep();
+  state.simulationInterval = setInterval(() => {
+    state.simulationStep++;
+    if (state.simulationStep >= sc.steps.length) {
+      clearInterval(state.simulationInterval);
+      state.simulationInterval = null;
+      finishScenarioSimulation();
+    } else {
+      runSimulationStep();
+    }
+  }, 4500);
+}
+
+function runSimulationStep() {
+  const scKey = state.activeScenario;
+  const sc = SCENARIOS[scKey];
+  const step = sc.steps[state.simulationStep];
+
+  // 지문 표시
+  showFeedback(`<strong>[단계 ${state.simulationStep + 1}]</strong> ${step.text}`, 'ok');
+
+  // 개체 수 증감 배지 연출
+  Object.entries(step.deltas).forEach(([spId, delta]) => {
+    const card = $(`#scCard_${spId}`);
+    const badge = $(`#scBadge_${spId}`);
+    if (!card || !badge) return;
+
+    card.className = 'sc-card';
+    badge.style.display = 'none';
+
+    if (delta === 'up') {
+      card.classList.add('delta-up');
+      badge.style.display = 'flex';
+      badge.className = 'sc-delta-badge up';
+      badge.textContent = '▲';
+    } else if (delta === 'down') {
+      card.classList.add('delta-down');
+      badge.style.display = 'flex';
+      badge.className = 'sc-delta-badge down';
+      badge.textContent = '▼';
+    } else if (delta === 'flat') {
+      badge.style.display = 'flex';
+      badge.className = 'sc-delta-badge';
+      badge.style.background = 'var(--eco-accent)';
+      badge.textContent = '✓'; // 평형 회복 표시
+    }
+  });
+}
+
+function finishScenarioSimulation() {
+  const curMission = getActiveMission();
+  if (curMission && curMission.id === 'm3_1') {
+    // 미션 완료 판정
+    // 사용자가 메뚜기(up), 벼(down) 예측했는지 비교
+    const grassVal = document.querySelector('.prediction-btns[data-sp="grasshopper"] .pred-btn.active')?.dataset.val;
+    const riceVal = document.querySelector('.prediction-btns[data-sp="rice"] .pred-btn.active')?.dataset.val;
+
+    if (grassVal === 'up' && riceVal === 'down') {
+      showFeedback('🎉 정답입니다! 예측이 정확히 맞았어요. 개구리가 사라지면 메뚜기가 늘어나고 결국 벼가 줄어들게 됩니다. 이후 시간이 흐르며 생태계는 다시 균형을 찾으려 조율됩니다.', 'ok');
+      state.missionsCompleted['m3_1'] = true;
+      setupMissionUI();
+      saveState();
+    } else {
+      showFeedback('❌ 예측 결과가 빗나갔어요. 개구리(천적)가 사라지면 메뚜기(먹이)는 늘어나고(▲), 메뚜기가 많아져 벼는 줄어들게(▼) 됩니다. 다시 예측하고 도전해 보세요!', 'no');
+    }
+  } else {
+    showFeedback('🍀 실험 관찰 완료! 생물이 일시적으로 증감해도 결국 시간이 흐르며 평형(균형) 상태로 안정화됩니다.', 'ok');
+  }
+}
+
+/* ══════════════════════════════════════
+   피드백 및 결과 관리
+   ══════════════════════════════════════ */
+function showFeedback(text, type = 'ok') {
+  const fb = $('#feedbackBox');
+  fb.style.display = 'block';
+  fb.className = `feedback-box ${type}`;
+  fb.innerHTML = text;
+}
+function hideFeedback() {
+  $('#feedbackBox').style.display = 'none';
+}
+
+function verifyCurrentMission() {
+  const curMission = getActiveMission();
+  if (!curMission) return;
+
+  if (state.mode === 1) {
+    const isOk = curMission.verify(state.placedNodes, state.edges);
+    if (isOk) {
+      showFeedback('🎉 미션 성공! 완벽하게 생물들의 먹고 먹히는 관계를 파악하고 연결했어요.', 'ok');
+      state.missionsCompleted[curMission.id] = true;
+      setupMissionUI();
+      saveState();
+    } else {
+      showFeedback('❌ 아직 조건에 맞지 않습니다. 화살표 방향(먹히는 생물 ➔ 먹는 생물)과 관계가 제대로 이어졌는지 다시 한번 확인해 보세요.', 'no');
+    }
+  } else if (state.mode === 2) {
+    const isOk = curMission.verify();
+    if (isOk) {
+      showFeedback('🎉 미션 성공! 영양 단계를 올바르게 배치하여 생태 피라미드를 정교하게 쌓았습니다.', 'ok');
+      state.missionsCompleted[curMission.id] = true;
+      setupMissionUI();
+      saveState();
+    } else {
+      showFeedback('❌ 분류가 잘못되었거나 문제를 풀지 않았습니다. 아래 단계가 가장 많고 위로 갈수록 좁아지는 생태피라미드의 구조에 맞게 다시 배치하세요.', 'no');
+    }
+  } else if (state.mode === 3) {
+    // 평형 시나리오는 실험 재생 후에 자동 판정
+    startScenarioSimulation();
+  }
+}
+
+function showResultScreen() {
+  showScreen('screenResult');
+  const score = Object.values(state.missionsCompleted).filter(Boolean).length;
+  const stars = score >= 6 ? 3 : score >= 4 ? 2 : score >= 1 ? 1 : 0;
+  
+  $('#resultStars').textContent = '⭐'.repeat(stars);
+  let summary = `<strong>생태계 탐험 완료 보고서</strong><br><br>`;
+  summary += `① 먹이그물 사슬 잇기: ${state.missionsCompleted.m1_1 ? '성공 ✓' : '미완료'}<br>`;
+  summary += `② 참새의 먹이그물 완성: ${state.missionsCompleted.m1_2 ? '성공 ✓' : '미완료'}<br>`;
+  summary += `③ 생산자·소비자 분류: ${state.missionsCompleted.m1_3 ? '성공 ✓' : '미완료'}<br>`;
+  summary += `④ 생태 피라미드 완공: ${state.missionsCompleted.m2_1 ? '성공 ✓' : '미완료'}<br>`;
+  summary += `⑤ 피라미드 퀴즈 해결: ${state.missionsCompleted.m2_2 ? '성공 ✓' : '미완료'}<br>`;
+  summary += `⑥ 평형 연쇄 변화 예측: ${state.missionsCompleted.m3_1 ? '성공 ✓' : '미완료'}<br><br>`;
+  summary += `숲속 생태계는 그물망처럼 얽혀 있어 **어느 한 생물만 변해도 모두 영향을 받으며**, 결국 시간이 지나면 **다시 스스로 평형(균형)**을 회복한다는 위대한 법칙을 배웠습니다!`;
+
+  $('#resultSummary').innerHTML = summary;
+}
+
+/* ══════════════════════════════════════
+   초기화 및 이벤트 연결
+   ══════════════════════════════════════ */
+function init() {
+  loadState();
+  parseShareLink();
+
+  // 시작 버튼
+  $('#btnStart').addEventListener('click', () => {
+    showScreen('screenExplore');
+    switchMode(1); // 먹이그물부터 시작
+  });
+
+  // 모드 탭 이동
+  $$('.mode-tab').forEach(b => {
+    b.addEventListener('click', () => {
+      if (state.simulationInterval) {
+        clearInterval(state.simulationInterval);
+        state.simulationInterval = null;
+      }
+      switchMode(b.dataset.mode);
+    });
+  });
+
+  // 연결 / 지우개 / 초기화 도구
+  $('#btnConnectMode').addEventListener('click', () => {
+    state.eraserMode = false;
+    $('#btnEraserMode').classList.remove('active');
+    state.connectMode = !state.connectMode;
+    $('#btnConnectMode').classList.toggle('active', state.connectMode);
+    state.activeConnectSource = null;
+    renderPlacedNodes();
+  });
+  $('#btnEraserMode').addEventListener('click', () => {
+    state.connectMode = false;
+    $('#btnConnectMode').classList.remove('active');
+    state.eraserMode = !state.eraserMode;
+    $('#btnEraserMode').classList.toggle('active', state.eraserMode);
+    state.activeConnectSource = null;
+    renderPlacedNodes();
+    redrawConnections();
+  });
+  $('#btnClearCanvas').addEventListener('click', () => {
+    if (confirm('캔버스를 처음 상태로 초기화할까요?')) {
+      state.placedNodes = {};
+      state.edges = [];
+      renderPalette();
+      renderPlacedNodes();
+      redrawConnections();
+      saveState();
+    }
+  });
+
+  // 정답 검사
+  $('#btnVerify').addEventListener('click', verifyCurrentMission);
+
+  // 결과 화면 이동
+  $('#btnNextScreen').addEventListener('click', showResultScreen);
+
+  // 다시 도전
+  $('#btnRetry').addEventListener('click', () => {
+    state.missionsCompleted = { m1_1: false, m1_2: false, m1_3: false, m2_1: false, m2_2: false, m3_1: false };
+    saveState();
+    showScreen('screenExplore');
+    switchMode(1);
+  });
+  $('#btnBackToHub').addEventListener('click', () => {
+    showScreen('screenExplore');
+    switchMode(1);
+  });
+
+  // 시나리오 버튼 바인딩
+  $$('.scenario-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $$('.scenario-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.activeScenario = btn.dataset.sc;
+      renderScenarioVisual();
+    });
+  });
+
+  // 예측 선택 버튼 바인딩
+  $$('.prediction-row').forEach(row => {
+    const sp = row.querySelector('.prediction-btns').dataset.sp;
+    row.querySelectorAll('.pred-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        row.querySelectorAll('.pred-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.predictions[sp] = btn.dataset.val;
+      });
+    });
+  });
+
+  // 공유 기능 (vives-share)
+  window.shareCurrentPage = function() {
+    const payload = JSON.stringify({ v: 1, edges: state.edges, placedNodes: state.placedNodes });
+    const url = location.origin + location.pathname + '#share=' + encodeURIComponent(payload);
+    if (navigator.share) {
+      navigator.share({ title: '생태계 탐험대 — 내가 만든 먹이그물', url });
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+      showToast('공유 링크가 클립보드에 복사되었습니다.');
+    }
+  };
+
+  function showToast(msg) {
+    const el = document.createElement('div');
+    el.style.position = 'fixed';
+    el.style.bottom = '20px';
+    el.style.left = '50%';
+    el.style.transform = 'translateX(-50%)';
+    el.style.background = 'rgba(0,0,0,0.8)';
+    el.style.color = '#fff';
+    el.style.padding = '8px 16px';
+    el.style.borderRadius = '20px';
+    el.style.fontSize = '12px';
+    el.style.zIndex = '9999';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2500);
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+})();
+</script>
+</body>
+</html>
