@@ -345,7 +345,7 @@
 
 <!-- 플로팅 크롬(홈·공유)은 app-shell.js가 주입 — 음소거 버튼은 크롬으로 끌어올려짐 -->
 <div class="app-actions">
-  <button class="overlay-btn" id="muteBtn" onclick="toggleMute()" title="소리 켜기/끄기" aria-label="소리 켜기/끄기" aria-pressed="false">🔊</button>
+  <button class="overlay-btn" id="muteBtn" onclick="toggleMute()" title="소리 켜기/끄기" aria-label="소리 켜기/끄기" aria-pressed="false"></button>
 </div>
 
 <div id="ssToast"></div>
@@ -533,11 +533,15 @@ function sfx(type){
     case 'wrong': tone(233,0.18,'sine',0.13,0); tone(185,0.22,'sine',0.13,0.13); break;
   }
 }
+const MUTE_ICON_ON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+const MUTE_ICON_OFF = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>';
+function syncMuteBtn(){
+  const b=document.getElementById('muteBtn');
+  if(b){ b.innerHTML = progress.muted ? MUTE_ICON_OFF : MUTE_ICON_ON; b.setAttribute('aria-pressed', String(progress.muted)); }
+}
 function toggleMute(){
   progress.muted = !progress.muted; save();
-  const b=document.getElementById('muteBtn');
-  b.textContent = progress.muted ? '🔇' : '🔊';
-  b.setAttribute('aria-pressed', String(progress.muted));
+  syncMuteBtn();
   if(!progress.muted) sfx('move');
 }
 
@@ -1050,7 +1054,7 @@ function startExplore(){
 }
 
 /* ════════════════════ 초기화 ════════════════════ */
-(function(){ const b=document.getElementById('muteBtn'); b.textContent = progress.muted ? '🔇' : '🔊'; b.setAttribute('aria-pressed', String(progress.muted)); })();
+syncMuteBtn();
 buildConcept();
 renderSplitGrid();
 renderMakeGrid();
