@@ -2,6 +2,7 @@
  * seo-injector.js — Runtime SEO tag injection for eduin VIVES sub-apps
  * Fetches /apps.json (cached in sessionStorage) and injects Twitter Card,
  * Open Graph, canonical, and JSON-LD structured data for the current page.
+ * Also replaces leading emoji in h1.app-title with the matching Lucide icon.
  *
  * Usage: <script src="/common/seo-injector.js" defer></script>
  */
@@ -45,29 +46,21 @@
   /* ── path matching ──────────────────────────────── */
 
   function normalizePath(p) {
-    // Remove trailing index.html for comparison
     return (p || '').replace(/index\.html$/, '').replace(/\/$/, '') || '/';
   }
 
   function matchApp(apps, pathname) {
     var normalised = normalizePath(pathname);
-
-    // 1) exact match on href
     for (var i = 0; i < apps.length; i++) {
       if (apps[i].href === pathname) return apps[i];
     }
-
-    // 2) normalised match (handles /app/ vs /app/index.html)
     for (var j = 0; j < apps.length; j++) {
       if (normalizePath(apps[j].href) === normalised) return apps[j];
     }
-
-    // 3) prefix match (e.g. /scoring-table/ matches /scoring-table/index.html)
     for (var k = 0; k < apps.length; k++) {
       var href = apps[k].href;
       if (href && pathname.indexOf(normalizePath(href)) === 0) return apps[k];
     }
-
     return null;
   }
 
@@ -76,24 +69,71 @@
   function fetchAppsData(callback) {
     try {
       var cached = sessionStorage.getItem(CACHE_KEY);
-      if (cached) {
-        callback(JSON.parse(cached));
-        return;
-      }
+      if (cached) { callback(JSON.parse(cached)); return; }
     } catch (e) { /* ignore */ }
 
     var xhr = new XMLHttpRequest();
     xhr.open('GET', '/apps.json', true);
     xhr.onreadystatechange = function () {
-      if (xhr.readyState !== 4) return;
-      if (xhr.status !== 200) return;
+      if (xhr.readyState !== 4 || xhr.status !== 200) return;
       try {
         var data = JSON.parse(xhr.responseText);
-        try { sessionStorage.setItem(CACHE_KEY, xhr.responseText); } catch (e) { /* ignore */ }
+        try { sessionStorage.setItem(CACHE_KEY, xhr.responseText); } catch (e) {}
         callback(data);
-      } catch (e) { /* ignore parse error */ }
+      } catch (e) {}
     };
     xhr.send();
+  }
+
+  /* ── app-title Lucide icon injection ────────────── */
+
+  function stripLeadingEmoji(text) {
+    // 이모지(유니코드 멀티바이트 포함) + 앞쪽 공백 제거
+    return text.replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{FE00}-\u{FEFF}\uFE0F\u200D\s]+/u, '').trim();
+  }
+
+  var _lucideLoading = false;
+  var _lucideCallbacks = [];
+
+  function ensureLucide(cb) {
+    if (window.lucide) { cb(); return; }
+    _lucideCallbacks.push(cb);
+    if (_lucideLoading) return;
+    _lucideLoading = true;
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js';
+    s.onload = function () {
+      _lucideLoading = false;
+      _lucideCallbacks.forEach(function (fn) { try { fn(); } catch (e) {} });
+      _lucideCallbacks = [];
+    };
+    document.head.appendChild(s);
+  }
+
+  function injectAppTitleIcon(app) {
+    if (!app.lucideIcon) return;
+    // immersive 앱 (대형 캔버스/지도/3D 전용)은 스킵
+    if (document.body.getAttribute('data-shell') === 'immersive') return;
+
+    var h1 = document.querySelector('h1.app-title');
+    if (!h1) return;
+
+    var iconName = app.lucideIcon;
+
+    // h1 내 <span> 태그 (강조 컬러 텍스트) 보존
+    var existingSpan = h1.querySelector('span');
+    var spanHtml = existingSpan ? existingSpan.outerHTML : null;
+
+    // 이모지 제거한 순수 텍스트 추출
+    var rawText = h1.innerHTML.replace(/<span[^>]*>.*?<\/span>/gi, '').replace(/<[^>]+>/g, '');
+    var cleanedText = stripLeadingEmoji(rawText);
+
+    var iconEl = '<i data-lucide="' + iconName + '" class="app-title-icon" aria-hidden="true"></i>';
+    h1.innerHTML = iconEl + ' ' + cleanedText + (spanHtml ? ' ' + spanHtml : '');
+
+    ensureLucide(function () {
+      window.lucide.createIcons({ nodes: [h1] });
+    });
   }
 
   /* ── injection logic ────────────────────────────── */
@@ -151,6 +191,9 @@
       script.textContent = JSON.stringify(ld);
       document.head.appendChild(script);
     }
+
+    // ── App title Lucide icon (비-immersive 앱 헤더) ──
+    injectAppTitleIcon(app);
   }
 
   /* ── entry point (defer-compatible) ─────────────── */
