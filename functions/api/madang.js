@@ -33,6 +33,21 @@ const EXPIRY_PRESETS = [1, 3, 7, 14, 28];      // 자동종료 기간(일) 프�
 const EXPIRY_DEFAULT_DAYS = 7;                 // 기본 1주일
 const DAY_MS = 86400000;
 const BG_KEYS = ['whiteboard', 'chalkboard', 'dark', 'dots', 'grid', 'kraft'];  // 배경 패턴 키
+const MOD_TIMEOUT_MS = 2500;                   // 검열 API 타임아웃(초과 시 통과 + 사후검열)
+
+// 로컬 금칙어 프리필터 — 명백한 비속어를 API 왕복 없이 즉시 차단(1차 방어선). 검열 API가 2차 방어.
+const LOCAL_BAD_PATTERNS = [
+  /씨\s*발|시\s*발|씨\s*팔|ㅅ\s*ㅂ|ㅆ\s*ㅂ/i,
+  /개\s*새\s*끼|개\s*색\s*끼|개\s*새\s*기/i,
+  /병\s*신|븅\s*신|ㅂ\s*ㅅ/i,
+  /좆|존\s*나|조\s*낸/i,
+  /지\s*랄|ㅈ\s*ㄹ/i,
+  /미친\s*놈|미친\s*년/i,
+  /창\s*녀|걸레\s*년/i,
+  /죽어라|뒤져라/i,
+  /fuck|shit|bitch|asshole/i,
+];
+function localFilterHit(text) { return LOCAL_BAD_PATTERNS.some(function (re) { return re.test(text); }); }
 
 function json(body, status) {
   return new Response(JSON.stringify(body), {
@@ -70,16 +85,23 @@ function textForModeration(type, content) {
   if (type === 'html') return content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   return content;
 }
-// 반환: { flagged, ok(검열 수행됨), categories }. 키 없음·오류·미수행이면 통과(가용성 우선).
-async function moderate(env, text) {
-  const key = env.OPENAI_API_KEY;
-  if (!key) return { flagged: false, ok: false };
+// 반환: { flagged, ok(검열 수행됨), categories, timedOut }. 키 없음·오류·타임아웃이면 통과(가용성 우선).
+// opts.timeoutMs: 0이면 무제한 대기(사후검열 waitUntil 경로용). 기본 MOD_TIMEOUT_MS.
+async function moderate(env, text, opts) {
+  opts = opts || {};
   if (!text || !text.trim()) return { flagged: false, ok: true };
+  if (localFilterHit(text)) return { flagged: true, ok: true, categories: ['local-filter'], local: true };
+  const key = env.OPENAI_API_KEY;
+  if (!key) return { flagged: false, ok: false, noKey: true };
+  const timeoutMs = opts.timeoutMs != null ? opts.timeoutMs : MOD_TIMEOUT_MS;
+  const controller = new AbortController();
+  const timer = timeoutMs ? setTimeout(function () { controller.abort(); }, timeoutMs) : null;
   try {
     const r = await fetch('https://api.openai.com/v1/moderations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
       body: JSON.stringify({ model: 'omni-moderation-latest', input: text.slice(0, 4000) }),
+      signal: controller.signal,
     });
     if (!r.ok) return { flagged: false, ok: false };
     const d = await r.json();
@@ -87,10 +109,23 @@ async function moderate(env, text) {
     if (!res) return { flagged: false, ok: false };
     const cats = Object.keys(res.categories || {}).filter((k) => res.categories[k]);
     return { flagged: !!res.flagged, ok: true, categories: cats };
-  } catch {
-    return { flagged: false, ok: false };
+  } catch (e) {
+    return { flagged: false, ok: false, timedOut: e && e.name === 'AbortError' };
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
+// 게시 시 검열이 타임아웃되면 통과시키고, 백그라운드에서 무제한 대기로 재검열 → flagged면 카드 숨김 처리.
+async function postHocModerateCard(env, db, boardId, cardId, text) {
+  const mod = await moderate(env, text, { timeoutMs: 0 });
+  if (mod.flagged) {
+    await db.batch([
+      db.prepare("UPDATE madang_cards SET status = 'hidden' WHERE board_id = ? AND id = ?").bind(boardId, cardId),
+      bumpRevStmt(db, boardId),
+    ]);
+  }
+}
+function bumpRevStmt(db, boardId) { return db.prepare('UPDATE madang_boards SET rev = rev + 1 WHERE id = ?').bind(boardId); }
 
 function boardMeta(board, settings) {
   return {
@@ -109,6 +144,7 @@ function boardMeta(board, settings) {
     allowComments: !!settings.allowComments,
     allowLikes: !!settings.allowLikes,
     updatedAt: board.updated_at,
+    rev: board.rev || 0,
   };
 }
 
@@ -129,7 +165,7 @@ export async function onRequest(ctx) {
   if (!db) return json({ error: 'D1 바인딩(BYEDUIN_DB)이 설정되지 않았습니다.' }, 500);
   try {
     if (request.method === 'GET')  return await handleGet(env, db, request);
-    if (request.method === 'POST') return await handlePost(env, db, request);
+    if (request.method === 'POST') return await handlePost(env, db, request, ctx);
     return json({ error: 'Method Not Allowed' }, 405);
   } catch (e) {
     return json({ error: (e && e.message) || '서버 오류' }, 500);
@@ -158,25 +194,50 @@ async function handleGet(env, db, request) {
     }
   }
 
-  const { results } = await db.prepare(
-    'SELECT id, author_token, nickname, type, content, section, created_at, updated_at FROM madang_cards WHERE board_id = ? ORDER BY created_at ASC'
-  ).bind(boardId).all();
-
   const myToken = CODE_RE.test(code) ? await authorToken(env, boardId, code) : null;
 
-  // 좋아요·댓글은 설정이 켜진 경우만 조회(폴링 비용 절약)
-  const likeCount = {}, likedByMe = {};
-  if (settings.allowLikes) {
-    const lr = await db.prepare('SELECT card_id, liker_token FROM madang_likes WHERE board_id = ?').bind(boardId).all();
-    for (const r of lr.results || []) { likeCount[r.card_id] = (likeCount[r.card_id] || 0) + 1; if (myToken && r.liker_token === myToken) likedByMe[r.card_id] = true; }
-  }
-  const cmtByCard = {};
-  if (settings.allowComments) {
-    const cr = await db.prepare('SELECT id, card_id, author_token, nickname, text, created_at FROM madang_comments WHERE board_id = ? ORDER BY created_at ASC').bind(boardId).all();
-    for (const r of cr.results || []) (cmtByCard[r.card_id] = cmtByCard[r.card_id] || []).push({ id: r.id, nickname: r.nickname, text: r.text, createdAt: r.created_at, own: isOwner || !!(myToken && r.author_token === myToken) });
+  // 댓글 전문은 모달을 열 때만 단건 조회(폴링 응답에서는 commentCount만) — GET ?comments=CARD_ID
+  const commentsFor = url.searchParams.get('comments');
+  if (commentsFor) {
+    if (!settings.allowComments) return json({ error: '이 마당은 댓글이 꺼져 있습니다.' }, 403);
+    const cr = await db.prepare(
+      'SELECT id, author_token, nickname, text, created_at FROM madang_comments WHERE board_id = ? AND card_id = ? ORDER BY created_at ASC'
+    ).bind(boardId, commentsFor).all();
+    const comments = (cr.results || []).map((r) => ({
+      id: r.id, nickname: r.nickname, text: r.text, createdAt: r.created_at,
+      own: isOwner || !!(myToken && r.author_token === myToken),
+    }));
+    return json({ ok: true, comments });
   }
 
-  const cards = (results || []).map((r) => ({
+  // rev 조건부 폴링: 클라이언트가 아는 rev와 같으면 무변경 — 페이로드 수십 바이트, D1 쿼리 이미 1개(board)로 끝.
+  const reqRev = url.searchParams.get('rev');
+  if (reqRev !== null && Number(reqRev) === board.rev) {
+    return json({ unchanged: true, rev: board.rev });
+  }
+
+  const wantLikes = !!settings.allowLikes;
+  const wantComments = !!settings.allowComments;
+  const stmts = [
+    db.prepare(
+      "SELECT id, author_token, nickname, type, content, section, created_at, updated_at FROM madang_cards WHERE board_id = ? AND status != 'hidden' ORDER BY created_at ASC"
+    ).bind(boardId),
+  ];
+  if (wantLikes) stmts.push(db.prepare('SELECT card_id, COUNT(*) AS n FROM madang_likes WHERE board_id = ? GROUP BY card_id').bind(boardId));
+  if (wantLikes && myToken) stmts.push(db.prepare('SELECT card_id FROM madang_likes WHERE board_id = ? AND liker_token = ?').bind(boardId, myToken));
+  if (wantComments) stmts.push(db.prepare('SELECT card_id, COUNT(*) AS n FROM madang_comments WHERE board_id = ? GROUP BY card_id').bind(boardId));
+
+  const results = await db.batch(stmts);
+  let ix = 0;
+  const cardRows = results[ix++].results || [];
+  const likeCount = {};
+  if (wantLikes) { for (const r of (results[ix++].results || [])) likeCount[r.card_id] = r.n; }
+  const likedByMe = {};
+  if (wantLikes && myToken) { for (const r of (results[ix++].results || [])) likedByMe[r.card_id] = true; }
+  const cmtCount = {};
+  if (wantComments) { for (const r of (results[ix++].results || [])) cmtCount[r.card_id] = r.n; }
+
+  const cards = cardRows.map((r) => ({
     id: r.id,
     nickname: r.nickname,
     type: r.type,
@@ -187,14 +248,14 @@ async function handleGet(env, db, request) {
     section: r.section || '',
     likes: likeCount[r.id] || 0,
     liked: !!likedByMe[r.id],
-    comments: cmtByCard[r.id] || [],
+    commentCount: cmtCount[r.id] || 0,
   }));
 
-  return json({ board: boardMeta(board, settings), isOwner, cards });
+  return json({ board: boardMeta(board, settings), isOwner, rev: board.rev, cards });
 }
 
 // ── POST: 액션 라우팅 ──
-async function handlePost(env, db, request) {
+async function handlePost(env, db, request, ctx) {
   let body = {};
   try { body = await request.json(); } catch {}
   const action = String(body.action || '');
@@ -218,7 +279,7 @@ async function handlePost(env, db, request) {
         await db.prepare(
           'INSERT INTO madang_boards (id, owner_token, title, settings, shared, created_at, updated_at) VALUES (?,?,?,?,?,?,?)'
         ).bind(id, ownerTok, title, JSON.stringify(settings), 1, at, at).run();
-        return json({ ok: true, isOwner: true, board: boardMeta({ id, title, shared: 1, updated_at: at }, settings) });
+        return json({ ok: true, isOwner: true, board: boardMeta({ id, title, shared: 1, updated_at: at, rev: 0 }, settings) });
       } catch { /* 경합 충돌 → 재시도 */ }
     }
     return json({ error: '마당 코드 생성에 실패했습니다. 다시 시도해주세요.' }, 500);
@@ -253,7 +314,7 @@ async function handlePost(env, db, request) {
     if (byteLen(content) > CONTENT_MAX) return json({ error: '내용이 너무 깁니다.' }, 413);
     const nickname = String(body.nickname || '').trim().slice(0, NICK_MAX);
 
-    const cnt = await db.prepare('SELECT COUNT(*) AS n FROM madang_cards WHERE board_id = ?').bind(boardId).first();
+    const cnt = await db.prepare("SELECT COUNT(*) AS n FROM madang_cards WHERE board_id = ? AND status != 'hidden'").bind(boardId).first();
     if (cnt && cnt.n >= CARDS_MAX) return json({ error: '이 마당의 카드 수가 가득 찼습니다.' }, 409);
 
     const mod = await moderate(env, textForModeration(type, content));
@@ -263,9 +324,15 @@ async function handlePost(env, db, request) {
     const id = crypto.randomUUID();
     const at = nowIso();
     const authTok = await authorToken(env, boardId, code);
-    await db.prepare(
-      'INSERT INTO madang_cards (id, board_id, author_token, nickname, type, content, section, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)'
-    ).bind(id, boardId, authTok, nickname, type, content, section, at, at).run();
+    await db.batch([
+      db.prepare(
+        "INSERT INTO madang_cards (id, board_id, author_token, nickname, type, content, section, status, created_at, updated_at) VALUES (?,?,?,?,?,?,?,'live',?,?)"
+      ).bind(id, boardId, authTok, nickname, type, content, section, at, at),
+      bumpRevStmt(db, boardId),
+    ]);
+    if (mod.timedOut && env.OPENAI_API_KEY) {
+      ctx.waitUntil(postHocModerateCard(env, db, boardId, id, textForModeration(type, content)));
+    }
     return json({ ok: true, card: { id, nickname, type, content, section, createdAt: at, updatedAt: at, own: true } });
   }
 
@@ -289,7 +356,10 @@ async function handlePost(env, db, request) {
     if (mod.flagged) return json({ ok: false, flagged: true, error: '부적절한 내용으로 판단되어 수정할 수 없습니다.', categories: mod.categories }, 422);
 
     const at = nowIso();
-    await db.prepare('UPDATE madang_cards SET content = ?, updated_at = ? WHERE board_id = ? AND id = ?').bind(content, at, boardId, cardId).run();
+    await db.batch([
+      db.prepare('UPDATE madang_cards SET content = ?, updated_at = ? WHERE board_id = ? AND id = ?').bind(content, at, boardId, cardId),
+      bumpRevStmt(db, boardId),
+    ]);
     return json({ ok: true, card: { id: cardId, content, updatedAt: at } });
   }
 
@@ -302,9 +372,12 @@ async function handlePost(env, db, request) {
     if (!card) return json({ ok: true, deleted: true });  // 이미 없음 → 멱등
     const isAuthor = card.author_token === (await authorToken(env, boardId, code));
     if (!isOwner && !isAuthor) return json({ error: '삭제 권한이 없습니다.' }, 403);
-    await db.prepare('DELETE FROM madang_cards WHERE board_id = ? AND id = ?').bind(boardId, cardId).run();
-    await db.prepare('DELETE FROM madang_comments WHERE board_id = ? AND card_id = ?').bind(boardId, cardId).run();
-    await db.prepare('DELETE FROM madang_likes WHERE board_id = ? AND card_id = ?').bind(boardId, cardId).run();
+    await db.batch([
+      db.prepare('DELETE FROM madang_cards WHERE board_id = ? AND id = ?').bind(boardId, cardId),
+      db.prepare('DELETE FROM madang_comments WHERE board_id = ? AND card_id = ?').bind(boardId, cardId),
+      db.prepare('DELETE FROM madang_likes WHERE board_id = ? AND card_id = ?').bind(boardId, cardId),
+      bumpRevStmt(db, boardId),
+    ]);
     return json({ ok: true, deleted: true });
   }
 
@@ -338,19 +411,22 @@ async function handlePost(env, db, request) {
     if (Array.isArray(patch.sections)) settings.sections = patch.sections.map(function (s) { return String(s).trim().slice(0, 40); }).filter(Boolean).slice(0, 12);
     if (typeof patch.sort === 'string') settings.sort = ['newest', 'oldest', 'shuffle'].includes(patch.sort) ? patch.sort : 'newest';
     const at = nowIso();
-    await db.prepare('UPDATE madang_boards SET title = ?, shared = ?, settings = ?, updated_at = ? WHERE id = ?')
+    const newRev = (board.rev || 0) + 1;
+    await db.prepare('UPDATE madang_boards SET title = ?, shared = ?, settings = ?, updated_at = ?, rev = rev + 1 WHERE id = ?')
       .bind(title, shared, JSON.stringify(settings), at, boardId).run();
-    return json({ ok: true, board: boardMeta({ id: boardId, title, shared, updated_at: at }, settings) });
+    return json({ ok: true, board: boardMeta({ id: boardId, title, shared, updated_at: at, rev: newRev }, settings) });
   }
 
   // ── 마당 삭제(개설자만): 카드 일괄 + 보드 ──
   if (action === 'deleteBoard') {
     if (!isOwner) return json({ error: '개설자만 마당을 삭제할 수 있습니다.' }, 403);
-    await db.prepare('DELETE FROM madang_cards WHERE board_id = ?').bind(boardId).run();
-    await db.prepare('DELETE FROM madang_comments WHERE board_id = ?').bind(boardId).run();
-    await db.prepare('DELETE FROM madang_likes WHERE board_id = ?').bind(boardId).run();
-    await db.prepare('DELETE FROM madang_members WHERE board_id = ?').bind(boardId).run();
-    await db.prepare('DELETE FROM madang_boards WHERE id = ?').bind(boardId).run();
+    await db.batch([
+      db.prepare('DELETE FROM madang_cards WHERE board_id = ?').bind(boardId),
+      db.prepare('DELETE FROM madang_comments WHERE board_id = ?').bind(boardId),
+      db.prepare('DELETE FROM madang_likes WHERE board_id = ?').bind(boardId),
+      db.prepare('DELETE FROM madang_members WHERE board_id = ?').bind(boardId),
+      db.prepare('DELETE FROM madang_boards WHERE id = ?').bind(boardId),
+    ]);
     return json({ ok: true, deleted: true });
   }
 
@@ -370,8 +446,11 @@ async function handlePost(env, db, request) {
     const mod = await moderate(env, text);
     if (mod.flagged) return json({ ok: false, flagged: true, error: '부적절한 내용으로 판단되어 게시할 수 없습니다.', categories: mod.categories }, 422);
     const id = crypto.randomUUID(), at = nowIso();
-    await db.prepare('INSERT INTO madang_comments (id, board_id, card_id, author_token, nickname, text, created_at) VALUES (?,?,?,?,?,?,?)')
-      .bind(id, boardId, cardId, await authorToken(env, boardId, code), nickname, text, at).run();
+    await db.batch([
+      db.prepare('INSERT INTO madang_comments (id, board_id, card_id, author_token, nickname, text, created_at) VALUES (?,?,?,?,?,?,?)')
+        .bind(id, boardId, cardId, await authorToken(env, boardId, code), nickname, text, at),
+      bumpRevStmt(db, boardId),
+    ]);
     return json({ ok: true, comment: { id: id, cardId: cardId, nickname: nickname, text: text, createdAt: at, own: true } });
   }
 
@@ -383,7 +462,10 @@ async function handlePost(env, db, request) {
     if (!cm) return json({ ok: true, deleted: true });
     const isAuthor = cm.author_token === (await authorToken(env, boardId, code));
     if (!isOwner && !isAuthor) return json({ error: '삭제 권한이 없습니다.' }, 403);
-    await db.prepare('DELETE FROM madang_comments WHERE board_id = ? AND id = ?').bind(boardId, commentId).run();
+    await db.batch([
+      db.prepare('DELETE FROM madang_comments WHERE board_id = ? AND id = ?').bind(boardId, commentId),
+      bumpRevStmt(db, boardId),
+    ]);
     return json({ ok: true, deleted: true });
   }
 
@@ -397,14 +479,18 @@ async function handlePost(env, db, request) {
     const card = await db.prepare('SELECT id FROM madang_cards WHERE board_id = ? AND id = ?').bind(boardId, cardId).first();
     if (!card) return json({ error: '카드를 찾을 수 없습니다.' }, 404);
     const tok = await authorToken(env, boardId, code);
+    const stmts = [];
     if (body.on === false) {
-      await db.prepare('DELETE FROM madang_likes WHERE board_id = ? AND card_id = ? AND liker_token = ?').bind(boardId, cardId, tok).run();
+      stmts.push(db.prepare('DELETE FROM madang_likes WHERE board_id = ? AND card_id = ? AND liker_token = ?').bind(boardId, cardId, tok));
     } else {
-      await db.prepare('INSERT INTO madang_likes (board_id, card_id, liker_token, created_at) VALUES (?,?,?,?) ON CONFLICT(board_id, card_id, liker_token) DO NOTHING')
-        .bind(boardId, cardId, tok, nowIso()).run();
+      stmts.push(db.prepare('INSERT INTO madang_likes (board_id, card_id, liker_token, created_at) VALUES (?,?,?,?) ON CONFLICT(board_id, card_id, liker_token) DO NOTHING')
+        .bind(boardId, cardId, tok, nowIso()));
     }
-    const cnt = await db.prepare('SELECT COUNT(*) AS n FROM madang_likes WHERE board_id = ? AND card_id = ?').bind(boardId, cardId).first();
-    return json({ ok: true, likes: (cnt && cnt.n) || 0, liked: body.on !== false });
+    stmts.push(bumpRevStmt(db, boardId));
+    stmts.push(db.prepare('SELECT COUNT(*) AS n FROM madang_likes WHERE board_id = ? AND card_id = ?').bind(boardId, cardId));
+    const results = await db.batch(stmts);
+    const cntRow = (results[results.length - 1].results || [])[0];
+    return json({ ok: true, likes: (cntRow && cntRow.n) || 0, liked: body.on !== false });
   }
 
   // ── 입장 기록(멤버) ── 닉네임 있는 사용자가 입장하면 참여자 목록에 기록
@@ -427,12 +513,15 @@ async function handlePost(env, db, request) {
     const nickname = String(body.nickname || '').trim().slice(0, NICK_MAX);
     if (!nickname) return json({ error: '별명을 입력하세요.' }, 400);
     const tok = await authorToken(env, boardId, code), at = nowIso();
-    await db.prepare(
-      'INSERT INTO madang_members (board_id, token, nickname, is_owner, joined_at, updated_at) VALUES (?,?,?,?,?,?) ' +
-      'ON CONFLICT(board_id, token) DO UPDATE SET nickname = excluded.nickname, updated_at = excluded.updated_at'
-    ).bind(boardId, tok, nickname, isOwner ? 1 : 0, at, at).run();
-    await db.prepare('UPDATE madang_cards SET nickname = ? WHERE board_id = ? AND author_token = ?').bind(nickname, boardId, tok).run();
-    await db.prepare('UPDATE madang_comments SET nickname = ? WHERE board_id = ? AND author_token = ?').bind(nickname, boardId, tok).run();
+    await db.batch([
+      db.prepare(
+        'INSERT INTO madang_members (board_id, token, nickname, is_owner, joined_at, updated_at) VALUES (?,?,?,?,?,?) ' +
+        'ON CONFLICT(board_id, token) DO UPDATE SET nickname = excluded.nickname, updated_at = excluded.updated_at'
+      ).bind(boardId, tok, nickname, isOwner ? 1 : 0, at, at),
+      db.prepare('UPDATE madang_cards SET nickname = ? WHERE board_id = ? AND author_token = ?').bind(nickname, boardId, tok),
+      db.prepare('UPDATE madang_comments SET nickname = ? WHERE board_id = ? AND author_token = ?').bind(nickname, boardId, tok),
+      bumpRevStmt(db, boardId),
+    ]);
     return json({ ok: true, nickname: nickname });
   }
 

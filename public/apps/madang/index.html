@@ -129,7 +129,11 @@
     .mcard-inlink { color: var(--mb-link); font-weight: 600; word-break: break-all; }
     .mcard-link { display: inline-flex; align-items: center; gap: 7px; color: var(--mb-link); font-weight: 700; text-decoration: none; word-break: break-all; }
     .mcard-link:hover { text-decoration: underline; }
-    .mcard-frame { width: 100%; border: 0; border-radius: 8px; background: #fff; display: block; min-height: 60px; }
+    .mcard-htmlwrap { position: relative; min-height: 44px; }
+    .mcard-frame { width: 100%; border: 0; border-radius: 8px; background: #fff; display: block; min-height: 60px; opacity: 0; transition: opacity .18s; }
+    .mcard-htmlwrap.ready .mcard-frame { opacity: 1; }
+    .mcard-htmlwrap.ready .mcard-loading { display: none; }
+    .mcard-loading { display: flex; align-items: center; justify-content: center; height: 44px; font-size: 12px; color: var(--mb-muted); gap: 6px; }
     .mcard-foot { display: flex; align-items: center; gap: 8px; margin-top: 11px; padding-top: 9px; border-top: 1px dashed var(--mb-border); }
     .mcard-who { font-weight: 700; font-size: 12.5px; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .mcard-when { font-size: 11.5px; color: var(--mb-muted); }
@@ -461,7 +465,10 @@
     'use strict';
     var API = '/api/madang';
     var BOARD_RE = /^[A-HJ-NP-Z2-9]{6}$/;
-    var POLL_MS = 2800;
+    var POLL_MS_MIN = 2000;    // 활동 중 기본 간격
+    var POLL_MS_MID = 5000;    // 20초 이상 무변경
+    var POLL_MS_MAX = 8000;    // 60초 이상 무변경
+    var ACTIVE_IFRAME_MAX = 12; // 동시 활성(로드된) HTML 카드 iframe 상한
     var BG = {
       whiteboard: { name: '화이트보드', sw: '#f7f7f4' },
       chalkboard: { name: '칠판', sw: '#1a3323' },
@@ -471,9 +478,11 @@
       kraft: { name: '크라프트', sw: '#dcc7a6' },
     };
 
-    var state = { boardId: null, isOwner: false, board: null, pin: '', nickname: '', editingId: null, composeType: 'text', cmtCardId: null, sectionMap: null, firstSection: null };
+    var state = { boardId: null, isOwner: false, board: null, pin: '', nickname: '', editingId: null, composeType: 'text', cmtCardId: null, sectionMap: null, firstSection: null, rev: null, pollMs: POLL_MS_MIN, unchangedSince: null };
     var els = {};
     var pollTimer = null;
+    var htmlObserver = null;
+    var activeFrames = [];
 
     function $(id) { return document.getElementById(id); }
     function show(el) { el.classList.remove('hide'); }
@@ -521,11 +530,18 @@
       return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
         .then(function (r) { return r.json().then(function (d) { d.__status = r.status; return d; }); });
     }
-    function fetchBoard(boardId, pin) {
+    function fetchBoard(boardId, pin, rev) {
       var q = '?board=' + encodeURIComponent(boardId || state.boardId);
       var c = readCode(); if (c) q += '&code=' + encodeURIComponent(c);
       var p = (pin != null) ? pin : state.pin; if (p) q += '&pin=' + encodeURIComponent(p);
+      if (rev != null) q += '&rev=' + encodeURIComponent(rev);
       return fetch(API + q, { cache: 'no-store' }).then(function (r) { return r.json().then(function (d) { d.__status = r.status; return d; }); });
+    }
+    function fetchComments(boardId, cardId) {
+      var q = '?board=' + encodeURIComponent(boardId) + '&comments=' + encodeURIComponent(cardId);
+      var c = readCode(); if (c) q += '&code=' + encodeURIComponent(c);
+      var p = state.pin; if (p) q += '&pin=' + encodeURIComponent(p);
+      return fetch(API + q, { cache: 'no-store' }).then(function (r) { return r.json(); });
     }
 
     /* ── 카드 렌더 ── */
@@ -545,14 +561,40 @@
       }
       if (last < text.length) el.appendChild(document.createTextNode(text.slice(last)));
     }
+    /* HTML 카드 iframe 지연 생성 — 뷰포트 진입 시에만 srcdoc 주입, 동시 활성 상한(ACTIVE_IFRAME_MAX) 유지 */
+    function getHtmlObserver() {
+      if (htmlObserver) return htmlObserver;
+      htmlObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) { if (entry.isIntersecting) loadFrame(entry.target); });
+      }, { rootMargin: '200px 0px' });
+      return htmlObserver;
+    }
+    var READY_FALLBACK_MS = 4000;  // 완료 신호(postMessage)가 안 와도 이 시간 후엔 강제로 노출(영구 숨김 방지)
+    function loadFrame(f) {
+      if (f.dataset.loaded === '1') {
+        var i = activeFrames.indexOf(f); if (i >= 0) activeFrames.splice(i, 1);
+        activeFrames.push(f); return;
+      }
+      f.srcdoc = wrapHtml(f.dataset.raw || ''); f.dataset.loaded = '1'; activeFrames.push(f);
+      var wrap = f.closest('.mcard-htmlwrap');
+      setTimeout(function () { if (wrap && !wrap.classList.contains('ready')) wrap.classList.add('ready'); }, READY_FALLBACK_MS);
+      while (activeFrames.length > ACTIVE_IFRAME_MAX) { var old = activeFrames.shift(); if (old !== f && old.isConnected) unloadFrame(old); }
+    }
+    function unloadFrame(f) { f.removeAttribute('srcdoc'); delete f.dataset.loaded; var wrap = f.closest('.mcard-htmlwrap'); if (wrap) wrap.classList.remove('ready'); }
     function fillBody(body, card) {
+      var oldFrame = body.querySelector('iframe.mcard-frame');
+      if (oldFrame && htmlObserver) htmlObserver.unobserve(oldFrame);
       body.innerHTML = '';
       if (card.type === 'link') {
         var a = document.createElement('a'); a.className = 'mcard-link'; a.href = card.content; a.target = '_blank'; a.rel = 'noopener noreferrer';
         a.appendChild(document.createTextNode('🔗 ' + prettyUrl(card.content))); body.appendChild(a);
       } else if (card.type === 'html') {
-        var f = document.createElement('iframe'); f.className = 'mcard-frame'; f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('loading', 'lazy');
-        f.setAttribute('scrolling', 'no'); f.style.height = '80px'; f.srcdoc = wrapHtml(card.content); body.appendChild(f);
+        var wrap = document.createElement('div'); wrap.className = 'mcard-htmlwrap';
+        var loading = document.createElement('div'); loading.className = 'mcard-loading'; loading.textContent = '불러오는 중…';
+        var f = document.createElement('iframe'); f.className = 'mcard-frame'; f.setAttribute('sandbox', 'allow-scripts');
+        f.setAttribute('scrolling', 'no'); f.style.height = '80px'; f.dataset.raw = card.content;
+        wrap.appendChild(loading); wrap.appendChild(f); body.appendChild(wrap);
+        getHtmlObserver().observe(f);
       } else { var p = document.createElement('div'); p.className = 'mcard-text'; linkifyInto(p, card.content); body.appendChild(p); }
     }
     function createCardEl(card) {
@@ -578,21 +620,32 @@
       var like = el.querySelector('.mcard-like');
       if (like) { like.classList.toggle('on', !!card.liked); like.querySelector('.ic').textContent = card.liked ? '❤️' : '🤍'; like.querySelector('.n').textContent = card.likes || 0; }
       var cmt = el.querySelector('.mcard-cmt');
-      if (cmt) cmt.querySelector('.n').textContent = (card.comments || []).length;
+      if (cmt) cmt.querySelector('.n').textContent = card.commentCount != null ? card.commentCount : (card.comments || []).length;
     }
     function toggleLike(cardId) {
       var el = els[cardId]; if (!el) return; var card = el._card;
       var newLiked = !card.liked;
       card.liked = newLiked; card.likes = Math.max(0, (card.likes || 0) + (newLiked ? 1 : -1)); refreshCardSocial(el, card);
       post({ action: 'like', board: state.boardId, cardId: cardId, on: newLiked, pin: state.pin }).then(function (res) {
-        if (res.ok) { card.likes = res.likes; card.liked = res.liked; refreshCardSocial(el, card); }
+        if (res.ok) { card.likes = res.likes; card.liked = res.liked; refreshCardSocial(el, card); nudgePolling(); }
         else { card.liked = !newLiked; card.likes = Math.max(0, (card.likes || 0) + (newLiked ? -1 : 1)); refreshCardSocial(el, card); toast(res.error || '실패'); }
       }).catch(function () { card.liked = !newLiked; refreshCardSocial(el, card); });
     }
     function openComments(cardId) {
       var el = els[cardId]; if (!el) return; state.cmtCardId = cardId;
-      $('cmtErr').textContent = ''; $('cmtInput').value = ''; renderComments(el._card); openModal('m-comments');
+      $('cmtErr').textContent = ''; $('cmtInput').value = '';
+      $('cmtList').innerHTML = '<div class="cmt-empty">불러오는 중…</div>';
+      openModal('m-comments');
       setTimeout(function () { $('cmtInput').focus(); }, 50);
+      loadComments(cardId);
+    }
+    function loadComments(cardId) {
+      fetchComments(state.boardId, cardId).then(function (res) {
+        if (state.cmtCardId !== cardId) return;  // 그새 모달 닫히거나 다른 카드로 전환
+        if (!res.ok) { $('cmtList').innerHTML = '<div class="cmt-empty">' + (res.error || '불러오기 실패') + '</div>'; return; }
+        var el = els[cardId]; if (el) el._card.comments = res.comments || [];
+        renderComments(el ? el._card : { comments: res.comments || [] });
+      }).catch(function () { if (state.cmtCardId === cardId) $('cmtList').innerHTML = '<div class="cmt-empty">네트워크 오류</div>'; });
     }
     function renderComments(card) {
       var list = $('cmtList'); list.innerHTML = ''; var cs = card.comments || [];
@@ -615,34 +668,56 @@
       post({ action: 'addComment', board: state.boardId, cardId: cardId, text: text, nickname: state.nickname || getNick(), pin: state.pin }).then(function (res) {
         $('cmtGo').disabled = false;
         if (!res.ok) { if (res.flagged) { $('cmtErr').textContent = '⚠️ 부적절한 내용으로 게시할 수 없습니다.'; return; } $('cmtErr').textContent = res.error || '실패'; return; }
-        $('cmtInput').value = '';
-        var el = els[cardId]; if (el) { el._card.comments = (el._card.comments || []).concat([res.comment]); refreshCardSocial(el, el._card); renderComments(el._card); }
+        $('cmtInput').value = ''; nudgePolling();
+        var el = els[cardId]; if (el) { el._card.comments = (el._card.comments || []).concat([res.comment]); el._card.commentCount = (el._card.commentCount || 0) + 1; refreshCardSocial(el, el._card); renderComments(el._card); }
         toast('댓글 달림 ✓');
       }).catch(function () { $('cmtGo').disabled = false; $('cmtErr').textContent = '네트워크 오류'; });
     }
     function delComment(cardId, commentId) {
       if (!confirm('이 댓글을 삭제할까요?')) return;
       post({ action: 'deleteComment', board: state.boardId, commentId: commentId }).then(function (res) {
-        if (res.ok) { var el = els[cardId]; if (el) { el._card.comments = (el._card.comments || []).filter(function (c) { return c.id !== commentId; }); refreshCardSocial(el, el._card); renderComments(el._card); } }
+        if (res.ok) { var el = els[cardId]; if (el) { el._card.comments = (el._card.comments || []).filter(function (c) { return c.id !== commentId; }); el._card.commentCount = Math.max(0, (el._card.commentCount || 0) - 1); refreshCardSocial(el, el._card); renderComments(el._card); } nudgePolling(); }
         else toast(res.error || '삭제 실패');
       });
     }
     function reconcile(cards) {
       var wall = $('wall'), seen = {};
       cards.forEach(function (c) { seen[c.id] = true; });
-      Object.keys(els).forEach(function (id) { if (!seen[id]) { var e = els[id]; if (e && e.parentNode) e.parentNode.removeChild(e); delete els[id]; } });
+      Object.keys(els).forEach(function (id) {
+        if (!seen[id]) {
+          var e = els[id];
+          if (e) { var f = e.querySelector && e.querySelector('iframe.mcard-frame'); if (f && htmlObserver) htmlObserver.unobserve(f); if (e.parentNode) e.parentNode.removeChild(e); }
+          delete els[id];
+        }
+      });
+      var cmtNeedsRefetch = false;
       cards.forEach(function (c) {
         var ex = els[c.id];
         if (!ex) { var el = createCardEl(c); els[c.id] = el; insertSorted(cardTarget(c), el, c); }
-        else { if (ex.dataset.up !== c.updatedAt) { ex.dataset.up = c.updatedAt; fillBody(ex.querySelector('.mcard-body'), c); } ex._card = c; ex.querySelector('.mcard-who').textContent = c.nickname || '익명'; refreshCardSocial(ex, c); }
+        else {
+          if (ex.dataset.up !== c.updatedAt) { ex.dataset.up = c.updatedAt; fillBody(ex.querySelector('.mcard-body'), c); }
+          // 댓글 전문은 폴링에 포함되지 않음 — 개수가 그대로면 캐시 유지, 바뀌었으면 모달 열려 있을 때만 재조회
+          if (ex._card && ex._card.comments && ex._card.commentCount === c.commentCount) c.comments = ex._card.comments;
+          else if (state.cmtCardId === c.id) cmtNeedsRefetch = true;
+          ex._card = c; ex.querySelector('.mcard-who').textContent = c.nickname || '익명'; refreshCardSocial(ex, c);
+        }
       });
       var n = cards.length; $('wallEmpty').classList.toggle('hide', n > 0 || (state.board && state.board.layout === 'sections')); if ($('m-info').classList.contains('open')) renderInfo();
-      if ($('m-comments').classList.contains('open') && state.cmtCardId && els[state.cmtCardId]) renderComments(els[state.cmtCardId]._card);
+      if ($('m-comments').classList.contains('open') && state.cmtCardId && els[state.cmtCardId]) {
+        if (cmtNeedsRefetch) loadComments(state.cmtCardId); else renderComments(els[state.cmtCardId]._card);
+      }
     }
     window.addEventListener('message', function (e) {
       var d = e.data; if (!d || d.__madang !== 1) return;
       var frames = document.querySelectorAll('iframe.mcard-frame');
-      for (var i = 0; i < frames.length; i++) { if (frames[i].contentWindow === e.source) { frames[i].style.height = Math.max(60, Math.min(640, d.h)) + 'px'; break; } }
+      for (var i = 0; i < frames.length; i++) {
+        if (frames[i].contentWindow === e.source) {
+          var f = frames[i];
+          f.style.height = Math.max(60, Math.min(640, d.h)) + 'px';
+          var wrap = f.closest('.mcard-htmlwrap'); if (wrap) wrap.classList.add('ready');  // 높이 확정(=완전히 로드됨) 후에만 노출
+          break;
+        }
+      }
     });
 
     /* ── 배경 ── */
@@ -660,7 +735,9 @@
       return { col: col, cards: cards };
     }
     function renderLayout() {
-      var wall = $('wall'), b = state.board; els = {}; wall.innerHTML = ''; state.sectionMap = null; state.firstSection = null;
+      var wall = $('wall'), b = state.board;
+      if (htmlObserver) { Array.prototype.forEach.call(wall.querySelectorAll('iframe.mcard-frame'), function (f) { htmlObserver.unobserve(f); }); }
+      activeFrames = []; els = {}; wall.innerHTML = ''; state.sectionMap = null; state.firstSection = null;
       var secs = (b && b.layout === 'sections' && Array.isArray(b.sections)) ? b.sections.filter(Boolean) : [];
       if (secs.length) {
         wall.classList.add('as-sections'); state.sectionMap = {};
@@ -679,9 +756,14 @@
       return -new Date(card.createdAt).getTime();
     }
     function insertSorted(container, el, card) {
-      var key = sortKey(card), kids = container.children, i;
-      for (i = 0; i < kids.length; i++) { var c = kids[i]._card; if (c && sortKey(c) > key) { container.insertBefore(el, kids[i]); return; } }
-      container.appendChild(el);
+      var key = sortKey(card), kids = container.children;
+      var lo = 0, hi = kids.length;
+      while (lo < hi) {
+        var mid = (lo + hi) >> 1;
+        var kc = kids[mid]._card, kKey = kc ? sortKey(kc) : 0;
+        if (kKey > key) hi = mid; else lo = mid + 1;
+      }
+      if (lo >= kids.length) container.appendChild(el); else container.insertBefore(el, kids[lo]);
     }
 
     /* ── 뷰 전환 ── */
@@ -723,7 +805,9 @@
     }
     function enterBoard(res) {
       state.board = res.board; state.isOwner = !!res.isOwner; state.boardId = res.board.id;
-      els = {}; $('wall').innerHTML = ''; $('wall').classList.remove('hide'); hide($('gate')); $('mbAdd').style.visibility = '';
+      state.rev = res.rev != null ? res.rev : (res.board && res.board.rev) || 0; state.pollMs = POLL_MS_MIN; state.unchangedSince = null;
+      if (htmlObserver) { Array.prototype.forEach.call($('wall').querySelectorAll('iframe.mcard-frame'), function (f) { htmlObserver.unobserve(f); }); }
+      els = {}; activeFrames = []; $('wall').innerHTML = ''; $('wall').classList.remove('hide'); hide($('gate')); $('mbAdd').style.visibility = '';
       closeAllModals();
       $('view-home').classList.remove('active');
       applyBackground(res.board.background);
@@ -753,16 +837,29 @@
       }).catch(function () { toast('네트워크 오류'); });
     }
 
-    /* ── 폴링 ── */
+    /* ── 폴링(rev 조건부 + 적응형 간격) ── */
+    function registerUnchanged() {
+      if (!state.unchangedSince) state.unchangedSince = Date.now();
+      var elapsed = Date.now() - state.unchangedSince;
+      var next = elapsed > 60000 ? POLL_MS_MAX : (elapsed > 20000 ? POLL_MS_MID : POLL_MS_MIN);
+      if (next !== state.pollMs) { state.pollMs = next; startPolling(); }
+    }
+    function registerChanged() {
+      state.unchangedSince = null;
+      if (state.pollMs !== POLL_MS_MIN) { state.pollMs = POLL_MS_MIN; startPolling(); }
+    }
     function tick() {
       if (document.hidden || !state.boardId) return;
-      fetchBoard().then(function (res) {
+      fetchBoard(null, null, state.rev).then(function (res) {
         if (res.error) {
           if (res.expired) gate('⏰', '종료된 마당', '운영 기간이 끝났어요. 개설자가 기간을 연장하면 다시 입장할 수 있습니다.');
           else if (res.closed) gate('🔒', '공유가 중단된 마당', '개설자가 공유를 멈췄어요. 다시 열리면 입장할 수 있습니다.');
           else if (res.notFound) gate('🫥', '마당을 찾을 수 없음', '코드가 바뀌었거나 삭제된 마당입니다.');
           return;
         }
+        if (res.unchanged) { registerUnchanged(); return; }
+        registerChanged();
+        state.rev = res.rev != null ? res.rev : state.rev;
         var prevBg = state.board && state.board.background;
         var prevSig = state.board ? (state.board.layout + '|' + (state.board.sort || '') + '|' + JSON.stringify(state.board.sections || [])) : '';
         state.board = res.board; state.isOwner = !!res.isOwner;
@@ -772,8 +869,9 @@
         reconcile(res.cards || []);
       }).catch(function () {});
     }
-    function startPolling() { stopPolling(); pollTimer = setInterval(tick, POLL_MS); }
+    function startPolling() { stopPolling(); pollTimer = setInterval(tick, state.pollMs); }
     function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+    function nudgePolling() { state.pollMs = POLL_MS_MIN; state.unchangedSince = null; if (state.boardId) startPolling(); }
     document.addEventListener('visibilitychange', function () { if (!document.hidden && state.boardId && $('view-board').classList.contains('active')) tick(); });
 
     /* ── 랜딩 ── */
@@ -896,12 +994,12 @@
       req.then(function (res) {
         $('kGo').disabled = false;
         if (!res.ok) { if (res.flagged) { $('kErr').textContent = '⚠️ 부적절한 내용으로 판단되어 게시할 수 없습니다.'; return; } $('kErr').textContent = res.error || '실패'; return; }
-        closeModal('m-card');
+        closeModal('m-card'); nudgePolling();
         if (state.editingId) {
           var ex = els[res.card.id]; if (ex) { ex.dataset.up = res.card.updatedAt; ex._card.content = res.card.content; fillBody(ex.querySelector('.mcard-body'), ex._card); }
           toast('수정됐어요 ✓');
         } else {
-          if (!els[res.card.id]) { var el = createCardEl(res.card); els[res.card.id] = el; insertSorted(cardTarget(res.card), el, res.card); $('wallEmpty').classList.add('hide'); if ($('m-info').classList.contains('open')) renderInfo(); }
+          if (!els[res.card.id]) { res.card.commentCount = 0; var el = createCardEl(res.card); els[res.card.id] = el; insertSorted(cardTarget(res.card), el, res.card); $('wallEmpty').classList.add('hide'); if ($('m-info').classList.contains('open')) renderInfo(); }
           toast('올렸어요 ✓');
         }
       }).catch(function () { $('kGo').disabled = false; $('kErr').textContent = '네트워크 오류'; });
@@ -909,8 +1007,11 @@
     function delCard(id) {
       if (!confirm('이 카드를 삭제할까요?')) return;
       post({ action: 'deleteCard', board: state.boardId, cardId: id }).then(function (res) {
-        if (res.ok) { var e = els[id]; if (e && e.parentNode) e.parentNode.removeChild(e); delete els[id]; var n = Object.keys(els).length; $('wallEmpty').classList.toggle('hide', n > 0); if ($('m-info').classList.contains('open')) renderInfo(); toast('삭제됨'); }
-        else toast(res.error || '삭제 실패');
+        if (res.ok) {
+          var e = els[id];
+          if (e) { var f = e.querySelector && e.querySelector('iframe.mcard-frame'); if (f && htmlObserver) htmlObserver.unobserve(f); if (e.parentNode) e.parentNode.removeChild(e); }
+          delete els[id]; var n = Object.keys(els).length; $('wallEmpty').classList.toggle('hide', n > 0); if ($('m-info').classList.contains('open')) renderInfo(); toast('삭제됨'); nudgePolling();
+        } else toast(res.error || '삭제 실패');
       });
     }
 
@@ -918,7 +1019,7 @@
       var next = !state.board.shared;
       post({ action: 'settings', board: state.boardId, patch: { shared: next } }).then(function (res) {
         if (!res.ok) { toast(res.error || '실패'); return; }
-        state.board = res.board; renderToolbar(); toast(next ? '공유를 시작했어요' : '공유를 중단했어요');
+        state.board = res.board; state.rev = res.board.rev; renderToolbar(); toast(next ? '공유를 시작했어요' : '공유를 중단했어요'); nudgePolling();
       });
     }
 
@@ -1047,8 +1148,8 @@
       post({ action: 'settings', board: state.boardId, patch: patch }).then(function (res) {
         $('sGo').disabled = false;
         if (!res.ok) { $('sErr').textContent = res.error || '실패'; return; }
-        state.board = res.board; rememberBoard(res.board.id, res.board.title, 'owner'); applyBackground(res.board.background); renderToolbar(); closeModal('m-settings'); toast('저장됨 ✓');
-        fetchBoard().then(function (r2) { if (r2 && r2.board) { state.board = r2.board; state.isOwner = !!r2.isOwner; renderToolbar(); renderLayout(); reconcile(r2.cards || []); } });
+        state.board = res.board; state.rev = res.board.rev; rememberBoard(res.board.id, res.board.title, 'owner'); applyBackground(res.board.background); renderToolbar(); closeModal('m-settings'); toast('저장됨 ✓'); nudgePolling();
+        fetchBoard().then(function (r2) { if (r2 && r2.board) { state.board = r2.board; state.rev = r2.rev != null ? r2.rev : r2.board.rev; state.isOwner = !!r2.isOwner; renderToolbar(); renderLayout(); reconcile(r2.cards || []); } });
       }).catch(function () { $('sGo').disabled = false; $('sErr').textContent = '네트워크 오류'; });
     }
     function doDeleteBoard() {
@@ -1076,7 +1177,7 @@
         if (!res.ok) { $('nkErr').textContent = res.error || '실패'; return; }
         setNick(res.nickname || nick);
         Object.keys(els).forEach(function (id) { var el = els[id]; if (el._card && el._card.own) { el._card.nickname = state.nickname; var w = el.querySelector('.mcard-who'); if (w) w.textContent = state.nickname; } });
-        closeModal('m-nick'); toast('닉네임이 바뀌었어요 ✓');
+        closeModal('m-nick'); toast('닉네임이 바뀌었어요 ✓'); nudgePolling();
       }).catch(function () { $('nkGo').disabled = false; $('nkErr').textContent = '네트워크 오류'; });
     }
 
