@@ -21,6 +21,7 @@
   <link rel="apple-touch-icon" href="/logo.png" />
   <link rel="stylesheet" href="/common/hero-theme.css" />
   <script src="/common/theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="/common/init.js"></script>
   <script type="application/ld+json">
   {
@@ -299,9 +300,54 @@
     }
 
     .card-emoji {
-      font-size: 1.5rem;
-      margin-bottom: 0.625rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      margin-bottom: 0.75rem;
+      transition: all 0.2s ease;
+      font-size: 1.25rem;
     }
+    .card-emoji svg {
+      width: 22px;
+      height: 22px;
+      stroke-width: 2.2;
+    }
+    
+    /* 카테고리별 소프트 컬러 배경 블롭 */
+    .card-emoji.sub-edu-sim { background: rgba(0, 111, 238, 0.08); color: #006fee; }
+    .card-emoji.sub-edu-learn { background: rgba(23, 201, 100, 0.08); color: #17c964; }
+    .card-emoji.sub-edu-work { background: rgba(120, 40, 200, 0.08); color: #7828c8; }
+    .card-emoji.sub-util-life { background: rgba(245, 165, 36, 0.08); color: #f5a524; }
+    .card-emoji.sub-util-chrome { background: rgba(243, 18, 96, 0.08); color: #f31260; }
+    .card-emoji.sub-util-social { background: rgba(255, 78, 120, 0.08); color: #ff4e78; }
+    .card-emoji.sub-util-creative { background: rgba(0, 183, 222, 0.08); color: #00b7de; }
+    .card-emoji.sub-util-notion { background: rgba(100, 116, 139, 0.08); color: #64748b; }
+    .card-emoji.sub-default { background: rgba(127, 140, 141, 0.08); color: #7f8c8d; }
+
+    /* 다크모드 대비 향상 */
+    [data-theme="dark"] .card-emoji.sub-edu-sim { background: rgba(0, 111, 238, 0.15); color: #338ef7; }
+    [data-theme="dark"] .card-emoji.sub-edu-learn { background: rgba(23, 201, 100, 0.15); color: #4ade80; }
+    [data-theme="dark"] .card-emoji.sub-edu-work { background: rgba(120, 40, 200, 0.15); color: #c084fc; }
+    [data-theme="dark"] .card-emoji.sub-util-life { background: rgba(245, 165, 36, 0.15); color: #fbbf24; }
+    [data-theme="dark"] .card-emoji.sub-util-chrome { background: rgba(243, 18, 96, 0.15); color: #f43f5e; }
+    [data-theme="dark"] .card-emoji.sub-util-social { background: rgba(255, 78, 120, 0.15); color: #ff4e78; }
+    [data-theme="dark"] .card-emoji.sub-util-creative { background: rgba(0, 183, 222, 0.15); color: #38bdf8; }
+    [data-theme="dark"] .card-emoji.sub-util-notion { background: rgba(100, 116, 139, 0.15); color: #94a3b8; }
+    [data-theme="dark"] .card-emoji.sub-default { background: rgba(127, 140, 141, 0.15); color: #94a3b8; }
+
+    /* 호버 시 네온 글로우 효과 */
+    .app-card:hover .card-emoji { transform: scale(1.08); }
+    .app-card:hover .card-emoji.sub-edu-sim { box-shadow: 0 4px 12px rgba(0, 111, 238, 0.2); }
+    .app-card:hover .card-emoji.sub-edu-learn { box-shadow: 0 4px 12px rgba(23, 201, 100, 0.2); }
+    .app-card:hover .card-emoji.sub-edu-work { box-shadow: 0 4px 12px rgba(120, 40, 200, 0.2); }
+    .app-card:hover .card-emoji.sub-util-life { box-shadow: 0 4px 12px rgba(245, 165, 36, 0.2); }
+    .app-card:hover .card-emoji.sub-util-chrome { box-shadow: 0 4px 12px rgba(243, 18, 96, 0.2); }
+    .app-card:hover .card-emoji.sub-util-social { box-shadow: 0 4px 12px rgba(255, 78, 120, 0.2); }
+    .app-card:hover .card-emoji.sub-util-creative { box-shadow: 0 4px 12px rgba(0, 183, 222, 0.2); }
+    .app-card:hover .card-emoji.sub-util-notion { box-shadow: 0 4px 12px rgba(100, 116, 139, 0.2); }
 
     .card-title {
       font-weight: 600;
@@ -624,7 +670,15 @@
       const KEY = 'byeduin_recent_apps';
       let list = JSON.parse(localStorage.getItem(KEY) || '[]');
       list = list.filter(a => a.href !== app.href);
-      list.unshift({ href: app.href, emoji: app.emoji, title: app.title, desc: app.desc, category: app.category });
+      list.unshift({
+        href: app.href,
+        emoji: app.emoji,
+        title: app.title,
+        desc: app.desc,
+        category: app.category,
+        subcategory: app.subcategory,
+        lucideIcon: app.lucideIcon
+      });
       if (list.length > 10) list = list.slice(0, 10);
       localStorage.setItem(KEY, JSON.stringify(list));
     }
@@ -816,7 +870,9 @@
         a.className = 'app-card';
         a.href = app.href;
         a.innerHTML = `
-          <div class="card-emoji">${app.emoji}</div>
+          <div class="card-emoji sub-${app.subcategory || 'default'}">
+            ${app.lucideIcon ? `<i data-lucide="${app.lucideIcon}"></i>` : app.emoji}
+          </div>
           <div class="card-title">${app.title}</div>
           <div class="card-desc">${app.desc}</div>
         `;
@@ -927,7 +983,9 @@
         a.innerHTML = `
           ${isExternal ? '<span class="external-badge">↗</span>' : ''}
           ${isModal ? '<span class="external-badge">ℹ</span>' : ''}
-          <div class="card-emoji">${app.emoji}</div>
+          <div class="card-emoji sub-${app.subcategory || 'default'}">
+            ${app.lucideIcon ? `<i data-lucide="${app.lucideIcon}"></i>` : app.emoji}
+          </div>
           <div class="card-title">${app.title}</div>
           <div class="card-desc">${app.desc}</div>
         `;
@@ -1034,6 +1092,11 @@
 
       // 스크롤 스파이 — 렌더 완료 후 설정
       requestAnimationFrame(() => setupScrollSpy(spyIds));
+      
+      // Lucide 아이콘 변환
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
     }
 
     // 앱 데이터 로드 후 렌더링
@@ -1041,7 +1104,16 @@
 
     function openModal(app) {
       document.getElementById('modalBadge').textContent = app.badge || '';
-      document.getElementById('modalTitle').textContent = app.emoji + ' ' + app.title;
+      const titleEl = document.getElementById('modalTitle');
+      titleEl.innerHTML = `
+        <div class="card-emoji sub-${app.subcategory || 'default'}" style="display:inline-flex; vertical-align:middle; margin-right:8px; margin-bottom:0;">
+          ${app.lucideIcon ? `<i data-lucide="${app.lucideIcon}"></i>` : app.emoji}
+        </div>
+        <span style="vertical-align:middle;">${app.title}</span>
+      `;
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
       document.getElementById('modalDesc').textContent = app.modalDesc || app.desc;
       const ul = document.getElementById('modalFeatures');
       ul.innerHTML = (app.features || []).map(f => `<li><span>${f}</span></li>`).join('');

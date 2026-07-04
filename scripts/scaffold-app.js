@@ -189,6 +189,7 @@ async function main() {
   }
 
   const emoji = flags.emoji || await q('🎭 이모지 [📦]: ', '📦') || '📦';
+  const lucideIcon = flags.lucide || flags['lucide-icon'] || (interactive ? await ask(rl, '🔮 Lucide Icon (예: puzzle) [옵션]: ') : '') || '';
   const desc = flags.desc || await q('💬 한 줄 설명: ', name);
 
   let entry;
@@ -248,6 +249,8 @@ async function main() {
   }
 
   if (rl) rl.close();
+
+  if (lucideIcon) entry.lucideIcon = lucideIcon;
 
   data.apps.push(entry);
   fs.writeFileSync(APPS_JSON, JSON.stringify(data, null, 2) + '\n', 'utf8');
