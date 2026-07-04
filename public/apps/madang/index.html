@@ -142,11 +142,15 @@
     .mcard-acts button { background: none; border: 0; cursor: pointer; color: var(--mb-muted); font-size: 12px; padding: 3px 6px; border-radius: 6px; font-family: inherit; }
     .mcard-acts button:hover { color: var(--mb-fg); background: rgba(128,128,128,.15); }
     .mcard-acts button.del:hover { color: #f31260; }
-    .mcard-like, .mcard-cmt { display: none; align-items: center; gap: 3px; background: none; border: 0; cursor: pointer; color: var(--mb-muted); font-size: 12px; padding: 3px 6px; border-radius: 6px; font-family: inherit; }
-    #view-board.likes-on .mcard-like { display: inline-flex; }
+    .mcard-reacts { display: none; align-items: center; gap: 3px; flex-wrap: wrap; }
+    .mcard-cmt { display: none; align-items: center; gap: 3px; background: none; border: 0; cursor: pointer; color: var(--mb-muted); font-size: 12px; padding: 3px 6px; border-radius: 6px; font-family: inherit; }
+    #view-board.likes-on .mcard-reacts { display: inline-flex; }
     #view-board.cmts-on .mcard-cmt { display: inline-flex; }
-    .mcard-like:hover, .mcard-cmt:hover { background: rgba(128,128,128,.15); color: var(--mb-fg); }
-    .mcard-like.on { color: #f31260; }
+    .mcard-cmt:hover { background: rgba(128,128,128,.15); color: var(--mb-fg); }
+    .mcard-react { display: inline-flex; align-items: center; gap: 2px; background: none; border: 1px solid transparent; cursor: pointer; color: var(--mb-muted); font-size: 12px; padding: 2px 6px; border-radius: 8px; font-family: inherit; }
+    .mcard-react:hover { background: rgba(128,128,128,.15); }
+    .mcard-react.on { background: rgba(0,111,238,.14); border-color: rgba(0,111,238,.3); color: var(--mb-fg); }
+    .mcard-react .n { font-size: 11px; font-weight: 700; }
     .cmt-list { max-height: 42vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
     .cmt-row { background: var(--bg-sec); border-radius: 10px; padding: 9px 11px; font-size: 13.5px; }
     .cmt-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
@@ -215,6 +219,18 @@
     .hide { display: none !important; }
     .toast { position: fixed; bottom: 84px; left: 50%; transform: translateX(-50%); background: #141414; color: #fff; padding: 10px 18px; border-radius: 10px;
       font-size: 13.5px; font-weight: 600; z-index: 9999; box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+    /* 전체화면 QR(프로젝터용) */
+    .fullqr { position: fixed; inset: 0; z-index: 9800; background: #fff; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 22px; }
+    .fullqr.open { display: flex; }
+    .fullqr-close { position: absolute; top: 18px; right: 18px; width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--border); background: var(--card-bg); font-size: 20px; cursor: pointer; }
+    .fullqr-code { font-family: ui-monospace, monospace; font-weight: 800; font-size: 56px; letter-spacing: .18em; color: var(--primary); }
+    .fullqr-hint { font-size: 14px; color: var(--fg-muted); }
+    /* 자동 별명(저학년 입장) */
+    .nick-auto-btn { width: 100%; font-size: 16px; padding: 13px; }
+    .nick-auto-btn .emoji { font-size: 20px; margin-right: 6px; }
+    .emoji-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .emoji-opt { border: 2px solid var(--border); border-radius: 10px; padding: 10px 6px; cursor: pointer; text-align: center; font-size: 22px; background: var(--card-bg); }
+    .emoji-opt.sel { border-color: var(--primary); background: rgba(0,111,238,.08); }
     @media (max-width: 540px) {
       .wall { columns: 160px; column-gap: 10px; }
       .mb-title { max-width: 28vw; }
@@ -317,6 +333,11 @@
       <div class="field"><label>마당 제목</label><input class="in" id="cTitle" maxlength="120" placeholder="예: 오늘 수업 한 줄 소감"></div>
       <div class="field"><label>입장 PIN (선택)</label><input class="in" id="cPin" inputmode="numeric" maxlength="8" placeholder="숫자 4~8자리 · 비우면 PIN 없음">
         <div class="hint">PIN을 정하면 마당 코드만으로는 못 들어오고 PIN을 함께 입력해야 합니다.</div></div>
+      <div class="field"><label>대상</label>
+        <div class="checkrow">
+          <label><input type="radio" name="cAudience" id="cAudienceGeneral" checked> 일반(연수·중고학년)</label>
+          <label><input type="radio" name="cAudience" id="cAudienceKid"> 저학년용(자동 별명 · 쉬운 안내)</label>
+        </div></div>
       <div class="m-err" id="cErr"></div>
       <div class="modal-actions"><button class="btn" data-close>취소</button><button class="btn btn-primary" id="cGo">마당 열기</button></div>
     </div>
@@ -328,8 +349,17 @@
       <h2>마당 들어가기</h2>
       <p class="m-sub">받은 마당 코드와 사용할 별명을 입력하세요.</p>
       <div class="field"><label>마당 코드</label><input class="in code-in" id="jCode" maxlength="6" placeholder="------" autocomplete="off"></div>
-      <div class="field"><label>별명</label><input class="in" id="jNick" maxlength="40" placeholder="예: 1모둠, 햇살반 지우">
-        <div class="hint">카드에 표시됩니다. <b>실명·학번 등 개인정보는 입력하지 마세요.</b></div></div>
+      <div class="field">
+        <label>별명</label>
+        <div id="jNickAuto">
+          <button type="button" class="btn nick-auto-btn" id="jNickAutoBtn"></button>
+          <div class="hint">자동으로 만든 별명이에요. 마음에 안 들면 눌러서 다시 뽑아보세요. <a href="#" id="jNickToManual">직접 입력할래요</a></div>
+        </div>
+        <div id="jNickManual" class="hide">
+          <input class="in" id="jNick" maxlength="40" placeholder="예: 1모둠, 햇살반 지우">
+          <div class="hint">카드에 표시됩니다. <b>실명·학번 등 개인정보는 입력하지 마세요.</b> <a href="#" id="jNickToAuto">자동으로 만들기</a></div>
+        </div>
+      </div>
       <div class="field hide" id="jPinField"><label>입장 PIN</label><input class="in" id="jPin" inputmode="numeric" maxlength="8" placeholder="숫자 PIN"></div>
       <div class="m-err" id="jErr"></div>
       <div class="modal-actions"><button class="btn" data-close>취소</button><button class="btn btn-primary" id="jGo">입장</button></div>
@@ -362,8 +392,21 @@
       <div class="invite-code" id="ivCode">------</div>
       <div id="qrbox"></div>
       <div class="m-err hide" id="ivPin"></div>
-      <div class="modal-actions"><button class="btn" data-close>닫기</button><button class="btn btn-primary" id="ivCopy">링크 복사</button></div>
+      <div class="field hide" id="ivPinOptField">
+        <label><input type="checkbox" id="ivPinInclude"> 링크에 PIN도 포함(입력 없이 바로 입장)</label>
+        <input class="in" id="ivPinValue" inputmode="numeric" maxlength="8" placeholder="PIN 입력" style="margin-top:8px">
+      </div>
+      <div class="modal-actions"><button class="btn" id="ivFull">🖥 전체화면</button><button class="btn btn-primary" id="ivCopy">링크 복사</button></div>
+      <div class="modal-actions"><button class="btn" data-close>닫기</button></div>
     </div>
+  </div>
+
+  <!-- ───── 전체화면 QR(프로젝터용) ───── -->
+  <div class="fullqr" id="fullqr">
+    <button class="fullqr-close" id="fullqrClose">✕</button>
+    <div id="fullqrBox"></div>
+    <div class="fullqr-code" id="fullqrCode">------</div>
+    <div class="fullqr-hint">QR을 스캔하거나 코드를 입력해 입장하세요</div>
   </div>
 
   <!-- ───── 설정 ───── -->
@@ -388,7 +431,13 @@
       <div class="field"><label>참여자 상호작용</label>
         <div class="checkrow">
           <label><input type="checkbox" id="sAllowComments"> 💬 댓글 허용</label>
-          <label><input type="checkbox" id="sAllowLikes"> ❤️ 좋아요 허용</label>
+          <label><input type="checkbox" id="sAllowLikes"> 😄 반응 허용</label>
+        </div></div>
+      <div class="field"><label>반응 이모지(최대 4개)</label><div class="emoji-grid" id="sReactGrid"></div></div>
+      <div class="field"><label>대상</label>
+        <div class="checkrow">
+          <label><input type="radio" name="sAudience" id="sAudienceGeneral"> 일반</label>
+          <label><input type="radio" name="sAudience" id="sAudienceKid"> 저학년용(자동 별명 · 쉬운 안내)</label>
         </div></div>
       <div class="field"><label>자동 종료</label>
         <select class="in" id="sExpiry">
@@ -469,6 +518,11 @@
     var POLL_MS_MID = 5000;    // 20초 이상 무변경
     var POLL_MS_MAX = 8000;    // 60초 이상 무변경
     var ACTIVE_IFRAME_MAX = 12; // 동시 활성(로드된) HTML 카드 iframe 상한
+    var DEFAULT_REACTIONS = ['❤️', '👍', '😄', '👏'];
+    var EMOJI_PALETTE = ['❤️', '👍', '😄', '👏', '🎉', '🙌', '😮', '👀'];  // 설정 화면 선택지(부정적 반응 제외)
+    var REACT_MAX = 4;
+    var NICK_ANIMALS = [['🦊', '여우'], ['🐻', '곰'], ['🐯', '호랑이'], ['🐰', '토끼'], ['🐼', '판다'], ['🦁', '사자'], ['🐨', '코알라'], ['🐸', '개구리'], ['🦉', '부엉이'], ['🐧', '펭귄'], ['🦋', '나비'], ['🐢', '거북이']];
+    var NICK_ADJ = ['씩씩한', '귀여운', '용감한', '반짝이는', '빠른', '조용한', '명랑한', '든든한', '재빠른', '상냥한'];
     var BG = {
       whiteboard: { name: '화이트보드', sw: '#f7f7f4' },
       chalkboard: { name: '칠판', sw: '#1a3323' },
@@ -478,7 +532,7 @@
       kraft: { name: '크라프트', sw: '#dcc7a6' },
     };
 
-    var state = { boardId: null, isOwner: false, board: null, pin: '', nickname: '', editingId: null, composeType: 'text', cmtCardId: null, sectionMap: null, firstSection: null, rev: null, pollMs: POLL_MS_MIN, unchangedSince: null };
+    var state = { boardId: null, isOwner: false, board: null, pin: '', nickname: '', editingId: null, composeType: 'text', cmtCardId: null, sectionMap: null, firstSection: null, rev: null, pollMs: POLL_MS_MIN, unchangedSince: null, autoNick: null };
     var els = {};
     var pollTimer = null;
     var htmlObserver = null;
@@ -498,6 +552,14 @@
     // 쓰기용: 신원 없으면 madang 전용 코드 발급(전역 vives:code 미변경) → 로그아웃해도 글쓰기·소유권 유지.
     function writeCode() { var c = readCode(); if (c) return c; var nc = VivesSync.genCode(); try { localStorage.setItem('madang:code', nc); } catch (e) {} return nc; }
     function toast(msg) { var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 2200); }
+    function isKidMode() { return !!(state.board && state.board.kidMode); }
+    // 저학년 모드에서만 어린이 친화 문구로 치환, 일반 모드는 원래 문구 그대로.
+    function friendlyMsg(kind, fallback) {
+      if (!isKidMode()) return fallback;
+      if (kind === 'flagged') return '🙅 이 말은 올릴 수 없어요. 선생님께 물어보세요.';
+      if (kind === 'network') return '🌐 인터넷이 잠깐 끊겼어요. 다시 눌러 보세요.';
+      return fallback;
+    }
     function openModal(id) { $(id).classList.add('open'); }
     function closeModal(id) { $(id).classList.remove('open'); }
     function closeAllModals() { Array.prototype.forEach.call(document.querySelectorAll('.modal.open'), function (m) { m.classList.remove('open'); }); }
@@ -604,32 +666,50 @@
       var who = document.createElement('span'); who.className = 'mcard-who'; who.textContent = card.nickname || '익명';
       var when = document.createElement('span'); when.className = 'mcard-when'; when.textContent = relTime(card.createdAt);
       var right = document.createElement('div'); right.className = 'mcard-right';
-      var like = document.createElement('button'); like.className = 'mcard-like'; like.title = '좋아요'; like.innerHTML = '<span class="ic">🤍</span><span class="n">0</span>'; like.onclick = function () { toggleLike(card.id); };
+      var reacts = document.createElement('div'); reacts.className = 'mcard-reacts';
       var cmt = document.createElement('button'); cmt.className = 'mcard-cmt'; cmt.title = '댓글'; cmt.innerHTML = '💬 <span class="n">0</span>'; cmt.onclick = function () { openComments(card.id); };
-      right.appendChild(like); right.appendChild(cmt);
+      right.appendChild(reacts); right.appendChild(cmt);
       var acts = document.createElement('div'); acts.className = 'mcard-acts';
       if (card.own) { var be = document.createElement('button'); be.textContent = '수정'; be.onclick = function () { openEdit(el._card); }; acts.appendChild(be); }
       if (card.own || state.isOwner) { var bd = document.createElement('button'); bd.className = 'del'; bd.textContent = '삭제'; bd.onclick = function () { delCard(card.id); }; acts.appendChild(bd); }
       right.appendChild(acts);
       foot.appendChild(who); foot.appendChild(when); foot.appendChild(right);
       el.appendChild(body); el.appendChild(foot); el._card = card;
+      renderReactions(reacts, card);
       refreshCardSocial(el, card);
       return el;
     }
     function refreshCardSocial(el, card) {
-      var like = el.querySelector('.mcard-like');
-      if (like) { like.classList.toggle('on', !!card.liked); like.querySelector('.ic').textContent = card.liked ? '❤️' : '🤍'; like.querySelector('.n').textContent = card.likes || 0; }
       var cmt = el.querySelector('.mcard-cmt');
       if (cmt) cmt.querySelector('.n').textContent = card.commentCount != null ? card.commentCount : (card.comments || []).length;
     }
-    function toggleLike(cardId) {
+    function reactionList() { return (state.board && state.board.reactions && state.board.reactions.length) ? state.board.reactions : DEFAULT_REACTIONS; }
+    function renderReactions(container, card) {
+      if (!container) return;
+      container.innerHTML = '';
+      reactionList().forEach(function (emoji) {
+        var mine = (card.myReactions || []).indexOf(emoji) >= 0;
+        var n = (card.reactions && card.reactions[emoji]) || 0;
+        var b = document.createElement('button'); b.className = 'mcard-react' + (mine ? ' on' : '');
+        b.innerHTML = '<span class="ic">' + emoji + '</span>' + (n ? '<span class="n">' + n + '</span>' : '');
+        b.onclick = function () { toggleReaction(card.id, emoji); };
+        container.appendChild(b);
+      });
+    }
+    function toggleReaction(cardId, emoji) {
       var el = els[cardId]; if (!el) return; var card = el._card;
-      var newLiked = !card.liked;
-      card.liked = newLiked; card.likes = Math.max(0, (card.likes || 0) + (newLiked ? 1 : -1)); refreshCardSocial(el, card);
-      post({ action: 'like', board: state.boardId, cardId: cardId, on: newLiked, pin: state.pin }).then(function (res) {
-        if (res.ok) { card.likes = res.likes; card.liked = res.liked; refreshCardSocial(el, card); nudgePolling(); }
-        else { card.liked = !newLiked; card.likes = Math.max(0, (card.likes || 0) + (newLiked ? -1 : 1)); refreshCardSocial(el, card); toast(res.error || '실패'); }
-      }).catch(function () { card.liked = !newLiked; refreshCardSocial(el, card); });
+      card.myReactions = card.myReactions || []; card.reactions = card.reactions || {};
+      var has = card.myReactions.indexOf(emoji) >= 0;
+      function applyLocal(on) {
+        if (on) { if (card.myReactions.indexOf(emoji) < 0) card.myReactions = card.myReactions.concat([emoji]); card.reactions[emoji] = (card.reactions[emoji] || 0) + 1; }
+        else { card.myReactions = card.myReactions.filter(function (e) { return e !== emoji; }); card.reactions[emoji] = Math.max(0, (card.reactions[emoji] || 0) - 1); }
+        renderReactions(el.querySelector('.mcard-reacts'), card);
+      }
+      applyLocal(!has);
+      post({ action: 'react', board: state.boardId, cardId: cardId, emoji: emoji, on: !has, pin: state.pin }).then(function (res) {
+        if (res.ok) { card.reactions = res.reactions; card.myReactions = res.mine; renderReactions(el.querySelector('.mcard-reacts'), card); nudgePolling(); }
+        else { applyLocal(has); toast(res.error || '실패'); }
+      }).catch(function () { applyLocal(has); });
     }
     function openComments(cardId) {
       var el = els[cardId]; if (!el) return; state.cmtCardId = cardId;
@@ -667,11 +747,11 @@
       $('cmtGo').disabled = true;
       post({ action: 'addComment', board: state.boardId, cardId: cardId, text: text, nickname: state.nickname || getNick(), pin: state.pin }).then(function (res) {
         $('cmtGo').disabled = false;
-        if (!res.ok) { if (res.flagged) { $('cmtErr').textContent = '⚠️ 부적절한 내용으로 게시할 수 없습니다.'; return; } $('cmtErr').textContent = res.error || '실패'; return; }
+        if (!res.ok) { if (res.flagged) { $('cmtErr').textContent = friendlyMsg('flagged', '⚠️ 부적절한 내용으로 게시할 수 없습니다.'); return; } $('cmtErr').textContent = res.error || '실패'; return; }
         $('cmtInput').value = ''; nudgePolling();
         var el = els[cardId]; if (el) { el._card.comments = (el._card.comments || []).concat([res.comment]); el._card.commentCount = (el._card.commentCount || 0) + 1; refreshCardSocial(el, el._card); renderComments(el._card); }
         toast('댓글 달림 ✓');
-      }).catch(function () { $('cmtGo').disabled = false; $('cmtErr').textContent = '네트워크 오류'; });
+      }).catch(function () { $('cmtGo').disabled = false; $('cmtErr').textContent = friendlyMsg('network', '네트워크 오류'); });
     }
     function delComment(cardId, commentId) {
       if (!confirm('이 댓글을 삭제할까요?')) return;
@@ -699,7 +779,9 @@
           // 댓글 전문은 폴링에 포함되지 않음 — 개수가 그대로면 캐시 유지, 바뀌었으면 모달 열려 있을 때만 재조회
           if (ex._card && ex._card.comments && ex._card.commentCount === c.commentCount) c.comments = ex._card.comments;
           else if (state.cmtCardId === c.id) cmtNeedsRefetch = true;
-          ex._card = c; ex.querySelector('.mcard-who').textContent = c.nickname || '익명'; refreshCardSocial(ex, c);
+          ex._card = c; ex.querySelector('.mcard-who').textContent = c.nickname || '익명';
+          renderReactions(ex.querySelector('.mcard-reacts'), c);
+          refreshCardSocial(ex, c);
         }
       });
       var n = cards.length; $('wallEmpty').classList.toggle('hide', n > 0 || (state.board && state.board.layout === 'sections')); if ($('m-info').classList.contains('open')) renderInfo();
@@ -821,11 +903,11 @@
       reconcile(res.cards || []);
       startPolling();
     }
-    function enterByCode(c) {
+    function enterByCode(c, pin) {
       c = String(c || '').toUpperCase();
       if (!BOARD_RE.test(c)) { toast('잘못된 마당 코드'); return; }
-      state.boardId = c; state.pin = '';
-      fetchBoard(c).then(function (res) {
+      state.boardId = c; state.pin = pin || '';
+      fetchBoard(c, state.pin).then(function (res) {
         if (res.error) {
           if (res.pinRequired) { openJoin(c); return; }
           if (res.expired) { toast('운영 기간이 종료된 마당입니다.'); return; }
@@ -916,8 +998,9 @@
       if (!code()) { $('cErr').textContent = '먼저 우상단 🔄 동기화에서 코드를 발급하세요.'; return; }
       var title = $('cTitle').value.trim(), pin = $('cPin').value.trim();
       if (pin && !/^[0-9]{4,8}$/.test(pin)) { $('cErr').textContent = 'PIN은 숫자 4~8자리여야 합니다.'; return; }
+      var kidMode = $('cAudienceKid').checked;
       $('cGo').disabled = true;
-      post({ action: 'create', title: title, pin: pin }).then(function (res) {
+      post({ action: 'create', title: title, pin: pin, kidMode: kidMode }).then(function (res) {
         $('cGo').disabled = false;
         if (!res.ok) { $('cErr').textContent = res.error || '생성 실패'; return; }
         if (!getNick()) setNick('개설자');
@@ -926,15 +1009,39 @@
       }).catch(function () { $('cGo').disabled = false; $('cErr').textContent = '네트워크 오류'; });
     }
 
-    /* ── 들어가기 ── */
-    function openJoin(prefill) {
+    /* ── 들어가기(자동 별명 · kidMode 대응) ── */
+    function genAutoNick() {
+      var a = NICK_ADJ[Math.floor(Math.random() * NICK_ADJ.length)];
+      var e = NICK_ANIMALS[Math.floor(Math.random() * NICK_ANIMALS.length)];
+      var n = 1 + Math.floor(Math.random() * 99);
+      return { emoji: e[0], label: e[0] + ' ' + a + ' ' + e[1] + ' ' + n };
+    }
+    function rerollAutoNick() { state.autoNick = genAutoNick(); $('jNickAutoBtn').textContent = state.autoNick.label + '  (다시 뽑기)'; }
+    function setJoinNickMode(kidMode) {
+      $('jNickAuto').classList.toggle('hide', !kidMode);
+      $('jNickManual').classList.toggle('hide', !!kidMode);
+      if (kidMode && !state.autoNick) rerollAutoNick();
+    }
+    function refreshJoinKidMode(boardId) {
+      if (!BOARD_RE.test(boardId)) return;
+      fetchBoard(boardId, '').then(function (res) {
+        if ($('jCode').value.trim().toUpperCase() !== boardId) return;  // 그새 코드가 바뀜
+        if (res && res.board) setJoinNickMode(!!res.board.kidMode);
+      }).catch(function () {});
+    }
+    function openJoin(prefill, pinPrefill) {
       $('jErr').textContent = ''; $('jCode').value = prefill || ''; $('jNick').value = getNick();
-      hide($('jPinField')); $('jPin').value = ''; openModal('m-join');
+      state.autoNick = null; setJoinNickMode(false);  // 기본은 직접 입력, kidMode 확인되면 전환
+      if (pinPrefill) { show($('jPinField')); $('jPin').value = pinPrefill; } else { hide($('jPinField')); $('jPin').value = ''; }
+      openModal('m-join');
+      var bid = String(prefill || '').toUpperCase();
+      if (BOARD_RE.test(bid)) refreshJoinKidMode(bid);
       setTimeout(function () { ($(prefill ? 'jNick' : 'jCode')).focus(); }, 50);
     }
+    function currentJoinNick() { return $('jNickAuto').classList.contains('hide') ? $('jNick').value.trim() : (state.autoNick && state.autoNick.label) || ''; }
     function doJoin() {
       $('jErr').textContent = '';
-      var bid = $('jCode').value.trim().toUpperCase(), nick = $('jNick').value.trim();
+      var bid = $('jCode').value.trim().toUpperCase(), nick = currentJoinNick();
       if (!BOARD_RE.test(bid)) { $('jErr').textContent = '마당 코드 6자리를 확인하세요.'; return; }
       if (!nick) { $('jErr').textContent = '별명을 입력하세요.'; return; }
       setNick(nick);
@@ -984,25 +1091,47 @@
       openModal('m-card');
     }
     function contentOf(t) { return t === 'html' ? $('kHtml').value : $('kText').value; }
+    /* ── 오프라인 게시 대기열(저학년 모드, 보드당 1건) — 재연결 시 자동 재시도 ── */
+    function pendingKey(boardId) { return 'madang:pending:' + boardId; }
+    function savePending(boardId, payload) { try { localStorage.setItem(pendingKey(boardId), JSON.stringify(payload)); } catch (e) {} }
+    function loadPending(boardId) { try { var s = localStorage.getItem(pendingKey(boardId)); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+    function clearPending(boardId) { try { localStorage.removeItem(pendingKey(boardId)); } catch (e) {} }
+    function flushPending() {
+      if (!state.boardId) return;
+      var p = loadPending(state.boardId); if (!p) return;
+      post(p).then(function (res) {
+        if (res.ok) {
+          clearPending(state.boardId);
+          if (res.card && !els[res.card.id]) { res.card.commentCount = 0; res.card.reactions = {}; res.card.myReactions = []; var el = createCardEl(res.card); els[res.card.id] = el; insertSorted(cardTarget(res.card), el, res.card); $('wallEmpty').classList.add('hide'); }
+          toast('아까 못 올린 카드가 게시됐어요 ✓'); nudgePolling();
+        } else if (res.__status) { clearPending(state.boardId); }  // 서버가 응답했는데 거절 — 재시도해도 소용없음(검열 등)
+      }).catch(function () {});  // 여전히 오프라인 — 다음 기회에 재시도
+    }
+    window.addEventListener('online', flushPending);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) flushPending(); });
     function doCompose() {
       var t = state.composeType, content = contentOf(t); $('kErr').textContent = '';
       if (!content.trim()) { $('kErr').textContent = '내용을 입력하세요.'; return; }
       $('kGo').disabled = true;
-      var req = state.editingId
-        ? post({ action: 'editCard', board: state.boardId, cardId: state.editingId, content: content })
-        : post({ action: 'post', board: state.boardId, type: t, content: content, nickname: state.nickname || getNick(), pin: state.pin, section: (state.board && state.board.layout === 'sections') ? $('kSection').value : '' });
-      req.then(function (res) {
+      var payload = state.editingId
+        ? { action: 'editCard', board: state.boardId, cardId: state.editingId, content: content }
+        : { action: 'post', board: state.boardId, type: t, content: content, nickname: state.nickname || getNick(), pin: state.pin, section: (state.board && state.board.layout === 'sections') ? $('kSection').value : '' };
+      post(payload).then(function (res) {
         $('kGo').disabled = false;
-        if (!res.ok) { if (res.flagged) { $('kErr').textContent = '⚠️ 부적절한 내용으로 판단되어 게시할 수 없습니다.'; return; } $('kErr').textContent = res.error || '실패'; return; }
+        if (!res.ok) { if (res.flagged) { $('kErr').textContent = friendlyMsg('flagged', '⚠️ 부적절한 내용으로 판단되어 게시할 수 없습니다.'); return; } $('kErr').textContent = res.error || '실패'; return; }
         closeModal('m-card'); nudgePolling();
         if (state.editingId) {
           var ex = els[res.card.id]; if (ex) { ex.dataset.up = res.card.updatedAt; ex._card.content = res.card.content; fillBody(ex.querySelector('.mcard-body'), ex._card); }
           toast('수정됐어요 ✓');
         } else {
-          if (!els[res.card.id]) { res.card.commentCount = 0; var el = createCardEl(res.card); els[res.card.id] = el; insertSorted(cardTarget(res.card), el, res.card); $('wallEmpty').classList.add('hide'); if ($('m-info').classList.contains('open')) renderInfo(); }
+          if (!els[res.card.id]) { res.card.commentCount = 0; res.card.reactions = {}; res.card.myReactions = []; var el = createCardEl(res.card); els[res.card.id] = el; insertSorted(cardTarget(res.card), el, res.card); $('wallEmpty').classList.add('hide'); if ($('m-info').classList.contains('open')) renderInfo(); }
           toast('올렸어요 ✓');
         }
-      }).catch(function () { $('kGo').disabled = false; $('kErr').textContent = '네트워크 오류'; });
+      }).catch(function () {
+        $('kGo').disabled = false;
+        if (!state.editingId && isKidMode()) { savePending(state.boardId, payload); closeModal('m-card'); toast(friendlyMsg('network', '네트워크 오류')); }
+        else { $('kErr').textContent = friendlyMsg('network', '네트워크 오류'); }
+      });
     }
     function delCard(id) {
       if (!confirm('이 카드를 삭제할까요?')) return;
@@ -1023,14 +1152,28 @@
       });
     }
 
-    /* ── 초대 (단축 없이 원본 URL) ── */
-    function inviteUrl() { return location.origin + '/apps/madang/#join=' + state.boardId; }
-    function openInvite() {
-      $('ivCode').textContent = state.boardId;
+    /* ── 초대 (단축 없이 원본 URL) — PIN 링크 포함은 개설자 opt-in, 기본 미포함 ── */
+    function currentInvitePin() {
+      if (!(state.board && state.board.hasPin)) return '';
+      if (!$('ivPinInclude').checked) return '';
+      return $('ivPinValue').value.trim();
+    }
+    function inviteUrl() {
+      var p = currentInvitePin();
+      return location.origin + '/apps/madang/#join=' + state.boardId + (p ? (':' + p) : '');
+    }
+    function refreshInviteQr() {
       var box = $('qrbox'); box.innerHTML = '';
       if (window.QRCode) { try { new QRCode(box, { text: inviteUrl(), width: 168, height: 168, correctLevel: QRCode.CorrectLevel.M }); } catch (e) {} }
+    }
+    function openInvite() {
+      $('ivCode').textContent = state.boardId;
+      var hasPin = !!(state.board && state.board.hasPin);
+      $('ivPinOptField').classList.toggle('hide', !hasPin);
+      $('ivPinInclude').checked = false; $('ivPinValue').value = '';
+      refreshInviteQr();
       var pinEl = $('ivPin');
-      if (state.board && state.board.hasPin) { pinEl.classList.remove('hide'); pinEl.style.color = 'var(--fg-muted)'; pinEl.textContent = '※ 이 마당은 PIN이 설정돼 있어요. PIN은 따로 알려주세요.'; }
+      if (hasPin) { pinEl.classList.remove('hide'); pinEl.style.color = 'var(--fg-muted)'; pinEl.textContent = '※ 이 마당은 PIN이 설정돼 있어요. 위에서 링크에 포함할지 선택하세요(기본은 미포함).'; }
       else pinEl.classList.add('hide');
       openModal('m-invite');
     }
@@ -1039,6 +1182,13 @@
       if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { toast('초대 링크 복사됨 ✓'); }, function () { toast('링크: ' + url); });
       else toast('링크: ' + url);
     }
+    function openFullQr() {
+      $('fullqrCode').textContent = state.boardId;
+      var box = $('fullqrBox'); box.innerHTML = '';
+      if (window.QRCode) { try { new QRCode(box, { text: inviteUrl(), width: 320, height: 320, correctLevel: QRCode.CorrectLevel.M }); } catch (e) {} }
+      $('fullqr').classList.add('open');
+    }
+    function closeFullQr() { $('fullqr').classList.remove('open'); }
 
     /* ── 내보내기 (CSV·PDF) ── */
     function openExport() { openModal('m-export'); }
@@ -1114,6 +1264,19 @@
         g.appendChild(o);
       });
     }
+    function renderReactGrid(selected) {
+      var g = $('sReactGrid'); g.innerHTML = '';
+      EMOJI_PALETTE.forEach(function (e) {
+        var o = document.createElement('div'); o.className = 'emoji-opt' + (selected.indexOf(e) >= 0 ? ' sel' : ''); o.dataset.emoji = e; o.textContent = e;
+        o.onclick = function () {
+          if (o.classList.contains('sel')) { o.classList.remove('sel'); return; }
+          var cur = Array.prototype.filter.call(g.children, function (c) { return c.classList.contains('sel'); });
+          if (cur.length >= REACT_MAX) { toast('최대 ' + REACT_MAX + '개까지 선택할 수 있어요.'); return; }
+          o.classList.add('sel');
+        };
+        g.appendChild(o);
+      });
+    }
     function openSettings() {
       var b = state.board;
       $('sTitle').value = b.title || '';
@@ -1125,6 +1288,8 @@
       $('sSections').value = (b.sections || []).join(', ');
       $('sSectionsField').classList.toggle('hide', (b.layout || 'wall') !== 'sections');
       $('sAllowComments').checked = !!b.allowComments; $('sAllowLikes').checked = !!b.allowLikes;
+      renderReactGrid(b.reactions && b.reactions.length ? b.reactions : DEFAULT_REACTIONS);
+      $('sAudienceKid').checked = !!b.kidMode; $('sAudienceGeneral').checked = !b.kidMode;
       $('sExpiry').value = String(b.expiryDays || 0);
       $('sExpiryHint').textContent = b.expired ? '운영 기간 종료됨 · 다시 고르면 지금부터 재개됩니다.' : (b.expiresAt ? '현재: ' + expiryText(b) + ' · 바꾸면 지금부터 다시 계산' : '무기한');
       $('sPin').value = ''; $('sPinHint').textContent = b.hasPin ? '현재 PIN 설정됨 · 비우고 저장하면 PIN 해제' : '현재 PIN 없음';
@@ -1137,9 +1302,12 @@
       var pin = $('sPin').value.trim();
       if (pin && !/^[0-9]{4,8}$/.test(pin)) { $('sErr').textContent = 'PIN은 숫자 4~8자리여야 합니다.'; return; }
       var bgSel = $('sBgGrid').querySelector('.bg-opt.sel');
+      var reactSel = Array.prototype.filter.call($('sReactGrid').children, function (c) { return c.classList.contains('sel'); }).map(function (c) { return c.dataset.emoji; });
       var patch = {
         title: $('sTitle').value.trim(), allowedTypes: types, pin: pin, expiryDays: Number($('sExpiry').value),
         background: bgSel ? bgSel.dataset.bg : 'whiteboard', allowComments: $('sAllowComments').checked, allowLikes: $('sAllowLikes').checked,
+        reactions: reactSel.length ? reactSel : DEFAULT_REACTIONS.slice(),
+        kidMode: $('sAudienceKid').checked,
         layout: $('sLayout').value === 'sections' ? 'sections' : 'wall',
         sections: $('sSections').value.split(',').map(function (s) { return s.trim(); }).filter(Boolean),
         sort: $('sSort').value,
@@ -1212,6 +1380,13 @@
       $('mbClose').onclick = showHome; $('gateHome').onclick = showHome;
       $('mbAdd').onclick = openCompose; $('fab').onclick = openCompose;
       $('ivCopy').onclick = copyInvite;
+      $('ivFull').onclick = function () { closeModal('m-invite'); openFullQr(); };
+      $('fullqrClose').onclick = closeFullQr;
+      $('fullqr').addEventListener('click', function (e) { if (e.target === $('fullqr')) closeFullQr(); });
+      $('ivPinInclude').onchange = refreshInviteQr; $('ivPinValue').oninput = refreshInviteQr;
+      $('jNickAutoBtn').onclick = rerollAutoNick;
+      $('jNickToManual').onclick = function (e) { e.preventDefault(); setJoinNickMode(false); };
+      $('jNickToAuto').onclick = function (e) { e.preventDefault(); setJoinNickMode(true); };
       wireDropdown('mbShareBtn', 'mbShareMenu'); wireDropdown('mbMoreBtn', 'mbMoreMenu');
       $('mbShareMenu').addEventListener('click', function (e) { var b = e.target.closest('button[data-act]'); if (!b) return; closeDropdowns(); var a = b.dataset.act; if (a === 'invite') openInvite(); else if (a === 'toggle') toggleShare(); else if (a === 'export') openExport(); });
       $('mbMoreMenu').addEventListener('click', function (e) { var b = e.target.closest('button[data-act]'); if (!b) return; closeDropdowns(); var a = b.dataset.act; if (a === 'info') openInfo(); else if (a === 'nick') openNick(); else if (a === 'members') openMembers(); else if (a === 'settings') openSettings(); });
@@ -1222,8 +1397,13 @@
       Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.onclick = function () { setComposeType(b.dataset.type); }; });
       Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (b) { b.onclick = function () { closeModal(b.closest('.modal').id); }; });
       Array.prototype.forEach.call(document.querySelectorAll('.modal'), function (m) { m.addEventListener('click', function (e) { if (e.target === m) closeModal(m.id); }); });
-      $('jCode').addEventListener('input', function () { this.value = this.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 6); });
-      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if (document.querySelector('.modal.open')) closeAllModals(); } });
+      $('jCode').addEventListener('input', function () {
+        this.value = this.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 6);
+        if (this.value.length === 6) refreshJoinKidMode(this.value);
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { if ($('fullqr').classList.contains('open')) closeFullQr(); else if (document.querySelector('.modal.open')) closeAllModals(); }
+      });
     }
 
     function init() {
@@ -1231,10 +1411,10 @@
       VivesSync.mountCodeButton({ appName: '마당 신원', onChange: function () { if ($('view-home').classList.contains('active')) renderLanding(); } });
       renderLanding();
       var hash = location.hash || '';
-      var mj = hash.match(/#join=([A-Za-z2-9]{6})/);
-      var mb = hash.match(/^#([A-HJ-NP-Z2-9]{6})$/);
-      if (mj) { history.replaceState(null, '', location.pathname); openJoin(mj[1].toUpperCase()); }
-      else if (mb) { enterByCode(mb[1].toUpperCase()); }
+      var mj = hash.match(/#join=([A-Za-z2-9]{6})(?::([0-9]{4,8}))?/);
+      var mb = hash.match(/^#([A-HJ-NP-Z2-9]{6})(?::([0-9]{4,8}))?$/);
+      if (mj) { history.replaceState(null, '', location.pathname); openJoin(mj[1].toUpperCase(), mj[2] || ''); }
+      else if (mb) { enterByCode(mb[1].toUpperCase(), mb[2] || ''); }
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
   })();

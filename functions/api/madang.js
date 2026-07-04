@@ -34,6 +34,8 @@ const EXPIRY_DEFAULT_DAYS = 7;                 // 기본 1주일
 const DAY_MS = 86400000;
 const BG_KEYS = ['whiteboard', 'chalkboard', 'dark', 'dots', 'grid', 'kraft'];  // 배경 패턴 키
 const MOD_TIMEOUT_MS = 2500;                   // 검열 API 타임아웃(초과 시 통과 + 사후검열)
+const DEFAULT_REACTIONS = ['❤️', '👍', '😄', '👏'];  // 기본 이모지 반응 4종(긍정 반응만)
+const REACTION_MAX = 4;
 
 // 로컬 금칙어 프리필터 — 명백한 비속어를 API 왕복 없이 즉시 차단(1차 방어선). 검열 API가 2차 방어.
 const LOCAL_BAD_PATTERNS = [
@@ -143,6 +145,8 @@ function boardMeta(board, settings) {
     background: settings.background || 'whiteboard',
     allowComments: !!settings.allowComments,
     allowLikes: !!settings.allowLikes,
+    reactions: (Array.isArray(settings.reactions) && settings.reactions.length) ? settings.reactions.slice(0, REACTION_MAX) : DEFAULT_REACTIONS.slice(),
+    kidMode: !!settings.kidMode,
     updatedAt: board.updated_at,
     rev: board.rev || 0,
   };
@@ -223,33 +227,39 @@ async function handleGet(env, db, request) {
       "SELECT id, author_token, nickname, type, content, section, created_at, updated_at FROM madang_cards WHERE board_id = ? AND status != 'hidden' ORDER BY created_at ASC"
     ).bind(boardId),
   ];
-  if (wantLikes) stmts.push(db.prepare('SELECT card_id, COUNT(*) AS n FROM madang_likes WHERE board_id = ? GROUP BY card_id').bind(boardId));
-  if (wantLikes && myToken) stmts.push(db.prepare('SELECT card_id FROM madang_likes WHERE board_id = ? AND liker_token = ?').bind(boardId, myToken));
+  if (wantLikes) stmts.push(db.prepare('SELECT card_id, emoji, COUNT(*) AS n FROM madang_likes WHERE board_id = ? GROUP BY card_id, emoji').bind(boardId));
+  if (wantLikes && myToken) stmts.push(db.prepare('SELECT card_id, emoji FROM madang_likes WHERE board_id = ? AND liker_token = ?').bind(boardId, myToken));
   if (wantComments) stmts.push(db.prepare('SELECT card_id, COUNT(*) AS n FROM madang_comments WHERE board_id = ? GROUP BY card_id').bind(boardId));
 
   const results = await db.batch(stmts);
   let ix = 0;
   const cardRows = results[ix++].results || [];
-  const likeCount = {};
-  if (wantLikes) { for (const r of (results[ix++].results || [])) likeCount[r.card_id] = r.n; }
-  const likedByMe = {};
-  if (wantLikes && myToken) { for (const r of (results[ix++].results || [])) likedByMe[r.card_id] = true; }
+  const reactionsByCard = {};
+  if (wantLikes) { for (const r of (results[ix++].results || [])) { (reactionsByCard[r.card_id] = reactionsByCard[r.card_id] || {})[r.emoji] = r.n; } }
+  const mineByCard = {};
+  if (wantLikes && myToken) { for (const r of (results[ix++].results || [])) { (mineByCard[r.card_id] = mineByCard[r.card_id] || {})[r.emoji] = true; } }
   const cmtCount = {};
   if (wantComments) { for (const r of (results[ix++].results || [])) cmtCount[r.card_id] = r.n; }
 
-  const cards = cardRows.map((r) => ({
-    id: r.id,
-    nickname: r.nickname,
-    type: r.type,
-    content: r.content,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-    own: !!(myToken && r.author_token === myToken),  // 내가 쓴 카드(수정·삭제 가능)
-    section: r.section || '',
-    likes: likeCount[r.id] || 0,
-    liked: !!likedByMe[r.id],
-    commentCount: cmtCount[r.id] || 0,
-  }));
+  const cards = cardRows.map((r) => {
+    const reactions = reactionsByCard[r.id] || {};
+    const mine = Object.keys(mineByCard[r.id] || {});
+    return {
+      id: r.id,
+      nickname: r.nickname,
+      type: r.type,
+      content: r.content,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      own: !!(myToken && r.author_token === myToken),  // 내가 쓴 카드(수정·삭제 가능)
+      section: r.section || '',
+      reactions: reactions,
+      myReactions: mine,
+      likes: reactions['❤️'] || 0,       // 구버전 클라이언트 하위호환
+      liked: mine.indexOf('❤️') >= 0,    // 구버전 클라이언트 하위호환
+      commentCount: cmtCount[r.id] || 0,
+    };
+  });
 
   return json({ board: boardMeta(board, settings), isOwner, rev: board.rev, cards });
 }
@@ -274,6 +284,7 @@ async function handlePost(env, db, request, ctx) {
       if (exists) continue;
       const settings = { expiresAt: new Date(Date.now() + EXPIRY_DEFAULT_DAYS * DAY_MS).toISOString(), expiryDays: EXPIRY_DEFAULT_DAYS };
       if (pin) settings.pinHash = await pinHashOf(env, id, pin);
+      if (body.kidMode) settings.kidMode = true;
       const ownerTok = await ownerToken(env, id, code);
       try {
         await db.prepare(
@@ -407,6 +418,11 @@ async function handlePost(env, db, request, ctx) {
     if (typeof patch.background === 'string') settings.background = BG_KEYS.includes(patch.background) ? patch.background : 'whiteboard';
     if (typeof patch.allowComments === 'boolean') settings.allowComments = patch.allowComments;
     if (typeof patch.allowLikes === 'boolean') settings.allowLikes = patch.allowLikes;
+    if (typeof patch.kidMode === 'boolean') settings.kidMode = patch.kidMode;
+    if (Array.isArray(patch.reactions)) {
+      const rs = patch.reactions.map((e) => String(e || '').trim()).filter(Boolean).slice(0, REACTION_MAX);
+      settings.reactions = rs.length ? rs : DEFAULT_REACTIONS.slice();
+    }
     if (typeof patch.layout === 'string') settings.layout = patch.layout === 'sections' ? 'sections' : 'wall';
     if (Array.isArray(patch.sections)) settings.sections = patch.sections.map(function (s) { return String(s).trim().slice(0, 40); }).filter(Boolean).slice(0, 12);
     if (typeof patch.sort === 'string') settings.sort = ['newest', 'oldest', 'shuffle'].includes(patch.sort) ? patch.sort : 'newest';
@@ -469,28 +485,33 @@ async function handlePost(env, db, request, ctx) {
     return json({ ok: true, deleted: true });
   }
 
-  // ── 좋아요 토글(on:true 추가 / on:false 취소) ──
-  if (action === 'like') {
-    if (!settings.allowLikes) return json({ error: '이 마당은 좋아요가 꺼져 있습니다.' }, 403);
+  // ── 반응 토글(on:true 추가 / on:false 취소) — 'like'는 emoji='❤️' 고정의 하위호환 별칭 ──
+  if (action === 'react' || action === 'like') {
+    if (!settings.allowLikes) return json({ error: '이 마당은 반응이 꺼져 있습니다.' }, 403);
     if (!CODE_RE.test(code)) return json({ error: '코드가 필요합니다.' }, 400);
     const acc = await checkAccess(env, board, settings, isOwner, String(body.pin || ''));
     if (acc) return json(acc, acc.status);
     const cardId = String(body.cardId || '');
     const card = await db.prepare('SELECT id FROM madang_cards WHERE board_id = ? AND id = ?').bind(boardId, cardId).first();
     if (!card) return json({ error: '카드를 찾을 수 없습니다.' }, 404);
+    const allowedReactions = (Array.isArray(settings.reactions) && settings.reactions.length) ? settings.reactions.slice(0, REACTION_MAX) : DEFAULT_REACTIONS;
+    const emoji = action === 'like' ? '❤️' : String(body.emoji || '❤️');
+    if (!allowedReactions.includes(emoji)) return json({ error: '허용되지 않은 반응입니다.' }, 400);
     const tok = await authorToken(env, boardId, code);
     const stmts = [];
     if (body.on === false) {
-      stmts.push(db.prepare('DELETE FROM madang_likes WHERE board_id = ? AND card_id = ? AND liker_token = ?').bind(boardId, cardId, tok));
+      stmts.push(db.prepare('DELETE FROM madang_likes WHERE board_id = ? AND card_id = ? AND liker_token = ? AND emoji = ?').bind(boardId, cardId, tok, emoji));
     } else {
-      stmts.push(db.prepare('INSERT INTO madang_likes (board_id, card_id, liker_token, created_at) VALUES (?,?,?,?) ON CONFLICT(board_id, card_id, liker_token) DO NOTHING')
-        .bind(boardId, cardId, tok, nowIso()));
+      stmts.push(db.prepare('INSERT INTO madang_likes (board_id, card_id, liker_token, emoji, created_at) VALUES (?,?,?,?,?) ON CONFLICT(board_id, card_id, liker_token, emoji) DO NOTHING')
+        .bind(boardId, cardId, tok, emoji, nowIso()));
     }
     stmts.push(bumpRevStmt(db, boardId));
-    stmts.push(db.prepare('SELECT COUNT(*) AS n FROM madang_likes WHERE board_id = ? AND card_id = ?').bind(boardId, cardId));
+    stmts.push(db.prepare('SELECT emoji, COUNT(*) AS n FROM madang_likes WHERE board_id = ? AND card_id = ? GROUP BY emoji').bind(boardId, cardId));
+    stmts.push(db.prepare('SELECT emoji FROM madang_likes WHERE board_id = ? AND card_id = ? AND liker_token = ?').bind(boardId, cardId, tok));
     const results = await db.batch(stmts);
-    const cntRow = (results[results.length - 1].results || [])[0];
-    return json({ ok: true, likes: (cntRow && cntRow.n) || 0, liked: body.on !== false });
+    const reactions = {}; for (const r of (results[results.length - 2].results || [])) reactions[r.emoji] = r.n;
+    const mine = (results[results.length - 1].results || []).map((r) => r.emoji);
+    return json({ ok: true, reactions: reactions, mine: mine, likes: reactions['❤️'] || 0, liked: mine.indexOf('❤️') >= 0 });
   }
 
   // ── 입장 기록(멤버) ── 닉네임 있는 사용자가 입장하면 참여자 목록에 기록
