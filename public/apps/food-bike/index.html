@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>식품구성자전거 — eduin VIVES</title>
+  <meta name="description" content="음식을 담아 바퀴를 채우는 균형 식단 게임">
+  <meta property="og:title" content="식품구성자전거 — 균형 잡힌 식단 만들기 게임 | eduin VIVES">
+  <meta property="og:description" content="음식을 담아 바퀴를 채우는 균형 식단 게임">
+  <meta property="og:image" content="https://eduin.info/og-images/food-bike.png">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <link rel="stylesheet" href="/common/app-shell.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
+  <script src="/common/app-shell.js" defer></script>
+  <script src="/common/seo-injector.js" defer></script>
+  <style>
+/* ── food-bike 전용 스타일 (immersive 전체화면) ── */
+:root {
+  --group-grain: #e74c3c;      /* 곡류: 빨강 */
+  --group-protein: #e67e22;    /* 고기·생선·달걀·콩류: 주황 */
+  --group-vegetable: #27ae60;  /* 채소류: 녹색 */
+  --group-fruit: #9b59b6;      /* 과일류: 보라 */
+  --group-dairy: #3498db;      /* 우유·유제품류: 파랑 */
+  --group-oil: #f1c40f;        /* 유지·당류: 노랑 */
+  --group-water: #1abc9c;      /* 물: 청록색 */
+
+  --fb-accent: #2e7d32;
+  --fb-accent-h: #1b5e20;
+  --fb-sidebar-w: 320px;
+  --fb-grid-bg: #f5f6fa;
+  --fb-card-bg: var(--card-bg);
+}
+[data-theme="dark"] {
+  --fb-grid-bg: #121214;
+  --fb-card-bg: #1e1e24;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  background: var(--fb-grid-bg);
+  color: var(--fg);
+  min-height: 100vh;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.screen { display: none; }
+.screen.active { display: flex; }
+
+/* ── 인트로 스크린 ── */
+.intro-screen {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(46,125,50,0.06) 0, transparent 40%),
+    radial-gradient(circle at 85% 85%, rgba(26,188,156,0.05) 0, transparent 35%),
+    var(--fb-grid-bg);
+}
+.intro-emoji {
+  font-size: 80px; margin-bottom: 12px;
+  animation: float 2.5s ease-in-out infinite;
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.intro-screen h1 { font-size: 32px; font-weight: 800; margin-bottom: 6px; }
+.intro-sub { font-size: 15px; color: var(--fg-muted); line-height: 1.7; margin-bottom: 24px; }
+.intro-card {
+  background: var(--fb-card-bg);
+  border: 2px dashed var(--fb-accent);
+  border-radius: 16px;
+  padding: 20px 24px;
+  max-width: 440px; width: 100%;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.05);
+}
+.intro-card h3 { font-size: 17px; font-weight: 700; color: var(--fb-accent); margin-bottom: 8px; }
+.intro-card p { font-size: 14px; line-height: 1.7; color: var(--fg-muted); }
+
+/* ── 메인 레이아웃 ── */
+.explore-screen {
+  width: 100vw; height: 100vh; height: 100dvh;
+}
+.explore-layout {
+  display: grid;
+  grid-template-columns: 1fr var(--fb-sidebar-w);
+  width: 100%; height: 100%;
+}
+
+/* 캔버스 영역 */
+.canvas-zone {
+  position: relative;
+  background: var(--fb-grid-bg);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.canvas-header {
+  position: absolute; top: 56px; left: 16px; right: 16px; z-index: 10;
+  display: flex; justify-content: space-between; align-items: center;
+  pointer-events: none;
+}
+.canvas-title-badge {
+  background: rgba(38,50,56,0.85); backdrop-filter: blur(6px);
+  color: #fff; border-radius: 14px; padding: 8px 16px;
+  font-size: 14px; font-weight: 700; border: 1px solid rgba(255,255,255,0.2);
+  display: flex; align-items: center; gap: 8px;
+}
+.canvas-title-badge .num {
+  background: var(--fb-accent); width: 22px; height: 22px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 11px;
+}
+
+/* 무대/도로 애니메이션 */
+.canvas-viewport {
+  flex: 1; position: relative; width: 100%; height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 100px 20px 40px;
+}
+.road-bg {
+  position: absolute; bottom: 0; left: 0; width: 200%; height: 220px;
+  background:
+    linear-gradient(to top, rgba(0,0,0,0.05) 0%, transparent 100%),
+    repeating-linear-gradient(90deg, transparent, transparent 40px, var(--border) 40px, var(--border) 80px);
+  z-index: 0; transform: translateX(0);
+}
+.road-bg.moving {
+  animation: moveRoad 2s linear infinite;
+}
+@keyframes moveRoad {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-80px); }
+}
+
+/* 자전거 & 라이더 */
+.bike-rider-stage {
+  position: relative; width: 340px; height: 220px; z-index: 2; margin-bottom: 20px;
+}
+.rider-character {
+  position: absolute; bottom: 85px; left: 110px; width: 120px; height: 120px;
+  font-size: 64px; text-align: center; line-height: 120px;
+  animation: bounceRider 0.6s ease-in-out infinite alternate;
+}
+.bike-rider-stage.moving .rider-character {
+  animation: bounceRider 0.3s ease-in-out infinite alternate;
+}
+@keyframes bounceRider {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-4px); }
+}
+
+.bike-frame {
+  position: absolute; bottom: 20px; left: 40px; width: 260px; height: 110px;
+  border-bottom: 8px solid var(--fg); border-left: 8px solid var(--fg);
+  transform: skewX(-20deg); border-radius: 4px;
+}
+.bike-body-svg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+}
+
+/* 앞바퀴 (물) */
+.front-wheel {
+  position: absolute; bottom: 20px; right: 40px; width: 76px; height: 76px;
+  border-radius: 50%; border: 4px solid var(--fg);
+  background: transparent; z-index: 2; transition: all 0.3s;
+  display: flex; align-items: center; justify-content: center;
+}
+.front-wheel.spinning {
+  animation: spin 0.6s linear infinite;
+}
+.front-wheel.flat {
+  border-radius: 50% 50% 40% 40%;
+  transform: scaleY(0.75);
+  bottom: 10px;
+}
+.water-gauge {
+  width: 100%; height: 0%; background: var(--group-water); opacity: 0.65;
+  position: absolute; bottom: 0; border-radius: 50%; transition: height 0.4s;
+}
+
+/* 뒷바퀴 (6개 식품군 부채꼴) */
+.rear-wheel {
+  position: absolute; bottom: 20px; left: 40px; width: 110px; height: 110px;
+  border-radius: 50%; border: 5px solid var(--fg);
+  background: var(--bg-sec); z-index: 2; transition: all 0.3s;
+  overflow: hidden;
+}
+.rear-wheel.spinning {
+  animation: spin 0.8s linear infinite;
+}
+.rear-wheel.wobbling {
+  animation: wobbleWheel 0.4s ease-in-out infinite alternate;
+}
+@keyframes wobbleWheel {
+  0% { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(-3px) rotate(5deg); }
+}
+
+.rear-wheel-svg {
+  width: 100%; height: 100%;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 짐칸 무거운 짐 */
+.bike-luggage {
+  position: absolute; bottom: 120px; left: 30px; display: flex; flex-direction: column-reverse; gap: 2px;
+  z-index: 1;
+}
+.luggage-box {
+  width: 48px; height: 28px; background: #d35400; border: 2px solid var(--fg);
+  border-radius: 4px; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: #fff; font-weight: 800; animation: popIn 0.25s ease;
+}
+
+/* 식단 접시 영역 */
+.plate-zone {
+  width: 100%; max-width: 520px; background: var(--eco-card-bg);
+  border: 4px double var(--border); border-radius: 24px;
+  padding: 16px; position: relative; z-index: 2;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+}
+.plate-title { font-size: 13px; font-weight: 800; color: var(--fg-muted); margin-bottom: 10px; text-align: center; }
+.plate-slots {
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; min-height: 80px;
+  background: rgba(0,0,0,0.01); border-radius: 12px; padding: 10px;
+}
+.plate-slot-empty {
+  color: var(--fg-muted); font-size: 13px; font-weight: 700; align-self: center;
+}
+
+/* 음식 카드 */
+.food-card {
+  padding: 6px 10px; border-radius: 10px; border: 2px solid var(--border);
+  background: var(--fb-card-bg); font-size: 13px; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.02); transition: all 0.15s;
+  user-select: none;
+}
+.food-card:hover { border-color: var(--fb-accent); }
+.food-card.active { border-color: var(--fb-accent); background: rgba(46,125,50,0.05); }
+
+/* 주행 상태 안내 배너 */
+.run-status-banner {
+  position: absolute; top: 110px; padding: 8px 16px; border-radius: 20px;
+  font-size: 14px; font-weight: 800; color: #fff; background: rgba(38,50,56,0.9);
+  z-index: 10; display: flex; align-items: center; gap: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* ── 우측 사이드바 ── */
+.sidebar {
+  background: var(--card-bg); border-left: 2px solid var(--border);
+  overflow-y: auto; display: flex; flex-direction: column;
+  box-shadow: -4px 0 24px rgba(0,0,0,0.06);
+}
+.side-head {
+  background: linear-gradient(135deg, var(--fb-accent) 0%, var(--fb-accent-h) 100%);
+  color: #fff; padding: 16px 20px 14px; position: relative; overflow: hidden; flex-shrink: 0;
+}
+.side-head::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 80% -20%, rgba(255,255,255,0.15) 0, transparent 55%);
+}
+.side-head h2 { font-size: 20px; font-weight: 700; position: relative; z-index: 1; }
+.side-head .side-sub { font-size: 12px; opacity: 0.8; position: relative; z-index: 1; margin-top: 2px; }
+
+.side-body { padding: 14px 16px 20px; flex: 1; display: flex; flex-direction: column; }
+
+/* 모드 선택 탭 */
+.mode-tabs { display: flex; gap: 4px; margin-bottom: 14px; flex-shrink: 0; }
+.mode-tab {
+  flex: 1; padding: 8px 4px; border-radius: 10px; border: 2px solid var(--border);
+  background: var(--bg-sec); text-align: center; cursor: pointer;
+  font-size: 11px; font-weight: 800; font-family: inherit; color: var(--fg-muted);
+  transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.mode-tab.active {
+  border-color: var(--fb-accent); background: rgba(46,125,50,0.1); color: var(--fb-accent);
+}
+.mode-tab .em { font-size: 16px; }
+
+/* 미션 진행 카드 */
+.mission-card {
+  border: 1px solid var(--border); border-radius: 14px; background: var(--bg-sec);
+  padding: 12px 14px; margin-bottom: 14px;
+}
+.mission-title { font-size: 11px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.08em; margin-bottom: 8px; }
+.mission-desc { font-size: 13px; line-height: 1.5; font-weight: 600; }
+
+.mission-nav { display: flex; gap: 4px; margin-top: 10px; justify-content: center; }
+.mission-nav-btn {
+  width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--card-bg); font-size: 12px; font-weight: 700; cursor: pointer;
+  color: var(--fg-muted); transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+}
+.mission-nav-btn.active { border-color: var(--fb-accent); color: var(--fb-accent); }
+.mission-nav-btn.done { border-color: var(--fb-accent); color: var(--fb-accent); background: rgba(46,125,50,0.1); }
+
+/* 피드백 메시지 박스 */
+.feedback-box {
+  padding: 10px; border-radius: 10px; font-size: 13px; line-height: 1.5; text-align: center; margin: 10px 0;
+}
+.feedback-box.ok { background: rgba(46,125,50,0.1); color: var(--fb-accent); }
+.feedback-box.no { background: rgba(231,76,60,0.1); color: var(--group-grain); }
+
+/* 음식 리스트 팔레트 */
+.palette-section {
+  flex: 1; display: flex; flex-direction: column; min-height: 0;
+}
+.palette-title { font-size: 11px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.08em; margin-bottom: 8px; }
+.palette-tabs { display: flex; gap: 2px; overflow-x: auto; margin-bottom: 6px; padding-bottom: 4px; }
+.palette-tab {
+  padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-sec);
+  font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.palette-tab.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+.palette-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; overflow-y: auto; padding-right: 4px;
+}
+.palette-item {
+  padding: 8px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--bg-sec); text-align: center; cursor: pointer;
+  font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.palette-item.placed { background: rgba(46,125,50,0.05); border-color: var(--fb-accent); }
+
+/* 모드 1 분류 미션 전용 바구니 배치 영역 */
+.classify-box-container {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; margin-top: 10px;
+}
+.classify-basket {
+  border: 2px dashed var(--border); border-radius: 12px; background: var(--bg-sec);
+  padding: 10px; min-height: 70px; display: flex; flex-direction: column; gap: 6px;
+  align-items: center; justify-content: center; transition: all 0.2s;
+}
+.classify-basket.drag-over { border-color: var(--fb-accent); background: rgba(46,125,50,0.05); }
+.classify-basket-title { font-size: 12px; font-weight: 800; text-align: center; }
+
+/* 액션 패널 */
+.action-panel { margin-top: auto; padding-top: 14px; flex-shrink: 0; }
+.action-btn {
+  width: 100%; padding: 12px; border-radius: 12px; border: none;
+  background: var(--fb-accent); color: #fff; font-size: 14px; font-weight: 700;
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  transition: background 0.15s;
+}
+.action-btn:hover:not(:disabled) { background: var(--fb-accent-h); }
+.action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.action-btn.secondary {
+  background: var(--bg-sec); color: var(--fg); border: 1px solid var(--border); margin-top: 6px;
+}
+
+/* 상식 공부 화면 */
+.trivia-zone {
+  display: flex; flex-direction: column; gap: 12px; overflow-y: auto; flex: 1;
+}
+.trivia-card {
+  border: 1px solid var(--border); border-radius: 14px; padding: 16px; background: var(--bg-sec);
+}
+.trivia-card h4 { font-size: 14px; font-weight: 800; margin-bottom: 6px; color: var(--fb-accent); }
+.trivia-card p { font-size: 13px; line-height: 1.6; color: var(--fg-muted); }
+
+/* ── 결과 화면 ── */
+.result-screen {
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100vh; padding: 24px; text-align: center;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(46,125,50,0.06) 0, transparent 40%),
+    radial-gradient(circle at 70% 70%, rgba(26,188,156,0.08) 0, transparent 35%),
+    var(--fb-grid-bg);
+}
+.result-stars { font-size: 40px; margin: 12px 0; }
+.result-summary {
+  background: var(--fb-card-bg); border: 1px solid var(--border); border-radius: 16px;
+  padding: 20px; font-size: 14px; line-height: 1.8; margin: 16px 0; text-align: left;
+  max-width: 440px; width: 100%; box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+}
+.result-summary strong { color: var(--fb-accent); }
+
+/* ── 모바일 반응형 ── */
+@media (max-width: 800px) {
+  body { overflow: auto; }
+  .explore-layout { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
+  .canvas-zone { position: sticky; top: 0; z-index: 40; height: 45vh; min-height: 300px; flex-shrink: 0; padding-top: 56px; }
+  .sidebar { border-left: none; border-top: 2px solid var(--border); height: auto; }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+  </style>
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="식품구성자전거 | eduin VIVES">
+  <meta name="twitter:description" content="음식을 담아 바퀴를 채우는 균형 식단 게임">
+  <meta name="twitter:image" content="https://eduin.info/og-images/food-bike.png">
+  <link rel="canonical" href="https://eduin.info/apps/food-bike/">
+  <meta property="og:url" content="https://eduin.info/apps/food-bike/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"식품구성자전거","description":"음식을 담아 바퀴를 채우는 균형 식단 게임","url":"https://eduin.info/apps/food-bike/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+</head>
+<body data-shell="immersive">
+
+<!-- ============ 인트로 ============ -->
+<div id="screenIntro" class="screen active intro-screen">
+  <div class="intro-emoji">🚲</div>
+  <h1>식품구성자전거</h1>
+  <p class="intro-sub">균형 잡힌 식단 만들기 시뮬레이션</p>
+
+  <div class="intro-card">
+    <h3>자전거 바퀴를 골고루 채워 출발해요!</h3>
+    <p>음식을 접시에 골고루 담아 뒷바퀴의 6개 식품군 비율을 맞춰보세요. 6가지 식품군을 골고루 알맞게 먹고, 앞바퀴인 물을 마셔야 자전거가 쌩쌩 달릴 수 있답니다!</p>
+  </div>
+
+  <button class="fb-btn fb-btn-primary" id="btnStart">시작하기</button>
+</div>
+
+<!-- ============ 메인 탐험 스크린 ============ -->
+<div id="screenExplore" class="screen explore-screen">
+  <div class="explore-layout">
+    <!-- 좌측 캔버스 -->
+    <div class="canvas-zone" id="canvasZone">
+      <div class="canvas-header">
+        <div class="canvas-title-badge">
+          <span class="num" id="canvasBadgeNum">1</span>
+          <span id="canvasBadgeLabel">식단 꾸미기</span>
+        </div>
+      </div>
+
+      <!-- 무대 및 자전거 -->
+      <div class="canvas-viewport" id="canvasViewport">
+        <!-- 주행 상태 안내 배너 -->
+        <div class="run-status-banner" id="runStatusBanner">
+          🚲 대기 중...
+        </div>
+
+        <div class="bike-rider-stage" id="bikeRiderStage">
+          <!-- 짐칸 무거운 짐들 -->
+          <div class="bike-luggage" id="bikeLuggage"></div>
+
+          <!-- 라이더 캐릭터 -->
+          <div class="rider-character" id="riderChar">🚴</div>
+
+          <!-- 자전거 본체 프레임 실루엣 -->
+          <svg class="bike-body-svg" viewBox="0 0 340 220">
+            <!-- 뼈대 연결 선 -->
+            <path d="M 95 165 L 170 165 L 225 105 L 140 105 L 95 165 Z" fill="none" stroke="var(--fg)" stroke-width="6" stroke-linejoin="round"></path>
+            <path d="M 170 165 L 210 70 L 255 165" fill="none" stroke="var(--fg)" stroke-width="6" stroke-linejoin="round"></path>
+            <!-- 짐칸 선반 -->
+            <path d="M 80 120 L 115 120 L 95 165" fill="none" stroke="var(--fg)" stroke-width="4"></path>
+          </svg>
+
+          <!-- 뒷바퀴 (6개 식품군 부채꼴) -->
+          <div class="rear-wheel" id="rearWheel">
+            <svg class="rear-wheel-svg" viewBox="0 0 110 110" id="rearWheelSvg">
+              <!-- 부채꼴 파트들은 JS에서 동적으로 그립니다 -->
+            </svg>
+          </div>
+
+          <!-- 앞바퀴 (물) -->
+          <div class="front-wheel" id="frontWheel">
+            <div class="water-gauge" id="waterGauge"></div>
+            <span style="font-size: 24px; z-index: 3;">💧</span>
+          </div>
+        </div>
+
+        <!-- 식단 접시 -->
+        <div class="plate-zone">
+          <div class="plate-title">🍽️ 오늘의 식단 접시 (탭하여 음식 제거)</div>
+          <div class="plate-slots" id="plateSlots">
+            <div class="plate-slot-empty">음식 카드를 선택해 접시에 채워보세요!</div>
+          </div>
+        </div>
+
+        <!-- 가로 도로 배경 효과 -->
+        <div class="road-bg" id="roadBg"></div>
+      </div>
+    </div>
+
+    <!-- 우측 사이드바 -->
+    <div class="sidebar" id="sidebar">
+      <div class="side-head">
+        <h2>🚲 식품구성자전거</h2>
+        <div class="side-sub">초등 실과 5~6학년군 「식생활」</div>
+      </div>
+
+      <div class="side-body">
+        <!-- 모드 선택 탭 -->
+        <div class="mode-tabs" id="modeTabs">
+          <button class="mode-tab active" data-mode="1">
+            <span class="em">🍽️</span>식단 빌더
+          </button>
+          <button class="mode-tab" data-mode="2">
+            <span class="em">🏆</span>도전 미션
+          </button>
+          <button class="mode-tab" data-mode="3">
+            <span class="em">💡</span>자전거 상식
+          </button>
+        </div>
+
+        <!-- 미션 카드 (모드 2 전용) -->
+        <div class="mission-card" id="missionCard" style="display:none;">
+          <div class="mission-title">도전 미션</div>
+          <div class="mission-desc" id="missionDesc">미션을 선택하고 올바른 식단을 구성해 보세요.</div>
+          <div class="mission-nav" id="missionNav"></div>
+        </div>
+
+        <!-- 피드백 메시지 -->
+        <div class="feedback-box" id="feedbackBox" style="display:none;"></div>
+
+        <!-- 상식 공부 뷰 (모드 3 전용) -->
+        <div class="trivia-zone" id="triviaZone" style="display:none;">
+          <div class="trivia-card">
+            <h4>🚲 자전거의 의미 (신체활동)</h4>
+            <p>식품구성자전거에서 자전거를 타는 모습은 건강을 지키기 위해 매일 적절한 <strong>신체활동(운동)</strong>이 필수적임을 상징합니다.</p>
+          </div>
+          <div class="trivia-card">
+            <h4>💧 앞바퀴의 의미 (물)</h4>
+            <p>앞바퀴는 <strong>물</strong>을 뜻합니다. 우리 몸의 수분을 유지하고 노폐물을 배출하기 위해 매일 깨끗한 물을 충분히 마셔야 자전거가 잘 조종됩니다.</p>
+          </div>
+          <div class="trivia-card">
+            <h4>🔺 뒷바퀴의 의미 (6개 식품군)</h4>
+            <p>뒷바퀴는 면적에 따라 섭취 비율을 나타냅니다. 면적이 넓은 식품군(곡류, 채소류)은 많이 먹고, 면적이 좁은 식품군(유지·당류)은 요리 시 아주 적게 먹어야 균형이 맞습니다.</p>
+          </div>
+        </div>
+
+        <!-- 분류 미션 시 바구니 영역 (모드 2 미션 1 전용) -->
+        <div class="classify-box-container" id="classifyBaskets" style="display:none;">
+          <!-- 바구니 동적 생성 -->
+        </div>
+
+        <!-- 음식 팔레트 영역 (모드 1, 2 공통) -->
+        <div class="palette-section" id="paletteSection">
+          <div class="palette-title">음식 카드 팔레트 (탭하여 접시에 추가)</div>
+          
+          <!-- 카테고리 탭 -->
+          <div class="palette-tabs" id="paletteTabs">
+            <button class="palette-tab active" data-cat="all">전체</button>
+            <button class="palette-tab" data-cat="1">곡류</button>
+            <button class="palette-tab" data-cat="2">고기·생선</button>
+            <button class="palette-tab" data-cat="3">채소</button>
+            <button class="palette-tab" data-cat="4">과일</button>
+            <button class="palette-tab" data-cat="5">유제품</button>
+            <button class="palette-tab" data-cat="6">유지·당</button>
+            <button class="palette-tab" data-cat="water">물</button>
+          </div>
+
+          <div class="palette-grid" id="paletteGrid">
+            <!-- 음식 목록 동적 주입 -->
+          </div>
+        </div>
+
+        <!-- 하단 액션 패널 -->
+        <div class="action-panel">
+          <button class="action-btn" id="btnVerify">🏆 균형 평가하기</button>
+          <button class="action-btn secondary" id="btnNextScreen" style="display:none;">탐험 완료 →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 결과 화면 ============ -->
+<div id="screenResult" class="screen result-screen">
+  <div style="font-size:72px;">🏆</div>
+  <h2 style="margin:8px 0; font-size:28px;">식품구성자전거 마스터!</h2>
+  <div class="result-stars" id="resultStars"></div>
+  <div class="result-summary" id="resultSummary"></div>
+  <div class="result-actions">
+    <button class="fb-btn fb-btn-primary" id="btnRetry">다시 시작</button>
+    <button class="fb-btn fb-btn-primary" style="background:var(--bg-sec); color:var(--fg); border:1px solid var(--border);" id="btnBackToHub">식단 빌더로</button>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   식품구성자전거 — food-bike
+   순수 정적 SPA · localStorage만 사용 · 외부 의존성 0
+   ================================================================ */
+(function() {
+'use strict';
+
+/* ── 식품구성 40종 데이터베이스 ── */
+/* 
+   현행 교과서 기준:
+   - 감자, 고구마는 탄수화물 주성분이라 '곡류'로 분류.
+   - 토마토는 과채류이나 실과 교과서 기준 '채소류'로 매핑.
+   - 두부는 콩 가공품이므로 단백질 공급원인 '고기·생선·달걀·콩류'로 분류.
+   - 두유는 우유알레르기 등의 대체제로 '우유·유제품류'로 매핑.
+*/
+const FOOD_DB = [
+  // 1: 곡류 (Grains)
+  { id: 'rice', name: '쌀밥', emoji: '🌾', group: 1 },
+  { id: 'barley', name: '보리밥', emoji: '🍚', group: 1 },
+  { id: 'bread', name: '식빵', emoji: '🍞', group: 1 },
+  { id: 'noodle', name: '국수', emoji: '🍜', group: 1 },
+  { id: 'potato', name: '감자', emoji: '🥔', group: 1 },
+  { id: 'sweet_potato', name: '고구마', emoji: '🍠', group: 1 },
+  { id: 'cereal', name: '시리얼', emoji: '🥣', group: 1 },
+
+  // 2: 고기·생선·달걀·콩류 (Proteins)
+  { id: 'beef', name: '소고기', emoji: '🥩', group: 2 },
+  { id: 'chicken', name: '닭고기', emoji: '🍗', group: 2 },
+  { id: 'fish', name: '생선구이', emoji: '🐟', group: 2 },
+  { id: 'egg', name: '달걀', emoji: '🥚', group: 2 },
+  { id: 'tofu', name: '두부', emoji: '⬜', group: 2 },
+  { id: 'peas', name: '완두콩', emoji: '🫛', group: 2 },
+  { id: 'squid', name: '오징어', emoji: '🦑', group: 2 },
+
+  // 3: 채소류 (Vegetables)
+  { id: 'spinach', name: '시금치', emoji: '🥬', group: 3 },
+  { id: 'carrot', name: '당근', emoji: '🥕', group: 3 },
+  { id: 'broccoli', name: '브로콜리', emoji: '🥦', group: 3 },
+  { id: 'tomato', name: '토마토', emoji: '🍅', group: 3 },
+  { id: 'mushroom', name: '버섯', emoji: '🍄', group: 3 },
+  { id: 'cucumber', name: '오이', emoji: '🥒', group: 3 },
+  { id: 'salad', name: '상추겉절이', emoji: '🥗', group: 3 },
+
+  // 4: 과일류 (Fruits)
+  { id: 'apple', name: '사과', emoji: '🍎', group: 4 },
+  { id: 'banana', name: '바나나', emoji: '🍌', group: 4 },
+  { id: 'watermelon', name: '수박', emoji: '🍉', group: 4 },
+  { id: 'grape', name: '포도', emoji: '🍇', group: 4 },
+  { id: 'strawberry', name: '딸기', emoji: '🍓', group: 4 },
+  { id: 'orange', name: '귤', emoji: '🍊', group: 4 },
+  { id: 'peach', name: '복숭아', emoji: '🍑', group: 4 },
+
+  // 5: 우유·유제품류 (Dairy)
+  { id: 'milk', name: '우유', emoji: '🥛', group: 5 },
+  { id: 'cheese', name: '치즈', emoji: '🧀', group: 5 },
+  { id: 'yogurt', name: '요거트', emoji: '🍦', group: 5 },
+  { id: 'icecream', name: '아이스크림', emoji: '🍨', group: 5 },
+  { id: 'soymilk', name: '두유', emoji: '🧃', group: 5 },
+
+  // 6: 유지·당류 (Oils, Fats, Sugars)
+  { id: 'butter', name: '버터', emoji: '🧈', group: 6 },
+  { id: 'sesame_oil', name: '참기름', emoji: '🏺', group: 6 },
+  { id: 'sugar', name: '설탕', emoji: '🍬', group: 6 },
+  { id: 'cooking_oil', name: '식용유', emoji: '🛢️', group: 6 },
+  { id: 'honey', name: '꿀', emoji: '🍯', group: 6 },
+  { id: 'candy', name: '사탕', emoji: '🍭', group: 6 },
+
+  // 물 (Water)
+  { id: 'water', name: '생수', emoji: '💧', group: 'water' },
+  { id: 'tea', name: '보리차', emoji: '🍵', group: 'water' }
+];
+
+const FOOD_BY_ID = Object.fromEntries(FOOD_DB.map(f => [f.id, f]));
+
+// 뒷바퀴 6개 영역 색상 맵
+const GROUP_COLORS = {
+  1: 'var(--group-grain)',
+  2: 'var(--group-protein)',
+  3: 'var(--group-vegetable)',
+  4: 'var(--group-fruit)',
+  5: 'var(--group-dairy)',
+  6: 'var(--group-oil)'
+};
+
+// 6대 식품군 라벨명
+const GROUP_LABELS = {
+  1: '곡류',
+  2: '고기·생선·달걀·콩류',
+  3: '채소류',
+  4: '과일류',
+  5: '우유·유제품류',
+  6: '유지·당류',
+  'water': '물'
+};
+
+/* ── 권장 식품군 섭취 1일 비율(뒷바퀴 6분할 각도) ── */
+// 한국영양학회 식품구성자전거 뒷바퀴 배분 비중 상수화
+const WHEEL_SECTORS = [
+  { group: 1, angle: 108 }, // 곡류 (30%) -> 108도
+  { group: 2, angle: 72 },  // 고기·생선·달걀·콩류 (20%) -> 72도
+  { group: 3, angle: 90 },  // 채소류 (25%) -> 90도
+  { group: 4, angle: 36 },  // 과일류 (10%) -> 36도
+  { group: 5, angle: 36 },  // 우유·유제품류 (10%) -> 36도
+  { group: 6, angle: 18 }   // 유지·당류 (5%) -> 18도
+];
+
+/* ── 미션 리스트 ── */
+const MISSIONS = [
+  {
+    id: 'm1', title: '식품군 분류하기',
+    desc: '아래 헷갈리기 쉬운 음식 5종을 올바른 식품군 바구니로 분류해 보세요.<br><strong>(감자, 두부, 토마토, 참기름, 두유)</strong>',
+    verify: () => {
+      const baskets = $$('.classify-basket');
+      let score = 0;
+      let totalAssigned = 0;
+      baskets.forEach(b => {
+        const group = b.dataset.group;
+        const items = b.querySelectorAll('.food-card');
+        items.forEach(it => {
+          totalAssigned++;
+          const food = FOOD_BY_ID[it.dataset.id];
+          // group 비교
+          if (String(food.group) === group) {
+            score++;
+          }
+        });
+      });
+      return totalAssigned === 5 && score === 5;
+    }
+  },
+  {
+    id: 'm2', title: '부족한 식단 보완하기',
+    desc: '현재 식단에는 <strong>곡류(식빵)와 유지·당류(버터)</strong>만 있어서 불균형한 상태입니다. 이 식단에 <strong>단백질군, 채소류, 과일류, 유제품류, 물</strong>을 각각 최소 1개 이상 추가(더하기)하여 자전거를 쌩쌩 달리게 만드세요.',
+    verify: () => {
+      // 버터와 식빵은 기본으로 셋업됨. 
+      // 추가해야할 것: 2(고기/콩), 3(채소), 4(과일), 5(유제품), 물
+      const counts = getPlateCounts();
+      return counts[2] >= 1 && counts[3] >= 1 && counts[4] >= 1 && counts[5] >= 1 && counts['water'] >= 1;
+    }
+  },
+  {
+    id: 'm3', title: '아침 한 끼 완성하기',
+    desc: '자유롭게 음식을 담아 <strong>6가지 식품군을 모두 골고루 담고, 물도 1잔 곁들인</strong> 균형 잡힌 아침 식단을 직접 완성해 보세요. (유지·당류도 조리 소량으로 인정)',
+    verify: () => {
+      const counts = getPlateCounts();
+      return counts[1] >= 1 && counts[2] >= 1 && counts[3] >= 1 && counts[4] >= 1 && counts[5] >= 1 && counts[6] >= 1 && counts['water'] >= 1;
+    }
+  },
+  {
+    id: 'm4', title: '식단 비교와 평가',
+    desc: '대표적인 두 가지 식단 중에서 <strong>어느 식단이 더 골고루 영양소를 갖췄는지</strong> 비교하고 올바른 결론을 골라보세요.<br><br><strong>식단 A: 쌀밥 + 생선구이 + 시금치 + 귤 + 우유 + 물</strong><br><strong>식단 B: 식빵 + 버터 + 설탕물</strong><br><br>1. 식단 B가 에너지를 빨리 내므로 훨씬 균형 잡혔다.<br>2. 식단 A는 6가지 식품군과 물이 모두 포함되어 균형 잡혔고, 식단 B는 채소/단백질/과일/유제품이 비어 있어 불균형하다.<br>3. 두 식단 모두 영양 상태의 차이가 없다.',
+    verify: () => {
+      const selected = document.querySelector('.m4-choice.selected');
+      return selected && selected.dataset.val === '2';
+    }
+  }
+];
+
+/* ── 런타임 상태 ── */
+let state = {
+  mode: 1, // 1: 식단 빌더, 2: 도전 미션, 3: 자전거 상식
+  missionIdx: 0,
+  missionsCompleted: { m1: false, m2: false, m3: false, m4: false },
+  
+  // 현재 접시에 담긴 음식 리스트
+  plate: [], // foodId 리스트
+  activeCategory: 'all'
+};
+
+/* ── 유틸 ── */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+/* ── 상태 저장/불러오기 ── */
+const STORAGE_KEY = 'food-bike:v1';
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      missionsCompleted: state.missionsCompleted,
+      lastPlate: state.plate
+    }));
+  } catch(e) {}
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (saved.missionsCompleted) state.missionsCompleted = saved.missionsCompleted;
+    if (saved.lastPlate) state.plate = saved.lastPlate;
+  } catch(e) {}
+}
+
+/* ── 공유 링크 ── */
+function parseShareLink() {
+  const hash = location.hash;
+  if (!hash.startsWith('#share=')) return;
+  try {
+    const payload = JSON.parse(decodeURIComponent(hash.slice(7)));
+    if (payload.v === 1 && payload.plate) {
+      state.plate = payload.plate;
+      state.mode = 1;
+    }
+  } catch(e) {}
+  history.replaceState(null, '', location.pathname);
+}
+
+/* ══════════════════════════════════════
+   모드 / 미션 화면 전환 및 셋업
+   ══════════════════════════════════════ */
+function switchMode(modeNum) {
+  state.mode = parseInt(modeNum);
+  
+  // 탭 활성화
+  $$('.mode-tab').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.mode) === state.mode);
+  });
+
+  // 미션 및 분류 박스 세팅
+  const missionCard = $('#missionCard');
+  const classifyBaskets = $('#classifyBaskets');
+  const paletteSection = $('#paletteSection');
+  const triviaZone = $('#triviaZone');
+  const canvasBadgeNum = $('#canvasBadgeNum');
+  const canvasBadgeLabel = $('#canvasBadgeLabel');
+
+  missionCard.style.display = 'none';
+  classifyBaskets.style.display = 'none';
+  paletteSection.style.display = 'flex';
+  triviaZone.style.display = 'none';
+
+  if (state.mode === 1) {
+    canvasBadgeNum.textContent = '🍽️';
+    canvasBadgeLabel.textContent = '식단 빌더';
+    renderPlateSlots();
+    updateBikeSimulation();
+  } else if (state.mode === 2) {
+    canvasBadgeNum.textContent = '🏆';
+    canvasBadgeLabel.textContent = '도전 미션';
+    missionCard.style.display = 'block';
+    setupMissionUI();
+  } else if (state.mode === 3) {
+    canvasBadgeNum.textContent = '💡';
+    canvasBadgeLabel.textContent = '자전거 상식';
+    paletteSection.style.display = 'none';
+    triviaZone.style.display = 'flex';
+    // 상식 공부 모드 시 자전거는 천천히 기본 주행
+    setBikeRunState('go', '상식을 공부하고 있어요.');
+  }
+
+  renderPalette();
+  hideFeedback();
+}
+
+function setupMissionUI() {
+  const m = MISSIONS[state.missionIdx];
+  const nav = $('#missionNav');
+  nav.innerHTML = '';
+
+  // 미션 인덱스 버튼
+  MISSIONS.forEach((ms, idx) => {
+    const btn = document.createElement('button');
+    btn.className = `mission-nav-btn ${idx === state.missionIdx ? 'active' : ''} ${state.missionsCompleted[ms.id] ? 'done' : ''}`;
+    btn.textContent = idx + 1;
+    btn.addEventListener('click', () => {
+      state.missionIdx = idx;
+      setupMissionUI();
+    });
+    nav.appendChild(btn);
+  });
+
+  $('#missionDesc').innerHTML = m.desc;
+
+  // 미션 전용 특수 스크린/상태 초기화
+  const classifyBaskets = $('#classifyBaskets');
+  const paletteSection = $('#paletteSection');
+  classifyBaskets.style.display = 'none';
+  paletteSection.style.display = 'flex';
+
+  if (m.id === 'm1') {
+    // 분류 미션: 전용 드롭 바구니 셋업
+    classifyBaskets.style.display = 'grid';
+    setupClassificationBaskets();
+  } else if (m.id === 'm2') {
+    // 부족 식단 보완 미션: 식빵, 버터로 식단 초기화
+    state.plate = ['bread', 'butter'];
+    renderPlateSlots();
+    updateBikeSimulation();
+  } else if (m.id === 'm3') {
+    // 아침 한 끼 완성: 빈 식단으로 초기화
+    state.plate = [];
+    renderPlateSlots();
+    updateBikeSimulation();
+  } else if (m.id === 'm4') {
+    // 식단 비교 퀴즈: 퀴즈 선택 버튼 동적 주입 및 팔레트 숨김
+    paletteSection.style.display = 'none';
+    $('#missionDesc').innerHTML += `
+      <div class="m3-choices" style="margin-top: 14px; display:flex; gap: 8px;">
+        <button class="m4-choice" data-val="1">1번</button>
+        <button class="m4-choice" data-val="2">2번</button>
+        <button class="m4-choice" data-val="3">3번</button>
+      </div>
+    `;
+    $$('.m4-choice').forEach(b => {
+      b.addEventListener('click', () => {
+        $$('.m4-choice').forEach(btn => btn.classList.remove('selected'));
+        b.classList.add('selected');
+      });
+    });
+    // 식단 비교 시 자전거도 대기/시연 렌더링
+    setBikeRunState('wobble', '어떤 식품군이 부족할까요?');
+  }
+
+  updateVerifyButtonText();
+  hideFeedback();
+}
+
+function updateVerifyButtonText() {
+  const allMissionsDone = Object.values(state.missionsCompleted).every(Boolean);
+  $('#btnNextScreen').style.display = allMissionsDone ? 'block' : 'none';
+}
+
+/* ══════════════════════════════════════
+   음식 팔레트 및 카테고리 필터링
+   ══════════════════════════════════════ */
+function renderPalette() {
+  const grid = $('#paletteGrid');
+  grid.innerHTML = '';
+
+  const curMission = MISSIONS[state.missionIdx];
+  const isClassification = state.mode === 2 && curMission.id === 'm1';
+
+  let foods = FOOD_DB;
+  
+  if (isClassification) {
+    // 분류 미션일 때는 분류 전용 5종만 띄움
+    const classificationIds = ['potato', 'tofu', 'tomato', 'sesame_oil', 'soymilk'];
+    foods = FOOD_DB.filter(f => classificationIds.includes(f.id));
+    // 카테고리 탭 임시 숨김
+    $('#paletteTabs').style.display = 'none';
+  } else {
+    $('#paletteTabs').style.display = 'flex';
+    if (state.activeCategory !== 'all') {
+      const catVal = state.activeCategory;
+      foods = FOOD_DB.filter(f => String(f.group) === catVal);
+    }
+  }
+
+  foods.forEach(f => {
+    const isPlaced = isClassification 
+      ? isClassifiedInBasket(f.id)
+      : state.plate.includes(f.id);
+
+    const card = document.createElement('div');
+    card.className = `palette-item ${isPlaced ? 'placed' : ''}`;
+    card.draggable = isClassification && !isPlaced; // 분류 미션만 HTML5 드래그앤드롭 사용
+    card.innerHTML = `<span style="font-size:20px;">${f.emoji}</span><span>${f.name}</span>`;
+
+    if (isClassification) {
+      card.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', f.id);
+      });
+      // 탭 폴백 (접근성)
+      card.addEventListener('click', () => {
+        if (!isPlaced) {
+          // 순차적으로 첫 번째 비어 있는 바구니나 알맞은 곳에 자동 주입해 편의성 제공
+          autoPlaceToBasket(f.id);
+        }
+      });
+    } else {
+      // 식단 빌더 모드에서는 탭하여 토글 담기/빼기
+      card.addEventListener('click', () => {
+        toggleFoodInPlate(f.id);
+      });
+    }
+
+    grid.appendChild(card);
+  });
+}
+
+function isClassifiedInBasket(foodId) {
+  const baskets = $$('.classify-basket');
+  let found = false;
+  baskets.forEach(b => {
+    if (b.querySelector(`.food-card[data-id="${foodId}"]`)) found = true;
+  });
+  return found;
+}
+
+function autoPlaceToBasket(foodId) {
+  // 모드 2 미션 1에서 탭 클릭 시 첫 번째 바구니에 수동 배치
+  const firstBasket = $('.classify-basket');
+  if (firstBasket) {
+    dropFoodToBasket(foodId, firstBasket);
+  }
+}
+
+function toggleFoodInPlate(foodId) {
+  const idx = state.plate.indexOf(foodId);
+  if (idx > -1) {
+    state.plate.splice(idx, 1);
+  } else {
+    // 6대 식품군 균형 게임이므로 접시에 지나치게 과도하게 채워지지 않게 12개 제한
+    if (state.plate.length >= 12) {
+      showToast('접시가 가득 찼어요! 음식을 조금 뺀 다음 담아보세요.');
+      return;
+    }
+    state.plate.push(foodId);
+  }
+
+  renderPlateSlots();
+  updateBikeSimulation();
+  renderPalette();
+  saveState();
+}
+
+/* ══════════════════════════════════════
+   접시 영역 및 렌더링
+   ══════════════════════════════════════ */
+function renderPlateSlots() {
+  const slots = $('#plateSlots');
+  slots.innerHTML = '';
+
+  if (state.plate.length === 0) {
+    slots.innerHTML = '<div class="plate-slot-empty">음식 카드를 선택해 접시에 채워보세요!</div>';
+    return;
+  }
+
+  state.plate.forEach(foodId => {
+    const f = FOOD_BY_ID[foodId];
+    if (!f) return;
+
+    const card = document.createElement('div');
+    card.className = 'food-card active';
+    card.innerHTML = `<span>${f.emoji}</span><span>${f.name}</span>`;
+    card.addEventListener('click', () => {
+      toggleFoodInPlate(foodId);
+    });
+    slots.appendChild(card);
+  });
+}
+
+/* ══════════════════════════════════════
+   자전거 & 뒷바퀴 SVG 동역학 시뮬레이션
+   ══════════════════════════════════════ */
+function getPlateCounts() {
+  const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 'water': 0 };
+  state.plate.forEach(id => {
+    const f = FOOD_BY_ID[id];
+    if (f) {
+      counts[f.group]++;
+    }
+  });
+  return counts;
+}
+
+function updateBikeSimulation() {
+  const counts = getPlateCounts();
+  
+  // 1. 앞바퀴 (물) 게이지 제어
+  const wGauge = $('#waterGauge');
+  const fWheel = $('#frontWheel');
+  const hasWater = counts['water'] > 0;
+  
+  if (hasWater) {
+    wGauge.style.height = '100%';
+    fWheel.classList.remove('flat');
+  } else {
+    wGauge.style.height = '0%';
+    fWheel.classList.add('flat');
+  }
+
+  // 2. 뒷바퀴 (6개 식품군 부채꼴) SVG 드로잉
+  drawRearWheelSectors(counts);
+
+  // 3. 유지·당류 과다에 따른 짐칸 상자 렌더링
+  const luggage = $('#bikeLuggage');
+  luggage.innerHTML = '';
+  const oilCount = counts[6];
+  if (oilCount > 1) {
+    // 1개 초과된 만큼 짐칸에 무거운 상자 추가
+    for (let i = 0; i < Math.min(3, oilCount - 1); i++) {
+      const box = document.createElement('div');
+      box.className = 'luggage-box';
+      box.textContent = '유지당';
+      luggage.appendChild(box);
+    }
+  }
+
+  // 4. 주행 상태 판단 (대원칙 준수 - 이분법 배제 & 대칭적 비틀거림)
+  // 필수 식품군 5개 (곡류, 고기, 채소, 과일, 유제품) 중 하나라도 비어 있으면 비틀비틀
+  const missingGroups = [];
+  [1, 2, 3, 4, 5].forEach(g => {
+    if (counts[g] === 0) missingGroups.push(GROUP_LABELS[g]);
+  });
+
+  if (!hasWater) {
+    setBikeRunState('stop', '앞바퀴 바람 빠짐! (물이 필요해요 💧)');
+  } else if (missingGroups.length > 0) {
+    setBikeRunState('wobble', `비틀비틀! (${missingGroups[0]}이 부족해요)`);
+  } else if (oilCount > 2) {
+    setBikeRunState('heavy', '느릿느릿! (유지·당류가 많아 짐칸이 무거워요 📦)');
+  } else {
+    setBikeRunState('go', '쌩쌩! 신나게 달리는 중! 🚲');
+  }
+}
+
+function setBikeRunState(runState, statusMsg) {
+  const rChar = $('#riderChar');
+  const rWheel = $('#rearWheel');
+  const fWheel = $('#frontWheel');
+  const roadBg = $('#roadBg');
+  const banner = $('#runStatusBanner');
+  const stage = $('#bikeRiderStage');
+
+  // 모션 클래스 초기화
+  stage.className = 'bike-rider-stage';
+  rWheel.className = 'rear-wheel';
+  fWheel.className = 'front-wheel';
+  roadBg.className = 'road-bg';
+
+  if (runState === 'stop') {
+    rChar.textContent = '🚶';
+    fWheel.classList.add('flat');
+    banner.textContent = '❌ ' + statusMsg;
+    banner.style.background = 'rgba(192,57,43,0.9)';
+  } else if (runState === 'wobble') {
+    rChar.textContent = '🚴';
+    rWheel.classList.add('wobbling');
+    roadBg.classList.add('moving');
+    roadBg.style.animationDuration = '4s';
+    banner.textContent = '⚠️ ' + statusMsg;
+    banner.style.background = 'rgba(230,126,34,0.9)';
+  } else if (runState === 'heavy') {
+    rChar.textContent = '🥵';
+    rWheel.classList.add('spinning');
+    rWheel.style.animationDuration = '2s';
+    fWheel.classList.add('spinning');
+    fWheel.style.animationDuration = '2s';
+    roadBg.classList.add('moving');
+    roadBg.style.animationDuration = '4s';
+    banner.textContent = '📦 ' + statusMsg;
+    banner.style.background = 'rgba(44,62,80,0.9)';
+  } else if (runState === 'go') {
+    rChar.textContent = '🚴';
+    stage.classList.add('moving');
+    rWheel.classList.add('spinning');
+    fWheel.classList.add('spinning');
+    roadBg.classList.add('moving');
+    banner.textContent = '✨ ' + statusMsg;
+    banner.style.background = 'rgba(46,125,50,0.9)';
+  }
+}
+
+/* ── 뒷바퀴 SVG 부채꼴 그리기 ── */
+function drawRearWheelSectors(counts) {
+  const svg = $('#rearWheelSvg');
+  svg.innerHTML = '';
+
+  const cx = 55;
+  const cy = 55;
+  const maxR = 48; // 최대 반지름
+
+  let currentAngle = -90; // 12시 방향부터 시작
+
+  WHEEL_SECTORS.forEach(sec => {
+    const angleSpan = sec.angle;
+    const group = sec.group;
+    
+    // 각 식품군별 섭취 충실도 비례 반지름 (곡류:3개, 고기:3개, 채소:5개, 과일:1개, 유제품:1개, 유지:1개 타겟)
+    let fillRatio = 0.2; // 기본 최소 두께
+    const cnt = counts[group] || 0;
+
+    if (group === 1) fillRatio = Math.min(1.0, 0.2 + (cnt / 3) * 0.8);
+    else if (group === 2) fillRatio = Math.min(1.0, 0.2 + (cnt / 3) * 0.8);
+    else if (group === 3) fillRatio = Math.min(1.0, 0.2 + (cnt / 5) * 0.8);
+    else if (group === 4) fillRatio = Math.min(1.0, 0.2 + (cnt / 1) * 0.8);
+    else if (group === 5) fillRatio = Math.min(1.0, 0.2 + (cnt / 1) * 0.8);
+    else if (group === 6) {
+      // 유지 당류는 1개 이상이면 1.0 꽉 참, 없으면 0.2
+      fillRatio = cnt > 0 ? 1.0 : 0.2;
+    }
+
+    const r = maxR * fillRatio;
+    
+    // 부채꼴 패스 생성
+    const pathData = getSectorPath(cx, cy, r, currentAngle, currentAngle + angleSpan);
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathData);
+    path.setAttribute('fill', GROUP_COLORS[group]);
+    path.setAttribute('stroke', '#fff');
+    path.setAttribute('stroke-width', '1.5');
+    
+    // 툴팁 효과
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = `${GROUP_LABELS[group]} (${cnt}개 담김)`;
+    path.appendChild(title);
+
+    svg.appendChild(path);
+
+    // 스포크 경계선 그리기
+    currentAngle += angleSpan;
+  });
+
+  // 가운데 축 허브 덮개
+  const hub = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  hub.setAttribute('cx', cx);
+  hub.setAttribute('cy', cy);
+  hub.setAttribute('r', '8');
+  hub.setAttribute('fill', 'var(--fg)');
+  svg.appendChild(hub);
+}
+
+// 부채꼴 SVG 패스 수식 계산
+function getSectorPath(x, y, r, startAngleDegree, endAngleDegree) {
+  const startRadians = (startAngleDegree * Math.PI) / 180;
+  const endRadians = (endAngleDegree * Math.PI) / 180;
+
+  const x1 = x + r * Math.cos(startRadians);
+  const y1 = y + r * Math.sin(startRadians);
+  const x2 = x + r * Math.cos(endRadians);
+  const y2 = y + r * Math.sin(endRadians);
+
+  const largeArcFlag = endAngleDegree - startAngleDegree <= 180 ? 0 : 1;
+
+  return `M ${x} ${y} L ${x1} ${y1} A ${r} ${r} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+}
+
+/* ══════════════════════════════════════
+   모드 2 미션 1: 분류 바구니 인터랙션 셋업
+   ══════════════════════════════════════ */
+function setupClassificationBaskets() {
+  const container = $('#classifyBaskets');
+  container.innerHTML = '';
+
+  // 분류 바구니 6종 생성 (유지당류 포함 6개군)
+  const list = [
+    { group: '1', name: '🌾 곡류' },
+    { group: '2', name: '🥩 단백질군' },
+    { group: '3', name: '🥬 채소류' },
+    { group: '4', name: '🍎 과일류' },
+    { group: '5', name: '🥛 유제품류' },
+    { group: '6', name: '🏺 유지·당류' }
+  ];
+
+  list.forEach(b => {
+    const basket = document.createElement('div');
+    basket.className = 'classify-basket';
+    basket.dataset.group = b.group;
+    basket.innerHTML = `<div class="classify-basket-title">${b.name}</div>`;
+
+    // HTML5 dragover/drop 수신
+    basket.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      basket.classList.add('drag-over');
+    });
+    basket.addEventListener('dragleave', () => {
+      basket.classList.remove('drag-over');
+    });
+    basket.addEventListener('drop', (e) => {
+      e.preventDefault();
+      basket.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain');
+      if (id && FOOD_BY_ID[id]) {
+        dropFoodToBasket(id, basket);
+      }
+    });
+
+    container.appendChild(basket);
+  });
+}
+
+function dropFoodToBasket(foodId, basketEl) {
+  const f = FOOD_BY_ID[foodId];
+  
+  // 이미 존재하는지 확인
+  const existing = basketEl.querySelector(`.food-card[data-id="${foodId}"]`);
+  if (existing) return;
+
+  // 다른 바구니에 있다면 삭제
+  $$('.classify-basket .food-card').forEach(card => {
+    if (card.dataset.id === foodId) card.remove();
+  });
+
+  const card = document.createElement('div');
+  card.className = 'food-card active';
+  card.dataset.id = foodId;
+  card.innerHTML = `<span>${f.emoji}</span><span>${f.name}</span>`;
+  
+  // 탭 클릭하여 제거 (접근성)
+  card.addEventListener('click', () => {
+    card.remove();
+    renderPalette();
+  });
+
+  basketEl.appendChild(card);
+  renderPalette();
+}
+
+/* ══════════════════════════════════════
+   피드백 및 결과 검증
+   ══════════════════════════════════════ */
+function showFeedback(text, type = 'ok') {
+  const fb = $('#feedbackBox');
+  fb.style.display = 'block';
+  fb.className = `feedback-box ${type}`;
+  fb.innerHTML = text;
+}
+function hideFeedback() {
+  $('#feedbackBox').style.display = 'none';
+}
+
+function verifyCurrentMission() {
+  const m = MISSIONS[state.missionIdx];
+  if (state.mode === 1) {
+    // 자유 빌더 모드에서의 단순 자전거 주행 평가
+    const counts = getPlateCounts();
+    const missing = [];
+    [1, 2, 3, 4, 5].forEach(g => {
+      if (counts[g] === 0) missing.push(GROUP_LABELS[g]);
+    });
+
+    if (counts['water'] === 0) {
+      showFeedback('❌ 앞바퀴가 비어 자전거가 움직일 수 없어요! 물(💧)을 접시에 꼭 한 잔 담아보세요.', 'no');
+    } else if (missing.length > 0) {
+      showFeedback(`❌ 아직 비어 있는 바퀴 영역이 있어요. <strong>${missing.join(', ')}</strong>에 해당하는 음식을 접시에 더 추가해 골고루 균형을 맞춰보세요.`, 'no');
+    } else if (counts[6] > 2) {
+      showFeedback('📦 유지·당류는 건강을 위해 꼭 소량만 조리할 때 사용해야 해요. 너무 많이 담으면 자전거 짐칸이 무거워져요. 몇 개 빼 볼까요?', 'no');
+    } else {
+      showFeedback('🎉 완벽합니다! 6대 식품군이 골고루 조화를 이루고 수분까지 보충되어 자전거가 쌩쌩 달리고 있어요!', 'ok');
+    }
+  } else if (state.mode === 2) {
+    // 도전 미션 검증
+    const isOk = m.verify();
+    if (isOk) {
+      showFeedback('🎉 미션 성공! 올바른 영양학적 기준에 따라 식단을 멋지게 수정/보완했습니다!', 'ok');
+      state.missionsCompleted[m.id] = true;
+      setupMissionUI();
+      saveState();
+    } else {
+      if (m.id === 'm1') {
+        showFeedback('❌ 일부 음식의 분류가 정확하지 않거나 5개 음식을 모두 넣지 않았습니다. 헷갈리기 쉬운 음식들의 영양 특징을 떠올리며 다시 드래그해 보세요.', 'no');
+      } else if (m.id === 'm2') {
+        showFeedback('❌ 아직 빈 식품군이 남아 있습니다. 고기·생선·달걀·콩류, 채소류, 과일류, 유제품류, 물을 각각 최소 1개 이상 식단에 더 추가해 보세요.', 'no');
+      } else if (m.id === 'm3') {
+        showFeedback('❌ 6개 식품군 및 물이 최소한 1개 이상씩은 모두 담겨야 합니다. 비어 있는 바퀴 칸을 더 채워 보세요.', 'no');
+      } else if (m.id === 'm4') {
+        showFeedback('❌ 퀴즈의 오답을 선택하셨습니다. 식단 A와 식단 B의 식품군 구성 차이를 바퀴 형태로 비교해 보고 정답을 다시 골라보세요.', 'no');
+      }
+    }
+  }
+}
+
+function showResultScreen() {
+  showScreen('screenResult');
+  const score = Object.values(state.missionsCompleted).filter(Boolean).length;
+  const stars = score >= 4 ? 3 : score >= 2 ? 2 : score >= 1 ? 1 : 0;
+  
+  $('#resultStars').textContent = '⭐'.repeat(stars);
+  let summary = `<strong>식품구성자전거 탐험 완료 보고서</strong><br><br>`;
+  summary += `① 식품군 바구니 분류: ${state.missionsCompleted.m1 ? '완료 ✓' : '미완료'}<br>`;
+  summary += `② 부족 식단 보완하기: ${state.missionsCompleted.m2 ? '완료 ✓' : '미완료'}<br>`;
+  summary += `③ 아침 한 끼 균형식단: ${state.missionsCompleted.m3 ? '완료 ✓' : '미완료'}<br>`;
+  summary += `④ 식단 비교 객관식 퀴즈: ${state.missionsCompleted.m4 ? '완료 ✓' : '미완료'}<br><br>`;
+  summary += `어떤 음식도 그 자체로 나쁜 음식은 없습니다! 곡류, 고기·생선·달걀·콩류, 채소, 과일, 유제품을 **골고루 알맞은 비율로** 채우고, 물을 충실히 마시면 평생 건강한 자전거가 힘차게 굴러갑니다!`;
+
+  $('#resultSummary').innerHTML = summary;
+}
+
+/* ══════════════════════════════════════
+   초기화 및 이벤트 리스너 바인딩
+   ══════════════════════════════════════ */
+function init() {
+  loadState();
+  parseShareLink();
+
+  // 시작 버튼
+  $('#btnStart').addEventListener('click', () => {
+    showScreen('screenExplore');
+    switchMode(1);
+  });
+
+  // 모드 탭 클릭
+  $$('.mode-tab').forEach(b => {
+    b.addEventListener('click', () => {
+      switchMode(b.dataset.mode);
+    });
+  });
+
+  // 카테고리 필터 탭
+  $$('.palette-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      $$('.palette-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      state.activeCategory = tab.dataset.cat;
+      renderPalette();
+    });
+  });
+
+  // 정답 및 균형 검사
+  $('#btnVerify').addEventListener('click', verifyCurrentMission);
+
+  // 최종 결과 이동
+  $('#btnNextScreen').addEventListener('click', showResultScreen);
+
+  // 결과 화면 액션
+  $('#btnRetry').addEventListener('click', () => {
+    state.missionsCompleted = { m1: false, m2: false, m3: false, m4: false };
+    state.plate = [];
+    saveState();
+    showScreen('screenExplore');
+    switchMode(1);
+  });
+  $('#btnBackToHub').addEventListener('click', () => {
+    showScreen('screenExplore');
+    switchMode(1);
+  });
+
+  // vibes-share 규약에 따른 공유 기능
+  window.shareCurrentPage = function() {
+    const payload = JSON.stringify({ v: 1, plate: state.plate });
+    const url = location.origin + location.pathname + '#share=' + encodeURIComponent(payload);
+    if (navigator.share) {
+      navigator.share({ title: '식품구성자전거 — 내가 만든 식단 접시', url });
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+      showToast('공유 링크가 클립보드에 복사되었습니다.');
+    }
+  };
+
+  function showToast(msg) {
+    const el = document.createElement('div');
+    el.style.position = 'fixed';
+    el.style.bottom = '20px';
+    el.style.left = '50%';
+    el.style.transform = 'translateX(-50%)';
+    el.style.background = 'rgba(0,0,0,0.8)';
+    el.style.color = '#fff';
+    el.style.padding = '8px 16px';
+    el.style.borderRadius = '20px';
+    el.style.fontSize = '12px';
+    el.style.zIndex = '9999';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2500);
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+})();
+</script>
+</body>
+</html>
