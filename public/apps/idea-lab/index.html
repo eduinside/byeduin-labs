@@ -178,6 +178,13 @@
       font-size: 64px; padding: 30px 10px;
     }
     .il-final-summary { font-size: 15px; line-height: 1.7; color: var(--fg); text-align: left; background: var(--bg-sec); border-radius: .8rem; padding: 14px 16px; }
+    .il-final-details {
+      margin-top: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 0.8rem;
+      background: var(--bg-sec); font-size: 13px; text-align: left; display: flex; flex-direction: column; gap: 8px;
+    }
+    .il-detail-row { display: flex; justify-content: space-between; gap: 10px; line-height: 1.4; }
+    .il-detail-row strong { color: var(--fg-muted); flex-shrink: 0; }
+    .il-detail-row span { color: var(--fg); text-align: right; word-break: keep-all; font-weight: 700; }
 
     /* ── 작품집 ── */
     .il-collection-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -899,6 +906,21 @@
       showScreen('draw');
       startDraw(false);
     }
+    function saveWorkAutomatically() {
+      const work = {
+        id: state.workId,
+        item: state.build.item, itemEmoji: state.build.itemEmoji,
+        item2: state.build.magics.includes('combine') ? state.build.item2 : '',
+        item2Emoji: state.build.magics.includes('combine') ? state.build.item2Emoji : '',
+        magic: state.build.magics,
+        answers: state.coach.answers,
+        summary: state.summary,
+        name: state.finalName,
+        b64: state.image.b64,
+        createdAt: new Date().toISOString(),
+      };
+      upsertWork(work);
+    }
     async function startDraw(isRegen) {
       if (isRegen) {
         if (state.image.attempts >= IMAGE_MAX_REGEN) { showToast('다시 그리기는 여기까지예요!'); return; }
@@ -923,11 +945,13 @@
         state.image.b64 = data.b64;
         state.image.failed = false;
         renderDrawResult();
+        saveWorkAutomatically();
       } catch (e) {
         clearTimeout(timer);
         state.image.failed = true;
         state.image.b64 = null;
         renderDrawResult();
+        saveWorkAutomatically();
       }
     }
     function renderDrawResult() {
@@ -961,6 +985,7 @@
         answers: state.coach.answers,
         summary: state.summary,
         name: state.finalName,
+        b64: state.image.b64,
         createdAt: new Date().toISOString(),
       };
       upsertWork(work);
@@ -976,11 +1001,32 @@
       const art = b64
         ? `<div class="il-final-art"><img src="data:image/png;base64,${b64}" alt="${escHtml(work.name)} 그림"></div>`
         : `<div class="il-final-art">${combine ? `<div class="il-emoji-art">${work.itemEmoji}<span>+</span>${work.item2Emoji}</div>` : `<div class="il-emoji-art">${work.itemEmoji}</div>`}</div>`;
+      
+      const magicNames = work.magic.map(k => MAGIC_BY_KEY[k] ? MAGIC_BY_KEY[k].label : k).join(', ');
+      
       root.innerHTML = `
         ${badgesHtml(work.magic)}
         <div class="il-final-name">${escHtml(work.name || '이름 없는 발명품')}</div>
         ${art}
         <div class="il-final-summary">${escHtml(work.summary)}</div>
+        <div class="il-final-details">
+          <div class="il-detail-row">
+            <strong>원래 물건</strong>
+            <span>${work.itemEmoji || '💡'} ${escHtml(work.item)}${combine ? ` + ${work.item2Emoji || '💡'} ${escHtml(work.item2)}` : ''}</span>
+          </div>
+          <div class="il-detail-row">
+            <strong>발상 기법</strong>
+            <span>${escHtml(magicNames)}</span>
+          </div>
+          ${work.answers && work.answers.length ? `
+          <div class="il-detail-row" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+            <strong>내가 고른 생각들</strong>
+            <span style="text-align: left; font-size: 12px; color: var(--il-accent); font-weight: 500;">
+              ${work.answers.map((a, idx) => `${idx + 1}. ${escHtml(a)}`).join('<br>')}
+            </span>
+          </div>
+          ` : ''}
+        </div>
       `;
     }
 
@@ -1073,7 +1119,7 @@
       const work = store.works.find(w => w.id === id);
       if (!work) return;
       state.workId = id;
-      renderFinalCard(getEl('finalCardRoot'), work, null, {});
+      renderFinalCard(getEl('finalCardRoot'), work, work.b64, {});
       const root = getEl('finalCardRoot');
       const btnRow = document.createElement('div');
       btnRow.className = 'il-btn-row';
@@ -1087,9 +1133,11 @@
         artWrap.innerHTML = '<div class="il-loading" style="padding:16px"><div class="il-spinner" style="width:32px;height:32px;margin-bottom:8px"></div><div class="il-loading-sub">그림을 그리고 있어요…</div></div>';
         try {
           const data = await callIdeaLab('image', { summary: work.summary });
+          work.b64 = data.b64;
+          upsertWork(work);
           renderFinalCard(root, work, data.b64, {});
           root.appendChild(btnRow);
-        } catch { showToast('그림 생성에 실패했어요.'); renderFinalCard(root, work, null, {}); root.appendChild(btnRow); }
+        } catch { showToast('그림 생성에 실패했어요.'); renderFinalCard(root, work, work.b64, {}); root.appendChild(btnRow); }
       });
       getEl('collDelete').addEventListener('click', () => {
         if (confirm('이 발명품을 삭제할까요?')) { deleteWork(id); showScreen('collection'); }
