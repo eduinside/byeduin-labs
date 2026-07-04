@@ -15,7 +15,7 @@
 #### 🌐 시뮬레이션
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **Moon Phase** | `/apps/moon-phase/` | 달의 위상 시뮬레이터 |
+| **달의 위상 3D (v2)** | `/apps/moon-phase-v2/` | 달의 위상 3D 시뮬레이터 (일식·월식 포함) |
 | **화산 탐험대** | `/apps/volcano/` | 3D 위성지도로 세계 화산 11개 탐험 · 초등 과학 4학년 연계 |
 | **Step Squad** | `/apps/blocks-universe/step-squad.html` | 계단수 개념 블록 시각화 + 퀴즈 |
 | **Break & Make** | `/apps/blocks-universe/break-make.html` | 구슬로 수 가르기·모으기 연습 + 도전 모드·도감 |

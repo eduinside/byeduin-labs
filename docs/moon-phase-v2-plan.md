@@ -3,6 +3,7 @@
 > 작성: 2026-07-03 · 작성자: Claude Fable 5 · 상위 기획: [simulation-apps-plan.md](simulation-apps-plan.md) (천체 라인업 강화)
 > 제약: 순수 정적 SPA(단일 HTML) · localStorage만 사용 · **경로 B 확정(2D pseudo-3D, 외부 의존성 0)**
 > 배치 방침: **공존(a안) — 기존 [moon-phase](../public/apps/moon-phase/index.html)는 URL 유지·홈 목록 처리는 양쪽 산출물 검토 후 최종 결정.** v2는 신규 앱 ID로 제작.
+> **최신 업데이트**: Volcano 스타일 3D 셰이딩 및 크레이터 렌더링 적용, 캔버스 비율 및 위치 고정, 미션 설명 텍스트 마크다운(`**`) → `<strong>` 적용 완료.
 
 ---
 
