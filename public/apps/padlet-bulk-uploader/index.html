@@ -131,6 +131,32 @@
       padding: 14px 18px; font-size: 13px; color: var(--success);
       text-align: center; font-weight: 600; margin-bottom: 16px;
     }
+
+    /* ── notion styler 스타일의 2열 레이아웃 ── */
+    .pbu-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 20px;
+      align-items: start;
+      margin-top: 16px;
+    }
+    .pbu-col-left, .pbu-col-right {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .pbu-col-right .panel {
+      margin-bottom: 0;
+    }
+    .pbu-col-right .btn-run {
+      margin-top: 8px;
+    }
+    @media (max-width: 768px) {
+      .pbu-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+    }
   </style>
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="패들렛 일괄 업로더 — Padlet API 일괄 게시 | eduin VIVES">
@@ -140,7 +166,7 @@
   <meta property="og:url" content="https://eduin.info/apps/padlet-bulk-uploader/">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"패들렛 일괄 업로더","description":"패들렛 API 키만 있으면 텍스트를 줄바꿈 또는 구분자로 붙여넣어 내 보드에 게시물을 한 번에 업로드합니다. 명렬·단어 목록·링크 모음을 수작업 없이 일괄 등록.","url":"https://eduin.info/apps/padlet-bulk-uploader/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
 </head>
-<body data-shell="column" data-width="narrow">
+<body data-shell="column" data-width="normal">
 <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입합니다 -->
 <main class="app-main">
 
@@ -171,66 +197,74 @@
     </div>
   </div>
 
-  <div class="panel">
-    <div class="panel-title">연결 설정</div>
+  <div class="pbu-grid">
+    <!-- Left Column: 연결 및 옵션 설정 -->
+    <div class="pbu-col-left">
+      <div class="panel">
+        <div class="panel-title">연결 설정</div>
 
-    <label class="field-label">패들렛 API 키</label>
-    <input type="password" id="apiKey" class="hero-input" placeholder="Developer 패널에서 발급한 키" autocomplete="off">
+        <label class="field-label">패들렛 API 키</label>
+        <input type="password" id="apiKey" class="hero-input" placeholder="Developer 패널에서 발급한 키" autocomplete="off">
 
-    <div class="security-note">
-      <span class="icon">🔒</span>
-      <span>API 키는 브라우저에서 이 서버의 프록시 함수로만 전달되며, 서버에 저장되거나 로그에 기록되지 않습니다.</span>
+        <div class="security-note">
+          <span class="icon">🔒</span>
+          <span>API 키는 브라우저에서 이 서버의 프록시 함수로만 전달되며, 서버에 저장되거나 로그에 기록되지 않습니다.</span>
+        </div>
+
+        <label class="field-label">Board ID (또는 보드 URL)</label>
+        <div class="verify-row">
+          <input type="text" id="boardId" class="hero-input" placeholder="abcd1234efgh5678 또는 https://padlet.com/.../제목-abcd1234efgh5678">
+          <button class="hero-btn hero-btn-ghost" id="verifyBtn" onclick="verifyBoard()">연결 확인</button>
+        </div>
+        <div class="verify-result" id="verifyResult"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">입력 방식</div>
+
+        <label class="field-label">텍스트 구분 방식</label>
+        <div class="options">
+          <button class="opt-btn active" id="modeSimpleBtn" onclick="setMode('simple')">간단 모드 (줄바꿈=1개)</button>
+          <button class="opt-btn" id="modeDelimBtn" onclick="setMode('delim')">구분자 모드 (제목+본문+링크)</button>
+        </div>
+
+        <label class="field-label">전체 항목 공통 색상</label>
+        <select id="color" class="hero-input no-mb">
+          <option value="">지정 안 함</option>
+          <option value="red">🔴 빨강</option>
+          <option value="orange">🟠 주황</option>
+          <option value="green">🟢 초록</option>
+          <option value="blue">🔵 파랑</option>
+          <option value="purple">🟣 보라</option>
+        </select>
+      </div>
     </div>
 
-    <label class="field-label">Board ID (또는 보드 URL)</label>
-    <div class="verify-row">
-      <input type="text" id="boardId" class="hero-input" placeholder="abcd1234efgh5678 또는 https://padlet.com/.../제목-abcd1234efgh5678">
-      <button class="hero-btn hero-btn-ghost" id="verifyBtn" onclick="verifyBoard()">연결 확인</button>
+    <!-- Right Column: 데이터 입력 및 실행 결과 -->
+    <div class="pbu-col-right">
+      <div class="panel">
+        <div class="panel-title">붙여넣기</div>
+        <div class="textarea-wrap">
+          <textarea id="bulkText" class="fd-textarea" placeholder="" oninput="updateParseCount()"></textarea>
+        </div>
+        <div class="parse-count" id="parseCount">0개 항목으로 인식됨</div>
+      </div>
+
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="progress-text" id="progressText">준비 중...</div>
+      </div>
+
+      <div class="summary" id="summary"></div>
+
+      <div class="log-wrap" id="logWrap">
+        <div class="log-header">진행 로그</div>
+        <div class="log" id="log"></div>
+      </div>
+
+      <button class="hero-btn btn-run" id="runBtn" onclick="run()">🚀 패들렛에 일괄 업로드</button>
     </div>
-    <div class="verify-result" id="verifyResult"></div>
   </div>
-
-  <div class="panel">
-    <div class="panel-title">입력 방식</div>
-
-    <label class="field-label">텍스트 구분 방식</label>
-    <div class="options">
-      <button class="opt-btn active" id="modeSimpleBtn" onclick="setMode('simple')">간단 모드 (줄바꿈=1개)</button>
-      <button class="opt-btn" id="modeDelimBtn" onclick="setMode('delim')">구분자 모드 (제목+본문+링크)</button>
-    </div>
-
-    <label class="field-label">전체 항목 공통 색상</label>
-    <select id="color" class="hero-input no-mb">
-      <option value="">지정 안 함</option>
-      <option value="red">🔴 빨강</option>
-      <option value="orange">🟠 주황</option>
-      <option value="green">🟢 초록</option>
-      <option value="blue">🔵 파랑</option>
-      <option value="purple">🟣 보라</option>
-    </select>
-  </div>
-
-  <div class="panel">
-    <div class="panel-title">붙여넣기</div>
-    <div class="textarea-wrap">
-      <textarea id="bulkText" class="fd-textarea" placeholder="" oninput="updateParseCount()"></textarea>
-    </div>
-    <div class="parse-count" id="parseCount">0개 항목으로 인식됨</div>
-  </div>
-
-  <div class="progress-wrap" id="progressWrap">
-    <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
-    <div class="progress-text" id="progressText">준비 중...</div>
-  </div>
-
-  <div class="summary" id="summary"></div>
-
-  <div class="log-wrap" id="logWrap">
-    <div class="log-header">진행 로그</div>
-    <div class="log" id="log"></div>
-  </div>
-
-  <button class="hero-btn btn-run" id="runBtn" onclick="run()">🚀 패들렛에 일괄 업로드</button>
 
 </main>
 <script>

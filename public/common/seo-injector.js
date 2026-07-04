@@ -110,29 +110,64 @@
     document.head.appendChild(s);
   }
 
-  function injectAppTitleIcon(app) {
-    if (!app.lucideIcon) return;
+  function injectAppHeader(app) {
     // immersive 앱 (대형 캔버스/지도/3D 전용)은 스킵
     if (document.body.getAttribute('data-shell') === 'immersive') return;
 
-    var h1 = document.querySelector('h1.app-title');
-    if (!h1) return;
+    var header = document.querySelector('.app-header');
+    if (!header || header.classList.contains('has-lucide-header')) return;
 
-    var iconName = app.lucideIcon;
+    var badge = header.querySelector('.app-badge');
+    var h1 = header.querySelector('h1.app-title');
+    var desc = header.querySelector('.app-desc');
 
-    // h1 내 <span> 태그 (강조 컬러 텍스트) 보존
-    var existingSpan = h1.querySelector('span');
-    var spanHtml = existingSpan ? existingSpan.outerHTML : null;
+    // 1) 배지 HTML 정제
+    var badgeHtml = '';
+    if (badge) {
+      badgeHtml = badge.outerHTML;
+    } else if (app.badge) {
+      badgeHtml = '<div class="app-badge">◆ ' + app.badge + '</div>';
+    }
 
-    // 이모지 제거한 순수 텍스트 추출
-    var rawText = h1.innerHTML.replace(/<span[^>]*>.*?<\/span>/gi, '').replace(/<[^>]+>/g, '');
-    var cleanedText = stripLeadingEmoji(rawText);
+    // 2) 타이틀 HTML 정제 (앞쪽 이모지 제거 및 span 유지)
+    var titleHtml = '';
+    if (h1) {
+      var existingSpan = h1.querySelector('span');
+      var spanHtml = existingSpan ? existingSpan.outerHTML : null;
+      var rawText = h1.innerHTML.replace(/<span[^>]*>.*?<\/span>/gi, '').replace(/<[^>]+>/g, '');
+      var cleanedText = stripLeadingEmoji(rawText);
+      titleHtml = '<h1 class="app-title">' + cleanedText + (spanHtml ? ' ' + spanHtml : '') + '</h1>';
+    } else {
+      titleHtml = '<h1 class="app-title">' + app.title + '</h1>';
+    }
 
-    var iconEl = '<i data-lucide="' + iconName + '" class="app-title-icon" aria-hidden="true"></i>';
-    h1.innerHTML = iconEl + ' ' + cleanedText + (spanHtml ? ' ' + spanHtml : '');
+    // 3) 설명글 HTML 정제
+    var descHtml = '';
+    if (desc) {
+      descHtml = desc.outerHTML;
+    } else if (app.desc) {
+      descHtml = '<p class="app-desc">' + app.desc + '</p>';
+    }
+
+    // 4) Lucide 아이콘 래퍼 빌드
+    var iconName = app.lucideIcon || 'hash';
+    var subcat = app.subcategory || 'default';
+    var iconHtml = '<div class="app-header-icon-blob sub-' + subcat + '">' +
+                   '<i data-lucide="' + iconName + '"></i>' +
+                   '</div>';
+
+    // 5) 전체 HTML 재배치 및 클래스 추가
+    var textWrapperHtml = '<div class="app-header-text">' +
+                          badgeHtml +
+                          titleHtml +
+                          descHtml +
+                          '</div>';
+
+    header.innerHTML = iconHtml + textWrapperHtml;
+    header.classList.add('has-lucide-header');
 
     ensureLucide(function () {
-      window.lucide.createIcons({ nodes: [h1] });
+      window.lucide.createIcons({ nodes: [header] });
     });
   }
 
@@ -193,7 +228,7 @@
     }
 
     // ── App title Lucide icon (비-immersive 앱 헤더) ──
-    injectAppTitleIcon(app);
+    injectAppHeader(app);
   }
 
   /* ── entry point (defer-compatible) ─────────────── */

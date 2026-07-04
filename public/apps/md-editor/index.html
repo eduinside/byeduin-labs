@@ -10,6 +10,8 @@
   <script src="/common/init.js"></script>
   <script src="/common/app-shell.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
 
@@ -188,6 +190,17 @@
       text-align: left;
     }
     .dropdown-opt:hover, .share-opt:hover { background: var(--bg); }
+    .dropdown-opt svg, .dropdown-opt i,
+    .share-opt svg, .share-opt i,
+    .toolbar-btn svg, .toolbar-btn i {
+      width: 14px;
+      height: 14px;
+      stroke-width: 2.2;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
     .dropdown-opt:disabled {
       color: var(--fg-muted);
       cursor: not-allowed;
@@ -522,22 +535,18 @@
   <!-- 툴바 -->
   <div class="md-toolbar">
     <input type="text" id="filenameInput" class="hero-input" value="untitled.md" placeholder="파일명.md">
-    <button class="toolbar-btn view-only-hide" onclick="newDocument()">📄 새 문서</button>
-    <button class="toolbar-btn view-only-hide" onclick="toggleOpenMenu(event)">📂 열기 ▾</button>
+    <button class="toolbar-btn view-only-hide" onclick="newDocument()"><i data-lucide="file-plus-2"></i>새 문서</button>
+    <button class="toolbar-btn view-only-hide" onclick="toggleOpenMenu(event)"><i data-lucide="folder-open"></i>열기 ▾</button>
     <input type="file" id="fileInput" accept=".md,.txt,.markdown" style="display:none" onchange="handleFileLoad(this)">
     <input type="file" id="htmlFileInput" accept=".html,.htm" style="display:none" onchange="handleHtmlLoad(this)">
     <input type="file" id="multiFileInput" accept=".json,.csv,.xml,.html,.htm" style="display:none" onchange="handleMultiLoad(this)">
     <input type="file" id="docFileInput" accept=".hwp,.hwpx,.hwpml,.pdf,.docx,.pptx,.xlsx,.doc,.xls" style="display:none" onchange="handleDocLoad(this)">
-    <button class="toolbar-btn view-only-hide" id="saveBtn" onclick="toggleSaveMenu(event)">💾 저장 ▾</button>
-    <button class="toolbar-btn view-only-hide" id="viewBtn" onclick="toggleViewMenu(event)">👁 보기 ▾</button>
-    <div id="view-badge">👁 보기 전용</div>
-    <button id="btn-clone-content" onclick="cloneContent()">📋 복제</button>
+    <button class="toolbar-btn view-only-hide" id="saveBtn" onclick="toggleSaveMenu(event)"><i data-lucide="save"></i>저장 ▾</button>
+    <button class="toolbar-btn view-only-hide" id="viewBtn" onclick="toggleViewMenu(event)"><i data-lucide="eye"></i>보기 ▾</button>
+    <div id="view-badge" style="display:inline-flex; align-items:center; gap:4px;"><i data-lucide="eye-off" style="width:12px;height:12px;"></i>보기 전용</div>
+    <button id="btn-clone-content" onclick="cloneContent()"><i data-lucide="copy"></i>복제</button>
     <button class="toolbar-btn view-only-hide" onclick="toggleShareMenu(event)">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-      </svg>
+      <i data-lucide="share-2"></i>
       공유 ▾
     </button>
   </div>
@@ -564,27 +573,19 @@
 <!-- 저장 드롭다운 -->
 <div id="save-dropdown">
   <button class="dropdown-opt" id="saveMdOpt" onclick="downloadMd()">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 5 7 3 12 3"/>
-    </svg>
+    <i data-lucide="file-text"></i>
     Markdown 저장
   </button>
   <button class="dropdown-opt" id="saveHtmlOpt" onclick="downloadHtml()">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 5 7 3 12 3"/>
-    </svg>
+    <i data-lucide="file-code-2"></i>
     HTML 저장
   </button>
   <button class="dropdown-opt" id="saveLsOpt" onclick="saveToLocalStorage()">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
-    </svg>
+    <i data-lucide="chrome"></i>
     브라우저에 저장
   </button>
   <button class="dropdown-opt" id="saveServerOpt" onclick="saveDocToServer()">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
-    </svg>
+    <i data-lucide="cloud"></i>
     코드로 저장 <span class="beta-badge">다른 기기</span>
   </button>
 </div>
@@ -592,59 +593,37 @@
 <!-- 열기 드롭다운 -->
 <div id="open-dropdown">
   <button class="dropdown-opt" onclick="openFileInput()">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-    </svg>
+    <i data-lucide="file-up"></i>
     .MD 열기
   </button>
-  <!-- HTML 열기는 안정화될 때까지 숨김 처리 -->
-  <!-- <button class="dropdown-opt" onclick="openHtmlFileInput()" style="display: none;">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-    </svg>
-    .HTML 열기
-    <span class="beta-badge">실험 중</span>
-  </button> -->
   <button class="dropdown-opt" onclick="closeAllMenus(); openDocFileInput()">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
-    </svg>
+    <i data-lucide="file-archive"></i>
     로컬 문서 열기
     <span class="beta-badge">HWP · PDF · DOCX · PPTX · XLSX</span>
   </button>
   <button class="dropdown-opt" onclick="openMultiFileInput()">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
-    </svg>
+    <i data-lucide="folder-search-2"></i>
     다른 파일 열기
     <span class="beta-badge">JSON · CSV · XML · HTML</span>
   </button>
   <button class="dropdown-opt" id="openLsOpt" onclick="openLoadModal()">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
-    </svg>
-    브라우저에 저장된 파일 열기
+    <i data-lucide="history"></i>
+    저장된 파일 열기
   </button>
 </div>
 
 <!-- 보기 드롭다운 -->
 <div id="view-dropdown">
   <button class="dropdown-opt" onclick="setViewMode('edit-only')">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="14 2 14 8 20 8"/><path d="M17 21H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/>
-    </svg>
+    <i data-lucide="edit-3"></i>
     편집만
   </button>
   <button class="dropdown-opt" onclick="setViewMode('preview-only')">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-    </svg>
+    <i data-lucide="eye"></i>
     미리보기만
   </button>
   <button class="dropdown-opt" onclick="setViewMode('both')">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/>
-    </svg>
+    <i data-lucide="columns-2"></i>
     둘 다
   </button>
 </div>
@@ -652,15 +631,11 @@
 <!-- 공유 드롭다운 -->
 <div id="share-dropdown">
   <button class="share-opt" onclick="doShare('view')">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-    </svg>
+    <i data-lucide="eye"></i>
     보기 전용
   </button>
   <button class="share-opt" onclick="doShare('clone')">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-    </svg>
+    <i data-lucide="copy"></i>
     복제 허용
   </button>
 </div>
@@ -1855,6 +1830,15 @@
       showToast('공유 링크를 읽을 수 없습니다.');
     }
     updateSaveButtonState();
+
+    // ── Lucide 아이콘 초기화 실행 ──
+    if (window.lucide) {
+      window.lucide.createIcons();
+    } else {
+      document.addEventListener('DOMContentLoaded', () => {
+        if (window.lucide) window.lucide.createIcons();
+      });
+    }
   })();
 </script>
 </body>
