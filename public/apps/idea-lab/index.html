@@ -702,6 +702,54 @@
         `<span class="il-dot ${i < state.coach.step - 1 ? 'done' : ''} ${i === state.coach.step - 1 ? 'now' : ''}"></span>`
       ).join('');
     }
+    function getOfflineChoices(item, magicKey, step) {
+      const base = OFFLINE_BANK[magicKey][step - 1].choices;
+      // 특정 물건별 오프라인 보정
+      if (item.includes('도시락') || item.includes('샌드위치') || item.includes('밥')) {
+        if (magicKey === 'material') {
+          if (step === 1) return ['가벼운 나무', '말랑한 실리콘', '안전한 스테인리스'];
+          if (step === 2) return ['안 깨져서요', '위생적이어서요', '친환경적이어서요'];
+          if (step === 3) return ['더 오래 써요', '더 안전해요', '더 맛있어져요'];
+        }
+        if (magicKey === 'combine') {
+          if (step === 1) return ['소풍 갈 때', '아침 먹을 때', '여행 갈 때'];
+          if (step === 2) return ['가족들', '친구들', '나 같은 어린이'];
+          if (step === 3) return ['먹기 편해져요', '따뜻하게 보관돼요', '안 쏟아져요'];
+        }
+      }
+      if (item.includes('우산') || item.includes('비')) {
+        if (magicKey === 'material') {
+          if (step === 1) return ['비닐 대신 종이', '자외선 차단 천', '투명한 유리섬유'];
+          if (step === 2) return ['환경에 좋아서요', '안 다치고 안전해서요', '햇빛도 막아줘서요'];
+          if (step === 3) return ['더 안심돼요', '더 가벼워요', '더 세련돼요'];
+        }
+      }
+      if (item.includes('연필') || item.includes('필통') || item.includes('볼펜') || item.includes('크레파스')) {
+        if (magicKey === 'material') {
+          if (step === 1) return ['튼튼한 메탈', '말랑한 고무', '친환경 재활용지'];
+          if (step === 2) return ['손이 안 아파서요', '오래 쓸 수 있어서요', '자연을 보호해서요'];
+          if (step === 3) return ['더 공부가 잘돼요', '더 안전해요', '더 뿌듯해요'];
+        }
+      }
+      if (item.includes('컵') || item.includes('텀블러') || item.includes('물병')) {
+        if (magicKey === 'material') {
+          if (step === 1) return ['단단한 도자기', '가벼운 대나무', '깨지지 않는 유리'];
+          if (step === 2) return ['안전해서요', '환경에 좋아서요', '예뻐 보여서요'];
+          if (step === 3) return ['더 위생적이에요', '가방에 쏙 들어가요', '더 맛있어져요'];
+        }
+      }
+      // 일반적인 물건 카테고리별 재료 보완
+      if (magicKey === 'material' && step === 1) {
+        return ['가벼운 플라스틱', '튼튼한 나무', '부드러운 실리콘'];
+      }
+      if (magicKey === 'material' && step === 2) {
+        return ['가벼워서요', '안 부서져서요', '환경에 좋아서요'];
+      }
+      if (magicKey === 'material' && step === 3) {
+        return ['더 가벼워져요', '더 튼튼해져요', '더 안전해져요'];
+      }
+      return base;
+    }
     async function fetchCoachStep() {
       renderCoachProgress();
       getEl('coachLoading').hidden = false;
@@ -733,7 +781,7 @@
       const magicKey = state.build.magics[0];
       const qTpl = OFFLINE_QUESTIONS[magicKey][state.coach.step - 1];
       const q = qTpl.replace('{things}', thingsLabel());
-      const choices = OFFLINE_BANK[magicKey][state.coach.step - 1].choices;
+      const choices = getOfflineChoices(state.build.item, magicKey, state.coach.step);
       getEl('coachOfflineNote').innerHTML = '<span class="il-offline-note">📴 오프라인 질문으로 계속할게요</span>';
       renderCoachQuestion(q, choices, true);
     }
