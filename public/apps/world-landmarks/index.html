@@ -181,12 +181,13 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   padding: 12px 15px; margin-bottom: 14px; font-size: 13.5px; line-height: 1.65; color: #2c5685;
 }
 
-/* 🗺️ 나라 문화 카드 (3분할 탭형식) */
+/* 🗺️ 나라 문화 카드 */
 .culture-card {
   background: var(--paper); border: 2px solid var(--border); border-radius: 18px;
   padding: 16px; margin-bottom: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+  position: relative;
 }
-.culture-title { font-family: 'Jua'; font-size: 17px; margin-bottom: 10px; color: var(--navy); }
+.culture-title { font-family: 'Jua'; font-size: 17px; margin-bottom: 10px; color: var(--navy); padding-right: 44px; }
 .culture-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .culture-item {
   background: var(--cream); border-radius: 12px; padding: 10px 4px; text-align: center;
@@ -195,11 +196,21 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 .culture-item .icon { font-size: 28px; }
 .culture-item .label { font-size: 11px; font-weight: 800; }
 .culture-item .name { font-size: 12px; font-weight: 600; opacity: 0.8; line-height: 1.2; word-break: keep-all; }
+
+/* 읽어주기 버튼 — 카드 우상단 고정 */
 .culture-speak-btn {
-  margin-top: 10px; width: 100%; padding: 8px; border-radius: 10px; border: 1px solid var(--border);
-  background: var(--paper); font-size: 13px; font-weight: 700; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
+  position: absolute; top: 12px; right: 12px;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--paper); font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, transform .12s;
+  -webkit-tap-highlight-color: transparent;
+  z-index: 2;
 }
+.culture-speak-btn:hover { background: var(--cream); transform: scale(1.1); }
+.culture-speak-btn:active { transform: scale(.95); }
+.culture-speak-btn.speaking { background: #e3f5ea; border-color: var(--stamp-green); }
 
 /* 퀴즈 영역 */
 .quiz-zone { margin-top: 6px; }
@@ -244,22 +255,27 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 .next-zone { text-align: center; margin-top: 16px; }
 .next-zone .btn { font-size: 17px; padding: 13px 30px; }
 
-/* ── 여권 도장 리스트 ── */
+/* ── 여권 도장 그리드 ── */
 .passport-grid {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 16px;
 }
 .passport-slot {
   background: var(--cream); border-radius: 12px; height: 74px; border: 2px dashed var(--border);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 24px;
-  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: relative; overflow: hidden; cursor: pointer; transition: transform .15s;
 }
+.passport-slot:hover { transform: scale(1.04); }
 .passport-slot.done {
   border: 2px solid var(--stamp-red); background: #fffdf9;
 }
 .passport-slot.done::after {
   content: '✓'; position: absolute; bottom: 2px; right: 4px; font-size: 11px; font-weight: 900; color: var(--stamp-red);
 }
-.passport-slot-label { font-size: 10px; font-weight: 800; margin-top: 2px; color: var(--navy); opacity: 0.7; }
+/* 도장 획득 전: 물음표 아이콘 */
+.slot-emoji-pending { font-size: 22px; opacity: 0.35; }
+/* 도장 획득 후: 랜드마크 이모지 크게 */
+.slot-emoji-done { font-size: 26px; }
+.passport-slot-label { font-size: 9px; font-weight: 800; margin-top: 2px; color: var(--navy); opacity: 0.6; }
 
 /* ── 결과화면 (여권 수료증) ── */
 .result { text-align: center; animation: fadeUp .5s ease both; }
@@ -309,7 +325,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   <meta name="twitter:image" content="https://eduin.info/og-images/world-landmarks.png">
   <link rel="canonical" href="https://eduin.info/apps/world-landmarks/">
   <meta property="og:url" content="https://eduin.info/apps/world-landmarks/">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"세계 탐험대","description":"3D 위성지도로 세계 랜드마크 11곳 탐험, 나라별 국기·문화를 알아보는 여권 수집 여행","url":"https://eduin.info/apps/world-landmarks/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"세계 탐험대","description":"경복궁·에펠탑·피라미드·앙코르와트 등 세계 랜드마크 11곳을 3D 위성지도로 탐험하고 나라별 국기·문화를 알아보는 여권 수집 여행","url":"https://eduin.info/apps/world-landmarks/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   <script src="/common/seo-injector.js" defer></script>
 </head>
 <body data-shell="immersive">
@@ -328,7 +344,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 /* ── 11개 랜드마크 상수 정의 ── */
 const LANDMARKS = [
   {
-    id: 'gyeongbokgung', name: '경복궁', countryCode: 'kr', countryName: '대한민국', emoji: '🏯',
+    id: 'gyeongbokgung', name: '경복궁', countryFlag: '🇰🇷', countryName: '대한민국', emoji: '🏯',
     capital: '서울', greeting: '안녕하세요!', food: '비빔밥 🍚', clothes: '한복 👘', house: '한옥 🏠',
     observe: '궁궐 전각들이 남북 방향으로 곧게 일렬로 늘어서 있는 배치 구조를 위에서 살펴보세요.',
     tip: '⬇️ 위에서 보기를 누르면 궁궐의 전체적인 구조를 한눈에 볼 수 있어요.',
@@ -341,7 +357,7 @@ const LANDMARKS = [
     }
   },
   {
-    id: 'greatwall', name: '만리장성', countryCode: 'cn', countryName: '중국', emoji: '🧱',
+    id: 'greatwall', name: '만리장성', countryFlag: '🇨🇳', countryName: '중국', emoji: '🧱',
     capital: '베이징', greeting: '니하오!', food: '만두 🥟', clothes: '치파오 👘', house: '사합원 🏠',
     observe: '험난한 산봉우리를 따라 끝없이 이어져 있는 성벽의 형태를 3D 지도로 감상해 보세요.',
     tip: '🔄 한 바퀴를 눌러 산맥 위에 성벽이 어떻게 지어졌는지 확인해 보세요.',
@@ -354,7 +370,7 @@ const LANDMARKS = [
     }
   },
   {
-    id: 'tajmahal', name: '타지마할', countryCode: 'in', countryName: '인도', emoji: '🕌',
+    id: 'tajmahal', name: '타지마할', countryFlag: '🇮🇳', countryName: '인도', emoji: '🕌',
     capital: '뉴델리', greeting: '나마스테!', food: '카레 🍛', clothes: '사리 👗', house: '석조 가옥 🏠',
     observe: '대리석으로 만들어진 무덤 건물과 앞마당의 연못 정원이 완벽하게 반으로 접히는 대칭 구조를 관찰하세요.',
     tip: '정면에서 다가가며 좌우 대칭이 어떻게 이루어지는지 지도를 움직여 보세요.',
@@ -367,12 +383,12 @@ const LANDMARKS = [
     }
   },
   {
-    id: 'eiffel', name: '에펠탑', countryCode: 'fr', countryName: '프랑스', emoji: '🗼',
+    id: 'eiffel', name: '에펠탑', countryFlag: '🇫🇷', countryName: '프랑스', emoji: '🗼',
     capital: '파리', greeting: '봉주르!', food: '바게트 🥖', clothes: '전통 드레스 👚', house: '석조 공동주택 🏢',
-    observe: '공원 한가운데 우뚝 솟아 있는 높은 철탑과, 그 옆으로 길게 늘어선 그림자를 찾아보세요.',
-    tip: '시간대에 따라 지도의 에펠탑 그림자가 어디를 향해 늘어나는지 살펴보세요.',
-    explain: '에펠탑은 프랑스 파리를 상징하는 <b>철골 탑</b>이에요. 약 300미터가 넘는 높이로, 철골들을 그물망처럼 촘촘히 엮어 만들었습니다.',
-    lat: 48.8584, lng: 2.2945, zoom: 16.8,
+    observe: '샹 드 마르스 공원 한가운데 솟아 있는 철탑과 주변 도로·강을 위에서 관찰하세요.',
+    tip: '위에서 보기를 눌러 에펠탑이 공원 중앙에 자리 잡은 배치를 확인해 보세요.',
+    explain: '에펠탑은 프랑스 파리를 상징하는 <b>철골 탑</b>이에요. 약 330미터가 넘는 높이로, 철골들을 그물망처럼 촘촘히 엮어 만들었습니다.',
+    lat: 48.8584, lng: 2.2945, zoom: 17.0,
     quiz: {
       q: '에펠탑이 멋지게 솟아 있는 프랑스의 수도는 어디일까요?',
       choices: ['파리', '런던', '로마'],
@@ -380,12 +396,12 @@ const LANDMARKS = [
     }
   },
   {
-    id: 'bigben', name: '빅벤·국회의사당', countryCode: 'gb', countryName: '영국', emoji: '🇬🇧',
+    id: 'bigben', name: '빅벤·국회의사당', countryFlag: '🇬🇧', countryName: '영국', emoji: '🏛️',
     capital: '런던', greeting: '헬로!', food: '피시앤칩스 🐟', clothes: '영국 신사복 👔', house: '벽돌 가옥 🏠',
     observe: '템스 강변을 따라 늘어선 웅장한 고딕 양식 국회의사당 건물과 꼭대기의 큰 시계탑을 관찰하세요.',
     tip: '강을 가로지르는 다리와 의사당 시계탑의 조화를 3D 뷰로 보세요.',
     explain: '빅벤은 영국 런던 국회의사당 끝에 있는 <b>거대한 시계탑</b>의 별칭이에요. 매 시간마다 아름다운 종소리를 울려 런던을 깨워줍니다.',
-    lat: 51.4996, lng: -0.1248, zoom: 17.0,
+    lat: 51.4994, lng: -0.1245, zoom: 17.0,
     quiz: {
       q: '빅벤이 있는 영국의 대표적인 생선 및 감자 튀김 음식은?',
       choices: ['피시앤칩스', '바게트', '피자'],
@@ -393,7 +409,7 @@ const LANDMARKS = [
     }
   },
   {
-    id: 'colosseum', name: '콜로세움', countryCode: 'it', countryName: '이탈리아', emoji: '🏛️',
+    id: 'colosseum', name: '콜로세움', countryFlag: '🇮🇹', countryName: '이탈리아', emoji: '🏛️',
     capital: '로마', greeting: '차오!', food: '피자 🍕', clothes: '로마 토가 👗', house: '석조 가옥 🏠',
     observe: '도심 한복판에 남아 있는 거대한 타원형 경기장을 위에서 내려다보며 벽면의 아치 문들을 관찰하세요.',
     tip: '아치형 창문들이 층층이 뚫려 있는 로마식 벽면 구조를 기울여 보세요.',
@@ -406,7 +422,7 @@ const LANDMARKS = [
     }
   },
   {
-    id: 'pyramid', name: '피라미드', countryCode: 'eg', countryName: '이집트', emoji: '📐',
+    id: 'pyramid', name: '피라미드', countryFlag: '🇪🇬', countryName: '이집트', emoji: '📐',
     capital: '카이로', greeting: '마르하반!', food: '코샤리 🫓', clothes: '갈라베야 👗', house: '진흙 가옥 🏠',
     observe: '사막 모래 위에 드리워진 피라미드의 거대한 세모꼴 그림자와 세 개의 웅장한 피라미드 배치를 관찰하세요.',
     tip: '정사각뿔 모양의 각 면이 햇빛을 받아 명암이 나뉘는 모습을 보세요.',
@@ -419,25 +435,25 @@ const LANDMARKS = [
     }
   },
   {
-    id: 'opera', name: '시드니 오페라하우스', countryCode: 'au', countryName: '호주', emoji: '⛵',
+    id: 'opera', name: '시드니 오페라하우스', countryFlag: '🇦🇺', countryName: '호주', emoji: '⛵',
     capital: '캔버라', greeting: '지데이!', food: '미트 파이 🥩', clothes: '야외 의상 👕', house: '단층 가옥 🏡',
     observe: '푸른 바다 항구 끝자락에 조개껍질이나 요트 돛을 여러 개 포개어 놓은 듯한 독특한 지붕 모양을 살펴보세요.',
     tip: '바다로 둘러싸인 항구 위에 하얀 지붕이 어우러진 비주얼을 확인하세요.',
     explain: '오페라하우스는 호주 시드니 항구에 지어진 <b>공연 예술 센터</b>예요. 현대 건축의 걸작으로 꼽히는 조개 모양 지붕이 특징입니다.',
     lat: -33.8568, lng: 151.2153, zoom: 16.5,
     quiz: {
-      q: '오페라하우스가 있는 호주에서 쓰이는 인사말("좋은 날!")은?',
+      q: '오페라하우스가 있는 호주에서 쓰이는 인사말(\"좋은 날!\")은?',
       choices: ['지데이', '니하오', '봉주르'],
       ans: '지데이'
     }
   },
   {
-    id: 'liberty', name: '자유의 여신상', countryCode: 'us', countryName: '미국', emoji: '🗽',
+    id: 'liberty', name: '자유의 여신상', countryFlag: '🇺🇸', countryName: '미국', emoji: '🗽',
     capital: '워싱턴 D.C.', greeting: '헬로!', food: '햄버거 🍔', clothes: '청바지 👖', house: '목조 단독주택 🏡',
-    observe: '리버티 섬의 넓은 잔디마당 정가운데 우뚝 서서 횃불을 높이 들고 있는 여신상의 청동색 그림자를 확인해 보세요.',
+    observe: '리버티 섬의 넓은 잔디마당 정가운데 우뚝 서서 횃불을 높이 들고 있는 여신상을 위에서 내려다보세요.',
     tip: '여신상이 밟고 있는 별 모양의 단상 배치를 위에서 관찰하세요.',
     explain: '자유의 여신상은 미국 뉴욕 앞바다 섬에 세워진 <b>거대한 횃불 동상</b>이에요. 프랑스가 미국 독립 100주년을 기념하여 선물한 청동상입니다.',
-    lat: 40.6892, lng: -74.0445, zoom: 17.2,
+    lat: 40.6892, lng: -74.0445, zoom: 16.5,
     quiz: {
       q: '미국을 대표하며 질긴 천으로 만들어 전 세계 사람들이 즐겨 입는 의상은?',
       choices: ['청바지', '면바지', '한복'],
@@ -445,56 +461,36 @@ const LANDMARKS = [
     }
   },
   {
-    id: 'redeemer', name: '리우 예수상', countryCode: 'br', countryName: '브라질', emoji: '✝️',
+    id: 'amazon', name: '아마존 열대우림', countryFlag: '🇧🇷', countryName: '브라질', emoji: '🌿',
     capital: '브라질리아', greeting: '올라!', food: '슈하스코 🥩', clothes: '삼바 의상 👗', house: '포르투갈풍 주택 🏠',
-    observe: '높은 바위산 정상에 두 팔을 넓게 펼쳐 리우데자네이루 시내와 항구를 굽어보고 있는 거대한 백색 석상을 찾아보세요.',
-    tip: '깎아지른 절벽 산꼭대기에 우뚝 서서 그림자를 길게 늘어뜨린 예수상을 감상해 보세요.',
-    explain: '리우 예수상은 브라질 리우데자네이루의 700미터 산꼭대기에 세워진 <b>거대한 예수 조각상</b>이에요. 세계 신 7대 불가사의 중 하나로 꼽힙니다.',
-    lat: -22.9519, lng: -43.2105, zoom: 16.5,
+    observe: '세계 최대의 열대우림 속에서 강이 구불구불 흘러가는 아마존 강 유역을 위성지도로 관찰하세요.',
+    tip: '위에서 보기를 눌러 초록빛 숲 사이를 흘러가는 거대한 강줄기를 확인해 보세요.',
+    explain: '아마존 열대우림은 브라질에 위치한 <b>세계 최대의 열대우림</b>이에요. 지구 산소의 약 20%를 만들어내는 "지구의 허파"로 불립니다.',
+    lat: -3.4653, lng: -62.2159, zoom: 10.5,
     quiz: {
-      q: '예수상 뒤로 삼바 축제가 흘러 넘치는 브라질의 대표 쇠고기 꼬치구이 요리는?',
+      q: '아마존이 있는 브라질의 대표적인 쇠고기 꼬치구이 요리는?',
       choices: ['슈하스코', '피시앤칩스', '비빔밥'],
       ans: '슈하스코'
     }
   },
   {
-    id: 'machupicchu', name: '마추픽추', countryCode: 'pe', countryName: '페루', emoji: '⛰️',
-    capital: '리마', greeting: '올라!', food: '세비체 🌽', clothes: '폰초 🧣', house: '석조 돌집 🏠',
-    observe: '해발 2,400미터 고산지대 꼭대기에 정교하게 깎은 돌로 만든 잉카 제국의 공중 도시와 계단식 밭을 관찰해 보세요.',
-    tip: '구름이 걸치는 높은 산봉우리들 사이에 숨겨진 아찔한 도시 유적을 감상해 보세요.',
-    explain: '마추픽추는 페루 안데스 산맥 해발 꼭대기에 세워진 <b>잉카 제국의 공중 도시 유적</b>이에요. 산 아래에서는 전혀 보이지 않아 잃어버린 공중 도시라고 불립니다.',
-    lat: -13.1631, lng: -72.5450, zoom: 16.0,
+    id: 'angkorwat', name: '앙코르와트', countryFlag: '🇰🇭', countryName: '캄보디아', emoji: '🛕',
+    capital: '프놈펜', greeting: '쑤어스데이!', food: '아목 🍲', clothes: '샘폿 👗', house: '수상 가옥 🏠',
+    observe: '정글 속에 위성지도로도 또렷이 보이는 거대한 사원 단지와 주변 해자(물길)의 직사각형 배치를 관찰하세요.',
+    tip: '위에서 보기를 눌러 사원 중심탑 5개와 해자가 만드는 기하학적 대칭 구조를 감상하세요.',
+    explain: '앙코르와트는 캄보디아의 대표적인 <b>힌두·불교 사원 단지</b>예요. 세계 최대의 종교 건축물로, 12세기에 돌을 쌓아 만든 거대한 유적입니다.',
+    lat: 13.4125, lng: 103.8670, zoom: 15.5,
     quiz: {
-      q: '마추픽추가 있는 이 나라의 전통 옷으로, 머리에 구멍을 내어 입는 따뜻한 담요 망토는?',
-      choices: ['폰초', '사리', '한복'],
-      ans: '폰초'
+      q: '앙코르와트가 있는 이 나라의 전통 의상으로, 허리에 두르는 긴 천은?',
+      choices: ['샘폿', '사리', '폰초'],
+      ans: '샘폿'
     }
   }
 ];
 
-// 국기 이미지 렌더링용 빌더 (위키백과 공식 SVG 연동)
-function getFlagSvg(countryCode) {
-  const flagUrls = {
-    kr: 'https://upload.wikimedia.org/wikipedia/commons/0/09/Flag_of_South_Korea.svg',
-    cn: 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Flag_of_the_People%27s_Republic_of_China.svg',
-    in: 'https://upload.wikimedia.org/wikipedia/commons/4/41/Flag_of_India.svg',
-    fr: 'https://upload.wikimedia.org/wikipedia/commons/c/c3/Flag_of_France.svg',
-    gb: 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Flag_of_the_United_Kingdom.svg',
-    it: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Flag_of_Italy.svg',
-    eg: 'https://upload.wikimedia.org/wikipedia/commons/f/fe/Flag_of_Egypt.svg',
-    au: 'https://upload.wikimedia.org/wikipedia/commons/8/88/Flag_of_Australia.svg',
-    us: 'https://upload.wikimedia.org/wikipedia/commons/a/a4/Flag_of_the_United_States.svg',
-    br: 'https://upload.wikimedia.org/wikipedia/commons/0/05/Flag_of_Brazil.svg',
-    pe: 'https://upload.wikimedia.org/wikipedia/commons/c/cf/Flag_of_Peru.svg'
-  };
-  const url = flagUrls[countryCode];
-  if (!url) return '';
-  return `<img src="${url}" alt="${countryCode} 국기" style="border:1px solid var(--border); width:90px; height:60px; object-fit:cover; display:block; border-radius:4px;" />`;
-}
-
 /* ── 런타임 변수 ── */
 let idx = 0;
-let stamps = []; // 도장 획득한 랜드마크 ID 배열
+let stamps = [];
 let map = null;
 let orbiting = false;
 let mapFailed = false;
@@ -507,16 +503,14 @@ function getGoogleEarthUrl(m) {
 /* ── 3D 지도 셋업 ── */
 function mapFallback(msg) {
   mapFailed = true;
-  // 기존 지도 껍데기를 카드 폴백 이미지로 변경
   const zone = document.querySelector('.map-zone');
   if (!zone) return;
-  
   const m = LANDMARKS[idx];
   zone.innerHTML = `
     <div class="card-fallback-view">
       <div class="fallback-landmark-emoji">${m.emoji}</div>
       <div class="fallback-landmark-name">${m.name} (${m.countryName})</div>
-      <div class="fallback-landmark-desc">🛰️ 3D 지도를 지원하지 않는 기기입니다. 대신 국기와 문화 정보를 바탕으로 탐험해봐요!</div>
+      <div class="fallback-landmark-desc">🛰️ 3D 지도를 지원하지 않는 기기입니다. 대신 문화 정보를 바탕으로 탐험해봐요!</div>
       <a class="earth-link" href="${getGoogleEarthUrl(m)}" target="_blank" rel="noopener" style="margin-top:20px; color:var(--gold); text-decoration:underline;">🌍 구글 어스 앱으로 열기 ↗</a>
     </div>
   `;
@@ -560,7 +554,7 @@ function buildMap() {
     });
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-left');
-    
+
     let mapLoaded = false;
     const hideLoading = () => {
       if (mapLoaded) return;
@@ -574,11 +568,7 @@ function buildMap() {
       try {
         map.setSky({ 'sky-color': '#79b3e6', 'horizon-color': '#fdebd0', 'fog-color': '#e8ddca', 'sky-horizon-blend': .6 });
       } catch (e) {}
-      
-      // 위성 타일이 로드될 때까지 기다리기 위해 idle 이벤트 사용
       map.once('idle', hideLoading);
-      
-      // 네트워크 지연/실패 대비 안전 타이머 (최대 2.5초 대기 후 강제 해제)
       setTimeout(hideLoading, 2500);
     });
 
@@ -592,7 +582,6 @@ function buildMap() {
 
 function flyToLandmark(m) {
   if (mapFailed || !map) {
-    // 카드 폴백 뷰 갱신
     const zone = document.querySelector('.map-zone');
     if (zone) {
       zone.innerHTML = `
@@ -610,9 +599,23 @@ function flyToLandmark(m) {
   map.flyTo({ center: [m.lng, m.lat], zoom: m.zoom, pitch: 65, bearing: 20, duration: 4500, essential: true });
 }
 
-function camTilt() { if (mapFailed || !map) return; stopOrbit(); map.easeTo({ pitch: 65, zoom: LANDMARKS[idx].zoom, duration: 1200 }); }
-function camTop() { if (mapFailed || !map) return; stopOrbit(); map.easeTo({ pitch: 0, bearing: 0, zoom: LANDMARKS[idx].zoom + 0.4, duration: 1200 }); }
-function toggleOrbit() {
+/* ── 카메라 컨트롤 (window 노출) ── */
+window.camReturn = function() {
+  if (mapFailed || !map) return;
+  stopOrbit();
+  flyToLandmark(LANDMARKS[idx]);
+};
+window.camTop = function() {
+  if (mapFailed || !map) return;
+  stopOrbit();
+  map.easeTo({ pitch: 0, bearing: 0, zoom: LANDMARKS[idx].zoom + 0.4, duration: 1200 });
+};
+window.camTilt = function() {
+  if (mapFailed || !map) return;
+  stopOrbit();
+  map.easeTo({ pitch: 65, zoom: LANDMARKS[idx].zoom, duration: 1200 });
+};
+window.toggleOrbit = function() {
   if (mapFailed || !map) return;
   orbiting = !orbiting;
   document.getElementById('orbitBtn')?.classList.toggle('active', orbiting);
@@ -620,7 +623,8 @@ function toggleOrbit() {
     if (map.getPitch() < 30) map.easeTo({ pitch: 65, duration: 800 });
     orbitFrame();
   }
-}
+};
+
 function orbitFrame() {
   if (!orbiting) return;
   map.setBearing(map.getBearing() + 0.12);
@@ -642,7 +646,7 @@ function renderIntro() {
       <h1>세계 탐험대</h1>
       <div class="lesson-tag">3D 지도로 떠나는 세계 문화 여행</div>
       <p class="sub">에펠탑, 피라미드, 자유의 여신상 등<br>세계 유명 랜드마크 11곳을 3D 위성지도로 탐험하고<br>나라마다 다른 국기, 수도, 문화들을 공부해요!</p>
-      
+
       <div class="mission-card">
         <h3>🧭 여권 도장 모으기 미션</h3>
         <ol>
@@ -667,7 +671,7 @@ function renderExplore() {
       <div id="map"></div>
       <div class="map-loading" id="mapLoading"><div class="spin">🌏</div>3D 지도 불러오는 중...</div>
       <div class="cam-bar">
-        <button class="cam-btn return-btn" onclick="flyToLandmark(LANDMARKS[idx])" title="랜드마크로 돌아가기">🏠 돌아가기</button>
+        <button class="cam-btn return-btn" onclick="camReturn()" title="랜드마크로 돌아가기">🏠 돌아가기</button>
         <button class="cam-btn" id="orbitBtn" onclick="toggleOrbit()">🔄 한 바퀴</button>
         <button class="cam-btn" onclick="camTop()">⬇️ 위에서 보기</button>
         <button class="cam-btn" onclick="camTilt()">⛰️ 3D 보기</button>
@@ -678,7 +682,7 @@ function renderExplore() {
       <div class="side-body" id="sideBody"></div>
     </aside>
   </div>`;
-  
+
   buildMap();
   renderPanel();
 }
@@ -687,27 +691,25 @@ function renderPanel() {
   const m = LANDMARKS[idx];
   const vt = document.getElementById('viewerTitle');
   if (vt) vt.innerHTML = `<span class="num">${idx + 1}</span> ${m.emoji} ${m.name}`;
-  
-  // 국기 SVG와 헤더 렌더링
+
+  // 국기 이모지 + 헤더 렌더링
   document.getElementById('sideHead').innerHTML = `
     <div class="flag">
-      ${getFlagSvg(m.countryCode)}
+      <span style="font-size:32px; line-height:1;">${m.countryFlag}</span>
       <span>${m.countryName} (수도: ${m.capital})</span>
     </div>
     <h2>${m.emoji} ${m.name}</h2>
     <div class="height">인사말: <strong>"${m.greeting}"</strong> · ${idx + 1}번째 나라</div>
   `;
 
-  // 도장 획득했는지 확인
   const isStamped = stamps.includes(m.id);
 
-  // 사이드바 내부 렌더링
   let bodyHtml = `
     <div class="progress-zone">
       <div class="progress-track"><div class="progress-fill" style="width:${idx / LANDMARKS.length * 100}%"></div></div>
       <div class="progress-label"><span>탐험 진도</span><span>${idx + 1} / ${LANDMARKS.length}</span></div>
     </div>
-    
+
     <div class="observe-box">
       <h3>🔍 관찰 포인트</h3>
       <p>${m.observe}</p>
@@ -715,6 +717,7 @@ function renderPanel() {
 
     <!-- 문화 도감 카드 -->
     <div class="culture-card">
+      <button class="culture-speak-btn" onclick="speakCulture('${m.id}')" id="speakBtn" title="설명 읽어주기">🔊</button>
       <div class="culture-title">🌐 ${m.countryName}의 대표 문화 소개</div>
       <div class="culture-grid">
         <div class="culture-item">
@@ -733,7 +736,6 @@ function renderPanel() {
           <span class="name">${m.house}</span>
         </div>
       </div>
-      <button class="culture-speak-btn" onclick="speakCulture('${m.id}')">🔊 설명 읽어주기 (소리 듣기)</button>
     </div>
 
     <div class="quiz-zone" id="quiz">
@@ -767,7 +769,7 @@ function renderPanel() {
 
   bodyHtml += `
     </div>
-    
+
     <!-- 여권 도장 리스트 프리뷰 -->
     <div style="margin-top:20px; border-top:1px dashed var(--border); padding-top:14px;">
       <h4 style="font-size:12px; font-weight:800; color:var(--navy); opacity:0.7;">✈️ 내 여권 스탬프 (${stamps.length} / ${LANDMARKS.length})</h4>
@@ -775,9 +777,12 @@ function renderPanel() {
         ${LANDMARKS.map((lm, i) => {
           const hasS = stamps.includes(lm.id);
           return `
-            <div class="passport-slot ${hasS ? 'done' : ''}" onclick="goToIndex(${i})" style="cursor:pointer;" title="${lm.name}">
-              <span>${hasS ? 'Stamp' : '🚩'}</span>
-              <span class="passport-slot-label">${lm.emoji}</span>
+            <div class="passport-slot ${hasS ? 'done' : ''}" onclick="goToIndex(${i})" title="${lm.name}">
+              ${hasS
+                ? `<span class="slot-emoji-done">${lm.emoji}</span>`
+                : `<span class="slot-emoji-pending">${lm.emoji}</span>`
+              }
+              <span class="passport-slot-label">${lm.name.length > 4 ? lm.name.slice(0,4)+'…' : lm.name}</span>
             </div>
           `;
         }).join('')}
@@ -797,15 +802,17 @@ window.speakCulture = function(landmarkId) {
     alert('이 브라우저는 음성 합성(TTS) 기능을 지원하지 않습니다.');
     return;
   }
-  // 기존 리딩 음소거
   window.speechSynthesis.cancel();
 
-  // "이곳은 프랑스의 에펠탑입니다. 수도는 파리이고, 인사말은 봉주르입니다. 프랑스의 대표적인 전통 음식은 바게트이고, 전통 옷은... 입니다."
+  const btn = document.getElementById('speakBtn');
+  if (btn) btn.classList.add('speaking');
+
   const text = `이곳은 ${m.countryName}의 ${m.name}입니다. 수도는 ${m.capital}이고, 인사말은 ${m.greeting}입니다. ${m.countryName}의 대표적인 음식은 ${m.food.split(' ')[0]}이고, 전통 옷은 ${m.clothes.split(' ')[0]}입니다. 대표적인 집은 ${m.house.split(' ')[0]}입니다.`;
-  
+
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = 'ko-KR';
   utterance.rate = 1.0;
+  utterance.onend = () => { if (btn) btn.classList.remove('speaking'); };
   window.speechSynthesis.speak(utterance);
 };
 
@@ -813,7 +820,7 @@ window.speakCulture = function(landmarkId) {
 window.submitAnswer = function(answer) {
   const m = LANDMARKS[idx];
   const correct = answer === m.quiz.ans;
-  
+
   const quizZone = document.getElementById('quiz');
   if (!quizZone) return;
 
@@ -837,14 +844,29 @@ window.submitAnswer = function(answer) {
         </div>
       </div>
     `;
-    
-    // 도장 쾅 스탬프 애니메이션 트리거
+
     setTimeout(() => {
       document.getElementById('pStamp')?.classList.add('stamped');
     }, 100);
 
+    // 스탬프 그리드 갱신
+    const grid = document.querySelector('.passport-grid');
+    if (grid) {
+      grid.innerHTML = LANDMARKS.map((lm, i) => {
+        const hasS = stamps.includes(lm.id);
+        return `
+          <div class="passport-slot ${hasS ? 'done' : ''}" onclick="goToIndex(${i})" title="${lm.name}">
+            ${hasS
+              ? `<span class="slot-emoji-done">${lm.emoji}</span>`
+              : `<span class="slot-emoji-pending">${lm.emoji}</span>`
+            }
+            <span class="passport-slot-label">${lm.name.length > 4 ? lm.name.slice(0,4)+'…' : lm.name}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
   } else {
-    // 아쉬움 피드백
     quizZone.innerHTML = `
       <div class="reveal">
         <div class="reveal-banner wrong">🤔 아쉬워요! 다른 답을 골라볼까요?</div>
@@ -938,6 +960,8 @@ window.start = function() {
   renderExplore();
 };
 
+const STORAGE_KEY = 'world-landmarks:v1';
+
 function saveState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ stamps }));
@@ -953,10 +977,8 @@ function loadState() {
   } catch (e) {}
 }
 
-const STORAGE_KEY = 'world-landmarks:v1';
 renderIntro();
 
-// vibes-share 규약에 따른 공유 기능
 window.shareCurrentPage = function() {
   const payload = JSON.stringify({ v: 1, stamps });
   const url = location.origin + location.pathname + '#share=' + encodeURIComponent(payload);
