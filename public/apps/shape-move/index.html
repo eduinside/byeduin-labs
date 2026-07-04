@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>도형의 이동 — eduin VIVES</title>
+<meta name="description" content="모눈 위 도형을 직접 밀고 뒤집고 돌려 보세요. 초등 수학 4학년 평면도형의 이동을 애니메이션으로 체험하는 무료 학습 시뮬레이션.">
+<meta property="og:title" content="도형의 이동 — 밀기·뒤집기·돌리기 시뮬레이터 | eduin VIVES">
+<meta property="og:description" content="모눈 위 도형을 직접 밀고 뒤집고 돌려 보세요. 초등 수학 4학년 평면도형의 이동을 애니메이션으로 체험하는 무료 학습 시뮬레이션.">
+<meta property="og:image" content="https://eduin.info/og-images/shape-move.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script src="/common/init.js"></script>
+<link rel="stylesheet" href="/common/hero-theme.css">
+<link rel="stylesheet" href="/common/app-shell.css">
+<script src="/common/theme.js"></script>
+<script src="/common/app-shell.js" defer></script>
+<style>
+/* ══════════════════════════════════════════════
+   shape-move — 도형의 이동 시뮬레이터
+   immersive 셸: 앱이 뷰포트 소유
+   ══════════════════════════════════════════════ */
+:root {
+  --sm-grid: #c5cae9;
+  --sm-grid-bg: #f5f7ff;
+  --sm-shape: #5c6bc0;
+  --sm-shape-stroke: #3949ab;
+  --sm-ghost: rgba(92, 107, 192, 0.25);
+  --sm-ghost-stroke: rgba(57, 73, 171, 0.35);
+  --sm-accent: #00c853;
+  --sm-accent2: #ff6d00;
+  --sm-panel: #ffffff;
+  --sm-panel-border: #e0e0e0;
+  --sm-sidebar-w: 320px;
+  --sm-text: #263238;
+  --sm-text-muted: #78909c;
+  --sm-btn-bg: #eceff1;
+  --sm-btn-hover: #cfd8dc;
+  --sm-btn-active: #b0bec5;
+  --sm-radius: 18px;
+  --sm-danger: #ef5350;
+  --sm-star: #ffc107;
+}
+[data-theme="dark"] {
+  --sm-grid: #37474f;
+  --sm-grid-bg: #1a1f2e;
+  --sm-shape: #7986cb;
+  --sm-shape-stroke: #9fa8da;
+  --sm-ghost: rgba(121, 134, 203, 0.2);
+  --sm-ghost-stroke: rgba(159, 168, 218, 0.3);
+  --sm-panel: #1e272e;
+  --sm-panel-border: #37474f;
+  --sm-text: #eceff1;
+  --sm-text-muted: #90a4ae;
+  --sm-btn-bg: #263238;
+  --sm-btn-hover: #37474f;
+  --sm-btn-active: #455a64;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  background: var(--sm-grid-bg);
+  color: var(--sm-text);
+  min-height: 100vh;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── 화면 전환 ── */
+.screen { display: none; }
+.screen.active { display: flex; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+/* ══════════ 인트로 ══════════ */
+.intro-screen {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  text-align: center;
+  animation: fadeUp 0.6s ease;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(92,107,192,0.08) 0, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(0,200,83,0.06) 0, transparent 35%),
+    var(--sm-grid-bg);
+}
+
+.intro-art {
+  font-size: 80px; line-height: 1;
+  margin-bottom: 12px;
+  animation: float 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro-art { animation: none; }
+}
+
+.intro-screen h1 {
+  font-size: 32px; font-weight: 800;
+  margin-bottom: 6px;
+  letter-spacing: -0.02em;
+}
+.intro-sub {
+  font-size: 15px; color: var(--sm-text-muted);
+  line-height: 1.7; margin-bottom: 20px;
+}
+.intro-tag {
+  display: inline-block; background: var(--sm-shape);
+  color: #fff; font-size: 12px; font-weight: 700;
+  padding: 5px 14px; border-radius: 99px;
+  margin-bottom: 18px; letter-spacing: 0.05em;
+}
+.intro-card {
+  background: var(--sm-panel);
+  border: 2px dashed var(--sm-shape);
+  border-radius: var(--sm-radius);
+  padding: 20px 24px;
+  max-width: 440px; width: 100%;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+}
+.intro-card h3 {
+  font-size: 17px; font-weight: 700;
+  color: var(--sm-shape-stroke);
+  margin-bottom: 10px;
+}
+.intro-card p {
+  font-size: 14px; line-height: 1.7;
+  color: var(--sm-text-muted);
+}
+
+/* 인트로 미리보기 아이콘 */
+.intro-previews {
+  display: flex; gap: 28px; justify-content: center;
+  margin-bottom: 24px;
+}
+.intro-preview {
+  text-align: center; font-size: 12px; font-weight: 600;
+  color: var(--sm-text-muted);
+}
+.intro-preview .icon {
+  width: 60px; height: 60px;
+  background: var(--sm-btn-bg);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; margin-bottom: 6px;
+}
+.intro-preview .icon svg {
+  width: 32px; height: 32px;
+}
+
+.sm-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; border: none; border-radius: 99px;
+  padding: 14px 36px; font-size: 17px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.sm-btn:active { transform: scale(0.96); }
+.sm-btn-primary {
+  background: linear-gradient(135deg, var(--sm-shape) 0%, var(--sm-shape-stroke) 100%);
+  color: #fff;
+  box-shadow: 0 6px 0 #283593;
+}
+.sm-btn-primary:active {
+  box-shadow: 0 2px 0 #283593;
+  transform: translateY(4px);
+}
+.sm-btn-secondary {
+  background: var(--sm-btn-bg);
+  color: var(--sm-text);
+  border: 1px solid var(--sm-panel-border);
+}
+
+/* ══════════ 탐험 레이아웃 ══════════ */
+.explore-screen {
+  width: 100vw; height: 100vh; height: 100dvh;
+  animation: fadeUp 0.4s ease;
+}
+
+.explore-layout {
+  display: grid;
+  grid-template-columns: 1fr var(--sm-sidebar-w);
+  width: 100%; height: 100%;
+}
+
+/* 캔버스 영역 */
+.canvas-zone {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--sm-grid-bg);
+  min-width: 0;
+  overflow: hidden;
+}
+.canvas-zone svg {
+  max-width: 100%; max-height: 100%;
+}
+
+/* 토스트 */
+.toast {
+  position: absolute;
+  bottom: 16px; left: 50%; transform: translateX(-50%);
+  background: rgba(38,50,56,0.88);
+  color: #fff; font-size: 13px; font-weight: 600;
+  padding: 10px 20px; border-radius: 99px;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  opacity: 0; transition: opacity 0.3s;
+  z-index: 10;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+
+/* 미션 인디케이터 */
+.mission-indicator {
+  position: absolute;
+  top: 56px; left: 14px; z-index: 5;
+  background: rgba(38,50,56,0.78);
+  backdrop-filter: blur(6px);
+  color: #fff; border-radius: 14px;
+  padding: 8px 16px;
+  font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.mission-indicator .num {
+  background: var(--sm-shape);
+  width: 24px; height: 24px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+}
+.mission-indicator .stars { color: var(--sm-star); font-size: 14px; }
+
+/* 사이드바 */
+.sidebar {
+  background: var(--sm-panel);
+  border-left: 2px solid var(--sm-panel-border);
+  overflow-y: auto;
+  display: flex; flex-direction: column;
+  box-shadow: -4px 0 24px rgba(0,0,0,0.06);
+}
+
+.side-head {
+  background: linear-gradient(135deg, var(--sm-shape) 0%, #3949ab 100%);
+  color: #fff; padding: 16px 20px 14px;
+  position: relative; overflow: hidden; flex-shrink: 0;
+}
+.side-head::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 80% -20%, rgba(255,255,255,0.15) 0, transparent 55%);
+}
+.side-head h2 { font-size: 20px; font-weight: 700; position: relative; z-index: 1; }
+.side-head .side-sub { font-size: 12px; opacity: 0.8; position: relative; z-index: 1; margin-top: 2px; }
+
+.side-body { padding: 14px 16px 20px; flex: 1; }
+
+/* 도형 선택 */
+.shape-select {
+  display: flex; gap: 6px; margin-bottom: 14px;
+}
+.shape-opt {
+  flex: 1; padding: 8px 4px; border-radius: 10px;
+  border: 2px solid var(--sm-panel-border);
+  background: var(--sm-btn-bg);
+  text-align: center; cursor: pointer;
+  font-size: 11px; font-weight: 700;
+  font-family: inherit; color: var(--sm-text-muted);
+  transition: all 0.15s;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.shape-opt svg { width: 28px; height: 28px; }
+.shape-opt.active {
+  border-color: var(--sm-shape);
+  background: rgba(92,107,192,0.1);
+  color: var(--sm-shape);
+}
+
+/* 컨트롤 그룹 */
+.ctrl-group {
+  margin-bottom: 14px;
+}
+.ctrl-group-title {
+  font-size: 11px; font-weight: 700;
+  color: var(--sm-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+
+/* 방향키 십자 배치 */
+.dpad {
+  display: grid;
+  grid-template-columns: 52px 52px 52px;
+  grid-template-rows: 52px 52px 52px;
+  gap: 4px;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+.dpad-btn {
+  width: 52px; height: 52px;
+  border: 1px solid var(--sm-panel-border);
+  background: var(--sm-btn-bg);
+  border-radius: 12px;
+  font-size: 20px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  color: var(--sm-text);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.1s;
+}
+.dpad-btn:hover { background: var(--sm-btn-hover); }
+.dpad-btn:active { background: var(--sm-btn-active); transform: scale(0.92); }
+.dpad-center {
+  background: none !important; border: none !important;
+  font-size: 11px; font-weight: 700; color: var(--sm-text-muted);
+  cursor: default;
+}
+
+/* 변환 버튼 */
+.transform-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.tf-btn {
+  padding: 10px 8px;
+  border: 1px solid var(--sm-panel-border);
+  background: var(--sm-btn-bg);
+  border-radius: 10px;
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  color: var(--sm-text);
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  transition: all 0.1s;
+  min-height: 44px;
+}
+.tf-btn:hover { background: var(--sm-btn-hover); }
+.tf-btn:active { background: var(--sm-btn-active); transform: scale(0.95); }
+.tf-btn .icon { font-size: 16px; }
+
+/* 리셋/미션 버튼 */
+.action-btns {
+  display: flex; gap: 6px; margin-top: 10px;
+}
+.action-btn {
+  flex: 1; padding: 10px 8px; border-radius: 10px;
+  border: 1px solid var(--sm-panel-border);
+  background: var(--sm-btn-bg);
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  color: var(--sm-text); min-height: 44px;
+  transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.action-btn:hover { background: var(--sm-btn-hover); }
+.action-btn.primary {
+  background: var(--sm-shape); color: #fff; border-color: var(--sm-shape);
+}
+.action-btn.primary:hover { background: var(--sm-shape-stroke); }
+.action-btn.danger { color: var(--sm-danger); border-color: var(--sm-danger); }
+
+/* 미션 패널 (사이드바 안) */
+.mission-panel {
+  background: var(--sm-panel);
+  border-radius: var(--sm-radius);
+  border: 2px solid var(--sm-panel-border);
+  padding: 16px;
+  margin-bottom: 12px;
+  animation: popIn 0.35s ease;
+}
+.mission-panel h3 {
+  font-size: 15px; font-weight: 700;
+  margin-bottom: 8px;
+}
+.mission-panel p {
+  font-size: 13px; line-height: 1.6;
+  color: var(--sm-text-muted);
+}
+
+/* 3지선다 (미션 식별) */
+.quiz-choices {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-top: 12px;
+}
+.quiz-choice {
+  padding: 12px 14px; border-radius: 12px;
+  border: 2px solid var(--sm-panel-border);
+  background: var(--sm-btn-bg);
+  font-size: 14px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  color: var(--sm-text);
+  transition: all 0.15s;
+  text-align: center;
+}
+.quiz-choice:hover { border-color: var(--sm-shape); }
+.quiz-choice.correct { border-color: var(--sm-accent); background: rgba(0,200,83,0.1); color: #2e7d32; }
+.quiz-choice.wrong { border-color: var(--sm-danger); background: rgba(239,83,80,0.08); color: #c62828; }
+
+/* 미션 피드백 */
+.m-feedback {
+  padding: 12px 14px; border-radius: 12px;
+  font-size: 13px; line-height: 1.6;
+  margin-top: 10px; text-align: center;
+  animation: popIn 0.3s ease;
+}
+.m-feedback.success { background: rgba(0,200,83,0.1); color: #2e7d32; }
+.m-feedback.warn { background: rgba(255,109,0,0.1); color: #e65100; }
+.m-feedback.info { background: rgba(92,107,192,0.1); color: var(--sm-shape-stroke); }
+
+/* 미션 진행 바 */
+.progress-bar {
+  height: 6px; background: var(--sm-btn-bg);
+  border-radius: 99px; overflow: hidden;
+  margin-bottom: 12px;
+}
+.progress-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--sm-shape), var(--sm-accent));
+  transition: width 0.4s ease;
+}
+
+/* 변환 횟수 카운터 */
+.move-counter {
+  text-align: center; font-size: 12px; font-weight: 600;
+  color: var(--sm-text-muted); margin-top: 6px;
+}
+
+/* ══════════ 결과 화면 ══════════ */
+.result-screen {
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100vh; padding: 24px;
+  text-align: center;
+  animation: fadeUp 0.5s ease;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(0,200,83,0.06) 0, transparent 40%),
+    radial-gradient(circle at 70% 60%, rgba(92,107,192,0.08) 0, transparent 35%),
+    var(--sm-grid-bg);
+}
+.result-trophy { font-size: 72px; margin-bottom: 8px; }
+.result-screen h1 { font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+.result-screen .score-text { font-size: 18px; color: var(--sm-text-muted); margin-bottom: 16px; }
+.result-stars-row { font-size: 28px; margin-bottom: 20px; }
+
+.result-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 8px; max-width: 400px; width: 100%;
+  margin-bottom: 20px;
+}
+.result-cell {
+  background: var(--sm-panel);
+  border: 1px solid var(--sm-panel-border);
+  border-radius: 10px;
+  padding: 8px 4px;
+  font-size: 11px; font-weight: 600;
+}
+.result-cell .num { font-size: 13px; font-weight: 700; }
+.result-cell .stars { color: var(--sm-star); font-size: 14px; }
+
+.result-summary-box {
+  background: var(--sm-panel);
+  border: 1px solid var(--sm-panel-border);
+  border-radius: var(--sm-radius);
+  padding: 20px 24px;
+  max-width: 440px; width: 100%;
+  margin-bottom: 20px; text-align: left;
+}
+.result-summary-box h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--sm-shape); }
+.result-summary-box p { font-size: 14px; line-height: 1.7; color: var(--sm-text-muted); }
+.result-summary-box strong { color: var(--sm-accent); }
+
+.result-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* ══════════ 반응형 (모바일) ══════════ */
+@media (max-width: 800px) {
+  body { overflow: auto; }
+  .explore-layout {
+    display: flex; flex-direction: column;
+    height: auto; min-height: 100vh;
+  }
+  .canvas-zone {
+    position: sticky; top: 0; z-index: 40;
+    height: 50vh; min-height: 280px; flex-shrink: 0;
+  }
+  .sidebar { border-left: none; border-top: 2px solid var(--sm-panel-border); }
+  .dpad-btn { width: 48px; height: 48px; }
+  .dpad { grid-template-columns: 48px 48px 48px; grid-template-rows: 48px 48px 48px; }
+  .intro-screen h1 { font-size: 26px; }
+  .intro-art { font-size: 64px; }
+  .result-grid { grid-template-columns: repeat(5, 1fr); }
+}
+@media (max-width: 400px) {
+  .shape-select { flex-wrap: wrap; }
+  .shape-opt { min-width: calc(50% - 4px); }
+}
+</style>
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="도형의 이동 — 밀기·뒤집기·돌리기 시뮬레이터 | eduin VIVES">
+  <meta name="twitter:description" content="모눈 위 도형을 직접 밀고 뒤집고 돌려 보세요. 초등 수학 4학년 평면도형의 이동을 애니메이션으로 체험하는 무료 학습 시뮬레이션.">
+  <meta name="twitter:image" content="https://eduin.info/og-images/shape-move.png">
+  <link rel="canonical" href="https://eduin.info/apps/shape-move/">
+  <meta property="og:url" content="https://eduin.info/apps/shape-move/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"도형의 이동","description":"모눈 위 도형을 직접 밀고 뒤집고 돌려 보세요. 초등 수학 4학년 평면도형의 이동을 애니메이션으로 체험하는 무료 학습 시뮬레이션.","url":"https://eduin.info/apps/shape-move/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script src="/common/seo-injector.js" defer></script>
+</head>
+<body data-shell="immersive">
+
+<!-- ============ 인트로 ============ -->
+<div id="screenIntro" class="screen intro-screen active">
+  <div class="intro-tag">수학 4학년 · 평면도형의 이동</div>
+  <div class="intro-art">🔷</div>
+  <h1>도형의 이동</h1>
+  <p class="intro-sub">모눈 위 도형을 밀고·뒤집고·돌려 보세요</p>
+
+  <div class="intro-previews">
+    <div class="intro-preview">
+      <div class="icon">➡️</div>
+      <span>밀기</span>
+    </div>
+    <div class="intro-preview">
+      <div class="icon">↔️</div>
+      <span>뒤집기</span>
+    </div>
+    <div class="intro-preview">
+      <div class="icon">🔄</div>
+      <span>돌리기</span>
+    </div>
+  </div>
+
+  <div class="intro-card">
+    <h3>🧩 도형을 움직여도 모양과 크기는 그대로일까요?</h3>
+    <p>직접 움직여서 확인해 봐요!<br>밀기·뒤집기·돌리기로 도형을 변환하고,<br>모양과 크기가 변하는지 관찰해 보세요.</p>
+  </div>
+
+  <button class="sm-btn sm-btn-primary" id="btnStart">시작하기</button>
+</div>
+
+<!-- ============ 탐험 / 미션 ============ -->
+<div id="screenExplore" class="screen explore-screen">
+  <div class="explore-layout">
+    <!-- 캔버스 -->
+    <div class="canvas-zone" id="canvasZone">
+      <div class="mission-indicator" id="missionIndicator" style="display:none;">
+        <span class="num" id="missionNum">1</span>
+        <span id="missionLabel">미션</span>
+        <span class="stars" id="missionStarsDisp"></span>
+      </div>
+      <!-- SVG는 JS가 렌더 -->
+      <div class="toast" id="toast"></div>
+    </div>
+
+    <!-- 사이드바 -->
+    <div class="sidebar" id="sidebar">
+      <div class="side-head">
+        <h2>🔷 도형의 이동</h2>
+        <div class="side-sub">밀기 · 뒤집기 · 돌리기</div>
+      </div>
+      <div class="side-body" id="sideBody">
+        <!-- 도형 선택 -->
+        <div class="ctrl-group">
+          <div class="ctrl-group-title">도형 선택</div>
+          <div class="shape-select" id="shapeSelect"></div>
+        </div>
+
+        <!-- 밀기 (방향키) -->
+        <div class="ctrl-group">
+          <div class="ctrl-group-title">밀기</div>
+          <div class="dpad">
+            <div></div>
+            <button class="dpad-btn" data-action="up" title="위로 밀기">↑</button>
+            <div></div>
+            <button class="dpad-btn" data-action="left" title="왼쪽 밀기">←</button>
+            <div class="dpad-btn dpad-center">밀기</div>
+            <button class="dpad-btn" data-action="right" title="오른쪽 밀기">→</button>
+            <div></div>
+            <button class="dpad-btn" data-action="down" title="아래로 밀기">↓</button>
+            <div></div>
+          </div>
+        </div>
+
+        <!-- 뒤집기 · 돌리기 -->
+        <div class="ctrl-group">
+          <div class="ctrl-group-title">뒤집기 · 돌리기</div>
+          <div class="transform-btns">
+            <button class="tf-btn" data-action="flipX"><span class="icon">↔</span> 좌우 뒤집기</button>
+            <button class="tf-btn" data-action="flipY"><span class="icon">↕</span> 상하 뒤집기</button>
+            <button class="tf-btn" data-action="rotateCW"><span class="icon">⟳</span> 90° 돌리기</button>
+            <button class="tf-btn" data-action="rotateCCW"><span class="icon">⟲</span> -90° 돌리기</button>
+          </div>
+        </div>
+
+        <!-- 변환 횟수 (미션 시) -->
+        <div class="move-counter" id="moveCounter" style="display:none;"></div>
+
+        <!-- 미션/안내 패널 -->
+        <div id="missionArea"></div>
+
+        <!-- 액션 버튼 -->
+        <div class="action-btns" id="actionBtns">
+          <button class="action-btn danger" id="btnReset" data-action="reset">🔄 처음으로</button>
+          <button class="action-btn primary" id="btnMission">🏆 미션 도전</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 결과 ============ -->
+<div id="screenResult" class="screen result-screen">
+  <div class="result-trophy">🏆</div>
+  <h1>미션 완료!</h1>
+  <div class="score-text" id="resultScoreText"></div>
+  <div class="result-stars-row" id="resultStarsRow"></div>
+  <div class="result-grid" id="resultGrid"></div>
+  <div class="result-summary-box">
+    <h3>📖 배움 정리</h3>
+    <p>밀기·뒤집기·돌리기 모두 <strong>모양과 크기는 변하지 않아요.</strong><br><strong>위치·방향만 바뀌어요.</strong></p>
+  </div>
+  <div class="result-btns">
+    <button class="sm-btn sm-btn-primary" id="btnRetry">다시 도전</button>
+    <button class="sm-btn sm-btn-secondary" id="btnFreeplay">자유 탐험으로</button>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   도형의 이동 — shape-move
+   순수 정적 SPA · localStorage만 사용 · 외부 의존성 0
+   ================================================================ */
+(function() {
+'use strict';
+
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+/* ── 도형 정의 (비대칭 4종, 정수 좌표) ── */
+const SHAPES = {
+  'L':     { name: 'ㄴ자',     emoji: '⌐', points: [[0,0],[2,0],[2,1],[1,1],[1,2],[0,2]] },
+  'tri':   { name: '직각삼각형', emoji: '◺', points: [[0,0],[3,0],[0,2]] },
+  'trap':  { name: '사다리꼴',  emoji: '⏢', points: [[1,0],[3,0],[4,2],[0,2]] },
+  'flag':  { name: '깃발',     emoji: '⚑', points: [[0,0],[3,0],[3,1],[2,1],[1,2],[0,2]] },
+};
+const SHAPE_IDS = Object.keys(SHAPES);
+
+/* ── 상태 모델 ── */
+let state = {
+  shapeId: 'L',
+  x: 2, y: 2,
+  flipX: false, flipY: false,
+  rot: 0  // 0, 90, 180, 270
+};
+
+let ghostState = null;  // 미션 목표
+let missionMode = false;
+let currentMission = -1; // -1 = 자유 탐험
+let moveCount = 0;
+let hintCount = 0;
+let missionStars = {};
+let animating = false;
+let actionQueue = [];
+let toastTimer = null;
+let toastShown = {};  // 관찰 유도 문구 1회성
+
+const STORAGE_KEY = 'shape-move:v1';
+
+/* ── 미션 데이터 ── */
+const MISSIONS = [
+  // ① 식별 (4개) — 두 그림 보여주고 변환 종류 맞추기
+  { type: 'identify', shape: 'L', from: {x:1,y:1,flipX:false,flipY:false,rot:0}, to: {x:4,y:1,flipX:false,flipY:false,rot:0}, answer: 'slide', choices: ['밀기','뒤집기','돌리기'] },
+  { type: 'identify', shape: 'L', from: {x:2,y:1,flipX:false,flipY:false,rot:0}, to: {x:2,y:1,flipX:true,flipY:false,rot:0}, answer: 'flip', choices: ['밀기','뒤집기','돌리기'] },
+  { type: 'identify', shape: 'tri', from: {x:1,y:2,flipX:false,flipY:false,rot:0}, to: {x:1,y:2,flipX:false,flipY:false,rot:90}, answer: 'rotate', choices: ['밀기','뒤집기','돌리기'] },
+  { type: 'identify', shape: 'flag', from: {x:1,y:1,flipX:false,flipY:false,rot:0}, to: {x:1,y:1,flipX:false,flipY:true,rot:0}, answer: 'flip', choices: ['밀기','뒤집기','돌리기'] },
+  // ② 고스트 맞추기 (4개, 1~2회 변환)
+  { type: 'ghost', shape: 'L', start: {x:1,y:1,flipX:false,flipY:false,rot:0}, goal: {x:4,y:1,flipX:false,flipY:false,rot:0}, minMoves: 1 },
+  { type: 'ghost', shape: 'tri', start: {x:1,y:2,flipX:false,flipY:false,rot:0}, goal: {x:1,y:2,flipX:true,flipY:false,rot:0}, minMoves: 1 },
+  { type: 'ghost', shape: 'L', start: {x:1,y:1,flipX:false,flipY:false,rot:0}, goal: {x:4,y:1,flipX:false,flipY:false,rot:90}, minMoves: 2 },
+  { type: 'ghost', shape: 'flag', start: {x:1,y:1,flipX:false,flipY:false,rot:0}, goal: {x:1,y:4,flipX:false,flipY:false,rot:0}, minMoves: 1 },
+  // ③ 복합 (2개, 2~3회, 뒤집기+돌리기 조합)
+  { type: 'ghost', shape: 'L', start: {x:1,y:1,flipX:false,flipY:false,rot:0}, goal: {x:4,y:1,flipX:true,flipY:false,rot:90}, minMoves: 2 },
+  { type: 'ghost', shape: 'flag', start: {x:1,y:1,flipX:false,flipY:false,rot:0}, goal: {x:3,y:3,flipX:true,flipY:false,rot:0}, minMoves: 2 },
+];
+
+/* ── 저장/복원 ── */
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      missions: missionStars,
+      freeState: missionMode ? null : state,
+    }));
+  } catch(e) {}
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (saved.missions) missionStars = saved.missions;
+    if (saved.freeState) Object.assign(state, saved.freeState);
+  } catch(e) {}
+}
+
+/* ── 공유 링크 ── */
+function parseShareLink() {
+  const hash = location.hash;
+  if (!hash.startsWith('#share=')) return;
+  try {
+    const payload = JSON.parse(decodeURIComponent(atob(hash.slice(7))));
+    if (payload.v === 1 && payload.state) {
+      Object.assign(state, payload.state);
+    }
+  } catch(e) {}
+  history.replaceState(null, '', location.pathname);
+}
+
+/* ── 화면 전환 ── */
+function showScreen(id) {
+  $$('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+/* ══════════════════════════════════════
+   SVG 렌더링
+   ══════════════════════════════════════ */
+const GRID = 8;
+const CELL = 1; // viewBox 단위
+
+function getTransformedPoints(shape, st) {
+  const pts = SHAPES[shape].points.map(p => [p[0], p[1]]);
+  // 바운딩 박스 중심
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  pts.forEach(([px,py]) => { minX = Math.min(minX, px); minY = Math.min(minY, py); maxX = Math.max(maxX, px); maxY = Math.max(maxY, py); });
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+
+  // 중심 기준 변환
+  let transformed = pts.map(([px, py]) => [px - cx, py - cy]);
+
+  // 뒤집기
+  if (st.flipX) transformed = transformed.map(([px, py]) => [-px, py]);
+  if (st.flipY) transformed = transformed.map(([px, py]) => [px, -py]);
+
+  // 회전
+  const rad = st.rot * Math.PI / 180;
+  const cosR = Math.round(Math.cos(rad));
+  const sinR = Math.round(Math.sin(rad));
+  transformed = transformed.map(([px, py]) => [
+    px * cosR - py * sinR,
+    px * sinR + py * cosR
+  ]);
+
+  // 원점 복귀 + 위치 이동
+  let tMinX = Infinity, tMinY = Infinity;
+  transformed.forEach(([px,py]) => { tMinX = Math.min(tMinX, px); tMinY = Math.min(tMinY, py); });
+  return transformed.map(([px, py]) => [px - tMinX + st.x, py - tMinY + st.y]);
+}
+
+function getBBox(shape, st) {
+  const pts = getTransformedPoints(shape, st);
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  pts.forEach(([px,py]) => { minX = Math.min(minX, px); minY = Math.min(minY, py); maxX = Math.max(maxX, px); maxY = Math.max(maxY, py); });
+  return { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY };
+}
+
+function clampState(shape, st) {
+  const bb = getBBox(shape, st);
+  if (bb.minX < 0) st.x -= bb.minX;
+  if (bb.minY < 0) st.y -= bb.minY;
+  if (bb.maxX > GRID) st.x -= (bb.maxX - GRID);
+  if (bb.maxY > GRID) st.y -= (bb.maxY - GRID);
+  st.x = Math.round(st.x);
+  st.y = Math.round(st.y);
+}
+
+function renderSVG() {
+  const zone = $('#canvasZone');
+  // 기존 SVG 제거
+  const oldSvg = zone.querySelector('svg.grid-svg');
+  if (oldSvg) oldSvg.remove();
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'grid-svg');
+  svg.setAttribute('viewBox', `-0.5 -0.5 ${GRID + 1} ${GRID + 1}`);
+  svg.style.width = '90%';
+  svg.style.height = '90%';
+  svg.style.maxWidth = '560px';
+  svg.style.maxHeight = '560px';
+
+  // 패턴 (모눈)
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  defs.innerHTML = `
+    <pattern id="gridPat" width="1" height="1" patternUnits="userSpaceOnUse">
+      <rect width="1" height="1" fill="var(--sm-grid-bg)"/>
+      <line x1="0" y1="1" x2="1" y2="1" stroke="var(--sm-grid)" stroke-width="0.03"/>
+      <line x1="1" y1="0" x2="1" y2="1" stroke="var(--sm-grid)" stroke-width="0.03"/>
+    </pattern>`;
+  svg.appendChild(defs);
+
+  // 배경
+  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  bg.setAttribute('x', '0'); bg.setAttribute('y', '0');
+  bg.setAttribute('width', GRID); bg.setAttribute('height', GRID);
+  bg.setAttribute('fill', 'url(#gridPat)');
+  bg.setAttribute('stroke', 'var(--sm-grid)');
+  bg.setAttribute('stroke-width', '0.05');
+  bg.setAttribute('rx', '0.1');
+  svg.appendChild(bg);
+
+  // 외곽선 (두꺼운 테두리)
+  const border = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  border.setAttribute('x', '0'); border.setAttribute('y', '0');
+  border.setAttribute('width', GRID); border.setAttribute('height', GRID);
+  border.setAttribute('fill', 'none');
+  border.setAttribute('stroke', 'var(--sm-grid)');
+  border.setAttribute('stroke-width', '0.06');
+  border.setAttribute('rx', '0.1');
+  svg.appendChild(border);
+
+  // 고스트
+  if (ghostState) {
+    const gPts = getTransformedPoints(ghostState.shape || state.shapeId, ghostState);
+    const ghostPoly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    ghostPoly.setAttribute('points', gPts.map(p => p.join(',')).join(' '));
+    ghostPoly.setAttribute('fill', 'var(--sm-ghost)');
+    ghostPoly.setAttribute('stroke', 'var(--sm-ghost-stroke)');
+    ghostPoly.setAttribute('stroke-width', '0.06');
+    ghostPoly.setAttribute('stroke-dasharray', '0.15 0.1');
+    svg.appendChild(ghostPoly);
+  }
+
+  // 도형
+  const pts = getTransformedPoints(state.shapeId, state);
+  const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  poly.setAttribute('points', pts.map(p => p.join(',')).join(' '));
+  poly.setAttribute('fill', 'var(--sm-shape)');
+  poly.setAttribute('stroke', 'var(--sm-shape-stroke)');
+  poly.setAttribute('stroke-width', '0.08');
+  poly.setAttribute('stroke-linejoin', 'round');
+  poly.style.transition = 'all 0.4s ease';
+  poly.id = 'shapePoly';
+  svg.appendChild(poly);
+
+  zone.insertBefore(svg, zone.firstChild);
+}
+
+/* ══════════════════════════════════════
+   변환 함수
+   ══════════════════════════════════════ */
+function normalizeState(st) {
+  // flipX && flipY → rot+180 흡수, flipY=false
+  let s = { ...st };
+  s.rot = ((s.rot % 360) + 360) % 360;
+  if (s.flipX && s.flipY) {
+    s.flipX = false;
+    s.flipY = false;
+    s.rot = (s.rot + 180) % 360;
+  }
+  return s;
+}
+
+function statesMatch(a, b) {
+  const na = normalizeState(a);
+  const nb = normalizeState(b);
+  return na.x === nb.x && na.y === nb.y &&
+         na.flipX === nb.flipX && na.flipY === nb.flipY &&
+         na.rot === nb.rot;
+}
+
+function applyAction(action) {
+  if (animating && actionQueue.length >= 2) return; // 큐 상한
+  if (animating) { actionQueue.push(action); return; }
+
+  doAction(action);
+}
+
+async function doAction(action) {
+  animating = true;
+  const oldState = { ...state };
+
+  switch (action) {
+    case 'left':  state.x--; break;
+    case 'right': state.x++; break;
+    case 'up':    state.y--; break;
+    case 'down':  state.y++; break;
+    case 'flipX': state.flipX = !state.flipX; break;
+    case 'flipY': state.flipY = !state.flipY; break;
+    case 'rotateCW':  state.rot = (state.rot + 90) % 360; break;
+    case 'rotateCCW': state.rot = (state.rot + 270) % 360; break;
+    case 'reset':
+      resetShape();
+      animating = false;
+      actionQueue = [];
+      return;
+  }
+
+  clampState(state.shapeId, state);
+  state = normalizeState(state);
+
+  if (missionMode && MISSIONS[currentMission] && MISSIONS[currentMission].type === 'ghost') {
+    moveCount++;
+    updateMoveCounter();
+  }
+
+  // 토스트 (관찰 유도, 1회성)
+  showObserveToast(action);
+
+  renderSVG();
+  await sleep(420);
+
+  // 미션 판정
+  if (missionMode && ghostState && MISSIONS[currentMission] && MISSIONS[currentMission].type === 'ghost') {
+    checkGhostMission();
+  }
+
+  animating = false;
+  saveState();
+
+  // 큐 처리
+  if (actionQueue.length > 0) {
+    const next = actionQueue.shift();
+    doAction(next);
+  }
+}
+
+function resetShape() {
+  if (missionMode && MISSIONS[currentMission]) {
+    const m = MISSIONS[currentMission];
+    if (m.type === 'ghost') {
+      Object.assign(state, { ...m.start, shapeId: m.shape });
+      state.shapeId = m.shape;
+    }
+  } else {
+    state.x = 2; state.y = 2;
+    state.flipX = false; state.flipY = false;
+    state.rot = 0;
+  }
+  moveCount = 0;
+  hintCount = 0;
+  updateMoveCounter();
+  renderSVG();
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* ── 관찰 유도 토스트 ── */
+function showObserveToast(action) {
+  let msg = '';
+  if (['left','right','up','down'].includes(action) && !toastShown.slide) {
+    msg = '위치가 바뀌었어요! 모양은 변했나요? 🤔';
+    toastShown.slide = true;
+  } else if (['flipX','flipY'].includes(action) && !toastShown.flip) {
+    msg = '방향이 바뀌었어요! 칸 수를 세어 보세요!';
+    toastShown.flip = true;
+  } else if (['rotateCW','rotateCCW'].includes(action) && !toastShown.rotate) {
+    msg = '돌렸어요! 모양이 변했나요? 칸 수를 세어 보세요!';
+    toastShown.rotate = true;
+  }
+  if (!msg) return;
+  showToast(msg);
+}
+
+function showToast(msg) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+/* ── 도형 선택 UI ── */
+function renderShapeSelect() {
+  const container = $('#shapeSelect');
+  container.innerHTML = SHAPE_IDS.map(id => {
+    const s = SHAPES[id];
+    return `<button class="shape-opt ${id === state.shapeId ? 'active' : ''}" data-shape="${id}">
+      <span style="font-size:18px;">${s.emoji}</span>
+      <span>${s.name}</span>
+    </button>`;
+  }).join('');
+
+  container.querySelectorAll('.shape-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (animating || missionMode) return;
+      state.shapeId = btn.dataset.shape;
+      state.x = 2; state.y = 2;
+      state.flipX = false; state.flipY = false; state.rot = 0;
+      renderShapeSelect();
+      renderSVG();
+      saveState();
+    });
+  });
+}
+
+/* ══════════════════════════════════════
+   미션 시스템
+   ══════════════════════════════════════ */
+function startMissions() {
+  missionMode = true;
+  currentMission = 0;
+  // 첫 미완료 미션부터
+  for (let i = 0; i < MISSIONS.length; i++) {
+    if (!missionStars['m' + (i + 1)]) { currentMission = i; break; }
+    if (i === MISSIONS.length - 1) currentMission = 0; // 전부 완료면 처음부터
+  }
+  setupMission(currentMission);
+}
+
+function setupMission(idx) {
+  currentMission = idx;
+  moveCount = 0;
+  hintCount = 0;
+  const m = MISSIONS[idx];
+  const area = $('#missionArea');
+
+  // 미션 인디케이터
+  $('#missionIndicator').style.display = '';
+  $('#missionNum').textContent = idx + 1;
+  updateMissionLabel();
+
+  // 진행 바
+  let html = `<div class="progress-bar"><div class="progress-fill" style="width:${((idx) / MISSIONS.length) * 100}%"></div></div>`;
+
+  if (m.type === 'identify') {
+    // 식별 미션: 두 그림 보여주고 3지선다
+    ghostState = null;
+    state.shapeId = m.shape;
+    Object.assign(state, m.from);
+    clampState(state.shapeId, state);
+
+    // 두 번째 상태를 고스트로 표시
+    ghostState = { ...m.to, shape: m.shape };
+
+    html += `<div class="mission-panel">
+      <h3>미션 ${idx + 1}: 어떤 변환일까요?</h3>
+      <p>파란 도형이 점선 도형으로 바뀌려면<br>어떤 변환이 필요할까요?</p>
+      <div class="quiz-choices" id="quizChoices">
+        ${m.choices.map(c => `<button class="quiz-choice" data-choice="${c}">${c}</button>`).join('')}
+      </div>
+      <div id="identifyFeedback"></div>
+    </div>`;
+
+    area.innerHTML = html;
+    updateMoveCounter();
+    renderSVG();
+
+    area.querySelectorAll('.quiz-choice').forEach(btn => {
+      btn.addEventListener('click', () => checkIdentifyAnswer(btn, m));
+    });
+    // 도형 선택 비활성화
+    $$('.shape-opt').forEach(b => b.style.pointerEvents = 'none');
+    // 컨트롤 비활성화 (식별은 버튼 맞추기만)
+    disableControls(true);
+
+  } else {
+    // 고스트 맞추기 미션
+    state.shapeId = m.shape;
+    Object.assign(state, { ...m.start });
+    clampState(state.shapeId, state);
+    ghostState = { ...m.goal, shape: m.shape };
+
+    const stage = idx < 4 ? '①' : idx < 8 ? '②' : '③';
+    html += `<div class="mission-panel">
+      <h3>미션 ${idx + 1}: 도형을 움직여요</h3>
+      <p>파란 도형을 점선 위치에 맞춰 보세요!<br>최소 <strong>${m.minMoves}번</strong>으로 할 수 있어요.</p>
+      <div id="ghostFeedback"></div>
+    </div>`;
+
+    area.innerHTML = html;
+    updateMoveCounter();
+    renderSVG();
+    disableControls(false);
+    $$('.shape-opt').forEach(b => b.style.pointerEvents = 'none');
+  }
+
+  // 액션 버튼 업데이트
+  $('#btnMission').textContent = '⏭ 건너뛰기';
+  $('#btnMission').onclick = () => skipMission();
+}
+
+function checkIdentifyAnswer(btn, mission) {
+  const correct = (btn.dataset.choice === '밀기' && mission.answer === 'slide') ||
+                  (btn.dataset.choice === '뒤집기' && mission.answer === 'flip') ||
+                  (btn.dataset.choice === '돌리기' && mission.answer === 'rotate');
+
+  $$('.quiz-choice').forEach(b => b.style.pointerEvents = 'none');
+
+  if (correct) {
+    btn.classList.add('correct');
+    missionStars['m' + (currentMission + 1)] = 3;
+    const fb = $('#identifyFeedback');
+    fb.innerHTML = `<div class="m-feedback success">🎉 정답! ${btn.dataset.choice}예요!</div>`;
+  } else {
+    btn.classList.add('wrong');
+    // 정답 표시
+    const answerText = mission.answer === 'slide' ? '밀기' : mission.answer === 'flip' ? '뒤집기' : '돌리기';
+    $$('.quiz-choice').forEach(b => {
+      if (b.dataset.choice === answerText) b.classList.add('correct');
+    });
+    missionStars['m' + (currentMission + 1)] = 1;
+    const fb = $('#identifyFeedback');
+    fb.innerHTML = `<div class="m-feedback warn">정답은 "${answerText}"예요!</div>`;
+  }
+  saveState();
+  updateMissionLabel();
+
+  setTimeout(() => nextMission(), 1500);
+}
+
+function checkGhostMission() {
+  if (!ghostState) return;
+  const goal = MISSIONS[currentMission].goal;
+  if (statesMatch(state, goal)) {
+    // 성공!
+    const m = MISSIONS[currentMission];
+    const min = m.minMoves;
+    let stars = 1;
+    if (moveCount <= min) stars = 3;
+    else if (moveCount <= min + 1) stars = 2;
+
+    missionStars['m' + (currentMission + 1)] = Math.max(
+      stars,
+      missionStars['m' + (currentMission + 1)] || 0
+    );
+    saveState();
+
+    const fb = $('#ghostFeedback');
+    fb.innerHTML = `<div class="m-feedback success">🎉 성공! ${moveCount}번 만에 맞췄어요! ${'⭐'.repeat(stars)}</div>`;
+    updateMissionLabel();
+    disableControls(true);
+
+    setTimeout(() => nextMission(), 1800);
+  } else {
+    // 초과 시 힌트
+    hintCount++;
+    if (hintCount >= 3 && !$('#ghostHint')) {
+      const m = MISSIONS[currentMission];
+      const goal = m.goal;
+      let hint = '';
+      if (goal.flipX !== (m.start.flipX || false)) hint = '뒤집기가 필요해요!';
+      else if (goal.rot !== (m.start.rot || 0)) hint = '돌리기가 필요해요!';
+      else hint = '밀기로 위치를 맞춰 보세요!';
+
+      const fb = $('#ghostFeedback');
+      fb.innerHTML = `<div class="m-feedback info" id="ghostHint">💡 힌트: ${hint}</div>`;
+    }
+  }
+}
+
+function nextMission() {
+  if (currentMission + 1 >= MISSIONS.length) {
+    // 모든 미션 완료
+    showResult();
+    return;
+  }
+  setupMission(currentMission + 1);
+}
+
+function skipMission() {
+  if (!missionStars['m' + (currentMission + 1)]) {
+    missionStars['m' + (currentMission + 1)] = 0;
+  }
+  nextMission();
+}
+
+function updateMissionLabel() {
+  const stars = missionStars['m' + (currentMission + 1)] || 0;
+  $('#missionLabel').textContent = `미션 ${currentMission + 1}/${MISSIONS.length}`;
+  $('#missionStarsDisp').textContent = stars > 0 ? '⭐'.repeat(stars) : '';
+}
+
+function updateMoveCounter() {
+  const el = $('#moveCounter');
+  if (missionMode && MISSIONS[currentMission] && MISSIONS[currentMission].type === 'ghost') {
+    el.style.display = '';
+    el.textContent = `변환 횟수: ${moveCount}번`;
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function disableControls(disabled) {
+  $$('.dpad-btn:not(.dpad-center)').forEach(b => b.disabled = disabled);
+  $$('.tf-btn').forEach(b => b.disabled = disabled);
+}
+
+function exitMissionMode() {
+  missionMode = false;
+  currentMission = -1;
+  ghostState = null;
+  moveCount = 0;
+  $('#missionArea').innerHTML = '';
+  $('#missionIndicator').style.display = 'none';
+  $('#moveCounter').style.display = 'none';
+  $('#btnMission').textContent = '🏆 미션 도전';
+  $('#btnMission').onclick = () => startMissions();
+  disableControls(false);
+  $$('.shape-opt').forEach(b => b.style.pointerEvents = '');
+  state.x = 2; state.y = 2;
+  state.flipX = false; state.flipY = false; state.rot = 0;
+  renderSVG();
+}
+
+/* ══════════════════════════════════════
+   결과 화면
+   ══════════════════════════════════════ */
+function showResult() {
+  missionMode = false;
+  ghostState = null;
+  showScreen('screenResult');
+
+  let totalStars = 0;
+  let gridHtml = '';
+  for (let i = 0; i < MISSIONS.length; i++) {
+    const s = missionStars['m' + (i + 1)] || 0;
+    totalStars += s;
+    gridHtml += `<div class="result-cell">
+      <div class="num">${i + 1}</div>
+      <div class="stars">${s > 0 ? '⭐'.repeat(s) : '—'}</div>
+    </div>`;
+  }
+
+  $('#resultScoreText').textContent = `${totalStars} / ${MISSIONS.length * 3} 점`;
+  $('#resultStarsRow').textContent = '⭐'.repeat(Math.min(totalStars, 30));
+  $('#resultGrid').innerHTML = gridHtml;
+}
+
+/* ══════════════════════════════════════
+   공유 확장
+   ══════════════════════════════════════ */
+function setupShare() {
+  const origShare = window.shareCurrentPage;
+  window.shareCurrentPage = function() {
+    const payload = btoa(encodeURIComponent(JSON.stringify({ v: 1, state: { shapeId: state.shapeId, x: state.x, y: state.y, flipX: state.flipX, flipY: state.flipY, rot: state.rot } })));
+    const url = location.origin + location.pathname + '#share=' + payload;
+    if (navigator.share) {
+      navigator.share({ title: '도형의 이동 — 내 도형 배치', url });
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+      showToast('공유 링크가 복사되었어요!');
+    } else if (origShare) {
+      origShare();
+    }
+  };
+}
+
+/* ══════════════════════════════════════
+   키보드 입력
+   ══════════════════════════════════════ */
+function setupKeyboard() {
+  document.addEventListener('keydown', (e) => {
+    if (!$('#screenExplore').classList.contains('active')) return;
+    const keyMap = {
+      'ArrowLeft': 'left', 'ArrowRight': 'right',
+      'ArrowUp': 'up', 'ArrowDown': 'down',
+      'f': 'flipX', 'g': 'flipY',
+      'r': 'rotateCW', 'e': 'rotateCCW',
+    };
+    const action = keyMap[e.key];
+    if (action) {
+      e.preventDefault();
+      applyAction(action);
+    }
+  });
+}
+
+/* ══════════════════════════════════════
+   초기화
+   ══════════════════════════════════════ */
+function init() {
+  loadState();
+  parseShareLink();
+
+  // 시작
+  $('#btnStart').addEventListener('click', () => {
+    showScreen('screenExplore');
+    renderShapeSelect();
+    renderSVG();
+  });
+
+  // 방향키
+  $$('.dpad-btn:not(.dpad-center)').forEach(btn => {
+    btn.addEventListener('click', () => applyAction(btn.dataset.action));
+  });
+
+  // 변환 버튼
+  $$('.tf-btn').forEach(btn => {
+    btn.addEventListener('click', () => applyAction(btn.dataset.action));
+  });
+
+  // 리셋
+  $('#btnReset').addEventListener('click', () => {
+    if (animating) return;
+    resetShape();
+  });
+
+  // 미션
+  $('#btnMission').addEventListener('click', () => startMissions());
+
+  // 결과 화면
+  $('#btnRetry').addEventListener('click', () => {
+    missionStars = {};
+    saveState();
+    showScreen('screenExplore');
+    exitMissionMode();
+    startMissions();
+  });
+  $('#btnFreeplay').addEventListener('click', () => {
+    showScreen('screenExplore');
+    exitMissionMode();
+    renderShapeSelect();
+  });
+
+  setupKeyboard();
+  setupShare();
+  renderShapeSelect();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+})();
+</script>
+</body>
+</html>

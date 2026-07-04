@@ -1,0 +1,2040 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>가능성 실험실 — eduin VIVES</title>
+  <meta name="description" content="동전과 주사위를 1000번 던지고 나만의 회전판을 설계해 보세요. 초등 수학 5학년 가능성 개념을 실험으로 익히는 무료 학습 시뮬레이션.">
+  <meta property="og:title" content="가능성 실험실 — 동전·주사위·회전판 시뮬레이션 | eduin VIVES">
+  <meta property="og:description" content="동전과 주사위를 1000번 던지고 나만의 회전판을 설계해 보세요. 초등 수학 5학년 가능성 개념을 실험으로 익히는 무료 학습 시뮬레이션.">
+  <meta property="og:image" content="https://eduin.info/og-images/chance-lab.png">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <link rel="stylesheet" href="/common/app-shell.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
+  <script src="/common/app-shell.js" defer></script>
+  <style>
+/* ──────────────── chance-lab 전용 스타일 ──────────────── */
+:root {
+  --cl-accent: #6c5ce7;
+  --cl-accent-h: #5a4bd1;
+  --cl-bar: #6c5ce7;
+  --cl-bar2: #00b894;
+  --cl-bar3: #e17055;
+  --cl-bar4: #0984e3;
+  --cl-bar5: #fdcb6e;
+  --cl-bar6: #e84393;
+  --cl-theory: #fd79a8;
+  --cl-hit: #00b894;
+  --cl-coin-h: #f9ca24;
+  --cl-coin-t: #95afc0;
+  --cl-bg-card: var(--card-bg);
+  --cl-radius: 16px;
+  --cl-gap: 14px;
+  /* 색약 안전 회전판 6색 */
+  --sp-1: #E69F00; /* 노랑 (주황노랑) */
+  --sp-2: #56B4E9; /* 파랑 (하늘) */
+  --sp-3: #009E73; /* 초록 (청록) */
+  --sp-4: #F0E442; /* 연노랑 */
+  --sp-5: #CC79A7; /* 분홍 */
+  --sp-6: #D55E00; /* 빨강 (주홍) */
+}
+[data-theme="dark"] {
+  --cl-bg-card: #1e1e2e;
+}
+
+/* 전체 레이아웃 */
+body { margin: 0; }
+.app-main { padding-bottom: 3rem !important; }
+
+/* ── 스크린 전환 ── */
+.screen { display: none; animation: fadeUp .4s ease; }
+.screen.active { display: block; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── 인트로 ── */
+.intro-card {
+  text-align: center;
+  padding: 48px 24px 36px;
+  background: var(--cl-bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--cl-radius);
+  margin-top: 8px;
+}
+.intro-emoji { font-size: 72px; line-height: 1; margin-bottom: 12px; }
+.intro-card h2 { font-size: 24px; margin: 0 0 10px; }
+.intro-card p { color: var(--fg-muted); font-size: 15px; line-height: 1.7; margin: 0 0 24px; }
+
+/* ── 탭 ── */
+.tab-bar {
+  display: flex; gap: 6px;
+  background: var(--bg-sec);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: var(--cl-gap);
+}
+.tab-btn {
+  flex: 1; border: none; background: none;
+  padding: 10px 8px; border-radius: 10px;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer; color: var(--fg-muted);
+  transition: all .2s; font-family: inherit;
+}
+.tab-btn.active {
+  background: var(--cl-bg-card);
+  color: var(--fg);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.tab-btn:hover:not(.active) { color: var(--fg); }
+
+/* ── 장치 영역 ── */
+.device-area {
+  background: var(--cl-bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--cl-radius);
+  padding: 24px 20px;
+  text-align: center;
+  min-height: 200px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 동전 */
+.coin-wrap { perspective: 600px; margin: 16px auto; width: 120px; height: 120px; }
+.coin {
+  width: 120px; height: 120px; border-radius: 50%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.6s ease;
+}
+.coin.flipping { animation: coinFlip 0.6s ease; }
+@keyframes coinFlip {
+  0%   { transform: rotateX(0deg); }
+  100% { transform: rotateX(1800deg); }
+}
+.coin-face {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 48px; font-weight: 700;
+  backface-visibility: hidden;
+}
+.coin-head {
+  background: linear-gradient(135deg, #f9ca24, #f0932b);
+  color: #fff;
+  box-shadow: inset 0 -4px 8px rgba(0,0,0,0.15);
+}
+.coin-tail {
+  background: linear-gradient(135deg, #95afc0, #535c68);
+  color: #fff;
+  transform: rotateX(180deg);
+  box-shadow: inset 0 -4px 8px rgba(0,0,0,0.15);
+}
+.coin.show-tail { transform: rotateX(180deg); }
+
+/* 주사위 */
+.dice-wrap { margin: 16px auto; width: 100px; height: 100px; }
+.dice {
+  width: 100px; height: 100px;
+  background: #fff; border: 3px solid #333;
+  border-radius: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  padding: 12px;
+  gap: 4px;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.15);
+  transition: transform .15s;
+}
+[data-theme="dark"] .dice { background: #2d2d3d; border-color: #555; }
+.dice.rolling { animation: diceRoll 0.6s ease; }
+@keyframes diceRoll {
+  0%   { transform: rotate(0deg) scale(1); }
+  25%  { transform: rotate(90deg) scale(0.9); }
+  50%  { transform: rotate(180deg) scale(1.05); }
+  75%  { transform: rotate(270deg) scale(0.95); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+.dot {
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  background: transparent;
+}
+.dot.filled { background: #333; }
+[data-theme="dark"] .dot.filled { background: #ddd; }
+
+/* 회전판 */
+.spinner-wrap { margin: 16px auto; position: relative; width: 220px; height: 220px; }
+.spinner-svg { width: 220px; height: 220px; transition: transform 1s cubic-bezier(0.2, 0.8, 0.3, 1); }
+.spinner-svg.spinning { transition: none; }
+.spinner-pointer {
+  position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 18px solid var(--fg);
+  z-index: 2;
+}
+.spinner-center {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--fg); z-index: 2;
+}
+
+/* 결과 라벨 */
+.result-label {
+  font-size: 18px; font-weight: 700;
+  margin: 8px 0;
+  min-height: 28px;
+}
+
+/* ── 컨트롤 버튼 ── */
+.controls {
+  display: flex; gap: 8px; justify-content: center;
+  flex-wrap: wrap; margin: var(--cl-gap) 0;
+}
+.ctrl-btn {
+  border: 1px solid var(--border);
+  background: var(--cl-bg-card);
+  color: var(--fg);
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  min-height: 44px; min-width: 70px;
+  transition: all .15s;
+}
+.ctrl-btn:hover { border-color: var(--cl-accent); color: var(--cl-accent); }
+.ctrl-btn:active { transform: scale(0.96); }
+.ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.ctrl-btn.accent {
+  background: var(--cl-accent); color: #fff; border-color: var(--cl-accent);
+}
+.ctrl-btn.accent:hover { background: var(--cl-accent-h); }
+.ctrl-btn.reset-btn { font-size: 13px; padding: 8px 14px; }
+.ctrl-btn.skip-btn {
+  font-size: 13px; padding: 8px 14px;
+  display: none;
+}
+.ctrl-btn.skip-btn.visible { display: inline-flex; }
+
+/* ── 요약 문장 ── */
+.summary-text {
+  background: var(--bg-sec);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 14px; line-height: 1.6;
+  margin-bottom: var(--cl-gap);
+  text-align: center;
+}
+.summary-text strong { color: var(--cl-hit); }
+
+/* ── 그래프 영역 ── */
+.chart-section {
+  background: var(--cl-bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--cl-radius);
+  padding: 20px 16px;
+  margin-bottom: var(--cl-gap);
+}
+.chart-title {
+  font-size: 14px; font-weight: 700;
+  margin: 0 0 12px; color: var(--fg-muted);
+}
+.chart-svg { width: 100%; display: block; }
+
+/* ── 회전판 설계 모드 ── */
+.designer-card {
+  background: var(--cl-bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--cl-radius);
+  padding: 20px;
+  margin-bottom: var(--cl-gap);
+}
+.designer-title {
+  font-size: 15px; font-weight: 700;
+  margin: 0 0 12px;
+}
+.slot-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+}
+.slot-color {
+  width: 24px; height: 24px; border-radius: 6px;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+.slot-name { font-size: 14px; font-weight: 600; width: 36px; flex-shrink: 0; }
+.slot-stepper {
+  display: flex; align-items: center; gap: 6px;
+}
+.slot-stepper button {
+  width: 32px; height: 32px; border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-sec);
+  font-size: 16px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  color: var(--fg);
+  display: flex; align-items: center; justify-content: center;
+}
+.slot-stepper button:disabled { opacity: 0.3; cursor: not-allowed; }
+.slot-stepper span {
+  min-width: 24px; text-align: center;
+  font-size: 16px; font-weight: 700;
+}
+.slot-bar {
+  flex: 1; height: 12px; border-radius: 6px;
+  background: var(--bg-sec);
+  overflow: hidden;
+}
+.slot-bar-fill {
+  height: 100%; border-radius: 6px;
+  transition: width .2s;
+}
+.slot-count-label { font-size: 12px; color: var(--fg-muted); min-width: 32px; }
+.slots-remaining {
+  text-align: center; font-size: 13px;
+  color: var(--fg-muted); margin-top: 8px;
+}
+.add-remove-slot {
+  display: flex; gap: 8px; justify-content: center; margin-top: 10px;
+}
+
+/* ── 미션 화면 ── */
+.mission-header {
+  text-align: center;
+  padding: 16px 0;
+}
+.mission-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--cl-accent); color: #fff;
+  font-size: 16px; font-weight: 700;
+  margin-bottom: 8px;
+}
+.mission-title { font-size: 20px; font-weight: 700; margin: 0 0 6px; }
+.mission-desc { font-size: 14px; color: var(--fg-muted); margin: 0; }
+
+/* 미션1 — 드래그/탭 분류 */
+.m1-scale {
+  display: flex; gap: 4px; margin: 16px 0 20px;
+  flex-wrap: wrap; justify-content: center;
+}
+.m1-scale-btn {
+  padding: 8px 12px; border-radius: 10px;
+  border: 2px solid var(--border);
+  background: var(--cl-bg-card);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+  color: var(--fg);
+  transition: all .2s;
+  text-align: center;
+}
+.m1-scale-btn.selected {
+  border-color: var(--cl-accent);
+  background: rgba(108, 92, 231, 0.1);
+  color: var(--cl-accent);
+}
+.m1-card {
+  background: var(--bg-sec);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  text-align: center;
+  font-size: 16px; font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+}
+.m1-card.answered { opacity: 0.6; border-color: var(--cl-hit); }
+.m1-card.active { border-color: var(--cl-accent); background: rgba(108,92,231,0.05); }
+.m1-card.correct { border-color: var(--cl-hit); background: rgba(0,184,148,0.08); }
+.m1-card.wrong { border-color: var(--danger); background: rgba(243,18,96,0.05); }
+
+/* 미션2 — 예측 입력 */
+.predict-area {
+  text-align: center;
+  margin: 20px 0;
+}
+.predict-input {
+  width: 100px; text-align: center;
+  font-size: 28px; font-weight: 700;
+  padding: 10px; border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--bg-sec);
+  color: var(--fg);
+  font-family: inherit;
+}
+.predict-input:focus { border-color: var(--cl-accent); outline: none; }
+.predict-label { font-size: 14px; color: var(--fg-muted); margin-top: 6px; }
+
+/* 미션3 — 3지선다 */
+.m3-choices {
+  display: flex; gap: 10px; justify-content: center;
+  margin: 20px 0; flex-wrap: wrap;
+}
+.m3-choice {
+  padding: 14px 24px; border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--cl-bg-card);
+  font-size: 20px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  color: var(--fg); transition: all .2s;
+  min-width: 80px; text-align: center;
+}
+.m3-choice:hover { border-color: var(--cl-accent); }
+.m3-choice.selected { border-color: var(--cl-accent); background: rgba(108,92,231,0.1); }
+.m3-choice.correct { border-color: var(--cl-hit); background: rgba(0,184,148,0.15); }
+.m3-choice.wrong { border-color: var(--danger); background: rgba(243,18,96,0.08); }
+
+/* 미션4 — 설계 미션 */
+.m4-target {
+  text-align: center; font-size: 18px; font-weight: 700;
+  margin: 16px 0;
+  padding: 16px; background: var(--bg-sec); border-radius: 12px;
+}
+.m4-target em { color: var(--cl-accent); font-style: normal; }
+
+/* ── 결과 화면 ── */
+.result-screen {
+  text-align: center;
+  padding: 24px 0;
+}
+.result-stars {
+  font-size: 40px;
+  margin: 16px 0;
+}
+.result-summary {
+  background: var(--bg-sec);
+  border-radius: 12px;
+  padding: 20px;
+  font-size: 15px; line-height: 1.8;
+  margin: 16px 0;
+  text-align: left;
+}
+.result-summary strong { color: var(--cl-hit); }
+.result-actions {
+  display: flex; gap: 10px; justify-content: center;
+  flex-wrap: wrap; margin-top: 20px;
+}
+
+/* ── 미션 네비게이션 ── */
+.mission-nav {
+  display: flex; gap: 6px; justify-content: center;
+  margin: 16px 0;
+}
+.mission-nav-btn {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--cl-bg-card);
+  font-size: 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  color: var(--fg-muted);
+  transition: all .2s;
+  display: flex; align-items: center; justify-content: center;
+}
+.mission-nav-btn.active {
+  border-color: var(--cl-accent);
+  color: var(--cl-accent);
+}
+.mission-nav-btn.done {
+  border-color: var(--cl-hit);
+  color: var(--cl-hit);
+  background: rgba(0,184,148,0.08);
+}
+
+/* ── 피드백 메시지 ── */
+.feedback {
+  padding: 14px 16px;
+  border-radius: 12px;
+  font-size: 14px; line-height: 1.6;
+  margin: 12px 0;
+  text-align: center;
+}
+.feedback.success { background: rgba(0,184,148,0.1); color: var(--cl-hit); }
+.feedback.info { background: rgba(108,92,231,0.1); color: var(--cl-accent); }
+.feedback.warn { background: rgba(253,121,168,0.1); color: var(--cl-theory); }
+
+/* ── 반응형 ── */
+@media (max-width: 500px) {
+  .intro-card { padding: 32px 16px 28px; }
+  .intro-emoji { font-size: 56px; }
+  .intro-card h2 { font-size: 20px; }
+  .coin-wrap, .coin, .coin-face { width: 100px; height: 100px; }
+  .coin-face { font-size: 40px; }
+  .dice-wrap, .dice { width: 80px; height: 80px; }
+  .dice { padding: 8px; gap: 3px; }
+  .spinner-wrap, .spinner-svg { width: 180px; height: 180px; }
+  .ctrl-btn { padding: 8px 14px; font-size: 14px; min-width: 58px; }
+  .m1-scale-btn { padding: 6px 8px; font-size: 12px; }
+}
+  </style>
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="가능성 실험실 — 동전·주사위·회전판 시뮬레이션 | eduin VIVES">
+  <meta name="twitter:description" content="동전과 주사위를 1000번 던지고 나만의 회전판을 설계해 보세요. 초등 수학 5학년 가능성 개념을 실험으로 익히는 무료 학습 시뮬레이션.">
+  <meta name="twitter:image" content="https://eduin.info/og-images/chance-lab.png">
+  <link rel="canonical" href="https://eduin.info/apps/chance-lab/">
+  <meta property="og:url" content="https://eduin.info/apps/chance-lab/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"가능성 실험실","description":"동전과 주사위를 1000번 던지고 나만의 회전판을 설계해 보세요. 초등 수학 5학년 가능성 개념을 실험으로 익히는 무료 학습 시뮬레이션.","url":"https://eduin.info/apps/chance-lab/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script src="/common/seo-injector.js" defer></script>
+</head>
+<body data-shell="column" data-width="medium">
+  <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입합니다 -->
+  <main class="app-main">
+    <div class="app-header">
+      <div class="app-badge">◆ 시뮬레이션</div>
+      <h1 class="app-title">🎲 가능성 실험실</h1>
+      <p class="app-desc">동전·주사위·회전판을 수천 번 돌려 보며 "많이 할수록 가능성에 가까워진다"를 눈으로 확인</p>
+    </div>
+
+    <!-- ============ 인트로 ============ -->
+    <div id="screenIntro" class="screen active">
+      <div class="intro-card">
+        <div class="intro-emoji">🎲</div>
+        <h2>동전을 1000번 던지면<br>앞면이 몇 번 나올까요?</h2>
+        <p>직접 실험해서 확인해 봐요!<br>주사위도 굴리고, 나만의 회전판도 만들 수 있어요.</p>
+        <button class="hero-btn" id="btnStart" style="margin-top:8px;">시작하기</button>
+      </div>
+    </div>
+
+    <!-- ============ 실험실 ============ -->
+    <div id="screenLab" class="screen">
+      <!-- 장치 탭 -->
+      <div class="tab-bar" id="deviceTabs">
+        <button class="tab-btn active" data-device="coin">🪙 동전</button>
+        <button class="tab-btn" data-device="dice">🎲 주사위</button>
+        <button class="tab-btn" data-device="spinner">🎡 회전판</button>
+      </div>
+
+      <!-- 장치 표시 영역 -->
+      <div class="device-area" id="deviceArea">
+        <!-- JS가 장치별 콘텐츠 렌더 -->
+      </div>
+
+      <div class="result-label" id="resultLabel"></div>
+
+      <!-- 실험 컨트롤 -->
+      <div class="controls" id="labControls">
+        <button class="ctrl-btn" data-count="1">1번</button>
+        <button class="ctrl-btn" data-count="10">10번</button>
+        <button class="ctrl-btn" data-count="100">100번</button>
+        <button class="ctrl-btn accent" data-count="1000">1000번</button>
+        <button class="ctrl-btn skip-btn" id="btnSkip">건너뛰기</button>
+        <button class="ctrl-btn reset-btn" id="btnReset">처음부터</button>
+      </div>
+
+      <!-- 요약 문장 -->
+      <div class="summary-text" id="summaryText">실험을 시작해 보세요!</div>
+
+      <!-- 누적 막대그래프 -->
+      <div class="chart-section">
+        <div class="chart-title">📊 누적 결과</div>
+        <svg id="barChart" class="chart-svg" viewBox="0 0 680 200"></svg>
+      </div>
+
+      <!-- 수렴 라인차트 -->
+      <div class="chart-section">
+        <div class="chart-title">📈 비율 변화 (많이 할수록 가능성에 가까워져요)</div>
+        <svg id="lineChart" class="chart-svg" viewBox="0 0 680 220"></svg>
+      </div>
+
+      <!-- 회전판 설계 (spinner 탭에서만 표시) -->
+      <div id="designerSection" class="designer-card" style="display:none;">
+        <div class="designer-title">🎨 회전판 설계 (12칸 고정)</div>
+        <div id="designerSlots"></div>
+        <div class="slots-remaining" id="slotsRemaining"></div>
+        <div class="add-remove-slot">
+          <button class="ctrl-btn" id="btnAddSlot" style="font-size:13px;">+ 색 추가</button>
+          <button class="ctrl-btn" id="btnRemoveSlot" style="font-size:13px;">− 색 제거</button>
+        </div>
+      </div>
+
+      <!-- 미션 이동 버튼 -->
+      <div style="text-align:center; margin-top: 20px;">
+        <button class="hero-btn" id="btnGoMission">미션 도전하기 →</button>
+      </div>
+    </div>
+
+    <!-- ============ 미션 ============ -->
+    <div id="screenMission" class="screen">
+      <div class="mission-nav" id="missionNav">
+        <button class="mission-nav-btn active" data-m="1">①</button>
+        <button class="mission-nav-btn" data-m="2">②</button>
+        <button class="mission-nav-btn" data-m="3">③</button>
+        <button class="mission-nav-btn" data-m="4">④</button>
+      </div>
+
+      <!-- 미션1: 말로 표현 -->
+      <div id="mission1" class="mission-panel active">
+        <div class="mission-header">
+          <div class="mission-num">1</div>
+          <div class="mission-title">가능성을 말로 표현해요</div>
+          <div class="mission-desc">각 상황의 가능성에 맞는 표현을 골라 주세요</div>
+        </div>
+        <div id="m1Cards"></div>
+        <div id="m1Feedback"></div>
+        <div style="text-align:center; margin-top:16px;">
+          <button class="hero-btn" id="m1Next" style="display:none;">다음 미션 →</button>
+        </div>
+      </div>
+
+      <!-- 미션2: 예측→실험 -->
+      <div id="mission2" class="mission-panel" style="display:none;">
+        <div class="mission-header">
+          <div class="mission-num">2</div>
+          <div class="mission-title">예측하고 실험해요</div>
+          <div class="mission-desc">동전을 10번 던지면 앞면이 몇 번 나올까요?</div>
+        </div>
+        <div id="m2Content"></div>
+        <div id="m2Feedback"></div>
+      </div>
+
+      <!-- 미션3: 수렴 관찰 -->
+      <div id="mission3" class="mission-panel" style="display:none;">
+        <div class="mission-header">
+          <div class="mission-num">3</div>
+          <div class="mission-title">가능성에 가까워져요</div>
+          <div class="mission-desc">주사위 1000번 실험 후 관찰해요</div>
+        </div>
+        <div id="m3Content"></div>
+        <div id="m3Feedback"></div>
+      </div>
+
+      <!-- 미션4: 설계 미션 -->
+      <div id="mission4" class="mission-panel" style="display:none;">
+        <div class="mission-header">
+          <div class="mission-num">4</div>
+          <div class="mission-title">회전판을 설계해요</div>
+          <div class="mission-desc">원하는 가능성이 되도록 만들어 보세요</div>
+        </div>
+        <div id="m4Content"></div>
+        <div id="m4Feedback"></div>
+      </div>
+
+      <!-- 미션 하단 -->
+      <div style="text-align:center; margin-top: 20px;">
+        <button class="ctrl-btn" id="btnBackLab">← 실험실로</button>
+        <button class="hero-btn" id="btnGoResult" style="display:none;">결과 보기 →</button>
+      </div>
+    </div>
+
+    <!-- ============ 결과 ============ -->
+    <div id="screenResult" class="screen">
+      <div class="result-screen">
+        <div style="font-size:56px;">🏆</div>
+        <h2 style="margin:8px 0;">실험 완료!</h2>
+        <div class="result-stars" id="resultStars"></div>
+        <div class="result-summary" id="resultSummary"></div>
+        <div class="result-actions">
+          <button class="hero-btn" id="btnRetry">다시 도전</button>
+          <button class="ctrl-btn" id="btnBackToLab">실험실로</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+<script>
+/* ================================================================
+   가능성 실험실 — chance-lab
+   순수 정적 SPA · localStorage만 사용 · 외부 의존성 0
+   ================================================================ */
+(function() {
+'use strict';
+
+/* ── 색약 안전 팔레트 ── */
+const COLORS = [
+  { hex: '#E69F00', name: '노랑' },
+  { hex: '#56B4E9', name: '파랑' },
+  { hex: '#009E73', name: '초록' },
+  { hex: '#F0E442', name: '연노랑' },
+  { hex: '#CC79A7', name: '분홍' },
+  { hex: '#D55E00', name: '빨강' },
+];
+
+const BAR_COLORS = ['#6c5ce7','#00b894','#e17055','#0984e3','#fdcb6e','#e84393'];
+
+/* ── 상태 모델 ── */
+let state = {
+  device: 'coin',
+  counts: {
+    coin: [0, 0],       // [앞, 뒤]
+    dice: [0,0,0,0,0,0], // [1~6]
+    spinner: []          // 칸별
+  },
+  total: { coin: 0, dice: 0, spinner: 0 },
+  snapshots: { coin: [], dice: [], spinner: [] },
+  spinner: {
+    slots: [
+      { color: 0, weight: 6 },
+      { color: 1, weight: 6 },
+    ]
+  },
+  missions: { m1: null, m2: null, m3: null, m4: null },
+  missionStars: { m1: 0, m2: 0, m3: 0, m4: 0 },
+};
+
+let animating = false;
+let skipRequested = false;
+
+/* ── 유틸 ── */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+/* ── 저장/불러오기 ── */
+const STORAGE_KEY = 'chance-lab:v1';
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      missions: state.missions,
+      missionStars: state.missionStars,
+      spinner: state.spinner,
+      counts: state.counts,
+      total: state.total,
+      snapshots: state.snapshots,
+    }));
+  } catch(e) {}
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (saved.missions) state.missions = saved.missions;
+    if (saved.missionStars) state.missionStars = saved.missionStars;
+    if (saved.spinner) state.spinner = saved.spinner;
+    if (saved.counts) state.counts = saved.counts;
+    if (saved.total) state.total = saved.total;
+    if (saved.snapshots) state.snapshots = saved.snapshots;
+    syncSpinnerCounts();
+  } catch(e) {}
+}
+
+function syncSpinnerCounts() {
+  const slotCount = state.spinner.slots.length;
+  if (state.counts.spinner.length !== slotCount) {
+    state.counts.spinner = new Array(slotCount).fill(0);
+    state.total.spinner = 0;
+    state.snapshots.spinner = [];
+  }
+}
+
+/* ── 공유 링크 파싱 ── */
+function parseShareLink() {
+  const hash = location.hash;
+  if (!hash.startsWith('#share=')) return;
+  try {
+    const payload = JSON.parse(decodeURIComponent(hash.slice(7)));
+    if (payload.v === 1 && payload.spinner) {
+      state.spinner = payload.spinner;
+      syncSpinnerCounts();
+      state.device = 'spinner';
+    }
+  } catch(e) {}
+  history.replaceState(null, '', location.pathname);
+}
+
+/* ── 화면 전환 ── */
+function showScreen(id) {
+  $$('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+/* ══════════════════════════════════════
+   장치 렌더링
+   ══════════════════════════════════════ */
+function renderDevice() {
+  const area = $('#deviceArea');
+  const dev = state.device;
+  $('#designerSection').style.display = dev === 'spinner' ? '' : 'none';
+
+  if (dev === 'coin') {
+    area.innerHTML = `
+      <div class="coin-wrap">
+        <div class="coin" id="coinEl">
+          <div class="coin-face coin-head">앞</div>
+          <div class="coin-face coin-tail">뒤</div>
+        </div>
+      </div>`;
+  } else if (dev === 'dice') {
+    area.innerHTML = `<div class="dice-wrap"><div class="dice" id="diceEl"></div></div>`;
+    renderDiceFace(1);
+  } else {
+    area.innerHTML = `
+      <div class="spinner-wrap" id="spinnerWrap">
+        <div class="spinner-pointer"></div>
+        <svg class="spinner-svg" id="spinnerSvg" viewBox="0 0 220 220"></svg>
+        <div class="spinner-center"></div>
+      </div>`;
+    renderSpinnerSvg();
+  }
+  renderDesigner();
+  updateSummary();
+  renderBarChart();
+  renderLineChart();
+}
+
+/* ── 동전 표시 ── */
+function showCoinResult(isHead) {
+  const coin = $('#coinEl');
+  if (!coin) return;
+  coin.classList.remove('show-tail');
+  if (!isHead) coin.classList.add('show-tail');
+}
+
+/* ── 주사위 표시 ── */
+const DICE_PATTERNS = [
+  [0,0,0, 0,1,0, 0,0,0],   // 1
+  [0,0,1, 0,0,0, 1,0,0],   // 2
+  [0,0,1, 0,1,0, 1,0,0],   // 3
+  [1,0,1, 0,0,0, 1,0,1],   // 4
+  [1,0,1, 0,1,0, 1,0,1],   // 5
+  [1,0,1, 1,0,1, 1,0,1],   // 6
+];
+function renderDiceFace(n) {
+  const el = $('#diceEl');
+  if (!el) return;
+  const pattern = DICE_PATTERNS[n - 1];
+  el.innerHTML = pattern.map(f => `<div class="dot ${f ? 'filled' : ''}"></div>`).join('');
+}
+
+/* ── 회전판 SVG ── */
+function renderSpinnerSvg(targetEl) {
+  const svg = targetEl || $('#spinnerSvg');
+  if (!svg) return;
+  const cx = 110, cy = 110, r = 100;
+  const totalW = state.spinner.slots.reduce((a, s) => a + s.weight, 0);
+  if (totalW === 0) { svg.innerHTML = ''; return; }
+
+  let html = '';
+  let startAngle = -90; // 12시 방향부터
+  state.spinner.slots.forEach((slot, i) => {
+    const angle = (slot.weight / totalW) * 360;
+    if (angle <= 0) return;
+    const endAngle = startAngle + angle;
+    const largeArc = angle > 180 ? 1 : 0;
+    const sx = cx + r * Math.cos(startAngle * Math.PI / 180);
+    const sy = cy + r * Math.sin(startAngle * Math.PI / 180);
+    const ex = cx + r * Math.cos(endAngle * Math.PI / 180);
+    const ey = cy + r * Math.sin(endAngle * Math.PI / 180);
+
+    if (angle >= 359.99) {
+      // 전체 원
+      html += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${COLORS[slot.color].hex}" stroke="#fff" stroke-width="1.5"/>`;
+    } else {
+      html += `<path d="M ${cx} ${cy} L ${sx} ${sy} A ${r} ${r} 0 ${largeArc} 1 ${ex} ${ey} Z" fill="${COLORS[slot.color].hex}" stroke="#fff" stroke-width="1.5"/>`;
+    }
+
+    // 라벨
+    const midAngle = startAngle + angle / 2;
+    const lr = r * 0.6;
+    const lx = cx + lr * Math.cos(midAngle * Math.PI / 180);
+    const ly = cy + lr * Math.sin(midAngle * Math.PI / 180);
+    if (angle > 20) {
+      const fSize = angle > 40 ? 12 : 10;
+      html += `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="central" font-size="${fSize}" font-weight="700" fill="#fff" style="text-shadow:0 1px 2px rgba(0,0,0,0.5)">${COLORS[slot.color].name}</text>`;
+    }
+
+    startAngle = endAngle;
+  });
+  // 외원
+  html += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--fg-muted)" stroke-width="2" opacity="0.3"/>`;
+  svg.innerHTML = html;
+}
+
+/* ══════════════════════════════════════
+   실험 실행
+   ══════════════════════════════════════ */
+function lockControls(lock) {
+  $$('#labControls .ctrl-btn').forEach(b => {
+    if (!b.classList.contains('skip-btn')) b.disabled = lock;
+  });
+  animating = lock;
+  $('#btnSkip').classList.toggle('visible', lock);
+}
+
+const SNAP_POINTS = [1,2,3,4,5,6,7,8,9,10,15,20,30,40,50,75,100,150,200,300,400,500,750,1000,1500,2000,3000,4000,5000,7500,10000];
+
+function addSnapshot(dev) {
+  const t = state.total[dev];
+  const snaps = state.snapshots[dev];
+  if (snaps.length >= 60) return;
+  // 이론값 기준 결과 0번의 비율
+  let ratio;
+  if (dev === 'coin') ratio = t > 0 ? state.counts.coin[0] / t : 0;
+  else if (dev === 'dice') ratio = t > 0 ? state.counts.dice[0] / t : 0;
+  else {
+    ratio = t > 0 ? state.counts.spinner[0] / t : 0;
+  }
+  // 스냅 조건: SNAP_POINTS 또는 마지막
+  if (SNAP_POINTS.includes(t) || snaps.length === 0) {
+    snaps.push({ n: t, ratio });
+  }
+}
+
+async function runExperiment(count) {
+  if (animating) return;
+  const dev = state.device;
+
+  if (count === 1) {
+    lockControls(true);
+    const result = doSingleTrial(dev);
+    await animateSingle(dev, result);
+    recordResult(dev, result);
+    addSnapshot(dev);
+    lockControls(false);
+  } else if (count === 10) {
+    lockControls(true);
+    skipRequested = false;
+    for (let i = 0; i < 10; i++) {
+      if (skipRequested) {
+        // 남은 배치 계산
+        for (let j = i; j < 10; j++) {
+          const r = doSingleTrial(dev);
+          recordResult(dev, r);
+        }
+        break;
+      }
+      const result = doSingleTrial(dev);
+      await animateQuick(dev, result, 100);
+      recordResult(dev, result);
+      renderBarChart();
+    }
+    addSnapshot(dev);
+    lockControls(false);
+  } else {
+    // 100 or 1000 — 배치 계산
+    lockControls(true);
+    const results = [];
+    for (let i = 0; i < count; i++) {
+      results.push(doSingleTrial(dev));
+      recordResult(dev, results[i]);
+      // 스냅샷 체크
+      if (SNAP_POINTS.includes(state.total[dev])) addSnapshot(dev);
+    }
+    addSnapshot(dev);
+    await animateChartGrowth(dev, count);
+    lockControls(false);
+  }
+  updateSummary();
+  renderBarChart();
+  renderLineChart();
+  saveState();
+}
+
+function doSingleTrial(dev) {
+  if (dev === 'coin') return Math.random() < 0.5 ? 0 : 1; // 0=앞, 1=뒤
+  if (dev === 'dice') return Math.floor(Math.random() * 6); // 0~5
+  // spinner: 가중치 기반
+  const totalW = state.spinner.slots.reduce((a, s) => a + s.weight, 0);
+  let r = Math.random() * totalW;
+  for (let i = 0; i < state.spinner.slots.length; i++) {
+    r -= state.spinner.slots[i].weight;
+    if (r <= 0) return i;
+  }
+  return state.spinner.slots.length - 1;
+}
+
+function recordResult(dev, result) {
+  state.counts[dev][result]++;
+  state.total[dev]++;
+}
+
+/* ── 애니메이션 ── */
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+async function animateSingle(dev, result) {
+  if (dev === 'coin') {
+    const coin = $('#coinEl');
+    if (coin) {
+      coin.classList.remove('flipping', 'show-tail');
+      void coin.offsetWidth;
+      coin.classList.add('flipping');
+      await sleep(600);
+      coin.classList.remove('flipping');
+      showCoinResult(result === 0);
+    }
+    setResultLabel(result === 0 ? '앞면! ☀️' : '뒷면! 🌙');
+  } else if (dev === 'dice') {
+    const dice = $('#diceEl');
+    if (dice) {
+      dice.classList.add('rolling');
+      await sleep(600);
+      dice.classList.remove('rolling');
+      renderDiceFace(result + 1);
+    }
+    setResultLabel(`${result + 1} 나왔어요! 🎲`);
+  } else {
+    await animateSpinner(result);
+    const slot = state.spinner.slots[result];
+    setResultLabel(`${COLORS[slot.color].name}! 🎡`);
+  }
+}
+
+async function animateQuick(dev, result, ms) {
+  if (dev === 'coin') {
+    showCoinResult(result === 0);
+    setResultLabel(result === 0 ? '앞면' : '뒷면');
+  } else if (dev === 'dice') {
+    renderDiceFace(result + 1);
+    setResultLabel(`${result + 1}`);
+  } else {
+    // 회전판 빠르게 회전 없이 결과만
+    const slot = state.spinner.slots[result];
+    setResultLabel(COLORS[slot.color].name);
+  }
+  await sleep(ms);
+}
+
+async function animateSpinner(result) {
+  const svg = $('#spinnerSvg');
+  if (!svg) return;
+  const totalW = state.spinner.slots.reduce((a, s) => a + s.weight, 0);
+  // 결과 칸의 각도 범위 계산
+  let startAngle = 0;
+  for (let i = 0; i < result; i++) {
+    startAngle += (state.spinner.slots[i].weight / totalW) * 360;
+  }
+  const slotAngle = (state.spinner.slots[result].weight / totalW) * 360;
+  // 바늘은 12시 고정, 회전판 회전 — 결과 칸의 중앙이 12시(0도)에 오도록
+  const targetAngle = -(startAngle + slotAngle * (0.2 + Math.random() * 0.6));
+  const spins = 3 + Math.floor(Math.random() * 3); // 3~5 회전
+  const finalAngle = spins * 360 + targetAngle;
+
+  svg.style.transition = 'none';
+  svg.style.transform = 'rotate(0deg)';
+  void svg.offsetWidth;
+  svg.style.transition = 'transform 1.2s cubic-bezier(0.2, 0.8, 0.3, 1)';
+  svg.style.transform = `rotate(${finalAngle}deg)`;
+  await sleep(1300);
+  // 정위치 리셋 (같은 시각적 위치 유지)
+  const normAngle = ((finalAngle % 360) + 360) % 360;
+  svg.style.transition = 'none';
+  svg.style.transform = `rotate(${normAngle}deg)`;
+}
+
+async function animateChartGrowth(dev, count) {
+  // 간단한 페이드 애니메이션: 차트를 빈 상태에서 채움
+  const dur = Math.min(1500, 500 + count * 0.5);
+  const steps = 20;
+  const interval = dur / steps;
+  for (let i = 1; i <= steps; i++) {
+    if (skipRequested) break;
+    renderBarChart(i / steps);
+    await sleep(interval);
+  }
+  renderBarChart(1);
+}
+
+function setResultLabel(text) {
+  const el = $('#resultLabel');
+  if (el) el.textContent = text;
+}
+
+/* ── 요약 문장 ── */
+function updateSummary() {
+  const dev = state.device;
+  const t = state.total[dev];
+  const el = $('#summaryText');
+  if (t === 0) { el.innerHTML = '실험을 시작해 보세요!'; return; }
+
+  if (dev === 'coin') {
+    const h = state.counts.coin[0];
+    const pct = (h / t * 100).toFixed(1);
+    const word = pct > 45 && pct < 55 ? '거의 반반' : (pct >= 55 ? '앞면이 좀 더 많이' : '뒷면이 좀 더 많이');
+    el.innerHTML = `지금까지 <strong>${t}번</strong> 중 앞면 <strong>${h}번(${pct}%)</strong> — <strong>${word}</strong>이에요!`;
+  } else if (dev === 'dice') {
+    const max = Math.max(...state.counts.dice);
+    const maxIdx = state.counts.dice.indexOf(max);
+    el.innerHTML = `지금까지 <strong>${t}번</strong> 던졌어요. 가장 많이 나온 눈: <strong>${maxIdx + 1}</strong>(${max}번)`;
+  } else {
+    if (state.spinner.slots.length === 0) { el.innerHTML = '회전판을 설계해 주세요!'; return; }
+    const max = Math.max(...state.counts.spinner);
+    const maxIdx = state.counts.spinner.indexOf(max);
+    if (maxIdx >= 0 && maxIdx < state.spinner.slots.length) {
+      const name = COLORS[state.spinner.slots[maxIdx].color].name;
+      el.innerHTML = `지금까지 <strong>${t}번</strong> 돌렸어요. 가장 많이 나온 색: <strong>${name}</strong>(${max}번)`;
+    }
+  }
+}
+
+/* ══════════════════════════════════════
+   SVG 차트
+   ══════════════════════════════════════ */
+function renderBarChart(progress) {
+  const svg = $('#barChart');
+  if (!svg) return;
+  const p = progress === undefined ? 1 : progress;
+  const dev = state.device;
+  const counts = state.counts[dev];
+  const total = state.total[dev];
+  const labels = getLabels(dev);
+  const n = counts.length;
+
+  const W = 680, H = 200;
+  const marginL = 40, marginR = 20, marginT = 20, marginB = 32;
+  const chartW = W - marginL - marginR;
+  const chartH = H - marginT - marginB;
+  const barW = Math.min(60, (chartW / n) * 0.6);
+  const gap = (chartW - barW * n) / (n + 1);
+  const maxCount = Math.max(1, ...counts);
+
+  let html = '';
+  // 이론값 점선
+  const theory = getTheoryValues(dev);
+  if (total > 0 && theory.length === n) {
+    theory.forEach((tv, i) => {
+      const theoryCount = tv * total;
+      const y = marginT + chartH - (theoryCount / maxCount) * chartH;
+      if (y >= marginT && y <= marginT + chartH) {
+        const x1 = marginL + gap + i * (barW + gap);
+        const x2 = x1 + barW;
+        html += `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="var(--cl-theory)" stroke-width="2" stroke-dasharray="4 3" opacity="0.8"/>`;
+      }
+    });
+  }
+
+  // 막대
+  counts.forEach((c, i) => {
+    const x = marginL + gap + i * (barW + gap);
+    const h = total > 0 ? (c / maxCount) * chartH * p : 0;
+    const y = marginT + chartH - h;
+    const color = dev === 'spinner' && i < state.spinner.slots.length ? COLORS[state.spinner.slots[i].color].hex : BAR_COLORS[i % BAR_COLORS.length];
+    html += `<rect x="${x}" y="${y}" width="${barW}" height="${h}" rx="4" fill="${color}" opacity="0.85"/>`;
+    // 횟수 라벨
+    if (p >= 1 && c > 0) {
+      const pct = (c / total * 100).toFixed(1);
+      html += `<text x="${x + barW/2}" y="${y - 6}" text-anchor="middle" font-size="11" fill="var(--fg)" font-weight="600">${c}</text>`;
+      html += `<text x="${x + barW/2}" y="${y - 18}" text-anchor="middle" font-size="9" fill="var(--fg-muted)">${pct}%</text>`;
+    }
+    // 라벨
+    html += `<text x="${x + barW/2}" y="${marginT + chartH + 18}" text-anchor="middle" font-size="12" fill="var(--fg-muted)" font-weight="600">${labels[i]}</text>`;
+  });
+
+  // 축선
+  html += `<line x1="${marginL}" y1="${marginT + chartH}" x2="${W - marginR}" y2="${marginT + chartH}" stroke="var(--border)" stroke-width="1"/>`;
+
+  svg.innerHTML = html;
+}
+
+function renderLineChart() {
+  const svg = $('#lineChart');
+  if (!svg) return;
+  const dev = state.device;
+  const snaps = state.snapshots[dev];
+  const W = 680, H = 220;
+  const marginL = 50, marginR = 20, marginT = 20, marginB = 40;
+  const chartW = W - marginL - marginR;
+  const chartH = H - marginT - marginB;
+
+  let html = '';
+
+  // 이론값 점선 (첫 번째 결과의 이론값)
+  const theory = getTheoryValues(dev);
+  const tv = theory.length > 0 ? theory[0] : 0.5;
+  const theoryY = marginT + chartH - tv * chartH;
+  html += `<line x1="${marginL}" y1="${theoryY}" x2="${W - marginR}" y2="${theoryY}" stroke="var(--cl-theory)" stroke-width="2" stroke-dasharray="6 4" opacity="0.7"/>`;
+  html += `<text x="${marginL - 6}" y="${theoryY + 4}" text-anchor="end" font-size="11" fill="var(--cl-theory)" font-weight="600">${formatFraction(tv)}</text>`;
+
+  if (snaps.length < 2) {
+    // Y축 라벨
+    html += `<text x="${marginL - 6}" y="${marginT + 4}" text-anchor="end" font-size="10" fill="var(--fg-muted)">100%</text>`;
+    html += `<text x="${marginL - 6}" y="${marginT + chartH + 4}" text-anchor="end" font-size="10" fill="var(--fg-muted)">0%</text>`;
+    html += `<line x1="${marginL}" y1="${marginT}" x2="${marginL}" y2="${marginT + chartH}" stroke="var(--border)" stroke-width="1"/>`;
+    html += `<line x1="${marginL}" y1="${marginT + chartH}" x2="${W - marginR}" y2="${marginT + chartH}" stroke="var(--border)" stroke-width="1"/>`;
+    html += `<text x="${W/2}" y="${H - 4}" text-anchor="middle" font-size="11" fill="var(--fg-muted)">시행 수</text>`;
+    svg.innerHTML = html;
+    return;
+  }
+
+  const maxN = snaps[snaps.length - 1].n;
+  const minN = snaps[0].n;
+  const range = maxN - minN || 1;
+
+  // Y축 0~1
+  html += `<text x="${marginL - 6}" y="${marginT + 4}" text-anchor="end" font-size="10" fill="var(--fg-muted)">100%</text>`;
+  html += `<text x="${marginL - 6}" y="${marginT + chartH + 4}" text-anchor="end" font-size="10" fill="var(--fg-muted)">0%</text>`;
+  // 50% 가이드
+  const midY = marginT + chartH * 0.5;
+  html += `<line x1="${marginL}" y1="${midY}" x2="${W - marginR}" y2="${midY}" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3 3"/>`;
+
+  // 폴리라인
+  const points = snaps.map(s => {
+    const x = marginL + ((s.n - minN) / range) * chartW;
+    const y = marginT + chartH - s.ratio * chartH;
+    return `${x},${y}`;
+  }).join(' ');
+  html += `<polyline points="${points}" fill="none" stroke="var(--cl-bar)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+  // 점
+  snaps.forEach(s => {
+    const x = marginL + ((s.n - minN) / range) * chartW;
+    const y = marginT + chartH - s.ratio * chartH;
+    html += `<circle cx="${x}" cy="${y}" r="3" fill="var(--cl-bar)" stroke="#fff" stroke-width="1"/>`;
+  });
+
+  // X축 라벨
+  const xLabels = [snaps[0], snaps[Math.floor(snaps.length/2)], snaps[snaps.length - 1]];
+  xLabels.forEach(s => {
+    const x = marginL + ((s.n - minN) / range) * chartW;
+    html += `<text x="${x}" y="${marginT + chartH + 18}" text-anchor="middle" font-size="10" fill="var(--fg-muted)">${s.n}번</text>`;
+  });
+
+  // 축
+  html += `<line x1="${marginL}" y1="${marginT}" x2="${marginL}" y2="${marginT + chartH}" stroke="var(--border)" stroke-width="1"/>`;
+  html += `<line x1="${marginL}" y1="${marginT + chartH}" x2="${W - marginR}" y2="${marginT + chartH}" stroke="var(--border)" stroke-width="1"/>`;
+  html += `<text x="${W/2}" y="${H - 4}" text-anchor="middle" font-size="11" fill="var(--fg-muted)">시행 수</text>`;
+
+  svg.innerHTML = html;
+}
+
+function getLabels(dev) {
+  if (dev === 'coin') return ['앞면', '뒷면'];
+  if (dev === 'dice') return ['1','2','3','4','5','6'];
+  return state.spinner.slots.map(s => COLORS[s.color].name);
+}
+
+function getTheoryValues(dev) {
+  if (dev === 'coin') return [0.5, 0.5];
+  if (dev === 'dice') return [1/6, 1/6, 1/6, 1/6, 1/6, 1/6];
+  const totalW = state.spinner.slots.reduce((a, s) => a + s.weight, 0);
+  if (totalW === 0) return [];
+  return state.spinner.slots.map(s => s.weight / totalW);
+}
+
+function formatFraction(v) {
+  if (Math.abs(v - 0.5) < 0.001) return '1/2';
+  if (Math.abs(v - 1/3) < 0.001) return '1/3';
+  if (Math.abs(v - 1/4) < 0.001) return '1/4';
+  if (Math.abs(v - 1/6) < 0.001) return '1/6';
+  if (Math.abs(v - 2/3) < 0.001) return '2/3';
+  if (Math.abs(v - 3/4) < 0.001) return '3/4';
+  if (Math.abs(v - 1/5) < 0.001) return '1/5';
+  // n/12 형태
+  const n12 = Math.round(v * 12);
+  if (Math.abs(v - n12/12) < 0.01) {
+    const g = gcd(n12, 12);
+    return `${n12/g}/${12/g}`;
+  }
+  return (v * 100).toFixed(0) + '%';
+}
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+/* ══════════════════════════════════════
+   회전판 설계 UI
+   ══════════════════════════════════════ */
+function renderDesigner() {
+  if (state.device !== 'spinner') return;
+  const container = $('#designerSlots');
+  if (!container) return;
+  const slots = state.spinner.slots;
+  const totalW = slots.reduce((a, s) => a + s.weight, 0);
+  const remaining = 12 - totalW;
+
+  let html = '';
+  slots.forEach((slot, i) => {
+    const c = COLORS[slot.color];
+    const pct = totalW > 0 ? (slot.weight / 12 * 100).toFixed(0) : 0;
+    html += `
+      <div class="slot-row">
+        <div class="slot-color" style="background:${c.hex}"></div>
+        <div class="slot-name">${c.name}</div>
+        <div class="slot-stepper">
+          <button data-slot="${i}" data-dir="-1" ${slot.weight <= 0 ? 'disabled' : ''}>−</button>
+          <span>${slot.weight}</span>
+          <button data-slot="${i}" data-dir="1" ${remaining <= 0 && true ? 'disabled' : ''}>+</button>
+        </div>
+        <div class="slot-bar"><div class="slot-bar-fill" style="width:${pct}%;background:${c.hex}"></div></div>
+        <div class="slot-count-label">${pct}%</div>
+      </div>`;
+  });
+  container.innerHTML = html;
+
+  // 스테퍼 이벤트
+  container.querySelectorAll('.slot-stepper button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.slot);
+      const dir = parseInt(btn.dataset.dir);
+      adjustSlot(idx, dir);
+    });
+  });
+
+  $('#slotsRemaining').textContent = remaining > 0 ? `남은 칸: ${remaining}/12` : '12칸 모두 배정됨 ✓';
+  $('#btnAddSlot').disabled = slots.length >= 6;
+  $('#btnRemoveSlot').disabled = slots.length <= 2;
+}
+
+function adjustSlot(idx, dir) {
+  const slots = state.spinner.slots;
+  const totalW = slots.reduce((a, s) => a + s.weight, 0);
+  const newW = slots[idx].weight + dir;
+  if (newW < 0) return;
+  if (dir > 0 && totalW >= 12) return;
+  slots[idx].weight = newW;
+  // 카운트 리셋 (설계 변경 시)
+  resetSpinnerCounts();
+  renderDesigner();
+  renderSpinnerSvg();
+  renderBarChart();
+  renderLineChart();
+  updateSummary();
+  saveState();
+}
+
+function addSlot() {
+  if (state.spinner.slots.length >= 6) return;
+  // 사용 안 된 첫 색상 찾기
+  const used = state.spinner.slots.map(s => s.color);
+  const available = [0,1,2,3,4,5].find(c => !used.includes(c));
+  if (available === undefined) return;
+  state.spinner.slots.push({ color: available, weight: 0 });
+  resetSpinnerCounts();
+  renderDesigner();
+  renderSpinnerSvg();
+  saveState();
+}
+
+function removeSlot() {
+  if (state.spinner.slots.length <= 2) return;
+  state.spinner.slots.pop();
+  resetSpinnerCounts();
+  renderDesigner();
+  renderSpinnerSvg();
+  renderBarChart();
+  renderLineChart();
+  updateSummary();
+  saveState();
+}
+
+function resetSpinnerCounts() {
+  state.counts.spinner = new Array(state.spinner.slots.length).fill(0);
+  state.total.spinner = 0;
+  state.snapshots.spinner = [];
+}
+
+/* ══════════════════════════════════════
+   미션 1: 말로 표현
+   ══════════════════════════════════════ */
+const M1_QUESTIONS = [
+  { text: '주사위 눈이 7이 나올 가능성', answer: 0 },
+  { text: '주사위 눈이 3 미만(1 또는 2)이 나올 가능성', answer: 1 },
+  { text: '동전을 던져 앞면이 나올 가능성', answer: 2 },
+  { text: '주사위 눈이 3 이상(3,4,5,6)이 나올 가능성', answer: 3 },
+  { text: '주사위 눈이 1~6 중 하나가 나올 가능성', answer: 4 },
+];
+const M1_LABELS = ['불가능하다', '~아닐 것 같다', '반반이다', '~일 것 같다', '확실하다'];
+
+let m1Current = 0;
+let m1Answers = [];
+let m1SelectedScale = -1;
+
+function renderMission1() {
+  m1Current = 0;
+  m1Answers = [];
+  renderM1Question();
+}
+
+function renderM1Question() {
+  if (m1Current >= M1_QUESTIONS.length) {
+    finishMission1();
+    return;
+  }
+  const q = M1_QUESTIONS[m1Current];
+  const cardsEl = $('#m1Cards');
+
+  // 상황 카드
+  let html = `<div class="m1-card active" id="m1CurrentCard">${q.text}</div>`;
+  // 5단계 표현
+  html += `<div class="m1-scale" id="m1Scale">`;
+  M1_LABELS.forEach((label, i) => {
+    html += `<button class="m1-scale-btn" data-val="${i}">${label}</button>`;
+  });
+  html += `</div>`;
+  html += `<div style="text-align:center;color:var(--fg-muted);font-size:13px;margin-top:4px;">${m1Current + 1} / ${M1_QUESTIONS.length}</div>`;
+  cardsEl.innerHTML = html;
+  $('#m1Feedback').innerHTML = '';
+  m1SelectedScale = -1;
+
+  // 이벤트
+  cardsEl.querySelectorAll('.m1-scale-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      m1SelectedScale = parseInt(btn.dataset.val);
+      cardsEl.querySelectorAll('.m1-scale-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      // 판정
+      setTimeout(() => checkM1Answer(), 300);
+    });
+  });
+}
+
+function checkM1Answer() {
+  const q = M1_QUESTIONS[m1Current];
+  const correct = m1SelectedScale === q.answer;
+  m1Answers.push(correct);
+
+  const card = $('#m1CurrentCard');
+  if (card) card.classList.add(correct ? 'correct' : 'wrong');
+
+  const fb = $('#m1Feedback');
+  if (correct) {
+    fb.innerHTML = `<div class="feedback success">✅ 맞았어요! "${M1_LABELS[q.answer]}"가 맞아요.</div>`;
+  } else {
+    fb.innerHTML = `<div class="feedback warn">아쉬워요! 정답은 "${M1_LABELS[q.answer]}"예요.</div>`;
+  }
+
+  setTimeout(() => {
+    m1Current++;
+    renderM1Question();
+  }, 1200);
+}
+
+function finishMission1() {
+  const score = m1Answers.filter(Boolean).length;
+  const stars = score >= 5 ? 3 : score >= 3 ? 2 : score >= 1 ? 1 : 0;
+  state.missionStars.m1 = stars;
+  state.missions.m1 = true;
+
+  const cardsEl = $('#m1Cards');
+  cardsEl.innerHTML = `<div class="feedback success">🎉 ${score}/${M1_QUESTIONS.length} 맞았어요! ${'⭐'.repeat(stars)}</div>`;
+  $('#m1Feedback').innerHTML = '';
+  $('#m1Next').style.display = '';
+  updateMissionNav();
+  saveState();
+}
+
+/* ══════════════════════════════════════
+   미션 2: 예측→실험
+   ══════════════════════════════════════ */
+let m2Phase = 0; // 0=예측, 1=10번실험, 2=결과확인, 3=1000번, 4=완료
+
+function renderMission2() {
+  m2Phase = 0;
+  const el = $('#m2Content');
+  el.innerHTML = `
+    <div class="predict-area">
+      <p style="font-size:16px;margin-bottom:12px;">동전을 <strong>10번</strong> 던지면<br>앞면이 몇 번 나올까요?</p>
+      <input type="number" class="predict-input" id="m2Predict" min="0" max="10" placeholder="?">
+      <div class="predict-label">0~10 사이 숫자를 입력하세요</div>
+    </div>
+    <div style="text-align:center;">
+      <button class="hero-btn" id="m2RunBtn" disabled>실험하기</button>
+    </div>`;
+  $('#m2Feedback').innerHTML = '';
+
+  const input = $('#m2Predict');
+  const btn = $('#m2RunBtn');
+  input.addEventListener('input', () => {
+    const v = parseInt(input.value);
+    btn.disabled = isNaN(v) || v < 0 || v > 10;
+  });
+  btn.addEventListener('click', () => runM2Phase1());
+}
+
+async function runM2Phase1() {
+  const prediction = parseInt($('#m2Predict').value);
+  const el = $('#m2Content');
+  el.innerHTML = `<div style="text-align:center;padding:20px;">
+    <div class="coin-wrap"><div class="coin" id="m2Coin"><div class="coin-face coin-head">앞</div><div class="coin-face coin-tail">뒤</div></div></div>
+    <p id="m2Progress" style="margin-top:12px;font-size:14px;color:var(--fg-muted);">실험 중...</p>
+  </div>`;
+
+  let heads = 0;
+  for (let i = 0; i < 10; i++) {
+    const r = Math.random() < 0.5 ? 0 : 1;
+    if (r === 0) heads++;
+    const coin = $('#m2Coin');
+    if (coin) {
+      coin.classList.remove('flipping', 'show-tail');
+      void coin.offsetWidth;
+      coin.classList.add('flipping');
+      await sleep(400);
+      coin.classList.remove('flipping');
+      if (r === 1) coin.classList.add('show-tail');
+      else coin.classList.remove('show-tail');
+    }
+    const prog = $('#m2Progress');
+    if (prog) prog.textContent = `${i + 1}/10번째... 앞면 ${heads}번`;
+    await sleep(200);
+  }
+
+  const diff = Math.abs(heads - prediction);
+  const fb = $('#m2Feedback');
+  let msg;
+  if (diff === 0) msg = `예측 ${prediction}번, 결과 ${heads}번 — 정확히 맞았어요! 🎯`;
+  else msg = `예측 ${prediction}번, 결과 ${heads}번 — ${diff}번 차이나요.`;
+
+  fb.innerHTML = `
+    <div class="feedback info">${msg}<br><strong>적게 던지면 예측과 벗어나기 쉬워요.</strong></div>
+    <div style="text-align:center;margin-top:12px;">
+      <button class="hero-btn" id="m2Run1000">이번엔 1000번 해 볼까요?</button>
+    </div>`;
+
+  $('#m2Run1000').addEventListener('click', () => runM2Phase2());
+}
+
+async function runM2Phase2() {
+  const el = $('#m2Content');
+  el.innerHTML = `<div style="text-align:center;padding:20px;">
+    <p style="font-size:16px;">1000번 실험 중...</p>
+    <div style="margin:12px auto;width:100%;max-width:400px;">
+      <svg id="m2MiniChart" class="chart-svg" viewBox="0 0 400 160"></svg>
+    </div>
+  </div>`;
+
+  let heads = 0;
+  const snaps = [];
+  for (let i = 1; i <= 1000; i++) {
+    if (Math.random() < 0.5) heads++;
+    if (SNAP_POINTS.includes(i) || i === 1000) {
+      snaps.push({ n: i, ratio: heads / i });
+    }
+  }
+
+  // 수렴 차트 그리기 (애니메이션)
+  const svg = $('#m2MiniChart');
+  const W = 400, H = 160;
+  const mL = 40, mR = 10, mT = 10, mB = 30;
+  const cW = W - mL - mR, cH = H - mT - mB;
+
+  for (let step = 1; step <= 20; step++) {
+    const visSnaps = snaps.slice(0, Math.ceil(snaps.length * step / 20));
+    const maxN = visSnaps[visSnaps.length - 1].n;
+    let h = `<line x1="${mL}" y1="${mT + cH * 0.5}" x2="${W - mR}" y2="${mT + cH * 0.5}" stroke="var(--cl-theory)" stroke-width="2" stroke-dasharray="6 4" opacity="0.6"/>`;
+    h += `<text x="${mL - 4}" y="${mT + cH * 0.5 + 4}" text-anchor="end" font-size="10" fill="var(--cl-theory)">1/2</text>`;
+
+    const pts = visSnaps.map(s => {
+      const x = mL + (s.n / maxN) * cW;
+      const y = mT + cH - s.ratio * cH;
+      return `${x},${y}`;
+    }).join(' ');
+    h += `<polyline points="${pts}" fill="none" stroke="var(--cl-bar)" stroke-width="2" stroke-linejoin="round"/>`;
+    h += `<line x1="${mL}" y1="${mT}" x2="${mL}" y2="${mT + cH}" stroke="var(--border)" stroke-width="1"/>`;
+    h += `<line x1="${mL}" y1="${mT + cH}" x2="${W - mR}" y2="${mT + cH}" stroke="var(--border)" stroke-width="1"/>`;
+    h += `<text x="${W/2}" y="${H - 4}" text-anchor="middle" font-size="10" fill="var(--fg-muted)">시행 수</text>`;
+    svg.innerHTML = h;
+    await sleep(60);
+  }
+
+  const finalRatio = (heads / 1000 * 100).toFixed(1);
+  const fb = $('#m2Feedback');
+  fb.innerHTML = `
+    <div class="feedback success">
+      1000번 중 앞면 <strong>${heads}번(${finalRatio}%)</strong><br>
+      <strong>많이 할수록 가능성(1/2)에 가까워져요!</strong>
+    </div>
+    <div style="text-align:center;margin-top:12px;">
+      <button class="hero-btn" id="m2Done">다음 미션 →</button>
+    </div>`;
+
+  state.missionStars.m2 = 3; // 참여 완료 기준
+  state.missions.m2 = true;
+  updateMissionNav();
+  saveState();
+
+  $('#m2Done').addEventListener('click', () => goToMission(3));
+}
+
+/* ══════════════════════════════════════
+   미션 3: 수렴 관찰
+   ══════════════════════════════════════ */
+let m3Done = false;
+
+function renderMission3() {
+  m3Done = false;
+  const el = $('#m3Content');
+  el.innerHTML = `
+    <div style="text-align:center;padding:16px;">
+      <p style="font-size:16px;margin-bottom:16px;">주사위를 <strong>1000번</strong> 던져 볼게요!</p>
+      <button class="hero-btn" id="m3RunBtn">1000번 던지기 🎲</button>
+    </div>
+    <div style="margin:16px auto;max-width:600px;">
+      <svg id="m3BarChart" class="chart-svg" viewBox="0 0 600 180"></svg>
+    </div>`;
+  $('#m3Feedback').innerHTML = '';
+
+  $('#m3RunBtn').addEventListener('click', () => runM3());
+}
+
+async function runM3() {
+  $('#m3RunBtn').disabled = true;
+  const counts = [0,0,0,0,0,0];
+  for (let i = 0; i < 1000; i++) {
+    counts[Math.floor(Math.random() * 6)]++;
+  }
+
+  // 막대 차트 애니메이션
+  const svg = $('#m3BarChart');
+  const W = 600, H = 180;
+  const mL = 30, mR = 20, mT = 20, mB = 30;
+  const cW = W - mL - mR, cH = H - mT - mB;
+  const barW = 50;
+  const gap = (cW - barW * 6) / 7;
+  const maxC = Math.max(...counts);
+
+  for (let step = 1; step <= 15; step++) {
+    const p = step / 15;
+    let h = '';
+    counts.forEach((c, i) => {
+      const x = mL + gap + i * (barW + gap);
+      const hh = (c / maxC) * cH * p;
+      const y = mT + cH - hh;
+      h += `<rect x="${x}" y="${y}" width="${barW}" height="${hh}" rx="4" fill="${BAR_COLORS[i]}" opacity="0.85"/>`;
+      if (p >= 1) {
+        h += `<text x="${x + barW/2}" y="${y - 5}" text-anchor="middle" font-size="11" fill="var(--fg)" font-weight="600">${c}</text>`;
+        h += `<text x="${x + barW/2}" y="${y - 17}" text-anchor="middle" font-size="9" fill="var(--fg-muted)">${(c/1000*100).toFixed(1)}%</text>`;
+      }
+      h += `<text x="${x + barW/2}" y="${mT + cH + 18}" text-anchor="middle" font-size="13" fill="var(--fg-muted)" font-weight="600">${i+1}</text>`;
+      // 이론값 점선 (1/6 ≈ 166.7)
+      const theoryH = (1000/6 / maxC) * cH;
+      const theoryY = mT + cH - theoryH;
+      h += `<line x1="${x}" y1="${theoryY}" x2="${x + barW}" y2="${theoryY}" stroke="var(--cl-theory)" stroke-width="1.5" stroke-dasharray="3 2" opacity="0.6"/>`;
+    });
+    h += `<line x1="${mL}" y1="${mT + cH}" x2="${W - mR}" y2="${mT + cH}" stroke="var(--border)" stroke-width="1"/>`;
+    svg.innerHTML = h;
+    await sleep(60);
+  }
+
+  // 눈 3의 비율
+  const threeRatio = counts[2] / 1000;
+
+  const el = $('#m3Content');
+  el.innerHTML += `
+    <div style="text-align:center;margin-top:16px;">
+      <p style="font-size:16px;font-weight:700;">눈 3이 나온 비율(${(threeRatio*100).toFixed(1)}%)은<br>어디에 가까워졌나요?</p>
+      <div class="m3-choices" id="m3Choices">
+        <button class="m3-choice" data-val="0.5">1/2</button>
+        <button class="m3-choice" data-val="0.333">1/3</button>
+        <button class="m3-choice" data-val="0.167">1/6</button>
+      </div>
+    </div>`;
+
+  $$('#m3Choices .m3-choice').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (m3Done) return;
+      m3Done = true;
+      const val = parseFloat(btn.dataset.val);
+      const correct = Math.abs(val - 1/6) < 0.01;
+      btn.classList.add(correct ? 'correct' : 'wrong');
+      if (!correct) {
+        document.querySelector('#m3Choices [data-val="0.167"]').classList.add('correct');
+      }
+      const fb = $('#m3Feedback');
+      if (correct) {
+        fb.innerHTML = `<div class="feedback success">🎉 맞아요! 주사위 각 눈의 가능성은 <strong>1/6</strong>이에요.</div>`;
+        state.missionStars.m3 = 3;
+      } else {
+        fb.innerHTML = `<div class="feedback warn">정답은 <strong>1/6</strong>이에요. 주사위 눈은 6가지니까요!</div>`;
+        state.missionStars.m3 = 1;
+      }
+      state.missions.m3 = true;
+      updateMissionNav();
+      saveState();
+
+      fb.innerHTML += `<div style="text-align:center;margin-top:12px;"><button class="hero-btn" id="m3Next">다음 미션 →</button></div>`;
+      $('#m3Next').addEventListener('click', () => goToMission(4));
+    });
+  });
+}
+
+/* ══════════════════════════════════════
+   미션 4: 설계 미션
+   ══════════════════════════════════════ */
+let m4Spinner = null;
+let m4Verified = false;
+
+function renderMission4() {
+  m4Verified = false;
+  // 초기 회전판: 2색, 모두 0
+  m4Spinner = {
+    slots: [
+      { color: 0, weight: 0 },
+      { color: 1, weight: 0 },
+    ]
+  };
+
+  const el = $('#m4Content');
+  el.innerHTML = `
+    <div class="m4-target">
+      <em>노랑</em>이 나올 가능성이 <em>3/4</em>인 회전판을 만들어 보세요!<br>
+      <span style="font-size:14px;color:var(--fg-muted);">(12칸 중 9칸을 노랑으로)</span>
+    </div>
+    <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;justify-content:center;">
+      <div style="flex:1;min-width:220px;">
+        <div class="designer-card" style="margin:0;">
+          <div class="designer-title">🎨 회전판 설계 (12칸)</div>
+          <div id="m4Slots"></div>
+          <div class="slots-remaining" id="m4Remaining"></div>
+          <div class="add-remove-slot">
+            <button class="ctrl-btn" id="m4AddSlot" style="font-size:13px;">+ 색 추가</button>
+            <button class="ctrl-btn" id="m4RemoveSlot" style="font-size:13px;">− 색 제거</button>
+          </div>
+        </div>
+      </div>
+      <div style="flex-shrink:0;">
+        <svg id="m4SpinnerSvg" class="spinner-svg" viewBox="0 0 220 220" style="width:180px;height:180px;"></svg>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:16px;">
+      <button class="hero-btn" id="m4CheckBtn">설계 확인하기</button>
+    </div>
+    <div id="m4TestArea"></div>`;
+  $('#m4Feedback').innerHTML = '';
+
+  renderM4Designer();
+  renderM4Spinner();
+
+  $('#m4AddSlot').addEventListener('click', () => {
+    if (m4Spinner.slots.length >= 6) return;
+    const used = m4Spinner.slots.map(s => s.color);
+    const avail = [0,1,2,3,4,5].find(c => !used.includes(c));
+    if (avail === undefined) return;
+    m4Spinner.slots.push({ color: avail, weight: 0 });
+    renderM4Designer();
+    renderM4Spinner();
+  });
+  $('#m4RemoveSlot').addEventListener('click', () => {
+    if (m4Spinner.slots.length <= 2) return;
+    m4Spinner.slots.pop();
+    renderM4Designer();
+    renderM4Spinner();
+  });
+  $('#m4CheckBtn').addEventListener('click', () => checkM4Design());
+}
+
+function renderM4Designer() {
+  const container = $('#m4Slots');
+  if (!container) return;
+  const slots = m4Spinner.slots;
+  const totalW = slots.reduce((a, s) => a + s.weight, 0);
+  const remaining = 12 - totalW;
+
+  let html = '';
+  slots.forEach((slot, i) => {
+    const c = COLORS[slot.color];
+    const pct = (slot.weight / 12 * 100).toFixed(0);
+    html += `
+      <div class="slot-row">
+        <div class="slot-color" style="background:${c.hex}"></div>
+        <div class="slot-name">${c.name}</div>
+        <div class="slot-stepper">
+          <button class="m4-step" data-slot="${i}" data-dir="-1" ${slot.weight <= 0 ? 'disabled' : ''}>−</button>
+          <span>${slot.weight}</span>
+          <button class="m4-step" data-slot="${i}" data-dir="1" ${remaining <= 0 ? 'disabled' : ''}>+</button>
+        </div>
+        <div class="slot-bar"><div class="slot-bar-fill" style="width:${pct}%;background:${c.hex}"></div></div>
+        <div class="slot-count-label">${pct}%</div>
+      </div>`;
+  });
+  container.innerHTML = html;
+
+  container.querySelectorAll('.m4-step').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.slot);
+      const dir = parseInt(btn.dataset.dir);
+      const newW = m4Spinner.slots[idx].weight + dir;
+      const tw = m4Spinner.slots.reduce((a, s) => a + s.weight, 0);
+      if (newW < 0 || (dir > 0 && tw >= 12)) return;
+      m4Spinner.slots[idx].weight = newW;
+      renderM4Designer();
+      renderM4Spinner();
+    });
+  });
+
+  $('#m4Remaining').textContent = remaining > 0 ? `남은 칸: ${remaining}/12` : '12칸 모두 배정됨 ✓';
+  const addBtn = $('#m4AddSlot');
+  const rmBtn = $('#m4RemoveSlot');
+  if (addBtn) addBtn.disabled = slots.length >= 6;
+  if (rmBtn) rmBtn.disabled = slots.length <= 2;
+}
+
+function renderM4Spinner() {
+  const svg = $('#m4SpinnerSvg');
+  if (!svg) return;
+  const cx = 110, cy = 110, r = 100;
+  const slots = m4Spinner.slots;
+  const totalW = slots.reduce((a, s) => a + s.weight, 0);
+  if (totalW === 0) { svg.innerHTML = '<circle cx="110" cy="110" r="100" fill="var(--bg-sec)" stroke="var(--border)" stroke-width="2"/>'; return; }
+
+  let html = '';
+  let startAngle = -90;
+  slots.forEach((slot, i) => {
+    const angle = (slot.weight / totalW) * 360;
+    if (angle <= 0) return;
+    const endAngle = startAngle + angle;
+    const largeArc = angle > 180 ? 1 : 0;
+    const sx = cx + r * Math.cos(startAngle * Math.PI / 180);
+    const sy = cy + r * Math.sin(startAngle * Math.PI / 180);
+    const ex = cx + r * Math.cos(endAngle * Math.PI / 180);
+    const ey = cy + r * Math.sin(endAngle * Math.PI / 180);
+
+    if (angle >= 359.99) {
+      html += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${COLORS[slot.color].hex}" stroke="#fff" stroke-width="1.5"/>`;
+    } else {
+      html += `<path d="M ${cx} ${cy} L ${sx} ${sy} A ${r} ${r} 0 ${largeArc} 1 ${ex} ${ey} Z" fill="${COLORS[slot.color].hex}" stroke="#fff" stroke-width="1.5"/>`;
+    }
+
+    const midAngle = startAngle + angle / 2;
+    const lr = r * 0.6;
+    const lx = cx + lr * Math.cos(midAngle * Math.PI / 180);
+    const ly = cy + lr * Math.sin(midAngle * Math.PI / 180);
+    if (angle > 20) {
+      html += `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" fill="#fff" style="text-shadow:0 1px 2px rgba(0,0,0,0.5)">${COLORS[slot.color].name}</text>`;
+    }
+
+    startAngle = endAngle;
+  });
+  html += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--fg-muted)" stroke-width="2" opacity="0.3"/>`;
+  svg.innerHTML = html;
+}
+
+async function checkM4Design() {
+  const slots = m4Spinner.slots;
+  const totalW = slots.reduce((a, s) => a + s.weight, 0);
+  const fb = $('#m4Feedback');
+
+  if (totalW !== 12) {
+    fb.innerHTML = `<div class="feedback warn">12칸을 모두 배정해 주세요! (현재 ${totalW}/12)</div>`;
+    return;
+  }
+
+  // 노랑(color 0)의 가중치 합이 9인지 확인
+  const yellowWeight = slots.filter(s => s.color === 0).reduce((a, s) => a + s.weight, 0);
+  if (yellowWeight === 9) {
+    fb.innerHTML = `<div class="feedback success">🎉 정확해요! 노랑이 12칸 중 9칸 = 3/4 가능성!<br>100번 실험으로 확인해 볼까요?</div>`;
+    state.missionStars.m4 = 3;
+  } else {
+    const ratio = yellowWeight + '/12';
+    fb.innerHTML = `<div class="feedback warn">노랑이 ${yellowWeight}칸(${ratio})이에요. 3/4(=9/12)가 되어야 해요.<br>그래도 100번 실험해 볼게요!</div>`;
+    state.missionStars.m4 = yellowWeight === 9 ? 3 : 1;
+  }
+  state.missions.m4 = true;
+  updateMissionNav();
+  saveState();
+
+  // 100번 실험
+  await sleep(800);
+  const counts = new Array(slots.length).fill(0);
+  for (let i = 0; i < 100; i++) {
+    let r = Math.random() * totalW;
+    for (let j = 0; j < slots.length; j++) {
+      r -= slots[j].weight;
+      if (r <= 0) { counts[j]++; break; }
+    }
+  }
+
+  const testArea = $('#m4TestArea');
+  const yellowCount = slots.reduce((sum, s, i) => s.color === 0 ? sum + counts[i] : sum, 0);
+  testArea.innerHTML = `
+    <div class="feedback info" style="margin-top:12px;">
+      100번 실험 결과: 노랑 <strong>${yellowCount}번(${yellowCount}%)</strong><br>
+      이론 가능성 ${(yellowWeight/12*100).toFixed(1)}%에 ${Math.abs(yellowCount - yellowWeight/12*100) < 10 ? '가까워요' : '아직 차이가 있어요'}!
+    </div>
+    <div style="text-align:center;margin-top:12px;">
+      <button class="hero-btn" id="m4ShowResult">결과 보기 →</button>
+    </div>`;
+  $('#m4ShowResult').addEventListener('click', () => showResult());
+  $('#btnGoResult').style.display = '';
+}
+
+/* ══════════════════════════════════════
+   미션 네비게이션
+   ══════════════════════════════════════ */
+function updateMissionNav() {
+  $$('.mission-nav-btn').forEach(btn => {
+    const m = parseInt(btn.dataset.m);
+    const key = 'm' + m;
+    btn.classList.toggle('done', !!state.missions[key]);
+  });
+  // 결과 버튼 표시 조건: 모든 미션 완료
+  const allDone = state.missions.m1 && state.missions.m2 && state.missions.m3 && state.missions.m4;
+  const resultBtn = $('#btnGoResult');
+  if (resultBtn) resultBtn.style.display = allDone ? '' : 'none';
+}
+
+function goToMission(num) {
+  $$('.mission-panel').forEach(p => p.style.display = 'none');
+  $$('.mission-nav-btn').forEach(b => b.classList.remove('active'));
+  const panel = document.getElementById('mission' + num);
+  if (panel) panel.style.display = '';
+  const navBtn = document.querySelector(`.mission-nav-btn[data-m="${num}"]`);
+  if (navBtn) navBtn.classList.add('active');
+
+  // 미션 초기화
+  if (num === 1 && !state.missions.m1) renderMission1();
+  if (num === 2 && !state.missions.m2) renderMission2();
+  if (num === 3 && !state.missions.m3) renderMission3();
+  if (num === 4 && !state.missions.m4) renderMission4();
+}
+
+/* ══════════════════════════════════════
+   결과 화면
+   ══════════════════════════════════════ */
+function showResult() {
+  showScreen('screenResult');
+  const totalStars = Object.values(state.missionStars).reduce((a, b) => a + b, 0);
+  const maxStars = 12;
+  $('#resultStars').textContent = '⭐'.repeat(Math.min(totalStars, maxStars));
+
+  let summary = `<strong>미션 결과</strong><br>`;
+  summary += `① 말로 표현: ${'⭐'.repeat(state.missionStars.m1)}<br>`;
+  summary += `② 예측→실험: ${'⭐'.repeat(state.missionStars.m2)}<br>`;
+  summary += `③ 수렴 관찰: ${'⭐'.repeat(state.missionStars.m3)}<br>`;
+  summary += `④ 설계 미션: ${'⭐'.repeat(state.missionStars.m4)}<br><br>`;
+  summary += `<strong>배움 정리</strong><br>`;
+  summary += `가능성은 <strong>0(불가능)</strong>부터 <strong>1(확실)</strong> 사이의 수로 나타낼 수 있어요.<br>`;
+  summary += `<strong>실험을 많이 할수록 결과는 가능성에 가까워져요.</strong>`;
+  $('#resultSummary').innerHTML = summary;
+}
+
+/* ══════════════════════════════════════
+   초기화 & 이벤트 바인딩
+   ══════════════════════════════════════ */
+function init() {
+  loadState();
+  parseShareLink();
+  syncSpinnerCounts();
+
+  // 시작하기
+  $('#btnStart').addEventListener('click', () => {
+    showScreen('screenLab');
+    renderDevice();
+  });
+
+  // 장치 탭
+  $$('#deviceTabs .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (animating) return;
+      $$('#deviceTabs .tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.device = btn.dataset.device;
+      syncSpinnerCounts();
+      renderDevice();
+      setResultLabel('');
+    });
+  });
+
+  // 실험 버튼
+  $$('#labControls .ctrl-btn[data-count]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const count = parseInt(btn.dataset.count);
+      runExperiment(count);
+    });
+  });
+
+  // 건너뛰기
+  $('#btnSkip').addEventListener('click', () => { skipRequested = true; });
+
+  // 처음부터
+  $('#btnReset').addEventListener('click', () => {
+    if (animating) return;
+    const dev = state.device;
+    if (dev === 'coin') { state.counts.coin = [0, 0]; state.total.coin = 0; state.snapshots.coin = []; }
+    else if (dev === 'dice') { state.counts.dice = [0,0,0,0,0,0]; state.total.dice = 0; state.snapshots.dice = []; }
+    else { resetSpinnerCounts(); }
+    renderDevice();
+    setResultLabel('');
+    saveState();
+  });
+
+  // 회전판 설계
+  $('#btnAddSlot').addEventListener('click', addSlot);
+  $('#btnRemoveSlot').addEventListener('click', removeSlot);
+
+  // 미션 이동
+  $('#btnGoMission').addEventListener('click', () => {
+    showScreen('screenMission');
+    // 첫 미완료 미션으로
+    if (!state.missions.m1) goToMission(1);
+    else if (!state.missions.m2) goToMission(2);
+    else if (!state.missions.m3) goToMission(3);
+    else if (!state.missions.m4) goToMission(4);
+    else goToMission(1);
+    updateMissionNav();
+  });
+
+  // 미션 네비
+  $$('.mission-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      goToMission(parseInt(btn.dataset.m));
+    });
+  });
+
+  // 미션1 다음
+  $('#m1Next').addEventListener('click', () => goToMission(2));
+
+  // 뒤로
+  $('#btnBackLab').addEventListener('click', () => {
+    showScreen('screenLab');
+    renderDevice();
+  });
+
+  // 결과 보기
+  $('#btnGoResult').addEventListener('click', () => showResult());
+
+  // 다시 도전
+  $('#btnRetry').addEventListener('click', () => {
+    // 미션 리셋
+    state.missions = { m1: null, m2: null, m3: null, m4: null };
+    state.missionStars = { m1: 0, m2: 0, m3: 0, m4: 0 };
+    saveState();
+    showScreen('screenMission');
+    // 미션 패널 리셋
+    $$('.mission-panel').forEach(p => {
+      if (p.id === 'mission1') { p.style.display = ''; }
+      else { p.style.display = 'none'; }
+    });
+    renderMission1();
+    goToMission(1);
+    updateMissionNav();
+    $('#btnGoResult').style.display = 'none';
+  });
+
+  // 실험실로
+  $('#btnBackToLab').addEventListener('click', () => {
+    showScreen('screenLab');
+    renderDevice();
+  });
+
+  // 공유 기능 확장 (회전판 설계 공유)
+  const origShare = window.shareCurrentPage;
+  window.shareCurrentPage = function() {
+    // 회전판 설계가 있으면 포함
+    if (state.device === 'spinner' || true) {
+      const payload = JSON.stringify({ v: 1, spinner: state.spinner });
+      const url = location.origin + location.pathname + '#share=' + encodeURIComponent(payload);
+      if (navigator.share) {
+        navigator.share({ title: '가능성 실험실 — 내 회전판', url });
+      } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(url);
+        alert('공유 링크가 복사되었어요!');
+      } else if (origShare) {
+        origShare();
+      }
+    } else if (origShare) {
+      origShare();
+    }
+  };
+
+  // 초기 렌더
+  updateMissionNav();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+})();
+</script>
+</body>
+</html>
