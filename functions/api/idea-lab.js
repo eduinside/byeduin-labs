@@ -105,12 +105,15 @@ export async function onRequest(ctx) {
   // ── 공통 입력 정리 ──
   const item = cleanStr(body.item, ITEM_MAX);
   const item2 = cleanStr(body.item2, ITEM_MAX);
-  const magicLabel = MAGIC_LABEL[body.magic] || '';
+  // magic: 'combine' 단일 또는 'combine,resize' 처럼 콤마로 최대 2개 — 각 라벨을 '+'로 이어붙인다.
+  const magicKeys = String(body.magic || '').split(',').map((s) => s.trim()).filter((k) => MAGIC_LABEL[k]).slice(0, 2);
+  const magicLabel = magicKeys.map((k) => MAGIC_LABEL[k]).join(' + ');
   const answers = Array.isArray(body.answers) ? body.answers.slice(0, 3).map((a) => cleanStr(a, ANSWER_MAX)) : [];
 
   try {
     if (action === 'coach') {
       if (!item) return json({ error: '물건 이름이 필요합니다' }, 400);
+      if (!magicLabel) return json({ error: '발명 마법을 선택해주세요' }, 400);
       const step = Math.min(Math.max(parseInt(body.step, 10) || 1, 1), 3);
 
       const mod = await moderateAll(env, [item, item2, ...answers]);
@@ -150,6 +153,7 @@ export async function onRequest(ctx) {
 
     if (action === 'refine') {
       if (!item) return json({ error: '물건 이름이 필요합니다' }, 400);
+      if (!magicLabel) return json({ error: '발명 마법을 선택해주세요' }, 400);
       if (!answers.length) return json({ error: '답변이 필요합니다' }, 400);
 
       const mod = await moderateAll(env, [item, item2, ...answers]);
