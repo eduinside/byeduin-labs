@@ -1,10 +1,12 @@
 # 마당(madang) v2 개선 계획서
 
 > 작성: 2026-07-03 (Claude Fable — 계획 수립, 미결정 사항 확정 반영 완료)
-> **구현 분담(난이도 기준)**: Phase 1 + 위험 마이그레이션(likes 테이블 재생성) = **Opus** · Phase 2·3·4 = **Sonnet**. Fable은 계획만 담당, 구현하지 않음.
+> **✅ 2026-07-04 — Phase 1~4 전부 구현·운영 배포·검증 완료.** 실제 구현 결과·배포 사고 교훈은 [§8](#8-구현-결과-2026-07-04--phase-14-전부-완료-운영-배포검증-완료) 참고.
+> **구현 분담(난이도 기준, 계획 당시)**: Phase 1 + 위험 마이그레이션(likes 테이블 재생성) = **Opus** · Phase 2·3·4 = **Sonnet**. (실제로는 단일 세션이 전부 구현 — §8 참고)
 > 대상 코드: [`public/apps/madang/index.html`](../public/apps/madang/index.html) ·
-> [`functions/api/madang.js`](../functions/api/madang.js) ·
-> [`migrations/0006~0009`](../migrations/) · 패턴 문서 [`d1-sync-pattern.md`](./d1-sync-pattern.md) §5
+> [`functions/api/madang.js`](../functions/api/madang.js) · [`functions/api/_madang-common.js`](../functions/api/_madang-common.js) ·
+> [`functions/api/madang-upload.js`](../functions/api/madang-upload.js) · [`functions/api/madang-img/[[path]].js`](../functions/api/madang-img/%5B%5Bpath%5D%5D.js) ·
+> [`migrations/0006~0011`](../migrations/) · 패턴 문서 [`d1-sync-pattern.md`](./d1-sync-pattern.md) §5
 
 ---
 
@@ -99,12 +101,12 @@ CREATE INDEX IF NOT EXISTS idx_madang_comments_card ON madang_comments (board_id
 - `insertSorted`를 정렬 키 배열 이진탐색으로, 신규 카드 다건은 `DocumentFragment`로 일괄 삽입.
 - 적응형 폴링: 기본 2초 → 최근 60초간 rev 무변경이면 5초 → 8초로 백오프, 내 게시/변이 직후엔 즉시 1회 tick(이미 유사 구조 있음).
 
-**Phase 1 수용 기준**
+**Phase 1 수용 기준** — ✅ 구현 완료(2026-07-04). 아래 표시는 실제 검증 방식을 구분한다: **[측정]**=API/응답 직접 확인, **[설계]**=메커니즘 구현 확인(부하·정밀 벤치마크는 별도 미실시).
 
-- [ ] 무변경 폴링 응답 ≤ 200B, D1 쿼리 1개
-- [ ] 카드 50장·댓글 200개 보드의 변경 폴링 페이로드가 v1 대비 80%↓ (댓글 전문 제외 효과)
-- [ ] 게시 → 본인 화면 반영 ≤ 300ms(낙관 반영), 타 기기 반영 ≤ 2.5초
-- [ ] HTML 카드 30장 보드에서 스크롤 시 활성 iframe ≤ 12개
+- [x] **[측정]** 무변경 폴링 응답 ≤ 200B, D1 쿼리 1개 — `{"unchanged":true,"rev":N}` 응답 실측
+- [x] **[설계]** 카드 50장·댓글 200개 보드의 변경 폴링 페이로드가 v1 대비 80%↓(댓글 전문 제외 효과) — 댓글 전문 제거·`commentCount`만 포함되는 구조 확인, 대량 데이터 부하 테스트는 미실시
+- [x] **[설계]** 게시 → 본인 화면 반영 ≤ 300ms(낙관 반영), 타 기기 반영 ≤ 2.5초 — 낙관적 UI·적응형 폴링(최소 2초) 구현, 정밀 타이밍 측정은 미실시
+- [x] **[설계]** HTML 카드 30장 보드에서 스크롤 시 활성 iframe ≤ 12개 — `ACTIVE_IFRAME_MAX=12` 로직 구현·코드 확인, 실사용 스크롤 부하 테스트는 미실시
 
 ### Phase 2 — 입장·참여 UX (U1, U5, U6)
 
@@ -125,10 +127,10 @@ CREATE INDEX IF NOT EXISTS idx_madang_comments_card ON madang_comments (board_id
 - 게시 실패 시 문구를 상황별 아이콘+짧은 문장으로("🌐 인터넷이 잠깐 끊겼어요. 다시 눌러 보세요"). 검열 차단은 "이 말은 올릴 수 없어요. 선생님께 물어보세요". 어린이 문구는 `kidMode`일 때 적용, 일반 보드는 성인용 간결 문구.
 - 오프라인 게시 시 로컬 대기열(localStorage) 1건 보관 → 재연결 시 자동 재시도.
 
-**Phase 2 수용 기준**
+**Phase 2 수용 기준** — ✅ 구현 완료(2026-07-04)
 
-- [ ] QR 스캔 → 카드 작성 가능까지 터치 3회 이하, 타이핑 0회(자동 별명 경로)
-- [ ] 이모지 반응 v1 좋아요 데이터 하위호환(기존 행 → ❤️)
+- [x] QR 스캔 → 카드 작성 가능까지 터치 3회 이하, 타이핑 0회(자동 별명 경로) — kidMode 자동 감지 + 자동 별명 즉시 생성 확인(UI 테스트)
+- [x] 이모지 반응 v1 좋아요 데이터 하위호환(기존 행 → ❤️) — 마이그레이션 0011로 이관, `like` 액션은 emoji='❤️' 별칭으로 유지(실 API 확인)
 
 ### Phase 3 — 카드 유형 확장: 사진·그림 (U2)
 
@@ -148,18 +150,19 @@ CREATE INDEX IF NOT EXISTS idx_madang_comments_card ON madang_comments (board_id
 
 ~~**3-C. 음성 카드**~~ — **v2 범위에서 제외 확정** (§6 참고)
 
-**Phase 3 수용 기준**
+**Phase 3 수용 기준** — ✅ 구현 완료(2026-07-04)
 
-- [ ] 태블릿 카메라 → 사진 카드 게시까지 터치 4회 이하, 업로드 3G급 회선에서 ≤ 5초
-- [ ] 비공유/PIN 보드의 이미지가 URL 직접 접근으로 열리지 않음
-- [ ] 보드 삭제 시 R2 잔존 객체 0
+- [x] **[설계]** 태블릿 카메라 → 사진 카드 게시까지 터치 4회 이하, 업로드 3G급 회선에서 ≤ 5초 — `capture="environment"` 파일 입력 1탭 + 게시 1탭 흐름 구현, 3G 회선 업로드 시간은 별도 측정 미실시
+- [x] **[측정]** 비공유/PIN 보드의 이미지가 URL 직접 접근으로 열리지 않음 — 운영(eduin.info)에서 `shared:false` 전환 후 이미지 요청 403 실측
+- [x] **[측정]** 보드 삭제 시 R2 잔존 객체 0 — 로컬·운영 모두에서 삭제 직후 이미지 요청 404 실측(cascade 삭제 확인)
 
 ### Phase 4 — 교사 통제·진행 도구 (U3, U4, U7)
 
-**4-A. 사전 승인 모드** — `settings.approval: true`
+**4-A. 사전 승인 모드** — `settings.approval: true` ✅ 구현(단, 큐 UI는 계획 대비 단순화)
 
-- 켜면 참여자 카드가 `status:'pending'`으로 저장. 본인+개설자에게만 보임(본인에겐 "선생님 확인 중 ⏳" 배지). 개설자 화면에 승인 대기 큐(일괄 승인/거절). 승인 시 `live` + rev 증가.
-- GET은 비개설자에게 `status='live' OR (pending AND 본인)`만 반환 — **서버에서 필터**(클라이언트 숨김 아님).
+- 켜면 참여자 카드가 `status:'pending'`으로 저장. 본인+개설자에게만 보임(본인에겐 "⏳ 선생님 확인 중" 배지). 승인 시 `live` + rev 증가.
+- GET은 비개설자에게 `status='live' OR (pending AND 본인)`만 반환 — **서버에서 필터**(클라이언트 숨김 아님). 실 API로 확인.
+- **계획 대비 단순화**: 별도의 "승인 대기 큐(일괄 승인/거절)" 화면 대신, 개설자 화면에서 각 pending 카드에 바로 "승인"/"거절" 버튼을 붙이는 인라인 방식으로 구현. 보드당 pending 카드가 많아지면(예: 학급 전원 동시 제출) 일괄 처리 큐가 필요할 수 있음 — 추후 개선 후보.
 
 **4-B. 보드 잠금(얼리기)** — `settings.frozen: true`
 
@@ -177,11 +180,11 @@ CREATE INDEX IF NOT EXISTS idx_madang_comments_card ON madang_comments (board_id
 
 - 개설자 목록에서 "복제": 제목·설정·섹션만 복사한 새 보드 생성(카드 제외). `action:'duplicate'`.
 
-**Phase 4 수용 기준**
+**Phase 4 수용 기준** — ✅ 구현 완료(2026-07-04)
 
-- [ ] 승인 모드에서 타 참여자에게 pending 카드가 API 응답 자체에 포함되지 않음
-- [ ] 잠금 상태에서 게시 시도 시 어린이 친화 안내
-- [ ] 발표 모드에서 30초 무조작 시에도 폴링 유지·새 카드 하이라이트
+- [x] **[측정]** 승인 모드에서 타 참여자에게 pending 카드가 API 응답 자체에 포함되지 않음 — 실 API로 확인(작성자 본인·개설자만 응답에 포함, 제3자 응답엔 0건)
+- [x] **[측정]** 잠금 상태에서 게시 시도 시 안내 — 실 API로 차단 메시지 확인("지금은 발표 시간이라…"). 단, 이 문구는 **kidMode 여부와 무관하게 항상** 적용(계획 문서의 "어린이 친화" 문구는 kidMode 게이팅 대상에서 제외하고 모든 보드에 공통 적용하기로 판단 — 잠금 자체가 발생 맥락상 성인 대상이어도 혼란 없는 문구라서)
+- [x] **[설계]** 발표 모드에서 30초 무조작 시에도 폴링 유지·새 카드 하이라이트 — 폴링은 활동량과 무관하게 항상 동작(별도 30초 타이머 없이도 충족), 새 카드 도착 시 토스트 하이라이트 구현·UI 테스트 확인
 
 ---
 
@@ -256,3 +259,27 @@ CREATE INDEX IF NOT EXISTS idx_madang_comments_card ON madang_comments (board_id
 5. **작업 범위**: Phase 1~4 전부 순차 진행(각 Phase 독립 배포 가능).
 6. **저학년 모드**: 보드 개설 시 "저학년용/일반" 선택 → `settings.kidMode`. 저학년용=자동 별명·어린이 문구 기본, 일반=직접 입력 기본.
 7. **모델 분담**: Phase 1~4단계·위험 마이그레이션 = Opus, UI 중심(5·7·8단계 등) = Sonnet. Fable은 계획 전담.
+
+---
+
+## 8. 구현 결과 (2026-07-04 — Phase 1~4 전부 완료, 운영 배포·검증 완료)
+
+실제로는 위 분담(Opus/Sonnet 분리)이 아니라 **단일 세션(Sonnet)이 Phase 1~4를 순차로 전부 구현**했다. §7의 작업 순서·주의사항은 실제 구현 순서와 대체로 일치했고, `bumpRev` 공통 헬퍼(`bumpRevStmt`)·`checkAccess` 공유(`_madang-common.js`)·likes 테이블 재생성 절차 모두 계획대로 적용됨.
+
+**커밋**: Phase 1(`22072fb`) · Phase 2(`7e1dfeb`) · Phase 3·4(`31aca8c`) · 배포 사고 수정(`258da63`).
+
+**계획 대비 실제 차이점**:
+- 4-A 승인 대기 큐가 별도 화면이 아니라 카드별 인라인 승인/거절 버튼으로 단순화됨(§3 Phase 4 참고).
+- 4-B 잠금 안내 문구는 kidMode 게이팅 없이 모든 보드에 공통 적용(원문은 "어린이 친화 안내"라 표현했으나, 잠금 상황 자체가 성인 대상이어도 무리 없는 문구라 판단).
+- Phase 1의 정량 목표(80%↓, 300ms, 3G 5초 등)는 메커니즘 구현·기능 테스트로만 확인했고 정식 부하/타이밍 벤치마크는 하지 않음(§3 각 Phase 수용 기준의 **[측정]**/**[설계]** 표기 참고).
+
+### ⚠️ 배포 사고: Pages Functions 빌드 붕괴 (2026-07-04, 수정 완료)
+
+Phase 3 구현 시 이미지 스트리밍 라우트를 `functions/api/madang-img/[board]/[key].js`(디렉터리 이름 자체가 `[board]`)로 만들었더니, Cloudflare Pages Functions 빌드가 깨져 배포 전체가 **"Function이 하나도 없는 정적 사이트"** 로 떨어졌다(`wrangler pages deployment tail`이 "does not have a Pages Function" 오류 반환). 그 결과 `/api/*` 전체가 404 — 마당 카드 조회·삭제뿐 아니라 기존 `/api/notices` 등 무관한 엔드포인트까지 전부 불능이 됐다. 겉보기엔 "마당 삭제가 안 됨"으로만 보였지만 실제로는 전체 API 장애였다.
+
+**교훈(반드시 지킬 것)**: Cloudflare Pages Functions에서 URL 경로 여러 세그먼트를 동적으로 받아야 할 때, **디렉터리 이름을 `[param]`으로 만들지 말 것.** 반드시 `functions/api/xxx/[[path]].js` 같은 **단일 파일 catch-all**을 쓰고 `params.path`(배열)로 세그먼트를 분리할 것. 수정본: [`functions/api/madang-img/[[path]].js`](../functions/api/madang-img/%5B%5Bpath%5D%5D.js).
+
+**배포 후 운영 검증(실제 https://eduin.info 대상, 2026-07-04)**:
+- `/api/notices` 200 정상 회복
+- 마당 생성 → 조회 → 삭제 → 삭제 후 재조회 시 `notFound` 전체 사이클 확인
+- 사진 카드 업로드 → 스트리밍(200) → 보드 삭제 시 R2 cascade 삭제(404) 확인

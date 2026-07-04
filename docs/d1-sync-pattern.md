@@ -215,8 +215,13 @@ await lib.remove(code, id);      // 항목 삭제
 - **board_id 파티션** + 2테이블(`madang_boards` · `madang_cards`, [`migrations/0006_madang.sql`](../migrations/0006_madang.sql)).
 - **신원 = 코드 HMAC**: 통합 코드(vives:code)를 그대로 저장하지 않고 `HMAC(MADANG_PEPPER, …)` 해시로
   개설자(owner_token)·작성자(author_token)를 판정 → D1이 유출돼도 코드가 새지 않음. 닉네임은 표시용 자유입력.
-- **실시간 = 폴링**(2.8초, 탭 숨김 시 정지) — DO 없이 D1로. **검열 = OpenAI Moderation**
-  (omni-moderation-latest, 키 없음·오류 시 가용성 우선 통과). **HTML = sandbox iframe** 격리 렌더.
+- **실시간 = `rev` 조건부 폴링**(적응형 2~8초, 탭 숨김 시 정지) — DO 없이 D1로. 요청 `rev`가 서버와
+  같으면 무변경 초소형 응답. **검열 = OpenAI Moderation**(omni-moderation-latest, 로컬 금칙어 프리필터
+  선행, 2.5초 타임아웃 초과 시 통과 + 사후검열). **HTML = sandbox iframe** 격리 렌더(지연 로딩).
 - 통합 코드는 마당에서 "신원"으로만 재사용하고, 마당 상태 자체는 doc/set 동기화 대상이 아니다.
-- 프로덕션 선행: `migrations/0006_madang.sql` `--remote` 적용 + Pages 시크릿 `OPENAI_API_KEY`(검열)·
-  `MADANG_PEPPER`(미설정 시 기본 pepper로 동작하나 보안상 등록 권장).
+- **v2(2026-07)**: 이모지 반응·저학년 자동 별명·사진/그림 카드(R2 `byeduin-media`)·교사 통제(사전승인·
+  잠금·이름숨김)·발표모드·마당 복제 추가. 공용 헬퍼는 [`functions/api/_madang-common.js`](../functions/api/_madang-common.js)
+  로 분리해 `madang.js`·`madang-upload.js`·`madang-img/[[path]].js`가 공유. 상세: [`docs/madang-v2-plan.md`](madang-v2-plan.md).
+- 프로덕션 선행: `migrations/0006~0011` `--remote` 적용(`wrangler d1 migrations apply`가 아니라 파일별
+  `d1 execute --file=`로 — 이 DB는 마이그레이션 북키핑 테이블을 쓰지 않는다) + R2 버킷 `byeduin-media` 생성 +
+  Pages 시크릿 `OPENAI_API_KEY`(검열)·`MADANG_PEPPER`(미설정 시 기본 pepper로 동작하나 보안상 등록 권장).

@@ -79,7 +79,7 @@ docs/                  ← 개발 문서
 |---|---|---|
 | `book-share` | 도서 공유 | ISBN 도서 정보 조회·파일 저장·공유 |
 | `bubble-chat` | 버블챗 | P2P 실시간 채팅 |
-| `madang` | 마당 | 패들렛형 실시간 응답 보드 — QR 초대·코드 신원·자동검열·공유/공유중단·자동종료·CSV/PDF |
+| `madang` | 마당 | 패들렛형 실시간 응답 보드 — rev 조건부 폴링, 텍스트·HTML·사진·그림(R2) 카드, 이모지 반응, 저학년 모드, 사전승인·잠금·이름숨김·발표모드·복제, QR 초대·코드 신원·자동검열 |
 | `edulink` | 에듀링크 | 교육용 단축주소·설문·체험 지도 (모달·외부 링크) |
 
 ### 크리에이티브 (`util-creative`)
@@ -146,9 +146,13 @@ docs/                  ← 개발 문서
 | `GET·PUT·DELETE /api/readtree` | Read Tree 읽음 기록 동기화 (D1, set 모드) |
 | `GET·PUT·DELETE /api/flash-deck`·`/api/blocks-universe`·`/api/timer`·`/api/search-sync`·`/api/chalkboard`·`/api/signage` | 앱 상태 코드 동기화 (D1, doc 모드) |
 | `GET·PUT·DELETE /api/math-sheet`·`/api/md-editor` | 코드별 다중 문서 라이브러리 (D1, set 모드) |
-| `GET·POST /api/madang` | 마당 — 실시간 응답 보드 (D1, `board_id` 파티션·HMAC 소유권·OpenAI 검열) |
+| `GET·POST /api/madang` | 마당 — 실시간 응답 보드 (D1, `board_id` 파티션·HMAC 소유권·OpenAI 검열, rev 조건부 폴링) |
+| `POST /api/madang-upload` | 마당 사진·그림 카드 업로드 (R2 `byeduin-media`, 400KB/보드당 60MB 상한) |
+| `GET /api/madang-img/[[path]]` | 마당 사진·그림 카드 스트리밍 (GET 폴링과 동일한 접근제어 재사용) |
 
-> 위 코드 동기화 엔드포인트(`/api/readtree`~`/api/md-editor`)는 `functions/api/_sync.js`(createDocSync/createSetSync)의 한 줄 래퍼다. `/api/madang`은 패턴이 달라(여러 사용자 카드가 한 보드에 모임 + 소유권·접근제어) 전용 모듈 [`functions/api/madang.js`](../functions/api/madang.js)로 구현했다.
+> 위 코드 동기화 엔드포인트(`/api/readtree`~`/api/md-editor`)는 `functions/api/_sync.js`(createDocSync/createSetSync)의 한 줄 래퍼다. `/api/madang`은 패턴이 달라(여러 사용자 카드가 한 보드에 모임 + 소유권·접근제어) 전용 모듈 [`functions/api/madang.js`](../functions/api/madang.js)로 구현했고, 공용 헬퍼는 [`functions/api/_madang-common.js`](../functions/api/_madang-common.js)로 분리해 업로드·이미지 엔드포인트와 공유한다.
+>
+> **주의(2026-07-04)**: `madang-img`는 폴더 이름 자체를 `[board]`처럼 대괄호로 만들면 Cloudflare Pages Functions 빌드가 깨져 배포 전체가 정적 사이트로 떨어진 적이 있다(`/api/*` 전체 404). 다중 세그먼트 동적 라우트는 반드시 `[[path]].js` 형태의 **단일 파일 catch-all**로 작성할 것 — 디렉터리 자체를 `[param]`으로 만들지 말 것.
 
 ---
 
@@ -166,6 +170,16 @@ docs/                  ← 개발 문서
 ---
 
 ## 주요 변경 이력
+
+### 2026-07 — 마당 v2: 성능 재설계 + 이모지 반응·저학년 모드 + 사진/그림 카드 + 교사 통제·발표모드
+계획서: [`docs/madang-v2-plan.md`](madang-v2-plan.md). Phase 1~4 전부 구현·운영 배포 완료.
+
+- **Phase 1(성능)** — `rev` 조건부 폴링(무변경 시 초소형 응답, 마이그레이션 0010) + GET `db.batch()` 통합 + 댓글 전문 분리(`?comments=CARD_ID`). 검열 AbortController 2.5초 타임아웃 + 로컬 금칙어 프리필터 + `waitUntil` 사후검열(hidden 처리). 클라이언트: 적응형 폴링 백오프, HTML 카드 iframe IntersectionObserver 지연로딩(완전 로드 전 숨김), `insertSorted` 이진탐색화.
+- **Phase 2(참여 UX)** — 이모지 반응(`madang_likes.emoji`, 마이그레이션 0011, 기존 좋아요는 ❤️로 이관) + 기존 `like` 하위호환. 마당 개설 시 대상(일반/저학년용) 선택 → 저학년은 입장 시 자동 별명(형용사+동물+숫자) 기본. 초대 모달에 전체화면 QR(프로젝터용) + 링크 PIN 포함 옵션(기본 미포함). 저학년 모드 어린이 친화 오류 문구 + 오프라인 게시 로컬 대기열(1건, 재연결 자동 재시도).
+- **Phase 3(사진·그림 카드)** — R2 공용 버킷 `byeduin-media`(바인딩 `MEDIA_R2`) 신설. `POST /api/madang-upload`(클라이언트 canvas 리사이즈 1280px·WebP·400KB 상한, 보드당 60MB 총량 상한) + `GET /api/madang-img/[[path]].js`(GET 폴링과 동일 접근제어 재사용, catch-all 라우트). 카드·보드 삭제 시 R2 cascade 삭제(`ctx.waitUntil`). 카드 작성 모달에 📷 사진(카메라/파일)·🎨 그림(6색 미니 캔버스, 되돌리기 1단계) 탭.
+- **Phase 4(교사 통제)** — 사전 승인모드(`settings.approval`, 참여자 카드는 pending으로 저장돼 본인+개설자만 보임 — 서버가 필터링), 잠금(`settings.frozen`, post/editCard/addComment 차단), 이름숨김(`settings.hideNames`, 비개설자 응답에서 익명 치환), 발표 모드(클라이언트, 툴바 숨김+카드 슬라이드쇼+새 카드 하이라이트, `#CODE?present=1` 직접 진입), 마당 복제(`action:'duplicate'`, 카드 제외 설정만 복사).
+- 공용 헬퍼 [`functions/api/_madang-common.js`](../functions/api/_madang-common.js) 분리(접근제어·HMAC 토큰 — madang.js/madang-upload.js/madang-img가 공유).
+- **배포 사고 및 교정(2026-07-04)**: `functions/api/madang-img/[board]/[key].js`처럼 디렉터리 이름을 `[board]`로 만들었더니 Cloudflare Pages Functions 빌드가 깨져 배포 전체가 Function 없는 정적 사이트로 떨어짐(`/api/*` 전체 404, 기존 `/api/notices`까지 포함). `[[path]].js` 단일 파일 catch-all로 교체해 해결 — 위 "주요 API 엔드포인트" 절 참고.
 
 ### 2026-06 — 마당 분류 레이아웃·참여자·툴바 개편
 - **분류 칼럼 레이아웃**(자유 벽돌 / 분류 칼럼) — 카드를 섹션 칼럼으로 나눔. 마이그레이션 0008(`madang_cards.section`). 영역명은 헤더(박스 없음)·미분류 칼럼 없음. **카드 정렬**(최신순/오래된순/무작위) 설정.
