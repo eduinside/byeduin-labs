@@ -8,75 +8,85 @@
 
 ---
 
-## 앱 목록 (33개)
+## 앱 목록 (43개)
 
-### 📚 교육 (16)
+### 📚 교육 (26)
 
 #### 🌐 시뮬레이션
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **달의 위상 3D (v2)** | `/apps/moon-phase-v2/` | 달의 위상 3D 시뮬레이터 (일식·월식 포함) |
-| **화산 탐험대** | `/apps/volcano/` | 3D 위성지도로 세계 화산 11개 탐험 · 초등 과학 4학년 연계 |
-| **Step Squad** | `/apps/blocks-universe/step-squad.html` | 계단수 개념 블록 시각화 + 퀴즈 |
-| **Break & Make** | `/apps/blocks-universe/break-make.html` | 구슬로 수 가르기·모으기 연습 + 도전 모드·도감 |
-| **Club Badge** | `/apps/blocks-universe/clubs.html` | 1~100 수의 넘버블록스 클럽 탐색 + 퀴즈 |
+| **Break & Make** | `/apps/blocks-universe/break-make.html` | 구슬을 톡톡 옮기며 수 가르기·모으기를 익혀요 |
+| **Step Squad** | `/apps/blocks-universe/step-squad.html` | 계단수 개념을 블록으로 시각화하고 퀴즈로 확인 |
+| **Club Badge** | `/apps/blocks-universe/clubs.html` | 1~100 수가 어떤 넘버블록스 클럽에 속하는지 탐색하고 퀴즈로 확인 |
+| **분수 막대** | `/apps/fraction-bar/` | 막대와 피자를 자르고 칠하며 분수 크기 비교 |
+| **도형의 이동** | `/apps/shape-move/` | 밀기·뒤집기·돌리기로 도형을 움직여 보세요 |
+| **가능성 실험실** | `/apps/chance-lab/` | 동전·주사위·회전판 1000번 실험으로 가능성 체험 |
+| **달의 위상 3D** | `/apps/moon-phase-v2/` | 달을 직접 돌려 위상을 이해하고 일식·월식까지 |
+| **Moon Phase** | `/apps/moon-phase/` | 오늘의 달 위상 시뮬레이터 |
+| **태양계 여행** | `/apps/solar-system/` | 여덟 행성 공전·크기·거리 비교와 행성 도감 |
+| **화산 탐험대** | `/apps/volcano/` | 3D 위성지도로 세계 화산 11개 탐험 |
+| **전기회로 공작소** | `/apps/circuit-lab/` | 전지·전구·스위치를 이어 불을 켜고 직렬·병렬 밝기 비교 |
+| **생태계 탐험대** | `/apps/eco-web/` | 먹이그물 잇기·피라미드·평형 시나리오 종합 실험 |
+| **식품구성자전거** | `/apps/food-bike/` | 음식을 담아 바퀴를 채우는 균형 식단 게임 |
+| **세계 탐험대** | `/apps/world-landmarks/` | 3D 위성지도로 세계 랜드마크 11곳 탐험하는 여권 수집 여행 |
+| **발명 아이디어 공작소** | `/apps/idea-lab/` | 발명 마법 4가지와 AI 코치로 나만의 발명품 구상하기 |
 
 #### 📖 학습지원
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **Blocks Universe** | `/apps/blocks-universe/` | 넘버블록스·알파블록스·컬러블록스·원더블록스 351편 에피소드 탐색 · AI 검색 · 순차재생 |
-| **Flash Deck** | `/apps/flash-deck/` | 플래시카드 학습 앱 |
-| **Chalkboard** | `/apps/chalkboard/` | 칠판/화이트보드 메모 (코드 동기화) |
-| **연산연습지** | `/apps/math-sheet/` | 사칙연산 세로셈 학습지 생성·A4 인쇄·링크/QR 공유·세트 저장(코드 동기화) |
-| **Read Tree** | `/apps/read-tree/` | ORT(옥스포드 리딩 트리) 읽기 진도를 코드 하나로 기록 (로그인·개인정보 없음) |
+| **Blocks Universe** | `/apps/blocks-universe/` | 블록스 4개 시리즈 351편 에피소드 탐색 · AI 검색 · 순차재생 |
+| **Flash Deck** | `/apps/flash-deck/` | 플래시카드 덱 제작 및 학습 |
+| **Chalkboard** | `/apps/chalkboard/` | 칠판 위에 텍스트와 선으로 생각을 자유롭게 펼쳐보세요 (코드 동기화) |
+| **Read Tree** | `/apps/read-tree/` | ORT(옥스포드 리딩 트리) 읽기 진도를 코드 하나로 기록·관리 (로그인·개인정보 없음) |
+| **연산연습지** | `/apps/math-sheet/` | 사칙연산 세로셈 학습지 생성·PDF 출력·링크/QR 공유 (코드 동기화) |
 
 #### 💼 업무경감
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **채점표** | `/apps/scoring-table/` | 대회·발표 채점 양식 배포, 공동 채점, 결과 수합 (링크 공유 + xlsx) |
+| **채점표** | `/apps/scoring-table/` | 대회·발표 채점 양식 배포, 공동 채점, 결과 수합 |
 | **파일 최적화 도구** | `/apps/file-tools/` | 스캔 이미지 및 대용량 PPTX 이미지 최적화 |
-| **Smart Timer** | `/apps/timer/` | 반복 알람 타이머 · 다음 알람 표시 · 알람 켜기/끄기 |
-| **수당 계산기** | `/apps/allowance-calculator/` | 세전·세후 수당 및 기타소득 세금(8.8%) 자동 판별 계산기 |
-| **Login Helper** | `https://blog.eduin.info/450` | 에듀나비 교원업무지원 자동 로그인 프로그램 (모달) |
-| **에듀서치** | `/apps/search/` | 교육문서 AI 검색 (Gemini RAG) |
+| **Smart Timer** | `/apps/timer/` | 반복 알람 타이머 · 다음 알람 표시 · 켜기/끄기 |
+| **기타소득 세금 계산기** | `/apps/allowance-calculator/` | 세전·세후 수당 및 기타소득 세금(8.8%) 자동 판별 계산기 |
+| **Login Helper** | `https://blog.eduin.info/450` | 에듀나비 교원업무지원 로그인 도우미 (모달) |
+| **에듀서치** | `/apps/search/` | 교육문서를 AI로 검색하고 근거 출처를 함께 확인 |
 
 ### 🛠 유틸리티 (17)
 
 #### 🔧 생활편의
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **MD Editor** | `/apps/md-editor/` | 마크다운 편집기 (JSON·CSV·XML·HTML 불러오기, **HWP·PDF·DOCX·PPTX·XLSX 변환** via Corepin API, 파일 공유) |
-| **QR Master** | `/apps/qr/` | QR 코드 생성, 카메라/이미지 스캔, 단축주소 |
-| **AI 맞춤법 검사** | `/apps/spell-checker/` | AI가 한국어 맞춤법·문법을 교정하고 이유를 설명합니다. GAS·외부 앱에서 `/api/spell-check` API로도 호출 가능. |
+| **MD Editor** | `/apps/md-editor/` | 마크다운 파일 열기·편집·미리보기·공유 |
+| **QR Master** | `/apps/qr/` | 생성부터 스캔, 단축주소까지 한 번에 |
+| **AI 맞춤법 검사** | `/apps/spell-checker/` | AI가 한국어 맞춤법·문법을 교정하고 이유를 설명합니다. GAS·외부 앱에서 API로도 호출 가능. |
 
 #### 🧩 크롬확장
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **Content ID Viewer** | `/downloads/content-id-viewer-for-edunavi.zip` | 에듀나비 콘텐츠 ID 조회 (Chrome 확장) |
-| **MP4 Finder** | `/downloads/mp4-finder.zip` | 웹페이지 내 MP4 링크 자동 감지 및 클립보드 복사 (Chrome 확장) |
+| **Content ID Viewer** | `/downloads/content-id-viewer-for-edunavi.zip` | 에듀나비 콘텐츠 ID 조회 크롬 확장 (모달) |
+| **MP4 Finder** | `/downloads/mp4-finder.zip` | 웹페이지에 숨겨진 MP4 링크를 발견하여 알려줍니다 (모달) |
 
 #### 💬 소셜
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **도서 정보 나눔** | `/apps/book-share/` | ISBN으로 도서 정보 조회 및 공유 |
-| **Bubble Chat** | `/apps/bubble-chat/` | P2P 실시간 채팅 |
+| **도서 정보 나눔** | `/apps/book-share/` | ISBN으로 도서 정보 자동 조회, 파일 저장 및 링크 공유 |
+| **Bubble Chat** | `/apps/bubble-chat/` | P2P 기반 실시간 채팅, 코드 공유로 쉽게 접속 |
+| **에듀링크** | `https://dgedu.link/` | 교육용 단축주소·설문조사·체험 지도 서비스 (모달) |
 | **마당** | `/apps/madang/` | QR로 초대하면 응답이 실시간 카드로 쌓이는 패들렛형 보드 — 텍스트·HTML·사진·그림 카드, 이모지 반응, 저학년 모드(자동 별명), 교사 통제(사전승인·잠금·이름숨김·발표모드), 코드=신원·OpenAI 자동 검열 |
-| **에듀링크** | `https://dgedu.link/` | 교육용 단축주소·설문조사·체험 지도 서비스 |
 
 #### 🎨 크리에이티브
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **YT Thumbnail** | `/apps/yt-thumb/` | 유튜브 썸네일 추출 및 아카이빙 |
-| **Grid Maker** | `/apps/grid-maker/` | 이미지 그리드 분할 |
-| **Signage Maker** | `/apps/signage-maker/` | 학교 사이니지용 AI 세로 이미지 생성기 (Gemini) |
-| **패들렛 일괄 업로더** | `/apps/padlet-bulk-uploader/` | 텍스트를 붙여넣으면 내 패들렛 보드에 게시물을 한 번에 업로드 (Padlet API) |
+| **YT Thumbnail** | `/apps/yt-thumb/` | 유튜브 썸네일 추출기 |
+| **Grid Maker** | `/apps/grid-maker/` | 이미지를 그리드로 분할 저장 |
+| **Signage Maker** | `/apps/signage-maker/` | 사이니지용 세로 이미지 AI 생성기 (Gemini) |
+| **패들렛 일괄 업로더** | `/apps/padlet-bulk-uploader/` | 텍스트를 붙여넣으면 내 패들렛 보드에 항목을 한 번에 업로드 (Padlet API) |
 
 #### 📐 노션도구
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **임베드 생성기** | `/apps/embed/` | 외부 URL을 반응형 iframe으로 감싸 노션 임베드 블록에 삽입 (base64url 해시, 서버 상태 없음) |
-| **Notion Image DL** | `/apps/notion-image-downloader/` | Notion DB 이미지 일괄 다운로드 |
-| **Notion Styler** | `/apps/notion-styler/` | LaTeX 수식 스타일링 및 HTML 생성 |
+| **임베드 생성기** | `/apps/embed/` | 외부 URL을 반응형 iframe으로 감싸 노션 임베드 블록에 삽입 |
+| **Notion Image DL** | `/apps/notion-image-downloader/` | 노션 DB 이미지 일괄 다운로드 |
+| **Notion Styler** | `/apps/notion-styler/` | 노션 수식 LaTeX 스타일러 |
 | **빠른 버튼 만들기** | `/apps/shortcut/` | 복사한 웹 링크를 앱을 바로 여는 딥링크 버튼으로 변환·저장 (모바일 런처) |
 
 > 홈 화면에는 외부 연동·확장 항목(에듀링크, Content ID Viewer, MP4 Finder, Login Helper)도 모달로 노출됩니다.

@@ -9,7 +9,7 @@
 
 ```
 public/
-├── apps/              ← 앱 페이지 (22개 폴더)
+├── apps/              ← 앱 페이지 (36개 폴더)
 │   ├── blocks-universe/
 │   ├── timer/
 │   └── …
@@ -34,14 +34,24 @@ docs/                  ← 개발 문서
 
 ## 앱 목록
 
-### 교육 · 시뮬레이션 (`edu-sim`)
+### 교육 · 시뮬레이션 (`edu-sim`, 15종 — 주제순: 수학 → 천체·우주 → 지구과학 → 전기 → 생태 → 실과 → 세계 → 창의·AI)
 | ID | 이름 | 설명 |
 |---|---|---|
-| `moon-phase-v2` | 달의 위상 3D | 달의 위상 3D 입체 시뮬레이터 |
-| `volcano` | 화산 지도 | 3D 위성지도로 세계 화산 11개 탐험 |
-| `step-squad` | 계단수 | 계단수 개념을 블록으로 시각화 + 퀴즈 |
 | `break-make` | 가르기 모으기 | 구슬 조작으로 수 가르기·모으기 + 도전 모드·도감 |
+| `step-squad` | 계단수 | 계단수 개념을 블록으로 시각화 + 퀴즈 |
 | `clubs` | 넘버블록스 클럽 | 1~100 수의 클럽 탐색 + 퀴즈 |
+| `fraction-bar` | 분수 막대 | 막대·피자를 자르고 칠하며 분수 크기 비교 |
+| `shape-move` | 도형의 이동 | 밀기·뒤집기·돌리기로 도형 이동 애니메이션 |
+| `chance-lab` | 가능성 실험실 | 동전·주사위·회전판 1000번 실험으로 가능성 체험 |
+| `moon-phase-v2` | 달의 위상 3D | 달을 직접 돌려 위상 이해 + 일식·월식 |
+| `moon-phase` | Moon Phase | 오늘의 달 위상 시뮬레이터(월령 자동 계산) |
+| `solar-system` | 태양계 여행 | 여덟 행성 공전·크기·거리 비교 + 행성 도감 |
+| `volcano` | 화산 탐험대 | 3D 위성지도로 세계 화산 11개 탐험 |
+| `circuit-lab` | 전기회로 공작소 | 전지·전구·스위치 연결로 직렬·병렬 밝기 비교 |
+| `eco-web` | 생태계 탐험대 | 먹이그물 잇기·피라미드·평형 시나리오 종합 실험 |
+| `food-bike` | 식품구성자전거 | 음식을 담아 바퀴를 채우는 균형 식단 게임 |
+| `world-landmarks` | 세계 탐험대 | 3D 위성지도로 세계 랜드마크 11곳 + 여권 수집 |
+| `idea-lab` | 발명 아이디어 공작소 | 발명 마법 4가지 + AI 코치로 발명품 구상·이름·그림 완성 |
 
 ### 교육 · 학습지원 (`edu-learn`)
 | ID | 이름 | 설명 |
@@ -109,7 +119,7 @@ docs/                  ← 개발 문서
 | `split` | 2-페인 (입력 \| 미리보기) | md-editor, notion-styler |
 | `sidebar` | 내비 사이드바 + 메인 | search |
 | `gallery` | 반응형 카드 그리드 | blocks-universe, chalkboard, bubble-chat |
-| `immersive` | 풀뷰포트 (크롬만 주입) | moon-phase, volcano, step-squad, break-make, clubs |
+| `immersive` | 풀뷰포트 (크롬만 주입) | edu-sim 15종 전체(moon-phase, volcano, step-squad, break-make, clubs, fraction-bar, shape-move, chance-lab, moon-phase-v2, solar-system, circuit-lab, eco-web, food-bike, world-landmarks, idea-lab) |
 
 **폭 플래그** (`data-width`): `narrow`(480px) · `medium`(720px) · `wide`(1120px)  
 **기능 플래그**: `data-focus`(아이템→전체화면 `enterFocus()`) · `data-print`(A4 인쇄 베이스라인)
@@ -170,6 +180,16 @@ docs/                  ← 개발 문서
 ---
 
 ## 주요 변경 이력
+
+### 2026-07 — 교육 시뮬레이션 앱(edu-sim) 15종 점검·버그 수정·홈 개선
+`docs/sim-apps-audit-2026-07.md` 조사를 바탕으로 두 세션에 걸쳐 진행.
+
+- **정확성·신뢰성 버그 수정** — club-badge(clubs) 퀴즈 오답 선택지가 실제로는 정답 클럽에 속해 정답을 골라도 오답 처리되던 버그 수정(오답 풀을 `!check(n)`으로 제한) + 정답 하이라이트를 `data-club-id` 비교로 교체 + 출제 범위 1~100(0 제외). moon-phase 날짜 입력 UTC 파싱으로 인한 KST 오프셋 수정 + 슬라이더 조작 시 시뮬레이션 날짜 역산 동기화. break-make 십몇 단계 도전 모드가 무동작이던 것을 비활성화 처리(유효 조합이 "10과 몇" 하나뿐이라 도전 모드 성립 불가)로 명확화.
+- **그래픽·레이아웃 보완** — circuit-lab 전지 리드선 y1 오타로 화면 상단까지 뻗던 세로선 버그 수정 + viewBox 도입해 격자 중앙·확대. fraction-bar `getBBox` 기반 동적 viewBox로 막대·피자 중앙·최대 확대. shape-move 모눈 크기 상한 완화(560px → `min(92vh, 860px)`). moon-phase-v2 화면 배율 `k` 도입으로 궤도·지구·달 비례 확대(드래그 판정 동기화) + 햇빛을 방사형 광원+광선 화살표로 교체. eco-web 빈 캔버스 드롭존 안내 추가. chance-lab 인트로 `.intro-tag` 배지 CSS 누락 보완.
+- **idea-lab 셸 전환** — `column`(중앙 컬럼) → `immersive`(풀스크린, chance-lab 패턴의 좌측 무대·우측 사이드바, 무대가 선택 상태·완성 그림을 실시간 반영)로 전환. 이로써 edu-sim 15종 전체가 immersive 셸로 통일됨.
+- **apps.json 정리** — edu-sim 15종을 주제순(수학 → 천체·우주 → 지구과학 → 전기 → 생태 → 실과 → 세계 → 창의·AI)으로 재정렬. idea-lab·world-landmarks 홈 카드 설명(`desc`)이 다른 앱 대비 지나치게 길어 다른 항목과 비슷한 길이로 축약.
+- **홈 화면 '최근 방문' 섹션** — 항상 4열을 강제하며 화면이 좁아질수록 카드가 찌그러지던 문제 수정. 다른 카드 섹션과 동일한 기본 그리드(3열 기준, ≥1024px 4열·≤640px 2열·≤400px 1열)를 그대로 따르도록 하고, 화면폭 구간별 `nth-child` 숨김으로 그 구간의 열 수만큼만(4→3→2→1) 표시 개수를 조절.
+- 상세 내역·역할 분담(Fable 직접 처리 vs 위임 가능 작업) 제안은 [`docs/sim-apps-audit-2026-07.md`](sim-apps-audit-2026-07.md) 참고.
 
 ### 2026-07 — 마당 v2: 성능 재설계 + 이모지 반응·저학년 모드 + 사진/그림 카드 + 교사 통제·발표모드
 계획서: [`docs/madang-v2-plan.md`](madang-v2-plan.md). Phase 1~4 전부 구현·운영 배포 완료.
