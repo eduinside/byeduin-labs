@@ -273,12 +273,28 @@ body {
 }
 .result-summary strong { color: var(--cc-accent); }
 
-/* ── 모바일 반응형 ── */
-@media (max-width: 800px) {
-  body { overflow: auto; }
-  .explore-layout { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
-  .canvas-zone { position: sticky; top: 0; z-index: 40; height: 50vh; min-height: 320px; flex-shrink: 0; padding-top: 56px; }
-  .sidebar { border-left: none; border-top: 2px solid var(--border); height: auto; }
+/* ── 버튼 공통 스타일 ── */
+.fb-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 12px 28px; border-radius: 12px; font-size: 15px; font-weight: 700;
+  border: none; cursor: pointer; transition: all 0.2s ease;
+  font-family: inherit; text-decoration: none; outline: none;
+  min-height: 48px;
+}
+.fb-btn-primary {
+  background: linear-gradient(135deg, var(--cc-accent) 0%, #d35400 100%);
+  color: #000; box-shadow: 0 4px 12px rgba(241,196,15,0.25);
+}
+.fb-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(241,196,15,0.35);
+}
+.fb-btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.fb-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
   </style>
   <meta name="twitter:card" content="summary_large_image">
@@ -1212,6 +1228,13 @@ function showResultScreen() {
   summary += `전기가 전선을 따라 흐르려면 전지의 두 극이 **끊김 없이 이어져야** 해요. 또한 회로를 안전하게 연결하고 조작하는 힘을 배웠습니다!`;
 
   $('#resultSummary').innerHTML = summary;
+}
+
+/* ── 화면 전환 ── */
+function showScreen(id) {
+  $$('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
 }
 
 /* ══════════════════════════════════════

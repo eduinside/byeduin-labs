@@ -255,12 +255,28 @@ body {
 }
 .result-summary strong { color: var(--mp-accent); }
 
-/* ── 모바일 반응형 ── */
-@media (max-width: 900px) {
-  body { overflow: auto; }
-  .explore-layout { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
-  .canvas-zone { position: sticky; top: 0; z-index: 40; height: 45vh; min-height: 320px; flex-shrink: 0; padding-top: 56px; }
-  .sidebar { border-left: none; border-top: 1px solid var(--mp-border); height: auto; }
+/* ── 버튼 공통 스타일 ── */
+.fb-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 12px 28px; border-radius: 12px; font-size: 15px; font-weight: 700;
+  border: none; cursor: pointer; transition: all 0.2s ease;
+  font-family: inherit; text-decoration: none; outline: none;
+  min-height: 48px;
+}
+.fb-btn-primary {
+  background: linear-gradient(135deg, var(--mp-accent) 0%, #e0a96d 100%);
+  color: #000; box-shadow: 0 4px 12px rgba(255,209,102,0.25);
+}
+.fb-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255,209,102,0.35);
+}
+.fb-btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.fb-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
   </style>
   <meta name="twitter:card" content="summary_large_image">
@@ -940,6 +956,13 @@ function showResultScreen() {
   summary += `달의 모양이 변하는 진짜 원인은 **지구 주위를 도는 달에 닿는 햇빛의 방향과 우리의 관찰 각도** 때문이에요. 5도 경사선 조작으로 매달 일식/월식이 안 일어나는 물리적 정렬 원인도 함께 마스터했습니다!`;
 
   $('#resultSummary').innerHTML = summary;
+}
+
+/* ── 화면 전환 ── */
+function showScreen(id) {
+  $$('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
 }
 
 /* ── 초기화 및 이벤트 등록 ── */

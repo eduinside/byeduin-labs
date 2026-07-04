@@ -399,9 +399,28 @@ body {
   .sidebar { border-left: none; border-top: 2px solid var(--border); height: auto; }
 }
 
-@keyframes popIn {
-  from { opacity: 0; transform: scale(0.85); }
-  to { opacity: 1; transform: scale(1); }
+/* ── 버튼 공통 스타일 ── */
+.fb-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 12px 28px; border-radius: 12px; font-size: 15px; font-weight: 700;
+  border: none; cursor: pointer; transition: all 0.2s ease;
+  font-family: inherit; text-decoration: none; outline: none;
+  min-height: 48px;
+}
+.fb-btn-primary {
+  background: linear-gradient(135deg, var(--fb-accent) 0%, var(--fb-accent-h) 100%);
+  color: #fff; box-shadow: 0 4px 12px rgba(46,125,50,0.25);
+}
+.fb-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(46,125,50,0.35);
+}
+.fb-btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.fb-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
   </style>
   <meta name="twitter:card" content="summary_large_image">
@@ -1353,6 +1372,13 @@ function showResultScreen() {
   summary += `어떤 음식도 그 자체로 나쁜 음식은 없습니다! 곡류, 고기·생선·달걀·콩류, 채소, 과일, 유제품을 **골고루 알맞은 비율로** 채우고, 물을 충실히 마시면 평생 건강한 자전거가 힘차게 굴러갑니다!`;
 
   $('#resultSummary').innerHTML = summary;
+}
+
+/* ── 화면 전환 ── */
+function showScreen(id) {
+  $$('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
 }
 
 /* ══════════════════════════════════════
