@@ -171,7 +171,12 @@ body {
 .canvas-zone {
   position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: var(--fb-grid-bg);
+  background-color: var(--fb-grid-bg);
+  background-image: 
+    radial-gradient(rgba(141, 110, 99, 0.12) 1.5px, transparent 1.5px),
+    radial-gradient(rgba(41, 182, 246, 0.12) 1.5px, transparent 1.5px);
+  background-size: 32px 32px;
+  background-position: 0 0, 16px 16px;
   min-width: 0;
   overflow: hidden;
   padding: 20px;
@@ -817,7 +822,6 @@ function renderBarSVG(svg) {
   // 2. A 막대 조각 렌더링
   const groupA = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   const dAw = W / state.a.denom;
-  // 미션의 '부등분' 예외 처리용 칼선 맵
   const unequal = missionMode && MISSIONS[currentMission] && MISSIONS[currentMission].type === 'equal' && MISSIONS[currentMission].unequal && currentMission === 0;
 
   for (let i = 0; i < state.a.denom; i++) {
@@ -840,11 +844,38 @@ function renderBarSVG(svg) {
     r.setAttribute('fill', filled ? 'var(--fb-accent-a)' : 'var(--fb-empty)');
     r.setAttribute('stroke', 'var(--fb-cut)'); r.setAttribute('stroke-width', '1.5');
 
-    // 조각 클릭 리스너 (자유 탐험 및 만들기 미션에서 활성)
+    // 조각 클릭 리스너
     if (!missionMode || (MISSIONS[currentMission] && MISSIONS[currentMission].type === 'make')) {
       r.addEventListener('click', () => toggleFill('a', i));
     }
     groupA.appendChild(r);
+
+    // [초콜릿 홈/질감 추가]
+    const bevel = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bevel.setAttribute('x', x + 3);
+    bevel.setAttribute('y', yA + 3);
+    bevel.setAttribute('width', Math.max(0, w - 6));
+    bevel.setAttribute('height', H - 6);
+    bevel.setAttribute('rx', '3');
+    bevel.setAttribute('fill', 'none');
+    bevel.setAttribute('stroke', filled ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.12)');
+    bevel.setAttribute('stroke-width', '1.5');
+    bevel.setAttribute('pointer-events', 'none');
+    groupA.appendChild(bevel);
+
+    if (w > 12) {
+      const cushion = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      cushion.setAttribute('x', x + 5);
+      cushion.setAttribute('y', yA + 5);
+      cushion.setAttribute('width', Math.max(0, w - 10));
+      cushion.setAttribute('height', H - 10);
+      cushion.setAttribute('rx', '2');
+      cushion.setAttribute('fill', 'none');
+      cushion.setAttribute('stroke', filled ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.06)');
+      cushion.setAttribute('stroke-width', '1');
+      cushion.setAttribute('pointer-events', 'none');
+      groupA.appendChild(cushion);
+    }
   }
   svg.appendChild(groupA);
 
@@ -856,12 +887,12 @@ function renderBarSVG(svg) {
 
     const dBw = W / state.b.denom;
     for (let i = 0; i < state.b.denom; i++) {
-      // 투명 채움 사선 마스크용 레이어 분리
       const filled = state.b.filled.includes(i);
+      const x = startX + i * dBw;
       
       const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       r.setAttribute('class', 'bar-rect');
-      r.setAttribute('x', startX + i * dBw); r.setAttribute('y', yB);
+      r.setAttribute('x', x); r.setAttribute('y', yB);
       r.setAttribute('width', dBw); r.setAttribute('height', H);
       r.setAttribute('rx', '4');
       r.setAttribute('fill', filled ? 'var(--fb-accent-b)' : 'var(--fb-empty)');
@@ -875,10 +906,10 @@ function renderBarSVG(svg) {
       }
       groupB.appendChild(r);
 
-      // 색약 배려 사선 무늬 레이어 오버레이
+      // 색약 배려 사선 무늬 레이어
       if (filled) {
         const rHatch = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        rHatch.setAttribute('x', startX + i * dBw); rHatch.setAttribute('y', yB);
+        rHatch.setAttribute('x', x); rHatch.setAttribute('y', yB);
         rHatch.setAttribute('width', dBw); rHatch.setAttribute('height', H);
         rHatch.setAttribute('rx', '4');
         rHatch.setAttribute('fill', 'url(#hatch)'); rHatch.setAttribute('pointer-events', 'none');
@@ -886,6 +917,39 @@ function renderBarSVG(svg) {
           rHatch.setAttribute('opacity', '0.7');
         }
         groupB.appendChild(rHatch);
+      }
+
+      // [초콜릿 홈/질감 추가]
+      const bevel = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      bevel.setAttribute('x', x + 3);
+      bevel.setAttribute('y', yB + 3);
+      bevel.setAttribute('width', Math.max(0, dBw - 6));
+      bevel.setAttribute('height', H - 6);
+      bevel.setAttribute('rx', '3');
+      bevel.setAttribute('fill', 'none');
+      bevel.setAttribute('stroke', filled ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.12)');
+      bevel.setAttribute('stroke-width', '1.5');
+      bevel.setAttribute('pointer-events', 'none');
+      if (state.overlap) {
+        bevel.setAttribute('opacity', '0.7');
+      }
+      groupB.appendChild(bevel);
+
+      if (dBw > 12) {
+        const cushion = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        cushion.setAttribute('x', x + 5);
+        cushion.setAttribute('y', yB + 5);
+        cushion.setAttribute('width', Math.max(0, dBw - 10));
+        cushion.setAttribute('height', H - 10);
+        cushion.setAttribute('rx', '2');
+        cushion.setAttribute('fill', 'none');
+        cushion.setAttribute('stroke', filled ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.06)');
+        cushion.setAttribute('stroke-width', '1');
+        cushion.setAttribute('pointer-events', 'none');
+        if (state.overlap) {
+          cushion.setAttribute('opacity', '0.7');
+        }
+        groupB.appendChild(cushion);
       }
     }
     svg.appendChild(groupB);
@@ -937,7 +1001,6 @@ function renderPizzaSVG(svg) {
   const drawPizzaSlices = (target, cx, cy, denom, filledArr, color, useHatch) => {
     const grp = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     
-    // 조각수가 1일때 예외 방지 (기본 2~12 제한)
     for (let i = 0; i < denom; i++) {
       const startAngle = -90 + (i * 360 / denom);
       const endAngle = -90 + ((i + 1) * 360 / denom);
@@ -982,6 +1045,73 @@ function renderPizzaSVG(svg) {
         }
         grp.appendChild(hatchPath);
       }
+
+      // [피자 모드 크러스트(도우 테두리) 디테일화]
+      const crustColor = isFilled ? '#b08968' : '#d7ccc8';
+      const crust = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const cr = R - 4;
+      const cx1 = cx + cr * Math.cos(sRad);
+      const cy1 = cy + cr * Math.sin(sRad);
+      const cx2 = cx + cr * Math.cos(eRad);
+      const cy2 = cy + cr * Math.sin(eRad);
+      crust.setAttribute('d', `M ${cx1} ${cy1} A ${cr} ${cr} 0 ${largeArc} 1 ${cx2} ${cy2}`);
+      crust.setAttribute('fill', 'none');
+      crust.setAttribute('stroke', crustColor);
+      crust.setAttribute('stroke-width', '8');
+      crust.setAttribute('pointer-events', 'none');
+      if (state.overlap && target === 'b') {
+        crust.setAttribute('opacity', '0.7');
+      }
+      grp.appendChild(crust);
+
+      // [피자 토핑 추가 (A: 페퍼로니, B: 블랙 올리브)]
+      if (isFilled) {
+        const midAngle = startAngle + 180 / denom;
+        const mRad = midAngle * Math.PI / 180;
+        const pts = denom < 6 ? [0.45, 0.7] : [0.6];
+
+        pts.forEach(pRadius => {
+          const tx = cx + R * pRadius * Math.cos(mRad);
+          const ty = cy + R * pRadius * Math.sin(mRad);
+
+          if (target === 'a') {
+            // 페퍼로니 토핑
+            const pep = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            pep.setAttribute('cx', tx);
+            pep.setAttribute('cy', ty);
+            pep.setAttribute('r', denom < 6 ? '9' : '7');
+            pep.setAttribute('fill', '#e74c3c');
+            pep.setAttribute('stroke', '#c0392b');
+            pep.setAttribute('stroke-width', '1.5');
+            pep.setAttribute('pointer-events', 'none');
+            grp.appendChild(pep);
+
+            // 페퍼로니 내부 노란 반점
+            const speck = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            speck.setAttribute('cx', tx - 2);
+            speck.setAttribute('cy', ty - 2);
+            speck.setAttribute('r', '1.5');
+            speck.setAttribute('fill', '#f1c40f');
+            speck.setAttribute('opacity', '0.6');
+            speck.setAttribute('pointer-events', 'none');
+            grp.appendChild(speck);
+          } else {
+            // 블랙 올리브 토핑
+            const olive = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            olive.setAttribute('cx', tx);
+            olive.setAttribute('cy', ty);
+            olive.setAttribute('r', denom < 6 ? '6' : '5');
+            olive.setAttribute('fill', 'none');
+            olive.setAttribute('stroke', '#2c3e50');
+            olive.setAttribute('stroke-width', '3');
+            olive.setAttribute('pointer-events', 'none');
+            if (state.overlap) {
+              olive.setAttribute('opacity', '0.7');
+            }
+            grp.appendChild(olive);
+          }
+        });
+      }
     }
     return grp;
   };
@@ -998,6 +1128,7 @@ function renderPizzaSVG(svg) {
     svg.appendChild(groupB);
   }
 }
+
 
 /* ══════════════════════════════════════
    조작 & 채우기 제어

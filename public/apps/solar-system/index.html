@@ -260,6 +260,15 @@
       .hub-grid{ grid-template-columns:1fr; }
       .codex-grid{ grid-template-columns:1fr 1fr; }
     }
+    .planet-label {
+      pointer-events: none;
+      font-family: inherit;
+      transition: fill 0.15s, opacity 0.15s;
+    }
+    .planet-token:hover .planet-label, .planet-token:focus-visible .planet-label {
+      fill: var(--ss-accent);
+      opacity: 1;
+    }
   </style>
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="태양계 여행 — 행성 공전·크기·거리 비교 시뮬레이션 | eduin VIVES">
@@ -367,10 +376,23 @@ function planetSVG(p, r, opts){
   const uid = 'ps' + (__uid++);
   const gid = 'g' + uid, cid = 'c' + uid;
   const cx = r, cy = r;
-  let ring = '';
+  const size = r*2;
+
+  let ringBehind = '', ringFront = '', clipDef = '';
   if(p.ring){
-    ring = `<ellipse cx="${cx}" cy="${cy}" rx="${r*p.ring.rx}" ry="${r*p.ring.ry}" transform="rotate(${p.ring.rot} ${cx} ${cy})" fill="none" stroke="${p.ring.color}" stroke-width="${Math.max(1.4, r*0.16)}" opacity="0.85"/>`;
+    const ringHtml = `<ellipse cx="${cx}" cy="${cy}" rx="${r*p.ring.rx}" ry="${r*p.ring.ry}" transform="rotate(${p.ring.rot} ${cx} ${cy})" fill="none" stroke="${p.ring.color}" stroke-width="${Math.max(1.4, r*0.16)}" opacity="0.85"/>`;
+    ringBehind = ringHtml;
+    
+    // 3D 고리 오버랩 구현: 가로 고리는 하반신(앞), 세로 고리는 우반신(앞)만 클리핑해서 앞에 렌더링
+    const clipId = 'fc' + uid;
+    if (p.ring.rx > p.ring.ry) {
+      clipDef = `<clipPath id="${clipId}"><rect x="${cx - r*p.ring.rx}" y="${cy}" width="${r*p.ring.rx*2}" height="${size}" transform="rotate(${p.ring.rot} ${cx} ${cy})"/></clipPath>`;
+    } else {
+      clipDef = `<clipPath id="${clipId}"><rect x="${cx}" y="${cy - r*p.ring.ry}" width="${size}" height="${r*p.ring.ry*2}" transform="rotate(${p.ring.rot} ${cx} ${cy})"/></clipPath>`;
+    }
+    ringFront = `<g clip-path="url(#${clipId})">${ringHtml}</g>`;
   }
+
   let extra = '';
   if(p.bands){
     extra += p.bands.map((b,i)=>`<ellipse cx="${cx}" cy="${cy+(i-1)*r*0.42}" rx="${r*1.05}" ry="${r*0.2}" fill="${b}" opacity="0.55"/>`).join('');
@@ -383,7 +405,26 @@ function planetSVG(p, r, opts){
     extra += `<ellipse cx="${cx+r*0.3}" cy="${cy+r*0.3}" rx="${r*0.26}" ry="${r*0.18}" fill="#4d9e5a" opacity="0.7"/>`;
     extra += `<ellipse cx="${cx+r*0.1}" cy="${cy-r*0.35}" rx="${r*0.4}" ry="${r*0.12}" fill="#fff" opacity="0.35"/>`;
   }
-  const size = r*2;
+
+  // [대표 무늬 추가: 수성 크레이터, 금성 황산 구름 사선, 화성 극관 & 화산대, 해왕성 대흑점]
+  if(p.id === 'mercury') {
+    extra += `<circle cx="${cx - r*0.3}" cy="${cy - r*0.2}" r="${r*0.15}" fill="#000" opacity="0.15"/>`;
+    extra += `<circle cx="${cx + r*0.2}" cy="${cy + r*0.3}" r="${r*0.2}" fill="#000" opacity="0.12"/>`;
+    extra += `<circle cx="${cx - r*0.1}" cy="${cy + r*0.4}" r="${r*0.1}" fill="#000" opacity="0.15"/>`;
+  }
+  if(p.id === 'venus') {
+    extra += `<ellipse cx="${cx}" cy="${cy - r*0.3}" rx="${r*0.9}" ry="${r*0.12}" transform="rotate(-15 ${cx} ${cy - r*0.3})" fill="#fff" opacity="0.15"/>`;
+    extra += `<ellipse cx="${cx}" cy="${cy + r*0.3}" rx="${r*0.9}" ry="${r*0.12}" transform="rotate(-15 ${cx} ${cy + r*0.3})" fill="#fff" opacity="0.15"/>`;
+  }
+  if(p.id === 'mars') {
+    extra += `<ellipse cx="${cx}" cy="${cy - r*0.85}" rx="${r*0.3}" ry="${r*0.12}" fill="#fff" opacity="0.9"/>`;
+    extra += `<path d="M ${cx - r*0.4} ${cy} Q ${cx} ${cy - r*0.2} ${cx + r*0.2} ${cy + r*0.2} Q ${cx - r*0.1} ${cy + r*0.5} ${cx - r*0.4} ${cy} Z" fill="#2c1a11" opacity="0.35"/>`;
+  }
+  if(p.id === 'neptune') {
+    extra += `<ellipse cx="${cx + r*0.3}" cy="${cy + r*0.1}" rx="${r*0.22}" ry="${r*0.14}" fill="#0d1b3e" opacity="0.75"/>`;
+    extra += `<ellipse cx="${cx - r*0.2}" cy="${cy - r*0.2}" rx="${r*0.6}" ry="${r*0.06}" transform="rotate(-5 ${cx - r*0.2} ${cy - r*0.2})" fill="#fff" opacity="0.25"/>`;
+  }
+
   const label = opts.noSun ? p.name : p.name;
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-label="${label}" role="img">
     <defs>
@@ -393,14 +434,17 @@ function planetSVG(p, r, opts){
         <stop offset="100%" stop-color="${p.dark||p.color}"/>
       </radialGradient>
       <clipPath id="${cid}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath>
+      ${clipDef}
     </defs>
-    ${ring}
+    ${ringBehind}
     <g clip-path="url(#${cid})">
       <circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${gid})"/>
       ${extra}
     </g>
+    ${ringFront}
   </svg>`;
 }
+
 function sunSVG(r){
   const uid = 'sun' + (__uid++);
   const size = r*2;
@@ -554,9 +598,11 @@ function drawTravelFrame(){
               transform="translate(${x-size},${y-size})" onclick="openTravelInfo('${p.id}')"
               onkeydown="if(event.key==='Enter')openTravelInfo('${p.id}')">
               ${planetSVG(p, size)}
+              <text class="planet-label" x="${size}" y="${size*2 + 11}" text-anchor="middle" fill="var(--ss-fg-muted)" font-size="11px" font-weight="700" opacity="0.8">${p.name}</text>
             </g>`;
   }).join('');
 }
+
 function startTravelLoop(){
   cancelAnimationFrame(travelRAF);
   function frame(){

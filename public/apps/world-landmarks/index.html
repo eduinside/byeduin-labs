@@ -29,6 +29,15 @@
   --side-w: 400px;
   --shadow: 0 8px 24px rgba(13,27,42,0.12);
 }
+[data-theme="dark"] {
+  --navy: #e0e6ed;
+  --navy-deep: #0b0f19;
+  --gold: #f3c68f;
+  --gold-deep: #d8a065;
+  --paper: #1e1e2e;
+  --cream: #0f141c;
+  --shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -552,14 +561,25 @@ function buildMap() {
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-left');
     
+    let mapLoaded = false;
+    const hideLoading = () => {
+      if (mapLoaded) return;
+      mapLoaded = true;
+      document.getElementById('mapLoading')?.classList.add('hide');
+      flyToLandmark(LANDMARKS[0]);
+    };
+
     map.on('load', () => {
       map.setTerrain({ source: 'dem', exaggeration: 1.4 });
       try {
         map.setSky({ 'sky-color': '#79b3e6', 'horizon-color': '#fdebd0', 'fog-color': '#e8ddca', 'sky-horizon-blend': .6 });
       } catch (e) {}
       
-      document.getElementById('mapLoading')?.classList.add('hide');
-      flyToLandmark(LANDMARKS[0]);
+      // 위성 타일이 로드될 때까지 기다리기 위해 idle 이벤트 사용
+      map.once('idle', hideLoading);
+      
+      // 네트워크 지연/실패 대비 안전 타이머 (최대 2.5초 대기 후 강제 해제)
+      setTimeout(hideLoading, 2500);
     });
 
     map.on('error', e => console.warn('map tile error', e?.error?.message || e));

@@ -38,7 +38,7 @@ function getPhaseInfo(angle) {
 const MISSIONS = [
   {
     id: 'm1',
-    desc: '달을 공전 궤도에서 드래그하여 **보름달 (음력 15일 경)**이 뜨는 위치로 맞춰 보세요.',
+    desc: '달을 공전 궤도에서 드래그하여 <strong>보름달 (음력 15일 경)</strong>이 뜨는 위치로 맞춰 보세요.',
     targetAngle: 0,
     verify: (angle) => {
       let diff = Math.abs((angle % (Math.PI * 2)) - 0);
@@ -48,7 +48,7 @@ const MISSIONS = [
   },
   {
     id: 'm2',
-    desc: '초저녁 남쪽 하늘에 오른쪽 반이 밝게 뜨는 **상현달 (음력 7~8일 경)** 위치로 달을 움직이세요.',
+    desc: '초저녁 남쪽 하늘에 오른쪽 반이 밝게 뜨는 <strong>상현달 (음력 7~8일 경)</strong> 위치로 달을 움직이세요.',
     targetAngle: Math.PI * 1.5,
     verify: (angle) => {
       let diff = Math.abs((angle % (Math.PI * 2)) - Math.PI * 1.5);
@@ -58,7 +58,7 @@ const MISSIONS = [
   },
   {
     id: 'm3',
-    desc: '아침 남쪽 하늘에 왼쪽 반이 밝게 떠서 보이는 **하현달 (음력 22~23일 경)** 위치로 달을 맞춰 보세요.',
+    desc: '아침 남쪽 하늘에 왼쪽 반이 밝게 떠서 보이는 <strong>하현달 (음력 22~23일 경)</strong> 위치로 달을 맞춰 보세요.',
     targetAngle: Math.PI * 0.5,
     verify: (angle) => {
       let diff = Math.abs((angle % (Math.PI * 2)) - Math.PI * 0.5);
@@ -565,7 +565,7 @@ function showResultScreen() {
   summary += `① 보름달 위치 찾기: ${state.missionsCompleted.m1 ? '완료 ✓' : '미완료'}<br>`;
   summary += `② 상현달 위치 찾기: ${state.missionsCompleted.m2 ? '완료 ✓' : '미완료'}<br>`;
   summary += `③ 하현달 위치 찾기: ${state.missionsCompleted.m3 ? '완료 ✓' : '미완료'}<br><br>`;
-  summary += `달의 모양이 변하는 진짜 원인은 **지구 주위를 도는 달에 닿는 햇빛의 방향과 우리의 관찰 각도** 때문이에요. 5도 경사선 조작으로 매달 일식/월식이 안 일어나는 물리적 정렬 원인도 함께 마스터했습니다!`;
+  summary += `달의 모양이 변하는 진짜 원인은 <strong>지구 주위를 도는 달에 닿는 햇빛의 방향과 우리의 관찰 각도</strong> 때문이에요. 5도 경사선 조작으로 매달 일식/월식이 안 일어나는 물리적 정렬 원인도 함께 마스터했습니다!`;
 
   $('#resultSummary').innerHTML = summary;
 }

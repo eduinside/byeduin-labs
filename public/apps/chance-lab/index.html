@@ -125,7 +125,12 @@ body {
 .canvas-zone {
   position: relative;
   display: flex; flex-direction: column; align-items: center;
-  background: var(--cl-grid-bg);
+  background-color: var(--cl-grid-bg);
+  background-image: 
+    radial-gradient(rgba(108, 92, 231, 0.08) 1.5px, transparent 1.5px),
+    radial-gradient(rgba(108, 92, 231, 0.08) 1.5px, transparent 1.5px);
+  background-size: 30px 30px;
+  background-position: 0 0, 15px 15px;
   min-width: 0;
   overflow-y: auto;
   padding: 64px 20px 30px;
@@ -171,11 +176,8 @@ body {
   position: relative; transform-style: preserve-3d;
   transition: transform 0.6s ease;
 }
-.coin.flipping { animation: coinFlip 0.6s ease; }
-@keyframes coinFlip {
-  0%   { transform: rotateX(0deg); }
-  100% { transform: rotateX(1800deg); }
-}
+
+
 .coin-face {
   position: absolute; inset: 0; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
@@ -187,9 +189,9 @@ body {
 }
 .coin-tail {
   background: linear-gradient(135deg, #95afc0, #535c68); color: #fff;
-  transform: rotateX(180deg); box-shadow: inset 0 -5px 10px rgba(0,0,0,0.15);
+  transform: rotateY(180deg); box-shadow: inset 0 -5px 10px rgba(0,0,0,0.15);
 }
-.coin.show-tail { transform: rotateX(180deg); }
+.coin.show-tail { transform: rotateY(180deg); }
 
 /* 주사위 */
 .dice-wrap { width: 120px; height: 120px; }
@@ -786,8 +788,22 @@ function renderDevice() {
     area.innerHTML = `
       <div class="coin-wrap">
         <div class="coin" id="coinEl">
-          <div class="coin-face coin-head">앞</div>
-          <div class="coin-face coin-tail">뒤</div>
+          <div class="coin-face coin-head">
+            <svg viewBox="0 0 100 100" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;">
+              <circle cx="50" cy="50" r="45" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="3 2" opacity="0.65"/>
+              <text x="50" y="58" text-anchor="middle" font-size="28" font-weight="800" fill="#fff" font-family="sans-serif">앞</text>
+              <text x="50" y="82" text-anchor="middle" font-size="11" fill="#fff" opacity="0.9" font-family="sans-serif">★ ★ ★</text>
+              <circle cx="50" cy="24" r="5" fill="#fff" opacity="0.9"/>
+            </svg>
+          </div>
+          <div class="coin-face coin-tail">
+            <svg viewBox="0 0 100 100" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;">
+              <circle cx="50" cy="50" r="45" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="3 2" opacity="0.55"/>
+              <text x="50" y="58" text-anchor="middle" font-size="28" font-weight="800" fill="#fff" font-family="sans-serif">뒤</text>
+              <path d="M 32 78 Q 50 68 68 78" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+              <circle cx="50" cy="24" r="5" fill="#fff" opacity="0.8"/>
+            </svg>
+          </div>
         </div>
       </div>`;
   } else if (dev === 'dice') {
@@ -811,9 +827,15 @@ function renderDevice() {
 /* ── 동전 표시 ── */
 function showCoinResult(isHead) {
   const coin = $('#coinEl');
-  if (!coin) return;
-  coin.classList.remove('show-tail');
-  if (!isHead) coin.classList.add('show-tail');
+  if (coin) {
+    coin.style.transition = 'none';
+    coin.style.transform = isHead ? 'rotateY(0deg)' : 'rotateY(180deg)';
+  }
+  const m2Coin = $('#m2Coin');
+  if (m2Coin) {
+    m2Coin.style.transition = 'none';
+    m2Coin.style.transform = isHead ? 'rotateY(0deg)' : 'rotateY(180deg)';
+  }
 }
 
 /* ── 주사위 표시 ── */
@@ -969,15 +991,29 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
+async function animateCoinFlip(coin, isHead, speedMs = 600) {
+  if (!coin) return;
+  coin.style.transition = 'none';
+  coin.style.transform = 'rotateY(0deg) translateY(0) scale(1)';
+  void coin.offsetWidth;
+
+  const spinAngle = isHead ? 1440 : 1620;
+  coin.style.transition = `transform ${speedMs}ms cubic-bezier(0.2, 0.7, 0.3, 1.05)`;
+  coin.style.transform = `rotateY(${spinAngle}deg) scale(1.15) translateY(-70px)`;
+  
+  setTimeout(() => {
+    coin.style.transition = `transform ${speedMs * 0.5}ms cubic-bezier(0.4, 0.1, 0.6, 1)`;
+    coin.style.transform = `rotateY(${spinAngle}deg) scale(1) translateY(0)`;
+  }, speedMs * 0.45);
+
+  await sleep(speedMs);
+}
+
 async function animateSingle(dev, result) {
   if (dev === 'coin') {
     const coin = $('#coinEl');
     if (coin) {
-      coin.classList.remove('flipping', 'show-tail');
-      void coin.offsetWidth;
-      coin.classList.add('flipping');
-      await sleep(600);
-      coin.classList.remove('flipping');
+      await animateCoinFlip(coin, result === 0, 600);
       showCoinResult(result === 0);
     }
     setResultLabel(result === 0 ? '앞면! ☀️' : '뒷면! 🌙');
@@ -1136,7 +1172,7 @@ function renderLineChart() {
   const dev = state.device;
   const snaps = state.snapshots[dev];
   const W = 680, H = 180;
-  const marginL = 50, marginR = 20, marginT = 15, marginB = 35;
+  const marginL = 55, marginR = 20, marginT = 25, marginB = 35;
   const chartW = W - marginL - marginR;
   const chartH = H - marginT - marginB;
 
@@ -1144,8 +1180,25 @@ function renderLineChart() {
   const theory = getTheoryValues(dev);
   const tv = theory.length > 0 ? theory[0] : 0.5;
   const theoryY = marginT + chartH - tv * chartH;
-  html += `<line x1="${marginL}" y1="${theoryY}" x2="${W - marginR}" y2="${theoryY}" stroke="var(--cl-theory)" stroke-width="2" stroke-dasharray="6 4" opacity="0.7"/>`;
-  html += `<text x="${marginL - 6}" y="${theoryY + 4}" text-anchor="end" font-size="10" fill="var(--cl-theory)" font-weight="600">${formatFraction(tv)}</text>`;
+  
+  // 이론값 기준선 및 텍스트 레이블 (분수 + 백분율)
+  const pct = (tv * 100).toFixed(1).replace('.0', '') + '%';
+  const labelText = `${formatFraction(tv)} (${pct})`;
+  html += `<line x1="${marginL}" y1="${theoryY}" x2="${W - marginR}" y2="${theoryY}" stroke="var(--cl-theory)" stroke-width="2" stroke-dasharray="6 4" opacity="0.75"/>`;
+  html += `<text x="${marginL - 6}" y="${theoryY + 4}" text-anchor="end" font-size="10" fill="var(--cl-theory)" font-weight="700">${labelText}</text>`;
+
+  // 차트 범례 (Legend) 추가
+  const legendX = W - marginR - 190;
+  const legendY = marginT - 12;
+  html += `
+    <g font-size="9.5" font-weight="600" opacity="0.8">
+      <line x1="${legendX}" y1="${legendY}" x2="${legendX + 15}" y2="${legendY}" stroke="var(--cl-bar)" stroke-width="2"/>
+      <text x="${legendX + 18}" y="${legendY + 3.5}" fill="var(--fg)" text-anchor="start">실험값 (상대도수)</text>
+      
+      <line x1="${legendX + 100}" y1="${legendY}" x2="${legendX + 115}" y2="${legendY}" stroke="var(--cl-theory)" stroke-width="2" stroke-dasharray="4 2"/>
+      <text x="${legendX + 118}" y="${legendY + 3.5}" fill="var(--cl-theory)" text-anchor="start">이론값 (수학적 확률)</text>
+    </g>
+  `;
 
   if (snaps.length < 2) {
     html += `<text x="${marginL - 6}" y="${marginT + 4}" text-anchor="end" font-size="9" fill="var(--fg-muted)">100%</text>`;
@@ -1427,7 +1480,26 @@ async function runM2Phase1() {
   const prediction = parseInt($('#m2Predict').value);
   const el = $('#m2Content');
   el.innerHTML = `<div style="text-align:center;padding:12px;">
-    <div class="coin-wrap" style="margin: 0 auto;"><div class="coin" id="m2Coin"><div class="coin-face coin-head">앞</div><div class="coin-face coin-tail">뒤</div></div></div>
+    <div class="coin-wrap" style="margin: 0 auto;">
+      <div class="coin" id="m2Coin">
+        <div class="coin-face coin-head">
+          <svg viewBox="0 0 100 100" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="3 2" opacity="0.65"/>
+            <text x="50" y="58" text-anchor="middle" font-size="28" font-weight="800" fill="#fff" font-family="sans-serif">앞</text>
+            <text x="50" y="82" text-anchor="middle" font-size="11" fill="#fff" opacity="0.9" font-family="sans-serif">★ ★ ★</text>
+            <circle cx="50" cy="24" r="5" fill="#fff" opacity="0.9"/>
+          </svg>
+        </div>
+        <div class="coin-face coin-tail">
+          <svg viewBox="0 0 100 100" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="3 2" opacity="0.55"/>
+            <text x="50" y="58" text-anchor="middle" font-size="28" font-weight="800" fill="#fff" font-family="sans-serif">뒤</text>
+            <path d="M 32 78 Q 50 68 68 78" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+            <circle cx="50" cy="24" r="5" fill="#fff" opacity="0.8"/>
+          </svg>
+        </div>
+      </div>
+    </div>
     <p id="m2Progress" style="margin-top:10px;font-size:13px;color:var(--fg-muted);">실험 중...</p>
   </div>`;
 
@@ -1437,13 +1509,8 @@ async function runM2Phase1() {
     if (r === 0) heads++;
     const coin = $('#m2Coin');
     if (coin) {
-      coin.classList.remove('flipping', 'show-tail');
-      void coin.offsetWidth;
-      coin.classList.add('flipping');
-      await sleep(350);
-      coin.classList.remove('flipping');
-      if (r === 1) coin.classList.add('show-tail');
-      else coin.classList.remove('show-tail');
+      await animateCoinFlip(coin, r === 0, 450);
+      showCoinResult(r === 0);
     }
     const prog = $('#m2Progress');
     if (prog) prog.textContent = `${i + 1}/10번째... 앞면 ${heads}번`;
@@ -1459,7 +1526,7 @@ async function runM2Phase1() {
     <div style="text-align:center;margin-top:10px;">
       <button class="fb-btn fb-btn-primary" id="m2Run1000" style="font-size:14px; padding:10px 24px;">이번엔 1000번 해 볼까요?</button>
     </div>`;
-
+  
   $('#m2Run1000').addEventListener('click', () => runM2Phase2());
 }
 
