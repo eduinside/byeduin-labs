@@ -403,17 +403,23 @@
     /* 모달 타입 카드 — 클릭 커서만 다름 */
     .app-card.modal-card { cursor: pointer; }
 
-    /* 최근 방문: 넓은 화면에서 4열 */
-    .recent-section .card-grid {
-      grid-template-columns: repeat(4, 1fr);
-    }
-
-    /* 최근 방문: 좁은 화면에서 2열 한 행 (3번째 이후 숨김) */
-    @media (max-width: 640px) {
-      .recent-section .card-grid {
-        grid-template-columns: repeat(2, 1fr);
+    /* 최근 방문: 카드 폭·열 수는 다른 섹션과 동일한 그리드를 따르고,
+       화면폭별 열 수에 맞춰 한 행만 보이도록 표시 개수만 조절 */
+    @media (max-width: 400px) {
+      /* 1열: 1개만 표시 */
+      .recent-section .card-grid .app-card:nth-child(n+2) {
+        display: none;
       }
+    }
+    @media (min-width: 401px) and (max-width: 640px) {
+      /* 2열: 2개까지 표시 */
       .recent-section .card-grid .app-card:nth-child(n+3) {
+        display: none;
+      }
+    }
+    @media (min-width: 641px) and (max-width: 1023px) {
+      /* 3열: 3개까지 표시 */
+      .recent-section .card-grid .app-card:nth-child(n+4) {
         display: none;
       }
     }

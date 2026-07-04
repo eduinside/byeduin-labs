@@ -31,6 +31,75 @@
     .screen.active { display: block; animation: ilFadeIn .25s ease; }
     @keyframes ilFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
+    /* ── immersive 전체화면 셸 (chance-lab 패턴) ── */
+    @keyframes ilFadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+    @keyframes ilFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    .il-intro-screen {
+      flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 24px; text-align: center; animation: ilFadeUp 0.6s ease;
+      background:
+        radial-gradient(circle at 20% 30%, rgba(245,158,11,0.10) 0, transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(245,158,11,0.06) 0, transparent 35%),
+        var(--bg);
+    }
+    .il-intro-screen.active { display: flex; }
+    .intro-tag {
+      display: inline-block; background: var(--il-accent);
+      color: #fff; font-size: 12px; font-weight: 700;
+      padding: 5px 14px; border-radius: 99px;
+      margin-bottom: 18px; letter-spacing: 0.05em;
+    }
+    .intro-emoji { font-size: 80px; line-height: 1; margin-bottom: 12px; animation: ilFloat 2.4s ease-in-out infinite; }
+    .il-intro-screen h1 { font-size: 32px; font-weight: 800; margin-bottom: 6px; }
+    .intro-sub { font-size: 15px; color: var(--fg-muted); line-height: 1.7; margin-bottom: 20px; }
+    .intro-card {
+      background: var(--card-bg); border: 2px dashed var(--il-accent); border-radius: 16px;
+      padding: 20px 24px; max-width: 440px; width: 100%; margin-bottom: 24px;
+    }
+    .intro-card h3 { font-size: 17px; font-weight: 800; margin-bottom: 8px; }
+    .intro-card p { font-size: 14px; line-height: 1.7; color: var(--fg-muted); }
+    .il-intro-start { max-width: 320px; }
+
+    .il-work {
+      display: none;
+      grid-template-columns: 1fr 400px;
+      width: 100%; height: 100vh;
+    }
+    body.il-in-work .il-work { display: grid; }
+    .il-stage {
+      position: relative; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      padding: 48px 32px; min-width: 0; overflow: hidden;
+      background:
+        radial-gradient(circle at 30% 25%, rgba(245,158,11,0.08) 0, transparent 45%),
+        radial-gradient(circle at 75% 75%, rgba(245,158,11,0.05) 0, transparent 40%),
+        var(--bg);
+    }
+    .il-stage-emoji { font-size: clamp(72px, 16vw, 140px); line-height: 1.15; animation: ilFloat 3s ease-in-out infinite; text-align: center; }
+    .il-stage-title { font-size: clamp(18px, 2.4vw, 26px); font-weight: 800; text-align: center; word-break: keep-all; }
+    .il-stage-chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .il-stage-chips .il-magic-chip { background: var(--card-bg); }
+    .il-stage-art { width: min(60%, 380px); border-radius: 1rem; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.18); }
+    .il-stage-art img { display: block; width: 100%; height: auto; }
+    .il-side {
+      background: var(--card-bg); border-left: 2px solid var(--border);
+      overflow-y: auto; display: flex; flex-direction: column;
+      box-shadow: -4px 0 24px rgba(0,0,0,0.06);
+    }
+    .il-side-head {
+      background: linear-gradient(135deg, var(--il-accent) 0%, var(--il-accent-h) 100%);
+      color: #fff; padding: 16px 20px 14px; flex-shrink: 0;
+    }
+    .il-side-head h2 { font-size: 17px; font-weight: 800; margin: 0; }
+    .il-side-sub { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+    .il-side-body { padding: 16px; flex: 1; }
+    @media (max-width: 800px) {
+      .il-work { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; min-height: 100vh; }
+      .il-stage { position: sticky; top: 0; z-index: 40; min-height: 220px; height: 34vh; padding: 48px 16px 16px; }
+      .il-stage-emoji { font-size: 64px; }
+      .il-side { border-left: none; border-top: 2px solid var(--border); }
+    }
+
     .il-actions { display: flex; align-items: center; }
     .il-count-badge {
       display: inline-flex; align-items: center; justify-content: center;
@@ -215,7 +284,7 @@
   <meta property="og:url" content="https://eduin.info/apps/idea-lab/">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"발명 아이디어 공작소","description":"합치기·나누기·크기 바꾸기·재료 바꾸기 4가지 발명 마법으로 아이디어를 떠올리고, AI 코치의 질문으로 다듬어 이름 짓고 그림까지 완성하는 초등 저학년 창의 발명 학습 앱.","url":"https://eduin.info/apps/idea-lab/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
 </head>
-<body data-shell="column" data-width="medium">
+<body data-shell="immersive">
   <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입합니다 -->
   <div class="app-actions il-actions">
     <button class="overlay-btn" onclick="showScreen('collection')" title="내 작품집">
@@ -223,29 +292,43 @@
     </button>
   </div>
 
-  <main class="app-main">
-    <div class="app-header">
-      <div class="app-badge">◆ AI</div>
-      <h1 class="app-title">💡 발명 아이디어 공작소</h1>
-      <p class="app-desc">4가지 발명 마법으로 나만의 발명품을 만들고, AI 코치와 함께 다듬어 봐요</p>
+  <!-- 0. 인트로 (전체화면) -->
+  <section class="screen active il-intro-screen" id="scr-intro">
+    <div class="intro-tag">통합교과 1~2학년 · 발명 · AI</div>
+    <div class="intro-emoji">🧙‍♀️</div>
+    <h1>발명 아이디어 공작소</h1>
+    <p class="intro-sub">4가지 발명 마법 · AI 코치와 발명품 만들기</p>
+
+    <div class="intro-card">
+      <h3>발명가는 마법사예요!</h3>
+      <p>4가지 발명 마법을 배우고, AI 코치와 함께<br>나만의 발명품을 만들어 봐요.</p>
+      <div class="il-magic-legend">
+        <div class="il-magic-chip"><span class="em">🧲</span>합치기</div>
+        <div class="il-magic-chip"><span class="em">✂️</span>나누기</div>
+        <div class="il-magic-chip"><span class="em">🔍</span>크기 바꾸기</div>
+        <div class="il-magic-chip"><span class="em">🧱</span>재료 바꾸기</div>
+      </div>
     </div>
 
-    <!-- 0. 인트로 -->
-    <section class="screen active" id="scr-intro">
-      <div class="il-card il-intro-hero">
-        <div class="il-intro-emoji">🧙‍♀️🔧</div>
-        <p class="il-headline">발명가는 마법사예요!</p>
-        <p class="il-sub">4가지 발명 마법을 배우고, AI 코치와 함께<br>나만의 발명품을 만들어 봐요.</p>
-        <div class="il-magic-legend">
-          <div class="il-magic-chip"><span class="em">🧲</span>합치기</div>
-          <div class="il-magic-chip"><span class="em">✂️</span>나누기</div>
-          <div class="il-magic-chip"><span class="em">🔍</span>크기 바꾸기</div>
-          <div class="il-magic-chip"><span class="em">🧱</span>재료 바꾸기</div>
-        </div>
-        <button class="il-btn" onclick="startExplore()">발명 마법 배우러 가기 →</button>
-        <p class="il-privacy-note">내 이름·친구 이름은 쓰지 않아요 🙂</p>
+    <button class="il-btn il-intro-start" onclick="startExplore()">발명 마법 배우러 가기 →</button>
+    <p class="il-privacy-note">내 이름·친구 이름은 쓰지 않아요 🙂</p>
+  </section>
+
+  <!-- 작업 화면: 좌측 무대 + 우측 사이드바 -->
+  <div class="il-work" id="ilWork">
+    <div class="il-stage" id="ilStage">
+      <div class="il-stage-emoji" id="stageEmoji">💡</div>
+      <div class="il-stage-title" id="stageTitle">발명 공작소</div>
+      <div class="il-stage-chips" id="stageChips"></div>
+      <div class="il-stage-art" id="stageArt" hidden></div>
+    </div>
+
+    <div class="il-side">
+      <div class="il-side-head">
+        <h2>💡 발명 아이디어 공작소</h2>
+        <div class="il-side-sub">4가지 발명 마법 · AI 코치</div>
       </div>
-    </section>
+      <div class="il-side-body">
 
     <!-- 1. 발명의 비밀 탐험 -->
     <section class="screen" id="scr-explore">
@@ -376,7 +459,10 @@
       <div class="il-empty" id="collectionEmpty" hidden>아직 만든 발명품이 없어요.<br>지금 첫 발명품을 만들어 볼까요?</div>
       <button class="il-btn il-btn-ghost" style="margin-top:16px" onclick="showScreen('intro')">← 처음으로</button>
     </section>
-  </main>
+
+      </div><!-- /.il-side-body -->
+    </div><!-- /.il-side -->
+  </div><!-- /.il-work -->
 
   <div id="ilToast"></div>
 
@@ -474,13 +560,65 @@
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
     }
+    let currentScreenId = 'intro';
     function showScreen(id) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       const target = getEl('scr-' + id);
       if (target) target.classList.add('active');
+      currentScreenId = id;
+      document.body.classList.toggle('il-in-work', id !== 'intro');
+      const side = document.querySelector('.il-side');
+      if (side) side.scrollTop = 0;
       window.scrollTo({ top: 0, behavior: 'smooth' });
       if (id === 'collection') renderCollection();
+      updateStage(id);
     }
+
+    /* ── 좌측 무대: 현재 단계·상태를 큰 그림으로 보여준다 ── */
+    function updateStage(id) {
+      const emojiEl = getEl('stageEmoji'), titleEl = getEl('stageTitle'),
+            chipsEl = getEl('stageChips'), artEl = getEl('stageArt');
+      if (!emojiEl) return;
+      const b = state.build;
+      const magicChips = (b.magics || []).map(k => {
+        const m = MAGIC_BY_KEY[k];
+        return m ? `<div class="il-magic-chip"><span class="em">${m.em}</span>${m.label}</div>` : '';
+      }).join('');
+      const thingsEmoji = b.item ? (b.item2 ? `${b.itemEmoji}＋${b.item2Emoji}` : b.itemEmoji) : '💡';
+      const thingsLabel = b.item ? (b.item2 ? `${b.item} + ${b.item2}` : b.item) : '';
+      let emoji = '💡', title = '발명 공작소', chips = '', artB64 = null;
+
+      if (id === 'explore') {
+        const ex = EXPLORE_EXAMPLES[state.exploreIdx];
+        if (ex) { emoji = ex.em; title = ex.title; }
+        chips = state.exploreAnswered && ex ? (() => { const m = MAGIC_BY_KEY[ex.magic]; return m ? `<div class="il-magic-chip"><span class="em">${m.em}</span>${m.label}</div>` : ''; })() : '';
+      } else if (id === 'build') {
+        emoji = thingsEmoji; title = thingsLabel || '물건을 골라 보세요'; chips = magicChips;
+      } else if (id === 'coach') {
+        emoji = thingsEmoji; title = thingsLabel; chips = magicChips;
+      } else if (id === 'name' || id === 'draw' || id === 'card') {
+        emoji = thingsEmoji; title = state.finalName || thingsLabel; chips = magicChips;
+        if (state.image && state.image.b64) artB64 = state.image.b64;
+      } else if (id === 'shared') {
+        emoji = '🎁'; title = (state.shared && state.shared.name) || '공유받은 발명품';
+        if (state.shared && state.shared.b64) artB64 = state.shared.b64;
+      } else if (id === 'collection') {
+        emoji = '📂'; title = '내 작품집';
+      }
+
+      titleEl.textContent = title;
+      chipsEl.innerHTML = chips;
+      if (artB64) {
+        artEl.innerHTML = `<img src="data:image/png;base64,${artB64}" alt="">`;
+        artEl.hidden = false; emojiEl.hidden = true;
+      } else {
+        artEl.hidden = true; artEl.innerHTML = '';
+        emojiEl.hidden = false; emojiEl.textContent = emoji;
+      }
+    }
+    // 사이드바 조작(선택·입력) 후 무대를 상태와 동기화
+    document.addEventListener('click', () => setTimeout(() => updateStage(currentScreenId), 0));
+    document.addEventListener('input', () => setTimeout(() => updateStage(currentScreenId), 0));
     function ttsSpeak(text) {
       if (!('speechSynthesis' in window) || !text) return;
       try {
