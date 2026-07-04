@@ -43,8 +43,8 @@ npm run scaffold
 비대화형 한 줄 실행도 가능:
 ```bash
 node scripts/scaffold-app.js --id my-app --name "내 앱" --base column --width narrow \
-  --category edu --subcategory edu-work --emoji 🧮 --desc "..." [--focus] [--print]
-# 모달/외부/다운로드 항목: --kind modal --href https://... --link-label "바로가기 ↗" [--external]
+  --category edu --subcategory edu-work --emoji 🧮 --lucide puzzle --desc "..." [--focus] [--print]
+# 모달/외부/다운로드 항목: --kind modal --href https://... --link-label "바로가기 ↗" --lucide puzzle [--external]
 ```
 
 ### 결과물 (한 커맨드로 완결)
