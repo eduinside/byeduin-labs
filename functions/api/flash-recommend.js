@@ -39,7 +39,8 @@ export async function onRequest(ctx) {
       systemPrompt,
       userMessage,
       env: ctx.env,
-      temperature: 0.8
+      temperature: 0.8,
+      request: ctx.request
     });
 
     // 마크다운 백틱 코드 블록이나 앞뒤 공백 제거
@@ -53,7 +54,7 @@ export async function onRequest(ctx) {
     console.error('flash-recommend error:', e?.message);
     return new Response(
       JSON.stringify({ error: e.message || '추천 중 오류가 발생했습니다.' }),
-      { status: 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      { status: e.status || 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
     );
   }
 }

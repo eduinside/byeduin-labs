@@ -51,6 +51,7 @@ export async function onRequest(ctx) {
       userMessage: text,
       env,
       temperature: 0.2,
+      request,
     });
 
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
@@ -65,6 +66,6 @@ export async function onRequest(ctx) {
     });
   } catch (e) {
     console.error('[spell-check] 오류:', e.message);
-    return json({ error: e.message || 'AI 처리 중 오류가 발생했습니다.' }, 502);
+    return json({ error: e.message || 'AI 처리 중 오류가 발생했습니다.' }, e.status || 502);
   }
 }

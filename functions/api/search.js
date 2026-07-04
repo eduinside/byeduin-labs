@@ -66,7 +66,7 @@ function formatHistory(history) {
 }
 
 // ── 문서 요약/질문 전용 함수 ────────────────────────────────
-async function handleDocumentRequest(type, docPath, question, env, REPO) {
+async function handleDocumentRequest(type, docPath, question, env, REPO, request = null) {
   try {
     console.log(`📄 [${type}] Fetching document: ${docPath}`);
 
@@ -102,7 +102,8 @@ async function handleDocumentRequest(type, docPath, question, env, REPO) {
       temperature: 0.3,
       // 단일 문서 분석은 품질이 중요 → flash로 승격
       timelyModel: ANSWER_TIMELY_MODEL,
-      geminiModel: ANSWER_GEMINI_MODEL
+      geminiModel: ANSWER_GEMINI_MODEL,
+      request
     });
 
     console.log('✅ [doc-request] Completed successfully');
@@ -114,7 +115,7 @@ async function handleDocumentRequest(type, docPath, question, env, REPO) {
     };
   } catch (err) {
     console.error('❌ [doc-request] Unhandled error:', err.message, err.stack);
-    return { statusCode: 502, body: JSON.stringify({ error: `서버 오류: ${err.message}` }) };
+    return { statusCode: err.status || 502, body: JSON.stringify({ error: err.message }) };
   }
 }
 
@@ -154,7 +155,7 @@ export async function onRequest(ctx) {
   // 문서 요약/질문 요청 처리
   if ((type === 'summarize' || type === 'question') && documentPath) {
     console.log(`📄 [handler] Delegating to handleDocumentRequest: ${type}`);
-    const result = await handleDocumentRequest(type, documentPath, query, ctx.env, REPO);
+    const result = await handleDocumentRequest(type, documentPath, query, ctx.env, REPO, ctx.request);
     return new Response(result.body, { status: result.statusCode, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
   }
 
@@ -267,8 +268,9 @@ ${query.trim()}
           systemPrompt: '당신은 문서 검색 라우터입니다. 질문과 가장 관련 있는 문서 경로만 JSON으로 반환합니다.',
           userMessage: selectorPrompt,
           env: ctx.env,
-          temperature: 0
+          temperature: 0,
           // 선별 단계는 비용 절감을 위해 기본(flash-lite) 유지
+          request: ctx.request
         });
       } catch (e) {
         console.warn('⚠️ [search] Selector LLM failed, will fall back to lexical:', e.message);
@@ -325,7 +327,8 @@ ${query.trim()}`;
       env: ctx.env,
       temperature: 0.2,
       timelyModel: ANSWER_TIMELY_MODEL,
-      geminiModel: ANSWER_GEMINI_MODEL
+      geminiModel: ANSWER_GEMINI_MODEL,
+      request: ctx.request
     });
 
     // 참조 문서 = 라우터가 선별한 문서(취약한 정규식 추출 폐기 → 안정적)
@@ -339,6 +342,6 @@ ${query.trim()}`;
     );
   } catch (err) {
     console.error('❌ [search] Unhandled error:', err.message, err.stack);
-    return new Response(`Server error: ${err.message}`, { status: 502 });
+    return new Response(`Server error: ${err.message}`, { status: err.status || 502 });
   }
 }

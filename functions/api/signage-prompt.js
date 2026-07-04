@@ -44,7 +44,8 @@ export async function onRequest(ctx) {
       systemPrompt,
       userMessage,
       env: ctx.env,
-      temperature: 0.7
+      temperature: 0.7,
+      request: ctx.request
     });
 
     return new Response(
@@ -55,7 +56,7 @@ export async function onRequest(ctx) {
     console.error('signage-prompt error:', e?.message);
     return new Response(
       JSON.stringify({ error: e.message || '프롬프트 생성에 실패했습니다.' }),
-      { status: 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      { status: e.status || 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
     );
   }
 }

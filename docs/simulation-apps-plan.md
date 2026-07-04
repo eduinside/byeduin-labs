@@ -198,7 +198,7 @@
 
 > ✅ 2026-07-04 Fable이 직접 처리 완료: ① circuit-lab 세로선 버그(전지 리드선 `y1`을 `y2`로 오타 — 수정·검증), ② 캔버스 중앙·확대(circuit-lab viewBox, shape-move 크기 상한 완화, fraction-bar 렌더 후 getBBox 기반 동적 viewBox, moon-phase-v2 화면 배율 k 도입·드래그 판정 동기화), ③ moon-phase-v2 햇빛을 방사형 광원+광선 화살표 3줄로 교체, ④ eco-web 빈 캔버스 드롭존 안내 추가, ⑤ idea-lab AI 프록시 로컬 실동작 검증 완료(coach·refine 정상, 금칙어 차단 정상). **미해결 발견사항: `_ai.js`에 호출 빈도 제한(rate limit)이 없어 익명 다량 호출 시 비용 무방비 — 별도 보완 필요.**
 
-Sonnet 잔여 작업:
-1. **핵심 그래픽 재작업**: food-bike 자전거 SVG → circuit-lab 부품 심볼 → fraction-bar 초콜릿/피자 질감 → solar-system 토성 고리·행성 라벨.
-2. **마감**: 배경 연출(공통 #4), chance-lab 동전 도안, world-landmarks 로딩 페이드, 라이트모드 점검.
-3. **보안·비용**: idea-lab(및 `_ai.js` 공용) 프록시에 IP 기반 rate limit 또는 Turnstile 도입 검토.
+> ✅ 2026-07-05 Sonnet이 1~3단계 전체 작업 완료:
+> 1. **핵심 그래픽 재작업**: food-bike 자전거 SVG 및 라이더 통합 SVG 재작성 → circuit-lab 부품 심볼 (배터리 극성, 꼬마전구 필라멘트 및 소켓, 스위치 단자) 상세화 → fraction-bar 초콜릿 블록 베벨 및 피자 도우 크러스트와 토핑 추가 → solar-system 토성 고리 3D 클리핑 마스크 및 행성 궤도 위 호버/상시 이름표 추가.
+> 2. **마감**: 배경 연출(shape-move, fraction-bar, chance-lab에 grid/dot CSS 패턴 추가), chance-lab 동전 도안(금/은화 SVG) 및 dynamic Y-axis 3D 포물선 던지기 물리 회전 애니메이션 구현, world-landmarks 위성 타일 렌더링 완료 감지(MapLibre `idle` 이벤트 연동) 및 전용 다크 테마 추가, 라이트/다크모드 색상 조율.
+> 3. **보안·비용**: `_ai.js` 공용 모듈 내부에서 `CF-Connecting-IP` 헤더 기반의 Edge 메모리 sharded rate limiting 시스템을 구축하여, 텍스트 분당 30회 / 이미지 분당 5회 한도 초과 시 429 Too Many Requests 응답을 반환하도록 8대 AI 프록시 엔드포인트 일괄 적용 및 보안을 보완했습니다. (도전 미션 속 `**` 마크다운 강조 기호를 HTML `<strong>` 태그로 일괄 변환 완료)

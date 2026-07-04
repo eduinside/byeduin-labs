@@ -163,6 +163,8 @@ docs/                  ← 개발 문서
 > 위 코드 동기화 엔드포인트(`/api/readtree`~`/api/md-editor`)는 `functions/api/_sync.js`(createDocSync/createSetSync)의 한 줄 래퍼다. `/api/madang`은 패턴이 달라(여러 사용자 카드가 한 보드에 모임 + 소유권·접근제어) 전용 모듈 [`functions/api/madang.js`](../functions/api/madang.js)로 구현했고, 공용 헬퍼는 [`functions/api/_madang-common.js`](../functions/api/_madang-common.js)로 분리해 업로드·이미지 엔드포인트와 공유한다.
 >
 > **주의(2026-07-04)**: `madang-img`는 폴더 이름 자체를 `[board]`처럼 대괄호로 만들면 Cloudflare Pages Functions 빌드가 깨져 배포 전체가 정적 사이트로 떨어진 적이 있다(`/api/*` 전체 404). 다중 세그먼트 동적 라우트는 반드시 `[[path]].js` 형태의 **단일 파일 catch-all**로 작성할 것 — 디렉터리 자체를 `[param]`으로 만들지 말 것.
+>
+> **AI 호출 빈도 제한 (Rate Limiting)**: `functions/api/_ai.js` 모듈을 통하는 모든 AI API 호출은 `CF-Connecting-IP` 헤더를 바탕으로 한 엣지 메모리 sharded rate limiting 시스템의 감시를 받습니다. 무차별적인 자동화 공격 및 비용 과다 방지를 위해 **텍스트 생성 분당 30회 / 이미지 생성 분당 5회**의 한도를 엄격히 초과할 시 `429 Too Many Requests` 에러를 반환합니다.
 
 ---
 
@@ -181,8 +183,8 @@ docs/                  ← 개발 문서
 
 ## 주요 변경 이력
 
-### 2026-07 — 교육 시뮬레이션 앱 2단계(Phase 2) 비주얼 및 마감 보완 완료
-`docs/simulation-apps-plan.md` 및 `docs/sim-apps-audit-2026-07.md`의 보완 계획에 따라 2단계 그래픽 및 마감 폴리싱 작업을 수행했습니다.
+### 2026-07 — 교육 시뮬레이션 앱 2·3단계(Phase 2 & 3) 비주얼 폴리싱 및 보안 보완 완료
+`docs/simulation-apps-plan.md` 및 `docs/sim-apps-audit-2026-07.md` 보완 계획에 따라 2단계 그래픽 마감 및 3단계 AI API 보안 강화 작업을 완료했습니다.
 
 - **전기회로 공작소 (circuit-lab)**: 전구 점등 시 광량 그라디언트 글로우 효과로 광원 시각 효과를 극대화하고, 스위치 🎚️ 단자 접점과 나이프 레버 등의 SVG 세부 디테일을 개선했습니다.
 - **분수 막대 (fraction-bar)**: 초콜릿 막대의 3D 입체 홈 및 질감 데코레이션을 추가하고, 피자 모드에 도우 크러스트와 토핑(A: 페퍼로니/노란반점, B: 블랙 올리브)을 추가하여 일러스트 그래픽 품질을 혁신했습니다.
@@ -192,6 +194,7 @@ docs/                  ← 개발 문서
 - **세계 탐험대 (world-landmarks)**: 위성 지도가 완전히 준비되어 타일 로딩이 끝날 때까지 로딩 화면이 대기하도록 MapLibre `idle` 이벤트를 도입하고(2.5초 안전 타임아웃), 여권 및 사이드바에 대한 완전한 다크 모드 색상 테마를 추가했습니다.
 - **배경 질감 연출 (공통)**: `shape-move`, `fraction-bar`, `chance-lab` 등 immersive 앱들의 공허한 캔버스 배경에 도트 및 격자눈금 CSS 패턴을 추가해 프리미엄 연구실 무드 보드를 연출했습니다.
 - **텍스트 포맷 마크다운 제거**: 도전 미션과 결과 정리 화면의 단순 텍스트 영역에 노출되던 `**` 마크다운 강조 기호를 HTML `<strong>` 태그로 일괄 변환 완료했습니다.
+- **AI 프록시 보안·비용 가드 (3단계)**: `_ai.js` 공용 모듈에 `CF-Connecting-IP` 기반의 엣지 인메모리 sharded rate limiting 시스템을 구축했습니다. 이를 통해 8대 AI 프록시 API(idea-lab, search, signage, spell-checker, flash-card, blocks-universe 등) 전반에 걸쳐 텍스트 분당 30회, 이미지 분당 5회 한도 초과 시 즉각 `429 Too Many Requests` 상태코드를 응답하도록 공통 보안 대책을 적용했습니다.
 
 ### 2026-07 — 교육 시뮬레이션 앱(edu-sim) 15종 점검·버그 수정·홈 개선
 `docs/sim-apps-audit-2026-07.md` 조사를 바탕으로 두 세션에 걸쳐 진행.

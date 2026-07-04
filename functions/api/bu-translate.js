@@ -26,9 +26,9 @@ export async function onRequest(ctx) {
 
   let ko;
   try {
-    ko = await generateContent({ systemPrompt, userMessage: text, env, temperature: 0.3 });
+    ko = await generateContent({ systemPrompt, userMessage: text, env, temperature: 0.3, request });
   } catch (e) {
-    return json({ error: e.message }, 502);
+    return json({ error: e.message }, e.status || 502);
   }
 
   return json({ ko: ko.trim() });

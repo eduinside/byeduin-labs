@@ -35,9 +35,9 @@ export async function onRequest(ctx) {
 
   let text;
   try {
-    text = await generateContent({ systemPrompt, userMessage, env, temperature: 0.3 });
+    text = await generateContent({ systemPrompt, userMessage, env, temperature: 0.3, request });
   } catch (e) {
-    return json({ error: e.message }, 502);
+    return json({ error: e.message }, e.status || 502);
   }
 
   let ids;

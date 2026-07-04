@@ -1,3 +1,32 @@
+// IP-based Rate Limiter Store
+const ipRequests = new Map();
+
+function checkRateLimit(ip, limit, windowMs = 60 * 1000) {
+  const now = Date.now();
+  
+  // Lazy memory cleanup if size exceeds 2000
+  if (ipRequests.size > 2000) {
+    for (const [key, value] of ipRequests.entries()) {
+      if (now > value.resetTime) {
+        ipRequests.delete(key);
+      }
+    }
+  }
+  
+  let record = ipRequests.get(ip);
+  if (!record || now > record.resetTime) {
+    record = {
+      count: 0,
+      resetTime: now + windowMs
+    };
+  }
+  
+  record.count++;
+  ipRequests.set(ip, record);
+  
+  return record.count <= limit;
+}
+
 export async function generateContent({
   systemPrompt,
   userMessage,
@@ -6,8 +35,17 @@ export async function generateContent({
   // 모델 오버라이드(선택). 기본값은 가장 저렴한 flash-lite 유지 → 기존 호출부 동작 불변.
   // 무거운 작업(예: 검색 최종 답변)은 'google/gemini-2.5-flash' / 'gemini-flash-latest'로 승격.
   timelyModel = 'google/gemini-2.5-flash-lite',
-  geminiModel = 'gemini-flash-lite-latest'
+  geminiModel = 'gemini-flash-lite-latest',
+  request = null // IP rate limiting용 request 객체
 }) {
+  if (request) {
+    const ip = request.headers.get('CF-Connecting-IP') || '127.0.0.1';
+    if (!checkRateLimit(ip, 30)) { // 분당 최대 30회 텍스트 생성
+      const err = new Error('요청 빈도가 너무 높습니다. 잠시 후 다시 시도해 주세요. (Too Many Requests)');
+      err.status = 429;
+      throw err;
+    }
+  }
   const timelyKey = env.TIMELY_API_KEY;
   const geminiKey = env.GEMINI_API_KEY;
 
@@ -83,7 +121,15 @@ export async function generateContent({
   return text.trim();
 }
 
-export async function generateImage({ prompt, env }) {
+export async function generateImage({ prompt, env, request = null }) {
+  if (request) {
+    const ip = request.headers.get('CF-Connecting-IP') || '127.0.0.1';
+    if (!checkRateLimit(ip, 5)) { // 분당 최대 5회 이미지 생성
+      const err = new Error('이미지 생성 요청 빈도가 너무 높습니다. 1분 후에 다시 시도해 주세요. (Too Many Requests)');
+      err.status = 429;
+      throw err;
+    }
+  }
   const timelyKey = env.TIMELY_API_KEY;
   const geminiKey = env.GEMINI_API_KEY;
   let b64Data = null;

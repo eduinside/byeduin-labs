@@ -139,9 +139,9 @@ export async function onRequest(ctx) {
 
       let text;
       try {
-        text = await generateContent({ systemPrompt, userMessage, env, temperature: 0.8 });
+        text = await generateContent({ systemPrompt, userMessage, env, temperature: 0.8, request });
       } catch (e) {
-        return json({ error: e.message }, 502);
+        return json({ error: e.message }, e.status || 502);
       }
       let out;
       try {
@@ -176,9 +176,9 @@ export async function onRequest(ctx) {
 
       let text;
       try {
-        text = await generateContent({ systemPrompt, userMessage, env, temperature: 0.8 });
+        text = await generateContent({ systemPrompt, userMessage, env, temperature: 0.8, request });
       } catch (e) {
-        return json({ error: e.message }, 502);
+        return json({ error: e.message }, e.status || 502);
       }
       let out;
       try {
@@ -216,9 +216,9 @@ export async function onRequest(ctx) {
 
       let text;
       try {
-        text = await generateContent({ systemPrompt, userMessage, env, temperature: 0.9 });
+        text = await generateContent({ systemPrompt, userMessage, env, temperature: 0.9, request });
       } catch (e) {
-        return json({ error: e.message, customNameOk }, 502);
+        return json({ error: e.message, customNameOk }, e.status || 502);
       }
       let out;
       try {
@@ -247,9 +247,9 @@ export async function onRequest(ctx) {
 
       let b64;
       try {
-        b64 = await generateImage({ prompt, env });
+        b64 = await generateImage({ prompt, env, request });
       } catch (e) {
-        return json({ error: e.message || '이미지 생성에 실패했습니다.' }, 502);
+        return json({ error: e.message || '이미지 생성에 실패했습니다.' }, e.status || 502);
       }
       return json({ b64 });
     }
