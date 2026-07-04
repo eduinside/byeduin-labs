@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>태양계 여행 — eduin VIVES</title>
+  <meta name="description" content="여덟 행성을 공전시키고 크기와 거리를 실제 비율로 비교해 보세요. 행성 도감과 퀴즈까지, 초등 5~6학년 태양계와 별을 체험하는 무료 학습 시뮬레이션.">
+  <meta property="og:title" content="태양계 여행 — 행성 공전·크기·거리 비교 시뮬레이션 | eduin VIVES">
+  <meta property="og:description" content="여덟 행성을 공전시키고 크기와 거리를 실제 비율로 비교해 보세요. 행성 도감과 퀴즈까지, 초등 5~6학년 태양계와 별을 체험하는 무료 학습 시뮬레이션.">
+  <meta property="og:image" content="https://eduin.info/og-images/solar-system.png">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <link rel="stylesheet" href="/common/app-shell.css">
+  <script src="/common/theme.js"></script>
+  <script src="/common/init.js"></script>
+  <script src="/common/app-shell.js" defer></script>
+  <script src="/common/seo-injector.js" defer></script>
+  <style>
+    :root{
+      --ss-space-1:#05060f; --ss-space-2:#0b0f24; --ss-space-3:#141b3c;
+      --ss-fg:#e8ecff; --ss-fg-muted:#9aa3d4;
+      --ss-card:rgba(20,24,54,.72); --ss-border:rgba(140,150,220,.28);
+      --ss-accent:#ffd166; --ss-orbit:rgba(150,165,255,.28);
+      --ss-good:#5ee6a8; --ss-bad:#ff6b81;
+      --ss-focus:#7dd3fc;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;height:100%}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Segoe UI',sans-serif;
+      color:var(--ss-fg); overflow:hidden;
+    }
+    button, a { -webkit-tap-highlight-color:transparent; }
+    button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
+      outline:2px solid var(--ss-focus); outline-offset:2px;
+    }
+
+    .ss-bg{
+      position:fixed; inset:0; z-index:0;
+      background:
+        radial-gradient(1.5px 1.5px at 10% 20%, #fff, transparent),
+        radial-gradient(1px 1px at 25% 65%, #fff, transparent),
+        radial-gradient(1.5px 1.5px at 40% 15%, #cfe0ff, transparent),
+        radial-gradient(1px 1px at 60% 80%, #fff, transparent),
+        radial-gradient(1.5px 1.5px at 75% 35%, #fff, transparent),
+        radial-gradient(1px 1px at 88% 60%, #cfe0ff, transparent),
+        radial-gradient(1.5px 1.5px at 92% 12%, #fff, transparent),
+        radial-gradient(1px 1px at 15% 90%, #fff, transparent),
+        radial-gradient(1200px 800px at 50% -10%, var(--ss-space-3), transparent 60%),
+        linear-gradient(180deg, var(--ss-space-1), var(--ss-space-2));
+      background-repeat:no-repeat;
+    }
+    #app{ position:fixed; inset:0; z-index:1; overflow:hidden; }
+    .ss-scroll{ position:absolute; inset:0; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+
+    /* ===== 공용 ===== */
+    .ss-wrap{ max-width:560px; margin:0 auto; padding:88px 18px 40px; }
+    .ss-card{
+      background:var(--ss-card); border:1px solid var(--ss-border); border-radius:20px;
+      padding:22px 20px; backdrop-filter:blur(10px);
+    }
+    .ss-btn{
+      font-family:inherit; font-size:16px; font-weight:700; border:none; cursor:pointer;
+      border-radius:999px; padding:13px 28px; transition:transform .12s, box-shadow .12s;
+      color:#1a1330; background:linear-gradient(135deg,var(--ss-accent),#ff9e5e);
+      box-shadow:0 6px 0 #b8781f; min-height:44px;
+    }
+    .ss-btn:active{ transform:translateY(3px); box-shadow:0 3px 0 #b8781f; }
+    .ss-btn-ghost{
+      background:rgba(255,255,255,.08); color:var(--ss-fg); box-shadow:none;
+      border:1px solid var(--ss-border);
+    }
+    .ss-btn-ghost:active{ transform:scale(.96); }
+    .ss-btn-sm{ font-size:13px; padding:9px 16px; min-height:36px; }
+    .ss-btn:disabled{ opacity:.4; cursor:not-allowed; box-shadow:none; transform:none; }
+
+    .ss-topbar{
+      position:absolute; top:64px; left:12px; right:12px; z-index:5;
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      flex-wrap:wrap;
+    }
+    @media (max-width:540px){ .ss-topbar{ top:52px; } }
+    .ss-caption{
+      background:rgba(10,12,28,.75); border:1px solid var(--ss-border); border-radius:999px;
+      padding:7px 14px; font-size:12.5px; color:var(--ss-fg-muted); backdrop-filter:blur(6px);
+    }
+
+    /* ===== 인트로 ===== */
+    .intro{ text-align:center; animation:fadeUp .5s ease both; }
+    .intro .art{ font-size:70px; line-height:1; margin-bottom:10px; animation:float 3s ease-in-out infinite; }
+    .intro h1{ font-size:30px; margin:0 0 8px; }
+    .intro .tag{
+      display:inline-block; background:rgba(255,209,102,.14); color:var(--ss-accent);
+      border:1px solid rgba(255,209,102,.4); font-size:12.5px; padding:5px 14px;
+      border-radius:999px; margin-bottom:16px;
+    }
+    .intro p.sub{ color:var(--ss-fg-muted); line-height:1.7; margin-bottom:22px; }
+    .intro .ss-card{ text-align:left; margin-bottom:24px; }
+    .intro .ss-card h3{ margin:0 0 8px; font-size:16px; color:var(--ss-accent); }
+    .intro .ss-card ul{ margin:0; padding-left:20px; line-height:1.7; font-size:14.5px; }
+
+    /* ===== 허브 ===== */
+    .hub-head{ text-align:center; margin-bottom:18px; }
+    .hub-head h2{ margin:0 0 4px; font-size:22px; }
+    .hub-head p{ margin:0; color:var(--ss-fg-muted); font-size:13.5px; }
+    .hub-progress{
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      font-size:12.5px; color:var(--ss-fg-muted); margin-bottom:20px;
+    }
+    .hub-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+    .hub-tile{
+      background:var(--ss-card); border:1px solid var(--ss-border); border-radius:18px;
+      padding:18px 14px; text-align:center; cursor:pointer; transition:transform .12s, border-color .12s;
+      color:inherit; font-family:inherit;
+    }
+    .hub-tile:hover{ border-color:var(--ss-accent); }
+    .hub-tile:active{ transform:scale(.97); }
+    .hub-tile .ico{ font-size:34px; margin-bottom:8px; }
+    .hub-tile .lbl{ font-size:14.5px; font-weight:700; margin-bottom:3px; }
+    .hub-tile .sub{ font-size:11.5px; color:var(--ss-fg-muted); line-height:1.5; }
+    .hub-mission-btn{ width:100%; margin-bottom:10px; }
+
+    /* ===== 여행 모드 ===== */
+    .travel-stage{ position:absolute; inset:0; touch-action:pan-x pan-y; }
+    .travel-stage svg{ width:100%; height:100%; display:block; }
+    .travel-controls{
+      position:absolute; left:50%; transform:translateX(-50%); bottom:22px; z-index:5;
+      background:rgba(10,12,28,.78); border:1px solid var(--ss-border); border-radius:20px;
+      padding:12px 18px; display:flex; align-items:center; gap:12px; backdrop-filter:blur(8px);
+      max-width:calc(100% - 24px);
+    }
+    .travel-controls input[type=range]{ width:110px; accent-color:var(--ss-accent); }
+    .icon-btn{
+      width:40px; height:40px; border-radius:50%; border:none; cursor:pointer;
+      background:rgba(255,255,255,.1); color:var(--ss-fg); font-size:17px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .icon-btn:active{ transform:scale(.92); }
+    .planet-token{ cursor:pointer; }
+    .planet-token:focus-visible circle, .planet-token:focus-visible ellipse{ outline:2px solid var(--ss-focus); }
+
+    .info-sheet{
+      position:absolute; left:0; right:0; bottom:0; z-index:8;
+      background:var(--ss-card); border-top:1px solid var(--ss-border); backdrop-filter:blur(12px);
+      border-radius:22px 22px 0 0; padding:18px 20px 22px; max-height:52%; overflow-y:auto;
+      transform:translateY(100%); transition:transform .28s cubic-bezier(.3,0,.2,1);
+    }
+    .info-sheet.open{ transform:translateY(0); }
+    .info-sheet .row{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+    .info-sheet h3{ margin:0; font-size:19px; }
+    .info-sheet .facts{ display:flex; gap:14px; flex-wrap:wrap; font-size:12.5px; color:var(--ss-fg-muted); margin-bottom:10px; }
+    .info-sheet p.desc{ font-size:14px; line-height:1.65; margin:0 0 14px; }
+    .sheet-close{ position:absolute; top:12px; right:14px; background:none; border:none; color:var(--ss-fg-muted); font-size:18px; cursor:pointer; }
+    .star-btn{ background:none; border:none; font-size:20px; cursor:pointer; padding:0; }
+
+    /* ===== 크기/거리 비교 공용 스크롤 스테이지 ===== */
+    .cmp-scroll{
+      position:absolute; inset:0; overflow-x:auto; overflow-y:hidden;
+      -webkit-overflow-scrolling:touch; padding-top:130px;
+    }
+    .cmp-track{ position:relative; height:calc(100% - 130px); min-height:260px; }
+    .cmp-label{
+      position:absolute; top:-26px; transform:translateX(-50%); font-size:11px;
+      color:var(--ss-fg-muted); white-space:nowrap; text-align:center;
+    }
+    .cmp-ratio{
+      position:absolute; top:calc(50% + 90px); transform:translateX(-50%); font-size:10.5px;
+      color:var(--ss-accent); white-space:nowrap; text-align:center; font-weight:700;
+    }
+    .earth-ghost{ cursor:grab; touch-action:none; }
+    .earth-ghost.dragging{ cursor:grabbing; }
+    .cmp-hint{
+      position:absolute; top:76px; left:50%; transform:translateX(-50%); z-index:4;
+      font-size:12px; color:var(--ss-fg-muted); text-align:center; max-width:90%;
+    }
+    .dist-chipbar{
+      position:absolute; left:0; right:0; bottom:0; z-index:6;
+      background:rgba(10,12,28,.82); border-top:1px solid var(--ss-border);
+      display:flex; gap:8px; padding:10px 12px; overflow-x:auto; backdrop-filter:blur(8px);
+    }
+    .dist-chip{
+      flex:0 0 auto; background:rgba(255,255,255,.08); border:1px solid var(--ss-border);
+      color:var(--ss-fg); border-radius:999px; padding:8px 13px; font-size:12.5px; cursor:pointer;
+    }
+    .zoom-bar{ display:flex; gap:6px; }
+
+    /* ===== 도감 ===== */
+    .codex-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px; }
+    .codex-card{
+      background:var(--ss-card); border:1px solid var(--ss-border); border-radius:16px;
+      padding:14px; text-align:center; cursor:pointer; color:inherit; font-family:inherit;
+    }
+    .codex-card:active{ transform:scale(.97); }
+    .codex-card svg{ display:block; margin:0 auto 6px; }
+    .codex-card .lbl{ font-size:13.5px; font-weight:700; }
+    .codex-detail{ animation:fadeUp .3s ease both; }
+    .codex-detail-hero{ text-align:center; margin-bottom:14px; }
+    .codex-detail-facts{
+      display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;
+    }
+    .fact-box{
+      background:rgba(255,255,255,.05); border:1px solid var(--ss-border); border-radius:12px;
+      padding:10px 12px; text-align:center;
+    }
+    .fact-box .k{ font-size:11px; color:var(--ss-fg-muted); }
+    .fact-box .v{ font-size:14.5px; font-weight:700; margin-top:2px; }
+
+    /* ===== 미션 ===== */
+    .mission-progress{ text-align:center; font-size:12.5px; color:var(--ss-fg-muted); margin-bottom:14px; }
+    .mission-q{ font-size:18px; font-weight:700; text-align:center; margin-bottom:18px; line-height:1.5; }
+    .choice-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:18px; }
+    .choice-btn{
+      font-family:inherit; font-size:15px; text-align:left; padding:14px 16px; border-radius:14px;
+      border:2px solid var(--ss-border); background:rgba(255,255,255,.04); color:var(--ss-fg);
+      cursor:pointer; display:flex; align-items:center; gap:10px; min-height:44px;
+    }
+    .choice-btn.selected{ border-color:var(--ss-accent); background:rgba(255,209,102,.12); }
+    .choice-btn.correct{ border-color:var(--ss-good); background:rgba(94,230,168,.14); }
+    .choice-btn.wrong{ border-color:var(--ss-bad); background:rgba(255,107,129,.14); }
+
+    .order-pool, .order-slots{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-bottom:14px; }
+    .order-slot{
+      width:60px; height:60px; border-radius:14px; border:2px dashed var(--ss-border);
+      display:flex; align-items:center; justify-content:center; position:relative;
+      background:rgba(255,255,255,.03); cursor:pointer;
+    }
+    .order-slot .idx{ position:absolute; top:2px; left:5px; font-size:10px; color:var(--ss-fg-muted); }
+    .order-slot.filled{ border-style:solid; }
+    .order-slot.correct{ border-color:var(--ss-good); }
+    .order-slot.wrong{ border-color:var(--ss-bad); }
+    .order-chip{
+      width:52px; height:52px; border-radius:12px; border:none; background:rgba(255,255,255,.06);
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+    }
+    .order-chip:disabled{ opacity:.25; cursor:default; }
+
+    .feedback-box{
+      border-radius:14px; padding:12px 14px; margin-bottom:14px; font-size:13.5px; line-height:1.6;
+      animation:popIn .3s ease both;
+    }
+    .feedback-box.ok{ background:rgba(94,230,168,.12); border:1px solid var(--ss-good); }
+    .feedback-box.no{ background:rgba(255,107,129,.12); border:1px solid var(--ss-bad); }
+
+    /* ===== 결과 ===== */
+    .result-score{ text-align:center; font-size:16px; margin-bottom:16px; }
+    .result-score b{ color:var(--ss-accent); font-size:26px; }
+    .summary-box{
+      background:rgba(255,255,255,.05); border:1px solid var(--ss-border); border-radius:16px;
+      padding:16px 18px; margin-bottom:20px; font-size:14px; line-height:1.75;
+    }
+    .summary-box b{ color:var(--ss-accent); }
+    .result-actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+
+    @keyframes fadeUp{ from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:none} }
+    @keyframes float{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    @keyframes popIn{ from{opacity:0; transform:scale(.9)} to{opacity:1; transform:scale(1)} }
+
+    @media (max-width:480px){
+      .hub-grid{ grid-template-columns:1fr; }
+      .codex-grid{ grid-template-columns:1fr 1fr; }
+    }
+  </style>
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="태양계 여행 — 행성 공전·크기·거리 비교 시뮬레이션 | eduin VIVES">
+  <meta name="twitter:description" content="여덟 행성을 공전시키고 크기와 거리를 실제 비율로 비교해 보세요. 행성 도감과 퀴즈까지, 초등 5~6학년 태양계와 별을 체험하는 무료 학습 시뮬레이션.">
+  <meta name="twitter:image" content="https://eduin.info/og-images/solar-system.png">
+  <link rel="canonical" href="https://eduin.info/apps/solar-system/">
+  <meta property="og:url" content="https://eduin.info/apps/solar-system/">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"태양계 여행","description":"여덟 행성을 공전시키고 크기와 거리를 실제 비율로 비교해 보세요. 행성 도감과 퀴즈까지, 초등 5~6학년 태양계와 별을 체험하는 무료 학습 시뮬레이션.","url":"https://eduin.info/apps/solar-system/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script src="/common/seo-injector.js" defer></script>
+</head>
+<body data-shell="immersive">
+<!-- 플로팅 크롬(홈·공유)은 app-shell.js가 주입. 테마 버튼은 immersive에서 자동 숨김 -->
+<div class="ss-bg"></div>
+<div id="app"></div>
+
+<script>
+/* ============================================================
+   데이터 — 지구=1 기준 상대값(반올림). 출처: NASA Planetary Fact Sheet 근사.
+   diameterEarth: 지름(지구=1) · distanceAU: 태양 평균거리(지구=1AU=1)
+   rotDays/orbitDays: 자전/공전 주기(지구일 기준, 초등 학습용 반올림)
+   ============================================================ */
+const PLANETS = [
+  { id:'mercury', name:'수성', diameterEarth:0.38, distanceAU:0.39, rotDays:59, orbitDays:88,
+    color:'#b7ab9e', hi:'#d9cfc3', dark:'#5c5148',
+    fact:'태양에 가장 가까운 행성이에요. 대기가 거의 없어 낮과 밤의 온도차가 태양계에서 가장 커요.' },
+  { id:'venus', name:'금성', diameterEarth:0.95, distanceAU:0.72, rotDays:243, orbitDays:225,
+    color:'#e6cf9c', hi:'#f5e6c0', dark:'#a68a54',
+    fact:'두꺼운 구름에 덮여 있고, 표면 온도가 태양계 행성 중 가장 뜨거워요.' },
+  { id:'earth', name:'지구', diameterEarth:1, distanceAU:1, rotDays:1, orbitDays:365,
+    color:'#3f7fd0', hi:'#7fb4f0', dark:'#1c3d6b', land:true,
+    fact:'우리가 살고 있는 행성이에요. 표면의 넓은 바다 때문에 파랗게 보여요.' },
+  { id:'mars', name:'화성', diameterEarth:0.53, distanceAU:1.52, rotDays:1.03, orbitDays:687,
+    color:'#c1552e', hi:'#e08159', dark:'#6b2b13',
+    fact:'붉은 흙 때문에 \'붉은 행성\'이라 불려요. 계절의 변화가 지구와 비슷해요.' },
+  { id:'jupiter', name:'목성', diameterEarth:11.2, distanceAU:5.20, rotDays:0.41, orbitDays:4333,
+    color:'#d9b48a', hi:'#f0d6ae', dark:'#8a6a45', bands:['#c99a68','#e8cba0','#b8875a'], spot:'#b5432c',
+    fact:'태양계에서 가장 큰 행성이에요. \'대적점\'이라는 거대한 소용돌이가 있어요.' },
+  { id:'saturn', name:'토성', diameterEarth:9.45, distanceAU:9.58, rotDays:0.45, orbitDays:10759,
+    color:'#e6cd93', hi:'#f5e6bd', dark:'#a4874f', ring:{rx:1.9, ry:0.62, rot:-18, color:'#d9c592'},
+    fact:'아름다운 고리를 가진 행성이에요. 고리는 얼음과 돌 조각들로 이루어져 있어요.' },
+  { id:'uranus', name:'천왕성', diameterEarth:4.01, distanceAU:19.2, rotDays:0.72, orbitDays:30687,
+    color:'#a9e0da', hi:'#cdf0ec', dark:'#5a8f8a', ring:{rx:0.5, ry:1.55, rot:8, color:'#bfe6e1'},
+    fact:'옆으로 거의 누운 채 자전해요. 희미한 고리가 세로 방향으로 둘러져 있어요.' },
+  { id:'neptune', name:'해왕성', diameterEarth:3.88, distanceAU:30.05, rotDays:0.67, orbitDays:60190,
+    color:'#3d5fc9', hi:'#6f8fe0', dark:'#1e2f6b',
+    fact:'태양계에서 가장 먼 행성이에요. 태양계에서 가장 강한 바람이 부는 것으로 알려져 있어요.' },
+];
+const SUN = { id:'sun', name:'태양', diameterEarth:109, color:'#ffcf5e', hi:'#fff2c2', dark:'#e0862a' };
+
+function fmtDays(d){
+  if(d < 1) return Math.round(d*24) + '시간';
+  if(d < 2) return d.toFixed(2) + '일';
+  if(d < 900) return Math.round(d) + '일';
+  return (d/365).toFixed(1) + '년';
+}
+
+/* ============================================================
+   상태 · 저장 · 공유
+   ============================================================ */
+const STORE_KEY = 'solar-system:v1';
+function loadStore(){
+  try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }catch(e){ return {}; }
+}
+function saveStore(patch){
+  const cur = loadStore();
+  const next = Object.assign({}, cur, patch);
+  localStorage.setItem(STORE_KEY, JSON.stringify(next));
+  return next;
+}
+let store = Object.assign({ missions:{}, favorites:[] }, loadStore());
+
+const state = { screen:'intro', focusPlanet:null };
+// 공유 가능한 화면만 해시에 반영(허브/인트로/미션/결과는 "특정 뷰 공유"의 의미가 없어 제외)
+const RESTORABLE_SCREENS = ['travel','size','distance','codex','codexDetail'];
+
+function syncHash(){
+  if(!RESTORABLE_SCREENS.includes(state.screen)){
+    if(location.hash) history.replaceState(null, '', location.pathname + location.search);
+    return;
+  }
+  try{
+    const payload = { v:1, screen: state.screen, focusPlanet: state.focusPlanet || null };
+    const encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
+    history.replaceState(null, '', '#' + encoded);
+  }catch(e){}
+}
+function restoreFromHash(){
+  const h = location.hash.slice(1);
+  if(!h) return;
+  try{
+    const payload = JSON.parse(decodeURIComponent(atob(h)));
+    if(payload && payload.v === 1 && RESTORABLE_SCREENS.includes(payload.screen)){
+      state.screen = payload.screen;
+      state.focusPlanet = payload.focusPlanet || null;
+    }
+  }catch(e){}
+}
+
+/* ============================================================
+   행성 SVG 렌더
+   ============================================================ */
+let __uid = 0;
+function planetSVG(p, r, opts){
+  opts = opts || {};
+  const uid = 'ps' + (__uid++);
+  const gid = 'g' + uid, cid = 'c' + uid;
+  const cx = r, cy = r;
+  let ring = '';
+  if(p.ring){
+    ring = `<ellipse cx="${cx}" cy="${cy}" rx="${r*p.ring.rx}" ry="${r*p.ring.ry}" transform="rotate(${p.ring.rot} ${cx} ${cy})" fill="none" stroke="${p.ring.color}" stroke-width="${Math.max(1.4, r*0.16)}" opacity="0.85"/>`;
+  }
+  let extra = '';
+  if(p.bands){
+    extra += p.bands.map((b,i)=>`<ellipse cx="${cx}" cy="${cy+(i-1)*r*0.42}" rx="${r*1.05}" ry="${r*0.2}" fill="${b}" opacity="0.55"/>`).join('');
+  }
+  if(p.spot){
+    extra += `<ellipse cx="${cx+r*0.28}" cy="${cy+r*0.08}" rx="${r*0.2}" ry="${r*0.13}" fill="${p.spot}" opacity="0.85"/>`;
+  }
+  if(p.land){
+    extra += `<ellipse cx="${cx-r*0.25}" cy="${cy-r*0.2}" rx="${r*0.32}" ry="${r*0.22}" fill="#4d9e5a" opacity="0.8"/>`;
+    extra += `<ellipse cx="${cx+r*0.3}" cy="${cy+r*0.3}" rx="${r*0.26}" ry="${r*0.18}" fill="#4d9e5a" opacity="0.7"/>`;
+    extra += `<ellipse cx="${cx+r*0.1}" cy="${cy-r*0.35}" rx="${r*0.4}" ry="${r*0.12}" fill="#fff" opacity="0.35"/>`;
+  }
+  const size = r*2;
+  const label = opts.noSun ? p.name : p.name;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-label="${label}" role="img">
+    <defs>
+      <radialGradient id="${gid}" cx="35%" cy="32%" r="75%">
+        <stop offset="0%" stop-color="${p.hi||p.color}"/>
+        <stop offset="55%" stop-color="${p.color}"/>
+        <stop offset="100%" stop-color="${p.dark||p.color}"/>
+      </radialGradient>
+      <clipPath id="${cid}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath>
+    </defs>
+    ${ring}
+    <g clip-path="url(#${cid})">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${gid})"/>
+      ${extra}
+    </g>
+  </svg>`;
+}
+function sunSVG(r){
+  const uid = 'sun' + (__uid++);
+  const size = r*2;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-label="태양" role="img">
+    <defs><radialGradient id="${uid}" cx="35%" cy="32%" r="75%">
+      <stop offset="0%" stop-color="${SUN.hi}"/><stop offset="60%" stop-color="${SUN.color}"/><stop offset="100%" stop-color="${SUN.dark}"/>
+    </radialGradient></defs>
+    <circle cx="${r}" cy="${r}" r="${r*0.94}" fill="url(#${uid})"/>
+  </svg>`;
+}
+
+/* ============================================================
+   화면 전환
+   ============================================================ */
+const app = document.getElementById('app');
+function go(screen, focusPlanet){
+  // travel 화면을 벗어나는 모든 경로에서 requestAnimationFrame 루프를 확실히 정지
+  if(state.screen === 'travel' && screen !== 'travel') stopTravel();
+  state.screen = screen;
+  state.focusPlanet = focusPlanet !== undefined ? focusPlanet : null;
+  syncHash();
+  render();
+  window.scrollTo(0,0);
+}
+function render(){
+  switch(state.screen){
+    case 'intro': return renderIntro();
+    case 'hub': return renderHub();
+    case 'travel': return renderTravel();
+    case 'size': return renderSize();
+    case 'distance': return renderDistance();
+    case 'codex': return renderCodex();
+    case 'codexDetail': return renderCodexDetail(state.focusPlanet);
+    case 'missions': return renderMissions();
+    case 'result': return renderResult();
+    default: return renderIntro();
+  }
+}
+
+/* ===== 인트로 ===== */
+function renderIntro(){
+  app.innerHTML = `
+  <div class="ss-scroll"><div class="ss-wrap intro">
+    <div class="art">🪐</div>
+    <h1>태양계 여행</h1>
+    <div class="tag">태양계와 별 · 초등 과학 5~6학년</div>
+    <p class="sub">태양계에는 여덟 행성이 있어요.<br>얼마나 크고, 얼마나 멀까요?<br>직접 여행하며 알아봐요!</p>
+    <div class="ss-card">
+      <h3>🚀 여행 방법</h3>
+      <ul>
+        <li>행성을 <b>공전</b>시키며 태양계를 둘러봐요.</li>
+        <li><b>크기</b>와 <b>거리</b>를 각각 실제 비율로 비교해요.</li>
+        <li>행성 <b>도감</b>을 살펴보고, <b>미션</b>에 도전해요!</li>
+      </ul>
+    </div>
+    <button class="ss-btn" onclick="go('hub')">여행 시작! 🚀</button>
+  </div></div>`;
+}
+
+/* ===== 허브 ===== */
+function missionScore(){
+  const m = store.missions || {};
+  return ['order','size','distance','concept'].filter(k => m[k]).length;
+}
+function renderHub(){
+  const score = missionScore();
+  app.innerHTML = `
+  <div class="ss-scroll"><div class="ss-wrap">
+    <div class="hub-head">
+      <h2>🪐 태양계 허브</h2>
+      <p>가고 싶은 곳을 골라 보세요</p>
+    </div>
+    <div class="hub-progress">🏅 미션 진행 ${score} / 4</div>
+    <div class="hub-grid">
+      <button class="hub-tile" onclick="go('travel')">
+        <div class="ico">🛰️</div><div class="lbl">여행 모드</div>
+        <div class="sub">행성 공전 애니메이션</div>
+      </button>
+      <button class="hub-tile" onclick="go('size')">
+        <div class="ico">📏</div><div class="lbl">크기 비교</div>
+        <div class="sub">지름을 실제 비율로</div>
+      </button>
+      <button class="hub-tile" onclick="go('distance')">
+        <div class="ico">↔️</div><div class="lbl">거리 비교</div>
+        <div class="sub">태양에서 얼마나 멀까</div>
+      </button>
+      <button class="hub-tile" onclick="go('codex')">
+        <div class="ico">📖</div><div class="lbl">행성 도감</div>
+        <div class="sub">행성별 특징 살펴보기</div>
+      </button>
+    </div>
+    <button class="ss-btn hub-mission-btn" onclick="startMissions()">🏆 미션 도전하기</button>
+    <button class="ss-btn ss-btn-ghost" style="width:100%" onclick="go('intro')">처음으로</button>
+  </div></div>`;
+}
+
+/* ===== 여행 모드 ===== */
+let travelPlaying = true;
+let travelSpeed = 1;
+let travelAngle = PLANETS.map((p,i) => (i * 0.7)); // 시작 각도 분산
+let travelRAF = null;
+const ORBIT_BASE = 68, ORBIT_STEP = 36;
+
+function planetSpeed(i){
+  // 실제 케플러 비율 대신, "안쪽이 빠르다"는 정성적 순서만 단조 감소로 보장
+  return 0.018 / Math.pow(i+1, 0.6);
+}
+
+function renderTravel(){
+  const cx = 400, cy = 400;
+  const orbits = PLANETS.map((p,i) => {
+    const r = ORBIT_BASE + i*ORBIT_STEP;
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--ss-orbit)" stroke-width="1"/>`;
+  }).join('');
+
+  app.innerHTML = `
+  <div class="travel-stage">
+    <svg id="travelSvg" viewBox="0 0 800 800" preserveAspectRatio="xMidYMid meet">
+      ${orbits}
+      <g id="sunHolder"></g>
+      <g id="planetHolder"></g>
+    </svg>
+  </div>
+  <div class="ss-topbar">
+    <button class="ss-btn ss-btn-ghost ss-btn-sm" onclick="go('hub')">◀ 허브로</button>
+    <span class="ss-caption">궤도 간격은 보기 편하게 압축했어요 · 실제 거리는 '거리 비교'에서</span>
+  </div>
+  <div class="travel-controls">
+    <button class="icon-btn" id="playBtn" onclick="toggleTravelPlay()">${travelPlaying?'⏸':'▶'}</button>
+    <input type="range" min="0.25" max="3" step="0.25" value="${travelSpeed}" oninput="travelSpeed=parseFloat(this.value)">
+    <span style="font-size:12px;color:var(--ss-fg-muted)">배속</span>
+  </div>
+  <div class="info-sheet" id="travelSheet"></div>`;
+
+  const sunHolder = document.getElementById('sunHolder');
+  sunHolder.innerHTML = `<g transform="translate(${cx-40},${cy-40})">${sunSVG(40)}</g>`;
+
+  drawTravelFrame();
+  if(travelPlaying) startTravelLoop();
+}
+function drawTravelFrame(){
+  const cx = 400, cy = 400;
+  const holder = document.getElementById('planetHolder');
+  if(!holder) return;
+  holder.innerHTML = PLANETS.map((p,i) => {
+    const r = ORBIT_BASE + i*ORBIT_STEP;
+    const a = travelAngle[i];
+    const x = cx + r*Math.cos(a), y = cy + r*Math.sin(a);
+    const size = 10 + Math.min(p.diameterEarth, 6)*1.6;
+    return `<g class="planet-token" tabindex="0" role="button" aria-label="${p.name}"
+              transform="translate(${x-size},${y-size})" onclick="openTravelInfo('${p.id}')"
+              onkeydown="if(event.key==='Enter')openTravelInfo('${p.id}')">
+              ${planetSVG(p, size)}
+            </g>`;
+  }).join('');
+}
+function startTravelLoop(){
+  cancelAnimationFrame(travelRAF);
+  function frame(){
+    if(!travelPlaying){ return; }
+    PLANETS.forEach((p,i) => { travelAngle[i] += planetSpeed(i)*travelSpeed; });
+    drawTravelFrame();
+    travelRAF = requestAnimationFrame(frame);
+  }
+  travelRAF = requestAnimationFrame(frame);
+}
+function toggleTravelPlay(){
+  travelPlaying = !travelPlaying;
+  document.getElementById('playBtn').textContent = travelPlaying ? '⏸' : '▶';
+  if(travelPlaying) startTravelLoop();
+}
+function stopTravel(){ travelPlaying = false; cancelAnimationFrame(travelRAF); }
+function openTravelInfo(id){
+  const p = PLANETS.find(x=>x.id===id);
+  const sheet = document.getElementById('travelSheet');
+  const fav = (store.favorites||[]).includes(id);
+  sheet.innerHTML = `
+    <button class="sheet-close" onclick="closeTravelInfo()">✕</button>
+    <div class="row">${planetSVG(p, 26)}<h3>${p.name}</h3>
+      <button class="star-btn" onclick="toggleFavorite('${id}')" aria-label="즐겨찾기">${fav?'⭐':'☆'}</button></div>
+    <div class="facts">
+      <span>하루 ${fmtDays(p.rotDays)}</span>
+      <span>1년 ${fmtDays(p.orbitDays)}</span>
+      <span>지구 대비 크기 ${p.diameterEarth}배</span>
+    </div>
+    <p class="desc">${p.fact}</p>
+    <button class="ss-btn ss-btn-sm" onclick="go('codexDetail','${id}')">도감에서 자세히 보기 →</button>`;
+  sheet.classList.add('open');
+}
+function closeTravelInfo(){ document.getElementById('travelSheet').classList.remove('open'); }
+function toggleFavorite(id){
+  const favs = new Set(store.favorites||[]);
+  if(favs.has(id)) favs.delete(id); else favs.add(id);
+  store = saveStore({ favorites:[...favs] });
+  openTravelInfo(id);
+}
+
+/* ===== 크기 비교 모드 ===== */
+const SIZE_SCALE = 13; // px per Earth-diameter unit
+function sizeLayout(){
+  const items = [ Object.assign({},SUN,{isSun:true}), ...PLANETS ];
+  let cursor = 50;
+  const laid = items.map(it => {
+    // 최소 반지름은 렌더 안전장치일 뿐 — 현재 데이터(수성 0.38)는 이 값 아래로 내려가지 않아 비율 왜곡이 없음
+    const r = Math.max(1.5, it.diameterEarth * SIZE_SCALE / 2);
+    cursor += r;
+    const cx = cursor;
+    cursor += r + 46;
+    return Object.assign({}, it, { r, cx });
+  });
+  return { laid, width: cursor + 60 };
+}
+function renderSize(){
+  const { laid, width } = sizeLayout();
+  const earth = laid.find(x=>x.id==='earth');
+  const trackH = Math.max(...laid.map(x=>x.r))*2 + 40;
+  app.innerHTML = `
+  <div class="ss-topbar">
+    <button class="ss-btn ss-btn-ghost ss-btn-sm" onclick="go('hub')">◀ 허브로</button>
+    <span class="ss-caption">지름을 실제 비율로 나란히 · 거리는 무시했어요</span>
+  </div>
+  <div class="cmp-hint">🌍 지구를 끌어서 다른 행성 옆에 대 보세요!</div>
+  <div class="cmp-scroll" id="sizeScroll">
+    <div class="cmp-track" id="sizeTrack" style="width:${width}px;height:${trackH}px">
+      ${laid.map(it => `
+        <div class="cmp-label" style="left:${it.cx}px">${it.isSun?'☀️ 태양':it.name}</div>
+        <div style="position:absolute;left:${it.cx-it.r}px;top:calc(50% - ${it.r}px)">${it.isSun?sunSVG(it.r):planetSVG(it,it.r)}</div>
+      `).join('')}
+      <div class="earth-ghost" id="earthGhost" data-home="${earth.cx}"
+           style="position:absolute;left:${earth.cx-earth.r}px;top:calc(50% - ${earth.r}px);z-index:3">
+        ${planetSVG(earth, earth.r)}
+      </div>
+      <div id="sizeCompareLabel"></div>
+    </div>
+  </div>`;
+  setupEarthDrag(laid);
+}
+function setupEarthDrag(laid){
+  const ghost = document.getElementById('earthGhost');
+  const track = document.getElementById('sizeTrack');
+  if(!ghost) return;
+  let dragging = false, startClientX = 0, startLeft = 0;
+  const home = parseFloat(ghost.dataset.home);
+  const earth = laid.find(x=>x.id==='earth');
+
+  function onDown(e){
+    dragging = true; ghost.classList.add('dragging');
+    startClientX = (e.touches? e.touches[0].clientX : e.clientX);
+    startLeft = parseFloat(ghost.style.left);
+    e.preventDefault();
+  }
+  function onMove(e){
+    if(!dragging) return;
+    const clientX = (e.touches? e.touches[0].clientX : e.clientX);
+    const delta = clientX - startClientX;
+    ghost.style.left = (startLeft + delta) + 'px';
+    checkNear();
+  }
+  function onUp(){
+    if(!dragging) return;
+    dragging = false; ghost.classList.remove('dragging');
+    const near = findNear();
+    if(near){
+      const ratio = (near.diameterEarth/1);
+      const label = near.isSun ? '태양' : near.name;
+      const cmp = ratio >= 1 ? `${label}${eunNeun(label)} 지구보다 약 <b>${round1(ratio)}배</b> 커요!`
+                              : `${label}${eunNeun(label)} 지구보다 <b>작아요</b> (지구의 ${round1(ratio)}배)`;
+      document.getElementById('sizeCompareLabel').innerHTML =
+        `<div class="ss-card" style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:9;max-width:80vw;text-align:center">${cmp}</div>`;
+    }
+    ghost.style.left = (home - earth.r) + 'px';
+  }
+  function findNear(){
+    const gx = parseFloat(ghost.style.left) + earth.r;
+    let best = null, bestD = 9999;
+    laid.forEach(it => {
+      if(it.id==='earth') return;
+      const d = Math.abs(it.cx - gx);
+      if(d < it.r + earth.r + 30 && d < bestD){ best = it; bestD = d; }
+    });
+    return best;
+  }
+  function checkNear(){ /* 실시간 하이라이트는 생략(단순화) */ }
+  ghost.addEventListener('mousedown', onDown);
+  ghost.addEventListener('touchstart', onDown, {passive:false});
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, {passive:false});
+  window.addEventListener('mouseup', onUp);
+  window.addEventListener('touchend', onUp);
+}
+function round1(n){ return Math.round(n*10)/10; }
+function eunNeun(word){
+  const code = word.charCodeAt(word.length-1) - 0xAC00;
+  if(code < 0 || code > 11171) return '은';
+  return (code % 28 === 0) ? '는' : '은';
+}
+
+/* ===== 거리 비교 모드 ===== */
+let distPxPerAU = 90;
+function distLayout(){
+  const items = [ Object.assign({},SUN,{isSun:true,distanceAU:0}), ...PLANETS ];
+  return items.map(it => ({ ...it, cx: 60 + it.distanceAU*distPxPerAU }));
+}
+function renderDistance(){
+  const laid = distLayout();
+  const width = laid[laid.length-1].cx + 100;
+  app.innerHTML = `
+  <div class="ss-topbar">
+    <button class="ss-btn ss-btn-ghost ss-btn-sm" onclick="go('hub')">◀ 허브로</button>
+    <span class="ss-caption">태양에서 떨어진 거리를 실제 비율로 · 크기는 무시했어요</span>
+    <div class="zoom-bar">
+      <button class="icon-btn" onclick="zoomDist(0.6)">−</button>
+      <button class="icon-btn" onclick="zoomDist(1/0.6)">+</button>
+    </div>
+  </div>
+  <div class="cmp-hint">↔️ 옆으로 길게 스크롤해서 얼마나 먼지 느껴 보세요</div>
+  <div class="cmp-scroll" id="distScroll" style="padding-bottom:70px">
+    <div class="cmp-track" style="width:${width}px;height:120px">
+      ${laid.map(it => `
+        <div id="dot-${it.id}" class="cmp-label" style="left:${it.cx}px">${it.isSun?'☀️':it.name}</div>
+        <div style="position:absolute;left:${it.cx-9}px;top:calc(50% - 9px)">
+          ${it.isSun
+            ? `<div style="width:18px;height:18px;border-radius:50%;background:radial-gradient(circle,${SUN.hi},${SUN.color})"></div>`
+            : `<div style="width:16px;height:16px;border-radius:50%;background:${it.color}"></div>`}
+        </div>
+        <div class="cmp-ratio" style="left:${it.cx}px">${it.isSun?'':(it.distanceAU>=10?Math.round(it.distanceAU):round1(it.distanceAU))+'배'}</div>
+      `).join('')}
+    </div>
+  </div>
+  <div class="dist-chipbar">
+    ${laid.map(it => `<button class="dist-chip" onclick="jumpToDist('${it.id}')">${it.isSun?'☀️ 태양':it.name}</button>`).join('')}
+  </div>`;
+}
+function zoomDist(f){
+  distPxPerAU = Math.max(18, Math.min(400, distPxPerAU*f));
+  renderDistance();
+}
+function jumpToDist(id){
+  const el = document.getElementById('dot-'+id);
+  if(el) el.scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'});
+}
+
+/* ===== 도감 ===== */
+function renderCodex(){
+  app.innerHTML = `
+  <div class="ss-scroll"><div class="ss-wrap" style="padding-top:80px">
+    <div class="ss-topbar" style="position:static;margin-bottom:6px">
+      <button class="ss-btn ss-btn-ghost ss-btn-sm" onclick="go('hub')">◀ 허브로</button>
+    </div>
+    <div class="hub-head"><h2>📖 행성 도감</h2><p>탭해서 자세히 살펴보세요</p></div>
+    <div class="codex-grid">
+      ${PLANETS.map(p => `
+        <button class="codex-card" onclick="go('codexDetail','${p.id}')">
+          ${planetSVG(p, 34)}
+          <div class="lbl">${p.name} ${(store.favorites||[]).includes(p.id)?'⭐':''}</div>
+        </button>`).join('')}
+    </div>
+  </div></div>`;
+}
+function renderCodexDetail(id){
+  const p = PLANETS.find(x=>x.id===id) || PLANETS[0];
+  const fav = (store.favorites||[]).includes(p.id);
+  app.innerHTML = `
+  <div class="ss-scroll"><div class="ss-wrap" style="padding-top:80px">
+    <div class="ss-topbar" style="position:static;margin-bottom:6px">
+      <button class="ss-btn ss-btn-ghost ss-btn-sm" onclick="go('codex')">◀ 도감으로</button>
+      <button class="star-btn" onclick="toggleFavoriteCodex('${p.id}')">${fav?'⭐':'☆'}</button>
+    </div>
+    <div class="codex-detail">
+      <div class="codex-detail-hero">${planetSVG(p, 60)}<h2 style="margin:10px 0 0">${p.name}</h2></div>
+      <div class="codex-detail-facts">
+        <div class="fact-box"><div class="k">지구 대비 크기</div><div class="v">${p.diameterEarth}배</div></div>
+        <div class="fact-box"><div class="k">태양까지 거리</div><div class="v">지구의 ${p.distanceAU===undefined?'-':round1(p.distanceAU)}배</div></div>
+        <div class="fact-box"><div class="k">하루 길이</div><div class="v">${fmtDays(p.rotDays)}</div></div>
+        <div class="fact-box"><div class="k">1년 길이</div><div class="v">${fmtDays(p.orbitDays)}</div></div>
+      </div>
+      <div class="ss-card"><p style="margin:0;line-height:1.7">${p.fact}</p></div>
+    </div>
+  </div></div>`;
+}
+function toggleFavoriteCodex(id){ toggleFavorite(id); renderCodexDetail(id); }
+
+/* ============================================================
+   미션
+   ============================================================ */
+const MISSION_IDS = ['order','size','distance','concept'];
+let missionStep = 0;
+let missionDraft = {}; // 진행 중 임시 상태
+
+function startMissions(){ missionStep = 0; missionDraft = {}; go('missions'); }
+function renderMissions(){
+  const id = MISSION_IDS[missionStep];
+  if(id === 'order') return renderMissionOrder();
+  if(id === 'size') return renderMissionSize();
+  if(id === 'distance') return renderMissionDistance();
+  if(id === 'concept') return renderMissionConcept();
+  go('result');
+}
+function missionShell(inner){
+  app.innerHTML = `
+  <div class="ss-scroll"><div class="ss-wrap" style="padding-top:80px">
+    <div class="ss-topbar" style="position:static;margin-bottom:2px">
+      <button class="ss-btn ss-btn-ghost ss-btn-sm" onclick="go('hub')">◀ 허브로</button>
+    </div>
+    <div class="mission-progress">미션 ${missionStep+1} / ${MISSION_IDS.length}</div>
+    ${inner}
+  </div></div>`;
+}
+function nextMission(){
+  missionStep++;
+  if(missionStep >= MISSION_IDS.length){ go('result'); return; }
+  render();
+}
+
+/* --- 미션 1: 순서 배열 --- */
+let orderPool = [], orderSlots = [];
+function renderMissionOrder(){
+  if(!missionDraft.orderInit){
+    orderPool = shuffle(PLANETS.map(p=>p.id));
+    orderSlots = new Array(PLANETS.length).fill(null);
+    missionDraft.orderInit = true;
+    missionDraft.orderDone = false;
+  }
+  const poolHtml = orderPool.map(id => {
+    const p = PLANETS.find(x=>x.id===id);
+    return `<button class="order-chip" onclick="placeOrderChip('${id}')">${planetSVG(p,20)}</button>`;
+  }).join('');
+  const slotsHtml = orderSlots.map((id,i) => {
+    const p = id ? PLANETS.find(x=>x.id===id) : null;
+    const cls = missionDraft.orderResult ? (missionDraft.orderResult[i] ? 'correct' : 'wrong') : (id?'filled':'');
+    return `<div class="order-slot ${cls}" onclick="removeOrderChip(${i})"><span class="idx">${i+1}</span>${p?planetSVG(p,20):''}</div>`;
+  }).join('');
+  missionShell(`
+    <div class="mission-q">태양에서 <b>가까운 순서</b>대로<br>행성을 배열해 보세요</div>
+    <div class="order-slots">${slotsHtml}</div>
+    <div class="order-pool">${poolHtml}</div>
+    ${missionDraft.orderFeedback || ''}
+    <div style="text-align:center">
+      <button class="ss-btn" id="orderSubmit" ${orderSlots.includes(null)?'disabled':''} onclick="checkOrder()">확인</button>
+    </div>`);
+}
+function placeOrderChip(id){
+  const empty = orderSlots.indexOf(null);
+  if(empty === -1) return;
+  orderSlots[empty] = id;
+  orderPool = orderPool.filter(x=>x!==id);
+  missionDraft.orderResult = null;
+  renderMissionOrder();
+}
+function removeOrderChip(i){
+  if(!orderSlots[i]) return;
+  orderPool.push(orderSlots[i]);
+  orderSlots[i] = null;
+  missionDraft.orderResult = null;
+  renderMissionOrder();
+}
+function checkOrder(){
+  const answer = PLANETS.map(p=>p.id);
+  const result = orderSlots.map((id,i) => id === answer[i]);
+  missionDraft.orderResult = result;
+  const allCorrect = result.every(Boolean);
+  missionDraft.orderFeedback = `<div class="feedback-box ${allCorrect?'ok':'no'}">
+    ${allCorrect ? '🎉 정확해요! 수성부터 해왕성까지, 태양에서 멀어질수록 순서가 커져요.'
+                 : '🤔 빨간 칸을 다시 살펴보세요. 틀린 칸을 눌러 빼고 다시 놓을 수 있어요.'}
+  </div>`;
+  if(allCorrect){
+    store = saveStore({ missions: Object.assign({}, store.missions, { order:true }) });
+    setTimeout(() => { missionDraft = {}; nextMission(); }, 1600);
+  }
+  renderMissionOrder();
+}
+
+/* --- 미션 2: 크기 (2단계) --- */
+function renderMissionSize(){
+  if(missionDraft.sizePart === undefined) missionDraft.sizePart = 'a';
+  if(missionDraft.sizePart === 'a') return renderMissionSizeA();
+  return renderMissionSizeB();
+}
+function renderMissionSizeA(){
+  const options = ['jupiter','saturn','earth','mars'];
+  const biggest = options.reduce((a,b) => PLANETS.find(p=>p.id===a).diameterEarth > PLANETS.find(p=>p.id===b).diameterEarth ? a : b);
+  const selected = missionDraft.sizeASel;
+  const answered = missionDraft.sizeAResult !== undefined;
+  missionShell(`
+    <div class="mission-q">가장 <b>큰</b> 행성은 무엇일까요?</div>
+    <div class="choice-list">
+      ${options.map(id => {
+        const p = PLANETS.find(x=>x.id===id);
+        let cls = selected===id ? 'selected' : '';
+        if(answered){ if(id===biggest) cls='correct'; else if(id===selected) cls='wrong'; }
+        return `<button class="choice-btn ${cls}" ${answered?'disabled':''} onclick="answerSizeA('${id}','${biggest}')">${planetSVG(p,18)} ${p.name}</button>`;
+      }).join('')}
+    </div>
+    ${answered ? `<div class="feedback-box ${missionDraft.sizeAResult?'ok':'no'}">
+      ${missionDraft.sizeAResult?'🎉 맞아요!':'🤔 아쉬워요.'} <b>목성</b>은 지구의 11.2배 크기로 태양계에서 가장 커요.
+      <div style="text-align:center;margin-top:10px"><button class="ss-btn ss-btn-sm" onclick="missionDraft.sizePart='b';renderMissionSize()">다음 질문 →</button></div>
+    </div>` : ''}`);
+}
+function answerSizeA(id, biggest){
+  missionDraft.sizeASel = id;
+  missionDraft.sizeAResult = (id === biggest);
+  renderMissionSizeA();
+}
+function renderMissionSizeB(){
+  const correctSet = new Set(PLANETS.filter(p=>p.diameterEarth<1).map(p=>p.id));
+  const sel = new Set(missionDraft.sizeBSel || []);
+  const answered = missionDraft.sizeBResult !== undefined;
+  missionShell(`
+    <div class="mission-q">지구보다 <b>작은</b> 행성을<br>모두 골라 보세요</div>
+    <div class="choice-list">
+      ${PLANETS.map(p => {
+        let cls = sel.has(p.id) ? 'selected' : '';
+        if(answered){ if(correctSet.has(p.id)) cls='correct'; else if(sel.has(p.id)) cls='wrong'; }
+        return `<button class="choice-btn ${cls}" ${answered?'disabled':''} onclick="toggleSizeB('${p.id}')">${planetSVG(p,18)} ${p.name}</button>`;
+      }).join('')}
+    </div>
+    ${answered ? `<div class="feedback-box ${missionDraft.sizeBResult?'ok':'no'}">
+        ${missionDraft.sizeBResult?'🎉 정확해요!':'🤔 다시 확인해 보세요.'} 지구보다 작은 행성은 <b>수성·금성·화성</b>이에요.
+      </div>`
+      : `<div style="text-align:center"><button class="ss-btn" ${sel.size===0?'disabled':''} onclick="checkSizeB()">확인</button></div>`}`);
+}
+function toggleSizeB(id){
+  const sel = new Set(missionDraft.sizeBSel || []);
+  if(sel.has(id)) sel.delete(id); else sel.add(id);
+  missionDraft.sizeBSel = [...sel];
+  renderMissionSizeB();
+}
+function checkSizeB(){
+  const correctSet = new Set(PLANETS.filter(p=>p.diameterEarth<1).map(p=>p.id));
+  const sel = new Set(missionDraft.sizeBSel || []);
+  const ok = sel.size === correctSet.size && [...sel].every(x=>correctSet.has(x));
+  missionDraft.sizeBResult = ok;
+  if(ok){
+    store = saveStore({ missions: Object.assign({}, store.missions, { size:true }) });
+    setTimeout(() => { missionDraft = {}; nextMission(); }, 1800);
+  }
+  renderMissionSizeB();
+}
+
+/* --- 미션 3: 거리 (다중 선택) --- */
+function renderMissionDistance(){
+  const correctSet = new Set(PLANETS.filter(p=>p.distanceAU>1).map(p=>p.id));
+  const sel = new Set(missionDraft.distSel || []);
+  const answered = missionDraft.distResult !== undefined;
+  missionShell(`
+    <div class="mission-q">지구보다 태양에서 <b>더 먼</b> 행성을<br>모두 골라 보세요</div>
+    <div class="choice-list">
+      ${PLANETS.map(p => {
+        let cls = sel.has(p.id) ? 'selected' : '';
+        if(answered){ if(correctSet.has(p.id)) cls='correct'; else if(sel.has(p.id)) cls='wrong'; }
+        return `<button class="choice-btn ${cls}" ${answered?'disabled':''} onclick="toggleDist('${p.id}')">${planetSVG(p,18)} ${p.name}</button>`;
+      }).join('')}
+    </div>
+    ${answered ? `<div class="feedback-box ${missionDraft.distResult?'ok':'no'}">
+        ${missionDraft.distResult?'🎉 정확해요!':'🤔 다시 확인해 보세요.'} 화성·목성·토성·천왕성·해왕성이 지구보다 멀어요.
+      </div>`
+      : `<div style="text-align:center"><button class="ss-btn" ${sel.size===0?'disabled':''} onclick="checkDist()">확인</button></div>`}`);
+}
+function toggleDist(id){
+  const sel = new Set(missionDraft.distSel || []);
+  if(sel.has(id)) sel.delete(id); else sel.add(id);
+  missionDraft.distSel = [...sel];
+  renderMissionDistance();
+}
+function checkDist(){
+  const correctSet = new Set(PLANETS.filter(p=>p.distanceAU>1).map(p=>p.id));
+  const sel = new Set(missionDraft.distSel || []);
+  const ok = sel.size === correctSet.size && [...sel].every(x=>correctSet.has(x));
+  missionDraft.distResult = ok;
+  if(ok){
+    store = saveStore({ missions: Object.assign({}, store.missions, { distance:true }) });
+    setTimeout(() => { missionDraft = {}; nextMission(); }, 1800);
+  }
+  renderMissionDistance();
+}
+
+/* --- 미션 4: 개념 --- */
+function renderMissionConcept(){
+  const options = [
+    { id:'selfLight', label:'스스로 빛을 내요' },
+    { id:'reflect', label:'태양빛을 반사해요' },
+    { id:'heat', label:'뜨거운 열 때문에 빛나요' },
+  ];
+  const answered = missionDraft.conceptSel !== undefined;
+  missionShell(`
+    <div class="mission-q">행성은 왜 밤하늘에서<br>빛나 보일까요?</div>
+    <div class="choice-list">
+      ${options.map(o => {
+        let cls = missionDraft.conceptSel===o.id ? 'selected' : '';
+        if(answered){ if(o.id==='reflect') cls='correct'; else if(o.id===missionDraft.conceptSel) cls='wrong'; }
+        return `<button class="choice-btn ${cls}" ${answered?'disabled':''} onclick="answerConcept('${o.id}')">${o.label}</button>`;
+      }).join('')}
+    </div>
+    ${answered ? `<div class="feedback-box ${missionDraft.conceptSel==='reflect'?'ok':'no'}">
+      ${missionDraft.conceptSel==='reflect'?'🎉 맞아요!':'🤔 아쉬워요.'} 행성은 스스로 빛을 내지 못하고, <b>태양빛을 반사</b>해서 빛나 보여요.
+    </div>` : ''}`);
+}
+function answerConcept(id){
+  missionDraft.conceptSel = id;
+  const ok = id === 'reflect';
+  if(ok){
+    store = saveStore({ missions: Object.assign({}, store.missions, { concept:true }) });
+    setTimeout(() => { missionDraft = {}; nextMission(); }, 1800);
+  }
+  renderMissionConcept();
+}
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+/* ===== 결과 ===== */
+function renderResult(){
+  const score = missionScore();
+  app.innerHTML = `
+  <div class="ss-scroll"><div class="ss-wrap" style="padding-top:90px">
+    <div class="hub-head"><h2>🏆 여행 완료!</h2></div>
+    <div class="result-score">4개 미션 중 <b>${score}</b>개 성공</div>
+    <div class="summary-box">
+      📚 오늘의 배움 정리<br>
+      태양계엔 여덟 행성이 있어요. <b>크기와 거리는 함께 그릴 수 없을 만큼</b> 차이가 커요.
+      행성은 스스로 빛나지 않고, <b>태양빛을 반사</b>해서 빛나 보여요.
+    </div>
+    <div class="result-actions">
+      <button class="ss-btn" onclick="startMissions()">미션 다시 도전</button>
+      <button class="ss-btn ss-btn-ghost" onclick="go('hub')">허브로</button>
+    </div>
+  </div></div>`;
+}
+
+/* ============================================================
+   시작
+   ============================================================ */
+restoreFromHash();
+render();
+</script>
+</body>
+</html>
