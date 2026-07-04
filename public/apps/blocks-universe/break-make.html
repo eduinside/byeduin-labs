@@ -686,7 +686,17 @@ const S = { stage:'single', whole:null, top:0, left:0, right:0, done:false,
 function setSplitStage(stage){
   S.stage = stage; S.whole = null; S.done = false;
   ['single','ten','teen'].forEach(s=> document.getElementById('stage-'+s).classList.toggle('active', s===stage));
+  syncChallengeBtn('splitChallengeBtn', stage);
   renderSplitGrid(); document.getElementById('splitBond').innerHTML=''; document.getElementById('splitEq').innerHTML='';
+}
+/* 십몇은 유효한 가르기/모으기가 '10과 몇' 한 가지뿐이라 도전 모드가 성립하지 않음 → 비활성화 */
+function syncChallengeBtn(btnId, stage){
+  const b = document.getElementById(btnId);
+  const off = stage === 'teen';
+  b.disabled = off;
+  b.style.opacity = off ? '0.45' : '';
+  b.style.cursor = off ? 'not-allowed' : '';
+  b.title = off ? '십몇은 10과 몇으로 나누는 한 가지 방법뿐이라 도전 모드가 없어요' : '';
 }
 function renderSplitGrid(){
   const g = document.getElementById('splitGrid'); g.innerHTML='';
@@ -835,6 +845,7 @@ function makeTotal(){ return boxVal('L')+boxVal('R'); }
 function setMakeStage(stage){
   M.stage=stage; M.target=null; M.done=false;
   ['single','ten','teen'].forEach(s=> document.getElementById('mstage-'+s).classList.toggle('active', s===stage));
+  syncChallengeBtn('makeChallengeBtn', stage);
   renderMakeGrid(); document.getElementById('makeBond').innerHTML=''; document.getElementById('makeEq').innerHTML='';
 }
 function renderMakeGrid(){

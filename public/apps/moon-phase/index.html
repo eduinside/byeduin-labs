@@ -408,7 +408,11 @@
             
             dateInput.addEventListener('change', () => {
                 stopPlayback();
-                currentSimDate = new Date(dateInput.value);
+                // 'YYYY-MM-DD'를 그대로 new Date()에 넘기면 UTC 자정으로 파싱되어
+                // KST에서 9시간(경계에서는 하루) 어긋남 → 로컬 정오로 명시 파싱
+                const [y, m, d] = dateInput.value.split('-').map(Number);
+                if (!y) return;
+                currentSimDate = new Date(y, m - 1, d, 12, 0, 0);
                 calculateFromDate(currentSimDate);
             });
 
@@ -416,8 +420,16 @@
             
             phaseSlider.addEventListener('input', () => {
                 stopPlayback();
-                const age = parseFloat(phaseSlider.value);
-                update(age, false); 
+                const targetAge = parseFloat(phaseSlider.value);
+                // 슬라이더 월령에 맞춰 시뮬레이션 날짜도 역산 이동
+                // → 날짜 라벨·초저녁 하늘·재생 시작점이 항상 슬라이더와 일치
+                const currentAge = getAgeFromDate(currentSimDate);
+                let deltaDays = targetAge - currentAge;
+                if (deltaDays > SYNODIC_MONTH / 2) deltaDays -= SYNODIC_MONTH;
+                if (deltaDays < -SYNODIC_MONTH / 2) deltaDays += SYNODIC_MONTH;
+                currentSimDate = new Date(currentSimDate.getTime() + deltaDays * 86400000);
+                syncDateInput(currentSimDate);
+                update(targetAge, false);
             });
 
             playBtn.addEventListener('click', togglePlayback);
@@ -463,24 +475,26 @@
             return (date.getTime() / 86400000) - (date.getTimezoneOffset() / 1440) + 2440587.5;
         }
 
-        function calculateFromDate(date) {
+        function getAgeFromDate(date) {
             const jd = getJulianDate(date);
             // J2000.0 부터 경과한 세기 (Julian Centuries)
             const T = (jd - 2451545.0) / 36525;
-            
+
             // 달의 평균 이각 (Mean Elongation of the Moon): D
             // 공식: D = 297.85019 + 445267.111403*T - 0.0019142*T^2 + T^3/189474
             let D = 297.85019 + 445267.111403 * T - 0.0019142 * T * T + T * T * T / 189474;
-            
+
             // 0~360도로 정규화
             D = D % 360;
             if (D < 0) D += 360;
-            
+
             // 이각(D)을 기준으로 월령(Age) 계산
             // D=0도(삭) -> Age=0, D=180도(망) -> Age=14.76...
-            const age = (D / 360) * SYNODIC_MONTH;
-            
-            update(age, true);
+            return (D / 360) * SYNODIC_MONTH;
+        }
+
+        function calculateFromDate(date) {
+            update(getAgeFromDate(date), true);
         }
 
         function togglePlayback() {

@@ -1062,7 +1062,7 @@ function shuffleArray(arr) {
 
 function nextQuizQuestion() {
   qzAnswered = false;
-  qzCurrentN = Math.floor(Math.random() * 101); // 0~100
+  qzCurrentN = 1 + Math.floor(Math.random() * 100); // 1~100 (0은 짝수성 논쟁 소지로 제외)
 
   const numEl = document.getElementById('quizNum');
   const numDispEl = document.getElementById('quizNumDisplay');
@@ -1079,8 +1079,12 @@ function nextQuizQuestion() {
     ? correctCandidates[Math.floor(Math.random() * correctCandidates.length)]
     : CLUBS.find(c => c.id === 'made-of-ones'); // 혹시 다른 클럽이 없으면 1클럽
 
-  // 오답 2개
-  const wrongPool = shuffleArray(CLUBS.filter(c => c.id !== qzCorrectClub.id));
+  // 오답 2개 — 반드시 n이 속하지 '않는' 클럽에서만 선정 (속한 클럽이 오답으로 나오면 정답을 골라도 틀림 처리되는 버그 방지)
+  let wrongPool = shuffleArray(CLUBS.filter(c => !c.check(qzCurrentN)));
+  if (wrongPool.length < 2) {
+    // 이론상 도달 불가한 방어 코드: 부족하면 정답 후보가 아닌 클럽으로 보충
+    wrongPool = wrongPool.concat(shuffleArray(CLUBS.filter(c => c.id !== qzCorrectClub.id && !wrongPool.includes(c))));
+  }
   const choices = shuffleArray([qzCorrectClub, ...wrongPool.slice(0, 2)]);
 
   const choicesEl = document.getElementById('quizChoices');
@@ -1088,6 +1092,7 @@ function nextQuizQuestion() {
   choices.forEach(club => {
     const btn = document.createElement('button');
     btn.className = 'choice-btn';
+    btn.dataset.clubId = club.id;
     btn.style.background = club.color + '22'; // 옅은 클럽 색
     btn.innerHTML = `<div class="choice-emoji">${getClubIcon(club.id, club.textColor)}</div><span>${club.nameKo}</span>`;
     btn.addEventListener('click', () => selectChoice(club, btn));
@@ -1108,7 +1113,7 @@ function selectChoice(club, btnEl) {
   // 모든 버튼 비활성화 + 정답 표시
   document.querySelectorAll('.choice-btn').forEach(b => {
     b.disabled = true;
-    if (b.textContent.includes(qzCorrectClub.nameKo)) {
+    if (b.dataset.clubId === qzCorrectClub.id) {
       b.classList.add('correct-ans');
       b.style.background = '';
     }
