@@ -400,7 +400,7 @@
       <p class="m-sub" id="kWho"></p>
       <div class="type-tabs" id="kTabs">
         <button class="type-tab active" data-key="text" data-type="text">📝 텍스트</button>
-        <button class="type-tab" data-key="html" data-type="html">⟨⟩ HTML</button>
+        <button class="type-tab hide" data-key="html" data-type="html">⟨⟩ HTML</button>
         <button class="type-tab" data-key="image-photo" data-type="image" data-sub="photo">📷 사진</button>
         <button class="type-tab" data-key="image-draw" data-type="image" data-sub="draw">🎨 그림</button>
       </div>
@@ -470,7 +470,7 @@
       <div class="field"><label>허용 카드 유형</label>
         <div class="checkrow">
           <label><input type="checkbox" id="sT_text" value="text"> 📝 텍스트</label>
-          <label><input type="checkbox" id="sT_html" value="html"> ⟨⟩ HTML</label>
+          <label class="hide"><input type="checkbox" id="sT_html" value="html"> ⟨⟩ HTML</label>
           <label><input type="checkbox" id="sT_image" value="image"> 🖼 사진/그림</label>
         </div></div>
       <div class="field"><label>참여자 상호작용</label>
@@ -882,7 +882,8 @@
     }
     function reconcile(cards) {
       var wall = $('wall'), seen = {};
-      cards.forEach(function (c) { seen[c.id] = true; });
+      // HTML 카드는 업로드·렌더링 모두 숨김 처리 — seen에서 제외해 기존 렌더링분도 정리 대상이 되게 함.
+      cards.forEach(function (c) { if (c.type !== 'html') seen[c.id] = true; });
       Object.keys(els).forEach(function (id) {
         if (!seen[id]) {
           var e = els[id];
@@ -892,6 +893,7 @@
       });
       var cmtNeedsRefetch = false;
       cards.forEach(function (c) {
+        if (c.type === 'html') return;
         var ex = els[c.id];
         // 승인/거절로 pending 상태가 바뀌면 배지·버튼 구성이 달라지므로 통째로 재생성.
         if (ex && !!ex._card.pending !== !!c.pending) {
@@ -912,7 +914,8 @@
           refreshCardSocial(ex, c);
         }
       });
-      var n = cards.length; $('wallEmpty').classList.toggle('hide', n > 0 || (state.board && state.board.layout === 'sections')); if ($('m-info').classList.contains('open')) renderInfo();
+      var n = cards.filter(function (c) { return c.type !== 'html'; }).length;
+      $('wallEmpty').classList.toggle('hide', n > 0 || (state.board && state.board.layout === 'sections')); if ($('m-info').classList.contains('open')) renderInfo();
       if ($('m-comments').classList.contains('open') && state.cmtCardId && els[state.cmtCardId]) {
         if (cmtNeedsRefetch) loadComments(state.cmtCardId); else renderComments(els[state.cmtCardId]._card);
       }
@@ -1289,8 +1292,9 @@
       $('kWho').innerHTML = '이름: <b>' + ((state.nickname || getNick() || '익명')).replace(/[<>&]/g, '') + '</b> · <a href="#" id="kChg" style="color:var(--primary)">변경</a>';
       $('kChg').onclick = function (e) { e.preventDefault(); var n = prompt('별명', state.nickname || ''); if (n != null) { setNick(n.trim().slice(0, 40)); openCompose(); } };
       var allowed = (state.board && state.board.allowedTypes) || ['text', 'html'];
-      Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.classList.toggle('hide', allowed.indexOf(b.dataset.type) < 0); });
-      var defKey = allowed.indexOf('text') >= 0 ? 'text' : (allowed.indexOf('html') >= 0 ? 'html' : (allowed.indexOf('image') >= 0 ? 'image-photo' : 'text'));
+      // HTML 카드는 업로드 자체를 숨김 처리 — 보드 설정과 무관하게 항상 탭 숨김.
+      Array.prototype.forEach.call(document.querySelectorAll('#kTabs .type-tab'), function (b) { b.classList.toggle('hide', b.dataset.type === 'html' || allowed.indexOf(b.dataset.type) < 0); });
+      var defKey = allowed.indexOf('text') >= 0 ? 'text' : (allowed.indexOf('image') >= 0 ? 'image-photo' : 'text');
       setComposeType(defKey);
       var secEl = $('kSectionField');
       var secs = (state.board && state.board.layout === 'sections' && state.board.sections) ? state.board.sections.filter(Boolean) : [];
@@ -1536,7 +1540,7 @@
     }
     function doSettings() {
       $('sErr').textContent = '';
-      var types = []; if ($('sT_text').checked) types.push('text'); if ($('sT_html').checked) types.push('html'); if ($('sT_image').checked) types.push('image');
+      var types = []; if ($('sT_text').checked) types.push('text'); if ($('sT_image').checked) types.push('image');  // HTML 업로드는 숨김 처리 — 설정 저장 시 항상 제외
       if (!types.length) { $('sErr').textContent = '카드 유형을 하나 이상 선택하세요.'; return; }
       var pin = $('sPin').value.trim();
       if (pin && !/^[0-9]{4,8}$/.test(pin)) { $('sErr').textContent = 'PIN은 숫자 4~8자리여야 합니다.'; return; }
