@@ -1,31 +1,37 @@
 # eduin VIVES — 프로젝트 개요
 
-> **배포**: Cloudflare Pages · `pages_build_output_dir = "public"` · 폴더 경로 = URL 경로  
-> **빌드**: 번들러·라우터 없음. 정적 파일 직접 서빙.
+> **배포**: Cloudflare Pages · 빌드 `npm run build`(Astro) · `pages_build_output_dir = "dist"`  
+> **빌드**: Astro 정적 출력(어댑터 없음, 전 페이지 프리렌더). URL 경로는 종전과 동일(`/apps/<id>/`).  
+> **주의**: `@astrojs/cloudflare` 어댑터를 쓰지 말 것 — SSR 페이지가 없고, 어댑터의 `_worker.js`/Workers 배포는 `functions/` Pages Functions(`/api/*` 전체)를 무력화한다. wrangler 설정은 `wrangler.toml` 하나만 유지(`wrangler.jsonc` 금지 — 존재 시 우선 적용되어 D1/R2 바인딩이 유실된 사고 있음, 2026-07).
 
 ---
 
 ## 폴더 구조
 
 ```
-public/
-├── apps/              ← 앱 페이지 (36개 폴더)
-│   ├── blocks-universe/
-│   ├── timer/
-│   └── …
+src/
+├── pages/
+│   ├── index.astro        ← 홈 (카테고리 트리 사이드바)
+│   └── apps/<id>/index.astro ← 앱 페이지 (36개)
+└── layouts/AppLayout.astro ← 공통 헤드(SEO 메타·공통 CSS/JS)와 <body data-shell> 래퍼
+
+public/                    ← 빌드 시 dist/로 그대로 복사 (경로 유지)
+├── apps/              ← 앱 정적 자산(잔존 HTML 서브페이지·js·json)
+│   ├── blocks-universe/   ← break-make.html·step-squad.html·clubs.html 등
+│   └── qr/                ← manifest.json·sw.js (PWA)
 ├── common/            ← 공통 CSS·JS
 │   ├── hero-theme.css
 │   ├── app-shell.css
 │   ├── app-shell.js
 │   ├── theme.js
 │   ├── init.js
-│   └── seo-injector.js
+│   ├── sync.js
+│   └── seo-injector.js    ← 런타임 앱 헤더 아이콘 블롭 주입 + 보조 메타(AppLayout이 로드)
 ├── og-images/         ← 앱별 OG 이미지 (1200×630)
 ├── downloads/         ← 크롬 확장 zip 등 다운로드 파일
-├── index.html         ← 홈 (카테고리 트리 사이드바)
 └── apps.json          ← 앱 메타데이터 단일 소스
 
-functions/api/         ← Cloudflare Workers (서버리스 API)
+functions/api/         ← Cloudflare Pages Functions (서버리스 API)
 scripts/               ← 빌드·생성 스크립트 (Node.js)
 docs/                  ← 개발 문서
 ```
@@ -124,17 +130,21 @@ docs/                  ← 개발 문서
 **폭 플래그** (`data-width`): `narrow`(480px) · `medium`(720px) · `wide`(1120px)  
 **기능 플래그**: `data-focus`(아이템→전체화면 `enterFocus()`) · `data-print`(A4 인쇄 베이스라인)
 
-### 공통 파일 (모든 앱 `<head>` 필수)
+### 공통 파일 — `src/layouts/AppLayout.astro`가 일괄 로드
+모든 앱 페이지는 `AppLayout`으로 감싸며, 레이아웃이 SEO 메타(title·description·og·canonical)와 아래 공통 파일을 `<head>`에 넣는다. 개별 페이지에서 중복 로드하지 말 것.
 ```html
 <link rel="stylesheet" href="/common/hero-theme.css">
 <link rel="stylesheet" href="/common/app-shell.css">
 <script src="/common/theme.js"></script>
 <script src="/common/init.js"></script>
 <script src="/common/app-shell.js" defer></script>
-<script src="/common/seo-injector.js" defer></script>
+<script src="/common/seo-injector.js" defer></script>   <!-- 앱 헤더 아이콘 블롭 주입(비-immersive) -->
+<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="/common/sync.js"></script>
 ```
+`AppLayout` props: `title`·`description`·`image`·`bodyShell`(기본 column)·`bodyWidth`(미지정 시 `data-width` 미출력 — sidebar·immersive는 지정하지 말 것)·`bodyPrint`(A4 인쇄 플래그, math-sheet·scoring-table).
 
-> **예외**: `immersive` 유형 중 step-squad·clubs·break-make는 독자 CSS(Dongle 폰트·`--bg`)를 사용하므로 `hero-theme.css`·`app-shell.css`를 포함하지 않음.
+> **예외**: `public/apps/blocks-universe/`의 정적 서브페이지(step-squad·clubs·break-make)는 Astro 미경유 원본 HTML이며 독자 CSS(Dongle 폰트·`--bg`)를 사용.
 
 ---
 
@@ -182,6 +192,14 @@ docs/                  ← 개발 문서
 ---
 
 ## 주요 변경 이력
+
+### 2026-07 — Astro 전환 (정적 사이트 재작성)
+`public/apps/<id>/index.html` 36개를 `src/pages/apps/<id>/index.astro`로 이식하고 공통 헤드를 `src/layouts/AppLayout.astro`로 통합. URL 구조·`public/` 자산 경로·`functions/` API는 전부 종전과 동일.
+- **출력**: Astro 정적 빌드(어댑터 없음) → `dist/`. Pages 배포 출력 디렉터리 `dist`로 변경(`wrangler.toml`).
+- **어댑터 사고 교정**: 초기 이식에서 `@astrojs/cloudflare` + `wrangler.jsonc`(Workers)가 함께 들어와 ① 산출물이 `dist/client`로 갈라지고 ② `wrangler.jsonc`가 `wrangler.toml`을 가려 D1/R2 바인딩이 유실되며 ③ Workers 배포 시 `functions/`가 통째로 무시되는 상태였음 → 어댑터·jsonc 제거, 정적 출력 + Pages Functions 유지로 정리.
+- **이식 누락 복구**: 원본에 없던 `data-width="narrow"`가 전 페이지 기본값으로 주입돼 search(sidebar)가 480px로 좁아지던 문제(기본값 제거), math-sheet·scoring-table의 `data-print` 누락(`bodyPrint` prop 신설), `seo-injector.js` 미로드로 앱 헤더 Lucide 아이콘 블롭이 사라진 문제(AppLayout에 복원) 수정.
+- **정리**: Lucide CDN을 jsdelivr 단일 소스로 통일(페이지별 중복 로드 제거), md-editor의 폐기된 `chrome` 아이콘 → `save`, 스타터 잔재·일회용 마이그레이션 스크립트 삭제, `npm run inject`(정적 HTML SEO 주입) 폐기 — SEO 메타는 AppLayout이 빌드 시 출력.
+- **로컬 개발**: `npm run dev`(astro dev, API 없음) / `npm run dev:cf`(빌드 후 `wrangler pages dev dist`, D1·R2 포함 — 최초 1회 `wrangler d1 migrations apply byeduin --local`).
 
 ### 2026-07 — 교육 시뮬레이션 앱 2·3단계(Phase 2 & 3) 비주얼 폴리싱 및 보안 보완 완료
 `docs/simulation-apps-plan.md` 및 `docs/sim-apps-audit-2026-07.md` 보완 계획에 따라 2단계 그래픽 마감 및 3단계 AI API 보안 강화 작업을 완료했습니다.

@@ -1,9 +1,9 @@
 # eduin VIVES
 
-바이브 코딩으로 만든 소형 웹 앱 모음 + 앱 소개·공지 홈. 순수 정적 사이트 (HTML + CSS + JS, 빌드 없음). 프로덕션 정본 도메인: **[eduin.info](https://eduin.info)** (`by.eduin.info`·`www`는 301 리다이렉트).
+바이브 코딩으로 만든 소형 웹 앱 모음 + 앱 소개·공지 홈. **Astro 기반 정적 사이트** — 앱 페이지는 `src/pages/apps/<id>/index.astro`, 빌드 시 전 페이지 프리렌더(`dist/`), 서버 API는 `functions/`(Cloudflare Pages Functions). 프로덕션 정본 도메인: **[eduin.info](https://eduin.info)** (`by.eduin.info`·`www`는 301 리다이렉트).
 
-**로컬 실행**: `npm run dev` (Cloudflare Pages Functions 로컬 서버 기동)  
-**배포**: [Cloudflare Pages](https://byeduin-vives.pages.dev) (자동 배포: main 브랜치)  
+**로컬 실행**: `npm run dev` (Astro dev 서버 — `/api/*` 미기동) · `npm run dev:cf` (빌드 후 Pages Functions·D1 포함 로컬 서버, 최초 1회 `npx wrangler d1 migrations apply byeduin --local`)  
+**배포**: Cloudflare Pages (자동 배포: main 브랜치, 빌드 명령 `npm run build`, 출력 `dist`)  
 **개발 진행**: [`docs/OVERVIEW.md`](docs/OVERVIEW.md)(아키텍처·API·변경 이력) 및 [`docs/app-development-guide.md`](docs/app-development-guide.md) 참고  
 
 ---

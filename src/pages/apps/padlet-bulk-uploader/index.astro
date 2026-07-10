@@ -1,0 +1,460 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+---
+<AppLayout 
+  title="패들렛 일괄 업로더 — eduin VIVES"
+  description="패들렛 API 키만 있으면 텍스트를 줄바꿈 또는 구분자로 붙여넣어 내 보드에 게시물을 한 번에 업로드합니다. 명렬·단어 목록·링크 모음을 수작업 없이 일괄 등록."
+  image="https://eduin.info/og-images/padlet-bulk-uploader.png"
+  bodyShell="column"
+  bodyWidth="normal"
+>
+  <Fragment slot="head">
+    <style is:global="">
+    /* --- 앱 전용 로컬 토큰 (hero-theme.css 변수 위에 추가) --- */
+    :root, [data-theme="light"] { --warn: #f5a524; --warn-bg: rgba(245,165,36,0.1); --warn-border: rgba(245,165,36,0.3); }
+    [data-theme="dark"]         { --warn: #f5a524; --warn-bg: rgba(245,165,36,0.12); --warn-border: rgba(245,165,36,0.35); }
+
+    .panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 1rem; padding: 20px; margin-bottom: 16px; }
+    .panel-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--fg-muted); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+    }
+    .panel-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    label.field-label { display: block; font-size: 13px; font-weight: 500; color: var(--fg-muted); margin-bottom: 6px; }
+    .hero-input { margin-bottom: 14px; font-family: 'JetBrains Mono', 'Consolas', monospace; }
+    .hero-input.no-mb { margin-bottom: 0; }
+    select.hero-input { font-family: inherit; }
+
+    .hint { font-size: 11.5px; color: var(--fg-muted); line-height: 1.6; margin-top: -10px; margin-bottom: 14px; }
+    .hint a { color: var(--primary); text-decoration: none; }
+    .hint a:hover { text-decoration: underline; }
+
+    .security-note {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: rgba(0,111,238,0.06); border: 1px solid rgba(0,111,238,0.2);
+      border-radius: 0.75rem; padding: 12px 14px; margin-bottom: 14px;
+      font-size: 12px; color: var(--fg-muted); line-height: 1.6;
+    }
+    .security-note .icon { flex-shrink: 0; margin-top: 1px; }
+
+    /* 전제조건 경고 배너 — 가이드보다 위, 가장 먼저 눈에 띄는 위치 */
+    .warn-banner {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: var(--warn-bg); border: 1px solid var(--warn-border);
+      border-radius: 1rem; padding: 14px 16px; margin-bottom: 16px;
+      font-size: 13px; color: var(--fg); line-height: 1.7;
+    }
+    .warn-banner .icon { flex-shrink: 0; font-size: 16px; margin-top: 1px; }
+    .warn-banner b { color: var(--warn); }
+
+    .guide {
+      background: var(--bg-sec); border: 1px solid var(--border);
+      border-left: 3px solid var(--primary); border-radius: 1rem;
+      padding: 16px 20px; margin-bottom: 16px;
+    }
+    .guide-header {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      background: none; border: none; padding: 0; cursor: pointer;
+      font-size: 12px; font-weight: 700; color: var(--primary); text-align: left;
+    }
+    .guide-header .chevron { margin-left: auto; font-size: 11px; color: var(--fg-muted); transition: transform 0.2s; }
+    .guide.is-open .guide-header .chevron { transform: rotate(180deg); }
+    .guide-body { max-height: 0; overflow: hidden; transition: max-height 0.25s ease, margin-top 0.25s ease; }
+    .guide.is-open .guide-body { max-height: 420px; margin-top: 10px; }
+    .guide ol { padding-left: 18px; }
+    .guide li { font-size: 13px; color: var(--fg-muted); line-height: 1.7; margin-bottom: 4px; }
+    .guide li code { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; background: var(--border); padding: 1px 5px; border-radius: 4px; color: var(--fg); }
+    .guide a { color: var(--primary); text-decoration: none; }
+    .guide a:hover { text-decoration: underline; }
+
+    .verify-row { display: flex; gap: 8px; margin-bottom: 14px; }
+    .verify-row .hero-input { margin-bottom: 0; flex: 1; }
+    .verify-result { font-size: 12.5px; margin-bottom: 4px; min-height: 18px; }
+    .verify-result.ok { color: var(--success); }
+    .verify-result.err { color: var(--danger); }
+
+    .options { display: flex; gap: 8px; margin-bottom: 14px; }
+    .opt-btn {
+      flex: 1; padding: 9px; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 0.75rem;
+      color: var(--fg-muted); font-size: 13px; font-family: inherit; cursor: pointer;
+      transition: all 0.15s; text-align: center;
+    }
+    .opt-btn.active { background: rgba(0,111,238,0.08); border-color: var(--primary); color: var(--primary); font-weight: 700; }
+
+    .textarea-wrap { position: relative; }
+    .fd-textarea {
+      width: 100%; min-height: 220px; resize: vertical;
+      background: var(--input-bg); border: 1px solid var(--border); border-radius: 0.75rem;
+      padding: 14px; font-size: 13.5px; line-height: 1.7;
+      font-family: 'JetBrains Mono', 'Consolas', monospace; color: var(--fg);
+      outline: none; transition: border-color 0.2s;
+    }
+    .fd-textarea:focus { border-color: var(--primary); }
+    .fd-textarea::placeholder { color: var(--fg-muted); }
+    .parse-count { font-size: 12px; color: var(--fg-muted); margin-top: 8px; }
+    .parse-count b { color: var(--primary); }
+
+    .btn-run { width: 100%; padding: 14px; font-size: 16px; font-weight: 700; min-height: 48px; border-radius: 0.75rem; }
+
+    .progress-wrap { margin-bottom: 16px; display: none; }
+    .progress-bar-bg { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 10px; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-h)); border-radius: 99px; width: 0%; transition: width 0.3s ease; }
+    .progress-text { font-size: 12px; color: var(--fg-muted); font-family: 'JetBrains Mono', monospace; }
+
+    .log-wrap { display: none; }
+    .log-header { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .log-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .log {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 0.75rem; padding: 12px 14px;
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      color: var(--fg-muted); max-height: 260px; overflow-y: auto; line-height: 1.8;
+    }
+    .log-item { display: flex; gap: 8px; }
+    .log-item.ok .log-icon { color: var(--success); }
+    .log-item.skip .log-icon { color: var(--warn); }
+    .log-item.err .log-icon { color: var(--danger); }
+    .log-item.info .log-icon { color: var(--primary); }
+
+    .summary {
+      display: none; background: rgba(23,201,100,0.08);
+      border: 1px solid rgba(23,201,100,0.25); border-radius: 1rem;
+      padding: 14px 18px; font-size: 13px; color: var(--success);
+      text-align: center; font-weight: 600; margin-bottom: 16px;
+    }
+
+    /* ── notion styler 스타일의 2열 레이아웃 ── */
+    .pbu-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 20px;
+      align-items: start;
+      margin-top: 16px;
+    }
+    .pbu-col-left, .pbu-col-right {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .pbu-col-right .panel {
+      margin-bottom: 0;
+    }
+    .pbu-col-right .btn-run {
+      margin-top: 8px;
+    }
+    @media (max-width: 768px) {
+      .pbu-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+    }
+  </style>
+  <link rel="canonical" href="https://eduin.info/apps/padlet-bulk-uploader/">
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"패들렛 일괄 업로더","description":"패들렛 API 키만 있으면 텍스트를 줄바꿈 또는 구분자로 붙여넣어 내 보드에 게시물을 한 번에 업로드합니다. 명렬·단어 목록·링크 모음을 수작업 없이 일괄 등록.","url":"https://eduin.info/apps/padlet-bulk-uploader/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  </Fragment>
+
+
+<!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입합니다 -->
+<main class="app-main">
+
+  <div class="app-header">
+    <div class="app-badge">◆ 크리에이티브</div>
+    <h1 class="app-title">
+  <div class="card-emoji sub-util-creative" style="margin-bottom: 0; transform: scale(1.0);">
+        <i data-lucide="upload-cloud"></i>
+      </div>
+  <span>패들렛 <span>일괄 업로더</span></span>
+</h1>
+    <p class="app-desc">텍스트를 붙여넣으면 내 패들렛 보드에 게시물을 한 번에 업로드합니다.</p>
+  </div>
+
+  <div class="warn-banner">
+    <span class="icon">⚠️</span>
+    <span>이 기능은 <b>패들렛 유료 구독 계정</b>에서만 동작합니다. 무료 계정과 <b>그룹(조직) 계정은 지원되지 않습니다.</b> 반드시 업로드하려는 보드의 <b>관리자 권한</b>이 있는 개인 계정으로 진행하세요.</span>
+  </div>
+
+  <div class="guide is-open" id="guide">
+    <button type="button" class="guide-header" onclick="toggleGuide()" aria-expanded="true">
+      <span>📋 API 키 · Board ID 발급 방법 (최초 1회)</span>
+      <span class="chevron">▾</span>
+    </button>
+    <div class="guide-body">
+      <ol>
+        <li><a href="https://padlet.com/dashboard" target="_blank">패들렛 대시보드</a>에 로그인 → 업로드할 보드를 엽니다.</li>
+        <li>보드 화면 우측 상단 <code>···</code>(더보기) 메뉴 → <code>Developer</code>를 클릭합니다.</li>
+        <li>열린 패널에서 <code>Generate</code>(또는 <code>Copy</code>) 버튼으로 API 키를 발급/복사합니다. 계정당 키는 1개이며, 이 계정이 관리자인 모든 보드에 재사용할 수 있습니다.</li>
+        <li>같은 패널이나 보드 URL 끝부분에서 <b>Board ID</b>(16자리 영숫자)를 복사합니다. 이 앱에는 보드 URL을 그대로 붙여넣어도 자동으로 인식합니다.</li>
+        <li>API 키를 계정 설정에서 바로 발급하려면 <a href="https://padlet.com/dashboard/settings/developers" target="_blank">Settings → Developer</a> 페이지를 이용하세요.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="pbu-grid">
+    <!-- Left Column: 연결 및 옵션 설정 -->
+    <div class="pbu-col-left">
+      <div class="panel">
+        <div class="panel-title">연결 설정</div>
+
+        <label class="field-label">패들렛 API 키</label>
+        <input type="password" id="apiKey" class="hero-input" placeholder="Developer 패널에서 발급한 키" autocomplete="off">
+
+        <div class="security-note">
+          <span class="icon">🔒</span>
+          <span>API 키는 브라우저에서 이 서버의 프록시 함수로만 전달되며, 서버에 저장되거나 로그에 기록되지 않습니다.</span>
+        </div>
+
+        <label class="field-label">Board ID (또는 보드 URL)</label>
+        <div class="verify-row">
+          <input type="text" id="boardId" class="hero-input" placeholder="abcd1234efgh5678 또는 https://padlet.com/.../제목-abcd1234efgh5678">
+          <button class="hero-btn hero-btn-ghost" id="verifyBtn" onclick="verifyBoard()">연결 확인</button>
+        </div>
+        <div class="verify-result" id="verifyResult"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">입력 방식</div>
+
+        <label class="field-label">텍스트 구분 방식</label>
+        <div class="options">
+          <button class="opt-btn active" id="modeSimpleBtn" onclick="setMode('simple')">간단 모드 (줄바꿈=1개)</button>
+          <button class="opt-btn" id="modeDelimBtn" onclick="setMode('delim')">구분자 모드 (제목+본문+링크)</button>
+        </div>
+
+        <label class="field-label">전체 항목 공통 색상</label>
+        <select id="color" class="hero-input no-mb">
+          <option value="">지정 안 함</option>
+          <option value="red">🔴 빨강</option>
+          <option value="orange">🟠 주황</option>
+          <option value="green">🟢 초록</option>
+          <option value="blue">🔵 파랑</option>
+          <option value="purple">🟣 보라</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Right Column: 데이터 입력 및 실행 결과 -->
+    <div class="pbu-col-right">
+      <div class="panel">
+        <div class="panel-title">붙여넣기</div>
+        <div class="textarea-wrap">
+          <textarea id="bulkText" class="fd-textarea" placeholder="" oninput="updateParseCount()"></textarea>
+        </div>
+        <div class="parse-count" id="parseCount">0개 항목으로 인식됨</div>
+      </div>
+
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="progress-text" id="progressText">준비 중...</div>
+      </div>
+
+      <div class="summary" id="summary"></div>
+
+      <div class="log-wrap" id="logWrap">
+        <div class="log-header">진행 로그</div>
+        <div class="log" id="log"></div>
+      </div>
+
+      <button class="hero-btn btn-run" id="runBtn" onclick="run()">🚀 패들렛에 일괄 업로드</button>
+    </div>
+  </div>
+
+</main>
+<script is:inline="">
+function toggleGuide() {
+  const guide = document.getElementById('guide');
+  const isOpen = guide.classList.toggle('is-open');
+  guide.querySelector('.guide-header').setAttribute('aria-expanded', String(isOpen));
+}
+
+let mode = 'simple';
+
+const PLACEHOLDERS = {
+  simple: '김철수\n이영희\n박민준\n최수아\n...',
+  delim: '오늘의 발표 주제\n환경 보호 실천 방법을 소개합니다.\nlink: https://example.com/참고자료\n---\n두 번째 항목 제목\n본문도 여러 줄로 적을 수 있어요.\n---\n제목만 있는 항목도 가능',
+};
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('modeSimpleBtn').classList.toggle('active', m === 'simple');
+  document.getElementById('modeDelimBtn').classList.toggle('active', m === 'delim');
+  document.getElementById('bulkText').placeholder = PLACEHOLDERS[m];
+  updateParseCount();
+}
+setMode('simple');
+
+// 보드 URL을 붙여넣어도 끝의 16자리 영숫자 코드를 추출
+function extractBoardId(raw) {
+  const t = (raw || '').trim();
+  if (/^[A-Za-z0-9]{16}$/.test(t)) return t;
+  const m = t.match(/([A-Za-z0-9]{16})(?:[/?#]|$)/);
+  return m ? m[1] : t;
+}
+
+function parseItems(text, m) {
+  if (m === 'simple') {
+    return text.split('\n')
+      .map(l => l.trim())
+      .filter(Boolean)
+      .map(subject => ({ subject, body: '', linkUrl: '' }));
+  }
+  return text.split(/\n\s*---\s*\n/)
+    .map(block => block.trim())
+    .filter(Boolean)
+    .map(block => {
+      const lines = block.split('\n').map(l => l.trim());
+      const subject = lines.shift() || '';
+      let linkUrl = '';
+      const rest = [];
+      for (const line of lines) {
+        const lm = line.match(/^link:\s*(.+)$/i);
+        if (lm && !linkUrl) linkUrl = lm[1].trim();
+        else rest.push(line);
+      }
+      return { subject, body: rest.join('\n'), linkUrl };
+    })
+    .filter(item => item.subject || item.body || item.linkUrl);
+}
+
+function updateParseCount() {
+  const items = parseItems(document.getElementById('bulkText').value, mode);
+  document.getElementById('parseCount').innerHTML = `<b>${items.length}</b>개 항목으로 인식됨`;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function padletCall(apiKey, boardId, action, item) {
+  const resp = await fetch('/api/padlet', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ apiKey, boardId, action, item }),
+  });
+  const data = await resp.json().catch(() => null);
+  if (!resp.ok) {
+    let msg = data?.error || `오류 ${resp.status}`;
+    if (resp.status === 401) msg = '401 — API 키가 올바르지 않습니다. 키를 다시 확인해 주세요.';
+    else if (resp.status === 403) msg = '403 — 보드 관리자 권한이 없거나, 무료/그룹(조직) 계정은 API를 사용할 수 없습니다.';
+    else if (resp.status === 404) msg = '404 — 보드를 찾을 수 없습니다. Board ID를 다시 확인해 주세요.';
+    else if (resp.status === 429) msg = '429 — 요청이 너무 잦습니다.';
+    const err = new Error(msg);
+    err.status = resp.status;
+    throw err;
+  }
+  return data;
+}
+
+async function verifyBoard() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const boardId = extractBoardId(document.getElementById('boardId').value);
+  const resultEl = document.getElementById('verifyResult');
+  resultEl.className = 'verify-result';
+  resultEl.textContent = '';
+
+  if (!apiKey || !boardId) {
+    resultEl.className = 'verify-result err';
+    resultEl.textContent = 'API 키와 Board ID를 모두 입력해 주세요.';
+    return;
+  }
+
+  const btn = document.getElementById('verifyBtn');
+  btn.disabled = true;
+  btn.textContent = '확인 중...';
+  try {
+    const data = await padletCall(apiKey, boardId, 'verifyBoard');
+    resultEl.className = 'verify-result ok';
+    resultEl.textContent = `✓ 연결됨 — "${data.title || boardId}"`;
+  } catch (e) {
+    resultEl.className = 'verify-result err';
+    resultEl.textContent = e.message;
+  }
+  btn.disabled = false;
+  btn.textContent = '연결 확인';
+}
+
+function addLog(type, icon, msg) {
+  const log = document.getElementById('log');
+  const item = document.createElement('div');
+  item.className = `log-item ${type}`;
+  item.innerHTML = `<span class="log-icon">${icon}</span><span></span>`;
+  item.querySelector('span:last-child').textContent = msg;
+  log.appendChild(item);
+  log.scrollTop = log.scrollHeight;
+}
+
+function setProgress(cur, total, msg) {
+  const pct = total > 0 ? Math.round((cur / total) * 100) : 0;
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressText').textContent = msg;
+}
+
+async function run() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const boardId = extractBoardId(document.getElementById('boardId').value);
+  const color = document.getElementById('color').value;
+  const items = parseItems(document.getElementById('bulkText').value, mode);
+
+  if (!apiKey || !boardId) { alert('API 키와 Board ID를 모두 입력해 주세요.'); return; }
+  if (!items.length) { alert('업로드할 항목이 없습니다. 텍스트를 입력해 주세요.'); return; }
+  if (items.length > 20 && !confirm(`정말 ${items.length}개 항목을 패들렛에 업로드할까요?`)) return;
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.textContent = '업로드 중...';
+
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('logWrap').style.display = 'block';
+  document.getElementById('summary').style.display = 'none';
+  document.getElementById('log').innerHTML = '';
+
+  let ok = 0, failed = 0;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    setProgress(i + 1, items.length, `업로드 중... ${i + 1} / ${items.length}`);
+
+    const payload = { subject: item.subject, body: item.body, linkUrl: item.linkUrl };
+    if (color) payload.color = color;
+
+    let attempt = 0;
+    while (true) {
+      try {
+        await padletCall(apiKey, boardId, 'createPost', payload);
+        addLog('ok', '✓', item.subject || item.body.slice(0, 30) || item.linkUrl);
+        ok++;
+        break;
+      } catch (e) {
+        if (e.status === 429 && attempt === 0) {
+          attempt++;
+          addLog('info', '◆', '요청 제한 — 잠시 후 재시도합니다...');
+          await sleep(1500);
+          continue;
+        }
+        if (e.status === 401) {
+          addLog('err', '✗', e.message);
+          failed += items.length - i;
+          i = items.length; // 전체 중단
+        } else {
+          addLog('err', '✗', `[${item.subject || i + 1}] ${e.message}`);
+          failed++;
+        }
+        break;
+      }
+    }
+    await sleep(500);
+  }
+
+  const sumEl = document.getElementById('summary');
+  sumEl.style.display = 'block';
+  sumEl.textContent = `완료! 성공 ${ok}개 · 실패 ${failed}개`;
+
+  // 실행 완료 후 API 키 초기화 (메모리에서 제거)
+  document.getElementById('apiKey').value = '';
+  btn.disabled = false;
+  btn.textContent = '🚀 패들렛에 일괄 업로드';
+}
+</script>
+
+
+
+</AppLayout>

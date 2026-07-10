@@ -1,0 +1,709 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+---
+<AppLayout 
+  title="Smart Timer — eduin VIVES"
+  description="수업, 회의, 운동에 딱 맞는 반복 알람 타이머. 구간별 시간 설정과 알림음 커스텀."
+  image="https://eduin.info/og-images/timer.png"
+  bodyShell="column"
+  bodyWidth="narrow"
+>
+  <Fragment slot="head">
+  <style is:global="">
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 1rem 7rem;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .timer-wrap {
+      width: 100%;
+      max-width: 500px;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* 시계 */
+    .clock-section {
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+    }
+    #main-clock {
+      font-size: clamp(2.8rem, 10vw, 4.5rem);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    #main-date {
+      font-size: 0.95rem;
+      color: var(--fg-muted);
+      margin-top: 0.375rem;
+    }
+    #next-alarm {
+      font-size: 0.82rem;
+      color: var(--primary);
+      font-weight: 600;
+      margin-top: 0.5rem;
+      min-height: 1.2em;
+    }
+
+    /* 메인 카드 */
+    .main-card {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1.5rem;
+      padding: 1.25rem;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 6rem;
+    }
+
+    /* 탭 바 */
+    .tab-bar {
+      display: flex;
+      overflow-x: auto;
+      gap: 6px;
+      padding-bottom: 0.75rem;
+      margin-bottom: 0.875rem;
+      border-bottom: 1px solid var(--border);
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+
+    .tab-item {
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      background: var(--bg);
+      color: var(--fg-muted);
+      border: 1px solid var(--border);
+      transition: background 0.15s, color 0.15s;
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      font-family: inherit;
+    }
+    .tab-item.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* 알람 목록 */
+    .alarm-list { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.625rem; }
+
+    .alarm-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 0.875rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      animation: fadeSlide 0.25s ease;
+    }
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .alarm-info .name { font-size: 0.8rem; color: var(--fg-muted); margin-bottom: 2px; }
+    .alarm-info .time { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+    .alarm-info .days { font-size: 0.72rem; color: var(--primary); font-weight: 600; margin-top: 2px; }
+
+    .item-actions { display: flex; gap: 4px; }
+    .action-btn {
+      background: none;
+      border: none;
+      padding: 8px;
+      cursor: pointer;
+      border-radius: 50%;
+      color: var(--fg-muted);
+      transition: background 0.15s, color 0.15s;
+      min-width: 36px;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .action-btn:hover { background: var(--border); }
+    .action-btn.edit:hover  { color: var(--primary); }
+    .action-btn.delete:hover { color: var(--danger); }
+    .action-btn.toggle.on { color: var(--primary); }
+    .alarm-item.disabled { opacity: 0.5; }
+    .alarm-item.disabled .time { text-decoration: line-through; }
+
+    /* 빈 상태 */
+    .empty-state {
+      text-align: center;
+      color: var(--fg-muted);
+      padding: 2.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.9rem;
+    }
+
+    /* 하단 컨트롤 바 */
+    .control-bar {
+      position: fixed;
+      bottom: 20px;
+      width: calc(100% - 2rem);
+      max-width: 500px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 0.5rem;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+      z-index: 500;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .icon-btn {
+      background: none;
+      border: none;
+      color: var(--fg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      padding: 0.5rem 0;
+      border-radius: 0.875rem;
+      transition: background 0.15s;
+      gap: 3px;
+      min-height: 52px;
+      font-family: inherit;
+    }
+    .icon-btn:hover { background: var(--border); }
+    .icon-btn span { font-size: 0.6rem; font-weight: 600; color: var(--fg-muted); }
+
+    /* 모달 */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: flex-end;
+      z-index: 1000;
+      padding: 1rem;
+    }
+    .modal.open { display: flex; }
+
+    .modal-content {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      width: 100%;
+      max-width: 420px;
+      border-radius: 1.5rem;
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      margin-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    .modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.25rem; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--fg-muted); margin-bottom: 0.375rem; }
+
+    .day-selector { display: flex; gap: 5px; justify-content: space-between; }
+    .day-checkbox { display: none; }
+    .day-label {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      font-weight: 600;
+      background: var(--bg);
+    }
+    .day-checkbox:checked + .day-label { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    .modal-footer { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
+    .btn-cancel { background: var(--card-bg); color: var(--fg); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.75rem 1rem; font-size: 0.9rem; cursor: pointer; flex: 1; font-family: inherit; min-height: 44px; }
+    .btn-cancel:hover { border-color: var(--primary); }
+
+    /* 알람 오버레이 */
+    #alarm-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--primary);
+      color: #fff;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      gap: 0.5rem;
+      text-align: center;
+      padding: 2rem;
+    }
+    #alarm-overlay.show { display: flex; }
+    #alarm-overlay h1 { font-size: clamp(3rem, 15vw, 5rem); font-weight: 800; margin: 0.5rem 0; }
+    #alarm-overlay p  { font-size: 1.2rem; opacity: 0.9; }
+    #stop-alarm {
+      margin-top: 2rem;
+      padding: 1rem 3rem;
+      border-radius: 9999px;
+      border: 2px solid rgba(255,255,255,0.8);
+      background: transparent;
+      color: #fff;
+      font-size: 1.2rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      font-family: inherit;
+      min-height: 56px;
+    }
+    #stop-alarm:hover { background: #fff; color: var(--primary); }
+
+    /* 로그 */
+    .log-list { max-height: 220px; overflow-y: auto; margin-bottom: 1rem; }
+    .log-item { padding: 0.625rem 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
+    .log-item .log-name { font-weight: 600; }
+    .log-item .log-date { color: var(--fg-muted); font-size: 0.72rem; margin-top: 2px; }
+  </style>
+  <link rel="canonical" href="https://eduin.info/apps/timer/">
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"Smart Timer","description":"수업, 회의, 운동에 딱 맞는 반복 알람 타이머. 구간별 시간 설정과 알림음 커스텀.","url":"https://eduin.info/apps/timer/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  </Fragment>
+
+
+
+<div class="timer-wrap">
+
+  <div class="app-header" style="width:100%;text-align:left;">
+    <div class="app-badge">◆ 업무경감</div>
+    <h1 class="app-title">
+  <div class="card-emoji sub-edu-work" style="margin-bottom: 0; transform: scale(1.0);">
+        <i data-lucide="timer"></i>
+      </div>
+  <span>Smart <span>Timer</span></span>
+</h1>
+    <p class="app-desc">반복 알람 스케줄을 직관적으로 관리합니다.</p>
+  </div>
+
+  <div class="clock-section">
+    <div id="main-date">...</div>
+    <div id="main-clock">00:00:00</div>
+    <div id="next-alarm"></div>
+  </div>
+
+  <div class="main-card">
+    <div class="tab-bar" id="tab-bar">
+      <button class="tab-item active" onclick="setTab('all')">전체</button>
+      <button class="tab-item" onclick="setTab(1)">월</button>
+      <button class="tab-item" onclick="setTab(2)">화</button>
+      <button class="tab-item" onclick="setTab(3)">수</button>
+      <button class="tab-item" onclick="setTab(4)">목</button>
+      <button class="tab-item" onclick="setTab(5)">금</button>
+      <button class="tab-item" onclick="setTab(6)">토</button>
+      <button class="tab-item" onclick="setTab(0)">일</button>
+    </div>
+    <div id="alarm-list" class="alarm-list"></div>
+  </div>
+
+  <!-- 하단 컨트롤 바 -->
+  <div class="control-bar">
+    <button class="icon-btn" onclick="openAddModal()">
+      <i data-lucide="plus-circle"></i><span>추가</span>
+    </button>
+    <button class="icon-btn" onclick="testAlarm()">
+      <i data-lucide="bell-ring"></i><span>테스트</span>
+    </button>
+    <button class="icon-btn" onclick="exportAlarms()">
+      <i data-lucide="download"></i><span>백업</span>
+    </button>
+    <button class="icon-btn" onclick="triggerImport()">
+      <i data-lucide="upload"></i><span>복구</span>
+    </button>
+    <button class="icon-btn" onclick="openModal('logModal')">
+      <i data-lucide="history"></i><span>기록</span>
+    </button>
+  </div>
+
+  <!-- 알람 추가/수정 모달 -->
+  <div id="alarmModal" class="modal" onclick="if(event.target===this)closeModal('alarmModal')">
+    <div class="modal-content">
+      <div class="modal-title" id="modalTitle">알람 추가</div>
+      <input type="hidden" id="editId">
+
+      <div class="form-group">
+        <label class="form-label">알람 이름</label>
+        <input type="text" id="alarmName" class="hero-input" placeholder="예: 약 먹기, 출근">
+      </div>
+      <div class="form-group">
+        <label class="form-label">시간 설정</label>
+        <input type="time" id="alarmTime" class="hero-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">반복 요일</label>
+        <div class="day-selector">
+          <input type="checkbox" id="d0" class="day-checkbox" value="0"><label for="d0" class="day-label">일</label>
+          <input type="checkbox" id="d1" class="day-checkbox" value="1" checked=""><label for="d1" class="day-label">월</label>
+          <input type="checkbox" id="d2" class="day-checkbox" value="2" checked=""><label for="d2" class="day-label">화</label>
+          <input type="checkbox" id="d3" class="day-checkbox" value="3" checked=""><label for="d3" class="day-label">수</label>
+          <input type="checkbox" id="d4" class="day-checkbox" value="4" checked=""><label for="d4" class="day-label">목</label>
+          <input type="checkbox" id="d5" class="day-checkbox" value="5" checked=""><label for="d5" class="day-label">금</label>
+          <input type="checkbox" id="d6" class="day-checkbox" value="6"><label for="d6" class="day-label">토</label>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('alarmModal')">취소</button>
+        <button class="hero-btn" style="flex:2" id="saveBtn" onclick="saveAlarm()">저장하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 로그 모달 -->
+  <div id="logModal" class="modal" onclick="if(event.target===this)closeModal('logModal')">
+    <div class="modal-content">
+      <div class="modal-title">알람 실행 기록</div>
+      <div class="log-list" id="log-list"></div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="clearLogs()">기록 삭제</button>
+        <button class="hero-btn" style="flex:2" onclick="closeModal('logModal')">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 알람 오버레이 -->
+  <div id="alarm-overlay">
+    <i data-lucide="alarm-clock" style="width:80px;height:80px;"></i>
+    <p id="active-alarm-name">알람</p>
+    <h1 id="active-alarm-time">00:00</h1>
+    <button id="stop-alarm" onclick="stopAlarm()">그만 울리기</button>
+  </div>
+
+  <input type="file" id="importInput" style="display:none" accept=".json" onchange="importAlarms(event)">
+
+</div><!-- /.timer-wrap -->
+
+
+  <script is:inline="">
+    // Web Worker (백그라운드 tick)
+    const worker = new Worker(URL.createObjectURL(new Blob([
+      'setInterval(()=>postMessage("tick"),1000);'
+    ], { type: 'application/javascript' })));
+
+    let alarms = JSON.parse(localStorage.getItem('alarms') || '[]');
+    let logs   = JSON.parse(localStorage.getItem('alarm_logs') || '[]');
+    let audioCtx, isAlarmPlaying = false, currentTab = 'all', wakeLock = null;
+    const lastFired = {};   // id → 'date H:M' — 같은 분 중복 발동 방지 (런타임 전용, 저장 안 함)
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+    lucide.createIcons();
+
+    if (window.Notification && Notification.permission !== 'granted') Notification.requestPermission();
+
+    async function requestWakeLock() {
+      try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+    }
+    requestWakeLock();
+
+    worker.onmessage = () => {
+      const now = new Date();
+      document.getElementById('main-clock').textContent =
+        now.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      document.getElementById('main-date').textContent =
+        now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+      updateNextAlarm(now);
+      checkAlarms(now);
+    };
+
+    function setTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-item').forEach(el => {
+        const match = tab === 'all' ? el.textContent === '전체'
+          : el.textContent === ['일','월','화','수','목','금','토'][tab];
+        el.classList.toggle('active', match);
+      });
+      renderAlarms();
+    }
+
+    function checkAlarms(now) {
+      if (isAlarmPlaying) return;
+      const h = now.getHours(), m = now.getMinutes(), d = now.getDay();
+      const minuteKey = `${now.toDateString()} ${h}:${m}`;   // 초 0을 놓쳐도(틱 지연·스로틀링) 그 분에 한 번은 발동
+      for (const a of alarms) {
+        if (a.enabled === false) continue;
+        const [ah, am] = a.time.split(':').map(Number);
+        if (ah === h && am === m && a.days.includes(d) && lastFired[a.id] !== minuteKey) {
+          lastFired[a.id] = minuteKey;
+          triggerAlarm(a);
+          break;   // 같은 시각 다중 알람은 하나만 — 오버레이·소리 중첩 방지
+        }
+      }
+    }
+
+    function triggerAlarm(alarm, isTest = false) {
+      isAlarmPlaying = true;
+      document.getElementById('active-alarm-time').textContent = alarm.time;
+      document.getElementById('active-alarm-name').textContent = alarm.name;
+      document.getElementById('alarm-overlay').classList.add('show');
+      if (!isTest) {
+        logs.unshift({ name: alarm.name, time: alarm.time, date: new Date().toLocaleString() });
+        localStorage.setItem('alarm_logs', JSON.stringify(logs));
+      }
+      playAlarmSound();
+      if (window.Notification && Notification.permission === 'granted') {
+        const n = new Notification('VIVES Timer', { body: `${alarm.name} (${alarm.time})` });
+        n.onclick = () => { window.focus(); stopAlarm(); };
+      }
+    }
+
+    function stopAlarm() {
+      isAlarmPlaying = false;
+      document.getElementById('alarm-overlay').classList.remove('show');
+      if (audioCtx) audioCtx.close();
+    }
+
+    function playAlarmSound() {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const note = (f, t, d) => {
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(f, t);
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.2, t + 0.1);
+        g.gain.exponentialRampToValueAtTime(0.001, t + d);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(t); o.stop(t + d);
+      };
+      const seq = () => {
+        if (!isAlarmPlaying) return;
+        const t = audioCtx.currentTime;
+        note(523.25, t, 2); note(659.25, t + 0.5, 2); note(783.99, t + 1.0, 2);
+        setTimeout(seq, 3000);
+      };
+      seq();
+    }
+
+    function testAlarm() {
+      if (Notification.permission !== 'granted') Notification.requestPermission();
+      triggerAlarm({ name: '테스트 알람', time: 'TEST' }, true);   // 테스트는 실행 기록에 남기지 않음
+    }
+
+    function openAddModal() {
+      const now = new Date();
+      document.getElementById('modalTitle').textContent = '알람 추가';
+      document.getElementById('saveBtn').textContent = '저장하기';
+      document.getElementById('editId').value = '';
+      document.getElementById('alarmName').value = '';
+      document.getElementById('alarmTime').value =
+        `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      openModal('alarmModal');
+    }
+
+    function openEditModal(id) {
+      const a = alarms.find(x => x.id === id);
+      if (!a) return;
+      document.getElementById('modalTitle').textContent = '알람 수정';
+      document.getElementById('saveBtn').textContent = '수정 완료';
+      document.getElementById('editId').value = id;
+      document.getElementById('alarmName').value = a.name;
+      document.getElementById('alarmTime').value = a.time;
+      for (let i = 0; i < 7; i++) document.getElementById(`d${i}`).checked = a.days.includes(i);
+      openModal('alarmModal');
+    }
+
+    function saveAlarm() {
+      const id   = document.getElementById('editId').value;
+      const name = document.getElementById('alarmName').value || '알람';
+      const time = document.getElementById('alarmTime').value;
+      const days = Array.from({length:7}, (_,i) => document.getElementById(`d${i}`).checked ? i : -1).filter(i => i >= 0);
+      if (!time) return alert('시간을 선택해 주세요.');
+      if (!days.length) return alert('반복할 요일을 선택해 주세요.');
+      if (id) {
+        const idx = alarms.findIndex(a => a.id == id);
+        alarms[idx] = { ...alarms[idx], name, time, days };
+      } else {
+        alarms.push({ id: Date.now(), name, time, days, enabled: true });
+      }
+      localStorage.setItem('alarms', JSON.stringify(alarms));
+      renderAlarms();
+      closeModal('alarmModal');
+    }
+
+    function deleteAlarm(id) {
+      alarms = alarms.filter(a => a.id !== id);
+      localStorage.setItem('alarms', JSON.stringify(alarms));
+      renderAlarms();
+    }
+
+    function toggleAlarm(id) {
+      const a = alarms.find(x => x.id === id);
+      if (!a) return;
+      a.enabled = a.enabled === false;   // 꺼져 있으면(false) 켜고, 그 외(true·미설정)는 끔
+      localStorage.setItem('alarms', JSON.stringify(alarms));
+      renderAlarms();
+    }
+
+    function renderAlarms() {
+      const list = document.getElementById('alarm-list');
+      list.innerHTML = '';
+      const filtered = currentTab === 'all' ? alarms : alarms.filter(a => a.days.includes(currentTab));
+      if (!filtered.length) {
+        list.innerHTML = `<div class="empty-state"><i data-lucide="calendar-x"></i><p>설정된 알람이 없습니다.</p></div>`;
+        lucide.createIcons(); return;
+      }
+      const dayNames = ['일','월','화','수','목','금','토'];
+      filtered.sort((a,b) => a.time.localeCompare(b.time)).forEach(alarm => {
+        const dayStr = alarm.days.length === 7 ? '매일' : alarm.days.map(d => dayNames[d]).join(', ');
+        const off = alarm.enabled === false;
+        const div = document.createElement('div');
+        div.className = 'alarm-item' + (off ? ' disabled' : '');
+        div.innerHTML = `
+          <div class="alarm-info">
+            <div class="name">${esc(alarm.name)}</div>
+            <div class="time">${esc(alarm.time)}</div>
+            <div class="days">${esc(dayStr)}</div>
+          </div>
+          <div class="item-actions">
+            <button class="action-btn toggle ${off ? '' : 'on'}" data-action="toggle" data-id="${esc(alarm.id)}" title="${off ? '알람 켜기' : '알람 끄기'}"><i data-lucide="${off ? 'bell-off' : 'bell'}" style="width:16px"></i></button>
+            <button class="action-btn edit" data-action="edit" data-id="${esc(alarm.id)}" title="수정"><i data-lucide="pencil" style="width:16px"></i></button>
+            <button class="action-btn delete" data-action="delete" data-id="${esc(alarm.id)}" title="삭제"><i data-lucide="trash-2" style="width:16px"></i></button>
+          </div>`;
+        list.appendChild(div);
+      });
+      lucide.createIcons();
+    }
+
+    function exportAlarms() {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify({ alarms, logs })], { type: 'application/json' }));
+      a.download = 'timer_backup.json'; a.click();
+    }
+    function triggerImport() { document.getElementById('importInput').click(); }
+    function importAlarms(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          if (!data || !Array.isArray(data.alarms)) throw new Error('형식 오류');
+          alarms = data.alarms;
+          logs = Array.isArray(data.logs) ? data.logs : [];
+          localStorage.setItem('alarms', JSON.stringify(alarms));
+          localStorage.setItem('alarm_logs', JSON.stringify(logs));   // 복구한 기록도 저장 — 새로고침해도 유지
+          renderAlarms();
+          alert('불러오기 완료!');
+        } catch (err) {
+          alert('백업 파일을 읽을 수 없습니다. 올바른 JSON 백업 파일인지 확인해 주세요.');
+        } finally {
+          e.target.value = '';   // 같은 파일을 다시 선택해도 onchange가 발동하도록 초기화
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function renderLogs() {
+      const c = document.getElementById('log-list');
+      if (!logs.length) { c.innerHTML = '<p style="text-align:center;color:var(--fg-muted);padding:1rem">기록이 없습니다.</p>'; return; }
+      c.innerHTML = logs.slice(0, 30).map(l => `
+        <div class="log-item">
+          <div class="log-name">${esc(l.name)} (${esc(l.time)})</div>
+          <div class="log-date">${esc(l.date)}</div>
+        </div>`).join('');
+    }
+    function clearLogs() { logs = []; localStorage.setItem('alarm_logs', '[]'); renderLogs(); }
+    function openModal(id)  { document.getElementById(id).classList.add('open'); if (id === 'logModal') renderLogs(); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    // 다음 알람: 활성 알람 중 지금으로부터 가장 가까운 발동 시점
+    function nextAlarmInfo(now) {
+      let best = null;
+      for (const a of alarms) {
+        if (a.enabled === false) continue;
+        const [ah, am] = a.time.split(':').map(Number);
+        if (Number.isNaN(ah) || !a.days || !a.days.length) continue;
+        for (const d of a.days) {
+          const when = new Date(now);
+          when.setHours(ah, am, 0, 0);
+          when.setDate(when.getDate() + ((d - now.getDay() + 7) % 7));
+          if (when <= now) when.setDate(when.getDate() + 7);   // 오늘 이미 지났으면 다음 주 같은 요일
+          if (!best || when < best.when) best = { alarm: a, when };
+        }
+      }
+      return best;
+    }
+
+    function fmtDelta(ms) {
+      const totalMin = Math.floor(ms / 60000);
+      if (totalMin <= 0) return '곧';
+      const days = Math.floor(totalMin / 1440);
+      const hours = Math.floor((totalMin % 1440) / 60);
+      const mins = totalMin % 60;
+      if (days > 0)  return `${days}일 ${hours}시간 후`;
+      if (hours > 0) return `${hours}시간 ${mins}분 후`;
+      return `${mins}분 후`;
+    }
+
+    function updateNextAlarm(now) {
+      const el = document.getElementById('next-alarm');
+      const next = nextAlarmInfo(now);
+      el.textContent = next
+        ? `다음 알람 · ${next.alarm.name} ${next.alarm.time} · ${fmtDelta(next.when - now)}`
+        : '예정된 알람이 없습니다';
+    }
+
+    // 알람 항목 버튼(켜기·끄기·수정·삭제)은 이벤트 위임으로 처리 — inline onclick 제거로 id 주입·XSS 경로 차단
+    document.getElementById('alarm-list').addEventListener('click', e => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const id = Number(btn.dataset.id);
+      if (!id) return;
+      const action = btn.dataset.action;
+      if (action === 'edit') openEditModal(id);
+      else if (action === 'delete') deleteAlarm(id);
+      else if (action === 'toggle') toggleAlarm(id);
+    });
+
+    renderAlarms();
+
+    // 선택 동기화: 헤더 '동기화' 버튼 (알람·기록을 코드 하나로 기기 간 이어쓰기)
+    if (window.VivesSync) VivesSync.mountDocSync({
+      apiUrl: '/api/timer',
+      keys: ['alarms', 'alarm_logs'],
+      appName: '알람',
+      onApplied: function () {
+        try { alarms = JSON.parse(localStorage.getItem('alarms') || '[]'); } catch (e) {}
+        try { logs = JSON.parse(localStorage.getItem('alarm_logs') || '[]'); } catch (e) {}
+        renderAlarms();
+      },
+    });
+  </script>
+
+
+
+</AppLayout>

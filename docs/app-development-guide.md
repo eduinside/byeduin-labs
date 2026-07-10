@@ -1,5 +1,10 @@
 # eduin VIVES — 신규 앱 개발 가이드 및 배포 매뉴얼
 
+> **⚠️ 2026-07 Astro 전환 이후 달라진 점** — 이 가이드의 파일 경로·SEO 절차는 정적 HTML 시절 기준입니다. 현재 구조에 맞게 읽으세요:
+> - 앱 페이지: `public/apps/<id>/index.html` → **`src/pages/apps/<id>/index.astro`** (`AppLayout`으로 감싸고 `title`·`description`·`image`·`bodyShell`·`bodyWidth`·`bodyPrint` props 지정). `public/apps/<id>/`에는 js·json 등 정적 자산만 둡니다.
+> - SEO 주입(`npm run inject`) 단계는 **폐기** — 메타 태그는 `AppLayout`이 빌드 시 출력합니다. `apps.json` 등록, `npm run og`, `npm run sitemap`은 종전과 동일.
+> - 로컬 테스트: `npm run dev`(UI만) / `npm run dev:cf`(API 포함). 상세는 [OVERVIEW.md](OVERVIEW.md) 참고.
+
 이 문서는 eduin VIVES(labs)에 새로운 미니 웹 앱을 설계하고, 개발하고, SEO 및 메타데이터를 연결하여 최종 배포하는 프로세스를 안내합니다.
 
 기존 디자인 시스템([design-system.md](file:///d:/Hwan/Documents/Web/byeduin-labs/docs/design-system.md))의 색상, 타이포그래피, 컴포넌트 규칙을 철저히 준수하여 일관성 있는 사용자 경험(UX)을 구축해야 합니다.

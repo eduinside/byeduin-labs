@@ -1,0 +1,546 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+---
+<AppLayout 
+  title="Read Tree — eduin VIVES"
+  description="Oxford Reading Tree 읽기 진도를 코드 하나로 기록. 레벨별 Magic Chart로 읽은 책을 확인하고 뱃지를 모으세요. 로그인·개인정보 없이."
+  image="https://eduin.info/og-images/read-tree.png"
+  bodyShell="column"
+  bodyWidth="medium"
+>
+  <Fragment slot="head">
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js" is:inline=""></script>
+  <style is:global="">
+    /* ===== Read Tree — 앱 전용 스타일 (색은 공용 토큰 + 레벨 액센트) ===== */
+    .app-main { padding-bottom: 4rem; }
+    [hidden] { display: none !important; }
+    .muted { color: var(--fg-muted); font-size: 12px; }
+
+    /* ===== 소개 화면 — 다른 앱과 동일하게 좌측정렬·상단부터 ===== */
+    #introView { display: flex; flex-direction: column; gap: 20px; }
+
+    /* ===== 요약 카드 (코드 · 진행 · 뱃지) ===== */
+    .summary { padding: 16px 18px; margin-bottom: 18px; display: flex; flex-direction: column; gap: 14px; }
+    .summary-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .code-chip { background: rgba(0,111,238,0.08); border: 1px solid rgba(0,111,238,0.2);
+                 color: var(--primary); border-radius: 99px; padding: 5px 13px; font-size: 13px; cursor: pointer; font-family: inherit; }
+    .code-chip b { font-family: 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 0.1em; }
+    .link-btn { background: none; border: none; color: var(--fg-muted); font-size: 13px; cursor: pointer;
+                padding: 6px 2px; font-family: inherit; text-decoration: underline; }
+    .prog-label { font-size: 13px; color: var(--fg-muted); margin-bottom: 7px; }
+    .prog-label b { color: var(--fg); }
+    .prog-label .count { font-weight: 800; color: var(--fg); }
+    .bar { height: 9px; background: var(--bg-sec); border: 1px solid var(--border); border-radius: 99px; overflow: hidden; }
+    .bar i { display: block; height: 100%; width: 0; border-radius: 99px; background: var(--lv, var(--primary)); transition: width .4s ease; }
+    .badge-row { display: flex; flex-wrap: wrap; gap: 7px; }
+    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 10px;
+             font-size: 12px; font-weight: 700; border: 1px solid var(--border); background: var(--card-bg); }
+    .badge.on { border-color: transparent; color: #fff; }
+    .badge.off { color: var(--fg-muted); opacity: .6; }
+
+    /* ===== 책장 툴바 (레벨 칩 + 검색) — blocks-universe toolbar 패턴 ===== */
+    .toolbar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+    .level-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; cursor: grab; }
+    .level-chips::-webkit-scrollbar { display: none; }
+    .level-chips.dragging { cursor: grabbing; }
+    .lv-chip { flex: 0 0 auto; padding: 6px 11px; border-radius: 10px; border: 2px solid var(--border);
+               background: var(--card-bg); color: var(--fg-muted); font-weight: 800; font-size: 13px; cursor: pointer;
+               font-family: inherit; transition: transform .1s; user-select: none; }
+    .lv-chip:active { transform: scale(.95); }
+    .lv-chip.active { color: #fff; border-color: transparent; background: var(--lv); }
+    .toolbar-row { display: flex; align-items: center; gap: 8px; }
+    .toolbar-row .level-chips { flex: 1; min-width: 0; }
+    .icon-btn { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+                border: 1px solid var(--border); background: var(--card-bg); border-radius: 10px; font-size: 17px; cursor: pointer; color: var(--fg); font-family: inherit; }
+    .icon-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .reveal-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; background: var(--bg-sec);
+                  border: 1px solid var(--border); border-radius: 99px; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 700; color: var(--fg); cursor: pointer; }
+    .reveal-btn .reveal-meta { color: var(--fg-muted); font-weight: 600; }
+    .reveal-btn .caret { color: var(--fg-muted); transition: transform .15s; }
+    .reveal-btn[aria-expanded="true"] .caret { transform: rotate(180deg); }
+    .search-box { display: flex; gap: 8px; align-items: center; }
+    .search-box input { flex: 1; min-width: 0; padding: 11px 14px; border: 1px solid var(--border); border-radius: 11px;
+                        background: var(--input-bg); color: var(--fg); font: inherit; font-size: 16px; }
+    .search-box input:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+    .result-info { font-size: 12px; color: var(--fg-muted); margin: 2px 0 12px; }
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--fg-muted); font-size: 14px; }
+
+    /* ===== 책장 (Magic Chart) ===== */
+    .series-card { border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 12px; background: var(--card-bg); }
+    .series-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .series-name { font-size: 14px; font-weight: 700; }
+    .series-count { font-size: 12px; font-weight: 700; color: var(--fg-muted); }
+    .series-bar { height: 6px; background: var(--bg-sec); border-radius: 99px; overflow: hidden; margin-bottom: 12px; }
+    .series-bar i { display: block; height: 100%; width: 0; background: var(--lv); border-radius: 99px; transition: width .3s; }
+    .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+    .book-cell { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 6px 4px 4px;
+                 border: none; background: none; cursor: pointer; font-family: inherit; border-radius: 10px; transition: background .15s; }
+    .book-cell:hover { background: var(--bg-sec); }
+    .cell-sq { position: relative; width: 100%; aspect-ratio: 1 / 1; max-width: 66px; border-radius: 12px;
+               border: 2px solid var(--border); display: flex; align-items: center; justify-content: center;
+               font-weight: 800; font-size: 16px; color: var(--fg-muted); background: var(--bg); transition: all .15s; }
+    .book-cell.read .cell-sq { background: var(--lv); border-color: var(--lv); color: #fff; }
+    .book-cell.read .cell-n { display: none; }
+    .book-cell.read .cell-sq::after { content: '✓'; font-size: 22px; }
+    .cell-t { font-size: 11px; line-height: 1.3; color: var(--fg-muted); text-align: center;
+              display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-height: 2.6em; word-break: break-word; }
+    .book-cell.read .cell-t { color: var(--fg); }
+
+    /* ===== 검색 결과 (행) — 책장 안에서 표시 ===== */
+    .result-list { display: flex; flex-direction: column; gap: 8px; }
+    .result { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left;
+              padding: 12px 14px; border: 1px solid var(--border); background: var(--card-bg); border-radius: 12px; cursor: pointer;
+              font-family: inherit; transition: border-color .15s; }
+    .result:hover { border-color: var(--primary); }
+    .r-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .r-title { font-size: 14px; font-weight: 600; color: var(--fg); }
+    .r-sub { font-size: 12px; color: var(--fg-muted); }
+    .r-lvdot { display: inline-block; width: 8px; height: 8px; border-radius: 99px; margin-right: 5px; vertical-align: middle; background: var(--lv); }
+    .r-check { flex: none; font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--border);
+               color: var(--fg-muted); white-space: nowrap; }
+    .result.read .r-check { background: var(--success); border-color: var(--success); color: #fff; }
+    .result.read .r-title { color: var(--fg-muted); }
+
+    .loading { text-align: center; color: var(--fg-muted); padding: 40px 0; font-size: 14px; }
+  </style>
+  <link rel="canonical" href="https://eduin.info/apps/read-tree/">
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"Read Tree","description":"Oxford Reading Tree 읽기 진도를 코드 하나로 기록. 레벨별 Magic Chart로 읽은 책을 확인하고 뱃지를 모으세요. 로그인·개인정보 없이.","url":"https://eduin.info/apps/read-tree/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  </Fragment>
+
+
+  <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입 -->
+  <main class="app-main">
+
+    <!-- ===== 소개 (코드 연결 전) ===== -->
+    <section id="introView">
+      <header class="app-header">
+        <div class="app-badge">◆ 학습지원</div>
+        <h1 class="app-title">
+  <div class="card-emoji sub-edu-learn" style="margin-bottom: 0; transform: scale(1.0);">
+        <i data-lucide="book-open"></i>
+      </div>
+  <span>Read <span>Tree</span></span>
+</h1>
+        <p class="app-desc">Oxford Reading Tree 읽기 진도를 코드 하나로 기록하세요. 레벨별 Magic Chart로 읽은 책을 확인하고 뱃지를 모읍니다. 로그인·개인정보 없이.</p>
+      </header>
+      <div class="hero-card" style="padding:20px; max-width:440px; margin:0 auto; width:100%; display:flex; flex-direction:column; gap:12px;">
+        <div style="font-weight:700; font-size:15px;">시작하기</div>
+        <p class="muted" style="line-height:1.65; font-size:13px;">우상단 <b>🔄 동기화</b> 버튼에서 <b>코드를 입력</b>하거나 <b>새로 발급</b>하면 읽기 기록이 시작되고, 같은 코드를 입력하면 어느 기기에서든 이어집니다.</p>
+        <button class="hero-btn" id="introStartBtn">🔄 코드 연결 · 새 코드 발급</button>
+        <ul class="muted" style="margin:4px 0 0; padding-left:18px; line-height:1.8; font-size:12.5px;">
+          <li>레벨별 책장에서 톡 눌러 읽음 체크</li>
+          <li>읽은 권수·집중 레벨·뱃지 자동 집계</li>
+          <li>코드만 알면 다기기에서 같은 진도</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ===== 앱 (코드 연결 후) ===== -->
+    <section id="appView" hidden="">
+      <header class="app-header">
+        <div class="app-badge">◆ 학습지원</div>
+        <h1 class="app-title">🌳 Read <span>Tree</span></h1>
+        <p class="app-desc">읽은 책을 레벨별 책장에서 톡 눌러 체크하세요. 기록은 이 기기에 저장되고, 우상단 <b>🔄 동기화</b> 버튼으로 코드를 연결하면 다른 기기에서도 이어집니다(로그인·개인정보 없음).</p>
+      </header>
+
+      <!-- 요약: 코드 · 진행 · 뱃지 -->
+      <div class="summary hero-card">
+        <div class="summary-top">
+          <button class="code-chip" id="codeChip" title="코드 복사">코드 <b id="homeCode">------</b></button>
+          <button class="link-btn" id="logoutBtn">로그아웃</button>
+        </div>
+        <div>
+          <div class="prog-label">읽은 책 <span class="count" id="readCount">0</span> / <span id="totalCount">0</span>권 · 집중 레벨 <b id="focusLevel">–</b> (<span id="focusProg">0/0</span>)</div>
+          <div class="bar"><i id="focusBar"></i></div>
+        </div>
+        <button class="reveal-btn" id="badgeToggle" aria-expanded="false">🏅 뱃지 <span class="reveal-meta" id="badgeCount"></span> <span class="caret">▾</span></button>
+        <div class="badge-row" id="badgeRow" hidden=""></div>
+      </div>
+
+      <!-- 책장 툴바: 레벨 칩 + 검색 -->
+      <div class="toolbar">
+        <div class="toolbar-row">
+          <nav class="level-chips" id="levelChips" aria-label="레벨 선택"></nav>
+          <button class="icon-btn" id="searchToggle" title="검색" aria-label="검색 열기">🔍</button>
+        </div>
+        <div class="search-box" id="searchBox" hidden="">
+          <input id="searchInput" type="search" placeholder="책 이름으로 검색 (예: Magic Key)" autocomplete="off" autocapitalize="off">
+          <button class="icon-btn" id="searchClose" title="검색 닫기" aria-label="검색 닫기">✕</button>
+        </div>
+      </div>
+
+      <div class="result-info" id="resultInfo"></div>
+      <div id="shelfBody"><div class="loading">불러오는 중…</div></div>
+      <div class="empty-state" id="emptyState" hidden="">검색 결과가 없어요 🤔</div>
+    </section>
+
+  </main>
+
+  <script is:inline="">
+  (function () {
+    'use strict';
+
+    /* ───────── 상수 ───────── */
+    const LEVELS = ['1+', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+    const LEVEL_COLORS = {
+      '1+': '#ec6aa6', '2': '#e3424d', '3': '#dca100', '4': '#3a8fd0', '5': '#34a85a',
+      '6': '#ec7c2a', '7': '#1fab9b', '8': '#8257c4', '9': '#b8860b',
+      '10': '#5465ff', '11': '#c04abc', '12': '#2d8c6e'
+    };
+    const SERIES_ORDER = [
+      'First Sentences', 'More First Sentences A', 'More First Sentences B', 'More First Sentences C',
+      'Stories', 'More Stories A', 'More Stories B', 'More Stories C',
+      'Patterned Stories', 'More Patterned Stories',
+      'Decode and Develop', 'More A Decode and Develop',
+      "Floppy's Fiction", "Floppy's Fiction A",
+      'TreeTops Time Chronicles'
+    ];
+    const MILESTONES = [10, 25, 50, 100];
+    const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const CODE_LEN = 6;
+
+    /* ───────── 저장소 (localStorage) ─────────
+       코드 없이도 동작(로컬 기본 키 _local). 코드 연결 시 그 코드 키로 전환하고,
+       처음 연결이면 로컬 진도를 코드로 옮겨 이어쓰기. 통합 코드(vives:code) 공유. */
+    const LocalStore = {
+      _code: null,
+      _reads: {},
+      _key() { return 'readtree:reads:' + (this._code || '_local'); },
+      _load() {
+        try { this._reads = JSON.parse(localStorage.getItem(this._key()) || '{}') || {}; }
+        catch { this._reads = {}; }
+      },
+      _save() {
+        try { localStorage.setItem(this._key(), JSON.stringify(this._reads)); } catch {}
+      },
+      getCode() { return this._code; },
+      setCode(code) {
+        const prev = this._reads, wasLocal = !this._code;
+        this._code = code; VivesSync.setCode(code); this._load();
+        // 처음 코드 연결: 로컬(_local) 진도를 코드로 시드(서버 pull 전에)
+        if (wasLocal && !Object.keys(this._reads).length && Object.keys(prev).length) {
+          this._reads = Object.assign({}, prev); this._save();
+        }
+      },
+      clearCode() { VivesSync.clearCode(); this._code = null; this._load(); },
+      getReads() { return this._reads; },
+      isRead(id) { return !!this._reads[id]; },
+      toggle(id) {
+        if (this._reads[id]) { delete this._reads[id]; } else { this._reads[id] = today(); }
+        this._save();
+        return !!this._reads[id];
+      }
+    };
+    const Store = LocalStore;
+    let codeBtn = null;   // 우상단 동기화 버튼 핸들(boot에서 생성)
+
+    /* ───────── 서버 동기화 (VivesSync set 모드, byeduin 전용 D1 /api/readtree) ─────────
+       로컬(localStorage)이 항상 우선. 통합 코드(vives:code) 기준. 로그인 시 pull(머지),
+       토글 시 put/del. 오프라인/엔드포인트 없으면 자동 무시(로컬만 동작). */
+    const Sync = VivesSync.createSet({
+      apiUrl: '/api/readtree',
+      valueIsTimestamp: true,            // value=읽은날짜=LWW키
+      getItems: () => Store.getReads(),
+      setItems: (m) => { Store._reads = m; Store._save(); },
+    });
+
+    function today() {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, '0');
+      return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    }
+    function genCode() {
+      let out = '';
+      const rnd = (window.crypto && crypto.getRandomValues)
+        ? crypto.getRandomValues(new Uint32Array(CODE_LEN))
+        : Array.from({ length: CODE_LEN }, () => Math.floor(Math.random() * 4294967296));
+      for (let i = 0; i < CODE_LEN; i++) out += CODE_ALPHABET[rnd[i] % CODE_ALPHABET.length];
+      return out;
+    }
+
+    /* ───────── 데이터 ───────── */
+    let BOOKS = [];
+    let GROUPED = {};
+    let SERIES_KEYS = {};
+    let fuse = null;
+    let activeLevel = '1+';
+
+    function groupData() {
+      GROUPED = {}; SERIES_KEYS = {};
+      LEVELS.forEach(l => { GROUPED[l] = {}; });
+      BOOKS.forEach(b => {
+        if (!GROUPED[b.level]) GROUPED[b.level] = {};
+        (GROUPED[b.level][b.series] = GROUPED[b.level][b.series] || []).push(b);
+      });
+      LEVELS.forEach(l => {
+        Object.values(GROUPED[l]).forEach(arr => arr.sort((a, c) => a.id.localeCompare(c.id)));
+        SERIES_KEYS[l] = Object.keys(GROUPED[l]).sort((a, c) => {
+          const ia = SERIES_ORDER.indexOf(a), ic = SERIES_ORDER.indexOf(c);
+          return (ia < 0 ? 99 : ia) - (ic < 0 ? 99 : ic) || a.localeCompare(c);
+        });
+      });
+    }
+    function buildFuse() {
+      if (window.Fuse) fuse = new Fuse(BOOKS, { keys: [{ name: 'title', weight: 0.8 }, { name: 'series', weight: 0.2 }], threshold: 0.3, ignoreLocation: true, minMatchCharLength: 2 });
+    }
+    function searchBooks(q) {
+      q = q.trim();
+      if (!q) return [];
+      if (fuse) return fuse.search(q).slice(0, 60).map(r => r.item);
+      const lq = q.toLowerCase();
+      return BOOKS.filter(b => b.title.toLowerCase().includes(lq) || b.series.toLowerCase().includes(lq)).slice(0, 60);
+    }
+
+    function readCount() { return Object.keys(Store.getReads()).length; }
+    function levelTotal(l) { return BOOKS.filter(b => b.level === l).length; }
+    function levelRead(l) { return BOOKS.filter(b => b.level === l && Store.isRead(b.id)).length; }
+
+    /* ───────── DOM 헬퍼 ───────── */
+    const $ = (s, r) => (r || document).querySelector(s);
+    const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function cssEsc(s) { return (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/["\\]/g, '\\$&'); }
+    function curQuery() { return ($('#searchInput').value || '').trim(); }
+
+    /* ───────── 요약 (코드 · 진행 · 뱃지) ───────── */
+    function renderSummary() {
+      const code = Store.getCode();
+      $('#homeCode').textContent = code || '동기화 꺼짐';
+      const lo = $('#logoutBtn'); if (lo) lo.hidden = !code;   // 연결됐을 때만 해제 버튼
+      const chip = $('#codeChip'); if (chip) chip.title = code ? '코드 복사' : '우상단 동기화 버튼으로 코드 연결';
+      $('#readCount').textContent = readCount();
+      $('#totalCount').textContent = BOOKS.length;
+      const focus = LEVELS.find(l => levelRead(l) < levelTotal(l)) || LEVELS[LEVELS.length - 1];
+      const fr = levelRead(focus), ft = levelTotal(focus) || 1;
+      $('#focusLevel').textContent = focus;
+      $('#focusProg').textContent = fr + '/' + ft;
+      const bar = $('#focusBar');
+      bar.style.setProperty('--lv', LEVEL_COLORS[focus]);
+      bar.style.width = Math.round((fr / ft) * 100) + '%';
+      renderBadges();
+    }
+    function renderBadges() {
+      const row = $('#badgeRow'); row.innerHTML = '';
+      const total = readCount();
+      let earned = 0;
+      LEVELS.forEach(l => {
+        const done = levelTotal(l) > 0 && levelRead(l) === levelTotal(l);
+        if (done) earned++;
+        const b = el('span', 'badge ' + (done ? 'on' : 'off'), (done ? '🏅' : '🔒') + ' Lv ' + l);
+        if (done) b.style.background = LEVEL_COLORS[l];
+        row.appendChild(b);
+      });
+      MILESTONES.forEach(m => {
+        const done = total >= m;
+        if (done) earned++;
+        const b = el('span', 'badge ' + (done ? 'on' : 'off'), (done ? '⭐' : '☆') + ' ' + m + '권');
+        if (done) b.style.background = 'var(--primary)';
+        row.appendChild(b);
+      });
+      const bc = $('#badgeCount'); if (bc) bc.textContent = earned + '/' + (LEVELS.length + MILESTONES.length);
+    }
+
+    /* ───────── 레벨 칩 ───────── */
+    function renderLevelChips() {
+      const q = curQuery();
+      const wrap = $('#levelChips'); wrap.innerHTML = '';
+      LEVELS.forEach(l => {
+        const active = !q && l === activeLevel;
+        const t = el('button', 'lv-chip' + (active ? ' active' : ''), l);
+        t.style.setProperty('--lv', LEVEL_COLORS[l]);
+        t.addEventListener('click', () => { $('#searchInput').value = ''; $('#searchBox').hidden = true; activeLevel = l; render(); });
+        wrap.appendChild(t);
+      });
+    }
+
+    /* ───────── 메인 렌더 (검색 모드 / 레벨 모드) ───────── */
+    function render() {
+      renderLevelChips();
+      if (curQuery()) renderResults(); else renderLevel();
+    }
+
+    function renderLevel() {
+      const level = activeLevel;
+      const body = $('#shelfBody'); body.innerHTML = ''; $('#emptyState').hidden = true;
+      $('#resultInfo').textContent = 'Lv ' + level + ' · 읽음 ' + levelRead(level) + '/' + levelTotal(level) + '권';
+      (SERIES_KEYS[level] || []).forEach(series => {
+        const books = GROUPED[level][series];
+        const card = el('div', 'series-card');
+        card.dataset.key = level + '|' + series;
+        card.style.setProperty('--lv', LEVEL_COLORS[level]);
+        const readN = books.filter(b => Store.isRead(b.id)).length;
+        card.innerHTML =
+          '<div class="series-head"><span class="series-name">' + esc(series) + '</span>' +
+          '<span class="series-count">' + readN + '/' + books.length + '</span></div>' +
+          '<div class="series-bar"><i style="width:' + Math.round(readN / books.length * 100) + '%"></i></div>';
+        const grid = el('div', 'book-grid');
+        books.forEach((b, i) => {
+          const read = Store.isRead(b.id);
+          const cell = el('button', 'book-cell' + (read ? ' read' : ''));
+          cell.dataset.id = b.id;
+          cell.style.setProperty('--lv', LEVEL_COLORS[b.level]);
+          cell.setAttribute('aria-pressed', String(read));
+          cell.title = b.title;
+          cell.innerHTML = '<span class="cell-sq"><span class="cell-n">' + (i + 1) + '</span></span>' +
+                           '<span class="cell-t">' + esc(b.title) + '</span>';
+          cell.addEventListener('click', () => toggleRead(b.id));
+          grid.appendChild(cell);
+        });
+        card.appendChild(grid);
+        body.appendChild(card);
+      });
+    }
+
+    function renderResults() {
+      const q = curQuery();
+      const res = searchBooks(q);
+      const body = $('#shelfBody'); body.innerHTML = '';
+      $('#resultInfo').textContent = res.length + '개 결과';
+      if (!res.length) { $('#emptyState').hidden = false; return; }
+      $('#emptyState').hidden = true;
+      const list = el('div', 'result-list');
+      res.forEach(b => {
+        const read = Store.isRead(b.id);
+        const r = el('button', 'result' + (read ? ' read' : ''));
+        r.dataset.id = b.id;
+        r.style.setProperty('--lv', LEVEL_COLORS[b.level]);
+        r.setAttribute('aria-pressed', String(read));
+        r.innerHTML =
+          '<span class="r-main"><span class="r-title">' + esc(b.title) + '</span>' +
+          '<span class="r-sub"><span class="r-lvdot"></span>Lv ' + esc(b.level) + ' · ' + esc(b.series) + '</span></span>' +
+          '<span class="r-check">' + (read ? '읽음 ✓' : '읽었어요') + '</span>';
+        r.addEventListener('click', () => toggleRead(b.id));
+        list.appendChild(r);
+      });
+      body.appendChild(list);
+    }
+
+    /* ───────── 읽음 토글 (모든 표시 위치 동기화) ───────── */
+    function toggleRead(id) {
+      const now = Store.toggle(id);
+      const book = BOOKS.find(b => b.id === id);
+      document.querySelectorAll('[data-id="' + cssEsc(id) + '"]').forEach(node => {
+        node.classList.toggle('read', now);
+        if (node.hasAttribute('aria-pressed')) node.setAttribute('aria-pressed', String(now));
+        const chk = node.querySelector('.r-check');
+        if (chk) chk.textContent = now ? '읽음 ✓' : '읽었어요';
+      });
+      if (book) {
+        const card = document.querySelector('.series-card[data-key="' + cssEsc(book.level + '|' + book.series) + '"]');
+        if (card) {
+          const books = GROUPED[book.level][book.series];
+          const rn = books.filter(b => Store.isRead(b.id)).length;
+          card.querySelector('.series-count').textContent = rn + '/' + books.length;
+          card.querySelector('.series-bar i').style.width = Math.round(rn / books.length * 100) + '%';
+        }
+        if (!curQuery() && book.level === activeLevel)
+          $('#resultInfo').textContent = 'Lv ' + activeLevel + ' · 읽음 ' + levelRead(activeLevel) + '/' + levelTotal(activeLevel) + '권';
+      }
+      renderSummary();
+      const _code = Store.getCode();
+      if (now) Sync.put(_code, id, Store.getReads()[id]); else Sync.del(_code, id);
+    }
+
+    /* ───────── 진입 / 화면 전환 ───────── */
+    function enterApp() {   // 코드 연결됨 → 읽기 트리(저장 모드)
+      $('#introView').hidden = true;
+      $('#appView').hidden = false;
+      $('#badgeRow').hidden = true;
+      $('#badgeToggle').setAttribute('aria-expanded', 'false');
+      $('#searchBox').hidden = true;
+      $('#searchInput').value = '';
+      renderSummary();
+      render();
+    }
+    function showIntro() {   // 코드 없음 → 소개 화면(저장 안 함)
+      $('#appView').hidden = true;
+      $('#introView').hidden = false;
+    }
+    // 코드 유무에 따라 화면 전환(연결 시 서버 머지, 해제 시 소개로)
+    function applyCode(code) {
+      if (code) {
+        Store.setCode(code);
+        enterApp();
+        Sync.pull(code).then((changed) => { if (changed) { renderSummary(); render(); } });
+      } else {
+        Store.clearCode();
+        showIntro();
+      }
+    }
+
+    /* ───────── 이벤트 ───────── */
+    function wire() {
+      // '로그아웃' → 코드 해제 → 소개 화면으로. 코드 연결은 우상단 동기화 버튼.
+      const lo = $('#logoutBtn');
+      if (lo) lo.addEventListener('click', () => {
+        VivesSync.clearCode();
+        if (codeBtn) codeBtn.refresh();
+        applyCode(null);
+      });
+      const introBtn = $('#introStartBtn');
+      if (introBtn) introBtn.addEventListener('click', (e) => { e.stopPropagation(); if (codeBtn && codeBtn.open) codeBtn.open(); });
+      $('#searchInput').addEventListener('input', render);
+      $('#searchToggle').addEventListener('click', () => { $('#searchBox').hidden = false; $('#searchInput').focus(); });
+      // 레벨 칩 마우스 드래그 스크롤
+      (function() {
+        const nav = $('#levelChips');
+        let ox = 0, sl = 0, active = false, drag = false;
+        nav.addEventListener('mousedown', e => { active = true; ox = e.pageX; sl = nav.scrollLeft; drag = false; });
+        window.addEventListener('mouseup', () => { active = false; nav.classList.remove('dragging'); });
+        window.addEventListener('mousemove', e => {
+          if (!active) return;
+          const dx = e.pageX - ox;
+          if (Math.abs(dx) > 4) { drag = true; nav.classList.add('dragging'); nav.scrollLeft = sl - dx; }
+        });
+        nav.addEventListener('click', e => { if (drag) { e.stopPropagation(); drag = false; } }, true);
+      })();
+      $('#searchClose').addEventListener('click', () => { $('#searchInput').value = ''; $('#searchBox').hidden = true; render(); });
+      $('#badgeToggle').addEventListener('click', () => {
+        const row = $('#badgeRow'); const open = row.hidden;
+        row.hidden = !open;
+        $('#badgeToggle').setAttribute('aria-expanded', String(open));
+      });
+      $('#codeChip').addEventListener('click', () => {
+        const c = Store.getCode(); if (!c) return;
+        if (navigator.clipboard) navigator.clipboard.writeText(c).catch(() => {});
+        const chip = $('#codeChip'); const old = chip.innerHTML;
+        chip.textContent = '복사됨 ✓';
+        setTimeout(() => { chip.innerHTML = old; }, 1200);
+      });
+    }
+
+    /* ───────── 부트 ───────── */
+    async function boot() {
+      wire();
+      try {
+        const res = await fetch('./booklist.json', { cache: 'no-cache' });
+        const data = await res.json();
+        BOOKS = (data.books || []).filter(b => b && b.id && b.title && b.level);
+      } catch (e) {
+        BOOKS = [];
+      }
+      groupData();
+      buildFuse();
+      // 구버전(앱별) 코드 → 통합 코드 일회성 이관(같은 코드값 유지 → 서버 데이터 보존)
+      if (!VivesSync.getCode()) {
+        try { const old = (localStorage.getItem('readtree:code') || ''); if (VivesSync.isCode(old)) VivesSync.setCode(old); } catch {}
+      }
+      const code0 = VivesSync.getCode();
+      if (code0) { Store.setCode(code0); enterApp(); }   // 코드 있으면 읽기 트리
+      else showIntro();                                  // 없으면 소개 화면(저장 안 함)
+
+      // 우상단 통합 '동기화' 버튼: 연결 시 트리(저장 모드), 해제 시 소개 화면
+      if (window.VivesSync) codeBtn = VivesSync.mountCodeButton({
+        appName: '읽기 기록',
+        onChange: (code) => applyCode(code),
+      });
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
+  })();
+  </script>
+
+
+
+</AppLayout>

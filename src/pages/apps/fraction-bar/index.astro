@@ -1,0 +1,1651 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+---
+<AppLayout 
+  title="분수 막대 — eduin VIVES"
+  description="초콜릿 막대와 피자를 직접 등분하고 칠해 보세요. 초등 수학 3학년 분수 개념과 크기 비교를 눈으로 익히는 무료 학습 시뮬레이션."
+  image="https://eduin.info/og-images/fraction-bar.png"
+  bodyShell="immersive"
+>
+  <Fragment slot="head">
+    <style is:global="">
+/* ══════════════════════════════════════════════
+   fraction-bar — 분수 막대 시뮬레이터
+   immersive 셸: 앱이 뷰포트 소유
+   ══════════════════════════════════════════════ */
+:root {
+  --fb-primary: #8d6e63; /* 초콜릿 브라운 */
+  --fb-primary-h: #705247;
+  --fb-accent-a: #ff7043; /* 분수 A 색상 (주황) */
+  --fb-accent-b: #29b6f6; /* 분수 B 색상 (하늘) */
+  --fb-bg-a: rgba(255, 112, 67, 0.15);
+  --fb-bg-b: rgba(41, 182, 246, 0.15);
+  --fb-empty: #e0e0e0;
+  --fb-cut: #ffffff;
+  --fb-panel: #ffffff;
+  --fb-panel-border: #e0e0e0;
+  --fb-sidebar-w: 320px;
+  --fb-text: #2c3e50;
+  --fb-text-muted: #7f8c8d;
+  --fb-btn-bg: #eceff1;
+  --fb-btn-hover: #cfd8dc;
+  --fb-btn-active: #b0bec5;
+  --fb-radius: 18px;
+  --fb-danger: #ef5350;
+  --fb-success: #66bb6a;
+  --fb-star: #ffc107;
+  --fb-grid-bg: #f5f7f8;
+}
+[data-theme="dark"] {
+  --fb-empty: #37474f;
+  --fb-panel: #1e272e;
+  --fb-panel-border: #37474f;
+  --fb-text: #eceff1;
+  --fb-text-muted: #90a4ae;
+  --fb-btn-bg: #263238;
+  --fb-btn-hover: #37474f;
+  --fb-btn-active: #455a64;
+  --fb-grid-bg: #121824;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  background: var(--fb-grid-bg);
+  color: var(--fb-text);
+  min-height: 100vh;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.screen { display: none; }
+.screen.active { display: flex; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+/* ══════════ 인트로 ══════════ */
+.intro-screen {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  text-align: center;
+  animation: fadeUp 0.6s ease;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(141,110,99,0.08) 0, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(41,182,246,0.06) 0, transparent 35%),
+    var(--fb-grid-bg);
+}
+
+.intro-art {
+  font-size: 80px; line-height: 1;
+  margin-bottom: 12px;
+  animation: bounce 2.4s ease-in-out infinite;
+}
+
+.intro-screen h1 {
+  font-size: 32px; font-weight: 800;
+  margin-bottom: 6px;
+  letter-spacing: -0.02em;
+}
+.intro-sub {
+  font-size: 15px; color: var(--fb-text-muted);
+  line-height: 1.7; margin-bottom: 20px;
+}
+.intro-tag {
+  display: inline-block; background: var(--fb-primary);
+  color: #fff; font-size: 12px; font-weight: 700;
+  padding: 5px 14px; border-radius: 99px;
+  margin-bottom: 18px; letter-spacing: 0.05em;
+}
+.intro-card {
+  background: var(--fb-panel);
+  border: 2px dashed var(--fb-primary);
+  border-radius: var(--fb-radius);
+  padding: 20px 24px;
+  max-width: 440px; width: 100%;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.06);
+}
+.intro-card h3 {
+  font-size: 17px; font-weight: 700;
+  color: var(--fb-primary);
+  margin-bottom: 10px;
+}
+.intro-card p {
+  font-size: 14px; line-height: 1.7;
+  color: var(--fb-text-muted);
+}
+
+.fb-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; border: none; border-radius: 99px;
+  padding: 14px 36px; font-size: 17px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.fb-btn:active { transform: scale(0.96); }
+.fb-btn-primary {
+  background: linear-gradient(135deg, var(--fb-primary) 0%, var(--fb-primary-h) 100%);
+  color: #fff;
+  box-shadow: 0 6px 0 #5d4037;
+}
+.fb-btn-primary:active {
+  box-shadow: 0 2px 0 #5d4037;
+  transform: translateY(4px);
+}
+
+/* ══════════ 탐험 레이아웃 ══════════ */
+.explore-screen {
+  width: 100vw; height: 100vh; height: 100dvh;
+  animation: fadeUp 0.4s ease;
+}
+
+.explore-layout {
+  display: grid;
+  grid-template-columns: 1fr var(--fb-sidebar-w);
+  width: 100%; height: 100%;
+}
+
+/* 캔버스 영역 */
+.canvas-zone {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background-color: var(--fb-grid-bg);
+  background-image: 
+    radial-gradient(rgba(141, 110, 99, 0.12) 1.5px, transparent 1.5px),
+    radial-gradient(rgba(41, 182, 246, 0.12) 1.5px, transparent 1.5px);
+  background-size: 32px 32px;
+  background-position: 0 0, 16px 16px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 20px;
+}
+
+/* 미션 인디케이터 */
+.mission-indicator {
+  position: absolute;
+  top: 56px; left: 14px; z-index: 5;
+  background: rgba(38,50,56,0.78);
+  backdrop-filter: blur(6px);
+  color: #fff; border-radius: 14px;
+  padding: 8px 16px;
+  font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.mission-indicator .num {
+  background: var(--fb-primary);
+  width: 24px; height: 24px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+}
+.mission-indicator .stars { color: var(--fb-star); font-size: 14px; }
+
+/* 토스트 */
+.toast {
+  position: absolute;
+  bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: rgba(38,50,56,0.88);
+  color: #fff; font-size: 13px; font-weight: 600;
+  padding: 10px 20px; border-radius: 99px;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  opacity: 0; transition: opacity 0.3s;
+  z-index: 10;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+
+/* ── 사이드바 ── */
+.sidebar {
+  background: var(--fb-panel);
+  border-left: 2px solid var(--fb-panel-border);
+  overflow-y: auto;
+  display: flex; flex-direction: column;
+  box-shadow: -4px 0 24px rgba(0,0,0,0.06);
+}
+
+.side-head {
+  background: linear-gradient(135deg, var(--fb-primary) 0%, var(--fb-primary-h) 100%);
+  color: #fff; padding: 16px 20px 14px;
+  position: relative; overflow: hidden; flex-shrink: 0;
+}
+.side-head::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 80% -20%, rgba(255,255,255,0.15) 0, transparent 55%);
+}
+.side-head h2 { font-size: 20px; font-weight: 700; position: relative; z-index: 1; }
+.side-head .side-sub { font-size: 12px; opacity: 0.8; position: relative; z-index: 1; margin-top: 2px; }
+
+.side-body { padding: 14px 16px 20px; flex: 1; }
+
+/* 뷰 모드 탭 */
+.view-tabs {
+  display: flex; gap: 6px; margin-bottom: 14px;
+}
+.view-tab {
+  flex: 1; padding: 10px 8px; border-radius: 12px;
+  border: 2px solid var(--fb-panel-border);
+  background: var(--fb-btn-bg);
+  text-align: center; cursor: pointer;
+  font-size: 13px; font-weight: 700;
+  font-family: inherit; color: var(--fb-text-muted);
+  transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px;
+}
+.view-tab.active {
+  border-color: var(--fb-primary);
+  background: rgba(141,110,99,0.1);
+  color: var(--fb-primary);
+}
+
+/* 컨트롤 그룹 */
+.ctrl-group {
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--fb-panel-border);
+  border-radius: 14px;
+  background: var(--fb-btn-bg);
+}
+.ctrl-group-title {
+  font-size: 11px; font-weight: 700;
+  color: var(--fb-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+/* 비교 대상 선택 라디오 */
+.target-select {
+  display: flex; gap: 6px; margin-bottom: 10px;
+}
+.target-opt {
+  flex: 1; padding: 8px; border-radius: 10px;
+  border: 1px solid var(--fb-panel-border);
+  background: var(--fb-panel);
+  text-align: center; cursor: pointer;
+  font-size: 12px; font-weight: 700;
+  color: var(--fb-text-muted);
+  transition: all 0.1s;
+}
+.target-opt.active.a { border-color: var(--fb-accent-a); color: var(--fb-accent-a); background: var(--fb-bg-a); }
+.target-opt.active.b { border-color: var(--fb-accent-b); color: var(--fb-accent-b); background: var(--fb-bg-b); }
+
+/* 등분 스테퍼 */
+.stepper {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.step-btn {
+  width: 40px; height: 40px; border-radius: 10px;
+  border: 1px solid var(--fb-panel-border);
+  background: var(--fb-panel);
+  font-size: 18px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--fb-text); transition: all 0.1s;
+}
+.step-btn:active { transform: scale(0.92); }
+.step-val { font-size: 18px; font-weight: 800; color: var(--fb-text); }
+
+/* 프리셋 칩 */
+.presets {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;
+}
+.preset-chip {
+  padding: 6px 2px; border-radius: 8px;
+  border: 1px solid var(--fb-panel-border);
+  background: var(--fb-panel);
+  font-size: 11px; font-weight: 700;
+  cursor: pointer; text-align: center;
+  color: var(--fb-text); transition: all 0.1s;
+}
+.preset-chip:active { transform: scale(0.92); }
+.preset-chip.active { background: var(--fb-primary); color: #fff; border-color: var(--fb-primary); }
+
+/* 실시간 분수 텍스트 */
+.fraction-readout {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--fb-panel); border-radius: 12px;
+  border: 1px solid var(--fb-panel-border);
+  padding: 10px; margin-bottom: 10px;
+}
+.fraction-display {
+  display: inline-flex; flex-direction: column; align-items: center;
+  font-weight: 800; line-height: 1.1; font-size: 18px;
+}
+.fraction-display .num { border-bottom: 2px solid var(--fb-text); padding-bottom: 2px; width: 100%; text-align: center; }
+.fraction-display .denom { padding-top: 2px; width: 100%; text-align: center; }
+.read-text { font-size: 13px; font-weight: 700; color: var(--fb-text-muted); }
+.tts-btn {
+  background: none; border: none; font-size: 16px; cursor: pointer; color: var(--fb-text-muted);
+}
+.tts-btn:hover { color: var(--fb-primary); }
+
+/* 비교 겹치기 버튼 */
+.compare-control {
+  display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px;
+}
+
+/* 미션 영역 */
+.mission-panel {
+  background: var(--fb-panel);
+  border-radius: var(--fb-radius);
+  border: 2px solid var(--fb-panel-border);
+  padding: 16px;
+  margin-bottom: 12px;
+  animation: popIn 0.35s ease;
+}
+.mission-panel h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+.mission-panel p { font-size: 13px; line-height: 1.6; color: var(--fb-text-muted); }
+
+/* O/X 버튼 */
+.ox-row {
+  display: flex; gap: 10px; margin-top: 12px;
+}
+.ox-btn {
+  flex: 1; padding: 12px; border-radius: 12px;
+  border: 2px solid var(--fb-panel-border);
+  font-size: 24px; font-weight: 800;
+  cursor: pointer; font-family: inherit;
+  transition: all 0.15s; text-align: center;
+}
+.ox-btn.o { color: var(--fb-success); background: rgba(102,187,106,0.05); }
+.ox-btn.x { color: var(--fb-danger); background: rgba(239,83,80,0.05); }
+.ox-btn.o:hover { border-color: var(--fb-success); background: rgba(102,187,106,0.15); }
+.ox-btn.x:hover { border-color: var(--fb-danger); background: rgba(239,83,80,0.15); }
+.ox-btn.correct { border-color: var(--fb-success); background: rgba(102,187,106,0.2) !important; }
+.ox-btn.wrong { border-color: var(--fb-danger); background: rgba(239,83,80,0.2) !important; }
+
+/* 3지선다 (비교 예측) */
+.predict-row {
+  display: flex; flex-direction: column; gap: 8px; margin-top: 12px;
+}
+.predict-btn {
+  padding: 10px 14px; border-radius: 12px;
+  border: 2px solid var(--fb-panel-border);
+  background: var(--fb-btn-bg);
+  font-size: 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  color: var(--fb-text); transition: all 0.15s;
+  text-align: center;
+}
+.predict-btn:hover:not(:disabled) { border-color: var(--fb-primary); }
+.predict-btn.selected { border-color: var(--fb-primary); background: rgba(141,110,99,0.15); }
+.predict-btn.correct { border-color: var(--fb-success); background: rgba(102,187,106,0.15); }
+.predict-btn.wrong { border-color: var(--fb-danger); background: rgba(239,83,80,0.1); }
+
+.m-feedback {
+  padding: 12px 14px; border-radius: 12px;
+  font-size: 13px; line-height: 1.6;
+  margin-top: 10px; text-align: center;
+  animation: popIn 0.3s ease;
+}
+.m-feedback.success { background: rgba(102,187,106,0.12); color: #2e7d32; }
+.m-feedback.warn { background: rgba(255,112,67,0.12); color: #d84315; }
+
+.progress-bar {
+  height: 6px; background: var(--fb-btn-bg);
+  border-radius: 99px; overflow: hidden;
+  margin-bottom: 12px;
+}
+.progress-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--fb-primary), var(--fb-success));
+  transition: width 0.4s ease;
+}
+
+/* 액션 버튼 */
+.action-btns {
+  display: flex; gap: 6px; margin-top: 10px;
+}
+.action-btn {
+  flex: 1; padding: 10px 8px; border-radius: 10px;
+  border: 1px solid var(--fb-panel-border);
+  background: var(--fb-btn-bg);
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  color: var(--fb-text); min-height: 44px;
+  transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.action-btn:hover { background: var(--fb-btn-hover); }
+.action-btn.primary {
+  background: var(--fb-primary); color: #fff; border-color: var(--fb-primary);
+}
+.action-btn.primary:hover { background: var(--fb-primary-h); }
+
+/* ══════════ 결과 화면 ══════════ */
+.result-screen {
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100vh; padding: 24px;
+  text-align: center;
+  animation: fadeUp 0.5s ease;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(102,187,106,0.06) 0, transparent 40%),
+    radial-gradient(circle at 70% 60%, rgba(141,110,99,0.08) 0, transparent 35%),
+    var(--fb-grid-bg);
+}
+.result-trophy { font-size: 72px; margin-bottom: 8px; }
+.result-screen h1 { font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+.result-screen .score-text { font-size: 18px; color: var(--fb-text-muted); margin-bottom: 16px; }
+.result-stars-row { font-size: 28px; margin-bottom: 20px; }
+
+.result-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 8px; max-width: 400px; width: 100%;
+  margin-bottom: 20px;
+}
+.result-cell {
+  background: var(--fb-panel);
+  border: 1px solid var(--fb-panel-border);
+  border-radius: 10px;
+  padding: 8px 4px;
+  font-size: 11px; font-weight: 600;
+}
+.result-cell .num { font-size: 13px; font-weight: 700; }
+.result-cell .stars { color: var(--fb-star); font-size: 14px; }
+
+.result-summary-box {
+  background: var(--fb-panel);
+  border: 1px solid var(--fb-panel-border);
+  border-radius: var(--fb-radius);
+  padding: 20px 24px;
+  max-width: 440px; width: 100%;
+  margin-bottom: 20px; text-align: left;
+}
+.result-summary-box h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--fb-primary); }
+.result-summary-box p { font-size: 14px; line-height: 1.7; color: var(--fb-text-muted); }
+.result-summary-box strong { color: var(--fb-success); }
+
+.result-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* ── SVG 그래픽 관련 스타일 ── */
+.slice-path {
+  cursor: pointer;
+  transition: fill 0.15s, stroke 0.15s;
+}
+.bar-rect {
+  cursor: pointer;
+  transition: fill 0.15s, stroke 0.15s;
+}
+.cal-line {
+  animation: cutFlash 0.3s ease-out;
+}
+@keyframes cutFlash {
+  0%   { stroke: #ffeb3b; stroke-width: 3px; }
+  100% { stroke: var(--fb-cut); stroke-width: 1px; }
+}
+
+/* ══════════ 반응형 (모바일) ══════════ */
+@media (max-width: 800px) {
+  body { overflow: auto; }
+  .explore-layout {
+    display: flex; flex-direction: column;
+    height: auto; min-height: 100vh;
+  }
+  .canvas-zone {
+    position: sticky; top: 0; z-index: 40;
+    height: 48vh; min-height: 280px; flex-shrink: 0;
+  }
+  .sidebar { border-left: none; border-top: 2px solid var(--fb-panel-border); }
+  .intro-screen h1 { font-size: 26px; }
+  .intro-art { font-size: 64px; }
+}
+</style>
+  <link rel="canonical" href="https://eduin.info/apps/fraction-bar/">
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"분수 막대","description":"초콜릿 막대와 피자를 직접 등분하고 칠해 보세요. 초등 수학 3학년 분수 개념과 크기 비교를 눈으로 익히는 무료 학습 시뮬레이션.","url":"https://eduin.info/apps/fraction-bar/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  </Fragment>
+
+
+
+<!-- ============ 인트로 ============ -->
+<div id="screenIntro" class="screen intro-screen active">
+  <div class="intro-tag">수학 3학년 · 분수</div>
+  <div class="intro-art">🍫</div>
+  <h1>분수 막대</h1>
+  <p class="intro-sub">초콜릿 막대와 피자를 자르고 칠하며 크기 비교</p>
+
+  <div class="intro-card">
+    <h3>똑같이 나누면 분수가 보여요!</h3>
+    <p>초콜릿과 피자를 똑같이 나누어 보면서,<br>분모가 커질수록 왜 크기가 작아지는지<br>눈으로 직접 겹쳐 확인해 봐요.</p>
+  </div>
+
+  <button class="fb-btn fb-btn-primary" id="btnStart">시작하기</button>
+</div>
+
+<!-- ============ 탐험 / 미션 ============ -->
+<div id="screenExplore" class="screen explore-screen">
+  <div class="explore-layout">
+    <!-- 캔버스 -->
+    <div class="canvas-zone" id="canvasZone">
+      <div class="mission-indicator" id="missionIndicator" style="display:none;">
+        <span class="num" id="missionNum">1</span>
+        <span id="missionLabel">미션</span>
+        <span class="stars" id="missionStarsDisp"></span>
+      </div>
+      <!-- SVG는 JS가 동적으로 그림 -->
+      <div class="toast" id="toast"></div>
+    </div>
+
+    <!-- 사이드바 -->
+    <div class="sidebar" id="sidebar">
+      <div class="side-head">
+        <h2>🍫 분수 막대</h2>
+        <div class="side-sub">초콜릿과 피자로 배우는 분수</div>
+      </div>
+      <div class="side-body" id="sideBody">
+        <!-- 뷰 모드 탭 -->
+        <div class="view-tabs" id="viewTabs">
+          <button class="view-tab active" data-view="bar">🍫 초콜릿 막대</button>
+          <button class="view-tab" data-view="pizza">🍕 피자</button>
+        </div>
+
+        <!-- 비교 모드 & 대상 설정 -->
+        <div class="compare-control" id="compareControl">
+          <button class="action-btn" id="btnCompareToggle" style="font-weight:700;">🆚 비교 모드 켜기</button>
+          <div class="target-select" id="targetSelect" style="display:none;">
+            <button class="target-opt active a" data-target="a">막대 A 설정</button>
+            <button class="target-opt b" data-target="b">막대 B 설정</button>
+          </div>
+        </div>
+
+        <!-- 등분 조작 -->
+        <div class="ctrl-group">
+          <div class="ctrl-group-title">등분 설정 (2~12)</div>
+          <div class="stepper">
+            <button class="step-btn" id="btnStepDown">−</button>
+            <span class="step-val" id="stepVal">4</span>
+            <button class="step-btn" id="btnStepUp">+</button>
+          </div>
+          <div class="presets" id="presetContainer"></div>
+        </div>
+
+        <!-- 실시간 분수 수치 표시 -->
+        <div class="fraction-readout">
+          <div class="fraction-display" id="fractionDisplay">
+            <span class="num" id="fracNum">1</span>
+            <span class="denom" id="fracDenom">4</span>
+          </div>
+          <span class="read-text" id="fractionReadText">4분의 1</span>
+          <button class="tts-btn" id="btnTts" title="읽어주기">🔊</button>
+        </div>
+
+        <!-- 겹쳐 보기 버튼 (비교 모드 활성 시 노출) -->
+        <div class="compare-control" id="overlapControl" style="display:none; margin-top:8px;">
+          <button class="action-btn primary" id="btnOverlapToggle" style="font-size:14px; font-weight:700;">🥞 겹쳐 보기</button>
+        </div>
+
+        <!-- 미션 알림 패널 -->
+        <div id="missionArea"></div>
+
+        <!-- 액션 버튼 -->
+        <div class="action-btns" id="actionBtns">
+          <button class="action-btn danger" id="btnReset">🔄 처음부터</button>
+          <button class="action-btn primary" id="btnMission">🏆 미션 도전</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 결과 ============ -->
+<div id="screenResult" class="screen result-screen">
+  <div class="result-trophy">🏆</div>
+  <h1>미션 완료!</h1>
+  <div class="score-text" id="resultScoreText"></div>
+  <div class="result-stars-row" id="resultStarsRow"></div>
+  <div class="result-grid" id="resultGrid"></div>
+  <div class="result-summary-box">
+    <h3>📖 배움 정리</h3>
+    <p>분수는 <strong>똑같이 나눈</strong> 것 중 몇 개인지를 나타내요.<br>단위분수는 <strong>분모가 클수록 한 조각의 크기가 더 작아져요!</strong></p>
+  </div>
+  <div class="result-btns">
+    <button class="fb-btn fb-btn-primary" id="btnRetry">다시 도전</button>
+    <button class="fb-btn fb-btn-primary" style="background:var(--fb-btn-bg); color:var(--fb-text); border:1px solid var(--fb-panel-border);" id="btnFreeplay">자유 탐험으로</button>
+  </div>
+</div>
+
+<script is:inline="">
+/* ================================================================
+   분수 막대 — fraction-bar
+   순수 정적 SPA · localStorage만 사용 · 외부 의존성 0
+   ================================================================ */
+(function() {
+'use strict';
+
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+/* ── 상태 모델 ── */
+let state = {
+  view: 'bar', // 'bar' | 'pizza'
+  compare: false,
+  target: 'a', // 'a' | 'b' (설정 대상)
+  overlap: false, // 겹쳐 보기 여부
+  a: { denom: 4, filled: [0] },
+  b: { denom: 6, filled: [0] }
+};
+
+let missionMode = false;
+let currentMission = -1; // -1: 자유 탐험
+let missionStars = {};
+let predictVal = ''; // 미션3 예측 값
+let toastTimer = null;
+let localAttempts = 0; // 각 문항별 오답 횟수
+
+const STORAGE_KEY = 'fraction-bar:v1';
+const PRESETS = [2, 3, 4, 6, 8, 12];
+
+/* ── 미션 데이터 ── */
+const MISSIONS = [
+  // ① 등분 판별 (O/X)
+  { type: 'equal', denom: 4, unequal: true, desc: '이 초콜릿 조각들은 똑같이 나뉘었나요? 분수로 나타낼 수 있을까요?', answer: 'X', tip: '조각들의 크기가 서로 달라 분수로 나타낼 수 없어요!' },
+  { type: 'equal', denom: 3, unequal: false, desc: '이 초콜릿 조각들은 똑같이 나뉘었나요? 분수로 나타낼 수 있을까요?', answer: 'O', tip: '모든 조각이 똑같이 나뉘어 분수로 나타낼 수 있어요!' },
+  // ② 만들기
+  { type: 'make', targetFrac: { denom: 4, num: 3 }, desc: '초콜릿 막대에 <strong>4분의 3</strong>을 만들어 보세요.' },
+  { type: 'make', targetFrac: { denom: 8, num: 5 }, desc: '피자에 <strong>8분의 5</strong>를 만들어 보세요.' },
+  { type: 'make', targetFrac: { denom: 6, num: 2 }, desc: '초콜릿 막대에 <strong>6분의 2</strong>를 만들어 보세요.' },
+  // ③ 비교
+  { type: 'compare', a: { denom: 3, num: 1 }, b: { denom: 4, num: 1 }, desc: '1/3과 1/4 중 어느 분수가 더 클까요? 예측한 다음 겹쳐서 확인해 보세요.' },
+  { type: 'compare', a: { denom: 5, num: 2 }, b: { denom: 5, num: 3 }, desc: '2/5와 3/5 중 어느 분수가 더 클까요? 예측한 다음 겹쳐서 확인해 보세요.' },
+  { type: 'compare', a: { denom: 2, num: 1 }, b: { denom: 4, num: 2 }, desc: '1/2과 2/4 중 어느 분수가 더 클까요? 예측한 다음 겹쳐서 확인해 보세요.' },
+];
+
+const KOREAN_NUMS = ["영", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구", "십", "십일", "십이"];
+
+/* ── 읽기 문자열 ── */
+function getKoreanFraction(denom, num) {
+  if (num === 0) return '0';
+  const denomStr = KOREAN_NUMS[denom];
+  const numStr = KOREAN_NUMS[num];
+  return `${denomStr}분의 ${numStr}`;
+}
+
+/* ── 저장 / 불러오기 ── */
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      missions: missionStars,
+      lastState: missionMode ? null : { view: state.view, compare: state.compare, a: state.a, b: state.b }
+    }));
+  } catch(e) {}
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    if (saved.missions) missionStars = saved.missions;
+    if (saved.lastState) {
+      state.view = saved.lastState.view;
+      state.compare = saved.lastState.compare;
+      state.a = saved.lastState.a;
+      state.b = saved.lastState.b;
+    }
+  } catch(e) {}
+}
+
+/* ── 공유 링크 ── */
+function parseShareLink() {
+  const hash = location.hash;
+  if (!hash.startsWith('#share=')) return;
+  try {
+    const payload = JSON.parse(decodeURIComponent(atob(hash.slice(7))));
+    if (payload.v === 1 && payload.state) {
+      Object.assign(state, payload.state);
+    }
+  } catch(e) {}
+  history.replaceState(null, '', location.pathname);
+}
+
+/* ── 화면 전환 ── */
+function showScreen(id) {
+  $$('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+/* ══════════════════════════════════════
+   SVG 렌더링
+   ══════════════════════════════════════ */
+function renderSVG() {
+  const zone = $('#canvasZone');
+  const oldSvg = zone.querySelector('svg.fb-svg');
+  if (oldSvg) oldSvg.remove();
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'fb-svg');
+  svg.setAttribute('viewBox', '0 0 600 500');
+  svg.style.width = '100%';
+  svg.style.height = '100%';
+  svg.style.maxWidth = '860px';
+  svg.style.maxHeight = 'min(88vh, 720px)';
+
+  // 패턴 정의 (사선 채움 패턴 - B 대상 색약/구분용)
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  defs.innerHTML = `
+    <pattern id="hatch" width="10" height="10" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="10" stroke="rgba(255,255,255,0.4)" stroke-width="3" />
+    </pattern>`;
+  svg.appendChild(defs);
+
+  if (state.view === 'bar') {
+    renderBarSVG(svg);
+  } else {
+    renderPizzaSVG(svg);
+  }
+
+  zone.insertBefore(svg, zone.firstChild);
+
+  // 콘텐츠 실제 범위에 맞춰 viewBox 재계산 → 중앙 배치 + 최대 확대
+  const bb = svg.getBBox();
+  const pad = 28;
+  if (bb.width > 0 && bb.height > 0) {
+    svg.setAttribute('viewBox', `${bb.x - pad} ${bb.y - pad} ${bb.width + pad * 2} ${bb.height + pad * 2}`);
+  }
+}
+
+function renderBarSVG(svg) {
+  const W = 460, H = 64;
+  const startX = (600 - W) / 2;
+
+  // 막대 A 위치 설정
+  let yA = 130;
+  let yB = 260;
+
+  if (!state.compare) {
+    yA = 190; // 단일 모드일 때 가운데 위치
+  }
+
+  // 겹치기 모션 위치 연산
+  let B_offset = 0;
+  if (state.compare && state.overlap) {
+    B_offset = yA - yB; // B가 A 위치로 평행이동
+  }
+
+  // 1. 전체 1 기준 프레임 가이드
+  const drawGuide = (y, label) => {
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    
+    // 테두리 가이드
+    const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    r.setAttribute('x', startX); r.setAttribute('y', y);
+    r.setAttribute('width', W); r.setAttribute('height', H);
+    r.setAttribute('fill', 'none'); r.setAttribute('stroke', 'var(--fb-text-muted)');
+    r.setAttribute('stroke-width', '1.5'); r.setAttribute('stroke-dasharray', '4 3'); r.setAttribute('rx', '8');
+    group.appendChild(r);
+
+    // 가벨링
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', startX - 10); txt.setAttribute('y', y + H / 2 + 5);
+    txt.setAttribute('text-anchor', 'end'); txt.setAttribute('font-size', '13');
+    txt.setAttribute('font-weight', '700'); txt.setAttribute('fill', 'var(--fb-text)');
+    txt.textContent = label;
+    group.appendChild(txt);
+
+    return group;
+  };
+
+  svg.appendChild(drawGuide(yA, '막대 A'));
+  if (state.compare) {
+    svg.appendChild(drawGuide(yB, '막대 B'));
+  }
+
+  // 2. A 막대 조각 렌더링
+  const groupA = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  const dAw = W / state.a.denom;
+  const unequal = missionMode && MISSIONS[currentMission] && MISSIONS[currentMission].type === 'equal' && MISSIONS[currentMission].unequal && currentMission === 0;
+
+  for (let i = 0; i < state.a.denom; i++) {
+    const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    let x = startX + i * dAw;
+    let w = dAw;
+
+    // 미션 1 부등분 처리 (강제 찌그러진 등분 간격 만들기)
+    if (unequal) {
+      if (i === 0) { w = dAw * 0.5; }
+      else if (i === 1) { x = startX + dAw * 0.5; w = dAw * 1.5; }
+    }
+
+    r.setAttribute('class', 'bar-rect');
+    r.setAttribute('x', x); r.setAttribute('y', yA);
+    r.setAttribute('width', w); r.setAttribute('height', H);
+    r.setAttribute('rx', '4');
+
+    const filled = state.a.filled.includes(i);
+    r.setAttribute('fill', filled ? 'var(--fb-accent-a)' : 'var(--fb-empty)');
+    r.setAttribute('stroke', 'var(--fb-cut)'); r.setAttribute('stroke-width', '1.5');
+
+    // 조각 클릭 리스너
+    if (!missionMode || (MISSIONS[currentMission] && MISSIONS[currentMission].type === 'make')) {
+      r.addEventListener('click', () => toggleFill('a', i));
+    }
+    groupA.appendChild(r);
+
+    // [초콜릿 홈/질감 추가]
+    const bevel = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bevel.setAttribute('x', x + 3);
+    bevel.setAttribute('y', yA + 3);
+    bevel.setAttribute('width', Math.max(0, w - 6));
+    bevel.setAttribute('height', H - 6);
+    bevel.setAttribute('rx', '3');
+    bevel.setAttribute('fill', 'none');
+    bevel.setAttribute('stroke', filled ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.12)');
+    bevel.setAttribute('stroke-width', '1.5');
+    bevel.setAttribute('pointer-events', 'none');
+    groupA.appendChild(bevel);
+
+    if (w > 12) {
+      const cushion = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      cushion.setAttribute('x', x + 5);
+      cushion.setAttribute('y', yA + 5);
+      cushion.setAttribute('width', Math.max(0, w - 10));
+      cushion.setAttribute('height', H - 10);
+      cushion.setAttribute('rx', '2');
+      cushion.setAttribute('fill', 'none');
+      cushion.setAttribute('stroke', filled ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.06)');
+      cushion.setAttribute('stroke-width', '1');
+      cushion.setAttribute('pointer-events', 'none');
+      groupA.appendChild(cushion);
+    }
+  }
+  svg.appendChild(groupA);
+
+  // 3. B 막대 조각 렌더링
+  if (state.compare) {
+    const groupB = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    groupB.style.transition = 'transform 0.4s ease';
+    groupB.style.transform = `translateY(${B_offset}px)`;
+
+    const dBw = W / state.b.denom;
+    for (let i = 0; i < state.b.denom; i++) {
+      const filled = state.b.filled.includes(i);
+      const x = startX + i * dBw;
+      
+      const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      r.setAttribute('class', 'bar-rect');
+      r.setAttribute('x', x); r.setAttribute('y', yB);
+      r.setAttribute('width', dBw); r.setAttribute('height', H);
+      r.setAttribute('rx', '4');
+      r.setAttribute('fill', filled ? 'var(--fb-accent-b)' : 'var(--fb-empty)');
+      r.setAttribute('stroke', 'var(--fb-cut)'); r.setAttribute('stroke-width', '1.5');
+      if (state.overlap) {
+        r.setAttribute('opacity', '0.7');
+      }
+
+      if (!missionMode) {
+        r.addEventListener('click', () => toggleFill('b', i));
+      }
+      groupB.appendChild(r);
+
+      // 색약 배려 사선 무늬 레이어
+      if (filled) {
+        const rHatch = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rHatch.setAttribute('x', x); rHatch.setAttribute('y', yB);
+        rHatch.setAttribute('width', dBw); rHatch.setAttribute('height', H);
+        rHatch.setAttribute('rx', '4');
+        rHatch.setAttribute('fill', 'url(#hatch)'); rHatch.setAttribute('pointer-events', 'none');
+        if (state.overlap) {
+          rHatch.setAttribute('opacity', '0.7');
+        }
+        groupB.appendChild(rHatch);
+      }
+
+      // [초콜릿 홈/질감 추가]
+      const bevel = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      bevel.setAttribute('x', x + 3);
+      bevel.setAttribute('y', yB + 3);
+      bevel.setAttribute('width', Math.max(0, dBw - 6));
+      bevel.setAttribute('height', H - 6);
+      bevel.setAttribute('rx', '3');
+      bevel.setAttribute('fill', 'none');
+      bevel.setAttribute('stroke', filled ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.12)');
+      bevel.setAttribute('stroke-width', '1.5');
+      bevel.setAttribute('pointer-events', 'none');
+      if (state.overlap) {
+        bevel.setAttribute('opacity', '0.7');
+      }
+      groupB.appendChild(bevel);
+
+      if (dBw > 12) {
+        const cushion = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        cushion.setAttribute('x', x + 5);
+        cushion.setAttribute('y', yB + 5);
+        cushion.setAttribute('width', Math.max(0, dBw - 10));
+        cushion.setAttribute('height', H - 10);
+        cushion.setAttribute('rx', '2');
+        cushion.setAttribute('fill', 'none');
+        cushion.setAttribute('stroke', filled ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.06)');
+        cushion.setAttribute('stroke-width', '1');
+        cushion.setAttribute('pointer-events', 'none');
+        if (state.overlap) {
+          cushion.setAttribute('opacity', '0.7');
+        }
+        groupB.appendChild(cushion);
+      }
+    }
+    svg.appendChild(groupB);
+  }
+}
+
+function renderPizzaSVG(svg) {
+  const R = 96;
+  let cxA = 300, cyA = 220; // 단일 모드 시 가운데
+  let cxB = 300, cyB = 330;
+
+  if (state.compare) {
+    cxA = 180; cyA = 220;
+    cxB = 420; cyB = 220;
+  }
+
+  // 겹치기 시 B가 A의 중심으로 이동
+  let translateB = '';
+  if (state.compare && state.overlap) {
+    translateB = `translate(${cxA - cxB}, ${cyA - cyB})`;
+  }
+
+  // 1. 전체 가이드 외곽 원형 선
+  const drawCircleGuide = (cx, cy, label) => {
+    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', R);
+    c.setAttribute('fill', 'none'); c.setAttribute('stroke', 'var(--fb-text-muted)');
+    c.setAttribute('stroke-width', '1.5'); c.setAttribute('stroke-dasharray', '4 3');
+    group.appendChild(c);
+
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', cx); txt.setAttribute('y', cy - R - 12);
+    txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('font-size', '13');
+    txt.setAttribute('font-weight', '700'); txt.setAttribute('fill', 'var(--fb-text)');
+    txt.textContent = label;
+    group.appendChild(txt);
+
+    return group;
+  };
+
+  svg.appendChild(drawCircleGuide(cxA, cyA, '피자 A'));
+  if (state.compare) {
+    svg.appendChild(drawCircleGuide(cxB, cyB, '피자 B'));
+  }
+
+  // 2. A 피자 렌더링
+  const groupA = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  const drawPizzaSlices = (target, cx, cy, denom, filledArr, color, useHatch) => {
+    const grp = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    
+    for (let i = 0; i < denom; i++) {
+      const startAngle = -90 + (i * 360 / denom);
+      const endAngle = -90 + ((i + 1) * 360 / denom);
+      
+      const sRad = startAngle * Math.PI / 180;
+      const eRad = endAngle * Math.PI / 180;
+      
+      const x1 = cx + R * Math.cos(sRad);
+      const y1 = cy + R * Math.sin(sRad);
+      const x2 = cx + R * Math.cos(eRad);
+      const y2 = cy + R * Math.sin(eRad);
+
+      const largeArc = 360 / denom > 180 ? 1 : 0;
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('class', 'slice-path');
+      
+      const d = `M ${cx} ${cy} L ${x1} ${y1} A ${R} ${R} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+      path.setAttribute('d', d);
+
+      const isFilled = filledArr.includes(i);
+      path.setAttribute('fill', isFilled ? color : 'var(--fb-empty)');
+      path.setAttribute('stroke', 'var(--fb-cut)');
+      path.setAttribute('stroke-width', '1.5');
+
+      if (state.overlap && target === 'b') {
+        path.setAttribute('opacity', '0.7');
+      }
+
+      if (!missionMode || (target === 'a' && MISSIONS[currentMission] && MISSIONS[currentMission].type === 'make')) {
+        path.addEventListener('click', () => toggleFill(target, i));
+      }
+      grp.appendChild(path);
+
+      // 무늬 오버레이 (B 대상)
+      if (isFilled && useHatch) {
+        const hatchPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        hatchPath.setAttribute('d', d);
+        hatchPath.setAttribute('fill', 'url(#hatch)');
+        hatchPath.setAttribute('pointer-events', 'none');
+        if (state.overlap) {
+          hatchPath.setAttribute('opacity', '0.7');
+        }
+        grp.appendChild(hatchPath);
+      }
+
+      // [피자 모드 크러스트(도우 테두리) 디테일화]
+      const crustColor = isFilled ? '#b08968' : '#d7ccc8';
+      const crust = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const cr = R - 4;
+      const cx1 = cx + cr * Math.cos(sRad);
+      const cy1 = cy + cr * Math.sin(sRad);
+      const cx2 = cx + cr * Math.cos(eRad);
+      const cy2 = cy + cr * Math.sin(eRad);
+      crust.setAttribute('d', `M ${cx1} ${cy1} A ${cr} ${cr} 0 ${largeArc} 1 ${cx2} ${cy2}`);
+      crust.setAttribute('fill', 'none');
+      crust.setAttribute('stroke', crustColor);
+      crust.setAttribute('stroke-width', '8');
+      crust.setAttribute('pointer-events', 'none');
+      if (state.overlap && target === 'b') {
+        crust.setAttribute('opacity', '0.7');
+      }
+      grp.appendChild(crust);
+
+      // [피자 토핑 추가 (A: 페퍼로니, B: 블랙 올리브)]
+      if (isFilled) {
+        const midAngle = startAngle + 180 / denom;
+        const mRad = midAngle * Math.PI / 180;
+        const pts = denom < 6 ? [0.45, 0.7] : [0.6];
+
+        pts.forEach(pRadius => {
+          const tx = cx + R * pRadius * Math.cos(mRad);
+          const ty = cy + R * pRadius * Math.sin(mRad);
+
+          if (target === 'a') {
+            // 페퍼로니 토핑
+            const pep = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            pep.setAttribute('cx', tx);
+            pep.setAttribute('cy', ty);
+            pep.setAttribute('r', denom < 6 ? '9' : '7');
+            pep.setAttribute('fill', '#e74c3c');
+            pep.setAttribute('stroke', '#c0392b');
+            pep.setAttribute('stroke-width', '1.5');
+            pep.setAttribute('pointer-events', 'none');
+            grp.appendChild(pep);
+
+            // 페퍼로니 내부 노란 반점
+            const speck = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            speck.setAttribute('cx', tx - 2);
+            speck.setAttribute('cy', ty - 2);
+            speck.setAttribute('r', '1.5');
+            speck.setAttribute('fill', '#f1c40f');
+            speck.setAttribute('opacity', '0.6');
+            speck.setAttribute('pointer-events', 'none');
+            grp.appendChild(speck);
+          } else {
+            // 블랙 올리브 토핑
+            const olive = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            olive.setAttribute('cx', tx);
+            olive.setAttribute('cy', ty);
+            olive.setAttribute('r', denom < 6 ? '6' : '5');
+            olive.setAttribute('fill', 'none');
+            olive.setAttribute('stroke', '#2c3e50');
+            olive.setAttribute('stroke-width', '3');
+            olive.setAttribute('pointer-events', 'none');
+            if (state.overlap) {
+              olive.setAttribute('opacity', '0.7');
+            }
+            grp.appendChild(olive);
+          }
+        });
+      }
+    }
+    return grp;
+  };
+
+  svg.appendChild(drawPizzaSlices('a', cxA, cyA, state.a.denom, state.a.filled, 'var(--fb-accent-a)', false));
+
+  // 3. B 피자 렌더링 (겹치기 모션 트랜지션 포함)
+  if (state.compare) {
+    const groupB = drawPizzaSlices('b', cxB, cyB, state.b.denom, state.b.filled, 'var(--fb-accent-b)', true);
+    groupB.style.transition = 'transform 0.4s ease';
+    if (translateB) {
+      groupB.style.transform = translateB;
+    }
+    svg.appendChild(groupB);
+  }
+}
+
+
+/* ══════════════════════════════════════
+   조작 & 채우기 제어
+   ══════════════════════════════════════ */
+function toggleFill(target, index) {
+  const obj = state[target];
+  const idx = obj.filled.indexOf(index);
+  if (idx >= 0) {
+    obj.filled.splice(idx, 1);
+  } else {
+    obj.filled.push(index);
+  }
+  obj.filled.sort((x, y) => x - y);
+  
+  updateControls();
+  renderSVG();
+  saveState();
+
+  // 만들기 미션의 성공 조건 체크
+  if (missionMode && MISSIONS[currentMission] && MISSIONS[currentMission].type === 'make') {
+    checkMakeMission();
+  }
+}
+
+function updateControls() {
+  const current = state[state.target];
+  
+  $('#stepVal').textContent = current.denom;
+  $('#fracNum').textContent = current.filled.length;
+  $('#fracDenom').textContent = current.denom;
+  
+  const readText = getKoreanFraction(current.denom, current.filled.length);
+  $('#fractionReadText').textContent = readText;
+
+  // 프리셋 칩 액티브 세팅
+  $$('.preset-chip').forEach(chip => {
+    chip.classList.toggle('active', parseInt(chip.dataset.val) === current.denom);
+  });
+
+  // 스테퍼 버튼 락 제어
+  $('#btnStepDown').disabled = current.denom <= 2;
+  $('#btnStepUp').disabled = current.denom >= 12;
+
+  // 겹쳐 보기 제어 바 노출 여부
+  $('#overlapControl').style.display = state.compare ? '' : 'none';
+  $('#btnOverlapToggle').textContent = state.overlap ? '🥞 원래대로' : '🥞 겹쳐 보기';
+}
+
+function setDenominator(val) {
+  const current = state[state.target];
+  current.denom = val;
+  // 조각 수 줄어들 때 넘치는 칠하기 보정
+  current.filled = current.filled.filter(i => i < val);
+  
+  // 칼선 플래시 연출을 위한 조작
+  updateControls();
+  renderSVG();
+  saveState();
+
+  // 자를 때 잠깐 캔버스 가이드 칼선 깜빡이는 효과 (bar-rect 애니메이션 클래스 등으로)
+  const svg = $('.fb-svg');
+  if (svg) {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('class', 'cal-line');
+    svg.appendChild(line);
+    setTimeout(() => line.remove(), 300);
+  }
+
+  if (missionMode && MISSIONS[currentMission] && MISSIONS[currentMission].type === 'make') {
+    checkMakeMission();
+  }
+}
+
+/* ══════════════════════════════════════
+   미션 제어
+   ══════════════════════════════════════ */
+function startMissions() {
+  missionMode = true;
+  currentMission = 0;
+  for (let i = 0; i < MISSIONS.length; i++) {
+    if (!missionStars['m' + (i + 1)]) { currentMission = i; break; }
+    if (i === MISSIONS.length - 1) currentMission = 0;
+  }
+  setupMission(currentMission);
+}
+
+function setupMission(idx) {
+  currentMission = idx;
+  localAttempts = 0;
+  predictVal = '';
+  state.overlap = false;
+  const m = MISSIONS[idx];
+  const area = $('#missionArea');
+
+  // 미션 표시기 노출
+  $('#missionIndicator').style.display = '';
+  $('#missionNum').textContent = idx + 1;
+  updateMissionLabel();
+
+  let html = `<div class="progress-bar"><div class="progress-fill" style="width:${(idx / MISSIONS.length) * 100}%"></div></div>`;
+
+  // 미션 유형 1: 똑같이 나뉘었는지 판별 (O/X)
+  if (m.type === 'equal') {
+    state.compare = false;
+    state.view = 'bar';
+    state.a = { denom: m.denom, filled: [] };
+    
+    html += `<div class="mission-panel">
+      <h3>미션 ${idx + 1}: 똑같이 나누었나요?</h3>
+      <p>${m.desc}</p>
+      <div class="ox-row" id="oxContainer">
+        <button class="ox-btn o" data-val="O">O</button>
+        <button class="ox-btn x" data-val="X">X</button>
+      </div>
+      <div id="missionFeedback"></div>
+    </div>`;
+
+    area.innerHTML = html;
+    renderSVG();
+    updateControls();
+    
+    // O/X 이벤트 리스너 바인딩
+    area.querySelectorAll('.ox-btn').forEach(btn => {
+      btn.addEventListener('click', () => checkEqualMission(btn));
+    });
+
+    // 사이드바 조작 비활성화
+    disableSidebarControls(true);
+
+  // 미션 유형 2: 주어진 분수 직접 칠해서 만들기
+  } else if (m.type === 'make') {
+    state.compare = false;
+    state.target = 'a';
+    state.view = idx === 3 ? 'pizza' : 'bar'; // 미션 4는 피자로 분할
+    state.a = { denom: 2, filled: [] }; // 초기값 2등분으로 리셋
+
+    html += `<div class="mission-panel">
+      <h3>미션 ${idx + 1}: 분수를 만들어요</h3>
+      <p>${m.desc}</p>
+      <div id="missionFeedback"></div>
+    </div>`;
+
+    area.innerHTML = html;
+    renderSVG();
+    updateControls();
+    disableSidebarControls(false);
+
+  // 미션 유형 3: 두 분수 크기 예측하고 비교
+  } else if (m.type === 'compare') {
+    state.compare = true;
+    state.view = 'bar';
+    state.a = { denom: m.a.denom, filled: Array.from({length: m.a.num}, (_, i) => i) };
+    state.b = { denom: m.b.denom, filled: Array.from({length: m.b.num}, (_, i) => i) };
+    state.overlap = false;
+
+    // 예측 칩 정의
+    const fracA = `${m.a.num}/${m.a.denom}`;
+    const fracB = `${m.b.num}/${m.b.denom}`;
+
+    html += `<div class="mission-panel">
+      <h3>미션 ${idx + 1}: 분수 크기 비교</h3>
+      <p>${m.desc}</p>
+      <div class="predict-row" id="predictContainer">
+        <button class="predict-btn" data-val="A">${fracA}이 더 커요</button>
+        <button class="predict-btn" data-val="B">${fracB}이 더 커요</button>
+        <button class="predict-btn" data-val="E">서로 같아요</button>
+      </div>
+      <div id="missionFeedback"></div>
+    </div>`;
+
+    area.innerHTML = html;
+    renderSVG();
+    updateControls();
+
+    // 예측 버튼 이벤트 바인딩
+    area.querySelectorAll('.predict-btn').forEach(btn => {
+      btn.addEventListener('click', () => selectPrediction(btn));
+    });
+
+    disableSidebarControls(true);
+    // 예측 전에는 겹쳐보기 잠금
+    $('#btnOverlapToggle').disabled = true;
+  }
+
+  // 다음/스킵으로 전환
+  $('#btnMission').textContent = '⏭ 건너뛰기';
+  $('#btnMission').onclick = () => skipMission();
+}
+
+/* ── 미션 1 판별 ── */
+function checkEqualMission(btn) {
+  const m = MISSIONS[currentMission];
+  const isCorrect = btn.dataset.val === m.answer;
+  
+  $$('.ox-btn').forEach(b => b.style.pointerEvents = 'none');
+
+  const fb = $('#missionFeedback');
+  if (isCorrect) {
+    btn.classList.add('correct');
+    const stars = localAttempts === 0 ? 3 : localAttempts === 1 ? 2 : 1;
+    missionStars['m' + (currentMission + 1)] = stars;
+    fb.innerHTML = `<div class="m-feedback success">🎉 정답입니다! ${m.tip}</div>`;
+    updateMissionLabel();
+    saveState();
+    setTimeout(nextMission, 1800);
+  } else {
+    btn.classList.add('wrong');
+    localAttempts++;
+    fb.innerHTML = `<div class="m-feedback warn">다시 한번 생각해 볼까요?</div>`;
+    setTimeout(() => {
+      btn.classList.remove('wrong');
+      $$('.ox-btn').forEach(b => b.style.pointerEvents = 'auto');
+    }, 1200);
+  }
+}
+
+/* ── 미션 2 만들기 검증 ── */
+function checkMakeMission() {
+  const m = MISSIONS[currentMission];
+  const current = state.a;
+  
+  // 분모가 일치하고 색칠된 조각수가 요구량과 같을 때 성공
+  if (current.denom === m.targetFrac.denom && current.filled.length === m.targetFrac.num) {
+    disableSidebarControls(true);
+    const stars = localAttempts === 0 ? 3 : localAttempts === 1 ? 2 : 1;
+    missionStars['m' + (currentMission + 1)] = stars;
+    
+    const fb = $('#missionFeedback');
+    fb.innerHTML = `<div class="m-feedback success">🎉 완성했습니다! 아주 멋진 분수네요! ${'⭐'.repeat(stars)}</div>`;
+    updateMissionLabel();
+    saveState();
+    setTimeout(nextMission, 1800);
+  } else {
+    // 만드는 중 에러 로그는 별도 출력안하고 대기
+  }
+}
+
+/* ── 미션 3 비교 검증 ── */
+function selectPrediction(btn) {
+  predictVal = btn.dataset.val;
+  $$('.predict-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+
+  // 예측했으므로 겹쳐보기 잠금해제
+  $('#btnOverlapToggle').disabled = false;
+  showToast('아래 겹쳐 보기 버튼을 눌러 확인하세요!');
+}
+
+function checkCompareMission() {
+  const m = MISSIONS[currentMission];
+  const valA = m.a.num / m.a.denom;
+  const valB = m.b.num / m.b.denom;
+
+  let trueAns = 'E';
+  if (valA > valB) trueAns = 'A';
+  else if (valB > valA) trueAns = 'B';
+
+  const correct = predictVal === trueAns;
+  const fb = $('#missionFeedback');
+  
+  const predictBtn = $(`.predict-btn[data-val="${predictVal}"]`);
+  const correctBtn = $(`.predict-btn[data-val="${trueAns}"]`);
+
+  if (correct) {
+    if (predictBtn) predictBtn.classList.add('correct');
+    const stars = localAttempts === 0 ? 3 : localAttempts === 1 ? 2 : 1;
+    missionStars['m' + (currentMission + 1)] = stars;
+    fb.innerHTML = `<div class="m-feedback success">🎉 정답입니다! 두 막대를 겹쳐 크기를 눈으로 비교해 보세요.</div>`;
+    updateMissionLabel();
+    saveState();
+    setTimeout(nextMission, 3000);
+  } else {
+    if (predictBtn) predictBtn.classList.add('wrong');
+    if (correctBtn) correctBtn.classList.add('correct');
+    localAttempts++;
+    missionStars['m' + (currentMission + 1)] = 1;
+    fb.innerHTML = `<div class="m-feedback warn">아쉽습니다. 겹쳐 보니 크기 차이가 확실히 드러나지요?</div>`;
+    updateMissionLabel();
+    saveState();
+    setTimeout(nextMission, 3000);
+  }
+}
+
+function nextMission() {
+  if (currentMission + 1 >= MISSIONS.length) {
+    showResult();
+    return;
+  }
+  setupMission(currentMission + 1);
+}
+
+function skipMission() {
+  if (!missionStars['m' + (currentMission + 1)]) {
+    missionStars['m' + (currentMission + 1)] = 0;
+  }
+  nextMission();
+}
+
+function updateMissionLabel() {
+  const stars = missionStars['m' + (currentMission + 1)] || 0;
+  $('#missionLabel').textContent = `미션 ${currentMission + 1}/${MISSIONS.length}`;
+  $('#missionStarsDisp').textContent = stars > 0 ? '⭐'.repeat(stars) : '';
+}
+
+function disableSidebarControls(disabled) {
+  $('#viewTabs').style.pointerEvents = disabled ? 'none' : '';
+  $('#btnCompareToggle').disabled = disabled;
+  $('#btnStepDown').disabled = disabled;
+  $('#btnStepUp').disabled = disabled;
+  $$('.preset-chip').forEach(c => c.disabled = disabled);
+}
+
+function exitMissionMode() {
+  missionMode = false;
+  currentMission = -1;
+  state.compare = false;
+  state.overlap = false;
+  state.target = 'a';
+  $('#missionArea').innerHTML = '';
+  $('#missionIndicator').style.display = 'none';
+  $('#btnMission').textContent = '🏆 미션 도전';
+  $('#btnMission').onclick = () => startMissions();
+  disableSidebarControls(false);
+  $('#btnCompareToggle').style.display = '';
+  $('#targetSelect').style.display = 'none';
+  renderSVG();
+  updateControls();
+}
+
+/* ══════════════════════════════════════
+   결과 화면
+   ══════════════════════════════════════ */
+function showResult() {
+  missionMode = false;
+  showScreen('screenResult');
+
+  let totalStars = 0;
+  let gridHtml = '';
+  for (let i = 0; i < MISSIONS.length; i++) {
+    const s = missionStars['m' + (i + 1)] || 0;
+    totalStars += s;
+    gridHtml += `<div class="result-cell">
+      <div class="num">${i + 1}</div>
+      <div class="stars">${s > 0 ? '⭐'.repeat(s) : '—'}</div>
+    </div>`;
+  }
+
+  $('#resultScoreText').textContent = `${totalStars} / ${MISSIONS.length * 3} 점`;
+  $('#resultStarsRow').textContent = '⭐'.repeat(Math.min(totalStars, 24));
+  $('#resultGrid').innerHTML = gridHtml;
+}
+
+/* ══════════════════════════════════════
+   초기화 & 이벤트 바인딩
+   ══════════════════════════════════════ */
+function init() {
+  loadState();
+  parseShareLink();
+
+  // 프리셋 칩 생성
+  const pContainer = $('#presetContainer');
+  pContainer.innerHTML = PRESETS.map(p =>
+    `<button class="preset-chip" data-val="${p}">${p}등분</button>`
+  ).join('');
+
+  pContainer.querySelectorAll('.preset-chip').forEach(chip => {
+    chip.addEventListener('click', () => setDenominator(parseInt(chip.dataset.val)));
+  });
+
+  // 시작하기
+  $('#btnStart').addEventListener('click', () => {
+    showScreen('screenExplore');
+    renderSVG();
+    updateControls();
+  });
+
+  // 뷰 모드 탭
+  $$('#viewTabs .view-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      if (missionMode) return;
+      $$('#viewTabs .view-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      state.view = tab.dataset.view;
+      state.overlap = false;
+      renderSVG();
+      updateControls();
+    });
+  });
+
+  // 비교 모드 토글
+  $('#btnCompareToggle').addEventListener('click', () => {
+    state.compare = !state.compare;
+    state.overlap = false;
+    $('#btnCompareToggle').textContent = state.compare ? '🆚 비교 모드 끄기' : '🆚 비교 모드 켜기';
+    $('#targetSelect').style.display = state.compare ? '' : 'none';
+    if (!state.compare) {
+      state.target = 'a';
+    }
+    $$('#targetSelect .target-opt').forEach(opt => {
+      opt.classList.toggle('active', opt.dataset.target === state.target);
+    });
+    renderSVG();
+    updateControls();
+    saveState();
+  });
+
+  // 비교 타깃 선택 (A / B)
+  $$('#targetSelect .target-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      state.target = opt.dataset.target;
+      $$('#targetSelect .target-opt').forEach(o => o.classList.remove('active'));
+      opt.classList.add('active');
+      updateControls();
+    });
+  });
+
+  // 등분 스테퍼
+  $('#btnStepDown').addEventListener('click', () => {
+    const current = state[state.target];
+    if (current.denom > 2) {
+      setDenominator(current.denom - 1);
+    }
+  });
+  $('#btnStepUp').addEventListener('click', () => {
+    const current = state[state.target];
+    if (current.denom < 12) {
+      setDenominator(current.denom + 1);
+    }
+  });
+
+  // 처음부터 리셋
+  $('#btnReset').addEventListener('click', () => {
+    if (missionMode) {
+      setupMission(currentMission);
+    } else {
+      state.a = { denom: 4, filled: [0] };
+      state.b = { denom: 6, filled: [0] };
+      state.overlap = false;
+      renderSVG();
+      updateControls();
+      saveState();
+    }
+  });
+
+  // 겹쳐 보기 버튼
+  $('#btnOverlapToggle').addEventListener('click', () => {
+    state.overlap = !state.overlap;
+    $('#btnOverlapToggle').textContent = state.overlap ? '🥞 원래대로' : '🥞 겹쳐 보기';
+    renderSVG();
+    
+    // 미션 3 비교 검증 체크 연동
+    if (missionMode && MISSIONS[currentMission] && MISSIONS[currentMission].type === 'compare' && state.overlap) {
+      setTimeout(checkCompareMission, 600);
+    }
+  });
+
+  // TTS 구현
+  $('#btnTts').addEventListener('click', () => {
+    if (!('speechSynthesis' in window)) return;
+    const txt = $('#fractionReadText').textContent;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(txt);
+      u.lang = 'ko-KR';
+      window.speechSynthesis.speak(u);
+    } catch(e) {}
+  });
+
+  if (!('speechSynthesis' in window)) {
+    $('#btnTts').style.display = 'none';
+  }
+
+  // 미션 버튼
+  $('#btnMission').onclick = () => startMissions();
+
+  // 결과 제어
+  $('#btnRetry').addEventListener('click', () => {
+    missionStars = {};
+    saveState();
+    showScreen('screenExplore');
+    exitMissionMode();
+    startMissions();
+  });
+  
+  $('#btnFreeplay').addEventListener('click', () => {
+    showScreen('screenExplore');
+    exitMissionMode();
+  });
+
+  // 공유 링크 확장
+  window.shareCurrentPage = function() {
+    const payload = btoa(encodeURIComponent(JSON.stringify({
+      v: 1,
+      state: {
+        view: state.view,
+        compare: state.compare,
+        a: state.a,
+        b: state.b
+      }
+    })));
+    const url = location.origin + location.pathname + '#share=' + payload;
+    if (navigator.share) {
+      navigator.share({ title: '분수 막대 — 내 분수 만들기', url });
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+      showToast('공유 링크가 복사되었어요!');
+    }
+  };
+
+  updateControls();
+}
+
+function showToast(msg) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+})();
+</script>
+
+
+
+</AppLayout>

@@ -1,0 +1,322 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+---
+<AppLayout 
+  title="AI 맞춤법 검사 — eduin VIVES"
+  description="AI가 한국어 맞춤법·문법을 교정하고 수정 이유를 설명합니다. Google Apps Script에서 API로 호출해 스프레드시트 일괄 교정도 가능."
+  image="https://eduin.info/og-images/spell-checker.png"
+  bodyShell="column"
+  bodyWidth="medium"
+>
+  <Fragment slot="head">
+    <style is:global="">
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      padding: 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+      color: var(--fg);
+      font-size: 15px;
+      line-height: 1.7;
+      resize: vertical;
+      outline: none;
+      transition: border-color .2s;
+      font-family: inherit;
+    }
+    textarea:focus { border-color: var(--primary); }
+
+    .input-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .char-count { font-size: 12px; color: var(--fg-muted); }
+    .char-count.warn { color: #f59e0b; }
+
+    .btn {
+      padding: 9px 22px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s, border-color .15s, color .15s;
+      font-family: inherit;
+    }
+    .btn-primary { background: var(--primary); color: #fff; border: none; }
+    .btn-primary:hover { opacity: .85; }
+    .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-ghost { background: transparent; border: 1.5px solid var(--border); color: var(--fg-muted); }
+    .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+
+    .status-row {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      margin-top: 16px;
+      font-size: 14px;
+      color: var(--fg-muted);
+    }
+    .status-row.show { display: flex; }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .alert { display: none; margin-top: 14px; padding: 12px 14px; border-radius: 8px; font-size: 13px; }
+    .alert.show { display: block; }
+    .alert-error { background: #fee2e2; color: #991b1b; }
+    [data-theme="dark"] .alert-error { background: #7f1d1d; color: #fca5a5; }
+
+    .result-panel { display: none; margin-top: 28px; animation: fadeIn .2s ease; }
+    .result-panel.show { display: block; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+
+    .result-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; }
+    .pill-ok  { background: #dcfce7; color: #166534; }
+    .pill-err { background: #fee2e2; color: #991b1b; }
+    [data-theme="dark"] .pill-ok  { background: #14532d; color: #86efac; }
+    [data-theme="dark"] .pill-err { background: #7f1d1d; color: #fca5a5; }
+    .result-note { font-size: 13px; color: var(--fg-muted); }
+
+    .corrected-box {
+      padding: 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: var(--card-bg, var(--bg));
+      font-size: 15px;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .corrected-box mark {
+      background: #fef08a; color: #713f12;
+      border-radius: 3px; padding: 0 2px;
+      text-decoration: underline wavy #ea580c;
+    }
+    [data-theme="dark"] .corrected-box mark { background: #422006; color: #fde68a; }
+
+    .btn-row { margin-top: 8px; display: flex; gap: 8px; }
+
+    .error-list { margin-top: 20px; }
+    .error-list-title { font-size: 12px; font-weight: 700; color: var(--fg-muted); margin-bottom: 8px; letter-spacing: .03em; }
+    .error-item {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline;
+      padding: 9px 12px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--card-bg, var(--bg));
+      margin-bottom: 6px; font-size: 13px;
+    }
+    .err-before { color: #dc2626; text-decoration: line-through; font-weight: 500; }
+    .err-arrow  { color: var(--fg-muted); }
+    .err-after  { color: #16a34a; font-weight: 600; }
+    .err-reason { color: var(--fg-muted); font-size: 12px; flex: 1; min-width: 100px; }
+
+    .gas-panel {
+      margin-top: 32px; padding: 16px;
+      border: 1.5px dashed var(--border); border-radius: 10px;
+    }
+    .gas-panel[hidden] { display: none; }
+    .gas-panel-title { font-size: 13px; font-weight: 600; color: var(--fg-muted); margin: 0 0 12px; }
+    .gas-code {
+      padding: 12px 14px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+      font-size: 12px; color: var(--fg);
+      white-space: pre; overflow-x: auto;
+    }
+  </style>
+  <link rel="canonical" href="https://eduin.info/apps/spell-checker/">
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"AI 맞춤법 검사","description":"AI가 한국어 맞춤법·문법을 교정하고 수정 이유를 설명합니다. Google Apps Script에서 API로 호출해 스프레드시트 일괄 교정도 가능.","url":"https://eduin.info/apps/spell-checker/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  </Fragment>
+
+
+  <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입합니다 -->
+  <main class="app-main">
+    <div class="app-header">
+      <div class="app-badge">◆ AI</div>
+      <h1 class="app-title">
+  <div class="card-emoji sub-util-life" style="margin-bottom: 0; transform: scale(1.0);">
+        <i data-lucide="spell-check"></i>
+      </div>
+  <span>AI 맞춤법 검사</span>
+</h1>
+      <p class="app-desc">AI가 한국어 맞춤법·문법을 교정하고 수정 이유를 설명합니다.</p>
+    </div>
+
+    <textarea id="inputText" placeholder="교정할 텍스트를 입력하세요 (최대 3000자)…" maxlength="3000"></textarea>
+    <div class="input-footer">
+      <span class="char-count" id="charCount">0 / 3,000</span>
+      <button class="btn btn-primary" id="checkBtn" onclick="runCheck()">검사하기</button>
+    </div>
+
+    <div class="status-row" id="loadingRow">
+      <span class="spinner"></span><span>AI가 교정 중입니다…</span>
+    </div>
+    <div class="alert alert-error" id="errorAlert"></div>
+
+    <div class="result-panel" id="resultPanel">
+      <div class="result-meta">
+        <span class="pill" id="resultPill"></span>
+        <span class="result-note" id="resultNote"></span>
+      </div>
+      <div class="corrected-box" id="correctedBox"></div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="copyResult()">교정본 복사</button>
+        <button class="btn btn-ghost" onclick="toggleGas()">📋 GAS 연동</button>
+      </div>
+      <div class="error-list" id="errorList"></div>
+    </div>
+
+    <div class="gas-panel" id="gasPanel" hidden="">
+      <p class="gas-panel-title">Google Apps Script에서 API 호출</p>
+      <div class="gas-code" id="gasCode"></div>
+    </div>
+  </main>
+
+  <script is:inline="">
+    const API_URL = '/api/spell-check';
+
+    const inputText   = document.getElementById('inputText');
+    const charCount   = document.getElementById('charCount');
+    const checkBtn    = document.getElementById('checkBtn');
+    const loadingRow  = document.getElementById('loadingRow');
+    const errorAlert  = document.getElementById('errorAlert');
+    const resultPanel = document.getElementById('resultPanel');
+    const resultPill  = document.getElementById('resultPill');
+    const resultNote  = document.getElementById('resultNote');
+    const correctedBox= document.getElementById('correctedBox');
+    const errorList   = document.getElementById('errorList');
+    const gasPanel    = document.getElementById('gasPanel');
+
+    inputText.addEventListener('input', () => {
+      const n = inputText.value.length;
+      charCount.textContent = `${n.toLocaleString()} / 3,000`;
+      charCount.classList.toggle('warn', n > 2500);
+    });
+
+    async function runCheck() {
+      const text = inputText.value.trim();
+      if (!text) return;
+      checkBtn.disabled = true;
+      loadingRow.classList.add('show');
+      errorAlert.classList.remove('show');
+      resultPanel.classList.remove('show');
+      gasPanel.hidden = true;
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `오류 ${res.status}`);
+        renderResult(data);
+      } catch (e) {
+        errorAlert.textContent = `⚠️ ${e.message}`;
+        errorAlert.classList.add('show');
+      } finally {
+        checkBtn.disabled = false;
+        loadingRow.classList.remove('show');
+      }
+    }
+
+    function renderResult({ corrected, changed, errors }) {
+      if (changed) {
+        resultPill.textContent = `${errors.length}건 교정`;
+        resultPill.className = 'pill pill-err';
+        resultNote.textContent = '교정된 내용이 있습니다.';
+      } else {
+        resultPill.textContent = '이상 없음';
+        resultPill.className = 'pill pill-ok';
+        resultNote.textContent = '오류를 발견하지 못했습니다.';
+      }
+      correctedBox.innerHTML = highlight(corrected, errors);
+      errorList.innerHTML = errors.length
+        ? `<p class="error-list-title">교정 내역 (${errors.length}건)</p>` +
+          errors.map(e => `<div class="error-item">
+            <span class="err-before">${esc(e.original)}</span>
+            <span class="err-arrow">→</span>
+            <span class="err-after">${esc(e.corrected)}</span>
+            <span class="err-reason">${esc(e.reason)}</span>
+          </div>`).join('')
+        : '';
+      resultPanel.classList.add('show');
+    }
+
+    function highlight(text, errors) {
+      let html = esc(text);
+      errors.forEach(({ corrected: c }) => {
+        const s = esc(c);
+        html = html.replace(s, `<mark>${s}</mark>`);
+      });
+      return html;
+    }
+
+    function esc(s) {
+      return String(s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function copyResult() {
+      navigator.clipboard.writeText(correctedBox.innerText).then(() => {
+        const btn = event.currentTarget;
+        btn.textContent = '복사됨 ✓';
+        setTimeout(() => { btn.textContent = '교정본 복사'; }, 1500);
+      });
+    }
+
+    function toggleGas() {
+      gasPanel.hidden = !gasPanel.hidden;
+    }
+
+    document.getElementById('gasCode').textContent =
+`// POST /api/spell-check  →  { original, corrected, changed, errors }
+function spellCheck(text) {
+  const res = UrlFetchApp.fetch('https://eduin.info/api/spell-check', {
+    method: 'POST',
+    contentType: 'application/json',
+    payload: JSON.stringify({ text }),
+    muteHttpExceptions: true,
+  });
+  const data = JSON.parse(res.getContentText());
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+// 스프레드시트 선택 범위 일괄 교정
+function correctSelection() {
+  const range = SpreadsheetApp.getActiveRange();
+  const values = range.getValues();
+  values.forEach((row, r) => {
+    row.forEach((cell, c) => {
+      if (typeof cell === 'string' && cell.trim()) {
+        const { changed, corrected } = spellCheck(cell);
+        if (changed) range.getCell(r + 1, c + 1).setValue(corrected);
+      }
+    });
+  });
+}`;
+  </script>
+
+
+
+</AppLayout>

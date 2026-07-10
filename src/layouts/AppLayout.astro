@@ -1,0 +1,59 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  bodyShell?: string;
+  bodyWidth?: string;
+  bodyPrint?: boolean;
+}
+
+const {
+  title = "eduin VIVES — 교육 미니앱 모음",
+  description = "교육 현장에서 바로 쓸 수 있는 미니 웹 앱 모음.",
+  image = "https://eduin.info/og-default.png",
+  bodyShell = "column",
+  bodyWidth,
+  bodyPrint
+} = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="ko-KR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title}</title>
+  
+  <meta name="description" content={description}>
+  <meta property="og:title" content={title}>
+  <meta property="og:description" content={description}>
+  <meta property="og:image" content={image}>
+  <meta property="og:url" content={Astro.url.href}>
+  <meta property="og:type" content="website">
+  
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content={title}>
+  <meta name="twitter:description" content={description}>
+  <meta name="twitter:image" content={image}>
+  
+  <link rel="canonical" href={Astro.url.href}>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/logo.png">
+  
+  <link rel="stylesheet" href="/common/hero-theme.css">
+  <link rel="stylesheet" href="/common/app-shell.css">
+  
+  <script is:inline src="/common/theme.js"></script>
+  <script is:inline src="/common/init.js"></script>
+  <script is:inline src="/common/app-shell.js" defer></script>
+  <script is:inline src="/common/seo-injector.js" defer></script>
+  <script is:inline src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script is:inline src="/common/sync.js"></script>
+  
+  <slot name="head" />
+</head>
+<body data-shell={bodyShell} data-width={bodyWidth} data-print={bodyPrint ? "" : undefined}>
+  <slot />
+</body>
+</html>
