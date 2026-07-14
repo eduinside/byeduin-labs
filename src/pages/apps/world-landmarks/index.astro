@@ -365,7 +365,10 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   border-radius: 6px; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.08);
 }
 .flag-img.flag-lg { width: 120px; height: 80px; border-radius: 8px; }
+.flag-img.flag-sm { width: 30px; height: 20px; border-radius: 4px; box-shadow: none; vertical-align: middle; }
 .flag-fallback { font-size: 44px; line-height: 48px; }
+.flag-fallback.flag-lg { font-size: 64px; line-height: 80px; }
+.flag-fallback.flag-sm { font-size: 22px; line-height: 20px; }
 
 /* 나라 상세 */
 .country-head {
@@ -430,12 +433,21 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 .greeting-speak:active { transform: scale(.92); }
 .greeting-speak.speaking { background: #e3f5ea; border-color: var(--stamp-green); }
 
-/* 위치 지도 (인라인 SVG) */
-.mini-map { width: 100%; height: auto; border-radius: 14px; background: #cfe3f0; margin-top: 8px; display: block; }
-[data-theme="dark"] .mini-map { background: #101a26; }
-.mini-map .land { fill: #e9ddc8; stroke: #b9a681; stroke-width: .6; }
-[data-theme="dark"] .mini-map .land { fill: #2a3547; stroke: #46536b; }
-.mini-map .land.hl { fill: var(--gold); stroke: var(--gold-deep); }
+/* 위치 지도 (실제 세계지도 SVG — @svg-maps/world) */
+.mini-map-box {
+  margin-top: 8px; border-radius: 14px; overflow: hidden; background: #cfe3f0;
+  border: 1px solid var(--border); min-height: 120px;
+}
+[data-theme="dark"] .mini-map-box { background: #0e1a26; }
+.mini-map-loading, .mini-map-fail {
+  display: flex; align-items: center; justify-content: center; min-height: 160px;
+  font-size: 13.5px; color: var(--navy); opacity: .6; padding: 16px; text-align: center;
+}
+.mini-map { width: 100%; height: auto; display: block; }
+.mini-map path { fill: #e6dcc6; stroke: #c2b291; stroke-width: .35; }
+[data-theme="dark"] .mini-map path { fill: #2a3547; stroke: #3f4b60; }
+.mini-map path.hl { fill: var(--gold); stroke: var(--gold-deep); stroke-width: .6; }
+.map-credit { font-size: 10.5px; opacity: .5; margin-top: 4px; text-align: right; }
 
 /* 조사 링크 칩 */
 .link-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
@@ -858,10 +870,10 @@ function renderPanel() {
   const vt = document.getElementById('viewerTitle');
   if (vt) vt.innerHTML = `<span class="num">${idx + 1}</span> ${m.emoji} ${m.name}`;
 
-  // 국기 이모지 + 헤더 렌더링
+  // 국기 이미지(flagcdn) + 헤더 렌더링 — Windows Chrome 국기 이모지 미지원 대응
   document.getElementById('sideHead').innerHTML = `
     <div class="flag">
-      <span style="font-size:32px; line-height:1;">${m.countryFlag}</span>
+      ${flagMarkup(flagEmojiToCode(m.countryFlag), m.countryName, 'sm')}
       <span>${m.countryName} (수도: ${m.capital})</span>
     </div>
     <h2>${m.emoji} ${m.name}</h2>
@@ -1189,37 +1201,71 @@ function chipYt(q, label) { return chip(ytUrl(q), '▶️ ' + (label || q), 'yt'
 function chipNv(q, label) { return chip(nvUrl(q), '🟢 ' + (label || q), ''); }
 function chipNi(q, label) { return chip(niUrl(q), '🖼️ ' + (label || q), ''); }
 
-/* ── 국기 이미지 (flagcdn + 이모지 폴백) ── */
+/* ── 국기 이미지 (flagcdn + 이모지 폴백) ──
+   code: ISO 3166-1 alpha-2 소문자 · Windows Chrome은 국기 이모지를 렌더링 못 해
+   flagcdn PNG를 1순위로, 실패 시에만 이모지로 폴백 */
 function flagEmoji(code) {
   return code.toUpperCase().replace(/./g, ch => String.fromCodePoint(127397 + ch.charCodeAt(0)));
 }
-function flagImg(c, large) {
-  return `<img class="flag-img ${large ? 'flag-lg' : ''}" src="https://flagcdn.com/w160/${c.id}.png"
-    alt="${c.nameKo} 국기" loading="lazy" width="${large ? 120 : 72}" height="${large ? 80 : 48}"
-    onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'flag-fallback',textContent:'${flagEmoji(c.id)}'}))">`;
+/* 국기 이모지(🇰🇷) → ISO alpha-2 코드(kr) */
+function flagEmojiToCode(emoji) {
+  return [...emoji].map(ch => ch.codePointAt(0))
+    .filter(cp => cp >= 127462 && cp <= 127487)
+    .map(cp => String.fromCharCode(cp - 127462 + 97)).join('');
 }
+function flagMarkup(code, name, size) {
+  const dim = size === 'lg' ? [120, 80] : size === 'sm' ? [30, 20] : [72, 48];
+  const cls = size === 'lg' ? 'flag-lg' : size === 'sm' ? 'flag-sm' : '';
+  return `<img class="flag-img ${cls}" src="https://flagcdn.com/w160/${code}.png"
+    alt="${name} 국기" loading="lazy" width="${dim[0]}" height="${dim[1]}"
+    onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'flag-fallback flag-${size || 'md'}',textContent:'${flagEmoji(code)}'}))">`;
+}
+function flagImg(c, large) { return flagMarkup(c.id, c.nameKo, large ? 'lg' : 'md'); }
 
-/* ── 간략 세계지도 SVG (equirectangular: x=lng+180, y=90-lat) ── */
-const CONTINENT_SHAPES = {
-  namerica: '20,25 55,12 90,15 102,30 106,50 100,66 82,70 96,79 100,82 88,80 74,68 52,55 30,45 14,35',
-  samerica: '100,80 116,83 132,88 146,97 140,112 126,126 116,141 108,146 104,130 98,105 94,88',
-  europe: '170,56 172,44 179,39 185,29 194,17 210,19 226,24 240,30 240,44 224,50 208,53 194,56 184,59 176,60',
-  africa: '172,62 186,58 200,58 212,61 219,69 231,79 226,91 216,101 210,116 205,124 197,118 189,104 179,89 171,74 167,65',
-  asia: '240,30 258,14 288,11 320,14 346,20 351,30 331,40 322,50 324,58 306,60 296,70 290,81 283,86 274,76 264,72 257,83 249,70 240,62 231,68 222,62 226,52 236,45',
-  oceania: '294,110 305,101 321,99 334,108 330,121 314,128 299,122 291,116'
-};
-function miniMapSvg(c) {
-  const x = c.lng + 180, y = 90 - c.lat;
-  const polys = Object.entries(CONTINENT_SHAPES).map(([cont, pts]) =>
-    `<polygon class="land ${cont === c.continent ? 'hl' : ''}" points="${pts}"/>`
-  ).join('');
-  const nz = `<polygon class="land ${c.continent === 'oceania' ? 'hl' : ''}" points="347,129 353,127 356,135 350,141 345,137"/>`;
-  return `<svg class="mini-map" viewBox="0 0 360 180" role="img" aria-label="${c.nameKo}의 위치를 표시한 세계지도">
-    ${polys}${nz}
-    <circle cx="${x}" cy="${y}" r="5" fill="var(--stamp-red)" stroke="#fff" stroke-width="1.5">
-      <animate attributeName="r" values="4;6;4" dur="1.6s" repeatCount="indefinite"/>
-    </circle>
-  </svg>`;
+/* ── 위치 지도: 실제 세계지도 SVG(@svg-maps/world · CC BY 4.0)를 불러와
+   해당 국가 path를 하이라이트하고 중심에 마커를 찍는다 ── */
+let worldMapPromise = null;
+function loadWorldMap() {
+  if (!worldMapPromise) {
+    worldMapPromise = fetch('/apps/world-landmarks/world-map.svg')
+      .then(r => { if (!r.ok) throw new Error('map ' + r.status); return r.text(); });
+  }
+  return worldMapPromise;
+}
+function injectMiniMap(c) {
+  const box = document.getElementById('miniMap-' + c.id);
+  if (!box) return;
+  loadWorldMap().then(txt => {
+    if (!document.getElementById('miniMap-' + c.id)) return; // 화면이 이미 바뀌었으면 중단
+    box.innerHTML = txt;
+    const svg = box.querySelector('svg');
+    if (!svg) return;
+    svg.classList.add('mini-map');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', c.nameKo + '의 위치를 표시한 세계지도');
+    const NS = 'http://www.w3.org/2000/svg';
+    const path = svg.querySelector('#' + (window.CSS && CSS.escape ? CSS.escape(c.id) : c.id));
+    if (path) {
+      path.classList.add('hl');
+      try {
+        const b = path.getBBox();
+        const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+        const ring = document.createElementNS(NS, 'circle');
+        ring.setAttribute('cx', cx); ring.setAttribute('cy', cy); ring.setAttribute('r', 8);
+        ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', 'var(--stamp-red)'); ring.setAttribute('stroke-width', 2);
+        const anim = document.createElementNS(NS, 'animate');
+        anim.setAttribute('attributeName', 'r'); anim.setAttribute('values', '6;12;6');
+        anim.setAttribute('dur', '1.6s'); anim.setAttribute('repeatCount', 'indefinite');
+        ring.appendChild(anim);
+        const dot = document.createElementNS(NS, 'circle');
+        dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('r', 3.5);
+        dot.setAttribute('fill', 'var(--stamp-red)'); dot.setAttribute('stroke', '#fff'); dot.setAttribute('stroke-width', 1);
+        svg.appendChild(ring); svg.appendChild(dot);
+      } catch (e) {}
+    }
+  }).catch(() => {
+    if (box) box.innerHTML = '<p class="mini-map-fail">🗺️ 지도를 불러오지 못했어요. 아래 검색 링크로 위치를 찾아보세요.</p>';
+  });
 }
 
 /* ── 라우팅: #research / #research/{id} ── */
@@ -1356,7 +1402,8 @@ function renderResearchDetail(c) {
 
     ${sectionBox(c, 'location', '📍 위치', `
       <p class="section-desc">${c.location.desc}</p>
-      ${miniMapSvg(c)}`,
+      <div class="mini-map-box" id="miniMap-${c.id}"><div class="mini-map-loading">🗺️ 지도 불러오는 중...</div></div>
+      <div class="map-credit">지도: SVG Maps · CC BY 4.0</div>`,
       [chipNv(`${c.nameKo} 위치 지도`, '위치 지도'), chipNi(`${c.nameKo} 지도`, '지도 사진')])}
 
     ${sectionBox(c, 'capital', '🏛️ 수도', `
@@ -1387,6 +1434,7 @@ function renderResearchDetail(c) {
     </div>
   </div>`;
   window.scrollTo({ top: 0 });
+  injectMiniMap(c);
 }
 
 /* ── 조사 체크 토글 ── */
