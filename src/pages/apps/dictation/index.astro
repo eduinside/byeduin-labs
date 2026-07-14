@@ -220,6 +220,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .dt-grade-mark { flex: none; width: 22px; text-align: center; font-size: 15px; font-weight: 700; }
     .dt-grade-mark.ok { color: var(--success); }
     .dt-grade-mark.bad { color: var(--danger); }
+    .dt-diff-line { font-size: 12px; color: var(--fg-muted); padding: 0 0 2px 36px; margin-top: -2px; line-height: 1.6; }
+    .dt-diff-line .miss { color: var(--danger); font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
 
     /* ── 결과 ── */
     .dt-score-band { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -278,7 +280,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       .dt-print-row { display: flex; align-items: center; gap: 4mm; padding: 2.2mm 0; border-bottom: 1px solid #eee; break-inside: avoid; }
       .dt-print-row .n { flex: none; width: 7mm; font-size: 11pt; font-weight: 700; }
       .dt-print-row .t { font-size: 11.5pt; letter-spacing: 0.02em; }
-      .dt-print-row .blank { flex: 1; border-bottom: 1.2pt solid #999; min-height: 8mm; }
+      .dt-print-row .blank { flex: 1; border-bottom: 1.2pt solid #999; min-height: 12mm; }
       .dt-print-meta { display: flex; gap: 8mm; font-size: 9pt; margin-bottom: 4mm; }
       .dt-print-meta .slot { border-bottom: 1pt solid #aaa; min-width: 28mm; display: inline-block; }
     }
@@ -576,7 +578,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <section id="view-grade" class="dt-view" hidden>
         <div class="dt-card">
           <h2 class="dt-section-title">채점 — 답안 입력</h2>
-          <p class="app-desc" style="margin: -4px 0 14px;">학생이 종이에 쓴 답을 그대로 입력하세요. 틀린 글자도 쓴 그대로 입력해야 정확히 분석됩니다.</p>
+          <p class="app-desc" style="margin: -4px 0 14px;">학생이 종이에 쓴 답을 그대로 입력하세요. 틀린 글자도 쓴 그대로 입력해야 정확히 분석됩니다. 띄어쓰기와 문장부호는 채점에서 제외됩니다.</p>
 
           <div id="gradeGrid" class="dt-grade-grid">
             <!-- 입력 행은 JS가 렌더링 -->
@@ -603,6 +605,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <h2 class="dt-section-title">음운규칙별 오답률</h2>
           <div id="ruleRows" class="dt-rule-rows">
             <div class="dt-empty">채점을 완료하면 규칙별 분석이 표시됩니다</div>
+          </div>
+        </div>
+
+        <div class="dt-card">
+          <h2 class="dt-section-title">유형 · 난이도별 정답률</h2>
+          <div id="breakdownRows" class="dt-rule-rows">
+            <div class="dt-empty">채점을 완료하면 유형·난이도별 정답률이 표시됩니다</div>
           </div>
         </div>
 
@@ -732,6 +741,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       readIndex: 0,
       currentMode: 'textbook', // 'textbook' | 'ai'
       aiRecommendedRules: [],  // AI가 추천한 규칙 목록
+      lastTextbookView: 'setup', // 모드 전환 시 복귀할 교과서 모드 스텝
+      confirmedEmptyGrade: false, // 빈칸 채점 2회 클릭 확인 플래그
     };
 
     const $ = (sel) => document.querySelector(sel);
@@ -767,6 +778,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         btn.classList.toggle('done', VIEWS.indexOf(v) < VIEWS.indexOf(view));
       });
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      state.lastTextbookView = view;
     }
     function unlockSteps(upto) {
       const max = VIEWS.indexOf(upto);
@@ -788,7 +800,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         if (mode === 'textbook') {
           textbookSections.forEach(el => { if (el) el.style.display = ''; });
           aiView.hidden = true;
-          goto('setup');
+          goto(state.lastTextbookView || 'setup');
         } else {
           textbookSections.forEach(el => { if (el) el.style.display = 'none'; });
           aiView.hidden = false;
@@ -816,18 +828,22 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     });
 
     /* ── 데이터 로더 (단일 단원) ── */
+    let unitLoadToken = 0;
     function loadUnit(unitCode) {
+      const myToken = ++unitLoadToken;
       fetch('/apps/dictation/data/unit-' + unitCode + '.json')
         .then(r => {
           if (!r.ok) throw new Error('데이터를 불러오지 못했습니다.');
           return r.json();
         })
         .then(bank => {
+          if (myToken !== unitLoadToken) return; // 더 최신 요청이 있으면 무시(경쟁 상태 방지)
           state.bank = bank;
           state.unit = unitCode;
           showToast(bank.unit + ' 데이터를 로드했습니다.');
         })
         .catch(err => {
+          if (myToken !== unitLoadToken) return;
           showToast('오류: ' + err.message);
         });
     }
@@ -893,7 +909,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         showToast('전체 단원 데이터 로딩 중입니다. 잠시만 기다려 주세요.');
         return;
       }
-      if (!isRuleMode && !state.bank) {
+      if (!isRuleMode && (!state.bank || state.unit !== unitVal)) {
         showToast('단원 데이터 로딩 중입니다. 잠시만 기다려 주세요.');
         return;
       }
@@ -938,8 +954,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         return;
       }
 
-      let selected = order === 'shuffle' ? shuffleArray(pool) : pool;
-      selected = selected.slice(0, count);
+      let selected;
+      if (order === 'shuffle') {
+        selected = shuffleArray(pool).slice(0, count);
+      } else {
+        // 원본 순서: 무작위로 count개를 뽑되, 뽑힌 문항은 pool 내 원래 순서를 유지
+        if (pool.length <= count) {
+          selected = pool.slice();
+        } else {
+          const pickedIdx = shuffleArray(pool.map((_, i) => i)).slice(0, count).sort((a, b) => a - b);
+          selected = pickedIdx.map(i => pool[i]);
+        }
+      }
 
       state.items = selected;
       state.inputs = selected.map(() => '');
@@ -951,7 +977,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       renderReadCard();
       unlockSteps('grade');
       goto('sheet');
-      showToast('급수표 ' + state.items.length + '문항 생성 완료.');
+      if (pool.length < count) {
+        showToast('조건에 맞는 문항이 ' + pool.length + '개뿐이라 ' + state.items.length + '문항으로 만들었어요.');
+      } else {
+        showToast('급수표 ' + state.items.length + '문항 생성 완료.');
+      }
     }
 
     $('#btnGenerate').addEventListener('click', generateItems);
@@ -1025,42 +1055,105 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     $('#btnReadNext').addEventListener('click', () => { state.readIndex = Math.min(state.items.length - 1, state.readIndex + 1); renderReadCard(); });
     $('#btnReadRestart').addEventListener('click', () => { state.readIndex = 0; renderReadCard(); });
 
+    document.addEventListener('keydown', (e) => {
+      if ($('#view-read').hidden) return;
+      if (e.key === 'ArrowRight') $('#btnReadNext').click();
+      else if (e.key === 'ArrowLeft') $('#btnReadPrev').click();
+    });
+
     /* ── 채점 입력 그리드 ── */
     function renderGradeGrid() {
+      state.confirmedEmptyGrade = false;
       $('#gradeGrid').innerHTML = state.items.map((_, i) =>
         '<div class="dt-grade-row">' +
           '<span class="dt-item-num">' + (i + 1) + '</span>' +
           '<input class="dt-input" data-idx="' + i + '" placeholder="학생이 쓴 그대로" autocomplete="off">' +
           '<span class="dt-grade-mark" data-mark="' + i + '"></span>' +
-        '</div>'
+        '</div>' +
+        '<div class="dt-diff-line" data-diff="' + i + '" hidden></div>'
       ).join('');
     }
+
+    // Enter 키로 다음 입력 칸 이동(마지막 칸에서는 채점 실행)
+    $('#gradeGrid').addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const target = e.target;
+      if (!target.classList || !target.classList.contains('dt-input')) return;
+      e.preventDefault();
+      const idx = parseInt(target.dataset.idx, 10);
+      const next = $('.dt-input[data-idx="' + (idx + 1) + '"]');
+      if (next) { next.focus(); next.select(); }
+      else { $('#btnGrade').click(); }
+    });
 
     // Clean text for comparative grading (exclude spacing and punctuation)
     function cleanKoreanString(s) {
       return s.replace(/[.,!?…"""\\'()·\-\s]/g, '');
     }
 
+    // 정답 문자열 기준 LCS로 학생이 놓친 글자 위치를 표시
+    function diffChars(correct, input) {
+      const m = correct.length, n = input.length;
+      const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          dp[i][j] = correct[i - 1] === input[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
+        }
+      }
+      const matched = new Array(m).fill(false);
+      let i = m, j = n;
+      while (i > 0 && j > 0) {
+        if (correct[i - 1] === input[j - 1]) { matched[i - 1] = true; i--; j--; }
+        else if (dp[i - 1][j] >= dp[i][j - 1]) { i--; }
+        else { j--; }
+      }
+      return matched;
+    }
+
     $('#btnGrade').addEventListener('click', () => {
+      const inputEls = $$('#gradeGrid .dt-input');
+      const emptyCount = inputEls.filter((el) => !el.value.trim()).length;
+      if (emptyCount > 0 && !state.confirmedEmptyGrade) {
+        state.confirmedEmptyGrade = true;
+        showToast('빈칸이 ' + emptyCount + '개 있어요. 다시 누르면 그대로 채점합니다.');
+        return;
+      }
+      state.confirmedEmptyGrade = false;
+
       let correct = 0;
       const corrects = [];
-      
-      $$('#gradeGrid .dt-input').forEach((input) => {
+
+      inputEls.forEach((input) => {
         const i = parseInt(input.dataset.idx, 10);
         const userVal = input.value.trim();
         state.inputs[i] = userVal;
-        
+
         const ok = cleanKoreanString(userVal) === cleanKoreanString(state.items[i].text);
         corrects.push(ok);
-        
+
         input.classList.toggle('ok', ok);
         input.classList.toggle('bad', !ok);
         const mark = document.querySelector('[data-mark="' + i + '"]');
         mark.textContent = ok ? '○' : '✕';
         mark.className = 'dt-grade-mark ' + (ok ? 'ok' : 'bad');
+
+        const diffLine = document.querySelector('[data-diff="' + i + '"]');
+        if (ok || !userVal) {
+          diffLine.hidden = true;
+          diffLine.innerHTML = '';
+        } else {
+          const correctClean = cleanKoreanString(state.items[i].text);
+          const inputClean = cleanKoreanString(userVal);
+          const matched = diffChars(correctClean, inputClean);
+          diffLine.innerHTML = '정답: ' + correctClean.split('').map((ch, idx) =>
+            matched[idx] ? esc(ch) : '<span class="miss">' + esc(ch) + '</span>'
+          ).join('');
+          diffLine.hidden = false;
+        }
+
         if (ok) correct++;
       });
-      
+
       const n = state.items.length;
       $('#resScore').textContent = Math.round(correct / n * 100) + '점';
       $('#resCorrect').textContent = correct;
@@ -1070,6 +1163,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const ruleErrors = {};
       RULE_TAGS.forEach(t => { ruleErrors[t] = { wrong: 0, asked: 0 }; });
 
+      const byKind = {}; const byDiff = {};
+      ['낱말', '구절', '문장'].forEach(k => { byKind[k] = { asked: 0, correct: 0 }; });
+      ['하', '중', '상'].forEach(d => { byDiff[d] = { asked: 0, correct: 0 }; });
+
       state.items.forEach((it, i) => {
         const isWrong = !corrects[i];
         it.tags.forEach(t => {
@@ -1078,16 +1175,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             if (isWrong) ruleErrors[t].wrong++;
           }
         });
+        if (byKind[it.kind]) { byKind[it.kind].asked++; if (!isWrong) byKind[it.kind].correct++; }
+        if (byDiff[it.difficulty]) { byDiff[it.difficulty].asked++; if (!isWrong) byDiff[it.difficulty].correct++; }
       });
 
       state.results = {
         score: Math.round(correct / n * 100),
         corrects: corrects,
         wrongCount: n - correct,
-        byRule: ruleErrors
+        byRule: ruleErrors,
+        byKind: byKind,
+        byDiff: byDiff
       };
 
       renderResult(ruleErrors);
+      renderBreakdown(byKind, byDiff);
       saveAttempt();
       unlockSteps('result');
       goto('result');
@@ -1096,66 +1198,83 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     /* ── 결과 분석 및 지도안 렌더링 ── */
     const GUIDE_TEMPLATES = {
       '연음화': {
-        title: '연음화 — 오답률 최다',
         text: '받침이 뒤 글자로 넘어가 소리 나는 낱말을 어려워해요. \'꽃잎[꼰닙]\'이나 \'무릎이[무르피]\'처럼 소리와 표기가 다름을 인지하고, 글자의 원형을 살려 적는 연습을 해 주세요.'
       },
       '경음화': {
-        title: '경음화 — 오답률 최다',
         text: '된소리로 발음되지만 예사소리로 적는 문항에서 실수합니다. \'학교[학꾜]\'나 \'신발 끈[신발 끈]\'처럼 발음과 적는 법이 어떻게 다른지 소리 내어 확인하는 활동이 좋습니다.'
       },
       '격음화': {
-        title: '격음화 — 오답률 최다',
         text: '거센소리로 축약되어 발음되는 단어에서 표기가 혼동될 수 있습니다. ‘축하[추카]’나 ‘따뜻해[따뜨태]’처럼 원형의 받침(ㅎ, ㄷ 등)을 의식해서 바르게 적도록 지도해 주세요.'
       },
       '비음화': {
-        title: '비음화 — 오답률 최다',
         text: '받침이 자음 동화되어 ㄴ이나 ㅁ 등으로 발음되는 현상입니다. ‘낱말[난말]’이나 ‘입니다[임니다]’처럼 소리 나는 대로 받아적지 않도록 받침을 짚어 설명해 주세요.'
       },
       '겹받침_단순화': {
-        title: '겹받침 단순화 — 오답률 최다',
         text: '두 개의 받침 중 하나만 소리 나는 낱말에서 받침 중 하나를 빠뜨리기 쉽습니다. ‘넓고[널고]’나 ‘앉아[안자]’처럼 겹받침의 표기를 소리 내어 읽으며 암기하도록 지도해 주세요.'
       },
       '받침없음/규칙없음': {
-        title: '기초 낱말 쓰기 — 오답률 최다',
         text: '기본적인 받침이나 표기에서 실수하고 있습니다. 틀린 낱말을 소리 내어 천천히 읽어보고 한 글자씩 또박또박 써 보며 글자의 모양을 익히도록 도와주세요.'
       }
     };
 
     function renderResult(ruleErrors) {
-      const listHtml = Object.keys(ruleErrors).map(name => {
+      const rows = Object.keys(ruleErrors).map(name => {
         const stats = ruleErrors[name];
         const pct = stats.asked > 0 ? Math.round((stats.wrong / stats.asked) * 100) : 0;
-        return { name, pct, asked: stats.asked };
-      })
-      .filter(row => row.asked > 0)
-      .map(row => {
-        return '<div class="dt-rule-row">' +
+        return { name, pct, asked: stats.asked, wrong: stats.wrong };
+      }).filter(row => row.asked > 0);
+
+      const listHtml = rows.map(row =>
+        '<div class="dt-rule-row">' +
           '<span class="name">' + esc(row.name) + '</span>' +
           '<span class="bar"><i class="' + (row.pct < 34 ? 'low' : '') + '" style="width:' + row.pct + '%"></i></span>' +
           '<span class="pct">' + row.pct + '%</span>' +
-        '</div>';
-      }).join('');
+        '</div>'
+      ).join('');
 
       $('#ruleRows').innerHTML = listHtml || '<div class="dt-empty">충분한 음운 규칙 데이터가 없습니다.</div>';
 
-      // Find worst rule tag (highest error percentage)
-      let worstTag = '받침없음/규칙없음';
-      let maxPct = -1;
-      Object.keys(ruleErrors).forEach(name => {
-        const stats = ruleErrors[name];
-        const pct = stats.asked > 0 ? (stats.wrong / stats.asked) : 0;
-        if (stats.asked > 0 && pct > maxPct) {
-          maxPct = pct;
-          worstTag = name;
-        }
-      });
+      // 오답이 있었던 규칙 중 오답률 상위 2개까지 지도 문구를 보여준다
+      const weakRows = rows.filter(row => row.wrong > 0).sort((a, b) => b.pct - a.pct);
 
-      const guide = GUIDE_TEMPLATES[worstTag] || GUIDE_TEMPLATES['받침없음/규칙없음'];
-      $('#guideBox').innerHTML =
-        '<div class="dt-guide">' +
-          '<div class="g-rule">' + esc(guide.title) + '</div>' +
+      if (weakRows.length === 0) {
+        $('#guideBox').innerHTML =
+          '<div class="dt-guide">' +
+            '<div class="g-rule">🎉 오답 없음</div>' +
+            '<div class="g-text">이번 급수표는 모두 맞혔어요! 다음에는 난이도를 높이거나 새 단원으로 도전해 보세요.</div>' +
+          '</div>';
+        return;
+      }
+
+      $('#guideBox').innerHTML = weakRows.slice(0, 2).map(row => {
+        const guide = GUIDE_TEMPLATES[row.name] || GUIDE_TEMPLATES['받침없음/규칙없음'];
+        return '<div class="dt-guide">' +
+          '<div class="g-rule">' + esc(row.name) + ' — 오답률 ' + row.pct + '%</div>' +
           '<div class="g-text">' + esc(guide.text) + '</div>' +
         '</div>';
+      }).join('');
+    }
+
+    function renderBreakdown(byKind, byDiff) {
+      const rows = [];
+      ['낱말', '구절', '문장'].forEach(k => {
+        const s = byKind[k];
+        if (s.asked > 0) rows.push({ name: k, pct: Math.round(s.correct / s.asked * 100) });
+      });
+      ['하', '중', '상'].forEach(d => {
+        const s = byDiff[d];
+        if (s.asked > 0) rows.push({ name: '난이도 ' + d, pct: Math.round(s.correct / s.asked * 100) });
+      });
+
+      const html = rows.map(row =>
+        '<div class="dt-rule-row">' +
+          '<span class="name">' + esc(row.name) + '</span>' +
+          '<span class="bar"><i class="' + (row.pct >= 67 ? 'low' : '') + '" style="width:' + row.pct + '%"></i></span>' +
+          '<span class="pct">' + row.pct + '%</span>' +
+        '</div>'
+      ).join('');
+
+      $('#breakdownRows').innerHTML = html || '<div class="dt-empty">데이터가 없습니다.</div>';
     }
 
     /* ── localStorage 회차 저장 ── */
@@ -1170,6 +1289,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           unit: state.unit,
           items: state.items.map((it, idx) => ({
             id: it.id,
+            text: it.text,
+            tags: it.tags,
             correct: state.results.corrects[idx],
             input: state.inputs[idx],
             wrongTags: state.results.corrects[idx] ? [] : it.tags
@@ -1188,25 +1309,48 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       try { return JSON.parse(s); } catch (e) { return null; }
     }
 
-    /* ── 복습 급수표 재출제 ── */
+    /* ── 복습 급수표 재출제: 약점 규칙 문항으로 채워 재구성 ── */
+    function collectPoolForReview() {
+      const source = state.allBanks || state.bank;
+      const pool = [];
+      ['낱말', '구절', '문장'].forEach(k => {
+        ((source && source[k]) || []).forEach(item => pool.push(Object.assign({}, item, { kind: k })));
+      });
+      return pool;
+    }
+
     $('#btnReviewSheet').addEventListener('click', () => {
       if (!state.results || state.results.wrongCount === 0) {
         showToast('틀린 문항이 없습니다. 축하합니다!');
         return;
       }
 
-      const wrongItems = state.items.filter((_, idx) => !state.results.corrects[idx]);
-      state.items = wrongItems.map(it => Object.assign({}, it));
+      const weakTags = Object.keys(state.results.byRule)
+        .filter(name => state.results.byRule[name].asked > 0 && state.results.byRule[name].wrong > 0)
+        .sort((a, b) => (state.results.byRule[b].wrong / state.results.byRule[b].asked) - (state.results.byRule[a].wrong / state.results.byRule[a].asked))
+        .slice(0, 2);
+
+      const wrongItems = state.items.filter((_, idx) => !state.results.corrects[idx]).map(it => Object.assign({}, it));
+      const excludeIds = new Set(state.items.map(it => it.id));
+
+      const candidatePool = collectPoolForReview()
+        .filter(it => !excludeIds.has(it.id) && it.tags && it.tags.some(t => weakTags.includes(t)));
+
+      const targetCount = Math.max(10, wrongItems.length);
+      const filler = shuffleArray(candidatePool).slice(0, Math.max(0, targetCount - wrongItems.length));
+
+      state.items = shuffleArray(wrongItems.concat(filler));
       state.inputs = state.items.map(() => '');
       state.results = null;
       state.readIndex = 0;
+      state.bank = { unit: weakTags.join('·') + ' 복습 급수표' };
 
       renderSheet();
       renderGradeGrid();
       renderReadCard();
       unlockSteps('grade');
       goto('sheet');
-      showToast('틀린 문항 ' + state.items.length + '개로 복습 급수표를 만들었습니다.');
+      showToast('약점 규칙(' + weakTags.join(', ') + ')로 복습 급수표 ' + state.items.length + '문항을 만들었습니다.');
     });
 
     /* ══════════════════════════════════════════════
@@ -1412,7 +1556,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       state.currentMode = 'textbook';
       textbookSections.forEach(el => { if (el) el.style.display = ''; });
       aiView.hidden = true;
-      goto('setup');
+      goto(state.lastTextbookView || 'setup');
     });
 
     // 백그라운드로 전체 데이터 미리 로드 (도움말 통계용)
