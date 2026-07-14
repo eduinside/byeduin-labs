@@ -1,0 +1,937 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+---
+<AppLayout
+  title="받아쓰기 도우미 — eduin VIVES"
+  description="단원·난이도별 받아쓰기 급수표를 만들어 A4로 인쇄하고, 정확한 발음 표기와 함께 불러주며, 음운규칙별로 어디서 틀렸는지 분석해 지도 방향을 제안합니다."
+  image="https://eduin.info/og-images/dictation.png"
+  bodyShell="column"
+  bodyWidth="medium"
+  bodyPrint={true}
+>
+  <Fragment slot="head">
+  <style is:global="">
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    body {
+      min-height: 100vh;
+      padding: 54px 1rem 5rem;
+      font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', 'Segoe UI', sans-serif;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .dt-root { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; }
+    .app-header { margin-bottom: 18px; }
+
+    /* ── 스텝 내비 ── */
+    .dt-steps {
+      display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+      margin-bottom: 22px; padding: 8px; border: 1px solid var(--border);
+      border-radius: 13px; background: var(--card-bg);
+    }
+    .dt-step {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 12px; border-radius: 9px; border: none; background: none;
+      font-size: 12px; font-weight: 600; color: var(--fg-muted);
+      cursor: pointer; font-family: inherit; transition: all 0.15s; white-space: nowrap;
+    }
+    .dt-step .dt-step-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--border); color: var(--fg-muted);
+      font-size: 10px; font-weight: 700;
+    }
+    .dt-step.active { background: rgba(0,111,238,0.1); color: var(--primary); }
+    .dt-step.active .dt-step-num { background: var(--primary); color: #fff; }
+    .dt-step.done .dt-step-num { background: var(--success); color: #fff; }
+    .dt-step:disabled { opacity: 0.45; cursor: not-allowed; }
+    .dt-step-sep { color: var(--border); font-size: 11px; user-select: none; }
+
+    /* ── 카드 · 섹션 ── */
+    .dt-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 16px; padding: 20px; margin-bottom: 16px;
+      animation: fadeUp 0.22s ease both;
+    }
+    .dt-section-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--fg-muted); margin: 0 0 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .dt-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .dt-label { display: block; font-size: 12px; font-weight: 600; color: var(--fg-muted); margin-bottom: 8px; }
+    .dt-field { margin-bottom: 18px; }
+    .dt-field:last-child { margin-bottom: 0; }
+
+    /* ── 버튼 ── */
+    .dt-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 9px 16px; border-radius: 10px; border: 1px solid var(--border);
+      background: var(--card-bg); color: var(--fg);
+      font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+      white-space: nowrap; transition: all 0.15s; min-height: 40px; text-decoration: none;
+    }
+    .dt-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .dt-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .dt-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .dt-btn.primary:hover { background: var(--primary-h); color: #fff; }
+    .dt-btn.ghost { background: none; }
+    .dt-btn.success { background: rgba(23,201,100,0.10); border-color: transparent; color: var(--success); }
+    .dt-btn.success:hover { background: rgba(23,201,100,0.20); }
+    .dt-btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+    .dt-btn-row .grow { flex: 1; }
+
+    /* ── 선택 칩 (유형·난이도) ── */
+    .dt-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .dt-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 14px; border-radius: 99px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--fg-muted);
+      font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: all 0.15s; user-select: none;
+    }
+    .dt-chip input { display: none; }
+    .dt-chip.on { background: rgba(0,111,238,0.1); border-color: var(--primary); color: var(--primary); }
+
+    /* ── 셀렉트 · 숫자 입력 ── */
+    .dt-select, .dt-number {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 12px; font-size: 14px;
+      color: var(--fg); outline: none; font-family: inherit; transition: border-color 0.2s;
+    }
+    .dt-select:focus, .dt-number:focus { border-color: var(--primary); }
+    .dt-count-wrap { display: flex; align-items: center; gap: 8px; }
+    .dt-count-wrap .dt-number { width: 84px; text-align: center; }
+    .dt-count-btn {
+      width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--fg); font-size: 17px; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: all 0.15s;
+    }
+    .dt-count-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── 태그 · 난이도 배지 ── */
+    .dt-tag {
+      display: inline-flex; align-items: center;
+      padding: 2px 8px; border-radius: 99px;
+      background: rgba(0,111,238,0.08); color: var(--primary);
+      font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap;
+    }
+    .dt-tag.none { background: var(--bg-sec); color: var(--fg-muted); }
+    .dt-diff { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+    .dt-diff.d1 { background: rgba(23,201,100,0.10); color: var(--success); }
+    .dt-diff.d2 { background: rgba(245,165,36,0.12); color: #f5a524; }
+    .dt-diff.d3 { background: rgba(243,18,96,0.10); color: var(--danger); }
+
+    /* ── 급수표 리스트 ── */
+    .dt-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+    .dt-toolbar .spacer { flex: 1; }
+    .dt-list { display: flex; flex-direction: column; gap: 6px; }
+    .dt-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border: 1px solid var(--border); border-radius: 11px;
+      background: var(--bg); animation: fadeUp 0.2s ease both;
+    }
+    .dt-item-num {
+      flex: none; width: 26px; height: 26px; border-radius: 8px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--bg-sec); color: var(--fg-muted);
+      font-size: 12px; font-weight: 700;
+    }
+    .dt-item-text { flex: 1; font-size: 14px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+    .dt-item-text.masked { color: var(--fg-muted); letter-spacing: 0.2em; }
+    .dt-item-meta { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+
+    /* ── 불러주기(교사 낭독) ── */
+    .dt-read-note {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; border-radius: 11px; margin-bottom: 14px;
+      background: rgba(245,165,36,0.10); color: #b45309;
+      font-size: 12.5px; font-weight: 600; line-height: 1.5;
+    }
+    [data-theme="dark"] .dt-read-note { color: #fbbf24; }
+    .dt-read-card {
+      text-align: center; padding: 34px 20px 28px;
+      border: 1px solid var(--border); border-radius: 16px; background: var(--bg);
+    }
+    .dt-read-kind { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); margin-bottom: 14px; }
+    .dt-read-text { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.4; overflow-wrap: anywhere; }
+    .dt-read-pron { margin-top: 10px; font-size: 16px; font-weight: 600; color: var(--primary); }
+    .dt-read-pron .lbl { font-size: 11px; font-weight: 700; color: var(--fg-muted); margin-right: 6px; letter-spacing: 0.08em; }
+    .dt-read-tags { margin-top: 16px; display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+    .dt-read-progress { margin: 18px 0 10px; }
+    .dt-progress-bar { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .dt-progress-fill { height: 100%; width: 0%; background: var(--primary); border-radius: 99px; transition: width 0.3s ease; }
+    .dt-read-counter { text-align: center; font-size: 12px; font-weight: 700; color: var(--fg-muted); margin-top: 8px; }
+    .dt-read-ctrl { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+
+    /* ── 채점 입력 그리드 ── */
+    .dt-grade-grid { display: flex; flex-direction: column; gap: 8px; }
+    .dt-grade-row { display: flex; align-items: center; gap: 10px; }
+    .dt-grade-row .dt-input {
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 12px; font-size: 15px;
+      color: var(--fg); outline: none; font-family: inherit; transition: border-color 0.2s; min-width: 0;
+    }
+    .dt-grade-row .dt-input:focus { border-color: var(--primary); }
+    .dt-grade-row .dt-input.ok { border-color: var(--success); background: rgba(23,201,100,0.06); }
+    .dt-grade-row .dt-input.bad { border-color: var(--danger); background: rgba(243,18,96,0.05); }
+    .dt-grade-mark { flex: none; width: 22px; text-align: center; font-size: 15px; font-weight: 700; }
+    .dt-grade-mark.ok { color: var(--success); }
+    .dt-grade-mark.bad { color: var(--danger); }
+
+    /* ── 결과 ── */
+    .dt-score-band { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+    .dt-score-tile {
+      flex: 1; min-width: 130px; text-align: center;
+      padding: 16px 10px; border: 1px solid var(--border); border-radius: 13px; background: var(--bg);
+    }
+    .dt-score-tile .v { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+    .dt-score-tile .v.good { color: var(--success); }
+    .dt-score-tile .v.warn { color: var(--danger); }
+    .dt-score-tile .k { font-size: 11px; font-weight: 700; color: var(--fg-muted); margin-top: 4px; letter-spacing: 0.06em; }
+    .dt-rule-rows { display: flex; flex-direction: column; gap: 10px; }
+    .dt-rule-row { display: grid; grid-template-columns: 110px 1fr 52px; align-items: center; gap: 10px; }
+    .dt-rule-row .name { font-size: 12.5px; font-weight: 700; }
+    .dt-rule-row .bar { height: 10px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .dt-rule-row .bar > i { display: block; height: 100%; background: var(--danger); border-radius: 99px; transition: width 0.4s ease; }
+    .dt-rule-row .bar > i.low { background: var(--success); }
+    .dt-rule-row .pct { font-size: 12px; font-weight: 700; color: var(--fg-muted); text-align: right; }
+    .dt-guide {
+      border: 1px solid var(--border); border-radius: 13px; background: var(--bg);
+      padding: 14px 16px; margin-bottom: 10px;
+    }
+    .dt-guide .g-rule { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+    .dt-guide .g-text { font-size: 13.5px; line-height: 1.65; }
+    .dt-guide .g-text .ex { color: var(--fg-muted); }
+    .dt-empty { text-align: center; color: var(--fg-muted); font-size: 13px; padding: 26px 0; }
+
+    /* ── 토스트 ── */
+    #fd-toast {
+      position: fixed; bottom: 2rem; left: 50%;
+      transform: translateX(-50%) translateY(1rem);
+      background: var(--fg); color: var(--bg);
+      padding: 10px 18px; border-radius: 10px;
+      font-size: 13px; font-weight: 600;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s; z-index: 9999;
+    }
+    #fd-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── 인쇄 (급수표 / 답안지) ── */
+    .dt-print-area { display: none; }
+    @media print {
+      body { padding: 0; background: #fff; }
+      body::before { display: none; }
+      .dt-root, .top-overlay, .top-overlay-left, #fd-toast { display: none !important; }
+      .dt-print-area.printing { display: block; }
+      .dt-print-sheet { font-family: 'Pretendard', sans-serif; color: #111; padding: 10mm 6mm; }
+      .dt-print-title { font-size: 18pt; font-weight: 700; margin-bottom: 2mm; }
+      .dt-print-sub { font-size: 10pt; color: #555; margin-bottom: 8mm; }
+      .dt-print-row { display: flex; align-items: baseline; gap: 5mm; padding: 3.2mm 0; border-bottom: 1px solid #ddd; break-inside: avoid; }
+      .dt-print-row .n { flex: none; width: 9mm; font-size: 12pt; font-weight: 700; }
+      .dt-print-row .t { font-size: 13pt; letter-spacing: 0.03em; }
+      .dt-print-row .blank { flex: 1; border-bottom: 1.2pt solid #999; min-height: 11mm; }
+      .dt-print-meta { display: flex; gap: 10mm; font-size: 10pt; margin-bottom: 6mm; }
+      .dt-print-meta .slot { border-bottom: 1pt solid #999; min-width: 34mm; display: inline-block; }
+    }
+
+    @media (max-width: 540px) {
+      .dt-read-text { font-size: 24px; }
+      .dt-rule-row { grid-template-columns: 88px 1fr 44px; }
+    }
+  </style>
+  </Fragment>
+
+  <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입합니다 -->
+  <main class="app-main">
+    <div class="dt-root">
+      <div class="app-header">
+        <div class="app-badge">◆ 학습지원</div>
+        <h1 class="app-title">✏️ 받아쓰기 도우미</h1>
+        <p class="app-desc">급수표를 만들어 인쇄하고, 정확한 발음으로 불러주고, 음운규칙별로 오류를 분석합니다.</p>
+      </div>
+
+      <!-- ── 스텝 내비 ── -->
+      <nav class="dt-steps" aria-label="진행 단계">
+        <button class="dt-step active" data-goto="setup"><span class="dt-step-num">1</span>출제</button>
+        <span class="dt-step-sep">›</span>
+        <button class="dt-step" data-goto="sheet" disabled><span class="dt-step-num">2</span>급수표</button>
+        <span class="dt-step-sep">›</span>
+        <button class="dt-step" data-goto="read" disabled><span class="dt-step-num">3</span>불러주기</button>
+        <span class="dt-step-sep">›</span>
+        <button class="dt-step" data-goto="grade" disabled><span class="dt-step-num">4</span>채점</button>
+        <span class="dt-step-sep">›</span>
+        <button class="dt-step" data-goto="result" disabled><span class="dt-step-num">5</span>결과</button>
+      </nav>
+
+      <!-- ══ VIEW 1 · 출제 ══ -->
+      <section id="view-setup" class="dt-view">
+        <div class="dt-card">
+          <h2 class="dt-section-title">출제 조건</h2>
+
+          <div class="dt-field">
+            <label class="dt-label" for="unitSelect">단원</label>
+            <select id="unitSelect" class="dt-select">
+              <optgroup label="1학년 1학기">
+                <option value="1-1-01">1학년 1학기 1단원 — 글자를 만들어요</option>
+                <option value="1-1-02">1학년 1학기 2단원 — 받침이 있는 글자를 읽어요</option>
+                <option value="1-1-03">1학년 1학기 3단원 — 낱말과 친해져요</option>
+                <option value="1-1-04">1학년 1학기 4단원 — 생각을 나타내요</option>
+                <option value="1-1-05">1학년 1학기 5단원 — 반갑게 인사해요</option>
+                <option value="1-1-06">1학년 1학기 6단원 — 받침이 있는 글자</option>
+                <option value="1-1-07">1학년 1학기 7단원 — 알맞은 낱말을 써요</option>
+              </optgroup>
+              <optgroup label="1학년 2학기">
+                <option value="1-2-01">1학년 2학기 1단원 — 소리 내어 또박또박 읽어요</option>
+                <option value="1-2-02">1학년 2학기 2단원 — 생각을 나타내요</option>
+                <option value="1-2-03">1학년 2학기 3단원 — 그림일기를 써요</option>
+                <option value="1-2-04">1학년 2학기 4단원 — 겪은 일을 말해요</option>
+                <option value="1-2-05">1학년 2학기 5단원 — 다정하게 인사해요</option>
+                <option value="1-2-06">1학년 2학기 6단원 — 받침이 있는 글자</option>
+                <option value="1-2-07">1학년 2학기 7단원 — 무엇이 중요할까요</option>
+                <option value="1-2-08">1학년 2학기 8단원 — 인물의 모습을 상상해요</option>
+              </optgroup>
+              <optgroup label="2학년 1학기">
+                <option value="2-1-01" selected>2학년 1학기 1단원 — 만나서 반가워요!</option>
+                <option value="2-1-02">2학년 1학기 2단원 — 말의 재미가 솔솔</option>
+                <option value="2-1-03">2학년 1학기 3단원 — 겪은 일을 나타내요</option>
+                <option value="2-1-04">2학년 1학기 4단원 — 분위기를 살려 읽어요</option>
+                <option value="2-1-05">2학년 1학기 5단원 — 마음을 짐작해요</option>
+                <option value="2-1-06">2학년 1학기 6단원 — 자신의 생각을 표현해요</option>
+                <option value="2-1-07">2학년 1학기 7단원 — 마음을 담아서 말해요</option>
+                <option value="2-1-08">2학년 1학기 8단원 — 다양한 작품을 감상해요</option>
+              </optgroup>
+              <optgroup label="2학년 2학기">
+                <option value="2-2-01">2학년 2학기 1단원 — 장면을 상상하며</option>
+                <option value="2-2-02">2학년 2학기 2단원 — 서로 존중해요</option>
+                <option value="2-2-03">2학년 2학기 3단원 — 내용을 살펴요</option>
+                <option value="2-2-04">2학년 2학기 4단원 — 마음을 전해요</option>
+                <option value="2-2-05">2학년 2학기 5단원 — 바른 말로</option>
+                <option value="2-2-06">2학년 2학기 6단원 — 자세히 설명해요</option>
+                <option value="2-2-07">2학년 2학기 7단원 — 일이 일어난 차례대로</option>
+                <option value="2-2-08">2학년 2학기 8단원 — 자랑스러운 우리 한글</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div class="dt-field">
+            <span class="dt-label">유형</span>
+            <div class="dt-chips" id="kindChips">
+              <label class="dt-chip on"><input type="checkbox" value="낱말" checked>낱말</label>
+              <label class="dt-chip on"><input type="checkbox" value="구절" checked>구절</label>
+              <label class="dt-chip on"><input type="checkbox" value="문장" checked>문장</label>
+            </div>
+          </div>
+
+          <div class="dt-field">
+            <span class="dt-label">난이도</span>
+            <div class="dt-chips" id="diffChips">
+              <label class="dt-chip on"><input type="checkbox" value="하" checked>하</label>
+              <label class="dt-chip on"><input type="checkbox" value="중" checked>중</label>
+              <label class="dt-chip on"><input type="checkbox" value="상" checked>상</label>
+            </div>
+          </div>
+
+          <div class="dt-field">
+            <label class="dt-label" for="countInput">문항 수</label>
+            <div class="dt-count-wrap">
+              <button type="button" class="dt-count-btn" data-count="-1" aria-label="문항 수 줄이기">−</button>
+              <input id="countInput" class="dt-number" type="number" min="1" max="40" value="10" inputmode="numeric">
+              <button type="button" class="dt-count-btn" data-count="1" aria-label="문항 수 늘리기">＋</button>
+            </div>
+          </div>
+
+          <div class="dt-field">
+            <span class="dt-label">순서</span>
+            <div class="dt-chips" id="orderChips">
+              <label class="dt-chip on"><input type="radio" name="order" value="shuffle" checked>섞기</label>
+              <label class="dt-chip"><input type="radio" name="order" value="original">원본 순서</label>
+            </div>
+          </div>
+
+          <div class="dt-btn-row">
+            <button id="btnGenerate" class="dt-btn primary grow">급수표 만들기</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ VIEW 2 · 급수표 ══ -->
+      <section id="view-sheet" class="dt-view" hidden>
+        <div class="dt-card">
+          <h2 class="dt-section-title">급수표 <span id="sheetUnitLabel" style="text-transform:none; letter-spacing:0;"></span></h2>
+
+          <div class="dt-toolbar">
+            <button id="btnReshuffle" class="dt-btn ghost">🔄 다시 뽑기</button>
+            <button id="btnToggleAnswer" class="dt-btn ghost" aria-pressed="true">정답 숨기기</button>
+            <span class="spacer"></span>
+            <button id="btnPrintSheet" class="dt-btn">🖨 급수표 인쇄</button>
+            <button id="btnPrintAnswer" class="dt-btn">🖨 답안지 인쇄</button>
+          </div>
+
+          <div id="sheetList" class="dt-list" aria-live="polite">
+            <!-- 문항 행은 JS가 렌더링 -->
+          </div>
+
+          <div class="dt-btn-row" style="margin-top: 16px;">
+            <button class="dt-btn primary grow" data-goto="read">📢 불러주기 시작</button>
+            <button class="dt-btn grow" data-goto="grade">바로 채점하기</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ VIEW 3 · 불러주기 (교사 낭독) ══ -->
+      <section id="view-read" class="dt-view" hidden>
+        <div class="dt-card">
+          <h2 class="dt-section-title">불러주기 — 교사 낭독</h2>
+
+          <div class="dt-read-note">
+            ⚠️ 이 화면은 선생님만 보세요. 프로젝터·화면 공유에 띄우지 마세요.
+          </div>
+
+          <div class="dt-read-card">
+            <div class="dt-read-kind" id="readKind">문장 · 난이도 중</div>
+            <div class="dt-read-text" id="readText">급수표를 먼저 만들어 주세요</div>
+            <div class="dt-read-pron" id="readPron"><span class="lbl">발음</span>[ — ]</div>
+            <div class="dt-read-tags" id="readTags"></div>
+          </div>
+
+          <div class="dt-read-progress">
+            <div class="dt-progress-bar"><div class="dt-progress-fill" id="readProgress"></div></div>
+            <div class="dt-read-counter" id="readCounter">0 / 0</div>
+          </div>
+
+          <div class="dt-read-ctrl">
+            <button id="btnReadPrev" class="dt-btn">← 이전</button>
+            <button id="btnReadRestart" class="dt-btn ghost">처음부터</button>
+            <button id="btnReadNext" class="dt-btn primary">다음 →</button>
+          </div>
+
+          <div class="dt-btn-row" style="margin-top: 18px;">
+            <button class="dt-btn success grow" data-goto="grade">불러주기 끝 — 채점으로 →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ VIEW 4 · 채점 ══ -->
+      <section id="view-grade" class="dt-view" hidden>
+        <div class="dt-card">
+          <h2 class="dt-section-title">채점 — 답안 입력</h2>
+          <p class="app-desc" style="margin: -4px 0 14px;">학생이 종이에 쓴 답을 그대로 입력하세요. 틀린 글자도 쓴 그대로 입력해야 정확히 분석됩니다.</p>
+
+          <div id="gradeGrid" class="dt-grade-grid">
+            <!-- 입력 행은 JS가 렌더링 -->
+          </div>
+
+          <div class="dt-btn-row" style="margin-top: 16px;">
+            <button id="btnGrade" class="dt-btn primary grow">채점하기</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ VIEW 5 · 결과 ══ -->
+      <section id="view-result" class="dt-view" hidden>
+        <div class="dt-card">
+          <h2 class="dt-section-title">결과 요약</h2>
+          <div class="dt-score-band">
+            <div class="dt-score-tile"><div class="v" id="resScore">—</div><div class="k">점수</div></div>
+            <div class="dt-score-tile"><div class="v good" id="resCorrect">—</div><div class="k">맞은 문항</div></div>
+            <div class="dt-score-tile"><div class="v warn" id="resWrong">—</div><div class="k">틀린 문항</div></div>
+          </div>
+        </div>
+
+        <div class="dt-card">
+          <h2 class="dt-section-title">음운규칙별 오답률</h2>
+          <div id="ruleRows" class="dt-rule-rows">
+            <div class="dt-empty">채점을 완료하면 규칙별 분석이 표시됩니다</div>
+          </div>
+        </div>
+
+        <div class="dt-card">
+          <h2 class="dt-section-title">지도 제안</h2>
+          <div id="guideBox">
+            <div class="dt-empty">오답률이 높은 규칙에 대한 지도 문구가 표시됩니다</div>
+          </div>
+          <div class="dt-btn-row" style="margin-top: 14px;">
+            <button id="btnReviewSheet" class="dt-btn success grow">🔁 이 규칙으로 복습 급수표 만들기</button>
+            <button class="dt-btn grow" data-goto="setup">처음으로</button>
+          </div>
+        </div>
+      </section>
+
+      <p class="app-desc" style="text-align:center; font-size: 11.5px; margin-top: 8px;">
+        답안과 결과는 이 기기(브라우저)에만 저장됩니다 · 서버로 전송되지 않습니다
+      </p>
+    </div>
+  </main>
+
+  <!-- ── 인쇄 전용 영역 ── -->
+  <div id="printSheet" class="dt-print-area">
+    <div class="dt-print-sheet">
+      <div class="dt-print-title">받아쓰기 급수표</div>
+      <div class="dt-print-sub" id="printSheetUnit">단원</div>
+      <div id="printSheetRows"><!-- JS 렌더링: 번호 + 정답 텍스트 --></div>
+    </div>
+  </div>
+  <div id="printAnswer" class="dt-print-area">
+    <div class="dt-print-sheet">
+      <div class="dt-print-title">받아쓰기</div>
+      <div class="dt-print-meta">
+        <span>이름: <span class="slot"></span></span>
+        <span>날짜: <span class="slot"></span></span>
+        <span>점수: <span class="slot"></span></span>
+      </div>
+      <div id="printAnswerRows"><!-- JS 렌더링: 번호 + 빈칸 --></div>
+    </div>
+  </div>
+
+  <div id="fd-toast"></div>
+
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"받아쓰기 도우미","description":"단원·난이도별 받아쓰기 급수표를 만들어 A4로 인쇄하고, 정확한 발음 표기와 함께 불러주며, 음운규칙별로 어디서 틀렸는지 분석해 지도 방향을 제안합니다.","url":"https://eduin.info/apps/dictation/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+
+  <script is:inline="">
+  (function () {
+    'use strict';
+
+    /* ── 전역 상태 (하위 기능이 공유) ── */
+    const state = {
+      unit: '2-1-01',
+      bank: null,          // fetch된 sentence-bank
+      items: [],           // 이번 급수표 문항 (정규화된 Item[])
+      inputs: [],          // 채점 입력값
+      results: null,       // 채점 결과 {score, corrects, wrongCount, byRule}
+      showAnswers: true,
+      readIndex: 0,
+    };
+
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const DIFF_CLASS = { '하': 'd1', '중': 'd2', '상': 'd3' };
+
+    let _toastTimer;
+    function showToast(msg) {
+      const el = $('#fd-toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+    }
+
+    /* ── 뷰 전환 ── */
+    const VIEWS = ['setup', 'sheet', 'read', 'grade', 'result'];
+    function goto(view) {
+      VIEWS.forEach((v) => { $('#view-' + v).hidden = (v !== view); });
+      $$('.dt-step').forEach((btn) => {
+        const v = btn.dataset.goto;
+        btn.classList.toggle('active', v === view);
+        btn.classList.toggle('done', VIEWS.indexOf(v) < VIEWS.indexOf(view));
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function unlockSteps(upto) {
+      const max = VIEWS.indexOf(upto);
+      $$('.dt-step').forEach((btn) => {
+        btn.disabled = VIEWS.indexOf(btn.dataset.goto) > max;
+      });
+    }
+
+    /* ── 칩 토글 ── */
+    $$('.dt-chip input').forEach((input) => {
+      input.addEventListener('change', () => {
+        if (input.type === 'radio') {
+          input.closest('.dt-chips').querySelectorAll('.dt-chip').forEach((c) => c.classList.remove('on'));
+        }
+        input.closest('.dt-chip').classList.toggle('on', input.checked);
+      });
+    });
+
+    /* ── 문항 수 ± ── */
+    $$('.dt-count-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const el = $('#countInput');
+        el.value = Math.min(40, Math.max(1, (parseInt(el.value, 10) || 10) + parseInt(btn.dataset.count, 10)));
+      });
+    });
+
+    /* ── 데이터 로더 ── */
+    function loadUnit(unitCode) {
+      fetch('/apps/dictation/data/unit-' + unitCode + '.json')
+        .then(r => {
+          if (!r.ok) throw new Error('데이터를 불러오지 못했습니다.');
+          return r.json();
+        })
+        .then(bank => {
+          state.bank = bank;
+          state.unit = unitCode;
+          showToast(bank.unit + ' 데이터를 로드했습니다.');
+        })
+        .catch(err => {
+          showToast('오류: ' + err.message);
+        });
+    }
+
+    // Select box change handler
+    $('#unitSelect').addEventListener('change', (e) => {
+      loadUnit(e.target.value);
+    });
+
+    // Helper for shuffling
+    function shuffleArray(array) {
+      const arr = array.slice();
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    /* ── 급수표 생성 ── */
+    function generateItems() {
+      if (!state.bank) {
+        showToast('단원 데이터 로딩 중입니다. 잠시만 기다려 주세요.');
+        return;
+      }
+
+      // Read filter options
+      const kinds = $$('#kindChips .dt-chip.on input').map(el => el.value);
+      const diffs = $$('#diffChips .dt-chip.on input').map(el => el.value);
+      const count = parseInt($('#countInput').value, 10) || 10;
+      const order = $('#orderChips .dt-chip.on input').value; // 'shuffle' or 'original'
+
+      if (kinds.length === 0) {
+        showToast('최소 하나의 유형을 선택해 주세요.');
+        return;
+      }
+      if (diffs.length === 0) {
+        showToast('최소 하나의 난이도를 선택해 주세요.');
+        return;
+      }
+
+      // Collect items from bank based on kind and diff
+      let pool = [];
+      kinds.forEach(k => {
+        const arr = state.bank[k] || [];
+        arr.forEach(item => {
+          if (diffs.includes(item.difficulty)) {
+            pool.push(Object.assign({}, item, { kind: k }));
+          }
+        });
+      });
+
+      if (pool.length === 0) {
+        showToast('조건에 맞는 문항이 없습니다. 조건을 넓혀 주세요.');
+        return;
+      }
+
+      // Order items
+      let selected = [];
+      if (order === 'shuffle') {
+        selected = shuffleArray(pool);
+      } else {
+        selected = pool;
+      }
+
+      // Limit count
+      selected = selected.slice(0, count);
+
+      state.items = selected;
+      state.inputs = selected.map(() => '');
+      state.results = null;
+      state.readIndex = 0;
+
+      renderSheet();
+      renderGradeGrid();
+      renderReadCard();
+      unlockSteps('grade');
+      goto('sheet');
+      showToast('급수표 ' + state.items.length + '문항 생성 완료.');
+    }
+
+    $('#btnGenerate').addEventListener('click', generateItems);
+    $('#btnReshuffle').addEventListener('click', () => {
+      generateItems();
+      showToast('다시 뽑기 완료.');
+    });
+
+    /* ── 급수표 렌더링 ── */
+    function renderSheet() {
+      if (!state.bank) return;
+      $('#sheetUnitLabel').textContent = '· ' + state.bank.unit + ' · ' + state.items.length + '문항';
+      $('#sheetList').innerHTML = state.items.map((it, i) =>
+        '<div class="dt-item" style="animation-delay:' + (i * 0.03) + 's">' +
+          '<span class="dt-item-num">' + (i + 1) + '</span>' +
+          '<span class="dt-item-text' + (state.showAnswers ? '' : ' masked') + '">' +
+            (state.showAnswers ? esc(it.text) : '●●●●●') + '</span>' +
+          '<span class="dt-item-meta">' +
+            it.tags.map((t) => '<span class="dt-tag' + (t.indexOf('없음') >= 0 ? ' none' : '') + '">' + esc(t) + '</span>').join('') +
+            '<span class="dt-diff ' + DIFF_CLASS[it.difficulty] + '">' + it.difficulty + '</span>' +
+          '</span>' +
+        '</div>'
+      ).join('');
+    }
+    $('#btnToggleAnswer').addEventListener('click', (e) => {
+      state.showAnswers = !state.showAnswers;
+      e.currentTarget.textContent = state.showAnswers ? '정답 숨기기' : '정답 보이기';
+      e.currentTarget.setAttribute('aria-pressed', String(state.showAnswers));
+      renderSheet();
+    });
+
+    /* ── 인쇄 ── */
+    function printArea(id, rowsHtml) {
+      const area = $('#' + id);
+      area.querySelector('[id$="Rows"]').innerHTML = rowsHtml;
+      area.classList.add('printing');
+      window.print();
+      area.classList.remove('printing');
+    }
+    $('#btnPrintSheet').addEventListener('click', () => {
+      if (!state.bank) return;
+      $('#printSheetUnit').textContent = state.bank.unit;
+      printArea('printSheet', state.items.map((it, i) =>
+        '<div class="dt-print-row"><span class="n">' + (i + 1) + '</span><span class="t">' + esc(it.text) + '</span></div>'
+      ).join(''));
+    });
+    $('#btnPrintAnswer').addEventListener('click', () => {
+      printArea('printAnswer', state.items.map((_, i) =>
+        '<div class="dt-print-row"><span class="n">' + (i + 1) + '</span><span class="blank"></span></div>'
+      ).join(''));
+    });
+
+    /* ── 불러주기(교사 낭독) 카드 ── */
+    function renderReadCard() {
+      const n = state.items.length;
+      if (!n) return;
+      const it = state.items[state.readIndex];
+      $('#readKind').textContent = it.kind + ' · 난이도 ' + it.difficulty;
+      $('#readText').textContent = it.text;
+      $('#readPron').innerHTML = '<span class="lbl">발음</span>' + esc(it.pron || '[' + it.text.replace(/[.,!?…“”"\'()·]/g, '') + ']');
+      $('#readTags').innerHTML = it.tags.map((t) =>
+        '<span class="dt-tag' + (t.indexOf('없음') >= 0 ? ' none' : '') + '">' + esc(t) + '</span>').join('');
+      $('#readProgress').style.width = ((state.readIndex + 1) / n * 100) + '%';
+      $('#readCounter').textContent = (state.readIndex + 1) + ' / ' + n;
+      $('#btnReadPrev').disabled = state.readIndex === 0;
+      $('#btnReadNext').disabled = state.readIndex === n - 1;
+    }
+    $('#btnReadPrev').addEventListener('click', () => { state.readIndex = Math.max(0, state.readIndex - 1); renderReadCard(); });
+    $('#btnReadNext').addEventListener('click', () => { state.readIndex = Math.min(state.items.length - 1, state.readIndex + 1); renderReadCard(); });
+    $('#btnReadRestart').addEventListener('click', () => { state.readIndex = 0; renderReadCard(); });
+
+    /* ── 채점 입력 그리드 ── */
+    function renderGradeGrid() {
+      $('#gradeGrid').innerHTML = state.items.map((_, i) =>
+        '<div class="dt-grade-row">' +
+          '<span class="dt-item-num">' + (i + 1) + '</span>' +
+          '<input class="dt-input" data-idx="' + i + '" placeholder="학생이 쓴 그대로" autocomplete="off">' +
+          '<span class="dt-grade-mark" data-mark="' + i + '"></span>' +
+        '</div>'
+      ).join('');
+    }
+
+    // Clean text for comparative grading (exclude spacing and punctuation)
+    function cleanKoreanString(s) {
+      return s.replace(/[.,!?…“”"\'()·\-\s]/g, '');
+    }
+
+    $('#btnGrade').addEventListener('click', () => {
+      let correct = 0;
+      const corrects = [];
+      
+      $$('#gradeGrid .dt-input').forEach((input) => {
+        const i = parseInt(input.dataset.idx, 10);
+        const userVal = input.value.trim();
+        state.inputs[i] = userVal;
+        
+        const ok = cleanKoreanString(userVal) === cleanKoreanString(state.items[i].text);
+        corrects.push(ok);
+        
+        input.classList.toggle('ok', ok);
+        input.classList.toggle('bad', !ok);
+        const mark = document.querySelector('[data-mark="' + i + '"]');
+        mark.textContent = ok ? '○' : '✕';
+        mark.className = 'dt-grade-mark ' + (ok ? 'ok' : 'bad');
+        if (ok) correct++;
+      });
+      
+      const n = state.items.length;
+      $('#resScore').textContent = Math.round(correct / n * 100) + '점';
+      $('#resCorrect').textContent = correct;
+      $('#resWrong').textContent = n - correct;
+
+      // Aggregate phonological rules mistakes
+      const ruleErrors = {
+        '연음화': { wrong: 0, asked: 0 },
+        '경음화': { wrong: 0, asked: 0 },
+        '격음화': { wrong: 0, asked: 0 },
+        '비음화': { wrong: 0, asked: 0 },
+        '겹받침_단순화': { wrong: 0, asked: 0 },
+        '받침없음/규칙없음': { wrong: 0, asked: 0 }
+      };
+
+      state.items.forEach((it, i) => {
+        const isWrong = !corrects[i];
+        it.tags.forEach(t => {
+          if (ruleErrors[t] !== undefined) {
+            ruleErrors[t].asked++;
+            if (isWrong) {
+              ruleErrors[t].wrong++;
+            }
+          }
+        });
+      });
+
+      state.results = {
+        score: Math.round(correct / n * 100),
+        corrects: corrects,
+        wrongCount: n - correct,
+        byRule: ruleErrors
+      };
+
+      renderResult(ruleErrors);
+      saveAttempt();
+      unlockSteps('result');
+      goto('result');
+    });
+
+    /* ── 결과 분석 및 지도안 렌더링 ── */
+    const GUIDE_TEMPLATES = {
+      '연음화': {
+        title: '연음화 — 오답률 최다',
+        text: '받침이 뒤 글자로 넘어가 소리 나는 낱말을 어려워해요. ‘꽃잎[꼰닙]’이나 ‘무릎이[무르피]’처럼 소리와 표기가 다름을 인지하고, 글자의 원형을 살려 적는 연습을 해 주세요.'
+      },
+      '경음화': {
+        title: '경음화 — 오답률 최다',
+        text: '된소리로 발음되지만 예사소리로 적는 문항에서 실수합니다. ‘학교[학꾜]’나 ‘신발 끈[신발 끈]’처럼 발음과 적는 법이 어떻게 다른지 소리 내어 확인하는 활동이 좋습니다.'
+      },
+      '격음화': {
+        title: '격음화 — 오답률 최다',
+        text: '거센소리로 축약되어 발음되는 단어에서 표기가 혼동될 수 있습니다. ‘축하[추카]’나 ‘따뜻해[따뜨태]’처럼 원형의 받침(ㅎ, ㄷ 등)을 의식해서 바르게 적도록 지도해 주세요.'
+      },
+      '비음화': {
+        title: '비음화 — 오답률 최다',
+        text: '받침이 자음 동화되어 ㄴ이나 ㅁ 등으로 발음되는 현상입니다. ‘낱말[난말]’이나 ‘입니다[임니다]’처럼 소리 나는 대로 받아적지 않도록 받침을 짚어 설명해 주세요.'
+      },
+      '겹받침_단순화': {
+        title: '겹받침 단순화 — 오답률 최다',
+        text: '두 개의 받침 중 하나만 소리 나는 낱말에서 받침 중 하나를 빠뜨리기 쉽습니다. ‘넓고[널고]’나 ‘앉아[안자]’처럼 겹받침의 표기를 소리 내어 읽으며 암기하도록 지도해 주세요.'
+      },
+      '받침없음/규칙없음': {
+        title: '기초 낱말 쓰기 — 오답률 최다',
+        text: '기본적인 받침이나 표기에서 실수하고 있습니다. 틀린 낱말을 소리 내어 천천히 읽어보고 한 글자씩 또박또박 써 보며 글자의 모양을 익히도록 도와주세요.'
+      }
+    };
+
+    function renderResult(ruleErrors) {
+      const listHtml = Object.keys(ruleErrors).map(name => {
+        const stats = ruleErrors[name];
+        const pct = stats.asked > 0 ? Math.round((stats.wrong / stats.asked) * 100) : 0;
+        return { name, pct, asked: stats.asked };
+      })
+      .filter(row => row.asked > 0)
+      .map(row => {
+        return '<div class="dt-rule-row">' +
+          '<span class="name">' + esc(row.name) + '</span>' +
+          '<span class="bar"><i class="' + (row.pct < 34 ? 'low' : '') + '" style="width:' + row.pct + '%"></i></span>' +
+          '<span class="pct">' + row.pct + '%</span>' +
+        '</div>';
+      }).join('');
+
+      $('#ruleRows').innerHTML = listHtml || '<div class="dt-empty">충분한 음운 규칙 데이터가 없습니다.</div>';
+
+      // Find worst rule tag (highest error percentage)
+      let worstTag = '받침없음/규칙없음';
+      let maxPct = -1;
+      Object.keys(ruleErrors).forEach(name => {
+        const stats = ruleErrors[name];
+        const pct = stats.asked > 0 ? (stats.wrong / stats.asked) : 0;
+        if (stats.asked > 0 && pct > maxPct) {
+          maxPct = pct;
+          worstTag = name;
+        }
+      });
+
+      const guide = GUIDE_TEMPLATES[worstTag] || GUIDE_TEMPLATES['받침없음/규칙없음'];
+      $('#guideBox').innerHTML =
+        '<div class="dt-guide">' +
+          '<div class="g-rule">' + esc(guide.title) + '</div>' +
+          '<div class="g-text">' + esc(guide.text) + '</div>' +
+        '</div>';
+    }
+
+    /* ── localStorage 회차 저장 ── */
+    function saveAttempt() {
+      if (!state.results) return;
+      try {
+        const saved = localStorage.getItem('dictation:attempts');
+        const list = saved ? jsonParseSafe(saved) || [] : [];
+        
+        const attempt = {
+          at: new Date().toISOString(),
+          unit: state.unit,
+          items: state.items.map((it, idx) => ({
+            id: it.id,
+            correct: state.results.corrects[idx],
+            input: state.inputs[idx],
+            wrongTags: state.results.corrects[idx] ? [] : it.tags
+          })),
+          byRule: state.results.byRule
+        };
+        
+        list.push(attempt);
+        localStorage.setItem('dictation:attempts', JSON.stringify(list));
+      } catch (err) {
+        console.error('LocalStorage 저장 오류:', err);
+      }
+    }
+
+    function jsonParseSafe(s) {
+      try { return JSON.parse(s); } catch (e) { return null; }
+    }
+
+    /* ── 복습 급수표 재출제 ── */
+    $('#btnReviewSheet').addEventListener('click', () => {
+      if (!state.results || state.results.wrongCount === 0) {
+        showToast('틀린 문항이 없습니다. 축하합니다!');
+        return;
+      }
+
+      const wrongItems = state.items.filter((_, idx) => !state.results.corrects[idx]);
+      state.items = wrongItems.map(it => Object.assign({}, it));
+      state.inputs = state.items.map(() => '');
+      state.results = null;
+      state.readIndex = 0;
+
+      renderSheet();
+      renderGradeGrid();
+      renderReadCard();
+      unlockSteps('grade');
+      goto('sheet');
+      showToast('틀린 문항 ' + state.items.length + '개로 복습 급수표를 만들었습니다.');
+    });
+
+    /* ── 스텝/이동 버튼 공통 바인딩 ── */
+    $$('[data-goto]').forEach((btn) => {
+      btn.addEventListener('click', () => { if (!btn.disabled) goto(btn.dataset.goto); });
+    });
+
+    // Initial data load on startup
+    loadUnit('2-1-01');
+
+    /* 하위 기능 구현 편의를 위한 진입점 노출 */
+    window.DT = { state, goto, renderSheet, renderReadCard, renderGradeGrid, showToast, loadUnit };
+  })();
+  </script>
+</AppLayout>
