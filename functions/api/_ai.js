@@ -194,19 +194,19 @@ export async function generateImage({ prompt, env, request = null }) {
   }
 
   console.log('🤖 [AI Service] Calling direct Gemini Image API...');
-  const geminiModel = 'gemini-3.1-flash-image-preview';
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`, {
+  const geminiModel = 'imagen-3.0-generate-002';
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:predict?key=${geminiKey}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      contents: [{
-        role: 'user',
-        parts: [{ text: `Optimize image size and quality for fast generation:\n${prompt}` }]
-      }],
-      generationConfig: {
-        temperature: 0.8,
+      instances: [{ prompt: prompt }],
+      parameters: {
+        sampleCount: 1,
+        outputOptions: {
+          mimeType: 'image/png'
+        }
       }
     }),
   });
@@ -217,7 +217,7 @@ export async function generateImage({ prompt, env, request = null }) {
     throw new Error(`AI 이미지 생성 실패 (Gemini): ${data?.error?.message || res.statusText}`);
   }
 
-  const imageData = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  const imageData = data?.predictions?.[0]?.bytesBase64Encoded;
   if (!imageData) {
     throw new Error('Gemini 이미지 응답이 비어 있습니다.');
   }
