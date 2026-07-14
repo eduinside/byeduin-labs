@@ -630,37 +630,44 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     // 전체 이미지 스캔
     const result = window.jsQR(data, width, height);
-    if (result && !scanned.has(result.data)) {
+    if (result && result.data && !scanned.has(result.data)) {
       results.push({ rawData: result.data });
       scanned.add(result.data);
     }
 
-    // 그리드로 나누어 추가 스캔 (4개 영역)
+    // 그리드로 나누어 추가 스캔 (4개 영역) — 홀수 크기 이미지 대비 정수로 내림
+    const halfW = Math.floor(width / 2);
+    const halfH = Math.floor(height / 2);
+    if (halfW < 16 || halfH < 16) return results;
+
     const regions = [
-      { x: 0, y: 0, w: width/2, h: height/2 },
-      { x: width/2, y: 0, w: width/2, h: height/2 },
-      { x: 0, y: height/2, w: width/2, h: height/2 },
-      { x: width/2, y: height/2, w: width/2, h: height/2 }
+      { x: 0, y: 0, w: halfW, h: halfH },
+      { x: width - halfW, y: 0, w: halfW, h: halfH },
+      { x: 0, y: height - halfH, w: halfW, h: halfH },
+      { x: width - halfW, y: height - halfH, w: halfW, h: halfH }
     ];
 
     regions.forEach(region => {
-      const regionData = new Uint8ClampedArray(region.w * region.h * 4);
-      for (let y = 0; y < region.h; y++) {
-        for (let x = 0; x < region.w; x++) {
-          const srcIdx = ((region.y + y) * width + (region.x + x)) * 4;
-          const dstIdx = (y * region.w + x) * 4;
-          regionData[dstIdx] = data[srcIdx];
-          regionData[dstIdx + 1] = data[srcIdx + 1];
-          regionData[dstIdx + 2] = data[srcIdx + 2];
-          regionData[dstIdx + 3] = data[srcIdx + 3];
+      try {
+        const regionData = new Uint8ClampedArray(region.w * region.h * 4);
+        for (let y = 0; y < region.h; y++) {
+          for (let x = 0; x < region.w; x++) {
+            const srcIdx = ((region.y + y) * width + (region.x + x)) * 4;
+            const dstIdx = (y * region.w + x) * 4;
+            regionData[dstIdx] = data[srcIdx];
+            regionData[dstIdx + 1] = data[srcIdx + 1];
+            regionData[dstIdx + 2] = data[srcIdx + 2];
+            regionData[dstIdx + 3] = data[srcIdx + 3];
+          }
         }
-      }
 
-      const regionImageData = new ImageData(regionData, region.w, region.h);
-      const r = window.jsQR(regionImageData.data, regionImageData.width, regionImageData.height);
-      if (r && !scanned.has(r.data)) {
-        results.push({ rawData: r.data });
-        scanned.add(r.data);
+        const r = window.jsQR(regionData, region.w, region.h);
+        if (r && r.data && !scanned.has(r.data)) {
+          results.push({ rawData: r.data });
+          scanned.add(r.data);
+        }
+      } catch {
+        // 영역 하나가 실패해도 나머지 결과는 유지
       }
     });
 
@@ -709,42 +716,84 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     switchTab('scan');
 
+    const objectUrl = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const results = scanMultipleQRs(imageData);
+      URL.revokeObjectURL(objectUrl);
+      const results = scanStillImage(img);
 
       if (results && results.length > 0) {
         onScanSuccess(results, tool);
       } else {
-        showToast('QR 코드를 찾을 수 없습니다.');
+        showToast('QR 코드를 찾을 수 없습니다. QR이 더 크고 선명하게 보이도록 잘라서 시도해 보세요.');
       }
     };
 
-    img.onerror = () => showToast('이미지를 불러올 수 없습니다.');
-    img.src = URL.createObjectURL(file);
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      showToast('이미지를 불러올 수 없습니다.');
+    };
+    img.src = objectUrl;
+  }
+
+  // 정지 이미지는 해상도가 너무 크거나 작으면 인식률이 떨어지므로 여러 배율로 재시도
+  function scanStillImage(img) {
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    if (!w || !h) return [];
+
+    const longest = Math.max(w, h);
+    const targets = [...new Set([
+      Math.min(longest, 1000),
+      Math.min(longest, 1800),
+      longest < 300 ? 600 : longest
+    ])];
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    for (const target of targets) {
+      const scale = target / longest;
+      canvas.width = Math.max(1, Math.round(w * scale));
+      canvas.height = Math.max(1, Math.round(h * scale));
+      ctx.imageSmoothingEnabled = scale < 1;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const results = scanMultipleQRs(imageData);
+        if (results.length > 0) return results;
+      } catch {
+        // 이 배율에서 실패하면 다음 배율로 계속
+      }
+    }
+    return [];
   }
 
   function handlePasteEvent(e) {
-    e.preventDefault();
+    if (!e.clipboardData) return;
 
     // 이미지 처리 (모든 탭에서 이미지는 스캔하기로)
     for (const item of e.clipboardData.items) {
       if (item.type.startsWith('image/')) {
-        scanImageFile(new File([item.getAsFile()], 'paste.png', { type: item.type }), 'clipboard');
-        return;
+        const file = item.getAsFile();
+        if (file) {
+          e.preventDefault();
+          scanImageFile(file, 'clipboard');
+          return;
+        }
       }
     }
 
     // 텍스트 처리
-    const text = e.clipboardData.getData('text/plain').trim();
+    const text = (e.clipboardData.getData('text/plain') || '').trim();
     if (!text || text.length === 0) return;
+
+    // 입력란에 붙여넣는 중이면 브라우저 기본 동작에 맡김
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+
+    e.preventDefault();
 
     // 현재 활성 탭 확인
     const isGenerateTabActive = document.getElementById('tabBtnGenerate').classList.contains('active');
