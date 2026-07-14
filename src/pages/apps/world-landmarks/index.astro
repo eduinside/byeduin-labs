@@ -3,7 +3,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 ---
 <AppLayout 
   title="세계 탐험대 — eduin VIVES"
-  description="3D 위성지도로 세계 랜드마크 11곳 탐험, 나라별 국기·문화를 알아보는 여권 수집 여행"
+  description="3D 위성지도로 세계 랜드마크 11곳을 탐험하고, 24개국의 국기·수도·음식·문화를 살펴보며 조사 보고서를 완성하는 세계 여러 나라 학습 앱"
   image="https://eduin.info/og-images/world-landmarks.png"
   bodyShell="immersive"
 >
@@ -13,6 +13,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <link href="https://fonts.googleapis.com/css2?family=Jua&amp;family=Gowun+Dodum&amp;display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js" crossorigin="anonymous" is:inline=""></script>
+  <script src="/apps/world-landmarks/countries.js" is:inline=""></script>
   <style is:global="">
 /* ── world-landmarks 전용 스타일 (immersive 전체화면) ── */
 :root {
@@ -303,6 +304,167 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeOutLater { 0%, 70% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
 
+/* ══ 조사 보고서 모드 ══ */
+.research-wrap { max-width: 860px; margin: 0 auto; padding: 20px 16px 80px; animation: fadeUp .4s ease both; }
+.research-top { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.research-top h1 { font-size: 26px; color: var(--navy); flex: 1; }
+.back-link {
+  font-family: 'Jua', sans-serif; font-size: 14px; color: var(--navy); background: var(--paper);
+  border: 2px solid var(--border); border-radius: 99px; padding: 8px 16px; cursor: pointer;
+  transition: transform .12s; -webkit-tap-highlight-color: transparent;
+}
+.back-link:active { transform: scale(.95); }
+.extlink-notice {
+  background: #eef4fb; border: 2px solid #9cc0e8; border-radius: 14px; color: #2c5685;
+  font-size: 13px; line-height: 1.6; padding: 10px 14px; margin-bottom: 16px;
+}
+[data-theme="dark"] .extlink-notice { background: #16202e; border-color: #2c5685; color: #9cc0e8; }
+
+/* 보고서 쓰는 순서 */
+.howto-card {
+  background: var(--paper); border: 3px dashed var(--gold); border-radius: var(--radius);
+  padding: 16px 18px; margin-bottom: 20px; box-shadow: var(--shadow);
+}
+.howto-card h3 { font-size: 17px; color: var(--navy); margin-bottom: 10px; }
+.howto-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.howto-step { background: var(--cream); border-radius: 12px; padding: 10px 8px; text-align: center; font-size: 12.5px; line-height: 1.5; }
+.howto-step .step-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; background: var(--gold); color: var(--navy);
+  font-family: 'Jua'; font-size: 12px; margin-bottom: 4px;
+}
+
+/* 대륙 필터 탭 */
+.continent-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.continent-tab {
+  font-family: 'Jua', sans-serif; font-size: 13.5px; padding: 8px 14px; border-radius: 99px;
+  border: 2px solid var(--border); background: var(--paper); color: var(--navy); cursor: pointer;
+  transition: transform .12s, background .15s; -webkit-tap-highlight-color: transparent;
+}
+.continent-tab:active { transform: scale(.95); }
+.continent-tab.active { background: var(--navy); color: var(--gold); border-color: var(--navy); }
+.continent-tab .cnt { opacity: .65; font-size: 12px; margin-left: 3px; }
+
+/* 나라 카드 그리드 */
+.country-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.country-card {
+  background: var(--paper); border: 2px solid var(--border); border-radius: 18px;
+  padding: 16px 14px; text-align: center; cursor: pointer; box-shadow: var(--shadow);
+  transition: transform .15s, border-color .15s; -webkit-tap-highlight-color: transparent;
+}
+.country-card:hover { transform: translateY(-3px); border-color: var(--gold); }
+.country-card:active { transform: scale(.97); }
+.country-card .country-name { font-family: 'Jua'; font-size: 17px; color: var(--navy); margin-top: 8px; }
+.country-card .country-sub { font-size: 12px; opacity: .65; margin-top: 2px; }
+.country-card .country-progress { font-size: 11.5px; margin-top: 8px; color: var(--stamp-green); font-weight: 700; }
+.country-card .country-progress.zero { color: var(--navy); opacity: .45; font-weight: 500; }
+
+/* 국기 이미지 (flagcdn + 이모지 폴백) — 흰 배경 국기 대비 테두리 필수 */
+.flag-img {
+  width: 72px; height: 48px; object-fit: contain; border: 1px solid var(--border);
+  border-radius: 6px; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.08);
+}
+.flag-img.flag-lg { width: 120px; height: 80px; border-radius: 8px; }
+.flag-fallback { font-size: 44px; line-height: 48px; }
+
+/* 나라 상세 */
+.country-head {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  border-radius: var(--radius); color: #fff; padding: 22px 20px; text-align: center;
+  margin-bottom: 14px; position: relative; overflow: hidden;
+}
+.country-head::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 80% -20%, rgba(224,169,109,0.35) 0, transparent 55%);
+}
+.country-head > * { position: relative; z-index: 1; }
+.country-head h1 { font-size: 30px; margin: 10px 0 4px; color: #fff; }
+.country-head .head-sub { font-size: 14px; opacity: .85; }
+.country-head .explore-link {
+  display: inline-block; margin-top: 12px; font-family: 'Jua'; font-size: 14px;
+  background: var(--gold); color: #0d1b2a; border: none; border-radius: 99px; padding: 9px 20px;
+  cursor: pointer; transition: transform .12s; -webkit-tap-highlight-color: transparent;
+}
+.country-head .explore-link:active { transform: scale(.95); }
+
+/* 조사 진행률 바 */
+.research-progress { margin-bottom: 16px; }
+.research-progress .progress-track { height: 12px; background: var(--paper); border: 1px solid var(--border); border-radius: 99px; overflow: hidden; }
+
+/* 조사 항목 섹션 */
+.report-section {
+  background: var(--paper); border: 2px solid var(--border); border-radius: 18px;
+  padding: 16px 18px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+}
+.report-section.checked { border-color: var(--stamp-green); }
+.report-section-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.report-section-head h3 { font-size: 18px; color: var(--navy); flex: 1; }
+.check-btn {
+  font-family: 'Jua', sans-serif; font-size: 12.5px; white-space: nowrap;
+  border: 2px solid var(--border); background: var(--cream); color: var(--navy);
+  border-radius: 99px; padding: 7px 13px; cursor: pointer; transition: transform .12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.check-btn:active { transform: scale(.94); }
+.check-btn.on { background: #e3f5ea; border-color: var(--stamp-green); color: var(--stamp-green); }
+[data-theme="dark"] .check-btn.on { background: #14291d; }
+.report-section p.section-desc { font-size: 14.5px; line-height: 1.75; }
+.report-flag-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.report-flag-row p { flex: 1; min-width: 200px; }
+
+/* 항목 미니 카드 (음식·자랑거리·문화 2개씩) */
+.item-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.item-card { background: var(--cream); border-radius: 14px; padding: 12px; }
+.item-card .item-title { font-family: 'Jua'; font-size: 15px; color: var(--navy); margin-bottom: 4px; }
+.item-card .item-desc { font-size: 13px; line-height: 1.6; opacity: .85; }
+
+/* 인사말 */
+.greeting-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.greeting-word { font-family: 'Jua'; font-size: 24px; color: var(--navy); }
+.greeting-speak {
+  width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid var(--border);
+  background: var(--paper); font-size: 18px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: transform .12s; -webkit-tap-highlight-color: transparent;
+}
+.greeting-speak:active { transform: scale(.92); }
+.greeting-speak.speaking { background: #e3f5ea; border-color: var(--stamp-green); }
+
+/* 위치 지도 (인라인 SVG) */
+.mini-map { width: 100%; height: auto; border-radius: 14px; background: #cfe3f0; margin-top: 8px; display: block; }
+[data-theme="dark"] .mini-map { background: #101a26; }
+.mini-map .land { fill: #e9ddc8; stroke: #b9a681; stroke-width: .6; }
+[data-theme="dark"] .mini-map .land { fill: #2a3547; stroke: #46536b; }
+.mini-map .land.hl { fill: var(--gold); stroke: var(--gold-deep); }
+
+/* 조사 링크 칩 */
+.link-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+.link-chip {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700;
+  color: var(--navy); background: var(--cream); border: 1.5px solid var(--border);
+  border-radius: 99px; padding: 7px 13px; text-decoration: none; transition: transform .12s, border-color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.link-chip:hover { border-color: var(--gold); transform: translateY(-1px); }
+.link-chip:active { transform: scale(.95); }
+.link-chip.yt { border-color: #e8b3b3; }
+.link-chip.yt:hover { border-color: #cc0000; }
+
+/* 상세 하단 이동 */
+.detail-nav { display: flex; gap: 10px; margin-top: 18px; }
+.detail-nav .btn { flex: 1; font-size: 15px; padding: 13px 10px; }
+.btn-ghost { background: var(--paper); color: var(--navy); border: 2px solid var(--border); box-shadow: none; }
+
+@media (max-width: 640px) {
+  .country-grid { grid-template-columns: repeat(2, 1fr); }
+  .howto-steps { grid-template-columns: repeat(2, 1fr); }
+  .item-cards { grid-template-columns: 1fr; }
+  .research-top h1 { font-size: 22px; }
+}
+@media (max-width: 380px) {
+  .country-grid { grid-template-columns: 1fr; }
+}
+
 /* ── 태블릿·모바일 반응형 ── */
 @media (max-width: 900px) {
   body.exploring { overflow: auto; }
@@ -318,7 +480,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 }
   </style>
   <link rel="canonical" href="https://eduin.info/apps/world-landmarks/">
-  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"세계 탐험대","description":"경복궁·에펠탑·피라미드·앙코르와트 등 세계 랜드마크 11곳을 3D 위성지도로 탐험하고 나라별 국기·문화를 알아보는 여권 수집 여행","url":"https://eduin.info/apps/world-landmarks/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"세계 탐험대","description":"세계 랜드마크 11곳을 3D 위성지도로 탐험하고, 24개국의 국기·위치·수도·인사말·음식·자랑거리·문화를 살펴보며 조사 보고서를 완성하는 세계 여러 나라 학습 앱","url":"https://eduin.info/apps/world-landmarks/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
 
@@ -517,7 +679,7 @@ function buildMap() {
   try {
     map = new maplibregl.Map({
       container: 'map',
-      center: [LANDMARKS[0].lng, LANDMARKS[0].lat],
+      center: [LANDMARKS[idx].lng, LANDMARKS[idx].lat],
       zoom: 3, pitch: 0, bearing: 0,
       attributionControl: { compact: true },
       maxPitch: 80,
@@ -553,7 +715,7 @@ function buildMap() {
       if (mapLoaded) return;
       mapLoaded = true;
       document.getElementById('mapLoading')?.classList.add('hide');
-      flyToLandmark(LANDMARKS[0]);
+      flyToLandmark(LANDMARKS[idx]);
     };
 
     map.on('load', () => {
@@ -650,6 +812,17 @@ function renderIntro() {
       </div>
 
       <button class="btn btn-primary" onclick="start()">탐험 여권 만들기 🛫</button>
+
+      <div class="mission-card" style="margin-top:26px;">
+        <h3>📝 조사 보고서 미션</h3>
+        <ol>
+          <li>여섯 대륙 <b>24개 나라</b> 중에서 조사할 나라를 골라요.</li>
+          <li>국기·위치·수도·인사말·음식·자랑거리·문화 <strong>7가지 항목</strong>을 살펴봐요.</li>
+          <li>조사 링크로 더 알아보고 <b>나만의 보고서</b>를 완성하세요!</li>
+        </ol>
+      </div>
+
+      <button class="btn btn-primary" onclick="goResearch()">조사 보고서 만들기 📝</button>
     </div>
   </div>`;
 }
@@ -947,6 +1120,8 @@ window.resetExplore = function() {
 };
 
 window.start = function() {
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  appMode = 'explore';
   stamps = [];
   idx = 0;
   loadState();
@@ -970,7 +1145,300 @@ function loadState() {
   } catch (e) {}
 }
 
-renderIntro();
+/* ════════════════════════════════════════════════════════════════
+   조사 보고서 모드 (docs/world-landmarks-research-mode-plan.md)
+   ════════════════════════════════════════════════════════════════ */
+const COUNTRIES = window.WL_COUNTRIES || [];
+const CONTINENTS = [
+  { id: 'all', name: '전체' },
+  { id: 'asia', name: '아시아' },
+  { id: 'europe', name: '유럽' },
+  { id: 'africa', name: '아프리카' },
+  { id: 'namerica', name: '북아메리카' },
+  { id: 'samerica', name: '남아메리카' },
+  { id: 'oceania', name: '오세아니아' }
+];
+const SECTION_KEYS = ['flag', 'location', 'capital', 'greeting', 'food', 'pride', 'culture'];
+const RESEARCH_KEY = 'world-landmarks:research:v1';
+
+let appMode = 'intro';
+let continentFilter = 'all';
+let researchChecks = {};
+
+function loadResearch() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(RESEARCH_KEY) || '{}');
+    if (saved.checks) researchChecks = saved.checks;
+  } catch (e) {}
+}
+function saveResearch() {
+  try { localStorage.setItem(RESEARCH_KEY, JSON.stringify({ checks: researchChecks })); } catch (e) {}
+}
+function checkedCount(cid) {
+  return (researchChecks[cid] || []).filter(k => SECTION_KEYS.includes(k)).length;
+}
+
+/* ── 외부 조사 링크 ── */
+function ytUrl(q) { return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q); }
+function nvUrl(q) { return 'https://search.naver.com/search.naver?query=' + encodeURIComponent(q); }
+function niUrl(q) { return 'https://search.naver.com/search.naver?where=image&query=' + encodeURIComponent(q); }
+function chip(url, label, cls) {
+  return `<a class="link-chip ${cls || ''}" href="${url}" target="_blank" rel="noopener">${label}</a>`;
+}
+function chipYt(q, label) { return chip(ytUrl(q), '▶️ ' + (label || q), 'yt'); }
+function chipNv(q, label) { return chip(nvUrl(q), '🟢 ' + (label || q), ''); }
+function chipNi(q, label) { return chip(niUrl(q), '🖼️ ' + (label || q), ''); }
+
+/* ── 국기 이미지 (flagcdn + 이모지 폴백) ── */
+function flagEmoji(code) {
+  return code.toUpperCase().replace(/./g, ch => String.fromCodePoint(127397 + ch.charCodeAt(0)));
+}
+function flagImg(c, large) {
+  return `<img class="flag-img ${large ? 'flag-lg' : ''}" src="https://flagcdn.com/w160/${c.id}.png"
+    alt="${c.nameKo} 국기" loading="lazy" width="${large ? 120 : 72}" height="${large ? 80 : 48}"
+    onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'flag-fallback',textContent:'${flagEmoji(c.id)}'}))">`;
+}
+
+/* ── 간략 세계지도 SVG (equirectangular: x=lng+180, y=90-lat) ── */
+const CONTINENT_SHAPES = {
+  namerica: '20,25 55,12 90,15 102,30 106,50 100,66 82,70 96,79 100,82 88,80 74,68 52,55 30,45 14,35',
+  samerica: '100,80 116,83 132,88 146,97 140,112 126,126 116,141 108,146 104,130 98,105 94,88',
+  europe: '170,56 172,44 179,39 185,29 194,17 210,19 226,24 240,30 240,44 224,50 208,53 194,56 184,59 176,60',
+  africa: '172,62 186,58 200,58 212,61 219,69 231,79 226,91 216,101 210,116 205,124 197,118 189,104 179,89 171,74 167,65',
+  asia: '240,30 258,14 288,11 320,14 346,20 351,30 331,40 322,50 324,58 306,60 296,70 290,81 283,86 274,76 264,72 257,83 249,70 240,62 231,68 222,62 226,52 236,45',
+  oceania: '294,110 305,101 321,99 334,108 330,121 314,128 299,122 291,116'
+};
+function miniMapSvg(c) {
+  const x = c.lng + 180, y = 90 - c.lat;
+  const polys = Object.entries(CONTINENT_SHAPES).map(([cont, pts]) =>
+    `<polygon class="land ${cont === c.continent ? 'hl' : ''}" points="${pts}"/>`
+  ).join('');
+  const nz = `<polygon class="land ${c.continent === 'oceania' ? 'hl' : ''}" points="347,129 353,127 356,135 350,141 345,137"/>`;
+  return `<svg class="mini-map" viewBox="0 0 360 180" role="img" aria-label="${c.nameKo}의 위치를 표시한 세계지도">
+    ${polys}${nz}
+    <circle cx="${x}" cy="${y}" r="5" fill="var(--stamp-red)" stroke="#fff" stroke-width="1.5">
+      <animate attributeName="r" values="4;6;4" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+  </svg>`;
+}
+
+/* ── 라우팅: #research / #research/{id} ── */
+window.goResearch = function() { location.hash = '#research'; };
+
+function route() {
+  const h = location.hash;
+  if (h.startsWith('#research')) {
+    appMode = 'research';
+    const cid = h.split('/')[1];
+    const c = COUNTRIES.find(x => x.id === cid);
+    if (c) renderResearchDetail(c); else renderResearchList();
+    return;
+  }
+  if (appMode !== 'explore') { appMode = 'intro'; renderIntro(); }
+}
+window.addEventListener('hashchange', route);
+
+window.setContinent = function(id) {
+  continentFilter = id;
+  renderResearchList();
+};
+
+/* ── 조사 모드: 나라 목록 ── */
+function renderResearchList() {
+  document.body.classList.remove('exploring');
+  const list = continentFilter === 'all'
+    ? COUNTRIES
+    : COUNTRIES.filter(c => c.continent === continentFilter);
+
+  app.innerHTML = `
+  <div class="research-wrap">
+    <div class="research-top">
+      <h1>📝 조사 보고서 만들기</h1>
+      <button class="back-link" onclick="history.replaceState(null,'',location.pathname); appModeReset();">🏠 처음으로</button>
+    </div>
+    <div class="extlink-notice">🔗 조사 링크는 유튜브·네이버 등 외부 사이트로 연결돼요. 선생님·부모님과 함께 살펴보세요.</div>
+
+    <div class="howto-card">
+      <h3>📋 보고서 쓰는 순서</h3>
+      <div class="howto-steps">
+        <div class="howto-step"><span class="step-num">1</span><br>조사할 나라<br>고르기</div>
+        <div class="howto-step"><span class="step-num">2</span><br>7가지 항목<br>살펴보기</div>
+        <div class="howto-step"><span class="step-num">3</span><br>조사 링크로<br>더 알아보기</div>
+        <div class="howto-step"><span class="step-num">4</span><br>내 보고서에<br>정리하기</div>
+      </div>
+    </div>
+
+    <div class="continent-tabs">
+      ${CONTINENTS.map(ct => {
+        const n = ct.id === 'all' ? COUNTRIES.length : COUNTRIES.filter(c => c.continent === ct.id).length;
+        return `<button class="continent-tab ${continentFilter === ct.id ? 'active' : ''}" onclick="setContinent('${ct.id}')">${ct.name}<span class="cnt">${n}</span></button>`;
+      }).join('')}
+    </div>
+
+    <div class="country-grid">
+      ${list.map(c => {
+        const done = checkedCount(c.id);
+        const contName = CONTINENTS.find(ct => ct.id === c.continent)?.name || '';
+        return `
+        <div class="country-card" onclick="location.hash='#research/${c.id}'" role="button" tabindex="0"
+             onkeydown="if(event.key==='Enter')location.hash='#research/${c.id}'">
+          ${flagImg(c)}
+          <div class="country-name">${c.nameKo}</div>
+          <div class="country-sub">${contName} · 수도 ${c.capital.name}</div>
+          <div class="country-progress ${done ? '' : 'zero'}">${done ? `✅ 조사 ${done} / ${SECTION_KEYS.length}` : `조사 전 · 0 / ${SECTION_KEYS.length}`}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+  window.scrollTo({ top: 0 });
+}
+
+window.appModeReset = function() {
+  appMode = 'intro';
+  renderIntro();
+};
+
+/* ── 조사 모드: 나라 상세 ── */
+function sectionBox(c, key, title, inner, chips) {
+  const on = (researchChecks[c.id] || []).includes(key);
+  return `
+  <section class="report-section ${on ? 'checked' : ''}" id="sec-${key}">
+    <div class="report-section-head">
+      <h3>${title}</h3>
+      <button class="check-btn ${on ? 'on' : ''}" onclick="toggleCheck('${c.id}','${key}')">${on ? '✅ 조사했어요' : '⬜ 조사했어요'}</button>
+    </div>
+    ${inner}
+    ${chips && chips.length ? `<div class="link-chips">${chips.join('')}</div>` : ''}
+  </section>`;
+}
+
+function itemCards(items) {
+  return `<div class="item-cards">${items.map(i => `
+    <div class="item-card">
+      <div class="item-title">${i.emoji} ${i.name}</div>
+      <div class="item-desc">${i.desc}</div>
+    </div>`).join('')}</div>`;
+}
+
+function renderResearchDetail(c) {
+  document.body.classList.remove('exploring');
+  const done = checkedCount(c.id);
+  const contName = CONTINENTS.find(ct => ct.id === c.continent)?.name || '';
+  const i = COUNTRIES.indexOf(c);
+  const prev = COUNTRIES[(i - 1 + COUNTRIES.length) % COUNTRIES.length];
+  const next = COUNTRIES[(i + 1) % COUNTRIES.length];
+  const landmark = c.landmarkId ? LANDMARKS.findIndex(l => l.id === c.landmarkId) : -1;
+
+  app.innerHTML = `
+  <div class="research-wrap">
+    <div class="research-top">
+      <button class="back-link" onclick="location.hash='#research'">← 나라 목록</button>
+    </div>
+
+    <div class="country-head">
+      ${flagImg(c, true)}
+      <h1>${c.nameKo}</h1>
+      <div class="head-sub">${contName} · 수도 ${c.capital.name}</div>
+      ${landmark >= 0 ? `<button class="explore-link" onclick="exploreFromResearch(${landmark})">🛫 탐험 모드에서 3D로 보기</button>` : ''}
+    </div>
+
+    <div class="research-progress">
+      <div class="progress-track"><div class="progress-fill" id="rProgressFill" style="width:${done / SECTION_KEYS.length * 100}%"></div></div>
+      <div class="progress-label"><span>조사 진행</span><span id="rProgressNum">${done} / ${SECTION_KEYS.length}</span></div>
+    </div>
+
+    ${sectionBox(c, 'flag', '🏳️ 국기', `
+      <div class="report-flag-row">
+        ${flagImg(c, true)}
+        <p class="section-desc">${c.flag.meaning}</p>
+      </div>`,
+      [chipNi(`${c.nameKo} 국기 의미`, '국기 의미 사진'), chipNv(`${c.nameKo} 국기`, '국기 검색')])}
+
+    ${sectionBox(c, 'location', '📍 위치', `
+      <p class="section-desc">${c.location.desc}</p>
+      ${miniMapSvg(c)}`,
+      [chipNv(`${c.nameKo} 위치 지도`, '위치 지도'), chipNi(`${c.nameKo} 지도`, '지도 사진')])}
+
+    ${sectionBox(c, 'capital', '🏛️ 수도', `
+      <p class="section-desc"><strong>${c.capital.name}</strong> — ${c.capital.desc}</p>`,
+      [chipYt(`${c.capital.name} 여행`, `${c.capital.name} 여행 영상`), chipNi(c.capital.name, `${c.capital.name} 사진`)])}
+
+    ${sectionBox(c, 'greeting', '👋 인사말', `
+      <div class="greeting-line">
+        <span class="greeting-word">"${c.greeting.text}"</span>
+        <button class="greeting-speak" id="greetSpeakBtn" onclick="speakGreeting('${c.id}')" title="인사말 읽어주기">🔊</button>
+      </div>
+      <p class="section-desc">한글 발음: ${c.greeting.korean}</p>`,
+      [chipYt(`${c.nameKo} 인사말 배우기`, '인사말 배우기 영상')])}
+
+    ${sectionBox(c, 'food', '🍲 대표 음식', itemCards(c.foods),
+      [chipYt(`${c.nameKo} 음식`, `${c.nameKo} 음식 영상`)].concat(c.foods.map(f => chipNi(f.name, `${f.name} 사진`))))}
+
+    ${sectionBox(c, 'pride', '🏆 자랑거리', itemCards(c.prides),
+      c.prides.map(p => chipYt(p.name, `${p.name} 영상`)).concat(c.prides.map(p => chipNi(p.name, `${p.name} 사진`))))}
+
+    ${sectionBox(c, 'culture', '🎎 문화', itemCards(c.cultures),
+      [chipYt(`${c.nameKo} 전통 문화`, '전통 문화 영상')].concat(c.cultures.map(cu => chipNi(cu.name, `${cu.name} 사진`))))}
+
+    <div class="detail-nav">
+      <button class="btn btn-ghost" onclick="location.hash='#research/${prev.id}'">← ${prev.nameKo}</button>
+      <button class="btn btn-ghost" onclick="location.hash='#research'">목록</button>
+      <button class="btn btn-ghost" onclick="location.hash='#research/${next.id}'">${next.nameKo} →</button>
+    </div>
+  </div>`;
+  window.scrollTo({ top: 0 });
+}
+
+/* ── 조사 체크 토글 ── */
+window.toggleCheck = function(cid, key) {
+  const arr = researchChecks[cid] || (researchChecks[cid] = []);
+  const at = arr.indexOf(key);
+  if (at >= 0) arr.splice(at, 1); else arr.push(key);
+  saveResearch();
+
+  const sec = document.getElementById('sec-' + key);
+  if (sec) {
+    const on = arr.includes(key);
+    sec.classList.toggle('checked', on);
+    const btn = sec.querySelector('.check-btn');
+    if (btn) { btn.classList.toggle('on', on); btn.textContent = on ? '✅ 조사했어요' : '⬜ 조사했어요'; }
+  }
+  const done = checkedCount(cid);
+  const fill = document.getElementById('rProgressFill');
+  const num = document.getElementById('rProgressNum');
+  if (fill) fill.style.width = (done / SECTION_KEYS.length * 100) + '%';
+  if (num) num.textContent = `${done} / ${SECTION_KEYS.length}`;
+};
+
+/* ── 인사말 TTS ── */
+window.speakGreeting = function(cid) {
+  const c = COUNTRIES.find(x => x.id === cid);
+  if (!c) return;
+  if (!('speechSynthesis' in window)) {
+    alert('이 브라우저는 음성 합성(TTS) 기능을 지원하지 않습니다.');
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const btn = document.getElementById('greetSpeakBtn');
+  if (btn) btn.classList.add('speaking');
+  const u = new SpeechSynthesisUtterance(`${c.nameKo}의 인사말은, ${c.greeting.korean}, 입니다.`);
+  u.lang = 'ko-KR';
+  u.onend = () => { if (btn) btn.classList.remove('speaking'); };
+  window.speechSynthesis.speak(u);
+};
+
+/* ── 조사 모드 → 탐험 모드 연결 ── */
+window.exploreFromResearch = function(landmarkIdx) {
+  history.replaceState(null, '', location.pathname + location.search);
+  appMode = 'explore';
+  stamps = [];
+  loadState();
+  idx = landmarkIdx;
+  renderExplore();
+};
+
+loadResearch();
+route();
 
 window.shareCurrentPage = function() {
   const payload = JSON.stringify({ v: 1, stamps });
