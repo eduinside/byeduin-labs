@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
  * scaffold-app.js
- * eduin VIVES 새 앱 스캐폴더.
+ * eduin VIVES 새 앱 스캐폴더 (Astro).
  *  - 셸 유형(베이스) 먼저 고르고 기능을 채우는 방식.
- *  - public/apps/<id>/index.html 생성 + apps.json 등록 + 후처리(inject/og/sitemap) 자동.
- *  - 모달/외부 항목은 폴더·HTML 없이 apps.json 항목만 등록.
+ *  - src/pages/apps/<id>/index.astro 생성 (AppLayout 래핑) + apps.json 등록 + 후처리(og/sitemap) 자동.
+ *  - 정적 SEO 태그는 AppLayout이 담당하므로 inject-seo 후처리 없음.
+ *  - 모달/외부 항목은 페이지 없이 apps.json 항목만 등록.
  *
  * 대화형:   node scripts/scaffold-app.js
  * 비대화형: node scripts/scaffold-app.js --id my-app --name "내 앱" --base column --width narrow \
@@ -22,7 +23,7 @@ const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const APPS_JSON = path.join(ROOT, 'public', 'apps.json');
-const APPS_DIR = path.join(ROOT, 'public', 'apps');
+const APPS_DIR = path.join(ROOT, 'src', 'pages', 'apps');
 
 const BASES = ['column', 'split', 'sidebar', 'gallery', 'immersive'];
 const WIDTHS = ['narrow', 'medium', 'wide'];
@@ -100,39 +101,32 @@ function bodyForBase(base, opts) {
   return '  <main class="app-main">\n' + header + inner + '  </main>\n' + focusStage;
 }
 
-/* ── 전체 HTML ── */
-function buildHtml(opts) {
-  const bodyAttrs =
-    (opts.base !== 'immersive' ? ' data-shell="' + opts.base + '"' : ' data-shell="immersive"') +
-    (opts.base === 'column' || opts.base === 'gallery' ? ' data-width="' + opts.width + '"' : '') +
-    (opts.focus ? ' data-focus' : '') +
-    (opts.print ? ' data-print' : '');
+/* ── Astro 페이지 (AppLayout 래핑) ──
+   공통 head/스크립트(hero-theme·app-shell·theme·init·seo-injector·lucide·sync)와
+   정적 SEO 메타는 AppLayout이 주입하므로 여기선 레이아웃 props + 본문만 생성한다. */
+function buildAstro(opts) {
+  const layoutProps = [
+    'title="' + escapeAttr(opts.name) + ' — eduin VIVES"',
+    'description="' + escapeAttr(opts.seoDesc) + '"',
+    'image="https://eduin.info/og-images/' + opts.id + '.png"',
+    'bodyShell="' + opts.base + '"',
+  ];
+  if (opts.base === 'column' || opts.base === 'gallery') layoutProps.push('bodyWidth="' + opts.width + '"');
+  if (opts.print) layoutProps.push('bodyPrint={true}');
+  if (opts.focus) layoutProps.push('bodyFocus={true}');
 
-  return '<!DOCTYPE html>\n' +
-    '<html lang="ko">\n' +
-    '<head>\n' +
-    '  <meta charset="UTF-8">\n' +
-    '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
-    '  <title>' + escapeHtml(opts.name) + ' — eduin VIVES</title>\n' +
-    '  <meta name="description" content="' + escapeAttr(opts.seoDesc) + '">\n' +
-    '  <meta property="og:title" content="' + escapeAttr(opts.seoTitle) + ' | eduin VIVES">\n' +
-    '  <meta property="og:description" content="' + escapeAttr(opts.seoDesc) + '">\n' +
-    '  <meta property="og:image" content="/og-images/' + opts.id + '.png">\n' +
-    '  <meta property="og:type" content="website">\n' +
-    '  <link rel="icon" href="/favicon.svg" type="image/svg+xml">\n' +
-    '  <link rel="stylesheet" href="/common/hero-theme.css">\n' +
-    '  <link rel="stylesheet" href="/common/app-shell.css">\n' +
-    '  <script src="/common/theme.js"><\/script>\n' +
-    '  <script src="/common/init.js"><\/script>\n' +
-    '  <script src="/common/app-shell.js" defer><\/script>\n' +
-    '  <script src="/common/seo-injector.js" defer><\/script>\n' +
-    '  <style>\n    /* 앱 전용 스타일 */\n  </style>\n' +
-    '</head>\n' +
-    '<body' + bodyAttrs + '>\n' +
+  return '---\n' +
+    "import AppLayout from '../../../layouts/AppLayout.astro';\n" +
+    '---\n' +
+    '<AppLayout\n' +
+    layoutProps.map((p) => '  ' + p).join('\n') + '\n' +
+    '>\n' +
+    '  <Fragment slot="head">\n' +
+    '    <style is:global="">\n      /* 앱 전용 스타일 */\n    </style>\n' +
+    '  </Fragment>\n\n' +
     '  <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입합니다 -->\n' +
     bodyForBase(opts.base, opts) +
-    '</body>\n' +
-    '</html>\n';
+    '</AppLayout>\n';
 }
 
 /* ── 후처리 파이프라인 ── */
@@ -232,11 +226,11 @@ async function main() {
     const seoDesc = flags['seo-desc'] || await q('📄 SEO 설명: ', desc);
     const badge = catObj ? catObj.label.replace(/^\S+\s/, '') : (category || '');
 
-    const html = buildHtml({ id, name, emoji, desc, base, width, focus, print, seoTitle, seoDesc, badge });
+    const astro = buildAstro({ id, name, emoji, desc, base, width, focus, print, seoTitle, seoDesc, badge });
     const appDir = path.join(APPS_DIR, id);
     fs.mkdirSync(appDir, { recursive: true });
-    fs.writeFileSync(path.join(appDir, 'index.html'), html, 'utf8');
-    console.log('   📁 생성: public/apps/' + id + '/index.html  (base=' + base + (base==='column'||base==='gallery'?', width='+width:'') + (focus?', focus':'') + (print?', print':'') + ')');
+    fs.writeFileSync(path.join(appDir, 'index.astro'), astro, 'utf8');
+    console.log('   📁 생성: src/pages/apps/' + id + '/index.astro  (base=' + base + (base==='column'||base==='gallery'?', width='+width:'') + (focus?', focus':'') + (print?', print':'') + ')');
 
     entry = {
       id, emoji, title: name, desc,
@@ -256,17 +250,16 @@ async function main() {
   fs.writeFileSync(APPS_JSON, JSON.stringify(data, null, 2) + '\n', 'utf8');
   console.log('   📋 apps.json 등록 (subcategory=' + (subcategory || '없음') + ')');
 
-  // 후처리 — 모달은 페이지가 없으니 inject/og 생략, sitemap만(모달 제외라 변화 없음)
+  // 후처리 — 정적 SEO는 AppLayout이 담당하므로 inject 없음. 모달은 페이지가 없으니 og 생략.
   console.log('\n── 후처리 ──');
   if (kind !== 'modal' && kind !== 'external') {
-    runStep('inject-seo', ['scripts/inject-seo.js']);
-    runStep('og(' + id + ')', ['scripts/generate-og.js', '--id', id]);
+    runStep('og(' + id + ')', ['scripts/generate-og.cjs', '--id', id]);
   }
-  runStep('sitemap', ['scripts/generate-sitemap.js']);
+  runStep('sitemap', ['scripts/generate-sitemap.cjs']);
 
   console.log('\n✅ "' + name + '" 스캐폴드 완료!');
   if (kind !== 'modal' && kind !== 'external') {
-    console.log('   다음: public/apps/' + id + '/index.html 편집 → npm run dev 로 확인');
+    console.log('   다음: src/pages/apps/' + id + '/index.astro 편집 → npm run dev 로 확인');
   }
 }
 

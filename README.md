@@ -107,7 +107,7 @@
 
 ## 공통 리소스
 
-앱은 `public/apps/<id>/`에 폴더 단위로 모여 있고(URL = `/apps/<id>/`), 다운로드 자산은 `public/downloads/`에 둡니다.
+앱 페이지는 `src/pages/apps/<id>/index.astro`에 있고(URL = `/apps/<id>/`), 앱별 정적 자산(스크립트·데이터·서브페이지 등)과 공통 리소스는 `public/`에, 다운로드 자산은 `public/downloads/`에 둡니다.
 
 ```
 public/common/
@@ -133,11 +133,12 @@ public/common/
 프로젝트에는 개발 편의성과 SEO 배포 자동화를 위해 아래와 같은 패키지 스크립트들이 준비되어 있습니다:
 
 - **로컬 개발 서버 실행**: `npm run dev`
-- **신규 미니 앱 스캐폴딩 생성**: `npm run scaffold` — 베이스/폭/플래그/카테고리·서브카테고리를 고르면 `public/apps/<id>/` 생성 + `apps.json` 등록 + **inject·og·sitemap 자동 실행**(한 커맨드). 비대화형: `node scripts/scaffold-app.js --id ... --base column --width narrow --category edu --subcategory edu-work ...`. 모달/외부 항목: `--kind modal`.
-- **각 하위 앱 HTML에 SEO 태그 일괄 정적 주입**: `npm run inject` (canonical/og/JSON-LD 멱등 갱신)
-- **OG 이미지 빌드 (전체 또는 `--id <id>` 단일, 홈 기본 `og-default.png`)**: `npm run og` / `node scripts/generate-og.js --id <id>`
-- **브랜드 로고·파비콘 재생성 (소스 `brand/logo.png`)**: `node scripts/generate-icons.js`
+- **신규 미니 앱 스캐폴딩 생성**: `npm run scaffold` — 베이스/폭/플래그/카테고리·서브카테고리를 고르면 `src/pages/apps/<id>/index.astro`(AppLayout 래핑) 생성 + `apps.json` 등록 + **og·sitemap 자동 실행**(한 커맨드). 비대화형: `node scripts/scaffold-app.cjs --id ... --base column --width narrow --category edu --subcategory edu-work ...`. 모달/외부 항목: `--kind modal`. (정적 SEO 메타는 AppLayout이 담당하므로 별도 inject 단계 없음)
+- **OG 이미지 빌드 (전체 또는 `--id <id>` 단일, 홈 기본 `og-default.png`)**: `npm run og` / `node scripts/generate-og.cjs --id <id>`
+- **브랜드 로고·파비콘 재생성 (소스 `brand/logo.png`)**: `node scripts/generate-icons.cjs`
 - **`sitemap.xml` 재생성 및 업데이트**: `npm run sitemap`
+
+> 유지보수 스크립트는 CommonJS이며 `.cjs` 확장자를 씁니다(루트 `package.json`이 `"type": "module"`이라 `.js`는 ESM으로 처리됨).
 
 ---
 
