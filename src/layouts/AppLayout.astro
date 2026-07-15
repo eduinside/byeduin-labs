@@ -51,6 +51,13 @@ const {
   <script is:inline src="/common/app-shell.js" defer></script>
   <script is:inline src="/common/seo-injector.js" defer></script>
   <script is:inline src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script is:inline>
+    // lucide UMD는 <i data-lucide>를 자동 치환하지 않는다. DOM 준비 후 한 번 호출해
+    // 정적 아이콘을 렌더한다. 동적 아이콘을 쓰는 앱은 이후 직접 createIcons()를 부른다.
+    document.addEventListener('DOMContentLoaded', function () {
+      if (window.lucide) window.lucide.createIcons();
+    });
+  </script>
   <script is:inline src="/common/sync.js"></script>
   
   <slot name="head" />
