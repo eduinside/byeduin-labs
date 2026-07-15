@@ -358,15 +358,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
 <div class="wrap">
 
-  <div class="app-header">
-    <div class="app-badge">◆ 생활편의</div>
-    <h1 class="app-title">
-  <div class="card-emoji sub-util-life" style="margin-bottom: 0; transform: scale(1.0);">
-        <i data-lucide="qr-code"></i>
-      </div>
-  <span>QR <span>Master</span></span>
-</h1>
-    <p class="app-desc">생성부터 스캔까지 한 번에</p>
+  <!-- has-lucide-header를 직접 두면 seo-injector가 헤더 재작성을 건너뛴다.
+       아이콘이 /apps.json 요청(서비스워커 캐시·오프라인 시 실패 가능)에 좌우되지 않는다. -->
+  <div class="app-header has-lucide-header">
+    <div class="app-header-icon-blob sub-util-life">
+      <i data-lucide="qr-code"></i>
+    </div>
+    <div class="app-header-text">
+      <div class="app-badge">◆ 생활편의</div>
+      <h1 class="app-title"><span>QR <span>Master</span></span></h1>
+      <p class="app-desc">생성부터 스캔까지 한 번에</p>
+    </div>
   </div>
 
   <div class="qr-card">
@@ -743,21 +745,31 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     if (!w || !h) return [];
 
     const longest = Math.max(w, h);
+    // 작은 이미지는 키워야, 큰 이미지는 줄여야 잡히는 경우가 갈리므로 배율을 넓게 시도.
     const targets = [...new Set([
-      Math.min(longest, 1000),
-      Math.min(longest, 1800),
-      longest < 300 ? 600 : longest
-    ])];
+      Math.min(Math.max(longest, 640), 1000),
+      Math.min(Math.max(longest, 960), 1800),
+      Math.min(longest, 480),
+      longest,
+    ])].filter(t => t >= 1);
 
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
     for (const target of targets) {
       const scale = target / longest;
-      canvas.width = Math.max(1, Math.round(w * scale));
-      canvas.height = Math.max(1, Math.round(h * scale));
+      const dw = Math.max(1, Math.round(w * scale));
+      const dh = Math.max(1, Math.round(h * scale));
+      // QR은 주변 여백(quiet zone)이 없으면 인식되지 않는다. 딱 맞게 잘린 이미지를 위해 항상 덧댄다.
+      const pad = Math.max(8, Math.round(target * 0.06));
+      canvas.width = dw + pad * 2;
+      canvas.height = dh + pad * 2;
+      // jsQR은 알파 채널을 무시한다. 투명 배경 PNG(대부분의 다운로드·복사한 QR)를 그대로 두면
+      // 배경이 검게 읽혀 전부 실패하므로 흰 배경에 합성한다.
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.imageSmoothingEnabled = scale < 1;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, pad, pad, dw, dh);
 
       try {
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);

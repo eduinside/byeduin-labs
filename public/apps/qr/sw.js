@@ -1,4 +1,4 @@
-const CACHE = 'qr-master-v3';
+const CACHE = 'qr-master-v4';
 
 const ASSETS = [
   '/apps/qr/',
