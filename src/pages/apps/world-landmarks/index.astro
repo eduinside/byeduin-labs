@@ -28,6 +28,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   --radius: 22px;
   --side-w: 400px;
   --shadow: 0 8px 24px rgba(13,27,42,0.12);
+  /* 탐험 사이드바 표면색 — 본문 글자색(--navy)이 테마에 따라 뒤집히므로 배경도 같이 뒤집어야 한다 */
+  --observe-bg: #fbf7f0;
+  --tip-bg: #eef4fb;
+  --tip-border: #9cc0e8;
+  --tip-fg: #2c5685;
+  --quiz-bg: #ffffff;
+  --explain-bg: #f7f2e9;
+  --chip-bg: rgba(255,255,255,0.92);
+  --ok-bg: #e3f5ea;
+  --bad-bg: #fdeaea;
+  --bad-fg: #c0392b;
 }
 [data-theme="dark"] {
   --navy: #e0e6ed;
@@ -37,6 +48,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   --paper: #1e1e2e;
   --cream: #0f141c;
   --shadow: 0 8px 24px rgba(0,0,0,0.4);
+  --stamp-red: #e5716f;
+  --stamp-green: #4fbe83;
+  --observe-bg: #232a36;
+  --tip-bg: #16202e;
+  --tip-border: #33587f;
+  --tip-fg: #a8c8ea;
+  --quiz-bg: #252a38;
+  --explain-bg: #1c222e;
+  --chip-bg: rgba(18,24,34,0.92);
+  --ok-bg: #14301f;
+  --bad-bg: #351a1b;
+  --bad-fg: #f08b82;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -127,7 +150,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 .map-loading .spin { font-size: 40px; animation: spin 1.6s linear infinite; }
 .hint-chip {
   position: absolute; top: 60px; right: 14px; z-index: 5;
-  background: rgba(255,255,255,.92); color: var(--navy);
+  background: var(--chip-bg); color: var(--navy);
   font-size: 12.5px; border-radius: 99px; padding: 7px 13px;
   animation: fadeOutLater 7s ease forwards;
 }
@@ -156,7 +179,19 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   content: ''; position: absolute; inset: 0;
   background: radial-gradient(circle at 80% -20%, rgba(224,169,109,0.35) 0, transparent 55%);
 }
-.side-head .flag { font-size: 14px; opacity: .85; position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; }
+/* 탐험 모드 → 처음 화면 복귀 (조사 모드의 .back-link와 같은 역할) */
+.side-home-btn {
+  position: absolute; top: 14px; right: 14px; z-index: 2;
+  font-family: 'Jua', sans-serif; font-size: 12.5px; white-space: nowrap;
+  color: #fff; background: rgba(255,255,255,0.16);
+  border: 1px solid rgba(255,255,255,0.35); border-radius: 99px;
+  padding: 6px 12px; cursor: pointer;
+  transition: background .15s, transform .12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.side-home-btn:hover { background: rgba(255,255,255,0.28); }
+.side-home-btn:active { transform: scale(.95); }
+.side-head .flag { font-size: 14px; opacity: .85; position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; padding-right: 96px; }
 .side-head h2 { font-size: 27px; margin: 3px 0 2px; position: relative; z-index: 1; }
 .side-head .height { font-size: 13px; opacity: .8; position: relative; z-index: 1; }
 .side-body { padding: 18px 20px 26px; flex: 1; display: flex; flex-direction: column; }
@@ -171,14 +206,14 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 
 /* 🔍 관찰 포인트 박스 */
 .observe-box {
-  background: #fbf7f0; border: 2px solid var(--gold); border-radius: 16px;
+  background: var(--observe-bg); border: 2px solid var(--gold); border-radius: 16px;
   padding: 14px 16px; margin-bottom: 14px;
 }
 .observe-box h3 { font-size: 16px; color: var(--navy); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
-.observe-box p { font-size: 15px; line-height: 1.7; }
+.observe-box p { font-size: 15px; line-height: 1.7; color: var(--navy); }
 .tip-box {
-  background: #eef4fb; border: 2px solid #9cc0e8; border-radius: 16px;
-  padding: 12px 15px; margin-bottom: 14px; font-size: 13.5px; line-height: 1.65; color: #2c5685;
+  background: var(--tip-bg); border: 2px solid var(--tip-border); border-radius: 16px;
+  padding: 12px 15px; margin-bottom: 14px; font-size: 13.5px; line-height: 1.65; color: var(--tip-fg);
 }
 
 /* 🗺️ 나라 문화 카드 */
@@ -210,7 +245,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 }
 .culture-speak-btn:hover { background: var(--cream); transform: scale(1.1); }
 .culture-speak-btn:active { transform: scale(.95); }
-.culture-speak-btn.speaking { background: #e3f5ea; border-color: var(--stamp-green); }
+.culture-speak-btn.speaking { background: var(--ok-bg); border-color: var(--stamp-green); }
 
 /* 퀴즈 영역 */
 .quiz-zone { margin-top: 6px; }
@@ -218,7 +253,8 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 .quiz-btns { display: flex; flex-direction: column; gap: 10px; }
 .quiz-btn {
   font-family: 'Jua'; font-size: 17px; padding: 15px 8px; border-radius: 18px;
-  border: 3px solid var(--border); cursor: pointer; background: #fff; transition: transform .12s;
+  border: 3px solid var(--border); cursor: pointer;
+  background: var(--quiz-bg); color: var(--navy); transition: transform .12s;
   -webkit-tap-highlight-color: transparent;
 }
 .quiz-btn:active { transform: scale(.97); }
@@ -229,8 +265,8 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 .reveal-banner {
   text-align: center; border-radius: 18px; padding: 12px; font-family: 'Jua'; font-size: 18px; margin-bottom: 11px;
 }
-.reveal-banner.correct { background: #e3f5ea; color: var(--stamp-green); border: 2px solid var(--stamp-green); }
-.reveal-banner.wrong { background: #fdeaea; color: #c0392b; border: 2px solid #e74c3c; }
+.reveal-banner.correct { background: var(--ok-bg); color: var(--stamp-green); border: 2px solid var(--stamp-green); }
+.reveal-banner.wrong { background: var(--bad-bg); color: var(--bad-fg); border: 2px solid var(--bad-fg); }
 
 /* 여권 스탬프 연출 */
 .passport-stamp-zone {
@@ -251,7 +287,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   100% { transform: rotate(-15deg) scale(1); opacity: 0.85; }
 }
 
-.explain { font-size: 14.5px; line-height: 1.75; background: #f7f2e9; border-radius: 14px; padding: 13px 15px; margin-top: 10px; }
+.explain { font-size: 14.5px; line-height: 1.75; background: var(--explain-bg); color: var(--navy); border-radius: 14px; padding: 13px 15px; margin-top: 10px; }
 .next-zone { text-align: center; margin-top: 16px; }
 .next-zone .btn { font-size: 17px; padding: 13px 30px; }
 
@@ -266,7 +302,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 }
 .passport-slot:hover { transform: scale(1.04); }
 .passport-slot.done {
-  border: 2px solid var(--stamp-red); background: #fffdf9;
+  border: 2px solid var(--stamp-red); background: var(--paper);
 }
 .passport-slot.done::after {
   content: '✓'; position: absolute; bottom: 2px; right: 4px; font-size: 11px; font-weight: 900; color: var(--stamp-red);
@@ -315,10 +351,9 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 }
 .back-link:active { transform: scale(.95); }
 .extlink-notice {
-  background: #eef4fb; border: 2px solid #9cc0e8; border-radius: 14px; color: #2c5685;
+  background: var(--tip-bg); border: 2px solid var(--tip-border); border-radius: 14px; color: var(--tip-fg);
   font-size: 13px; line-height: 1.6; padding: 10px 14px; margin-bottom: 16px;
 }
-[data-theme="dark"] .extlink-notice { background: #16202e; border-color: #2c5685; color: #9cc0e8; }
 
 /* 보고서 쓰는 순서 */
 .howto-card {
@@ -409,8 +444,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   -webkit-tap-highlight-color: transparent;
 }
 .check-btn:active { transform: scale(.94); }
-.check-btn.on { background: #e3f5ea; border-color: var(--stamp-green); color: var(--stamp-green); }
-[data-theme="dark"] .check-btn.on { background: #14291d; }
+.check-btn.on { background: var(--ok-bg); border-color: var(--stamp-green); color: var(--stamp-green); }
 .report-section p.section-desc { font-size: 14.5px; line-height: 1.75; }
 .report-flag-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .report-flag-row p { flex: 1; min-width: 200px; }
@@ -431,7 +465,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   transition: transform .12s; -webkit-tap-highlight-color: transparent;
 }
 .greeting-speak:active { transform: scale(.92); }
-.greeting-speak.speaking { background: #e3f5ea; border-color: var(--stamp-green); }
+.greeting-speak.speaking { background: var(--ok-bg); border-color: var(--stamp-green); }
 
 /* 위치 지도 (실제 세계지도 SVG — @svg-maps/world) */
 .mini-map-box {
@@ -849,7 +883,7 @@ function renderExplore() {
       <div id="map"></div>
       <div class="map-loading" id="mapLoading"><div class="spin">🌏</div>3D 지도 불러오는 중...</div>
       <div class="cam-bar">
-        <button class="cam-btn return-btn" onclick="camReturn()" title="랜드마크로 돌아가기">🏠 돌아가기</button>
+        <button class="cam-btn return-btn" onclick="camReturn()" title="랜드마크로 시점 돌아가기">📍 제자리로</button>
         <button class="cam-btn" id="orbitBtn" onclick="toggleOrbit()">🔄 한 바퀴</button>
         <button class="cam-btn" onclick="camTop()">⬇️ 위에서 보기</button>
         <button class="cam-btn" onclick="camTilt()">⛰️ 3D 보기</button>
@@ -872,6 +906,7 @@ function renderPanel() {
 
   // 국기 이미지(flagcdn) + 헤더 렌더링 — Windows Chrome 국기 이모지 미지원 대응
   document.getElementById('sideHead').innerHTML = `
+    <button class="side-home-btn" onclick="exitExplore()" title="처음 화면으로">🏠 처음으로</button>
     <div class="flag">
       ${flagMarkup(flagEmojiToCode(m.countryFlag), m.countryName, 'sm')}
       <span>${m.countryName} (수도: ${m.capital})</span>
@@ -1138,6 +1173,17 @@ window.start = function() {
   idx = 0;
   loadState();
   renderExplore();
+};
+
+// 탐험 모드 → 처음 화면. 도장(stamps)은 저장돼 있어 다시 들어오면 이어서 진행된다.
+window.exitExplore = function() {
+  stopOrbit();
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  if (map) { try { map.remove(); } catch (e) {} map = null; }
+  mapFailed = false;
+  appMode = 'intro';
+  renderIntro();
+  window.scrollTo({ top: 0 });
 };
 
 const STORAGE_KEY = 'world-landmarks:v1';
