@@ -540,7 +540,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <input type="file" id="docFileInput" accept=".hwp,.hwpx,.hwpml,.pdf,.docx,.pptx,.xlsx,.doc,.xls" style="display:none" onchange="handleDocLoad(this)">
     <button class="toolbar-btn view-only-hide" id="saveBtn" onclick="toggleSaveMenu(event)"><i data-lucide="save"></i>저장 ▾</button>
     <button class="toolbar-btn view-only-hide" id="viewBtn" onclick="toggleViewMenu(event)"><i data-lucide="eye"></i>보기 ▾</button>
-    <div id="view-badge" style="display:inline-flex; align-items:center; gap:4px;"><i data-lucide="eye-off" style="width:12px;height:12px;"></i>보기 전용</div>
+    <div id="view-badge"><i data-lucide="eye-off" style="width:12px;height:12px;"></i>보기 전용</div>
     <button id="btn-clone-content" onclick="cloneContent()"><i data-lucide="copy"></i>복제</button>
     <button class="toolbar-btn view-only-hide" onclick="toggleShareMenu(event)">
       <i data-lucide="share-2"></i>
@@ -1628,7 +1628,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   window.deleteServerDoc = async function (id) {
     if (!confirm('이 문서를 삭제하시겠습니까?')) return;
     const code = VivesSync.getCode(); if (!code) return;
-    await mdLib.remove(code, id); renderMdServerDocs();
+    // remove()는 실패해도 예외 없이 false를 반환한다 — 알리지 않으면 목록만 그대로라 사용자는 이유를 알 수 없다.
+    const ok = await mdLib.remove(code, id);
+    showToast(ok ? '문서를 삭제했어요' : '삭제하지 못했어요. 연결을 확인하고 다시 시도해 주세요');
+    renderMdServerDocs();
   };
   window.saveDocToServer = saveDocToServer;
 
