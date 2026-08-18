@@ -193,6 +193,10 @@ docs/                  ← 개발 문서
 
 ## 주요 변경 이력
 
+### 2026-08 — Timely AI 게이트웨이 에러 분기 보강 + 연동 패턴 문서화
+- **402/429 상태코드 분기**: `_ai.js`의 `callTimely()` 헬퍼로 Timely 호출을 통합하고, 429(rate limit)는 400ms 후 1회 재시도, 402(크레딧 소진)는 재시도 없이 즉시 Gemini 폴백 + 강조 로그를 남기도록 개선. 기존엔 모든 실패를 동일하게 취급해 크레딧 소진 같은 운영 이슈가 조용히 묻힐 수 있었음.
+- **연동 패턴 문서 신설**: Timely GPT가 OpenRouter를 감싼 재판매 게이트웨이라는 점, 엔드포인트·인증·모델명·rate limit 동작, CF Pages 무료 CPU 예산(요청당 10ms) 제약을 정리한 [`docs/timely-ai-pattern.md`](timely-ai-pattern.md) 작성 — 신규 AI 프록시 앱을 만들 때 참고.
+
 ### 2026-07 — Astro 전환 (정적 사이트 재작성)
 `public/apps/<id>/index.html` 36개를 `src/pages/apps/<id>/index.astro`로 이식하고 공통 헤드를 `src/layouts/AppLayout.astro`로 통합. URL 구조·`public/` 자산 경로·`functions/` API는 전부 종전과 동일.
 - **출력**: Astro 정적 빌드(어댑터 없음) → `dist/`. Pages 배포 출력 디렉터리 `dist`로 변경(`wrangler.toml`).

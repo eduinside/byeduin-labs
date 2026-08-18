@@ -27,6 +27,36 @@ function checkRateLimit(ip, limit, windowMs = 60 * 1000) {
   return record.count <= limit;
 }
 
+const TIMELY_ENDPOINT = 'https://hello.timelygpt.co.kr/api/v2/chat/bridge/openai/chat/completions';
+
+// Timely 호출 + 상태코드별 분기(429는 크레딧 등급 하락에 따른 일시 제한이므로 1회 재시도, 402는 크레딧 소진으로 재시도 무의미 → 즉시 Gemini 폴백)
+async function callTimely(body, timelyKey) {
+  const doFetch = () => fetch(TIMELY_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${timelyKey}`
+    },
+    body: JSON.stringify(body)
+  });
+
+  let res = await doFetch();
+
+  if (res.status === 429) {
+    console.warn('⚠️ [AI Service] Timely 429(rate limit) — 400ms 후 1회 재시도...');
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    res = await doFetch();
+  }
+
+  if (res.status === 402) {
+    console.error('💳 [AI Service] Timely 402(크레딧 소진) — 충전 필요. 직접 Gemini로 폴백합니다.');
+  } else if (!res.ok) {
+    console.warn(`⚠️ [AI Service] Timely API 응답 실패 (status ${res.status}), falling back to direct Gemini...`);
+  }
+
+  return res;
+}
+
 export async function generateContent({
   systemPrompt,
   userMessage,
@@ -53,21 +83,14 @@ export async function generateContent({
   if (timelyKey) {
     try {
       console.log('🤖 [AI Service] Trying Timely GPT API...', { model: timelyModel });
-      const res = await fetch('https://hello.timelygpt.co.kr/api/v2/chat/bridge/openai/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${timelyKey}`
-        },
-        body: JSON.stringify({
-          model: timelyModel,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userMessage }
-          ],
-          temperature
-        })
-      });
+      const res = await callTimely({
+        model: timelyModel,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage }
+        ],
+        temperature
+      }, timelyKey);
 
       if (res.ok) {
         const data = await res.json();
@@ -77,7 +100,6 @@ export async function generateContent({
           return text.trim();
         }
       }
-      console.warn('⚠️ [AI Service] Timely GPT API response was not OK, falling back to direct Gemini...');
     } catch (e) {
       console.error('❌ [AI Service] Timely GPT API error:', e.message, 'falling back to direct Gemini...');
     }
@@ -138,20 +160,13 @@ export async function generateImage({ prompt, env, request = null }) {
   if (timelyKey) {
     try {
       console.log('🤖 [AI Service] Trying Timely GPT Image API...');
-      const res = await fetch('https://hello.timelygpt.co.kr/api/v2/chat/bridge/openai/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${timelyKey}`
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash-image',
-          messages: [
-            { role: 'user', content: prompt }
-          ],
-          modalities: ['image']
-        })
-      });
+      const res = await callTimely({
+        model: 'google/gemini-2.5-flash-image',
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        modalities: ['image']
+      }, timelyKey);
 
       if (res.ok) {
         const data = await res.json();
@@ -182,7 +197,6 @@ export async function generateImage({ prompt, env, request = null }) {
           return b64Data.trim();
         }
       }
-      console.warn('⚠️ [AI Service] Timely GPT Image response was not OK, falling back to direct Gemini...');
     } catch (e) {
       console.error('❌ [AI Service] Timely GPT Image error:', e.message, 'falling back to direct Gemini...');
     }
