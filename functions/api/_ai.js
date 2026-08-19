@@ -165,7 +165,11 @@ export async function generateImage({ prompt, env, request = null }) {
         messages: [
           { role: 'user', content: prompt }
         ],
-        modalities: ['image']
+        modalities: ['image'],
+        // gemini-2.5-flash-image은 '1K'가 최소 지원 크기(0.5K/512 등은 400 에러 — 실측 확인).
+        // 1K도 실측 1.5~2MB급이라 페이로드 절감 효과는 제한적이지만, aspect_ratio 고정으로
+        // 카드 레이아웃 일관성은 확보하고 미지정 시 더 큰 크기(2K/4K)가 나오는 경우를 방지한다.
+        image_config: { image_size: '1K', aspect_ratio: '1:1' }
       }, timelyKey);
 
       if (res.ok) {
@@ -207,20 +211,22 @@ export async function generateImage({ prompt, env, request = null }) {
     throw new Error('서버 환경변수(GEMINI_API_KEY 및 TIMELY_API_KEY)가 설정되지 않았습니다.');
   }
 
+  // imagen-3.0-generate-002(:predict)는 이 프로젝트 키에서 더 이상 제공되지 않음(2026-08 확인, 404) —
+  // 현재는 gemini-2.5-flash-image를 표준 generateContent + responseModalities:["IMAGE"]로 호출해야 함.
   console.log('🤖 [AI Service] Calling direct Gemini Image API...');
-  const geminiModel = 'imagen-3.0-generate-002';
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:predict?key=${geminiKey}`, {
+  const geminiModel = 'gemini-2.5-flash-image';
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      instances: [{ prompt: prompt }],
-      parameters: {
-        sampleCount: 1,
-        outputOptions: {
-          mimeType: 'image/png'
-        }
+      contents: [{
+        role: 'user',
+        parts: [{ text: prompt }]
+      }],
+      generationConfig: {
+        responseModalities: ['IMAGE']
       }
     }),
   });
@@ -231,7 +237,8 @@ export async function generateImage({ prompt, env, request = null }) {
     throw new Error(`AI 이미지 생성 실패 (Gemini): ${data?.error?.message || res.statusText}`);
   }
 
-  const imageData = data?.predictions?.[0]?.bytesBase64Encoded;
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  const imageData = parts.find((p) => p.inlineData)?.inlineData?.data;
   if (!imageData) {
     throw new Error('Gemini 이미지 응답이 비어 있습니다.');
   }
