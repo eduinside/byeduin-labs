@@ -196,6 +196,7 @@ docs/                  ← 개발 문서
 ### 2026-08 — idea-lab 그림 그리기 실패 수정 (죽은 Gemini 이미지 폴백 복구)
 - **`imagen-3.0-generate-002`(`:predict`) 폴백이 완전히 죽어 있었음**(모델이 더 이상 존재하지 않아 404) — Timely가 조금이라도 실패하면(429/402/모델 파라미터 오류 등) 안전망 없이 바로 전체 실패로 이어졌음. `gemini-2.5-flash-image`를 표준 `generateContent` + `responseModalities:["IMAGE"]`로 호출하도록 `_ai.js`를 수정해 실제 동작하는 폴백으로 복구.
 - **이미지 크기 상한 고정**: `image_config: { image_size: '1K', aspect_ratio: '1:1' }` 추가 — provider가 기본값으로 2K/4K를 골라 페이로드가 더 커지는 경우를 방지(단, 이 모델은 1K에서도 실측 1.1~1.8MB급이라 절감 효과는 제한적).
+- **그림체를 크레파스 → 플랫 일러스트로 변경**(`idea-lab.js` 이미지 프롬프트): 크레파스 질감은 노이즈가 많아 PNG 압축이 잘 안 됐음 — 굵은 윤곽선·단색 면 채색 스타일로 바꿔 결과물 용량을 실측 약 45% 절감(1.6MB → 0.85~0.9MB대).
 - 관련 조사·실측 내용은 [`docs/timely-ai-pattern.md`](timely-ai-pattern.md) §7에 정리.
 
 ### 2026-08 — Timely AI 게이트웨이 에러 분기 보강 + 연동 패턴 문서화
