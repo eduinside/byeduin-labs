@@ -464,16 +464,20 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       return [...new Set(all)];
     }
 
-    /* ── ISBN 조회 (서버 함수 경유 — 키는 서버 env, 배포본에서도 동작) ── */
+    /* ── ISBN 조회 (서버 함수 경유 — 키는 서버 env, 배포본에서도 동작) ──
+       429는 알라딘 호출량 제한에 의한 일시 차단. 이 경우 blocked 표시를 달아
+       호출부가 남은 조회를 멈출 수 있게 한다(차단 중 계속 두드리면 해제가 늦어짐). */
     function lookupISBN(isbn) {
       return new Promise((resolve, reject) => {
         fetch('/api/book-lookup?isbn=' + encodeURIComponent(isbn))
           .then(async (res) => {
             const data = await res.json().catch(() => ({}));
-            if (res.ok && data.item) resolve(data.item);
-            else reject(data.error || '도서를 찾을 수 없습니다');
+            if (res.ok && data.item) { resolve(data.item); return; }
+            const err = new Error(data.error || '도서를 찾을 수 없습니다');
+            err.blocked = res.status === 429 || !!data.blocked;
+            reject(err);
           })
-          .catch(() => reject('API 연결 실패'));
+          .catch(() => reject(new Error('API 연결 실패')));
       });
     }
 
@@ -505,7 +509,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       pw.classList.add('visible');
       setProgress(0, toFetch.length);
 
-      let added = 0, errors = 0;
+      let added = 0, errors = 0, remaining = 0;
 
       for (let i = 0; i < toFetch.length; i++) {
         setProgress(i + 1, toFetch.length);
@@ -521,7 +525,19 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           });
           added++;
         } catch (e) {
-          list.push({ isbn13: toFetch[i], title: '(' + e + ')', publisher: '-', priceStandard: 0, qty: 0, error: true });
+          // 알라딘 일시 차단이면 남은 ISBN은 시도하지 않고 중단. 빈 오류 행으로 목록을
+          // 오염시키지 않고, 몇 건이 남았는지만 알린다.
+          if (e && e.blocked) {
+            remaining = toFetch.length - i;
+            renderTable();
+            saveList();
+            break;
+          }
+          list.push({
+            isbn13: toFetch[i],
+            title: '(' + ((e && e.message) || e) + ')',
+            publisher: '-', priceStandard: 0, qty: 0, error: true,
+          });
           errors++;
         }
         renderTable();
@@ -534,6 +550,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       fetching = false;
       document.getElementById('fetchBtn').disabled = false;
       pw.classList.remove('visible');
+
+      if (remaining) {
+        showToast(`알라딘 조회가 일시 제한되었습니다. 10분 후 남은 ${remaining}건을 다시 시도해 주세요.`);
+        return;
+      }
 
       let msg = `${added}권 추가 완료.`;
       if (skipped) msg += ` (중복 ${skipped}건 제외)`;
