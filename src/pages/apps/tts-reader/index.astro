@@ -1,0 +1,748 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+---
+<AppLayout
+  title="로컬 TTS 리더 — eduin VIVES"
+  description="브라우저 내장 음성으로 텍스트를 자연스럽게 읽어주는 로컬 TTS 리더"
+  image="https://eduin.info/og-images/tts-reader.png"
+  bodyShell="column"
+  bodyWidth="wide"
+>
+  <Fragment slot="head">
+    <link rel="canonical" href="https://eduin.info/apps/tts-reader/">
+    <script type="application/ld+json" is:inline>{"@context":"https://schema.org","@type":"WebApplication","name":"로컬 TTS 리더","description":"브라우저 내장 음성으로 텍스트를 자연스럽게 읽어주는 로컬 TTS 리더","url":"https://eduin.info/apps/tts-reader/","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+    <style is:global="">
+      body {
+        padding: 56px 1rem 5rem;
+        min-height: 100vh;
+      }
+      body::before {
+        content: '';
+        position: fixed; inset: 0;
+        background-image:
+          linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
+        pointer-events: none; z-index: 0;
+      }
+      .page-wrap { max-width: 1120px; margin: 0 auto; position: relative; z-index: 1; }
+
+      /* ── fd-card / fd-btn / fd-input / fd-section-title (design system) ── */
+      .fd-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+      .fd-section-title {
+        font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+        text-transform: uppercase; color: var(--fg-muted); margin: 0 0 14px;
+        display: flex; align-items: center; gap: 8px;
+      }
+      .fd-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+      .fd-label { font-size: 12px; font-weight: 600; color: var(--fg-muted); display: block; margin: 14px 0 6px; }
+      .fd-label:first-of-type { margin-top: 0; }
+      .fd-input {
+        width: 100%; background: var(--bg); border: 1px solid var(--border);
+        border-radius: 8px; padding: 10px 12px; font-size: 13px;
+        color: var(--fg); outline: none; transition: border-color 0.2s;
+      }
+      .fd-input:focus { border-color: var(--primary); }
+      .fd-textarea {
+        width: 100%; background: var(--bg); border: 1px solid var(--border);
+        border-radius: 8px; padding: 12px; font-size: 14px;
+        color: var(--fg); outline: none; transition: border-color 0.2s;
+        resize: vertical; line-height: 1.7;
+        font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', sans-serif;
+      }
+      .fd-textarea:focus { border-color: var(--primary); }
+      .fd-btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        padding: 10px 14px; border-radius: 10px; border: none;
+        font-size: 13px; font-weight: 600; cursor: pointer;
+        transition: all 0.15s; min-height: 40px;
+      }
+      .fd-btn-primary { background: var(--primary); color: #fff; }
+      .fd-btn-primary:hover { background: var(--primary-h); }
+      .fd-btn-ghost { background: none; border: 1px solid var(--border); color: var(--fg-muted); }
+      .fd-btn-ghost:hover { border-color: var(--primary); color: var(--primary); background: rgba(0,111,238,0.06); }
+      .fd-btn-danger { background: rgba(243,18,96,0.10); color: var(--danger); }
+      .fd-btn-danger:hover { background: rgba(243,18,96,0.18); }
+      .fd-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+      /* ── 앱 전용 레이아웃 ── */
+      .tts-layout {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 1.25rem;
+        align-items: stretch;
+      }
+      @media (max-width: 720px) {
+        .tts-layout { grid-template-columns: 1fr; }
+      }
+      .sidebar { display: flex; flex-direction: column; gap: 1rem; }
+
+      .field-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 18px; }
+      .field-grid-2 .fd-label:first-of-type { margin-top: 0; }
+
+      .opt-check {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 13px; color: var(--fg); cursor: pointer;
+        padding: 6px 0;
+      }
+      .opt-check input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+
+      .range-row { display: flex; align-items: center; justify-content: space-between; }
+      .range-val { font-size: 12px; font-weight: 700; color: var(--primary); }
+      input[type="range"] {
+        -webkit-appearance: none; width: 100%; margin-top: 6px;
+        height: 4px; background: var(--border); border-radius: 99px; outline: none;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none; width: 16px; height: 16px;
+        background: var(--primary); border-radius: 50%; cursor: pointer;
+        border: 2px solid var(--bg); box-shadow: 0 2px 6px rgba(0,111,238,0.3);
+      }
+
+      .btn-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
+      .btn-grid-2 .fd-btn { width: 100%; }
+      #record { width: 100%; }
+      .hint-mini { font-size: 11px; color: var(--fg-muted); line-height: 1.5; margin: 8px 0 0; text-align: center; }
+      .hint-mini b { color: var(--fg); font-weight: 700; }
+
+      .main-col { display: flex; flex-direction: column; gap: 0.75rem; height: 100%; }
+      #text { flex: 1; min-height: 400px; }
+      #text::selection { background: rgba(0,111,238,0.35); color: var(--fg); }
+      #text::-moz-selection { background: rgba(0,111,238,0.35); color: var(--fg); }
+      .hint { font-size: 11.5px; color: var(--fg-muted); line-height: 1.6; text-align: center; min-height: 2.8em; }
+      .hint code { background: var(--bg-sec); padding: 1px 5px; border-radius: 4px; }
+
+      #fd-toast {
+        position: fixed; bottom: 2rem; left: 50%;
+        transform: translateX(-50%) translateY(1rem);
+        background: var(--fg); color: var(--bg);
+        padding: 10px 18px; border-radius: 10px;
+        font-size: 13px; font-weight: 600;
+        opacity: 0; pointer-events: none;
+        transition: opacity 0.2s, transform 0.2s; z-index: 9999;
+      }
+      #fd-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    </style>
+  </Fragment>
+
+  <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입합니다 -->
+  <main class="app-main">
+  <div class="page-wrap">
+  <div class="app-header">
+    <div class="app-badge">◆ 크리에이티브</div>
+    <h1 class="app-title">🔊 로컬 TTS 리더</h1>
+    <p class="app-desc">브라우저 내장 음성으로 텍스트를 읽어주는 완전 로컬 도구 — 서버 전송 없음</p>
+  </div>
+
+  <div class="tts-layout">
+    <!-- ── 사이드바 ── -->
+    <aside class="sidebar">
+      <div class="fd-card">
+        <div class="fd-section-title">재생</div>
+        <div class="btn-grid-2">
+          <button id="playPause" class="fd-btn fd-btn-primary">▶ 재생</button>
+          <button id="stop" class="fd-btn fd-btn-ghost" disabled>■ 중지</button>
+        </div>
+
+        <label class="fd-label">음성 (Voice)</label>
+        <select id="voice" class="fd-input"></select>
+
+        <div class="field-grid-2">
+          <div>
+            <label class="fd-label">
+              <span class="range-row"><span>속도</span><span class="range-val" id="rateVal">1.0</span></span>
+            </label>
+            <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1">
+          </div>
+          <div>
+            <label class="fd-label">
+              <span class="range-row"><span>음높이</span><span class="range-val" id="pitchVal">1.0</span></span>
+            </label>
+            <input type="range" id="pitch" min="0" max="2" step="0.1" value="1">
+          </div>
+        </div>
+      </div>
+
+      <div class="fd-card">
+        <div class="fd-section-title">텍스트 처리</div>
+        <label class="opt-check"><input type="checkbox" id="stripMarkdown" checked> ** 등 마크다운 기호는 무시하기</label>
+        <label class="opt-check"><input type="checkbox" id="ignoreParens"> ( ) 괄호 안 내용 무시하기</label>
+        <label class="opt-check"><input type="checkbox" id="handlePauses" checked> (pause), / 등 띄어읽기 처리하기</label>
+      </div>
+
+      <div class="fd-card">
+        <div class="fd-section-title">다운로드</div>
+        <button id="record" class="fd-btn fd-btn-danger">⬇ MP3로 다운로드</button>
+        <p class="hint-mini">공유 창에서 <b>전체 화면</b> + <b>시스템 오디오 공유</b>를 선택해야 소리가 녹음됩니다.</p>
+      </div>
+    </aside>
+
+    <!-- ── 메인: 텍스트 입력 ── -->
+    <div class="main-col">
+      <textarea id="text" class="fd-textarea" placeholder="여기에 영어(또는 다른 언어) 텍스트를 붙여넣으세요...">Hello! This is a local text-to-speech reader running entirely in your browser.</textarea>
+      <p class="hint" id="mainStatus"><span id="statusText">대기 중</span><span id="statusTimer"></span></p>
+    </div>
+  </div>
+  </div>
+  </main>
+
+  <!-- 토스트 -->
+  <div id="fd-toast"></div>
+
+  <script type="module" is:inline>
+import * as lamejsMod from 'https://esm.sh/@breezystack/lamejs@1.2.7';
+const Mp3Encoder = lamejsMod.Mp3Encoder || (lamejsMod.default && lamejsMod.default.Mp3Encoder);
+
+const STORAGE_KEY = 'tts_reader_settings_v1';
+
+const synth = window.speechSynthesis;
+const textEl = document.getElementById('text');
+const voiceSel = document.getElementById('voice');
+const rateEl = document.getElementById('rate');
+const pitchEl = document.getElementById('pitch');
+const rateVal = document.getElementById('rateVal');
+const pitchVal = document.getElementById('pitchVal');
+const playPauseBtn = document.getElementById('playPause');
+const stopBtn = document.getElementById('stop');
+const recordBtn = document.getElementById('record');
+const statusEl = document.getElementById('statusText');
+const timerEl = document.getElementById('statusTimer');
+const stripMarkdownEl = document.getElementById('stripMarkdown');
+const ignoreParensEl = document.getElementById('ignoreParens');
+const handlePausesEl = document.getElementById('handlePauses');
+
+let voices = [];
+let lastDetectedLang = null;
+
+// ---------- 설정 저장/복원 (localStorage) ----------
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    if (typeof s.rate === 'number') { rateEl.value = s.rate; rateVal.textContent = s.rate.toFixed(1); }
+    if (typeof s.pitch === 'number') { pitchEl.value = s.pitch; pitchVal.textContent = s.pitch.toFixed(1); }
+    if (typeof s.stripMarkdown === 'boolean') stripMarkdownEl.checked = s.stripMarkdown;
+    if (typeof s.ignoreParens === 'boolean') ignoreParensEl.checked = s.ignoreParens;
+    if (typeof s.handlePauses === 'boolean') handlePausesEl.checked = s.handlePauses;
+    return s;
+  } catch { return {}; }
+}
+function saveSettings() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    voiceName: voiceSel.value,
+    rate: parseFloat(rateEl.value),
+    pitch: parseFloat(pitchEl.value),
+    stripMarkdown: stripMarkdownEl.checked,
+    ignoreParens: ignoreParensEl.checked,
+    handlePauses: handlePausesEl.checked,
+  }));
+}
+const savedSettings = loadSettings();
+
+// ---------- 언어 감지 ----------
+function detectLang(text) {
+  const sample = text.slice(0, 500);
+  const counts = { ko: 0, ja: 0, zh: 0, en: 0 };
+  for (const ch of sample) {
+    const c = ch.codePointAt(0);
+    if (c >= 0xAC00 && c <= 0xD7A3) counts.ko++;
+    else if (c >= 0x3040 && c <= 0x30FF) counts.ja++;
+    else if (c >= 0x4E00 && c <= 0x9FFF) counts.zh++;
+    else if (/[a-zA-Z]/.test(ch)) counts.en++;
+  }
+  let best = 'en', bestCount = counts.en;
+  for (const [k, v] of Object.entries(counts)) {
+    if (v > bestCount) { best = k; bestCount = v; }
+  }
+  return bestCount === 0 ? 'en' : best;
+}
+
+// ---------- 음성 목록 (언어별 optgroup) ----------
+function loadVoices() {
+  voices = synth.getVoices();
+  if (voices.length === 0) {
+    voiceSel.innerHTML = '<option>음성 목록 로딩 중...</option>';
+    return;
+  }
+  renderVoiceList();
+}
+
+function baseLang(lang) {
+  return (lang || '').split(/[-_]/)[0].toLowerCase();
+}
+function langGroupLabel(base) {
+  try {
+    const dn = new Intl.DisplayNames(['ko'], { type: 'language' });
+    const name = dn.of(base);
+    if (name && name.toLowerCase() !== base) return `${name} (${base})`;
+  } catch (e) { /* Intl.DisplayNames 미지원 */ }
+  return base;
+}
+
+let voicesRenderedOnce = false;
+
+function renderVoiceList() {
+  if (voices.length === 0) return;
+  const detected = detectLang(textEl.value);
+  const prevSelected = voiceSel.value;
+
+  const groups = new Map();
+  voices.forEach(v => {
+    const base = baseLang(v.lang);
+    if (!groups.has(base)) groups.set(base, []);
+    groups.get(base).push(v);
+  });
+
+  const withinScore = (v) => (/natural|online|neural/i.test(v.name) ? 0 : 1);
+  groups.forEach(list => list.sort((a, b) => withinScore(a) - withinScore(b)));
+
+  const bases = [...groups.keys()];
+  bases.sort((a, b) => {
+    const rank = (base) => base === detected ? 0 : (base === 'en' ? 1 : 2);
+    const ra = rank(a), rb = rank(b);
+    if (ra !== rb) return ra - rb;
+    return langGroupLabel(a).localeCompare(langGroupLabel(b), 'ko');
+  });
+
+  voiceSel.innerHTML = '';
+  let firstOptionValue = null;
+  bases.forEach(base => {
+    const group = document.createElement('optgroup');
+    group.label = langGroupLabel(base) + (base === detected ? ' — 감지된 언어' : '');
+    groups.get(base).forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.name;
+      opt.textContent = `${v.name} (${v.lang})${v.default ? ' — 기본' : ''}`;
+      group.appendChild(opt);
+      if (firstOptionValue === null) firstOptionValue = v.name;
+    });
+    voiceSel.appendChild(group);
+  });
+
+  // 최초 렌더링 시 저장된 음성 우선 복원
+  if (!voicesRenderedOnce && savedSettings.voiceName && voices.find(v => v.name === savedSettings.voiceName)) {
+    voiceSel.value = savedSettings.voiceName;
+    voicesRenderedOnce = true;
+    lastDetectedLang = detected;
+    return;
+  }
+  voicesRenderedOnce = true;
+
+  const stillExists = voices.find(v => v.name === prevSelected);
+  const langChanged = detected !== lastDetectedLang;
+  if (stillExists && !langChanged) {
+    voiceSel.value = prevSelected;
+  } else if (firstOptionValue) {
+    voiceSel.value = firstOptionValue;
+  }
+  lastDetectedLang = detected;
+}
+
+loadVoices();
+if (synth.onvoiceschanged !== undefined) {
+  synth.onvoiceschanged = loadVoices;
+}
+
+let langDebounce;
+textEl.addEventListener('input', () => {
+  clearTimeout(langDebounce);
+  langDebounce = setTimeout(renderVoiceList, 400);
+});
+
+voiceSel.addEventListener('change', saveSettings);
+rateEl.addEventListener('input', () => { rateVal.textContent = parseFloat(rateEl.value).toFixed(1); saveSettings(); });
+pitchEl.addEventListener('input', () => { pitchVal.textContent = parseFloat(pitchEl.value).toFixed(1); saveSettings(); });
+[stripMarkdownEl, ignoreParensEl, handlePausesEl].forEach(el => el.addEventListener('change', saveSettings));
+
+// ---------- 재생 시간 표시 ----------
+let playTimer = null;
+let elapsedMs = 0;
+let playStartTs = 0;
+
+function formatTime(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+function timerTick() {
+  const current = elapsedMs + (playStartTs ? Date.now() - playStartTs : 0);
+  timerEl.textContent = ' · ' + formatTime(current);
+}
+function timerStart() {
+  playStartTs = Date.now();
+  if (playTimer) clearInterval(playTimer);
+  playTimer = setInterval(timerTick, 250);
+  timerTick();
+}
+function timerPause() {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  if (playStartTs) { elapsedMs += Date.now() - playStartTs; playStartTs = 0; }
+}
+function timerReset() {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  elapsedMs = 0;
+  playStartTs = 0;
+  timerEl.textContent = '';
+}
+
+let isPaused = false;
+let isPlaying = false;
+function setButtons({ playing, paused }) {
+  isPlaying = playing;
+  isPaused = paused;
+  stopBtn.disabled = !playing;
+  if (!playing) {
+    playPauseBtn.textContent = '▶ 재생';
+  } else if (paused) {
+    playPauseBtn.textContent = '▶ 계속 재생';
+  } else {
+    playPauseBtn.textContent = '⏸ 일시정지';
+  }
+}
+
+// ---------- 텍스트 전처리 (마크다운 무시 / 괄호 무시 / 띄어읽기) ----------
+function stripMarkdown(text) {
+  let t = text;
+  t = t.replace(/```[\s\S]*?```/g, m => m.replace(/```/g, ''));
+  t = t.replace(/`([^`]+)`/g, '$1');
+  t = t.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1');
+  t = t.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+  t = t.replace(/^\s{0,3}#{1,6}\s+/gm, '');
+  t = t.replace(/^\s{0,3}>\s?/gm, '');
+  t = t.replace(/^\s*([-*_]\s*){3,}$/gm, '');
+  t = t.replace(/^\s{0,3}[-*+]\s+/gm, '');
+  t = t.replace(/^\s{0,3}\d+\.\s+/gm, '');
+  t = t.replace(/\*\*([^*]+)\*\*/g, '$1');
+  t = t.replace(/__([^_]+)__/g, '$1');
+  t = t.replace(/\*([^*]+)\*/g, '$1');
+  t = t.replace(/(?<![a-zA-Z0-9])_([^_]+)_(?![a-zA-Z0-9])/g, '$1');
+  t = t.replace(/~~([^~]+)~~/g, '$1');
+  return t;
+}
+
+const LONG_TOKEN = ' LONG ';
+const MEDIUM_TOKEN = ' MEDIUM ';
+const SHORT_TOKEN = ' SHORT ';
+
+// 반환값: [{ text, gapAfter: 'long' | 'medium' | 'short' | null }, ...]
+function processText(rawText, opts) {
+  let text = rawText;
+  if (opts.stripMarkdown) text = stripMarkdown(text);
+
+  if (opts.handlePauses) {
+    text = text.replace(/\(\s*pause\s*\)/gi, LONG_TOKEN);
+  }
+
+  if (opts.ignoreParens) {
+    text = text.replace(/\([^)]*\)/g, ' ');
+  }
+
+  // 줄바꿈은 체크박스와 무관하게 항상 자연스러운 호흡으로 처리한다.
+  // 빈 줄(문단 구분)은 길게, 단순 줄바꿈은 중간 정도로 쉬어간다.
+  text = text.replace(/\n{2,}/g, LONG_TOKEN);
+  text = text.replace(/\n/g, MEDIUM_TOKEN);
+
+  if (opts.handlePauses) {
+    text = text.replace(/\s*\/\s*/g, SHORT_TOKEN);
+  }
+
+  const parts = text.split(new RegExp(`(${LONG_TOKEN}|${MEDIUM_TOKEN}|${SHORT_TOKEN})`));
+  const segments = [];
+  let pendingGap = null;
+  const rank = { short: 0, medium: 1, long: 2 };
+  for (const part of parts) {
+    if (part === LONG_TOKEN) { pendingGap = 'long'; continue; }
+    if (part === MEDIUM_TOKEN) { if (!pendingGap || rank.medium > rank[pendingGap]) pendingGap = 'medium'; continue; }
+    if (part === SHORT_TOKEN) { if (!pendingGap) pendingGap = 'short'; continue; }
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    if (segments.length > 0) segments[segments.length - 1].gapAfter = pendingGap || 'medium';
+    pendingGap = null;
+    // 문장 단위로 더 잘게 나눈다 — 일시정지 후 다시 읽을 때 문단 전체가 아니라
+    // 현재 문장만 다시 읽도록 하기 위함(재생 시간 표시도 더 정확해짐).
+    splitSentences(trimmed).forEach(sentence => {
+      segments.push({ text: sentence, gapAfter: null });
+    });
+  }
+  return segments;
+}
+
+function splitSentences(text) {
+  const parts = text.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+  return parts.length ? parts : [text];
+}
+
+function getOpts() {
+  return {
+    stripMarkdown: stripMarkdownEl.checked,
+    ignoreParens: ignoreParensEl.checked,
+    handlePauses: handlePausesEl.checked,
+  };
+}
+
+const PAUSE_GAP_LONG_MS = 500;   // (pause), 문단 구분(빈 줄) — 명시적으로 쉬어가기
+const PAUSE_GAP_MEDIUM_MS = 260; // 줄바꿈 — 중간 정도로 쉬어가기
+const PAUSE_GAP_SHORT_MS = 120;  // / — 살짝 숨 고르는 정도
+
+function gapDuration(type) {
+  if (type === 'long') return PAUSE_GAP_LONG_MS;
+  if (type === 'medium') return PAUSE_GAP_MEDIUM_MS;
+  return PAUSE_GAP_SHORT_MS;
+}
+
+function buildUtterance(text) {
+  const utter = new SpeechSynthesisUtterance(text);
+  const selectedVoice = voices.find(v => v.name === voiceSel.value);
+  if (selectedVoice) utter.voice = selectedVoice;
+  utter.rate = parseFloat(rateEl.value);
+  utter.pitch = parseFloat(pitchEl.value);
+  return utter;
+}
+
+// ---------- 읽는 구간 하이라이트 ----------
+let highlightSearchFrom = 0;
+function highlightSegment(text) {
+  const value = textEl.value;
+  let idx = value.indexOf(text, highlightSearchFrom);
+  if (idx === -1) idx = value.indexOf(text);
+  if (idx === -1) return;
+  highlightSearchFrom = idx + text.length;
+  textEl.focus({ preventScroll: true });
+  textEl.setSelectionRange(idx, idx + text.length);
+}
+function clearHighlight() {
+  const pos = textEl.selectionStart;
+  textEl.setSelectionRange(pos, pos);
+}
+
+// ---------- 순차 재생 (여러 구간 + 사이 간격) ----------
+// 참고: speechSynthesis.pause()/resume()는 브라우저마다 동작이 불안정해서(특히
+// 로컬 SAPI 음성) 쓰지 않는다. 대신 일시정지 시 cancel() 하고, 계속 시 같은
+// 구간부터 다시 speak() 한다.
+let session = null;
+
+function playBtnClick() {
+  const segments = processText(textEl.value, getOpts());
+  if (segments.length === 0) {
+    statusEl.textContent = '읽을 텍스트를 입력하세요.';
+    return;
+  }
+  synth.cancel();
+  highlightSearchFrom = 0;
+  timerReset();
+  timerStart();
+  session = { segments, index: 0, cancelled: false, paused: false, gapTimer: null };
+  setButtons({ playing: true, paused: false });
+  speakNext(session);
+}
+
+function speakNext(s) {
+  if (s.cancelled || s.paused || s.index >= s.segments.length) {
+    if (!s.cancelled && !s.paused) {
+      statusEl.textContent = '완료';
+      setButtons({ playing: false, paused: false });
+      clearHighlight();
+      timerReset();
+    }
+    return;
+  }
+  const current = s.segments[s.index];
+  const utter = buildUtterance(current.text);
+  utter.onstart = () => {
+    statusEl.textContent = `읽는 중... (${s.index + 1}/${s.segments.length})`;
+    highlightSegment(current.text);
+  };
+  utter.onend = () => {
+    if (s.cancelled || s.paused) return;
+    const gap = gapDuration(current.gapAfter);
+    s.index++;
+    if (s.index >= s.segments.length) {
+      speakNext(s);
+    } else {
+      s.gapTimer = setTimeout(() => speakNext(s), gap);
+    }
+  };
+  utter.onerror = () => {
+    if (s.cancelled || s.paused) return;
+    s.index++;
+    speakNext(s);
+  };
+  synth.speak(utter);
+}
+
+playPauseBtn.addEventListener('click', () => {
+  if (!isPlaying) {
+    // 재생 시작
+    playBtnClick();
+  } else if (!isPaused) {
+    // 일시정지: 현재 구간을 중단하고 인덱스는 그대로 둔다
+    if (session.gapTimer) { clearTimeout(session.gapTimer); session.gapTimer = null; }
+    session.paused = true;
+    synth.cancel();
+    timerPause();
+    setButtons({ playing: true, paused: true });
+    statusEl.textContent = '일시정지됨';
+  } else {
+    // 계속: 같은 구간부터 다시 읽는다
+    session.paused = false;
+    timerStart();
+    setButtons({ playing: true, paused: false });
+    speakNext(session);
+  }
+});
+stopBtn.addEventListener('click', () => {
+  if (session) {
+    session.cancelled = true;
+    if (session.gapTimer) clearTimeout(session.gapTimer);
+  }
+  synth.cancel();
+  statusEl.textContent = '정지됨';
+  setButtons({ playing: false, paused: false });
+  clearHighlight();
+  timerReset();
+});
+
+// ---------- MP3 다운로드 (탭 오디오 캡처 → 브라우저 내 MP3 인코딩) ----------
+
+function floatTo16BitPCM(floatArray) {
+  const out = new Int16Array(floatArray.length);
+  for (let i = 0; i < floatArray.length; i++) {
+    const s = Math.max(-1, Math.min(1, floatArray[i]));
+    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return out;
+}
+
+function encodeToMp3(audioBuffer) {
+  const channels = Math.min(audioBuffer.numberOfChannels, 2);
+  const sampleRate = audioBuffer.sampleRate;
+  const encoder = new Mp3Encoder(channels, sampleRate, 128);
+  const mp3Data = [];
+  const left = floatTo16BitPCM(audioBuffer.getChannelData(0));
+  const right = channels > 1 ? floatTo16BitPCM(audioBuffer.getChannelData(1)) : null;
+
+  const blockSize = 1152;
+  for (let i = 0; i < left.length; i += blockSize) {
+    const leftChunk = left.subarray(i, i + blockSize);
+    const mp3buf = right
+      ? encoder.encodeBuffer(leftChunk, right.subarray(i, i + blockSize))
+      : encoder.encodeBuffer(leftChunk);
+    if (mp3buf.length > 0) mp3Data.push(mp3buf);
+  }
+  const tail = encoder.flush();
+  if (tail.length > 0) mp3Data.push(tail);
+  return new Blob(mp3Data, { type: 'audio/mp3' });
+}
+
+let _toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('fd-toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+recordBtn.addEventListener('click', async () => {
+  const segments = processText(textEl.value, getOpts());
+  if (segments.length === 0) {
+    statusEl.textContent = '읽을 텍스트를 입력하세요.';
+    return;
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+    statusEl.textContent = '이 기능은 http://localhost 또는 https 환경에서만 동작합니다.';
+    return;
+  }
+  if (!Mp3Encoder) {
+    statusEl.textContent = 'MP3 인코더를 불러오지 못했습니다 (인터넷 연결을 확인하세요).';
+    return;
+  }
+
+  let displayStream;
+  try {
+    statusEl.textContent = '화면 공유 창에서 "전체 화면"을 선택하고 "시스템 오디오 공유"를 체크해주세요...';
+    displayStream = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: {
+        suppressLocalAudioPlayback: false,
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+      },
+      systemAudio: 'include',
+      selfBrowserSurface: 'exclude',
+    });
+  } catch (e) {
+    statusEl.textContent = '녹음이 취소되었습니다.';
+    return;
+  }
+
+  const audioTracks = displayStream.getAudioTracks();
+  displayStream.getVideoTracks().forEach(t => t.stop());
+  if (audioTracks.length === 0) {
+    statusEl.textContent = '오디오가 공유되지 않았습니다. "전체 화면"을 선택하고 "시스템 오디오 공유"를 체크했는지 확인해주세요. (윈도우 로컬 음성은 "이 탭" 공유로는 녹음되지 않습니다)';
+    displayStream.getTracks().forEach(t => t.stop());
+    return;
+  }
+
+  const audioOnlyStream = new MediaStream(audioTracks);
+  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus'
+    : 'audio/webm';
+  const recorder = new MediaRecorder(audioOnlyStream, { mimeType });
+  const chunks = [];
+  recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+  const stopped = new Promise((resolve) => { recorder.onstop = resolve; });
+
+  recordBtn.disabled = true;
+  playPauseBtn.disabled = true;
+  recorder.start();
+
+  synth.cancel();
+  for (let i = 0; i < segments.length; i++) {
+    statusEl.textContent = `녹음 중... 읽는 중... (${i + 1}/${segments.length})`;
+    const utter = buildUtterance(segments[i].text);
+    await new Promise((resolve) => {
+      utter.onend = resolve;
+      utter.onerror = resolve;
+      synth.speak(utter);
+    });
+    if (i < segments.length - 1) {
+      const gap = gapDuration(segments[i].gapAfter);
+      await new Promise(r => setTimeout(r, gap));
+    }
+  }
+
+  await new Promise(r => setTimeout(r, 400));
+  recorder.stop();
+  audioTracks.forEach(t => t.stop());
+  await stopped;
+
+  try {
+    statusEl.textContent = 'MP3로 변환 중...';
+    const webmBlob = new Blob(chunks, { type: 'audio/webm' });
+    const arrayBuf = await webmBlob.arrayBuffer();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuf);
+    const mp3Blob = encodeToMp3(audioBuffer);
+
+    const url = URL.createObjectURL(mp3Blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tts-reading.mp3';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    statusEl.textContent = 'MP3 다운로드 완료';
+    showToast('MP3 다운로드 완료');
+  } catch (e) {
+    statusEl.textContent = '변환 오류: ' + e.message;
+    showToast('변환 중 오류가 발생했습니다.');
+  } finally {
+    recordBtn.disabled = false;
+    playPauseBtn.disabled = false;
+  }
+});
+  </script>
+</AppLayout>
