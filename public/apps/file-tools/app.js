@@ -187,8 +187,10 @@ function updateScanEstimate() {
       estQ = 0.75; estW = 1600;
     }
 
-    // 거친 추정: JPEG 평균 ~ 0.15 bytes/픽셀 × quality 가중치
-    const bytesPerPage = estW * (estW * 1.41) * (0.04 + estQ * 0.18);
+    // 거친 추정: JPEG 평균 ~ 0.15 bytes/픽셀 × quality 가중치, PNG는 무손실이라 훨씬 큼
+    const bytesPerPage = scanState.format === 'png'
+      ? estW * (estW * 1.41) * 0.5
+      : estW * (estW * 1.41) * (0.04 + estQ * 0.18);
     const est = bytesPerPage * pages * (scanState.format === 'pdf' ? 1.05 : 1);
     document.getElementById('scanEstimate').style.display = 'block';
     document.getElementById('scanEstimate').innerHTML =
@@ -286,17 +288,17 @@ async function buildPdf(pages, quality) {
   return { blob: pdfBlob, imgTotal: totalSize };
 }
 
-async function buildJpgZip(pages, quality) {
+async function buildImageZip(pages, quality, mime, ext) {
   if (pages.length === 1) {
-    const blob = await canvasToBlob(pages[0].canvas, 'image/jpeg', quality);
+    const blob = await canvasToBlob(pages[0].canvas, mime, quality);
     if (!blob || blob.size === 0) throw new Error('이미지 변환 실패');
-    return { blob, ext: 'jpg' };
+    return { blob, ext };
   }
   const zip = new JSZip();
   for (let i = 0; i < pages.length; i++) {
-    const blob = await canvasToBlob(pages[i].canvas, 'image/jpeg', quality);
+    const blob = await canvasToBlob(pages[i].canvas, mime, quality);
     if (!blob || blob.size === 0) throw new Error('이미지 변환 실패');
-    const name = `${pages[i].sourceName}_p${pages[i].pageIdx}.jpg`;
+    const name = `${pages[i].sourceName}_p${pages[i].pageIdx}.${ext}`;
     zip.file(name, blob);
   }
   const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
@@ -332,10 +334,15 @@ async function runScan() {
     qualities = [0.65, 0.75, 0.85, 0.95];
   }
 
+  // PNG는 quality 무의미(무손실) — 폭만 바꿔가며 시도
   const attempts = [];
-  for (const w of widths) {
-    for (const q of qualities) {
-      attempts.push({ w, q });
+  if (fmt === 'png') {
+    for (const w of widths) attempts.push({ w, q: 1 });
+  } else {
+    for (const w of widths) {
+      for (const q of qualities) {
+        attempts.push({ w, q });
+      }
     }
   }
 
@@ -345,12 +352,14 @@ async function runScan() {
     let bestResult = null, bestParams = null;
     for (let a = 0; a < attempts.length; a++) {
       const { w, q } = attempts[a];
-      setScanProgress(5 + (a / attempts.length) * 90, `시도 ${a + 1}/${attempts.length} — ${w}px / 품질 ${q.toFixed(2)}`);
+      setScanProgress(5 + (a / attempts.length) * 90, `시도 ${a + 1}/${attempts.length} — ${w}px${fmt === 'png' ? '' : ` / 품질 ${q.toFixed(2)}`}`);
 
       const pages = await rasterizeAll(w, () => {});
       const result = fmt === 'pdf'
         ? (await buildPdf(pages, q))
-        : (await buildJpgZip(pages, q));
+        : fmt === 'png'
+          ? (await buildImageZip(pages, undefined, 'image/png', 'png'))
+          : (await buildImageZip(pages, q, 'image/jpeg', 'jpg'));
 
       bestResult = result;
       bestParams = { w, q };
@@ -371,7 +380,7 @@ async function runScan() {
     r.style.display = 'block';
     r.innerHTML = `✅ <strong>${fname}</strong> 다운로드<br>
       원본 ${fmtBytes(origTotal)} → 출력 ${fmtBytes(bestResult.blob.size)} (${compressionRatio}% 감소)<br>
-      적용 옵션: ${bestParams.w}px / 품질 ${bestParams.q.toFixed(2)}<br>
+      적용 옵션: ${bestParams.w}px${fmt === 'png' ? '' : ` / 품질 ${bestParams.q.toFixed(2)}`}<br>
       ${reached ? '✓ 목표 용량 달성' : '⚠️ 목표 용량 초과 — 슬라이더를 더 내리세요'}`;
 
     showToast('변환 완료 ✓');
