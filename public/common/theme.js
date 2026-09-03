@@ -77,7 +77,6 @@
     var existing = document.getElementById('qr-toast') ||
                    document.getElementById('md-toast') ||
                    document.getElementById('fd-toast') ||
-                   document.getElementById('mpToast') ||
                    document.getElementById('ssToast');
     if (existing) {
       existing.textContent = msg;
@@ -101,23 +100,8 @@
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(url)
         .then(function() { _shareToast('링크가 복사되었습니다 ✓'); })
-        .catch(function() { _execCopy(url); });
+        .catch(function() { _shareToast('URL: ' + url); });
     } else {
-      _execCopy(url);
-    }
-  }
-
-  function _execCopy(url) {
-    try {
-      var ta = document.createElement('textarea');
-      ta.value = url;
-      ta.style.cssText = 'position:fixed;opacity:0;';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      ta.remove();
-      _shareToast('링크가 복사되었습니다 ✓');
-    } catch (e) {
       _shareToast('URL: ' + url);
     }
   }
