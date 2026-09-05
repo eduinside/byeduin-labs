@@ -95,7 +95,7 @@ docs/                  ← 개발 문서
 ### 소셜 (`util-social`)
 | ID | 이름 | 설명 |
 |---|---|---|
-| `book-share` | 도서 공유 | ISBN 도서 정보 조회·파일 저장·공유 — 알라딘 조회는 D1 `book_cache` 90일 캐시 경유, 호출량 차단 시 429 안내 후 중단 (`docs/book-share-aladin-plan.md`) |
+| `book-share` | 도서 공유 | ISBN 도서 정보 조회·파일 저장·공유 — 카카오 책 검색 API(target=isbn) 조회는 D1 `book_cache` 90일 캐시 경유, 호출량 초과 시 429 안내 후 중단 (알라딘 Open API 종료 대응, `docs/book-share-aladin-plan.md`) |
 | `bubble-chat` | 버블챗 | P2P 실시간 채팅 |
 | `madang` | 마당 | 패들렛형 실시간 응답 보드 — rev 조건부 폴링, 텍스트·HTML·사진·그림(R2) 카드, 이모지 반응, 저학년 모드, 사전승인·잠금·이름숨김·발표모드·복제, QR 초대·코드 신원·자동검열 |
 | `edulink` | 에듀링크 | 교육용 단축주소·설문·체험 지도 (모달·외부 링크) |
