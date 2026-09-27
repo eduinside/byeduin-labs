@@ -174,7 +174,8 @@ export async function onRequestPost({ request, env }) {
 
     const text = await answer({ query, history, groups, env, request });
     // 답변에 실제로 인용된 번호만 출처로 보여 준다(없으면 전부)
-    const cited = new Set([...text.matchAll(/\[(\d+)\]/g)].map(m => Number(m[1])));
+    // 모델이 [1], [2, 6], [1][3] 등 여러 형태로 쓴다
+    const cited = new Set([...text.matchAll(/\[(\d+(?:\s*,\s*\d+)*)\]/g)].flatMap(m => m[1].split(',').map(Number)));
     const sources = text.includes(NOT_FOUND) ? []
       : groups.map(toSource).filter(s => !cited.size || cited.has(s.n));
     return json({ answer: text, sources });
