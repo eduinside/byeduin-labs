@@ -163,9 +163,8 @@ docs/                  ← 개발 문서
 | `GET /api/yt-playlist` | 유튜브 재생목록 파싱 |
 | `GET /api/yt-video-info` | 유튜브 영상 정보 |
 | `POST /api/shorten` | 단축 URL 생성 (short.io) |
-| `POST /api/search` | 교육문서 RAG 검색(2단계 라우터) + 단일 문서 요약·질문 |
-| `GET /api/tree` | 교육문서 리포 파일 트리(서버사이드, GitHub rate limit 회피) |
-| `GET /api/recent-docs` | 최근 업데이트된 교육문서 (커밋 기반) |
+| `POST /api/search` | 에듀서치 — 교육청 매뉴얼 질의응답(D1 FTS5 검색 + Timely LLM 1회, 인용 [n]) + 문서 요약·질문. IP당 10회/분·100회/일 |
+| `GET /api/manual` | 에듀서치 매뉴얼 목록 · `?doc=` 본문 조각 · `?file=` 원본(R2 `manual/`) |
 | `GET /api/notices` | 공지사항 |
 | `GET·PUT·DELETE /api/readtree` | Read Tree 읽음 기록 동기화 (D1, set 모드) |
 | `GET·PUT·DELETE /api/flash-deck`·`/api/blocks-universe`·`/api/timer`·`/api/search-sync`·`/api/chalkboard`·`/api/signage` | 앱 상태 코드 동기화 (D1, doc 모드) |
@@ -196,6 +195,15 @@ docs/                  ← 개발 문서
 ---
 
 ## 주요 변경 이력
+
+### 2026-09 — 에듀서치 전면 교체: GitHub md → 교육청 원본 매뉴얼 적재
+GitHub(`byeduin-edu-docs`)에서 질문마다 md 30개를 받아 LLM을 두 번 부르던 구조를 없앴다(느리고 연동 불안정). 계획: `D:\Proj\dge-manual\docs\PLAN.md`.
+- **적재**: [`scripts/manual-ingest.mjs`](../scripts/manual-ingest.mjs)가 [`scripts/manual-sources.json`](../scripts/manual-sources.json)의 원본(HWP·HWPX·PDF)을 kordoc으로 파싱 → 바닥글 잡음 제거·표를 GFM으로 변환·제목 기준 재청크(≈1.4k자) → `.manual-build/manual.sql` + 원본 사본. 마이그레이션 0013(`manual_docs`·`manual_chunks`·`manual_fts`).
+- **검색**: FTS5 기본 토크나이저는 조사 붙은 어절을 놓치므로 한글을 바이그램으로 색인·질의([`_manual-text.js`](../functions/api/_manual-text.js)), bm25 상위 6개 + 상위 3개의 앞뒤 조각으로 문맥 확장 → LLM 1회(1~3초).
+- **화면**: 주소·이름 그대로. 문서 목록·본문을 D1에서 읽고, 출처 칩(문서·쪽)을 누르면 본문 해당 쪽으로 이동, PDF는 원문 새 탭·HWP류는 내려받기.
+- **제한**: atlas(edumaps-dge)와 같은 Cache API 방식 IP당 10회/분·100회/일, 정본 도메인·로컬만 허용.
+- `functions/api/tree.js`·`recent-docs.js` 삭제. 1차 적재 문서: 2026 현장체험학습 매뉴얼, 2026 학교회계 예산편성 기본지침.
+- 같은 때 메인 목록에서 Bubble Chat·마당·Signage Maker·임베드 생성기·빠른 버튼 만들기를 숨김(`apps.json`의 `"hidden": true`, 주소로는 접속 가능).
 
 ### 2026-08 — tts-reader(로컬 TTS 리더) 신규 — 크리에이티브
 - **완전 로컬 TTS**: 서버 없이 브라우저 내장 `SpeechSynthesis`로 텍스트를 읽어줌. 음성 목록은 `Intl.DisplayNames`로 언어별 `<optgroup>` 그룹핑하고, 입력 텍스트의 언어를 감지(한/영/일/중 문자 비율)해 해당 언어 그룹을 최상단에 자동 노출.

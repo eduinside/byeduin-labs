@@ -1163,7 +1163,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         <div id="documents-tab" class="sidebar-tab-content">
           <div class="sidebar-section-label">
             <span>문서 목록</span>
-            <button class="sidebar-label-btn refresh" onclick="refreshAll(this)" title="GitHub에서 문서 목록 새로고침">↻ 새로고침</button>
+            <button class="sidebar-label-btn refresh" onclick="refreshAll(this)" title="문서 목록 새로고침">↻ 새로고침</button>
           </div>
           <div id="treePanel">
             <div class="tree-loading"></div>
@@ -1181,8 +1181,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <div class="welcome-icon">🔎</div>
           <h1 class="welcome-title">에듀서치</h1>
           <p class="welcome-desc">
-            교육법규·교육과정·실무지침·교육청 계획서 등 교육 관련 문서를<br>
-            자연어로 검색하고, AI 답변과 근거 출처를 함께 확인하세요.<br>
+            대구광역시교육청이 학교에 보낸 매뉴얼·지침을<br>
+            자연어로 묻고, AI 답변과 근거(문서·쪽)를 함께 확인하세요.<br>
             <span style="font-size: 11px; color: var(--fg-muted); margin-top: 8px; display: block;">⚠️ AI는 실수를 할 수 있습니다. 중요한 판단은 원본 문서로 확인하세요.</span>
           </p>
           <div class="welcome-input-box">
@@ -1190,16 +1190,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             <button class="welcome-submit" onclick="startFromWelcome()">검색</button>
           </div>
           <div class="welcome-chips">
-            <button class="welcome-chip" onclick="welcomeChip(this)">초등학교 법정 수업 일수는?</button>
-            <button class="welcome-chip" onclick="welcomeChip(this)">학교생활기록부 기재 원칙</button>
-            <button class="welcome-chip" onclick="welcomeChip(this)">교원 연수 이수 시간 기준</button>
-            <button class="welcome-chip" onclick="welcomeChip(this)">2022 개정 교육과정 주요 변경사항</button>
+            <button class="welcome-chip" onclick="welcomeChip(this)">숙박형 현장체험학습 인솔 기준은?</button>
+            <button class="welcome-chip" onclick="welcomeChip(this)">현장체험학습 사전답사는 꼭 해야 하나요?</button>
+            <button class="welcome-chip" onclick="welcomeChip(this)">학교회계 회계연도와 출납폐쇄기한</button>
+            <button class="welcome-chip" onclick="welcomeChip(this)">교원연구비 지급 기준액</button>
           </div>
           <!-- 최근 업데이트 문서 -->
           <div class="recent-docs-wrap" id="recentDocsWrap">
             <div class="recent-docs-label">
-              <span>최근 업데이트 문서</span>
-              <button class="sidebar-label-btn refresh" onclick="refreshAll(this)" title="GitHub에서 새로고침" style="text-transform:none">↻ 새로고침</button>
+              <span>등록된 매뉴얼</span>
+              <button class="sidebar-label-btn refresh" onclick="refreshAll(this)" title="문서 목록 새로고침" style="text-transform:none">↻ 새로고침</button>
             </div>
             <div id="recentDocsList"><div style="padding: 12px 16px; font-size: 12px; color: var(--fg-muted); text-align: center;">로드 중...</div></div>
           </div>
@@ -1237,7 +1237,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         <div style="flex-shrink: 0; display: flex; justify-content: center; gap: 8px; padding: 12px 20px 16px; border-top: 1px solid var(--border);">
           <button class="doc-action-btn" onclick="summarizeDoc()" title="AI로 문서 요약">📝 요약</button>
           <button class="doc-action-btn" onclick="askAboutDoc()" title="이 문서에 대해 질문">💬 질문</button>
-          <button class="doc-action-btn" id="docOpenBtn" title="MD Editor에서 열기">🔗 MD로 열기</button>
+          <button class="doc-action-btn" id="docOpenBtn" title="원본 파일 열기">📑 원문 보기</button>
         </div>
       </div>
 
@@ -1271,13 +1271,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     /* ─────────────────────────────────────────
        설정
     ───────────────────────────────────────── */
-    const REPO         = 'eduinside/byeduin-edu-docs';
-    const RAW_BASE     = `https://raw.githubusercontent.com/${REPO}/main`;
-    const TREE_API     = `/api/tree`; // 서버사이드 API 사용 (rate limit 회피)
+    // 문서는 D1에 적재된 교육청 매뉴얼(scripts/manual-ingest.mjs) — /api/manual 목록·본문, /api/search 질의응답
+    const MANUAL_API   = '/api/manual';
     const LS_HISTORY   = 'edu-search-history';
-    const LS_TREE      = 'edu-search-tree-cache';
-    const LS_TREE_TS   = 'edu-search-tree-ts';
-    const TREE_TTL     = 24 * 60 * 60 * 1000; // 24시간 캐시
+    let manualDocs     = [];   // [{ id, title, category, dept, year, fileType, pages, updatedAt }]
+    const docTitle = id => manualDocs.find(d => d.id === id)?.title || id;
 
     let currentChatTitle = '새 대화';
 
@@ -1377,7 +1375,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
       closeQuestionModal();
 
-      const docName = docPath.split('/').pop();
+      const docName = docTitle(docPath);
 
       // 채팅 화면으로 전환
       const chatView = document.getElementById('chatView');
@@ -1480,113 +1478,51 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     /* ─────────────────────────────────────────
-       최근 업데이트 문서 로드 (서버사이드 API 사용)
+       매뉴얼 목록 (D1 → /api/manual)
     ───────────────────────────────────────── */
-    async function loadRecentDocs(force = false) {
+    async function loadDocs(force = false) {
       try {
-        // 서버사이드 API 호출 (GitHub rate limit 회피)
-        // force: 새로고침 버튼 — 고유 쿼리로 브라우저/엣지 HTTP 캐시(max-age=3600) 우회
-        const res = await fetch(force ? `/api/recent-docs?_=${Date.now()}` : '/api/recent-docs');
-        if (!res.ok) {
-          console.error('Recent docs API failed:', res.status, res.statusText);
-          throw new Error('API 호출 실패');
-        }
-        const { recent } = await res.json();
-
-        const list = document.getElementById('recentDocsList');
-
-        if (!recent || recent.length === 0) {
-          list.innerHTML = '<div style="padding: 12px 16px; font-size: 12px; color: var(--fg-muted); text-align: center;">최근 문서가 없습니다</div>';
-          return;
-        }
-
-        list.innerHTML = recent.map(item => {
-          const name = item.path.split('/').pop().replace(/\.md$/, '');
-          const cat  = item.path.split('/')[0] || '';
-          const date = new Date(item.date);
-          const dateStr = `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`;
-          return `
-            <div class="recent-doc-item" data-path="${item.path}" onclick="openRecentDoc('${item.path}')">
-              <span class="recent-doc-icon">${catIcon(cat)}</span>
-              <div class="recent-doc-info">
-                <div class="recent-doc-name">${escHtml(name)}</div>
-                <div class="recent-doc-meta">${escHtml(cat)} · ${dateStr} 업데이트</div>
-              </div>
-            </div>`;
-        }).join('');
-      } catch (err) {
-        console.error('Failed to load recent docs:', err);
-        const list = document.getElementById('recentDocsList');
-        list.innerHTML = '<div style="padding: 12px 16px; font-size: 12px; color: var(--fg-muted); text-align: center;">최근 문서를 불러올 수 없습니다</div>';
-      }
-    }
-
-    function openRecentDoc(path) {
-      const treeFile = document.querySelector(`.tree-file[data-path="${path}"]`);
-      if (treeFile) openFile(treeFile);
-      else openFile(path);
-    }
-
-    /* ─────────────────────────────────────────
-       트리 데이터 로드
-    ───────────────────────────────────────── */
-    let treeData = null;
-
-    async function loadTree(force = false) {
-      // force가 아니면 24h 클라이언트 캐시 우선
-      if (!force) {
-        const ts = parseInt(localStorage.getItem(LS_TREE_TS) || '0');
-        if (Date.now() - ts < TREE_TTL) {
-          const cached = localStorage.getItem(LS_TREE);
-          if (cached) { treeData = JSON.parse(cached); renderTree(); return true; }
-        }
-      }
-
-      try {
-        // force 시 고유 쿼리로 /api/tree의 max-age=3600 HTTP 캐시까지 우회
-        const res = await fetch(force ? `${TREE_API}?_=${Date.now()}` : TREE_API);
-        if (!res.ok) throw new Error();
-        const json = await res.json();
-
-        const cats = {};
-        (json.tree || [])
-          .filter(f => f.type === 'blob' && f.path.endsWith('.md') && f.path.includes('/') && !f.path.endsWith('README.md') && !f.path.startsWith('pdf-to-md/'))
-          .forEach(f => {
-            const parts = f.path.split('/');
-            const cat = parts.length > 1 ? parts[0] : '기타';
-            const name = parts[parts.length - 1].replace(/\.md$/, '');
-            if (!cats[cat]) cats[cat] = [];
-            cats[cat].push({ name, path: f.path });
-          });
-
-        treeData = { categories: cats };
-        localStorage.setItem(LS_TREE, JSON.stringify(treeData));
-        localStorage.setItem(LS_TREE_TS, String(Date.now()));
+        const res = await fetch(force ? `${MANUAL_API}?_=${Date.now()}` : MANUAL_API);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        manualDocs = (await res.json()).docs || [];
         renderTree();
-        try { buildCatFilter(Object.keys(cats)); } catch (e) { console.warn('buildCatFilter:', e); }
+        renderRecentDocs();
         return true;
-      } catch {
-        // 실패 시: 기존 목록(또는 localStorage 캐시)이 있으면 유지, 없을 때만 안내
-        const cached = localStorage.getItem(LS_TREE);
-        if (!treeData && cached) { try { treeData = JSON.parse(cached); } catch {} }
-        if (treeData && Object.keys(treeData.categories || {}).length) {
-          renderTree();
-        } else {
-          document.getElementById('treePanel').innerHTML =
-            '<div class="tree-empty">문서 목록을 불러오지<br>못했습니다.</div>';
+      } catch (err) {
+        console.error('[search] 문서 목록 로드 실패:', err);
+        if (!manualDocs.length) {
+          document.getElementById('treePanel').innerHTML = '<div class="tree-empty">문서 목록을 불러오지<br>못했습니다.</div>';
+          document.getElementById('recentDocsList').innerHTML = '<div style="padding: 12px 16px; font-size: 12px; color: var(--fg-muted); text-align: center;">문서 목록을 불러올 수 없습니다</div>';
         }
         return false;
       }
     }
 
-    /* GitHub에서 전체 새로고침 (문서 트리 + 최근 문서). 어느 버튼을 눌러도 동일 동작.
-       클라이언트 24h 캐시 + HTTP 캐시 우회, 실패해도 기존 목록 보존 */
+    function renderRecentDocs() {
+      const list = document.getElementById('recentDocsList');
+      const recent = [...manualDocs].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0, 5);
+      if (!recent.length) {
+        list.innerHTML = '<div style="padding: 12px 16px; font-size: 12px; color: var(--fg-muted); text-align: center;">등록된 문서가 없습니다</div>';
+        return;
+      }
+      list.innerHTML = recent.map(d => {
+        const date = new Date(d.updatedAt);
+        const dateStr = `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`;
+        return `
+          <div class="recent-doc-item" data-path="${escHtml(d.id)}" onclick="openFile('${escHtml(d.id)}')">
+            <span class="recent-doc-icon">${catIcon(d.category)}</span>
+            <div class="recent-doc-info">
+              <div class="recent-doc-name">${escHtml(d.title)}</div>
+              <div class="recent-doc-meta">${escHtml(d.dept || d.category)} · ${dateStr} 등록</div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
     async function refreshAll(btn) {
       if (btn) { btn.disabled = true; btn.dataset.orig = btn.textContent; btn.textContent = '새로고침 중…'; }
-      // localStorage를 미리 지우지 않음 → 실패해도 기존 목록 보존(loadTree가 성공 시 갱신)
       try {
-        const ok = await loadTree(true);
-        await loadRecentDocs(true);  // 최근 문서도 함께 갱신
+        const ok = await loadDocs(true);
         showToast(ok ? '문서를 새로고침했습니다' : '새로고침 실패 — 기존 목록을 유지합니다');
       } finally {
         if (btn) { btn.disabled = false; btn.textContent = btn.dataset.orig || '↻ 새로고침'; }
@@ -1597,14 +1533,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const LS_OPEN_CATS = 'edu-search-open-cats';
     function getOpenCats() {
       const raw = localStorage.getItem(LS_OPEN_CATS);
-      if (raw === null) return null;  // 미설정 → 기본값(첫 카테고리) 사용
+      if (raw === null) return null;  // 미설정 → 모두 열기
       try { return new Set(JSON.parse(raw)); } catch { return new Set(); }
     }
     function saveOpenCats(set) { try { localStorage.setItem(LS_OPEN_CATS, JSON.stringify([...set])); } catch {} }
 
     function renderTree() {
       const panel = document.getElementById('treePanel');
-      const cats  = treeData.categories;
+      const cats = {};
+      manualDocs.forEach(d => (cats[d.category] ||= []).push(d));
       const names = Object.keys(cats);
 
       if (names.length === 0) {
@@ -1614,24 +1551,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
       panel.innerHTML = names.map(cat => `
         <div class="tree-category">
-          <div class="tree-cat-header" data-cat="${cat}" onclick="toggleCatTree(this)">
+          <div class="tree-cat-header" data-cat="${escHtml(cat)}" onclick="toggleCatTree(this)">
             <span class="arrow">▶</span>
-            <span>${catIcon(cat)} ${cat}</span>
+            <span>${catIcon(cat)} ${escHtml(cat)}</span>
             <span style="margin-left:auto;font-size:10px;opacity:.4">${cats[cat].length}</span>
           </div>
           <div class="tree-files">
-            ${cats[cat].map(f => `
-              <div class="tree-file" data-path="${f.path}" onclick="openFile(this)" title="${f.name}">
+            ${cats[cat].map(d => `
+              <div class="tree-file" data-path="${escHtml(d.id)}" onclick="openFile(this)" title="${escHtml(d.title)}">
                 <span style="font-size:11px;flex-shrink:0;margin-top:1px">📄</span>
-                <span style="flex:1;overflow-wrap:anywhere">${f.name}</span>
+                <span style="flex:1;overflow-wrap:anywhere">${escHtml(d.title)}</span>
               </div>
             `).join('')}
           </div>
         </div>
       `).join('');
 
-      // 저장된 열림 상태 복원 (미설정이면 첫 카테고리만 기본 오픈)
-      const open = getOpenCats() || new Set(names.length ? [names[0]] : []);
+      const open = getOpenCats() || new Set(names);
       panel.querySelectorAll('.tree-cat-header').forEach(h => {
         if (open.has(h.dataset.cat)) {
           h.classList.add('open');
@@ -1641,67 +1577,85 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     function catIcon(name) {
-      return { '교육법규': '⚖️', '교육과정': '📘', '실무지침': '📋', '업무계획': '📅' }[name] || '📁';
+      return { '학교회계': '💰', '안전': '🦺', '보건': '🩺', '학사': '📘', '인사': '👥' }[name] || '📁';
     }
 
     function toggleCatTree(header) {
       header.classList.toggle('open');
       const files = header.nextElementSibling;
       if (files) files.classList.toggle('open');
-      // 열림 상태 영속화
-      const open = getOpenCats() || new Set();
+      const open = getOpenCats() || new Set([...document.querySelectorAll('.tree-cat-header')].map(h => h.dataset.cat));
       if (header.classList.contains('open')) open.add(header.dataset.cat);
       else open.delete(header.dataset.cat);
       saveOpenCats(open);
     }
 
     /* ─────────────────────────────────────────
-       파일 열기 (문서 화면)
+       문서 열기 (문서 화면) — 적재된 본문을 쪽 표시와 함께 보여 준다
     ───────────────────────────────────────── */
     let currentPath = null;
 
-    async function openFile(el) {
-      const path = typeof el === 'string' ? el : el.dataset.path;
-      if (currentPath === path && document.getElementById('docView').classList.contains('active')) return;
-      currentPath = path;
+    // el: 목록 요소 또는 문서 id. page를 주면 해당 쪽 위치로 스크롤
+    async function openFile(el, page = null) {
+      const id = typeof el === 'string' ? el : el.dataset.path;
+      const already = currentPath === id && document.getElementById('docView').classList.contains('active');
+      currentPath = id;
+      showView('doc');
+      if (already) { scrollToPage(page); return; }
 
-      document.querySelectorAll('.tree-file').forEach(f => f.classList.remove('active'));
-      if (typeof el !== 'string') el.classList.add('active');
-
-      const filename = path.split('/').pop().replace(/\.md$/, '');
-      document.getElementById('docTitleText').textContent = filename;
+      document.querySelectorAll('.tree-file').forEach(f => f.classList.toggle('active', f.dataset.path === id));
+      document.getElementById('docTitleText').textContent = docTitle(id);
       document.getElementById('docContent').innerHTML = `
         <div style="text-align:center;padding:40px 0;color:var(--fg-muted)">
           <div style="width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 8px"></div>
           불러오는 중...
         </div>`;
 
-      showView('doc');
-
       try {
-        const res = await fetch(`${RAW_BASE}/${path}`);
+        const res = await fetch(`${MANUAL_API}?doc=${encodeURIComponent(id)}`);
         if (!res.ok) throw new Error();
-        const text = await res.text();
+        const { doc, chunks } = await res.json();
+        if (currentPath !== id) return;  // 그사이 다른 문서를 열었음
+        document.getElementById('docTitleText').textContent = doc.title;
 
-        currentDocContent = text;
-        document.getElementById('docContent').innerHTML = renderMarkdown(text);
-        document.getElementById('docOpenBtn').onclick = () => openMdEditor(text, path.split('/').pop());
-
-        // 텍스트 선택 이벤트
-        document.getElementById('docBody').addEventListener('mouseup', () => {
-          const selected = window.getSelection().toString().trim();
-          if (selected.length > 0) {
-            const range = window.getSelection().getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            showSelectionPopup(rect.left + window.scrollX, rect.bottom + window.scrollY);
-          } else {
-            hideSelectionPopup();
-          }
-        });
+        // 쪽이 바뀌는 곳마다 표시(출처 칩의 "N쪽"으로 이동할 수 있게)
+        let lastPage = null;
+        const html = chunks.map(c => {
+          const mark = c.pageFrom && c.pageFrom !== lastPage
+            ? `<div class="doc-page-mark" data-page="${c.pageFrom}" style="font-size:11px;color:var(--fg-muted);border-top:1px dashed var(--border);margin:18px 0 8px;padding-top:4px">p.${c.pageFrom}</div>` : '';
+          if (c.pageTo) lastPage = c.pageTo;
+          return mark + renderMarkdown(c.text);
+        }).join('');
+        currentDocContent = chunks.map(c => c.text).join('\n\n');
+        document.getElementById('docContent').innerHTML =
+          `<p style="font-size:12px;color:var(--fg-muted)">${escHtml([doc.dept, doc.pages && `${doc.pages}쪽`].filter(Boolean).join(' · '))} · 원본에서 자동 추출한 본문이라 표·서식이 원문과 다를 수 있습니다.</p>` + html;
+        const openBtn = document.getElementById('docOpenBtn');
+        openBtn.style.display = doc.hasFile ? '' : 'none';
+        openBtn.textContent = doc.fileType === 'pdf' ? '📑 원문 PDF' : '⬇️ 원문 내려받기';
+        openBtn.onclick = () => window.open(`${MANUAL_API}?file=${encodeURIComponent(id)}`, '_blank');
+        scrollToPage(page);
       } catch {
-        document.getElementById('docContent').innerHTML = '<p style="color:var(--fg-muted)">파일을 불러오지 못했습니다.</p>';
+        document.getElementById('docContent').innerHTML = '<p style="color:var(--fg-muted)">문서를 불러오지 못했습니다.</p>';
       }
     }
+
+    function scrollToPage(page) {
+      if (!page) return;
+      const marks = [...document.querySelectorAll('.doc-page-mark')];
+      const target = marks.filter(m => +m.dataset.page <= page).pop() || marks[0];
+      if (target) target.scrollIntoView({ block: 'start' });
+    }
+
+    // 문서 본문 텍스트 선택 → "선택 부분에 대해 질문" 팝업
+    document.getElementById('docBody').addEventListener('mouseup', () => {
+      const selected = window.getSelection().toString().trim();
+      if (selected.length > 0) {
+        const rect = window.getSelection().getRangeAt(0).getBoundingClientRect();
+        showSelectionPopup(rect.left + window.scrollX, rect.bottom + window.scrollY);
+      } else {
+        hideSelectionPopup();
+      }
+    });
 
     /* ─────────────────────────────────────────
        카테고리 필터
@@ -1765,16 +1719,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           // history: 직전까지의 대화 맥락(최근 8턴)을 함께 전달
-          body: JSON.stringify({ query, categories: Array.from(selectedCats), history: activeMessages.slice(-8) }),
+          body: JSON.stringify({ query, history: activeMessages.slice(-8) }),
         });
 
         const elapsed = (performance.now() - startTime).toFixed(0);
         console.log('📊 [search] Response received:', { status: res.status, ok: res.ok, elapsed: elapsed + 'ms' });
 
         if (!res.ok) {
-          const errText = await res.text();
-          console.error('❌ [search] Server error:', { status: res.status, message: errText });
-          throw new Error(`API Error: ${res.status} - ${errText}`);
+          const errData = await res.json().catch(() => ({}));
+          console.error('❌ [search] Server error:', { status: res.status, errData });
+          throw new Error(errData.error || `요청 실패 (HTTP ${res.status})`);
         }
 
         const data = await res.json();
@@ -1790,7 +1744,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       } catch (err) {
         console.error('❌ [search] Error occurred:', { name: err.name, message: err.message, stack: err.stack });
         thinkingEl.remove();
-        const errorMsg = `검색 중 오류가 발생했습니다. 콘솔을 확인해주세요.\n[${err.message}]`;
+        const errorMsg = `⚠️ ${err.message}`;
         appendAiMsg(query, errorMsg, []);
       } finally {
         isSearching = false;
@@ -1827,8 +1781,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const showSources = sources.length > 0 && !allProvided;
       const sourceHtml = showSources ? `
         <div class="chat-sources">
-          <div class="chat-sources-label">📎 참조 문서</div>
-          ${sources.map(s => `<span class="source-chip" onclick="openFile('${s}')" style="cursor: pointer;">${s.split('/').pop().replace(/\.md$/, '')}</span>`).join('')}
+          <div class="chat-sources-label">📎 근거</div>
+          ${sources.map(s => sourceChip(s)).join('')}
         </div>` : '';
 
       const answerJson = JSON.stringify(answer);
@@ -1851,6 +1805,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       return el;
     }
 
+    // 출처: { n, doc, title, page, pageLabel, path }. 예전 기록(GitHub md 경로 문자열)은 이름만 표시
+    function sourceLabel(s) {
+      if (typeof s === 'string') return s.split('/').pop().replace(/\.md$/, '');
+      return `${s.n ? `[${s.n}] ` : ''}${s.title}${s.pageLabel ? ` · ${s.pageLabel}` : ''}`;
+    }
+    function sourceChip(s) {
+      if (typeof s === 'string') return `<span class="source-chip" style="opacity:.6" title="이전 문서 저장소 — 더 이상 열 수 없음">${escHtml(sourceLabel(s))}</span>`;
+      return `<span class="source-chip" style="cursor: pointer;" title="${escHtml(s.path || '')}" onclick='openFile(${JSON.stringify(s.doc)}, ${s.page || 'null'})'>${escHtml(sourceLabel(s))}</span>`;
+    }
+
     /* ─────────────────────────────────────────
        액션
     ───────────────────────────────────────── */
@@ -1864,7 +1828,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     function shareAnswer(query, answer, sources) {
       const md = `# 검색 결과\n\n**질문:** ${query}\n\n${answer}${
-        sources.length ? `\n\n---\n**참조 문서**\n${sources.map(s => `- ${s}`).join('\n')}` : ''}`;
+        sources.length ? `\n\n---\n**근거**\n${sources.map(s => `- ${sourceLabel(s)}`).join('\n')}` : ''}`;
       openMdEditor(md, '검색결과.md');
     }
 
@@ -1972,7 +1936,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           type: type,  // 'summarize' or 'question'
           documentPath: docPath,
           query: question || '문서를 분석하고 요약해 주세요.',
-          categories: []  // 문서 요청에서는 카테고리 불필요
+          history: activeMessages.slice(-8)
         };
 
         const startTime = performance.now();
@@ -1994,7 +1958,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         console.log('✅ [doc-request] Request completed successfully');
 
         thinkingEl.remove();
-        const label = type === 'summarize' ? `📄 [요약] ${docPath}` : `❓ [질문] ${docPath}`;
+        const label = type === 'summarize' ? `📄 [요약] ${docTitle(docPath)}` : `❓ [질문] ${docTitle(docPath)}`;
         appendAiMsg(label, data.answer, data.sources || []);
         // 문서 질문/요약도 맥락 버퍼에 반영 → 이어지는 자유 질문이 맥락 유지
         activeMessages.push({ role: 'user', content: `${label}${question ? ' — ' + question : ''}` });
@@ -2058,9 +2022,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     /* ─────────────────────────────────────────
        초기화
     ───────────────────────────────────────── */
-    loadTree();
+    loadDocs();
     renderConvList();
-    loadRecentDocs();
 
     // 선택 동기화: 헤더 '동기화' 버튼 (검색 기록을 코드 하나로 기기 간 이어쓰기)
     if (window.VivesSync) VivesSync.mountDocSync({
