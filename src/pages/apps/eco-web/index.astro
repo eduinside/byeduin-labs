@@ -8,6 +8,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   bodyShell="immersive"
 >
   <Fragment slot="head">
+    <link rel="stylesheet" href="/common/sim-kit.css">
+    <script is:inline src="/common/sim-kit.js"></script>
     <style is:global="">
 /* ── eco-web 전용 스타일 (immersive 전체화면) ── */
 :root {
@@ -22,6 +24,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   --eco-sidebar-w: 320px;
   --eco-grid-bg: #f8f9fa;
   --eco-card-bg: var(--card-bg);
+  --sk-accent: var(--eco-accent);
 }
 [data-theme="dark"] {
   --eco-grid-bg: #0f0f12;
@@ -40,6 +43,8 @@ body {
 
 .screen { display: none; }
 .screen.active { display: flex; }
+/* 화면 전환 때 제목으로 옮긴 초점(화면 읽기용)은 테두리를 그리지 않음 */
+.screen [tabindex="-1"]:focus { outline: none; }
 
 /* ── 인트로 스크린 ── */
 .intro-screen {
@@ -110,12 +115,12 @@ body {
 }
 
 .canvas-toolbar {
-  position: absolute; bottom: 16px; left: 16px; z-index: 10;
-  display: flex; gap: 8px;
+  position: absolute; bottom: 16px; left: 16px; right: 16px; z-index: 10;
+  display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none;
 }
 .tool-btn {
   background: rgba(255,255,255,0.9); border: 1px solid var(--border);
-  color: var(--fg); padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 700;
+  color: var(--fg); padding: 8px 14px; min-height: 40px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 700;
   cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
   pointer-events: auto; transition: all 0.15s;
 }
@@ -135,7 +140,7 @@ body {
 
 /* 생물 노드(카드) */
 .node-card {
-  position: absolute; width: 84px; height: 106px;
+  position: absolute; width: 84px; height: 106px; pointer-events: auto;
   background: var(--eco-card-bg); border: 2px solid var(--border);
   border-radius: 14px; display: flex; flex-direction: column; align-items: center;
   justify-content: center; padding: 6px; cursor: grab; z-index: 3;
@@ -143,10 +148,14 @@ body {
   transition: border-color 0.15s, transform 0.1s;
 }
 .node-card:active { cursor: grabbing; transform: scale(1.04); }
-.node-card.selected { border-color: var(--eco-accent); box-shadow: 0 0 0 3px rgba(39,174,96,0.3); }
+.node-card.selected { border-color: var(--eco-accent); box-shadow: 0 0 0 3px rgba(39,174,96,0.45); }
 .node-card.disabled { opacity: 0.3; pointer-events: none; }
+.node-card:focus-visible { outline: 3px solid var(--eco-accent); outline-offset: 2px; }
+button.node-card { font: inherit; color: var(--fg); }
 .node-emoji { font-size: 32px; margin-bottom: 4px; line-height: 1; }
-.node-name { font-size: 12px; font-weight: 800; text-align: center; }
+.node-name { font-size: 14px; font-weight: 800; text-align: center; }
+/* 선 지우기 모드: 키보드로 고른 화살표 표시 */
+.edge-hit:focus { stroke: rgba(231,76,60,0.45); outline: none; }
 .node-role-dot {
   position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%;
 }
@@ -165,8 +174,9 @@ body {
 [data-theme="dark"] .classify-box { background: rgba(255,255,255,0.01); }
 .classify-box.drag-over { background: rgba(39,174,96,0.05); border-color: var(--eco-accent); }
 .classify-box-title {
-  font-size: 13px; font-weight: 800; text-align: center; color: var(--fg-muted);
+  font: inherit; font-size: 14px; font-weight: 800; text-align: center; color: var(--fg-muted);
   display: flex; align-items: center; justify-content: center; gap: 4px;
+  background: none; border: none; min-height: 40px; width: 100%; cursor: pointer; border-radius: 8px;
 }
 
 /* 피라미드 영역 */
@@ -185,7 +195,10 @@ body {
   box-shadow: 0 4px 12px rgba(0,0,0,0.03);
 }
 .pyramid-tier.drag-over { border-color: var(--eco-accent); background: rgba(39,174,96,0.05); }
-.pyramid-tier-label { font-size: 12px; font-weight: 800; color: var(--fg-muted); }
+.pyramid-tier-label {
+  font: inherit; font-size: 14px; font-weight: 800; color: var(--fg-muted);
+  background: none; border: none; min-height: 36px; padding: 0 10px; cursor: pointer; border-radius: 8px;
+}
 .pyramid-tier-slots { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; width: 100%; min-height: 48px; }
 .pyramid-tier-slots .node-card { position: static; transform: none !important; }
 
@@ -222,7 +235,7 @@ body {
 .sc-emoji { font-size: 36px; }
 .sc-info { display: flex; flex-direction: column; }
 .sc-name { font-size: 15px; font-weight: 800; }
-.sc-role { font-size: 11px; color: var(--fg-muted); }
+.sc-role { font-size: 13px; color: var(--fg-muted); }
 .sc-delta-badge {
   position: absolute; top: -8px; right: -8px; width: 28px; height: 28px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800;
@@ -255,8 +268,9 @@ body {
 .mode-tab {
   flex: 1; padding: 8px 4px; border-radius: 10px; border: 2px solid var(--border);
   background: var(--bg-sec); text-align: center; cursor: pointer;
-  font-size: 11px; font-weight: 800; font-family: inherit; color: var(--fg-muted);
+  font-size: 13px; font-weight: 800; font-family: inherit; color: var(--fg-muted);
   transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  min-height: 52px; justify-content: center;
 }
 .mode-tab.active {
   border-color: var(--eco-accent); background: rgba(46,204,113,0.1); color: var(--eco-accent);
@@ -268,24 +282,27 @@ body {
   border: 1px solid var(--border); border-radius: 14px; background: var(--bg-sec);
   padding: 12px 14px; margin-bottom: 14px;
 }
-.mission-title { font-size: 11px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.08em; margin-bottom: 8px; }
-.mission-desc { font-size: 13px; line-height: 1.5; font-weight: 600; }
+.mission-title { font-size: 12px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.08em; margin-bottom: 8px; }
+.mission-desc { font-size: 14px; line-height: 1.6; font-weight: 600; }
 
-.mission-nav { display: flex; gap: 4px; margin-top: 10px; justify-content: center; }
-.mission-nav-btn {
-  width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border);
-  background: var(--card-bg); font-size: 12px; font-weight: 700; cursor: pointer;
-  color: var(--fg-muted); transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+.mission-nav { display: flex; gap: 8px; margin-top: 10px; justify-content: center; }
+/* 번호 버튼은 SimKit(.sk-mnav-btn, 44px)이 그린다 */
+
+/* 피라미드 퀴즈 보기 버튼 */
+.m3-choices { margin-top: 14px; display: flex; gap: 8px; }
+.m3-choice {
+  flex: 1; min-height: 44px; border-radius: 10px; border: 2px solid var(--border);
+  background: var(--card-bg); color: var(--fg); font: inherit; font-size: 15px; font-weight: 800; cursor: pointer;
 }
-.mission-nav-btn.active { border-color: var(--eco-accent); color: var(--eco-accent); }
-.mission-nav-btn.done { border-color: var(--eco-accent); color: var(--eco-accent); background: rgba(46,204,113,0.1); }
+.m3-choice:hover { border-color: var(--eco-accent); }
+.m3-choice.selected { border-color: var(--eco-accent); background: rgba(46,204,113,0.12); color: var(--eco-accent); }
 
 /* 시나리오 컨트롤 */
 .scenario-selector { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
 .scenario-btn {
-  padding: 12px; border-radius: 10px; border: 2px solid var(--border);
-  background: var(--card-bg); text-align: left; cursor: pointer;
-  font-size: 13px; font-weight: 700; transition: all 0.15s; display: flex; align-items: center; gap: 8px;
+  padding: 12px; min-height: 44px; border-radius: 10px; border: 2px solid var(--border);
+  background: var(--card-bg); color: var(--fg); text-align: left; cursor: pointer; font-family: inherit;
+  font-size: 14px; font-weight: 700; transition: all 0.15s; display: flex; align-items: center; gap: 8px;
 }
 .scenario-btn:hover { border-color: var(--eco-accent); }
 .scenario-btn.active { border-color: var(--eco-accent); background: rgba(46,204,113,0.05); }
@@ -295,14 +312,14 @@ body {
   background: var(--bg-sec); border-radius: 12px; padding: 12px; margin-bottom: 14px;
   border: 1px solid var(--border);
 }
-.prediction-title { font-size: 12px; font-weight: 800; margin-bottom: 8px; color: var(--fg-muted); }
+.prediction-title { font-size: 14px; font-weight: 800; margin-bottom: 8px; color: var(--fg-muted); }
 .prediction-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .prediction-row:last-child { margin-bottom: 0; }
-.prediction-label { font-size: 13px; font-weight: 700; }
+.prediction-label { font-size: 14px; font-weight: 700; }
 .prediction-btns { display: flex; gap: 4px; }
 .pred-btn {
-  width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border);
-  background: var(--card-bg); font-size: 13px; font-weight: 800; cursor: pointer;
+  width: 44px; height: 44px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--card-bg); color: var(--fg); font-family: inherit; font-size: 15px; font-weight: 800; cursor: pointer;
   display: flex; align-items: center; justify-content: center; transition: all 0.15s;
 }
 .pred-btn.active {
@@ -313,16 +330,17 @@ body {
 .palette-section {
   flex: 1; display: flex; flex-direction: column; min-height: 0;
 }
-.palette-title { font-size: 11px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.08em; margin-bottom: 8px; }
+.palette-title { font-size: 12px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.08em; margin-bottom: 8px; }
 .palette-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; overflow-y: auto; padding-right: 4px;
 }
 .palette-item {
-  padding: 8px 4px; border-radius: 10px; border: 1px solid var(--border);
-  background: var(--bg-sec); text-align: center; cursor: pointer;
-  font-size: 11px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 4px; min-height: 64px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--bg-sec); color: var(--fg); text-align: center; cursor: pointer; font-family: inherit;
+  font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
 }
 .palette-item.placed { opacity: 0.4; }
+.palette-item.picked { outline: 3px solid var(--eco-accent); outline-offset: 1px; }
 
 /* 액션 패널 */
 .action-panel { margin-top: auto; padding-top: 14px; flex-shrink: 0; }
@@ -339,7 +357,7 @@ body {
 }
 
 .feedback-box {
-  padding: 10px; border-radius: 10px; font-size: 13px; line-height: 1.5; text-align: center; margin: 10px 0;
+  padding: 10px; border-radius: 10px; font-size: 14px; line-height: 1.5; text-align: center; margin: 10px 0;
 }
 .feedback-box.ok { background: rgba(46,204,113,0.1); color: var(--eco-accent); }
 .feedback-box.no { background: rgba(231,76,60,0.1); color: var(--role-consumer-3); }
@@ -372,7 +390,7 @@ body {
   .classify-box { padding: 6px; }
   .node-card { width: 70px; height: 86px; }
   .node-emoji { font-size: 24px; }
-  .node-name { font-size: 10px; }
+  .node-name { font-size: 13px; }
   .pyramid-container { max-width: 320px; }
   .pyramid-tier { min-height: 60px; padding: 6px; }
 }
@@ -401,7 +419,6 @@ body {
   cursor: not-allowed;
 }
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/eco-web/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"생태계 탐험대","description":"먹이그물 잇기·피라미드·평형 시나리오 종합 실험","url":"https://eduin.info/apps/eco-web/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -409,7 +426,7 @@ body {
 
 <!-- ============ 인트로 ============ -->
 <div id="screenIntro" class="screen active intro-screen">
-  <div class="intro-emoji">🌿</div>
+  <div class="intro-emoji" aria-hidden="true">🌿</div>
   <h1>생태계 탐험대</h1>
   <p class="intro-sub">먹이그물 잇기 · 피라미드 쌓기 · 평형 시뮬레이션</p>
 
@@ -418,7 +435,7 @@ body {
     <p>생물들이 먹고 먹히는 관계를 화살표로 직접 잇고, 생태피라미드를 올바르게 쌓아 보세요. 한 생물이 갑자기 사라졌을 때 어떤 연쇄 변화가 일어나는지도 실험실에서 예측하고 관찰해 봐요!</p>
   </div>
 
-  <button class="fb-btn fb-btn-primary" id="btnStart">시작하기</button>
+  <button type="button" class="fb-btn fb-btn-primary" id="btnStart">시작하기</button>
 </div>
 
 <!-- ============ 자유 탐험 및 미션 ============ -->
@@ -436,7 +453,7 @@ body {
       <!-- 뷰포트 (카드 및 간선) -->
       <div class="canvas-viewport" id="canvasViewport">
         <!-- 관계 화살표용 SVG -->
-        <svg class="canvas-svg" id="canvasSvg">
+        <svg class="canvas-svg" id="canvasSvg" role="group" aria-label="먹이 관계 화살표">
           <defs>
             <!-- 화살표 머리 장식 -->
             <marker id="arrow" viewBox="0 0 10 10" refX="28" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -451,44 +468,47 @@ body {
         </svg>
 
         <!-- 모드 1: 먹이그물 캔버스 카드 배치 영역 -->
-        <div id="placedNodesContainer" style="position:absolute; inset:0; z-index:2;"></div>
+        <!-- pointer-events:none: 빈 곳 클릭이 아래 SVG 화살표(선 지우기)와 분류 상자에 닿도록. 카드만 클릭을 받음 -->
+        <div id="placedNodesContainer" style="position:absolute; inset:0; z-index:2; pointer-events:none;"></div>
 
         <!-- 모드 1 미션 3: 생물 분류 상자 (기본 숨김) -->
         <div class="classify-zones" id="classifyZones" style="display:none;">
-          <div class="classify-box" data-role="producer">
-            <div class="classify-box-title" style="color:var(--role-producer);">🌾 생산자</div>
+          <!-- 상자를 누르면(제목 버튼 = 키보드) 고른 카드가 이 상자로 들어간다 -->
+          <div class="classify-box" data-role="producer" role="group" aria-label="생산자 상자">
+            <button type="button" class="classify-box-title" style="color:var(--role-producer);" aria-label="고른 카드를 생산자 상자에 넣기">🌾 생산자</button>
           </div>
-          <div class="classify-box" data-role="consumer-1">
-            <div class="classify-box-title" style="color:var(--role-consumer-1);">🦗 1차 소비자</div>
+          <div class="classify-box" data-role="consumer-1" role="group" aria-label="1차 소비자 상자">
+            <button type="button" class="classify-box-title" style="color:var(--role-consumer-1);" aria-label="고른 카드를 1차 소비자 상자에 넣기">🦗 1차 소비자</button>
           </div>
-          <div class="classify-box" data-role="consumer-2">
-            <div class="classify-box-title" style="color:var(--role-consumer-2);">🐸 2차 소비자</div>
+          <div class="classify-box" data-role="consumer-2" role="group" aria-label="2차 소비자 상자">
+            <button type="button" class="classify-box-title" style="color:var(--role-consumer-2);" aria-label="고른 카드를 2차 소비자 상자에 넣기">🐸 2차 소비자</button>
           </div>
-          <div class="classify-box" data-role="consumer-3">
-            <div class="classify-box-title" style="color:var(--role-consumer-3);">🦅 3차 소비자</div>
+          <div class="classify-box" data-role="consumer-3" role="group" aria-label="최종 소비자(3차) 상자">
+            <button type="button" class="classify-box-title" style="color:var(--role-consumer-3);" aria-label="고른 카드를 최종 소비자 상자에 넣기">🦅 최종 소비자(3차)</button>
           </div>
-          <div class="classify-box" data-role="decomposer" style="grid-column: span 2;">
-            <div class="classify-box-title" style="color:var(--role-decomposer);">🍄 분해자</div>
+          <div class="classify-box" data-role="decomposer" style="grid-column: span 2;" role="group" aria-label="분해자 상자">
+            <button type="button" class="classify-box-title" style="color:var(--role-decomposer);" aria-label="고른 카드를 분해자 상자에 넣기">🍄 분해자</button>
           </div>
         </div>
 
         <!-- 모드 2: 피라미드 영역 -->
         <div class="pyramid-zone" id="pyramidZone" style="display:none;">
           <div class="pyramid-container" id="pyramidContainer">
-            <div class="pyramid-tier" data-tier="4">
-              <div class="pyramid-tier-label">🦅 3차 소비자</div>
+            <!-- 층을 누르면(제목 버튼 = 키보드) 팔레트에서 고른 카드가 이 층에 놓인다 -->
+            <div class="pyramid-tier" data-tier="4" role="group" aria-label="최종 소비자(3차) 층">
+              <button type="button" class="pyramid-tier-label" aria-label="고른 카드를 최종 소비자 층에 놓기">🦅 최종 소비자(3차)</button>
               <div class="pyramid-tier-slots" data-level="3"></div>
             </div>
-            <div class="pyramid-tier" data-tier="3">
-              <div class="pyramid-tier-label">🐍 2차 소비자</div>
+            <div class="pyramid-tier" data-tier="3" role="group" aria-label="2차 소비자 층">
+              <button type="button" class="pyramid-tier-label" aria-label="고른 카드를 2차 소비자 층에 놓기">🐸 2차 소비자</button>
               <div class="pyramid-tier-slots" data-level="2"></div>
             </div>
-            <div class="pyramid-tier" data-tier="2">
-              <div class="pyramid-tier-label">🦗 1차 소비자</div>
+            <div class="pyramid-tier" data-tier="2" role="group" aria-label="1차 소비자 층">
+              <button type="button" class="pyramid-tier-label" aria-label="고른 카드를 1차 소비자 층에 놓기">🦗 1차 소비자</button>
               <div class="pyramid-tier-slots" data-level="1"></div>
             </div>
-            <div class="pyramid-tier" data-tier="1">
-              <div class="pyramid-tier-label">🌾 생산자</div>
+            <div class="pyramid-tier" data-tier="1" role="group" aria-label="생산자 층">
+              <button type="button" class="pyramid-tier-label" aria-label="고른 카드를 생산자 층에 놓기">🌾 생산자</button>
               <div class="pyramid-tier-slots" data-level="0"></div>
             </div>
           </div>
@@ -503,14 +523,14 @@ body {
       </div>
 
       <!-- 하단 툴바 (자유 탐험 시 초기화 등) -->
-      <div class="canvas-toolbar" id="canvasToolbar">
-        <button class="tool-btn" id="btnConnectMode">
+      <div class="canvas-toolbar" id="canvasToolbar" role="group" aria-label="먹이그물 도구">
+        <button type="button" class="tool-btn" id="btnConnectMode" aria-pressed="false" style="pointer-events:auto;">
           🔗 연결 모드 (2탭 연결)
         </button>
-        <button class="tool-btn" id="btnEraserMode">
+        <button type="button" class="tool-btn" id="btnEraserMode" aria-pressed="false" style="pointer-events:auto;">
           ✂️ 선 지우기
         </button>
-        <button class="tool-btn" id="btnClearCanvas">
+        <button type="button" class="tool-btn" id="btnClearCanvas" style="pointer-events:auto;">
           🔄 처음부터
         </button>
       </div>
@@ -525,21 +545,21 @@ body {
       
       <div class="side-body">
         <!-- 모드 선택 탭 -->
-        <div class="mode-tabs" id="modeTabs">
-          <button class="mode-tab active" data-mode="1">
-            <span class="em">🕸️</span>먹이그물
+        <div class="mode-tabs" id="modeTabs" role="group" aria-label="모드 고르기">
+          <button type="button" class="mode-tab active" data-mode="1">
+            <span class="em" aria-hidden="true">🕸️</span>먹이그물
           </button>
-          <button class="mode-tab" data-mode="2">
-            <span class="em">🔺</span>피라미드
+          <button type="button" class="mode-tab" data-mode="2">
+            <span class="em" aria-hidden="true">🔺</span>피라미드
           </button>
-          <button class="mode-tab" data-mode="3">
-            <span class="em">⚖️</span>평형 실험
+          <button type="button" class="mode-tab" data-mode="3">
+            <span class="em" aria-hidden="true">⚖️</span>평형 실험
           </button>
         </div>
 
         <!-- 미션 진행 카드 -->
         <div class="mission-card" id="missionCard">
-          <div class="mission-title" id="missionTypeTitle">미션 진행</div>
+          <h3 class="mission-title" id="missionTypeTitle">미션 진행</h3>
           <div class="mission-desc" id="missionDescription">풀에서 시작하여 최상위 소비자 매로 끝나는 먹이사슬 하나를 완성하세요!</div>
           <div class="mission-nav" id="missionNav">
             <!-- 동적 버튼 생성 -->
@@ -547,14 +567,14 @@ body {
         </div>
 
         <!-- 피드백 메시지 박스 -->
-        <div class="feedback-box" id="feedbackBox" style="display:none;"></div>
+        <div class="feedback-box" id="feedbackBox" role="status" aria-live="polite" style="display:none;"></div>
 
         <!-- 시나리오 선택 영역 (모드 3에서만 활성화) -->
-        <div class="scenario-selector" id="scenarioSelector" style="display:none;">
-          <div class="ctrl-group-title">평형 시나리오 선택</div>
-          <button class="scenario-btn active" data-sc="A">🦗 메뚜기 폭증 시나리오</button>
-          <button class="scenario-btn" data-sc="B">🐸 개구리 전멸 시나리오</button>
-          <button class="scenario-btn" data-sc="C">☀️ 가뭄(식물 전멸) 시나리오</button>
+        <div class="scenario-selector" id="scenarioSelector" style="display:none;" role="group" aria-labelledby="scenarioTitle">
+          <div class="ctrl-group-title" id="scenarioTitle">평형 시나리오 선택</div>
+          <button type="button" class="scenario-btn active" data-sc="A">🦗 메뚜기 폭증 시나리오</button>
+          <button type="button" class="scenario-btn" data-sc="B">🐸 개구리 전멸 시나리오</button>
+          <button type="button" class="scenario-btn" data-sc="C">☀️ 가뭄(식물 전멸) 시나리오</button>
         </div>
 
         <!-- 예측 버튼 그룹 (모드 3 미션에서 활성화) -->
@@ -562,34 +582,34 @@ body {
           <div class="prediction-title">🔮 결과 예측하기 (선택 후 실험 시작)</div>
           <div class="prediction-row" data-species="🦗">
             <span class="prediction-label">🦗 메뚜기 개체 수</span>
-            <div class="prediction-btns" data-sp="grasshopper">
-              <button class="pred-btn" data-val="up">▲</button>
-              <button class="pred-btn" data-val="down">▼</button>
-              <button class="pred-btn" data-val="flat">―</button>
+            <div class="prediction-btns" data-sp="grasshopper" role="group" aria-label="메뚜기 개체 수 예측">
+              <button type="button" class="pred-btn" data-val="up" aria-label="메뚜기 늘어남" aria-pressed="false">▲</button>
+              <button type="button" class="pred-btn" data-val="down" aria-label="메뚜기 줄어듦" aria-pressed="false">▼</button>
+              <button type="button" class="pred-btn" data-val="flat" aria-label="메뚜기 그대로" aria-pressed="false">―</button>
             </div>
           </div>
           <div class="prediction-row" data-species="🌾">
             <span class="prediction-label">🌾 벼 개체 수</span>
-            <div class="prediction-btns" data-sp="rice">
-              <button class="pred-btn" data-val="up">▲</button>
-              <button class="pred-btn" data-val="down">▼</button>
-              <button class="pred-btn" data-val="flat">―</button>
+            <div class="prediction-btns" data-sp="rice" role="group" aria-label="벼 개체 수 예측">
+              <button type="button" class="pred-btn" data-val="up" aria-label="벼 늘어남" aria-pressed="false">▲</button>
+              <button type="button" class="pred-btn" data-val="down" aria-label="벼 줄어듦" aria-pressed="false">▼</button>
+              <button type="button" class="pred-btn" data-val="flat" aria-label="벼 그대로" aria-pressed="false">―</button>
             </div>
           </div>
         </div>
 
         <!-- 생물 토큰 팔레트 (드래그하여 캔버스에 추가) -->
         <div class="palette-section" id="paletteSection">
-          <div class="palette-title">생물 카드 팔레트 (드래그 또는 터치하여 배치)</div>
-          <div class="palette-grid" id="paletteGrid">
+          <div class="palette-title" id="paletteTitle">생물 카드 팔레트 (드래그 또는 터치하여 배치)</div>
+          <div class="palette-grid" id="paletteGrid" role="group" aria-labelledby="paletteTitle">
             <!-- 12종 카드가 동적으로 주입됨 -->
           </div>
         </div>
 
         <!-- 우측 하단 공통 액션 패널 -->
         <div class="action-panel">
-          <button class="action-btn" id="btnVerify">🏆 정답 검사하기</button>
-          <button class="action-btn secondary" id="btnNextScreen" style="display:none;">결과 보기 →</button>
+          <button type="button" class="action-btn" id="btnVerify">🏆 정답 검사하기</button>
+          <button type="button" class="action-btn secondary" id="btnNextScreen" style="display:none;">결과 보기 →</button>
         </div>
       </div>
     </div>
@@ -598,13 +618,13 @@ body {
 
 <!-- ============ 결과 화면 ============ -->
 <div id="screenResult" class="screen result-screen">
-  <div style="font-size:72px;">🏆</div>
+  <div style="font-size:72px;" aria-hidden="true">🏆</div>
   <h2 style="margin:8px 0; font-size:28px;">탐험 완료!</h2>
   <div class="result-stars" id="resultStars"></div>
   <div class="result-summary" id="resultSummary"></div>
   <div class="result-actions">
-    <button class="fb-btn fb-btn-primary" id="btnRetry">다시 도전</button>
-    <button class="fb-btn fb-btn-primary" style="background:var(--bg-sec); color:var(--fg); border:1px solid var(--border);" id="btnBackToHub">모드 허브로</button>
+    <button type="button" class="fb-btn fb-btn-primary" id="btnRetry">다시 도전</button>
+    <button type="button" class="fb-btn fb-btn-primary" style="background:var(--bg-sec); color:var(--fg); border:1px solid var(--border);" id="btnBackToHub">모드 허브로</button>
   </div>
 </div>
 
@@ -624,14 +644,27 @@ const SPECIES = [
   { id: 'rabbit', name: '토끼', emoji: '🐇', role: 'consumer-1', level: 1 },
   { id: 'squirrel', name: '다람쥐', emoji: '🐿️', role: 'consumer-1', level: 1 },
   { id: 'frog', name: '개구리', emoji: '🐸', role: 'consumer-2', level: 2 },
-  { id: 'sparrow', name: '참새', emoji: '🐦', role: 'consumer-2', level: 2 },
-  { id: 'snake', name: '뱀', emoji: '🐍', role: 'consumer-3', level: 3 },
+  // 참새는 벼(생산자)도 먹고 메뚜기(1차 소비자)도 먹으므로 1차·2차 소비자 둘 다 될 수 있다
+  { id: 'sparrow', name: '참새', emoji: '🐦', role: 'consumer-2', level: 2, altRoles: ['consumer-1'], altLevels: [1] },
+  // 뱀은 2차 소비자(개구리·참새)를 먹는 3차 소비자지만, 매·여우에게 먹히므로 최종 소비자는 아니다
+  { id: 'snake', name: '뱀', emoji: '🐍', role: 'consumer-3', level: 3, roleLabel: '3차 소비자' },
+  // 매·여우는 1차 소비자(토끼·다람쥐)와 2차·3차 소비자를 모두 먹는 먹이그물 맨 위 생물 → '최종 소비자'로 부른다
+  // (초등 과학 생태계 단원: 생산자 / 1차·2차·최종 소비자 / 분해자)
   { id: 'fox', name: '여우', emoji: '🦊', role: 'consumer-3', level: 3 },
   { id: 'hawk', name: '매', emoji: '🦅', role: 'consumer-3', level: 3 },
   { id: 'mushroom', name: '버섯', emoji: '🍄', role: 'decomposer', level: -1 },
   { id: 'mold', name: '곰팡이', emoji: '🦠', role: 'decomposer', level: -1 },
 ];
 const SPECIES_BY_ID = Object.fromEntries(SPECIES.map(s => [s.id, s]));
+const roleOk = (sp, role) => sp.role === role || (sp.altRoles || []).includes(role);
+const ROLE_LABELS = { producer: '생산자', 'consumer-1': '1차 소비자', 'consumer-2': '2차 소비자', 'consumer-3': '최종 소비자', decomposer: '분해자' };
+const roleLabelOf = sp => sp.roleLabel || ROLE_LABELS[sp.role] || '';
+const levelOk = (sp, level) => sp.level === level || (sp.altLevels || []).includes(level);
+
+/* 받침 유무에 따라 조사 선택: josa('뱀','과','와') → '뱀과' (SimKit.josa) */
+function josa(word, withBatchim, withoutBatchim) {
+  return SimKit.josa(word, withBatchim + '/' + withoutBatchim);
+}
 
 // 올바른 먹고 먹히는 방향성 간선 정의 (preyId ➔ predatorId)
 const VALID_RELATIONS = [
@@ -648,6 +681,7 @@ const VALID_RELATIONS = [
   ['rabbit', 'fox'],
   ['rabbit', 'hawk'],
   ['frog', 'snake'],
+  ['frog', 'hawk'],
   ['sparrow', 'snake'],
   ['sparrow', 'hawk'],
   ['snake', 'hawk'],
@@ -674,7 +708,7 @@ const MISSIONS = {
   m1: [
     {
       id: 'm1_1', title: '먹이사슬 완성',
-      desc: '풀(토끼풀)에서 시작해서 1차, 2차를 거쳐 3차 소비자(매)로 끝나는 일직선 먹이사슬 하나를 올바른 화살표 방향으로 완성하세요.',
+      desc: '풀(토끼풀)에서 시작해서 1차, 2차 소비자를 거쳐 최종 소비자(매)로 끝나는 일직선 먹이사슬 하나를 올바른 화살표 방향으로 완성하세요.',
       verify: (placed, edges) => {
         // 토끼풀(clover) -> (토끼/메뚜기/다람쥐) -> (여우/매/개구리/참새/뱀) -> 매(hawk) 형태의 올바른 체인이 있는지 확인
         // DFS로 clover에서 hawk까지 연결 유효성 탐색
@@ -715,7 +749,7 @@ const MISSIONS = {
     },
     {
       id: 'm1_3', title: '역할에 맞게 분류하기',
-      desc: '생물들을 역할에 맞게 화면의 5개 분류 상자(생산자, 1·2·3차 소비자, 분해자)로 드래그하여 알맞게 분류하세요. (각 상자에 1종 이상 배치)',
+      desc: '생물들을 역할에 맞게 화면의 5개 분류 상자(생산자, 1차·2차·최종 소비자, 분해자)로 드래그하여 알맞게 분류하세요. (각 상자에 1종 이상 배치)<br><span style="font-size:14px;opacity:0.85;">잘못 넣은 카드는 상자 밖으로 다시 끌어내면 돼요. 카드를 누른 다음 상자를 눌러도 옮겨져요.</span>',
       verify: (placed, edges) => {
         // 각 상자별 드롭된 노드 체크
         const boxes = document.querySelectorAll('.classify-box');
@@ -729,7 +763,7 @@ const MISSIONS = {
             count++;
             const spId = card.dataset.id;
             const sp = SPECIES_BY_ID[spId];
-            if (sp.role !== role) {
+            if (!sp || !roleOk(sp, role)) {
               allCorrect = false;
             }
           });
@@ -742,19 +776,21 @@ const MISSIONS = {
   m2: [
     {
       id: 'm2_1', title: '생태 피라미드 완성',
-      desc: '벼, 토끼, 개구리, 매를 생태 피라미드의 알맞은 영양 단계(생산자 ➔ 1차 ➔ 2차 ➔ 3차)에 올바르게 드래그하여 쌓아 완성하세요.',
+      desc: '벼, 토끼, 개구리, 매를 생태 피라미드의 알맞은 영양 단계(생산자 ➔ 1차 ➔ 2차 ➔ 최종 소비자)에 올바르게 드래그하여 쌓아 완성하세요.',
       verify: (placed, edges) => {
+        // 벼·토끼·개구리·매가 모두 알맞은 층에 있고, 잘못 놓인 카드가 없어야 성공
         const tiers = document.querySelectorAll('.pyramid-tier-slots');
-        let score = 0;
+        const correctIds = new Set();
+        let wrong = 0;
         tiers.forEach(tier => {
           const level = parseInt(tier.dataset.level);
-          const cards = tier.querySelectorAll('.node-card');
-          cards.forEach(card => {
+          tier.querySelectorAll('.node-card').forEach(card => {
             const sp = SPECIES_BY_ID[card.dataset.id];
-            if (sp.level === level) score++;
+            if (sp && levelOk(sp, level)) correctIds.add(sp.id);
+            else wrong++;
           });
         });
-        return score >= 4; // 최소 4개 맞춤
+        return wrong === 0 && ['rice', 'rabbit', 'frog', 'hawk'].every(id => correctIds.has(id));
       }
     },
     {
@@ -869,61 +905,122 @@ let state = {
   activeScenario: 'A',
   simulationStep: 0,
   simulationInterval: null,
-  predictions: { grasshopper: null, rice: null }
+  predictions: { grasshopper: null, rice: null },
+  pendingPyramidId: null, // 탭으로 피라미드에 놓을 카드(드래그가 안 되는 터치 기기용)
+  pendingClassifyId: null // 분류 미션: 누른 카드(다음에 누른 상자로 들어감)
 };
 
 /* ── 유틸 ── */
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
-/* ── 저장 / 불러오기 ── */
+/* ── 저장 / 불러오기 (키·모양 그대로: { missionsCompleted, placedNodes, edges }) ── */
 const STORAGE_KEY = 'eco-web:v1';
+const MISSION_IDS = { 1: ['m1_1', 'm1_2', 'm1_3'], 2: ['m2_1', 'm2_2'], 3: ['m3_1'] };
+const ALL_MISSION_IDS = [...MISSION_IDS[1], ...MISSION_IDS[2], ...MISSION_IDS[3]];
+const store = SimKit.store(STORAGE_KEY, {
+  defaults: { missionsCompleted: {}, placedNodes: {}, edges: [] },
+  validate: (raw) => {
+    if (!raw || typeof raw !== 'object') return null;
+    return {
+      missionsCompleted: SimKit.clean.flags(raw.missionsCompleted, ALL_MISSION_IDS),
+      placedNodes: cleanPlacedNodes(raw.placedNodes),
+      edges: cleanEdges(raw.edges)
+    };
+  }
+});
 function saveState() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      missionsCompleted: state.missionsCompleted,
-      placedNodes: state.placedNodes,
-      edges: state.edges
-    }));
-  } catch(e) {}
+  store.save({
+    missionsCompleted: state.missionsCompleted,
+    placedNodes: state.placedNodes,
+    edges: state.edges
+  });
 }
 function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const saved = JSON.parse(raw);
-    if (saved.missionsCompleted) state.missionsCompleted = saved.missionsCompleted;
-    if (saved.placedNodes) state.placedNodes = saved.placedNodes;
-    if (saved.edges) state.edges = saved.edges;
-  } catch(e) {}
+  const saved = store.load();
+  state.missionsCompleted = SimKit.clean.flags(saved.missionsCompleted, ALL_MISSION_IDS);
+  state.placedNodes = saved.placedNodes;
+  state.edges = saved.edges;
+}
+
+/* 저장값·공유 링크에서 온 값 검사: 아는 생물 id와 올바른 먹이 관계만 남긴다 */
+function cleanPlacedNodes(obj) {
+  const out = {};
+  if (!obj || typeof obj !== 'object') return out;
+  Object.keys(obj).forEach(id => {
+    const p = obj[id];
+    if (!SPECIES_BY_ID[id] || !p) return;
+    const x = Number(p.x), y = Number(p.y);
+    if (isFinite(x) && isFinite(y)) out[id] = { x: Math.max(0, Math.min(4000, x)), y: Math.max(0, Math.min(4000, y)) };
+  });
+  return out;
+}
+function cleanEdges(arr) {
+  if (!Array.isArray(arr)) return [];
+  const seen = new Set();
+  return arr.filter(e => {
+    if (!Array.isArray(e) || e.length !== 2) return false;
+    const key = `${e[0]}->${e[1]}`;
+    if (!RELATION_MAP.has(key) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).map(e => [e[0], e[1]]);
 }
 
 /* ── 공유 링크 ── */
+/* 예전 #share=<URI-JSON> 링크도 읽음. 받은 값은 cleanEdges·cleanPlacedNodes로 다시 검사 */
 function parseShareLink() {
-  const hash = location.hash;
-  if (!hash.startsWith('#share=')) return;
-  try {
-    const payload = JSON.parse(decodeURIComponent(hash.slice(7)));
-    if (payload.v === 1 && payload.edges) {
-      state.edges = payload.edges;
-      state.placedNodes = payload.placedNodes || {};
-      state.mode = 1;
-    }
-  } catch(e) {}
-  history.replaceState(null, '', location.pathname);
+  const payload = SimKit.share.read({ version: 1 });
+  if (payload && payload.edges) {
+    state.edges = cleanEdges(payload.edges);
+    state.placedNodes = cleanPlacedNodes(payload.placedNodes);
+    state.mode = 1;
+  }
 }
+
+/* ── 공용 조각: 화면·피드백·모드 탭·미션 컨트롤러(모드별 3개, 번호 상자는 함께 씀) ── */
+const screens = SimKit.screens({ focus: true });
+const fb = SimKit.feedback('#feedbackBox', { html: true, classes: { ok: 'ok', no: 'no' } });
+let modeTabs = null;
+const mcs = {};
 
 /* ══════════════════════════════════════
    모드 / 미션 화면 전환 및 셋업
    ══════════════════════════════════════ */
-function switchMode(modeNum) {
-  state.mode = parseInt(modeNum);
-  state.missionIdx = 0;
-  
-  // 탭 활성화
-  $$('.mode-tab').forEach(b => {
-    b.classList.toggle('active', parseInt(b.dataset.mode) === state.mode);
+function stopSimulation() {
+  if (state.simulationInterval) {
+    // 실험 인터벌은 모드 3 미션 타이머(mcs[3].every)로 걸려 미션·모드를 옮기면 자동으로 멈춘다
+    if (mcs[3]) mcs[3].timers.clear(state.simulationInterval);
+    state.simulationInterval = null;
+  }
+}
+
+function selectScenario(key) {
+  state.activeScenario = key;
+  $$('.scenario-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.sc === key);
+    b.setAttribute('aria-pressed', b.dataset.sc === key ? 'true' : 'false');
   });
+}
+
+/* 모드 바꾸기: 이전 모드 컨트롤러를 멈추고 새 모드의 1번 미션으로(지금 동작 유지) */
+function switchMode(modeNum) {
+  const newMode = parseInt(modeNum) || 1;
+  if (mcs[state.mode] && state.mode !== newMode) mcs[state.mode].stop();
+  state.mode = newMode;
+  if (modeTabs) modeTabs.select(state.mode, { silent: true });
+  mcs[state.mode].go(0); // → onEnter → buildModeView()
+}
+
+/* 미션 화면 짓기: 컨트롤러 onEnter에서만 부른다(번호 그리기·문구 숨김·타이머 정리는 컨트롤러가 함).
+   성공 처리에서 다시 부르면 퀴즈·예측 선택이 지워지므로 부르지 말 것 */
+function buildModeView() {
+  stopSimulation();
+  state.pendingPyramidId = null;
+  state.pendingClassifyId = null;
+  // 왼쪽 위 이름표를 지금 모드에 맞게
+  $('#canvasBadgeNum').textContent = String(state.mode);
+  $('#canvasBadgeLabel').textContent = { 1: '먹이그물 공방', 2: '생태 피라미드', 3: '평형 실험실' }[state.mode] || '';
 
   // 미션 및 컨트롤 세팅
   setupMissionUI();
@@ -979,11 +1076,10 @@ function switchMode(modeNum) {
     const curMission = getActiveMission();
     if (curMission && curMission.id === 'm3_1') {
       $('#predictionBox').style.display = 'block';
+      selectScenario('B'); // 미션은 '개구리 전멸' 시나리오로 채점한다
     }
     renderScenarioVisual();
   }
-
-  hideFeedback();
 }
 
 function getActiveMission() {
@@ -993,22 +1089,7 @@ function getActiveMission() {
 
 function setupMissionUI() {
   const mList = MISSIONS['m' + state.mode];
-  const nav = $('#missionNav');
-  nav.innerHTML = '';
-  
   if (!mList) return;
-
-  mList.forEach((m, idx) => {
-    const isDone = state.missionsCompleted[m.id];
-    const btn = document.createElement('button');
-    btn.className = `mission-nav-btn ${idx === state.missionIdx ? 'active' : ''} ${isDone ? 'done' : ''}`;
-    btn.textContent = idx + 1;
-    btn.addEventListener('click', () => {
-      state.missionIdx = idx;
-      switchMode(state.mode); // 리셋 겸 재구축
-    });
-    nav.appendChild(btn);
-  });
 
   const curMission = getActiveMission();
   if (curMission) {
@@ -1017,16 +1098,17 @@ function setupMissionUI() {
     // 만약 피라미드 퀴즈라면 퀴즈 UI 주입
     if (curMission.id === 'm2_2') {
       $('#missionDescription').innerHTML += `
-        <div class="m3-choices" style="margin-top: 14px;">
-          <button class="m3-choice" data-val="1">1번</button>
-          <button class="m3-choice" data-val="2">2번</button>
-          <button class="m3-choice" data-val="3">3번</button>
+        <div class="m3-choices" role="group" aria-label="알맞은 설명 고르기">
+          <button type="button" class="m3-choice" data-val="1" aria-pressed="false">1번</button>
+          <button type="button" class="m3-choice" data-val="2" aria-pressed="false">2번</button>
+          <button type="button" class="m3-choice" data-val="3" aria-pressed="false">3번</button>
         </div>
       `;
       $$('.m3-choice').forEach(b => {
         b.addEventListener('click', () => {
-          $$('.m3-choice').forEach(btn => btn.classList.remove('selected'));
+          $$('.m3-choice').forEach(btn => { btn.classList.remove('selected'); btn.setAttribute('aria-pressed', 'false'); });
           b.classList.add('selected');
+          b.setAttribute('aria-pressed', 'true');
         });
       });
     }
@@ -1037,7 +1119,7 @@ function setupMissionUI() {
 }
 
 function updateVerifyButtonText() {
-  const allMissionsDone = Object.values(state.missionsCompleted).every(Boolean);
+  const allMissionsDone = ALL_MISSION_IDS.every(id => state.missionsCompleted[id] === true);
   if (allMissionsDone) {
     $('#btnNextScreen').style.display = 'block';
   } else {
@@ -1049,8 +1131,14 @@ function resetTemporaryModes() {
   state.connectMode = false;
   state.eraserMode = false;
   state.activeConnectSource = null;
-  $('#btnConnectMode').classList.remove('active');
-  $('#btnEraserMode').classList.remove('active');
+  setToolPressed();
+}
+
+function setToolPressed() {
+  $('#btnConnectMode').classList.toggle('active', state.connectMode);
+  $('#btnConnectMode').setAttribute('aria-pressed', state.connectMode ? 'true' : 'false');
+  $('#btnEraserMode').classList.toggle('active', state.eraserMode);
+  $('#btnEraserMode').setAttribute('aria-pressed', state.eraserMode ? 'true' : 'false');
 }
 
 /* ══════════════════════════════════════
@@ -1061,12 +1149,18 @@ function renderPalette() {
   grid.innerHTML = '';
   SPECIES.forEach(sp => {
     // 생산자, 분해자, 소비자에 따라 필터링 할 수도 있지만 팔레트에 모두 표시
-    const isPlaced = !!state.placedNodes[sp.id];
+    // 캔버스 배치 여부는 먹이그물(모드 1)에서만 의미가 있다. 피라미드에서는 언제든 꺼내 쓸 수 있음
+    const isPlaced = state.mode === 1 && !!state.placedNodes[sp.id];
     
     // 미션 1-3 (분류 미션) 시, 캔버스에 없는 물건만 팔레트에 노출
-    const card = document.createElement('div');
-    card.className = `palette-item ${isPlaced ? 'placed' : ''}`;
-    card.innerHTML = `<span style="font-size:24px;">${sp.emoji}</span><span>${sp.name}</span>`;
+    const picked = state.mode === 2 && state.pendingPyramidId === sp.id;
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `palette-item ${isPlaced ? 'placed' : ''} ${picked ? 'picked' : ''}`;
+    card.dataset.id = sp.id;
+    card.innerHTML = `<span style="font-size:24px;" aria-hidden="true">${sp.emoji}</span><span>${sp.name}</span>`;
+    if (state.mode === 2) card.setAttribute('aria-pressed', picked ? 'true' : 'false');
+    else if (isPlaced) card.setAttribute('aria-label', `${sp.name} (판에 놓음)`);
     
     // 드래그 지원
     card.draggable = !isPlaced;
@@ -1076,13 +1170,28 @@ function renderPalette() {
 
     // 클릭 시 바로 배치하는 대체 수단도 함께 제공 (접근성)
     card.addEventListener('click', () => {
+      if (state.mode === 2) {
+        // 터치 기기용: 카드를 누른 뒤 피라미드 층을 누르면 그 층에 놓인다
+        state.pendingPyramidId = state.pendingPyramidId === sp.id ? null : sp.id;
+        renderPalette();
+        focusPaletteItem(sp.id);
+        if (state.pendingPyramidId) showToast(`${josa(sp.name, '을', '를')} 놓을 피라미드 층을 눌러 주세요.`);
+        return;
+      }
       if (!isPlaced) {
         placeNodeToCanvas(sp.id);
+        focusPaletteItem(sp.id);
+        showToast(`${josa(sp.name, '을', '를')} 판에 놓았어요.`);
       }
     });
 
     grid.appendChild(card);
   });
+}
+
+function focusPaletteItem(id) {
+  const el = document.querySelector(`#paletteGrid .palette-item[data-id="${id}"]`);
+  if (el) el.focus({ preventScroll: true });
 }
 
 // 캔버스에 노드 임의 배치 (클릭 배치 시)
@@ -1100,6 +1209,9 @@ function placeNodeToCanvas(id) {
 
 function renderPlacedNodes() {
   const container = $('#placedNodesContainer');
+  // 다시 그려도 키보드 초점이 같은 카드에 남도록
+  const ae = document.activeElement;
+  const focusedId = ae && ae.classList && ae.classList.contains('node-card') && container.contains(ae) ? ae.dataset.id : null;
   container.innerHTML = '';
 
   const curMission = getActiveMission();
@@ -1114,7 +1226,7 @@ function renderPlacedNodes() {
       + 'border-radius:20px; text-align:center; color:var(--fg-muted); pointer-events:none; opacity:0.75;';
     hint.innerHTML = '<div style="font-size:40px; margin-bottom:12px;">🌱</div>'
       + '<div style="font-size:15px; font-weight:700; line-height:1.6;">오른쪽 생물 카드를 이곳으로<br>끌어다 놓아 보세요</div>'
-      + '<div style="font-size:12px; margin-top:8px;">카드를 놓은 뒤 <b>연결 모드</b>로 먹이 관계 화살표를 이어요</div>';
+      + '<div style="font-size:14px; margin-top:8px;">카드를 놓은 뒤 <b>연결 모드</b>로 먹이 관계 화살표를 이어요</div>';
     container.appendChild(hint);
   }
 
@@ -1123,6 +1235,8 @@ function renderPlacedNodes() {
     // 화면 상단에 벼, 메뚜기, 개구리, 매, 버섯 등을 드래그할 수 있게 팔레트 형식 대신 캔버스 탑에 배치
     const initialClassificationItems = ['rice', 'clover', 'grasshopper', 'rabbit', 'frog', 'hawk', 'mushroom'];
     initialClassificationItems.forEach((id, i) => {
+      // 이미 분류 상자에 들어간 카드는 다시 만들지 않는다(중복 방지)
+      if (document.querySelector(`.classify-box .node-card[data-id="${id}"]`)) return;
       state.placedNodes[id] = { x: 30 + i * 90, y: 80 };
     });
   }
@@ -1130,10 +1244,15 @@ function renderPlacedNodes() {
   Object.entries(state.placedNodes).forEach(([id, pos]) => {
     const sp = SPECIES_BY_ID[id];
     const card = document.createElement('div');
-    card.className = `node-card ${state.activeConnectSource === id ? 'selected' : ''}`;
+    const isSel = state.activeConnectSource === id || state.pendingClassifyId === id;
+    card.className = `node-card ${isSel ? 'selected' : ''}`;
     card.dataset.id = id;
     card.style.left = `${pos.x}px`;
     card.style.top = `${pos.y}px`;
+    // 키보드: Tab으로 고르고 Enter(연결·분류), 방향키(옮기기)
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('role', 'button');
+    card.setAttribute('aria-label', `${sp.name} (${roleLabelOf(sp)})${isSel ? ', 골랐음' : ''}`);
 
     // 역할 색상 표시 도트
     let dotColor = 'var(--role-producer)';
@@ -1142,13 +1261,14 @@ function renderPlacedNodes() {
     if (sp.role === 'consumer-3') dotColor = 'var(--role-consumer-3)';
     if (sp.role === 'decomposer') dotColor = 'var(--role-decomposer)';
     card.innerHTML = `
-      <div class="node-role-dot" style="background:${dotColor}"></div>
-      <div class="node-emoji">${sp.emoji}</div>
+      <div class="node-role-dot" style="background:${dotColor}" aria-hidden="true"></div>
+      <div class="node-emoji" aria-hidden="true">${sp.emoji}</div>
       <div class="node-name">${sp.name}</div>
     `;
 
-    // Pointer 드래그 이벤트 바인딩
+    // Pointer 드래그 이벤트 바인딩 (조금만 움직이면 '누르기'로 본다)
     let isDragging = false;
+    let moved = false;
     let startX, startY;
     let origX, origY;
 
@@ -1164,17 +1284,34 @@ function renderPlacedNodes() {
       }
 
       isDragging = true;
+      moved = false;
       card.setPointerCapture(e.pointerId);
       startX = e.clientX;
       startY = e.clientY;
-      origX = parseInt(card.style.left);
-      origY = parseInt(card.style.top);
+      origX = parseInt(card.style.left) || 0;
+      origY = parseInt(card.style.top) || 0;
     });
 
     card.addEventListener('pointermove', (e) => {
       if (!isDragging) return;
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
+      if (!moved) {
+        if (Math.hypot(dx, dy) < 6) return; // 아직 누르기
+        moved = true;
+        // 분류 상자 안의 카드를 끌기 시작하면 상자에서 꺼내 자유 영역으로 옮긴 뒤 계속 끌 수 있게 한다
+        if (card.parentElement && card.parentElement.classList.contains('classify-box')) {
+          const vr = viewport.getBoundingClientRect();
+          const cr = card.getBoundingClientRect();
+          origX = Math.max(0, cr.left - vr.left);
+          origY = Math.max(0, cr.top - vr.top);
+          card.style.position = '';
+          card.style.left = `${origX}px`;
+          card.style.top = `${origY}px`;
+          $('#placedNodesContainer').appendChild(card);
+          state.placedNodes[id] = { x: origX, y: origY };
+        }
+      }
       const view = $('#canvasViewport');
       const newX = Math.max(0, Math.min(view.clientWidth - 84, origX + dx));
       const newY = Math.max(0, Math.min(view.clientHeight - 106, origY + dy));
@@ -1192,7 +1329,12 @@ function renderPlacedNodes() {
     card.addEventListener('pointerup', (e) => {
       if (!isDragging) return;
       isDragging = false;
-      card.releasePointerCapture(e.pointerId);
+      try { card.releasePointerCapture(e.pointerId); } catch (err) { /* 이미 해제됨 */ }
+      if (!moved) {
+        // 누르기(끌지 않음): 분류 미션에서는 카드 고르기 → 다음에 누른 상자로 들어감
+        if (isClassifyMode) selectClassifyCard(id);
+        return;
+      }
       saveState();
 
       // 분류 미션일 때 박스 안으로 들어갔는지 판정
@@ -1200,9 +1342,65 @@ function renderPlacedNodes() {
         checkClassificationDrop(card);
       }
     });
+    card.addEventListener('pointercancel', () => { isDragging = false; });
+    // 상자 안 카드의 클릭이 상자 클릭(카드 넣기)으로 번지지 않게
+    card.addEventListener('click', (e) => e.stopPropagation());
+
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (state.connectMode) handleConnectTap(id);
+        else if (isClassifyMode) selectClassifyCard(id);
+        else if (state.eraserMode) showToast('선 지우기: Tab으로 지울 화살표를 고른 뒤 Enter를 눌러요.');
+        else showToast('🔗 [연결 모드]를 켠 다음, 먹히는 생물 → 먹는 생물 순서로 카드를 눌러요.');
+        return;
+      }
+      const step = e.shiftKey ? 40 : 10;
+      const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+      if (!d || card.parentElement !== container) return;
+      e.preventDefault();
+      const view = $('#canvasViewport');
+      const p = state.placedNodes[id] || { x: 0, y: 0 };
+      const nx = Math.max(0, Math.min(view.clientWidth - 84, p.x + d[0]));
+      const ny = Math.max(0, Math.min(view.clientHeight - 106, p.y + d[1]));
+      state.placedNodes[id] = { x: nx, y: ny };
+      card.style.left = `${nx}px`;
+      card.style.top = `${ny}px`;
+      if (!isClassifyMode) redrawConnections();
+      saveState();
+    });
 
     container.appendChild(card);
   });
+  if (focusedId) {
+    const again = container.querySelector(`.node-card[data-id="${focusedId}"]`);
+    if (again) again.focus({ preventScroll: true });
+  }
+}
+
+/* ── 분류 미션: 누르기·키보드로 카드 옮기기 ── */
+function selectClassifyCard(id) {
+  state.pendingClassifyId = state.pendingClassifyId === id ? null : id;
+  $$('#canvasViewport .node-card').forEach(c => {
+    const on = c.dataset.id === state.pendingClassifyId;
+    c.classList.toggle('selected', on);
+    const sp = SPECIES_BY_ID[c.dataset.id];
+    if (sp) c.setAttribute('aria-label', `${sp.name} (${roleLabelOf(sp)})${on ? ', 골랐음' : ''}`);
+  });
+  if (state.pendingClassifyId) showToast(`${josa(SPECIES_BY_ID[id].name, '을', '를')} 넣을 상자를 눌러 주세요.`);
+}
+function moveCardToClassifyBox(id, box) {
+  const card = document.querySelector(`#canvasViewport .node-card[data-id="${id}"]`);
+  if (!card || !box) return;
+  box.appendChild(card);
+  card.style.position = 'static';
+  delete state.placedNodes[id];
+  state.pendingClassifyId = null;
+  card.classList.remove('selected');
+  const sp = SPECIES_BY_ID[id];
+  card.setAttribute('aria-label', `${sp.name} (${roleLabelOf(sp)})`);
+  renderPalette();
+  showToast(`${josa(sp.name, '을', '를')} ${box.getAttribute('aria-label') || '상자'}에 넣었어요.`);
 }
 
 // HTML5 드래그앤드롭 수신 (팔레트 ➔ 캔버스)
@@ -1290,9 +1488,9 @@ function handleConnectTap(id) {
       return;
     }
 
-    // 유효 관계 검사
+    // 유효 관계 검사(아래)
     if (!RELATION_MAP.has(key)) {
-      showToast(`⚠️ ${SPECIES_BY_ID[source].name}와 ${SPECIES_BY_ID[id].name}은 직접 먹고 먹히는 관계가 아닙니다.`, 'no');
+      showToast(`⚠️ ${josa(SPECIES_BY_ID[source].name, '과', '와')} ${josa(SPECIES_BY_ID[id].name, '은', '는')} 직접 먹고 먹히는 관계가 아니에요.`, 'no');
       triggerNodeShake(id);
       return;
     }
@@ -1308,6 +1506,7 @@ function handleConnectTap(id) {
     state.edges.push([source, id]);
     redrawConnections();
     saveState();
+    showToast(`✓ ${SPECIES_BY_ID[source].name} ➔ ${SPECIES_BY_ID[id].name} 화살표를 이었어요.`);
   }
 }
 
@@ -1344,20 +1543,48 @@ function redrawConnections() {
     line.setAttribute('stroke', 'var(--fg-muted)');
     line.setAttribute('stroke-width', '3');
     line.setAttribute('marker-end', 'url(#arrow)');
-    line.style.cursor = state.eraserMode ? 'pointer' : 'default';
-    line.style.pointerEvents = 'auto';
+    line.style.pointerEvents = 'none';
+
+    // 지우개 모드용 굵은 투명 선(손가락으로도 누르기 쉽게)
+    const hit = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    hit.setAttribute('x1', x1);
+    hit.setAttribute('y1', y1);
+    hit.setAttribute('x2', x2);
+    hit.setAttribute('y2', y2);
+    hit.setAttribute('stroke', 'transparent');
+    hit.setAttribute('stroke-width', '18');
+    hit.setAttribute('class', 'edge-hit');
+    hit.style.cursor = state.eraserMode ? 'pointer' : 'default';
+    hit.style.pointerEvents = state.eraserMode ? 'stroke' : 'none';
+    if (state.eraserMode) {
+      // 키보드: 선 지우기 모드에서만 Tab으로 화살표를 고르고 Enter로 지움
+      hit.setAttribute('tabindex', '0');
+      hit.setAttribute('role', 'button');
+      hit.setAttribute('aria-label', `${SPECIES_BY_ID[fromId].name} ➔ ${SPECIES_BY_ID[toId].name} 화살표 지우기`);
+    }
 
     // 지우개 모드 지원
-    line.addEventListener('click', (e) => {
+    const eraseThis = () => {
+      if (!state.eraserMode) return;
+      state.edges.splice(idx, 1);
+      redrawConnections();
+      saveState();
+      showToast(`${SPECIES_BY_ID[fromId].name} ➔ ${SPECIES_BY_ID[toId].name} 화살표를 지웠어요.`);
+    };
+    hit.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (state.eraserMode) {
-        state.edges.splice(idx, 1);
-        redrawConnections();
-        saveState();
-      }
+      eraseThis();
+    });
+    hit.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      eraseThis();
+      const nextHit = document.querySelector('#svgConnections .edge-hit[tabindex="0"]');
+      (nextHit || $('#btnEraserMode')).focus();
     });
 
     g.appendChild(line);
+    g.appendChild(hit);
   });
 }
 
@@ -1368,6 +1595,20 @@ function renderPyramidSlots() {
   const tiers = $$('.pyramid-tier-slots');
   tiers.forEach(tier => {
     tier.innerHTML = '';
+    if (tier.dataset.bound) return; // 리스너는 한 번만 (모드를 바꿀 때마다 중복 등록되던 문제)
+    tier.dataset.bound = '1';
+
+    // 탭 대체 조작: 팔레트에서 고른 카드를 이 층에 놓기
+    tier.parentElement.addEventListener('click', () => {
+      if (!state.pendingPyramidId) {
+        showToast('먼저 오른쪽 팔레트에서 생물 카드를 하나 누른 다음 층을 눌러 주세요.');
+        return;
+      }
+      const id = state.pendingPyramidId;
+      state.pendingPyramidId = null;
+      dropCardToPyramidTier(id, parseInt(tier.dataset.level));
+      renderPalette();
+    });
     
     // HTML5 dragover/drop 바인딩
     tier.addEventListener('dragover', (e) => {
@@ -1407,11 +1648,12 @@ function dropCardToPyramidTier(id, targetLevel) {
   // 이미 존재하는지 확인
   const existing = container.querySelector(`.node-card[data-id="${id}"]`);
   if (existing) return;
+  // 같은 생물은 피라미드에 한 곳에만 (다른 층에 있던 카드는 옮긴다)
+  $$(`.pyramid-tier-slots .node-card[data-id="${id}"]`).forEach(c => c.remove());
 
-  // 오개념 경고 체크: 상위 영양 단계에 하위보다 많은 종류/개체가 쌓일 때
-  // 초등 과정: "생산자(0)가 가장 많고, 최상위 소비자(3)가 가장 적어야 함"
-  // targetLevel이 높을수록(3) 개수가 적어야 하며, targetLevel이 낮을수록(0) 개수가 많아야 한다.
-  // 배치 후의 각 층 개수 계산
+  // 오개념 경고 체크: 위 층에 아래 층보다 많은 '종류'(카드 수)가 쌓일 때.
+  // 이 판은 층마다 놓은 생물 종류 수만 센다(개체 수·에너지양은 비교하지 않음).
+  // 배치 후의 각 층 카드 수 계산
   const tempCounts = [0, 0, 0, 0];
   const tiers = $$('.pyramid-tier-slots');
   tiers.forEach(t => {
@@ -1421,7 +1663,7 @@ function dropCardToPyramidTier(id, targetLevel) {
     tempCounts[lvl] = count;
   });
 
-  // 오개념 조건: 상위 레벨의 개체수가 하위 레벨의 개체수보다 크면 비평형!
+  // 위 층의 종류 수가 바로 아래 층보다 많으면 경고
   let violates = false;
   for (let i = 0; i < 3; i++) {
     if (tempCounts[i] > 0 && tempCounts[i+1] > tempCounts[i]) {
@@ -1431,29 +1673,42 @@ function dropCardToPyramidTier(id, targetLevel) {
   }
 
   if (violates) {
-    showToast('⚠️ 경고: 상위 소비자의 수(양)가 먹이인 하위 단계 생물보다 많으면 피라미드가 무너져 생태계가 유지될 수 없어요!', 'no');
+    showToast('⚠️ 위 층에 놓은 생물 종류가 아래 층보다 많아요! 여기서는 층마다 놓은 생물의 종류 수를 비교해요. 생태 피라미드는 보통 위로 갈수록 좁아져요.', 'no');
     // 흔들림 연출
     const py = $('#pyramidContainer');
     py.classList.add('pyramid-shake');
     setTimeout(() => py.classList.remove('pyramid-shake'), 500);
   }
 
-  // 카드 DOM 생성 후 티어에 주입
-  const card = document.createElement('div');
+  // 카드 DOM 생성 후 티어에 주입 (버튼: 누르면 빼기)
+  const card = document.createElement('button');
+  card.type = 'button';
   card.className = 'node-card';
   card.dataset.id = id;
   card.draggable = true;
+  card.setAttribute('aria-label', `${sp.name} 피라미드에서 빼기`);
   card.addEventListener('dragstart', (e) => {
     e.dataTransfer.setData('text/plain', id);
     // 드래그 시 티어에서 일단 뗌
     setTimeout(() => card.remove(), 0);
   });
 
+  // 피라미드에 놓인 카드를 누르면 빼낼 수 있다(드래그가 안 되는 기기용)
+  card.title = '누르면 피라미드에서 빼요';
+  card.addEventListener('click', (e) => {
+    if (state.pendingPyramidId) return; // 다른 카드를 놓는 중이면 층 클릭으로 처리(전파 유지)
+    e.stopPropagation();
+    card.remove();
+    showToast(`${josa(sp.name, '을', '를')} 피라미드에서 뺐어요.`);
+  });
+
   card.innerHTML = `
-    <div class="node-emoji">${sp.emoji}</div>
+    <div class="node-emoji" aria-hidden="true">${sp.emoji}</div>
     <div class="node-name">${sp.name}</div>
   `;
   container.appendChild(card);
+  const tierEl = container.parentElement;
+  showToast(`${josa(sp.name, '을', '를')} ${tierEl && tierEl.getAttribute('aria-label') || '층'}에 놓았어요.`);
 }
 
 /* ══════════════════════════════════════
@@ -1468,7 +1723,7 @@ function renderScenarioVisual() {
     { id: 'rice', name: '벼', emoji: '🌾', role: '생산자' },
     { id: 'grasshopper', name: '메뚜기', emoji: '🦗', role: '1차 소비자' },
     { id: 'frog', name: '개구리', emoji: '🐸', role: '2차 소비자' },
-    { id: 'hawk', name: '매', emoji: '🦅', role: '3차 소비자' }
+    { id: 'hawk', name: '매', emoji: '🦅', role: '최종 소비자' }
   ];
 
   list.forEach(sp => {
@@ -1493,18 +1748,18 @@ function startScenarioSimulation() {
   if (!sc) return;
 
   // 인터벌 리셋
-  if (state.simulationInterval) clearInterval(state.simulationInterval);
+  stopSimulation();
   state.simulationStep = 0;
 
   // 피드백 초기화
   showFeedback('👀 실험 관찰 중...', 'ok');
 
   runSimulationStep();
-  state.simulationInterval = setInterval(() => {
+  // 미션에 묶인 인터벌: 미션·모드를 옮기면 자동으로 멈춘다
+  state.simulationInterval = mcs[3].every(() => {
     state.simulationStep++;
     if (state.simulationStep >= sc.steps.length) {
-      clearInterval(state.simulationInterval);
-      state.simulationInterval = null;
+      stopSimulation();
       finishScenarioSimulation();
     } else {
       runSimulationStep();
@@ -1550,19 +1805,19 @@ function runSimulationStep() {
 
 function finishScenarioSimulation() {
   const curMission = getActiveMission();
-  if (curMission && curMission.id === 'm3_1') {
+  if (curMission && curMission.id === 'm3_1' && state.activeScenario !== 'B') {
+    showFeedback('🍀 실험 관찰 완료! 미션 채점은 <strong>🐸 개구리 전멸 시나리오</strong>로 실험했을 때만 해요. 시나리오를 바꿔 다시 실험해 보세요.', 'no');
+  } else if (curMission && curMission.id === 'm3_1') {
     // 미션 완료 판정
     // 사용자가 메뚜기(up), 벼(down) 예측했는지 비교
     const grassVal = document.querySelector('.prediction-btns[data-sp="grasshopper"] .pred-btn.active')?.dataset.val;
     const riceVal = document.querySelector('.prediction-btns[data-sp="rice"] .pred-btn.active')?.dataset.val;
 
     if (grassVal === 'up' && riceVal === 'down') {
-      showFeedback('🎉 정답입니다! 예측이 정확히 맞았어요. 개구리가 사라지면 메뚜기가 늘어나고 결국 벼가 줄어들게 됩니다. 이후 시간이 흐르며 생태계는 다시 균형을 찾으려 조율됩니다.', 'ok');
-      state.missionsCompleted['m3_1'] = true;
-      setupMissionUI();
-      saveState();
+      // 완료 기록·번호·저장은 컨트롤러가(onChange). setupMissionUI는 부르지 않음(예측 선택 유지)
+      mcs[3].complete({ message: '🎉 정답입니다! 예측이 정확히 맞았어요. 개구리가 사라지면 메뚜기가 늘어나고 결국 벼가 줄어들게 됩니다. 이후 시간이 흐르며 생태계는 다시 균형을 찾으려 조율됩니다.' });
     } else {
-      showFeedback('❌ 예측 결과가 빗나갔어요. 개구리(천적)가 사라지면 메뚜기(먹이)는 늘어나고(▲), 메뚜기가 많아져 벼는 줄어들게(▼) 됩니다. 다시 예측하고 도전해 보세요!', 'no');
+      mcs[3].fail('❌ 예측 결과가 빗나갔어요. 개구리(천적)가 사라지면 메뚜기(먹이)는 늘어나고(▲), 메뚜기가 많아져 벼는 줄어들게(▼) 됩니다. 다시 예측하고 도전해 보세요!');
     }
   } else {
     showFeedback('🍀 실험 관찰 완료! 생물이 일시적으로 증감해도 결국 시간이 흐르며 평형(균형) 상태로 안정화됩니다.', 'ok');
@@ -1572,15 +1827,9 @@ function finishScenarioSimulation() {
 /* ══════════════════════════════════════
    피드백 및 결과 관리
    ══════════════════════════════════════ */
-function showFeedback(text, type = 'ok') {
-  const fb = $('#feedbackBox');
-  fb.style.display = 'block';
-  fb.className = `feedback-box ${type}`;
-  fb.innerHTML = text;
-}
-function hideFeedback() {
-  $('#feedbackBox').style.display = 'none';
-}
+/* 문구는 앱이 직접 쓴 고정 문구만(html). 표시·aria-live는 SimKit.feedback */
+function showFeedback(text, type = 'ok') { fb.show(type, text); }
+function hideFeedback() { fb.hide(); }
 
 function verifyCurrentMission() {
   const curMission = getActiveMission();
@@ -1589,35 +1838,36 @@ function verifyCurrentMission() {
   if (state.mode === 1) {
     const isOk = curMission.verify(state.placedNodes, state.edges);
     if (isOk) {
-      showFeedback('🎉 미션 성공! 완벽하게 생물들의 먹고 먹히는 관계를 파악하고 연결했어요.', 'ok');
-      state.missionsCompleted[curMission.id] = true;
-      setupMissionUI();
-      saveState();
+      mcs[1].complete({ message: '🎉 미션 성공! 완벽하게 생물들의 먹고 먹히는 관계를 파악하고 연결했어요.' });
     } else {
-      showFeedback('❌ 아직 조건에 맞지 않습니다. 화살표 방향(먹히는 생물 ➔ 먹는 생물)과 관계가 제대로 이어졌는지 다시 한번 확인해 보세요.', 'no');
+      mcs[1].fail('❌ 아직 조건에 맞지 않습니다. 화살표 방향(먹히는 생물 ➔ 먹는 생물)과 관계가 제대로 이어졌는지 다시 한번 확인해 보세요.');
     }
   } else if (state.mode === 2) {
     const isOk = curMission.verify();
     if (isOk) {
-      showFeedback('🎉 미션 성공! 영양 단계를 올바르게 배치하여 생태 피라미드를 정교하게 쌓았습니다.', 'ok');
-      state.missionsCompleted[curMission.id] = true;
-      setupMissionUI();
-      saveState();
+      mcs[2].complete({ message: '🎉 미션 성공! 영양 단계를 올바르게 배치하여 생태 피라미드를 정교하게 쌓았습니다.' });
     } else {
-      showFeedback('❌ 분류가 잘못되었거나 문제를 풀지 않았습니다. 아래 단계가 가장 많고 위로 갈수록 좁아지는 생태피라미드의 구조에 맞게 다시 배치하세요.', 'no');
+      mcs[2].fail('❌ 분류가 잘못되었거나 문제를 풀지 않았습니다. 아래 단계가 가장 많고 위로 갈수록 좁아지는 생태피라미드의 구조에 맞게 다시 배치하세요.');
     }
   } else if (state.mode === 3) {
     // 평형 시나리오는 실험 재생 후에 자동 판정
+    if (curMission.id === 'm3_1') {
+      const g = $('.prediction-btns[data-sp="grasshopper"] .pred-btn.active');
+      const r = $('.prediction-btns[data-sp="rice"] .pred-btn.active');
+      if (!g || !r) {
+        showFeedback('먼저 메뚜기와 벼가 어떻게 변할지 ▲/▼/― 중에서 골라 예측해 주세요.', 'no');
+        return;
+      }
+    }
     startScenarioSimulation();
   }
 }
 
 function showResultScreen() {
+  stopSimulation();
   showScreen('screenResult');
-  const score = Object.values(state.missionsCompleted).filter(Boolean).length;
-  const stars = score >= 6 ? 3 : score >= 4 ? 2 : score >= 1 ? 1 : 0;
-  
-  $('#resultStars').textContent = '⭐'.repeat(stars);
+  const score = ALL_MISSION_IDS.filter(id => state.missionsCompleted[id] === true).length;
+  SimKit.stars.render('#resultStars', SimKit.stars.grade(score, [1, 4, 6]));
   let summary = `<strong>생태계 탐험 완료 보고서</strong><br><br>`;
   summary += `① 먹이그물 사슬 잇기: ${state.missionsCompleted.m1_1 ? '성공 ✓' : '미완료'}<br>`;
   summary += `② 참새의 먹이그물 완성: ${state.missionsCompleted.m1_2 ? '성공 ✓' : '미완료'}<br>`;
@@ -1632,9 +1882,8 @@ function showResultScreen() {
 
 /* ── 화면 전환 ── */
 function showScreen(id) {
-  $$('.screen').forEach(s => s.classList.remove('active'));
-  const el = document.getElementById(id);
-  if (el) el.classList.add('active');
+  if (id !== 'screenExplore' && mcs[state.mode]) mcs[state.mode].stop();
+  screens.show(id);
 }
 
 /* ══════════════════════════════════════
@@ -1644,45 +1893,64 @@ function init() {
   loadState();
   parseShareLink();
 
+  // 모드별 미션 컨트롤러 3개. 진행 기록은 한 객체(state.missionsCompleted)를 함께 쓴다.
+  // 성공해도 자동 이동 없음(지금 동작 유지). 번호 상자 #missionNav는 지금 모드의 컨트롤러가 그린다.
+  [1, 2, 3].forEach(mode => {
+    mcs[mode] = SimKit.missions({
+      ids: MISSION_IDS[mode],
+      format: 'flags',
+      progress: state.missionsCompleted,
+      nav: '#missionNav',
+      feedback: fb,
+      onEnter: (i) => { state.missionIdx = i; buildModeView(); },
+      onChange: (p) => { Object.assign(state.missionsCompleted, p); saveState(); updateVerifyButtonText(); }
+    });
+  });
+
+  // 분류 상자: 고른 카드를 넣기(누르기·키보드 대체 조작)
+  $$('.classify-box').forEach(box => {
+    box.addEventListener('click', () => {
+      if (!state.pendingClassifyId) {
+        showToast('먼저 카드를 하나 누른 다음 상자를 눌러 주세요.');
+        return;
+      }
+      moveCardToClassifyBox(state.pendingClassifyId, box);
+    });
+  });
+
   // 시작 버튼
   $('#btnStart').addEventListener('click', () => {
     showScreen('screenExplore');
     switchMode(1); // 먹이그물부터 시작
   });
 
-  // 모드 탭 이동
-  $$('.mode-tab').forEach(b => {
-    b.addEventListener('click', () => {
-      if (state.simulationInterval) {
-        clearInterval(state.simulationInterval);
-        state.simulationInterval = null;
-      }
-      switchMode(b.dataset.mode);
-    });
-  });
+  // 모드 탭 이동 (모드를 옮기면 컨트롤러가 진행 중인 실험 타이머도 멈춘다)
+  modeTabs = SimKit.tabs('.mode-tab', { attr: 'mode', initial: '1', onSelect: (v) => switchMode(v) });
 
   // 연결 / 지우개 / 초기화 도구
   $('#btnConnectMode').addEventListener('click', () => {
     state.eraserMode = false;
-    $('#btnEraserMode').classList.remove('active');
     state.connectMode = !state.connectMode;
-    $('#btnConnectMode').classList.toggle('active', state.connectMode);
     state.activeConnectSource = null;
+    setToolPressed();
     renderPlacedNodes();
+    redrawConnections();
+    if (state.connectMode) showToast('🔗 먹히는 생물 → 먹는 생물 순서로 카드를 눌러 화살표를 이어요.');
   });
   $('#btnEraserMode').addEventListener('click', () => {
     state.connectMode = false;
-    $('#btnConnectMode').classList.remove('active');
     state.eraserMode = !state.eraserMode;
-    $('#btnEraserMode').classList.toggle('active', state.eraserMode);
     state.activeConnectSource = null;
+    setToolPressed();
     renderPlacedNodes();
     redrawConnections();
+    if (state.eraserMode) showToast('✂️ 지울 화살표를 눌러요. (키보드: Tab으로 고르고 Enter)');
   });
   $('#btnClearCanvas').addEventListener('click', () => {
     if (confirm('캔버스를 처음 상태로 초기화할까요?')) {
       state.placedNodes = {};
       state.edges = [];
+      $$('.classify-box .node-card').forEach(c => c.remove());
       renderPalette();
       renderPlacedNodes();
       redrawConnections();
@@ -1698,8 +1966,7 @@ function init() {
 
   // 다시 도전
   $('#btnRetry').addEventListener('click', () => {
-    state.missionsCompleted = { m1_1: false, m1_2: false, m1_3: false, m2_1: false, m2_2: false, m3_1: false };
-    saveState();
+    [1, 2, 3].forEach(mode => mcs[mode].reset()); // onChange → missionsCompleted 초기화·저장
     showScreen('screenExplore');
     switchMode(1);
   });
@@ -1711,9 +1978,9 @@ function init() {
   // 시나리오 버튼 바인딩
   $$('.scenario-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      $$('.scenario-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.activeScenario = btn.dataset.sc;
+      stopSimulation(); // 실험 도중 시나리오를 바꾸면 이전 실험을 멈춘다
+      hideFeedback();
+      selectScenario(btn.dataset.sc);
       renderScenarioVisual();
     });
   });
@@ -1723,42 +1990,24 @@ function init() {
     const sp = row.querySelector('.prediction-btns').dataset.sp;
     row.querySelectorAll('.pred-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        row.querySelectorAll('.pred-btn').forEach(b => b.classList.remove('active'));
+        row.querySelectorAll('.pred-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
         btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
         state.predictions[sp] = btn.dataset.val;
       });
     });
   });
 
-  // 공유 기능 (vives-share)
-  window.shareCurrentPage = function() {
-    const payload = JSON.stringify({ v: 1, edges: state.edges, placedNodes: state.placedNodes });
-    const url = location.origin + location.pathname + '#share=' + encodeURIComponent(payload);
-    if (navigator.share) {
-      navigator.share({ title: '생태계 탐험대 — 내가 만든 먹이그물', url });
-    } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(url);
-      showToast('공유 링크가 클립보드에 복사되었습니다.');
-    }
-  };
-
-  function showToast(msg) {
-    const el = document.createElement('div');
-    el.style.position = 'fixed';
-    el.style.bottom = '20px';
-    el.style.left = '50%';
-    el.style.transform = 'translateX(-50%)';
-    el.style.background = 'rgba(0,0,0,0.8)';
-    el.style.color = '#fff';
-    el.style.padding = '8px 16px';
-    el.style.borderRadius = '20px';
-    el.style.fontSize = '12px';
-    el.style.zIndex = '9999';
-    el.textContent = msg;
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 2500);
-  }
+  // 셸 공유 버튼 → 내 먹이그물 링크. 받는 쪽은 parseShareLink(cleanEdges·cleanPlacedNodes)
+  SimKit.share.bind(() => (state.edges.length || Object.keys(state.placedNodes).length
+    ? { v: 1, edges: state.edges, placedNodes: state.placedNodes } : null), {
+    title: '생태계 탐험대 — 내가 만든 먹이그물',
+    emptyMessage: '먹이그물 판에 생물 카드를 놓은 다음 공유해 보세요.'
+  });
 }
+
+/* ── 토스트 (공용 SimKit.toast → VUI.toast, 어디서나 호출 가능) ── */
+function showToast(msg, type) { SimKit.toast(msg, type === 'no' ? 'error' : type); } // 'no' = 빨간 오류 토스트
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);

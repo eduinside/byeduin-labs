@@ -9,7 +9,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   bodyWidth="wide"
 >
   <Fragment slot="head">
-    <link rel="canonical" href="https://eduin.info/apps/tts-reader/">
     <script type="application/ld+json" is:inline>{"@context":"https://schema.org","@type":"WebApplication","name":"로컬 TTS 리더","description":"브라우저 내장 음성으로 텍스트를 자연스럽게 읽어주는 로컬 TTS 리더","url":"https://eduin.info/apps/tts-reader/","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
     <style is:global="">
       body {
@@ -54,8 +53,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       .fd-btn {
         display: inline-flex; align-items: center; justify-content: center; gap: 6px;
         padding: 10px 14px; border-radius: 10px; border: none;
-        font-size: 13px; font-weight: 600; cursor: pointer;
-        transition: all 0.15s; min-height: 40px;
+        font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+        transition: all 0.15s; min-height: 44px;
       }
       .fd-btn-primary { background: var(--primary); color: #fff; }
       .fd-btn-primary:hover { background: var(--primary-h); }
@@ -81,20 +80,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       .field-grid-2 .fd-label:first-of-type { margin-top: 0; }
 
       .opt-check {
-        display: flex; align-items: center; gap: 8px;
-        font-size: 13px; color: var(--fg); cursor: pointer;
-        padding: 6px 0;
+        display: flex; align-items: center; gap: 10px;
+        font-size: 14px; color: var(--fg); cursor: pointer;
+        padding: 6px 0; min-height: 44px;
       }
-      .opt-check input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+      .opt-check input { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--primary); cursor: pointer; }
 
       .range-row { display: flex; align-items: center; justify-content: space-between; }
       .range-val { font-size: 12px; font-weight: 700; color: var(--primary); }
       input[type="range"] {
-        -webkit-appearance: none; width: 100%; margin-top: 6px;
-        height: 4px; background: var(--border); border-radius: 99px; outline: none;
+        -webkit-appearance: none; width: 100%; margin: 12px 0;
+        height: 4px; background: var(--border); border-radius: 99px;
       }
+      input[type="range"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 8px; }
       input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none; width: 16px; height: 16px;
+        -webkit-appearance: none; width: 24px; height: 24px;
         background: var(--primary); border-radius: 50%; cursor: pointer;
         border: 2px solid var(--bg); box-shadow: 0 2px 6px rgba(0,111,238,0.3);
       }
@@ -109,19 +109,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       #text { flex: 1; min-height: 400px; }
       #text::selection { background: rgba(0,111,238,0.35); color: var(--fg); }
       #text::-moz-selection { background: rgba(0,111,238,0.35); color: var(--fg); }
-      .hint { font-size: 11.5px; color: var(--fg-muted); line-height: 1.6; text-align: center; min-height: 2.8em; }
+      .hint { font-size: 13px; color: var(--fg-muted); line-height: 1.6; text-align: center; min-height: 2.8em; }
       .hint code { background: var(--bg-sec); padding: 1px 5px; border-radius: 4px; }
-
-      #fd-toast {
-        position: fixed; bottom: 2rem; left: 50%;
-        transform: translateX(-50%) translateY(1rem);
-        background: var(--fg); color: var(--bg);
-        padding: 10px 18px; border-radius: 10px;
-        font-size: 13px; font-weight: 600;
-        opacity: 0; pointer-events: none;
-        transition: opacity 0.2s, transform 0.2s; z-index: 9999;
-      }
-      #fd-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+      /* 토스트는 공용 VUI.toast(public/common/ui.js) */
     </style>
   </Fragment>
 
@@ -131,7 +121,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <div class="app-header">
     <div class="app-badge">◆ 크리에이티브</div>
     <h1 class="app-title">🔊 로컬 TTS 리더</h1>
-    <p class="app-desc">브라우저 내장 음성으로 텍스트를 읽어주는 완전 로컬 도구 — 서버 전송 없음</p>
+    <p class="app-desc">브라우저 내장 음성으로 텍스트를 읽어주는 도구 — 입력한 글은 이 사이트 서버로 보내지 않습니다. (이름에 Online·Google이 붙은 음성은 브라우저 회사 서버를 거쳐 읽을 수 있어요)</p>
   </div>
 
   <div class="tts-layout">
@@ -140,23 +130,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <div class="fd-card">
         <div class="fd-section-title">재생</div>
         <div class="btn-grid-2">
-          <button id="playPause" class="fd-btn fd-btn-primary">▶ 재생</button>
-          <button id="stop" class="fd-btn fd-btn-ghost" disabled>■ 중지</button>
+          <button type="button" id="playPause" class="fd-btn fd-btn-primary">▶ 재생</button>
+          <button type="button" id="stop" class="fd-btn fd-btn-ghost" disabled>■ 중지</button>
         </div>
 
-        <label class="fd-label">음성 (Voice)</label>
+        <label class="fd-label" for="voice">음성 (Voice)</label>
         <select id="voice" class="fd-input"></select>
 
         <div class="field-grid-2">
           <div>
-            <label class="fd-label">
-              <span class="range-row"><span>속도</span><span class="range-val" id="rateVal">1.0</span></span>
+            <label class="fd-label" for="rate">
+              <span class="range-row"><span>속도</span><span class="range-val" id="rateVal" aria-hidden="true">1.0</span></span>
             </label>
             <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1">
           </div>
           <div>
-            <label class="fd-label">
-              <span class="range-row"><span>음높이</span><span class="range-val" id="pitchVal">1.0</span></span>
+            <label class="fd-label" for="pitch">
+              <span class="range-row"><span>음높이</span><span class="range-val" id="pitchVal" aria-hidden="true">1.0</span></span>
             </label>
             <input type="range" id="pitch" min="0" max="2" step="0.1" value="1">
           </div>
@@ -172,26 +162,38 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
       <div class="fd-card">
         <div class="fd-section-title">다운로드</div>
-        <button id="record" class="fd-btn fd-btn-danger">⬇ MP3로 다운로드</button>
-        <p class="hint-mini">공유 창에서 <b>전체 화면</b> + <b>시스템 오디오 공유</b>를 선택해야 소리가 녹음됩니다.</p>
+        <button type="button" id="record" class="fd-btn fd-btn-danger" aria-describedby="recordHint">⬇ MP3로 다운로드</button>
+        <p class="hint-mini" id="recordHint">공유 창에서 <b>전체 화면</b> + <b>시스템 오디오 공유</b>를 선택해야 소리가 녹음됩니다.</p>
       </div>
     </aside>
 
     <!-- ── 메인: 텍스트 입력 ── -->
     <div class="main-col">
+      <label for="text" class="visually-hidden">읽을 텍스트</label>
       <textarea id="text" class="fd-textarea" placeholder="여기에 영어(또는 다른 언어) 텍스트를 붙여넣으세요...">Hello! This is a local text-to-speech reader running entirely in your browser.</textarea>
-      <p class="hint" id="mainStatus"><span id="statusText">대기 중</span><span id="statusTimer"></span></p>
+      <p class="hint" id="mainStatus"><span id="statusText" role="status" aria-live="polite">대기 중</span><span id="statusTimer" aria-hidden="true"></span></p>
     </div>
   </div>
   </div>
   </main>
 
-  <!-- 토스트 -->
-  <div id="fd-toast"></div>
-
   <script type="module" is:inline>
-import * as lamejsMod from 'https://esm.sh/@breezystack/lamejs@1.2.7';
-const Mp3Encoder = lamejsMod.Mp3Encoder || (lamejsMod.default && lamejsMod.default.Mp3Encoder);
+// MP3 인코더는 외부 CDN(esm.sh)에서 동적으로 불러온다. 정적 import로 두면 CDN이 막혔을 때
+// 모듈 전체가 실행되지 않아 기본 읽기(Web Speech)까지 멈추므로, 실패해도 재생은 그대로 동작하게 한다.
+const LAMEJS_URL = 'https://esm.sh/@breezystack/lamejs@1.2.7';
+let Mp3Encoder = null;
+let mp3EncoderPromise = null;
+function loadMp3Encoder() {
+  if (Mp3Encoder) return Promise.resolve(Mp3Encoder);
+  if (!mp3EncoderPromise) {
+    mp3EncoderPromise = import(LAMEJS_URL)
+      .then((m) => (Mp3Encoder = m.Mp3Encoder || (m.default && m.default.Mp3Encoder) || null))
+      .catch(() => null)
+      .then((enc) => { if (!enc) mp3EncoderPromise = null; return enc; });   // 실패하면 다음 클릭 때 다시 시도
+  }
+  return mp3EncoderPromise;
+}
+loadMp3Encoder();   // 미리 받아 두기(실패해도 무시)
 
 const STORAGE_KEY = 'tts_reader_settings_v1';
 
@@ -227,14 +229,16 @@ function loadSettings() {
   } catch { return {}; }
 }
 function saveSettings() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    voiceName: voiceSel.value,
-    rate: parseFloat(rateEl.value),
-    pitch: parseFloat(pitchEl.value),
-    stripMarkdown: stripMarkdownEl.checked,
-    ignoreParens: ignoreParensEl.checked,
-    handlePauses: handlePausesEl.checked,
-  }));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      voiceName: voiceSel.value,
+      rate: parseFloat(rateEl.value),
+      pitch: parseFloat(pitchEl.value),
+      stripMarkdown: stripMarkdownEl.checked,
+      ignoreParens: ignoreParensEl.checked,
+      handlePauses: handlePausesEl.checked,
+    }));
+  } catch { /* 저장 불가(사생활 보호 모드 등) — 설정만 기억하지 못함 */ }
 }
 const savedSettings = loadSettings();
 
@@ -258,6 +262,13 @@ function detectLang(text) {
 
 // ---------- 음성 목록 (언어별 optgroup) ----------
 function loadVoices() {
+  if (!synth) {
+    voiceSel.innerHTML = '<option>이 브라우저는 음성 읽기를 지원하지 않습니다</option>';
+    statusEl.textContent = '이 브라우저는 음성 읽기(Web Speech)를 지원하지 않습니다. 크롬·엣지·사파리 최신 버전을 사용해 주세요.';
+    playPauseBtn.disabled = true;
+    recordBtn.disabled = true;
+    return;
+  }
   voices = synth.getVoices();
   if (voices.length === 0) {
     voiceSel.innerHTML = '<option>음성 목록 로딩 중...</option>';
@@ -338,7 +349,7 @@ function renderVoiceList() {
 }
 
 loadVoices();
-if (synth.onvoiceschanged !== undefined) {
+if (synth && synth.onvoiceschanged !== undefined) {
   synth.onvoiceschanged = loadVoices;
 }
 
@@ -634,14 +645,8 @@ function encodeToMp3(audioBuffer) {
   return new Blob(mp3Data, { type: 'audio/mp3' });
 }
 
-let _toastTimer;
-function showToast(msg) {
-  const el = document.getElementById('fd-toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
-}
+// 공용 토스트(VUI.toast) — 함수 이름은 그대로 두어 호출부는 바꾸지 않음
+function showToast(msg, type) { VUI.toast(msg, type); }
 
 recordBtn.addEventListener('click', async () => {
   const segments = processText(textEl.value, getOpts());
@@ -653,8 +658,8 @@ recordBtn.addEventListener('click', async () => {
     statusEl.textContent = '이 기능은 http://localhost 또는 https 환경에서만 동작합니다.';
     return;
   }
-  if (!Mp3Encoder) {
-    statusEl.textContent = 'MP3 인코더를 불러오지 못했습니다 (인터넷 연결을 확인하세요).';
+  if (!(await loadMp3Encoder())) {
+    statusEl.textContent = 'MP3 변환 도구를 불러오지 못했습니다. 인터넷 연결을 확인하세요. (읽기 기능은 그대로 쓸 수 있습니다)';
     return;
   }
 
@@ -738,7 +743,7 @@ recordBtn.addEventListener('click', async () => {
     showToast('MP3 다운로드 완료');
   } catch (e) {
     statusEl.textContent = '변환 오류: ' + e.message;
-    showToast('변환 중 오류가 발생했습니다.');
+    showToast('변환 중 오류가 발생했습니다.', 'error');
   } finally {
     recordBtn.disabled = false;
     playPauseBtn.disabled = false;

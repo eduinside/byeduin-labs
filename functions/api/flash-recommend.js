@@ -1,21 +1,24 @@
+// POST /api/flash-recommend  { subject } → { recommendation }
+// 같은 출처에서만 받는다(_guard.js). 한도: LIMITS['flash-recommend'] + AI 텍스트 한도.
 import { generateContent } from './_ai.js';
+import { guard, json, readJson, errorResponse } from './_guard.js';
+
+const SUBJECT_MAX = 200;
+const BODY_MAX = 4 * 1024;
 
 export async function onRequest(ctx) {
   if (ctx.request.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
+    return json({ error: '허용되지 않은 방식입니다.' }, 405);
   }
 
-  let subject;
-  try {
-    const body = await ctx.request.json();
-    subject = body.subject;
-    if (!subject || typeof subject !== 'string') throw new Error();
-    if (subject.length > 200) throw new Error();
-  } catch {
-    return new Response(
-      JSON.stringify({ error: '입력값(subject)이 올바르지 않습니다.' }),
-      { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
-    );
+  const blocked = await guard(ctx.request, 'flash-recommend');
+  if (blocked) return blocked;
+
+  const body = await readJson(ctx.request, BODY_MAX);
+  if (body instanceof Response) return body;
+  const subject = typeof body.subject === 'string' ? body.subject.trim() : '';
+  if (!subject || subject.length > SUBJECT_MAX) {
+    return json({ error: '입력값(subject)이 올바르지 않습니다.' }, 400);
   }
 
   const systemPrompt = [
@@ -46,15 +49,9 @@ export async function onRequest(ctx) {
     // 마크다운 백틱 코드 블록이나 앞뒤 공백 제거
     text = text.replace(/```[a-zA-Z]*\n?/g, '').replace(/```/g, '').trim();
 
-    return new Response(
-      JSON.stringify({ recommendation: text }),
-      { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
-    );
+    return json({ recommendation: text });
   } catch (e) {
     console.error('flash-recommend error:', e?.message);
-    return new Response(
-      JSON.stringify({ error: e.message || '추천 중 오류가 발생했습니다.' }),
-      { status: e.status || 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
-    );
+    return errorResponse(e, '추천 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
   }
 }

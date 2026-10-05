@@ -61,6 +61,8 @@ function main() {
     // Skip external links and all modal-type entries (no crawlable page)
     if (app.external) return;
     if (app.type === 'modal') return;
+    // 비공개 앱(hidden: true)은 페이지 자체가 빌드되지 않으므로 제외
+    if (app.hidden) return;
 
     // Only include internal app pages
     if (!app.href || !app.href.startsWith('/')) return;

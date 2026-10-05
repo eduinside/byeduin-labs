@@ -1,43 +1,46 @@
-// IP-based Rate Limiter Store
-const ipRequests = new Map();
+import { rateLimit } from './_guard.js';
 
-function checkRateLimit(ip, limit, windowMs = 60 * 1000) {
-  const now = Date.now();
-  
-  // Lazy memory cleanup if size exceeds 2000
-  if (ipRequests.size > 2000) {
-    for (const [key, value] of ipRequests.entries()) {
-      if (now > value.resetTime) {
-        ipRequests.delete(key);
-      }
-    }
-  }
-  
-  let record = ipRequests.get(ip);
-  if (!record || now > record.resetTime) {
-    record = {
-      count: 0,
-      resetTime: now + windowMs
-    };
-  }
-  
-  record.count++;
-  ipRequests.set(ip, record);
-  
-  return record.count <= limit;
+// ── 요청 제한 ─────────────────────────────────────────
+// 텍스트와 그림을 따로 센다(_guard.js LIMITS의 'ai-text' / 'ai-image').
+// Cache API 카운터라 isolate가 바뀌어도 유지되고, 사이트 전체 하루 상한으로 AI 크레딧을 지킨다.
+async function enforceAiLimit(request, kind) {
+  if (!request) return;
+  const blocked = await rateLimit(request, kind === 'image' ? 'ai-image' : 'ai-text');
+  if (!blocked) return;
+  let msg = '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.';
+  try { msg = (await blocked.json()).error || msg; } catch {}
+  throw aiError(msg, 429);
 }
+
+// 사용자에게 그대로 보여도 되는 오류(expose). 외부 API 원문은 로그에만 남긴다.
+function aiError(message, status = 502) {
+  const err = new Error(message);
+  err.status = status;
+  err.expose = true;
+  return err;
+}
+
+// 외부 AI 오류 상태 → 사용자용 문구(원문 메시지는 로그에만)
+function upstreamError(status) {
+  if (status === 429) return aiError('AI 요청이 몰리고 있어요. 잠시 후 다시 시도해 주세요.', 429);
+  return aiError('AI 응답을 받지 못했어요. 잠시 후 다시 시도해 주세요.', 502);
+}
+
+const TEXT_TIMEOUT_MS = 30000;   // 텍스트 생성 1회 타임아웃
+const IMAGE_TIMEOUT_MS = 60000;  // 그림 생성 1회 타임아웃
 
 const TIMELY_ENDPOINT = 'https://hello.timelygpt.co.kr/api/v2/chat/bridge/openai/chat/completions';
 
 // Timely 호출 + 상태코드별 분기(429는 크레딧 등급 하락에 따른 일시 제한이므로 1회 재시도, 402는 크레딧 소진으로 재시도 무의미 → 즉시 Gemini 폴백)
-async function callTimely(body, timelyKey) {
+async function callTimely(body, timelyKey, timeoutMs = TEXT_TIMEOUT_MS) {
   const doFetch = () => fetch(TIMELY_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${timelyKey}`
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs),
   });
 
   let res = await doFetch();
@@ -68,14 +71,7 @@ export async function generateContent({
   geminiModel = 'gemini-flash-lite-latest',
   request = null // IP rate limiting용 request 객체
 }) {
-  if (request) {
-    const ip = request.headers.get('CF-Connecting-IP') || '127.0.0.1';
-    if (!checkRateLimit(ip, 30)) { // 분당 최대 30회 텍스트 생성
-      const err = new Error('요청 빈도가 너무 높습니다. 잠시 후 다시 시도해 주세요. (Too Many Requests)');
-      err.status = 429;
-      throw err;
-    }
-  }
+  await enforceAiLimit(request, 'text');
   const timelyKey = env.TIMELY_API_KEY;
   const geminiKey = env.GEMINI_API_KEY;
 
@@ -107,7 +103,8 @@ export async function generateContent({
 
   // 2. Direct Gemini Fallback
   if (!geminiKey) {
-    throw new Error('서버 환경변수(GEMINI_API_KEY 및 TIMELY_API_KEY)가 설정되지 않았습니다.');
+    console.error('[AI Service] GEMINI_API_KEY·TIMELY_API_KEY 모두 없음');
+    throw aiError('AI 기능이 아직 준비되지 않았어요. 관리자에게 알려 주세요.', 503);
   }
 
   console.log('🤖 [AI Service] Calling direct Gemini API...', { model: geminiModel });
@@ -128,30 +125,28 @@ export async function generateContent({
         temperature,
       }
     }),
+    signal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
+  }).catch((e) => {
+    console.error('Gemini API 연결 실패:', e && e.message);
+    throw aiError('AI 응답이 늦어지고 있어요. 잠시 후 다시 시도해 주세요.', 504);
   });
 
-  const data = await res.json();
+  const data = await res.json().catch(() => null);
   if (!res.ok) {
     console.error('Gemini API error:', res.status, data?.error?.message);
-    throw new Error(`AI 호출 실패 (Gemini): ${data?.error?.message || res.statusText}`);
+    throw upstreamError(res.status);
   }
 
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) {
-    throw new Error('Gemini 응답이 비어 있습니다.');
+    console.error('Gemini 응답이 비어 있음');
+    throw aiError('AI가 답을 만들지 못했어요. 다시 시도해 주세요.', 502);
   }
   return text.trim();
 }
 
 export async function generateImage({ prompt, env, request = null }) {
-  if (request) {
-    const ip = request.headers.get('CF-Connecting-IP') || '127.0.0.1';
-    if (!checkRateLimit(ip, 5)) { // 분당 최대 5회 이미지 생성
-      const err = new Error('이미지 생성 요청 빈도가 너무 높습니다. 1분 후에 다시 시도해 주세요. (Too Many Requests)');
-      err.status = 429;
-      throw err;
-    }
-  }
+  await enforceAiLimit(request, 'image');
   const timelyKey = env.TIMELY_API_KEY;
   const geminiKey = env.GEMINI_API_KEY;
   let b64Data = null;
@@ -170,7 +165,7 @@ export async function generateImage({ prompt, env, request = null }) {
         // 1K도 실측 1.5~2MB급이라 페이로드 절감 효과는 제한적이지만, aspect_ratio 고정으로
         // 카드 레이아웃 일관성은 확보하고 미지정 시 더 큰 크기(2K/4K)가 나오는 경우를 방지한다.
         image_config: { image_size: '1K', aspect_ratio: '1:1' }
-      }, timelyKey);
+      }, timelyKey, IMAGE_TIMEOUT_MS);
 
       if (res.ok) {
         const data = await res.json();
@@ -208,7 +203,8 @@ export async function generateImage({ prompt, env, request = null }) {
 
   // 2. Direct Gemini Fallback
   if (!geminiKey) {
-    throw new Error('서버 환경변수(GEMINI_API_KEY 및 TIMELY_API_KEY)가 설정되지 않았습니다.');
+    console.error('[AI Service] GEMINI_API_KEY·TIMELY_API_KEY 모두 없음');
+    throw aiError('AI 기능이 아직 준비되지 않았어요. 관리자에게 알려 주세요.', 503);
   }
 
   // imagen-3.0-generate-002(:predict)는 이 프로젝트 키에서 더 이상 제공되지 않음(2026-08 확인, 404) —
@@ -229,18 +225,23 @@ export async function generateImage({ prompt, env, request = null }) {
         responseModalities: ['IMAGE']
       }
     }),
+    signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS),
+  }).catch((e) => {
+    console.error('Gemini Image API 연결 실패:', e && e.message);
+    throw aiError('그림 생성이 늦어지고 있어요. 잠시 후 다시 시도해 주세요.', 504);
   });
 
-  const data = await res.json();
+  const data = await res.json().catch(() => null);
   if (!res.ok) {
     console.error('Gemini Image API error:', res.status, data?.error?.message);
-    throw new Error(`AI 이미지 생성 실패 (Gemini): ${data?.error?.message || res.statusText}`);
+    throw upstreamError(res.status);
   }
 
   const parts = data?.candidates?.[0]?.content?.parts || [];
   const imageData = parts.find((p) => p.inlineData)?.inlineData?.data;
   if (!imageData) {
-    throw new Error('Gemini 이미지 응답이 비어 있습니다.');
+    console.error('Gemini 이미지 응답이 비어 있음');
+    throw aiError('그림을 만들지 못했어요. 다시 시도해 주세요.', 502);
   }
   return imageData.trim();
 }

@@ -43,7 +43,7 @@
 
       fetch('/apps.json').then(function (r) { return r.json(); }).then(function (d) {
         var apps = d.apps || [];
-        var pages = apps.filter(function (a) { return a.href && a.href.indexOf('/apps/') === 0; });
+        var pages = apps.filter(function (a) { return !a.hidden && a.href && a.href.indexOf('/apps/') === 0; }); // hidden = 비공개 앱(전환·추천 제외)
         var idOf = function (a) { var m = a.href.match(/^\/apps\/([^\/]+)\//); return m ? m[1] : a.id; };
 
         // 1) 정확 매치 → 즉시 전환 (해시·쿼리 보존)

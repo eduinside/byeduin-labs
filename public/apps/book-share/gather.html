@@ -49,6 +49,7 @@
 
     /* 링크 입력 영역 */
     .section-label {
+      display: block;
       font-size: 0.82rem;
       font-weight: 700;
       color: var(--fg-muted);
@@ -205,6 +206,8 @@
       border: none;
       color: var(--fg-muted);
       cursor: pointer;
+      min-width: 40px;
+      min-height: 40px;
       padding: 4px;
       border-radius: 6px;
       line-height: 1;
@@ -239,29 +242,6 @@
     .stats-row span { white-space: nowrap; }
     .stats-row strong { color: var(--fg); }
 
-    /* 토스트 */
-    #toast {
-      position: fixed;
-      bottom: 2rem;
-      left: 50%;
-      transform: translateX(-50%) translateY(1rem);
-      background: var(--fg);
-      color: var(--bg);
-      padding: 0.65rem 1.25rem;
-      border-radius: 99px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s, transform 0.2s;
-      z-index: 9000;
-      white-space: nowrap;
-    }
-    #toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-
     @media (max-width: 540px) {
       .page-wrap { padding-top: 56px; }
       .overlay-btn span { display: none; }
@@ -282,7 +262,7 @@
 
   <!-- 상단 우측: 테마·입력 -->
   <div class="top-overlay">
-    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+    <button type="button" id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드" aria-label="보기 모드 바꾸기">💻</button>
     <a href="./" class="overlay-btn" title="ISBN 입력하여 책 정보 조회">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
@@ -302,7 +282,7 @@
 
     <!-- 링크 입력 -->
     <div style="margin-bottom:1rem">
-      <div class="section-label">링크 목록</div>
+      <label class="section-label" for="linkInput">링크 목록</label>
       <textarea class="hero-input" id="linkInput"
         placeholder="단축URL이나 공유 링크를 붙여넣으세요. 줄바꿈·공백·쉼표 모두 OK.&#10;&#10;예)&#10;https://go.eduin.info/b5Ycho"></textarea>
     </div>
@@ -316,7 +296,7 @@
       <div class="progress-bar-bg">
         <div class="progress-bar-fill" id="gatherProgressFill"></div>
       </div>
-      <div class="progress-text" id="gatherProgressText"></div>
+      <div class="progress-text" id="gatherProgressText" role="status" aria-live="polite"></div>
     </div>
 
     <!-- 화살표 (수집 후 표시) -->
@@ -357,7 +337,7 @@
         </svg>
         내려받기
       </button>
-      <button class="hero-btn hero-btn-ghost share-btn" onclick="shareList()">
+      <button type="button" class="hero-btn hero-btn-ghost share-btn" id="shareBtn" onclick="shareList()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
           <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
@@ -368,11 +348,16 @@
     </div>
   </div>
 
-  <!-- 토스트 -->
-  <div id="toast"></div>
+  <!-- 토스트·공유 창은 공용 VUI (/common/ui.js) -->
 
   <!-- SheetJS -->
-  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+  <!-- 공용 이스케이프·숫자 검증 헬퍼 (VSafe) -->
+  <script src="/common/safe.js"></script>
+
+  <!-- 공용 UI (VUI: 토스트·공유 인코딩/링크 창·apiFetch) -->
+  <script src="/common/ui.js"></script>
 
   <!-- gather.js -->
   <script src="./gather.js"></script>

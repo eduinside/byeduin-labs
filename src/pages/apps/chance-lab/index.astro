@@ -8,6 +8,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   bodyShell="immersive"
 >
   <Fragment slot="head">
+    <link rel="stylesheet" href="/common/sim-kit.css">
+    <script is:inline src="/common/sim-kit.js"></script>
     <style is:global="">
 /* ── chance-lab 전용 스타일 (immersive 전체화면) ── */
 :root {
@@ -30,6 +32,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   --sp-4: #F0E442;
   --sp-5: #CC79A7;
   --sp-6: #D55E00;
+  --sk-accent: var(--cl-accent);
 }
 [data-theme="dark"] {
   --cl-bg-card: #1e1e2e;
@@ -50,6 +53,8 @@ body {
 /* ── 스크린 ── */
 .screen { display: none; }
 .screen.active { display: flex; }
+/* 화면 전환 때 제목으로 옮긴 초점(화면 읽기용)은 테두리를 그리지 않음 */
+.screen [tabindex="-1"]:focus { outline: none; }
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(18px); }
@@ -236,7 +241,7 @@ body {
   width: 100%; max-width: 760px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.03);
 }
-.chart-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--fg-muted); }
+.chart-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--fg-muted); }
 .chart-svg { width: 100%; display: block; }
 
 /* 미션 1용 캔버스 카드 분류 영역 */
@@ -290,7 +295,7 @@ body {
 /* 요약 설명 패널 */
 .summary-text {
   background: var(--bg-sec); border-radius: 12px;
-  padding: 12px 14px; font-size: 13px; line-height: 1.6;
+  padding: 12px 14px; font-size: 14px; line-height: 1.6;
   margin-bottom: 14px; text-align: center;
 }
 .summary-text strong { color: var(--cl-hit); }
@@ -301,15 +306,15 @@ body {
   border: 1px solid var(--border); border-radius: 14px; background: var(--bg-sec);
 }
 .ctrl-group-title {
-  font-size: 11px; font-weight: 700; color: var(--fg-muted);
+  font-size: 12px; font-weight: 700; color: var(--fg-muted);
   text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;
 }
 .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 8px; }
 .ctrl-btn {
   padding: 8px 4px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--card-bg); font-size: 13px; font-weight: 700;
+  background: var(--card-bg); font-family: inherit; font-size: 14px; font-weight: 700;
   cursor: pointer; text-align: center; color: var(--fg); transition: all 0.1s;
-  min-height: 38px; display: flex; align-items: center; justify-content: center;
+  min-height: 44px; display: flex; align-items: center; justify-content: center;
 }
 .ctrl-btn:active:not(:disabled) { transform: scale(0.92); }
 .ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -319,7 +324,7 @@ body {
 .action-btns { display: flex; gap: 6px; }
 .action-btn {
   flex: 1; padding: 10px 8px; border-radius: 10px; border: 1px solid var(--border);
-  background: var(--bg-sec); font-size: 12px; font-weight: 700;
+  background: var(--bg-sec); font-size: 14px; font-weight: 700;
   cursor: pointer; font-family: inherit; color: var(--fg); min-height: 44px;
   transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 4px;
 }
@@ -333,22 +338,22 @@ body {
   background: var(--cl-bg-card); border: 1px solid var(--border);
   border-radius: var(--cl-radius); padding: 12px; margin-bottom: 14px;
 }
-.designer-title { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+.designer-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
 .slot-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .slot-color { width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--border); flex-shrink: 0; }
-.slot-name { font-size: 12px; font-weight: 700; width: 32px; flex-shrink: 0; }
+.slot-name { font-size: 13px; font-weight: 700; width: 40px; flex-shrink: 0; }
 .slot-stepper { display: flex; align-items: center; gap: 4px; }
 .slot-stepper button {
-  width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--border);
+  width: 40px; height: 40px; border-radius: 8px; font-family: inherit; border: 1px solid var(--border);
   background: var(--bg-sec); font-size: 14px; font-weight: 700; cursor: pointer;
   color: var(--fg); display: flex; align-items: center; justify-content: center;
 }
 .slot-stepper button:disabled { opacity: 0.3; cursor: not-allowed; }
-.slot-stepper span { min-width: 16px; text-align: center; font-size: 13px; font-weight: 700; }
+.slot-stepper span { min-width: 18px; text-align: center; font-size: 14px; font-weight: 700; }
 .slot-bar { flex: 1; height: 8px; border-radius: 4px; background: var(--bg-sec); overflow: hidden; }
 .slot-bar-fill { height: 100%; border-radius: 4px; transition: width .2s; }
-.slot-count-label { font-size: 11px; color: var(--fg-muted); min-width: 26px; }
-.slots-remaining { text-align: center; font-size: 12px; color: var(--fg-muted); margin-top: 6px; }
+.slot-count-label { font-size: 12px; color: var(--fg-muted); min-width: 30px; }
+.slots-remaining { text-align: center; font-size: 13px; color: var(--fg-muted); margin-top: 6px; }
 .add-remove-slot { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
 
 /* ── 미션 인터페이스 (사이드바 내부) ── */
@@ -358,13 +363,13 @@ body {
   animation: popIn 0.35s ease;
 }
 .mission-panel h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
-.mission-panel p { font-size: 13px; line-height: 1.6; color: var(--fg-muted); }
+.mission-panel p { font-size: 14px; line-height: 1.6; color: var(--fg-muted); }
 
 /* 미션 1용 5단계 분류 축 */
 .m1-scale { display: flex; gap: 4px; margin: 12px 0; flex-wrap: wrap; justify-content: center; }
 .m1-scale-btn {
-  padding: 6px 10px; border-radius: 8px; border: 2px solid var(--border);
-  background: var(--card-bg); font-size: 12px; font-weight: 600; cursor: pointer;
+  padding: 6px 12px; min-height: 44px; border-radius: 8px; border: 2px solid var(--border);
+  background: var(--card-bg); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
   color: var(--fg); transition: all 0.2s; text-align: center;
 }
 .m1-scale-btn.selected { border-color: var(--cl-accent); background: rgba(108, 92, 231, 0.1); color: var(--cl-accent); }
@@ -384,13 +389,13 @@ body {
   background: var(--bg-sec); color: var(--fg); font-family: inherit;
 }
 .predict-input:focus { border-color: var(--cl-accent); outline: none; }
-.predict-label { font-size: 12px; color: var(--fg-muted); margin-top: 4px; }
+.predict-label { font-size: 13px; display: block; color: var(--fg-muted); margin-top: 4px; }
 
 /* 미션 3 3지선다 */
 .m3-choices { display: flex; gap: 8px; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
 .m3-choice {
-  padding: 10px 18px; border-radius: 10px; border: 2px solid var(--border);
-  background: var(--card-bg); font-size: 16px; font-weight: 700; cursor: pointer;
+  padding: 10px 18px; min-height: 44px; border-radius: 10px; border: 2px solid var(--border);
+  background: var(--card-bg); font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
   color: var(--fg); transition: all 0.2s; min-width: 68px; text-align: center;
 }
 .m3-choice:hover { border-color: var(--cl-accent); }
@@ -410,16 +415,17 @@ body {
   margin-top: 14px; padding: 12px;
   border: 1px solid var(--border); border-radius: 14px; background: var(--bg-sec);
 }
-.mission-nav { display: flex; gap: 4px; justify-content: center; }
+.mission-nav { display: flex; gap: 8px; justify-content: center; }
+/* 번호 버튼: SimKit(navButtons)이 클릭·상태·aria를 맡는다. 누르는 영역 44px */
 .mission-nav-btn {
-  width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--border);
-  background: var(--card-bg); font-size: 13px; font-weight: 700; cursor: pointer;
+  min-width: 44px; min-height: 44px; border-radius: 50%; border: 2px solid var(--border);
+  background: var(--card-bg); font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
   color: var(--fg-muted); transition: all 0.2s; display: flex; align-items: center; justify-content: center;
 }
 .mission-nav-btn.active { border-color: var(--cl-accent); color: var(--cl-accent); }
 .mission-nav-btn.done { border-color: var(--cl-hit); color: var(--cl-hit); background: rgba(0,184,148,0.08); }
 
-.feedback { padding: 10px; border-radius: 10px; font-size: 13px; line-height: 1.6; margin: 8px 0; text-align: center; }
+.feedback { padding: 10px; border-radius: 10px; font-size: 14px; line-height: 1.6; margin: 8px 0; text-align: center; }
 .feedback.success { background: rgba(0,184,148,0.1); color: var(--cl-hit); }
 .feedback.info { background: rgba(108,92,231,0.1); color: var(--cl-accent); }
 .feedback.warn { background: rgba(253,121,168,0.1); color: var(--cl-theory); }
@@ -480,8 +486,13 @@ body {
   .coin-face { font-size: 32px; }
   .dice-wrap, .dice { width: 70px; height: 70px; }
 }
+/* 미션 4 설계 표(사이드바 안, 좁은 폭) */
+.m4-slot-row { margin-bottom: 4px; gap: 6px; }
+.m4-slot-row .slot-color { width: 14px; height: 14px; }
+.m4-slot-row .slot-name { font-size: 13px; width: 36px; }
+.m4-slot-row .slot-count-label { font-size: 12px; min-width: 30px; }
+.m4-slot-row .slot-bar { height: 6px; }
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/chance-lab/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"가능성 실험실","description":"동전과 주사위를 1000번 던지고 나만의 회전판을 설계해 보세요. 초등 수학 5학년 가능성 개념을 실험으로 익히는 무료 학습 시뮬레이션.","url":"https://eduin.info/apps/chance-lab/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -490,7 +501,7 @@ body {
 <!-- ============ 인트로 ============ -->
 <div id="screenIntro" class="screen active intro-screen">
   <div class="intro-tag">수학 5학년 · 가능성</div>
-  <div class="intro-emoji">🎲</div>
+  <div class="intro-emoji" aria-hidden="true">🎲</div>
   <h1>가능성 실험실</h1>
   <p class="intro-sub">동전·주사위·회전판 실험 시뮬레이터</p>
 
@@ -499,7 +510,7 @@ body {
     <p>직접 실험해서 눈으로 확인해 봐요!<br>주사위도 굴리고, 나만의 회전판을 직접 설계해 보며 가능성을 탐구할 수 있어요.</p>
   </div>
 
-  <button class="fb-btn fb-btn-primary" id="btnStart">시작하기</button>
+  <button type="button" class="fb-btn fb-btn-primary" id="btnStart">시작하기</button>
 </div>
 
 <!-- ============ 실험실 / 미션 ============ -->
@@ -514,24 +525,24 @@ body {
 
       <!-- 기기 영역 -->
       <div class="device-area" id="deviceArea"></div>
-      <div class="result-label" id="resultLabel"></div>
+      <div class="result-label" id="resultLabel" role="status" aria-live="polite"></div>
 
       <!-- 미션1용 캔버스 카드 분류 영역 -->
       <div class="m1-canvas-area" id="m1CanvasArea" style="display:none;">
         <div id="m1Cards"></div>
-        <div id="m1Feedback"></div>
+        <div id="m1Feedback" aria-live="polite"></div>
       </div>
 
       <!-- 누적 막대그래프 -->
       <div class="chart-section" id="barChartSection">
         <div class="chart-title">📊 누적 결과</div>
-        <svg id="barChart" class="chart-svg" viewBox="0 0 680 180"></svg>
+        <svg id="barChart" class="chart-svg" viewBox="0 0 680 180" role="img" aria-label="누적 결과 막대그래프"></svg>
       </div>
 
       <!-- 수렴 라인차트 -->
       <div class="chart-section" id="lineChartSection">
         <div class="chart-title">📈 비율 변화 (많이 할수록 가능성에 가까워져요)</div>
-        <svg id="lineChart" class="chart-svg" viewBox="0 0 680 200"></svg>
+        <svg id="lineChart" class="chart-svg" viewBox="0 0 680 200" role="img" aria-label="실험 횟수에 따른 비율 변화 그래프"></svg>
       </div>
     </div>
 
@@ -546,10 +557,10 @@ body {
         <!-- 자유 탐험 요소 그룹 -->
         <div id="freeplayControls">
           <!-- 장치 탭 -->
-          <div class="view-tabs" id="deviceTabs">
-            <button class="view-tab active" data-device="coin">🪙 동전</button>
-            <button class="view-tab" data-device="dice">🎲 주사위</button>
-            <button class="view-tab" data-device="spinner">🎡 회전판</button>
+          <div class="view-tabs" id="deviceTabs" role="group" aria-label="실험 도구 고르기">
+            <button type="button" class="view-tab active" data-device="coin">🪙 동전</button>
+            <button type="button" class="view-tab" data-device="dice">🎲 주사위</button>
+            <button type="button" class="view-tab" data-device="spinner">🎡 회전판</button>
           </div>
 
           <!-- 요약 문장 -->
@@ -557,16 +568,16 @@ body {
 
           <!-- 실험 조작 -->
           <div class="controls-panel">
-            <div class="ctrl-group-title">실험 횟수</div>
-            <div class="controls" id="labControls">
-              <button class="ctrl-btn" data-count="1">1번</button>
-              <button class="ctrl-btn" data-count="10">10번</button>
-              <button class="ctrl-btn" data-count="100">100번</button>
-              <button class="ctrl-btn accent" data-count="1000">1000번</button>
+            <div class="ctrl-group-title" id="labCountTitle">실험 횟수</div>
+            <div class="controls" id="labControls" role="group" aria-labelledby="labCountTitle">
+              <button type="button" class="ctrl-btn" data-count="1">1번</button>
+              <button type="button" class="ctrl-btn" data-count="10">10번</button>
+              <button type="button" class="ctrl-btn" data-count="100">100번</button>
+              <button type="button" class="ctrl-btn accent" data-count="1000">1000번</button>
             </div>
             <div class="action-btns" style="margin-top:6px;">
-              <button class="ctrl-btn" id="btnSkip" style="display:none; flex:1; color:var(--cl-theory); border-color:var(--cl-theory);">건너뛰기</button>
-              <button class="ctrl-btn reset-btn" id="btnReset" style="flex:1;">🔄 처음부터</button>
+              <button type="button" class="ctrl-btn" id="btnSkip" style="display:none; flex:1; color:var(--cl-theory); border-color:var(--cl-theory);">건너뛰기</button>
+              <button type="button" class="ctrl-btn reset-btn" id="btnReset" style="flex:1;">🔄 처음부터</button>
             </div>
           </div>
 
@@ -576,8 +587,8 @@ body {
             <div id="designerSlots"></div>
             <div class="slots-remaining" id="slotsRemaining"></div>
             <div class="add-remove-slot">
-              <button class="ctrl-btn" id="btnAddSlot" style="font-size:12px;">+ 색 추가</button>
-              <button class="ctrl-btn" id="btnRemoveSlot" style="font-size:12px;">− 색 제거</button>
+              <button type="button" class="ctrl-btn" id="btnAddSlot" style="font-size:12px;">+ 색 추가</button>
+              <button type="button" class="ctrl-btn" id="btnRemoveSlot" style="font-size:12px;">− 색 제거</button>
             </div>
           </div>
         </div>
@@ -585,12 +596,12 @@ body {
         <!-- 미션 요소 그룹 -->
         <div id="missionControls" style="display:none;">
           <div class="mission-nav-wrapper">
-            <div class="ctrl-group-title">미션 진행</div>
-            <div class="mission-nav" id="missionNav">
-              <button class="mission-nav-btn active" data-m="1">①</button>
-              <button class="mission-nav-btn" data-m="2">②</button>
-              <button class="mission-nav-btn" data-m="3">③</button>
-              <button class="mission-nav-btn" data-m="4">④</button>
+            <div class="ctrl-group-title" id="missionNavTitle">미션 진행</div>
+            <div class="mission-nav" id="missionNav" role="group" aria-labelledby="missionNavTitle">
+              <button type="button" class="mission-nav-btn active" data-m="1">①</button>
+              <button type="button" class="mission-nav-btn" data-m="2">②</button>
+              <button type="button" class="mission-nav-btn" data-m="3">③</button>
+              <button type="button" class="mission-nav-btn" data-m="4">④</button>
             </div>
           </div>
 
@@ -599,10 +610,8 @@ body {
             <div id="mission1" class="mission-panel active" style="display:none;">
               <h3>① 가능성을 말로 표현해요</h3>
               <p>각 상황의 가능성에 맞는 표현을 골라 주세요.</p>
-              <div id="m1Cards"></div>
-              <div id="m1Feedback"></div>
               <div style="text-align:center; margin-top:10px;">
-                <button class="fb-btn fb-btn-primary" id="m1Next" style="display:none; font-size:14px; padding:10px 20px;">다음 미션 →</button>
+                <button type="button" class="fb-btn fb-btn-primary" id="m1Next" style="display:none; font-size:14px; padding:10px 20px;">다음 미션 →</button>
               </div>
             </div>
 
@@ -611,7 +620,7 @@ body {
               <h3>② 예측하고 실험해요</h3>
               <p>동전을 10번 던지면 앞면이 몇 번 나올까요?</p>
               <div id="m2Content"></div>
-              <div id="m2Feedback"></div>
+              <div id="m2Feedback" aria-live="polite"></div>
             </div>
 
             <!-- 미션 3: 수렴 관찰 -->
@@ -619,7 +628,7 @@ body {
               <h3>③ 가능성에 가까워져요</h3>
               <p>주사위 1000번 실험 후 관찰해요.</p>
               <div id="m3Content"></div>
-              <div id="m3Feedback"></div>
+              <div id="m3Feedback" aria-live="polite"></div>
             </div>
 
             <!-- 미션 4: 설계 미션 -->
@@ -627,16 +636,16 @@ body {
               <h3>④ 회전판을 설계해요</h3>
               <p>원하는 가능성이 되도록 만들어 보세요.</p>
               <div id="m4Content"></div>
-              <div id="m4Feedback"></div>
+              <div id="m4Feedback" aria-live="polite"></div>
             </div>
           </div>
         </div>
 
         <!-- 하단 공통 제어 액션 -->
         <div class="action-btns" style="margin-top: 16px;">
-          <button class="action-btn danger" id="btnBackLab" style="display:none;">← 자유 탐험</button>
-          <button class="action-btn primary" id="btnMission">🏆 미션 도전</button>
-          <button class="action-btn primary" id="btnGoResult" style="display:none;">결과 보기 →</button>
+          <button type="button" class="action-btn danger" id="btnBackLab" style="display:none;">← 자유 탐험</button>
+          <button type="button" class="action-btn primary" id="btnMission">🏆 미션 도전</button>
+          <button type="button" class="action-btn primary" id="btnGoResult" style="display:none;">결과 보기 →</button>
         </div>
       </div>
     </div>
@@ -645,13 +654,13 @@ body {
 
 <!-- ============ 결과 ============ -->
 <div id="screenResult" class="screen result-screen">
-  <div style="font-size:72px;">🏆</div>
+  <div style="font-size:72px;" aria-hidden="true">🏆</div>
   <h2 style="margin:8px 0; font-size:28px;">실험 완료!</h2>
   <div class="result-stars" id="resultStars"></div>
   <div class="result-summary" id="resultSummary"></div>
   <div class="result-actions">
-    <button class="fb-btn fb-btn-primary" id="btnRetry">다시 도전</button>
-    <button class="fb-btn fb-btn-primary" style="background:var(--bg-sec); color:var(--fg); border:1px solid var(--border);" id="btnBackToLab">실험실로</button>
+    <button type="button" class="fb-btn fb-btn-primary" id="btnRetry">다시 도전</button>
+    <button type="button" class="fb-btn fb-btn-primary" style="background:var(--bg-sec); color:var(--fg); border:1px solid var(--border);" id="btnBackToLab">실험실로</button>
   </div>
 </div>
 
@@ -704,33 +713,85 @@ let currentMissionNum = -1;
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
-/* ── 저장/불러오기 ── */
+/* ── 저장/불러오기 (키·모양 그대로: { missions, missionStars, spinner, counts, total, snapshots }) ── */
 const STORAGE_KEY = 'chance-lab:v1';
-function saveState() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      missions: state.missions,
-      missionStars: state.missionStars,
-      spinner: state.spinner,
-      counts: state.counts,
-      total: state.total,
-      snapshots: state.snapshots,
-    }));
-  } catch(e) {}
+const MISSION_IDS = ['m1', 'm2', 'm3', 'm4'];
+function cleanCountArr(arr, len) {
+  if (!Array.isArray(arr) || (len != null && arr.length !== len) || arr.length > 6) return null;
+  const out = arr.map(v => SimKit.clean.int(v, 0, 1e7, -1));
+  return out.every(v => v >= 0) ? out : null;
 }
+function cleanSnaps(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.filter(s => s && Number.isInteger(s.n) && s.n > 0 && typeof s.ratio === 'number' && s.ratio >= 0 && s.ratio <= 1)
+    .slice(0, 60).map(s => ({ n: s.n, ratio: s.ratio }));
+}
+const store = SimKit.store(STORAGE_KEY, {
+  defaults: {},
+  validate: (raw) => {
+    if (!raw || typeof raw !== 'object') return null;
+    const out = {};
+    const m = raw.missions && typeof raw.missions === 'object' ? raw.missions : {};
+    out.missions = {};
+    MISSION_IDS.forEach(id => { out.missions[id] = m[id] === true ? true : null; });
+    out.missionStars = SimKit.clean.stars(raw.missionStars, MISSION_IDS, 3);
+    const sp = sanitizeSpinner(raw.spinner);
+    if (sp) out.spinner = sp;
+    const c = raw.counts && typeof raw.counts === 'object' ? raw.counts : {};
+    const coin = cleanCountArr(c.coin, 2), dice = cleanCountArr(c.dice, 6), spin = cleanCountArr(c.spinner);
+    if (coin && dice && spin) {
+      out.counts = { coin, dice, spinner: spin };
+      // 합계는 칸별 횟수의 합과 늘 같다(recordResult가 함께 올림)
+      const sum = a => a.reduce((x, y) => x + y, 0);
+      out.total = { coin: sum(coin), dice: sum(dice), spinner: sum(spin) };
+      const sn = raw.snapshots && typeof raw.snapshots === 'object' ? raw.snapshots : {};
+      out.snapshots = { coin: cleanSnaps(sn.coin), dice: cleanSnaps(sn.dice), spinner: cleanSnaps(sn.spinner) };
+    }
+    return out;
+  }
+});
+function saveState() {
+  store.save({
+    missions: state.missions,
+    missionStars: state.missionStars,
+    spinner: state.spinner,
+    counts: state.counts,
+    total: state.total,
+    snapshots: state.snapshots,
+  });
+}
+/* 저장값·공유 링크에서 온 회전판을 검사: 2~6칸, 색 0~5 중복 없음, 칸 수 0~12 정수, 합계 12 이하 */
+function sanitizeSpinner(sp) {
+  if (!sp || !Array.isArray(sp.slots)) return null;
+  const slots = sp.slots;
+  if (slots.length < 2 || slots.length > 6) return null;
+  const used = new Set();
+  let total = 0;
+  const out = [];
+  for (const s of slots) {
+    const color = Number(s && s.color);
+    const weight = Number(s && s.weight);
+    if (!Number.isInteger(color) || color < 0 || color > 5 || used.has(color)) return null;
+    if (!Number.isInteger(weight) || weight < 0 || weight > 12) return null;
+    used.add(color);
+    total += weight;
+    out.push({ color, weight });
+  }
+  if (total > 12) return null;
+  return { slots: out };
+}
+
 function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const saved = JSON.parse(raw);
-    if (saved.missions) state.missions = saved.missions;
-    if (saved.missionStars) state.missionStars = saved.missionStars;
-    if (saved.spinner) state.spinner = saved.spinner;
-    if (saved.counts) state.counts = saved.counts;
-    if (saved.total) state.total = saved.total;
-    if (saved.snapshots) state.snapshots = saved.snapshots;
-    syncSpinnerCounts();
-  } catch(e) {}
+  const saved = store.load();
+  if (saved.missions) state.missions = saved.missions;
+  if (saved.missionStars) state.missionStars = saved.missionStars;
+  if (saved.spinner) state.spinner = saved.spinner;
+  if (saved.counts) {
+    state.counts = saved.counts;
+    state.total = saved.total;
+    state.snapshots = saved.snapshots;
+  }
+  syncSpinnerCounts();
 }
 
 function syncSpinnerCounts() {
@@ -743,25 +804,27 @@ function syncSpinnerCounts() {
 }
 
 /* ── 공유 링크 파싱 ── */
+/* 예전 #share=<URI-JSON> 링크도 읽음. 받은 회전판은 sanitizeSpinner로 다시 검사 */
 function parseShareLink() {
-  const hash = location.hash;
-  if (!hash.startsWith('#share=')) return;
-  try {
-    const payload = JSON.parse(decodeURIComponent(hash.slice(7)));
-    if (payload.v === 1 && payload.spinner) {
-      state.spinner = payload.spinner;
-      syncSpinnerCounts();
-      state.device = 'spinner';
-    }
-  } catch(e) {}
-  history.replaceState(null, '', location.pathname);
+  const payload = SimKit.share.read({ version: 1 });
+  const sp = payload ? sanitizeSpinner(payload.spinner) : null;
+  if (sp) {
+    state.spinner = sp;
+    syncSpinnerCounts();
+    state.device = 'spinner';
+  }
 }
+
+/* ── 공용 조각: 화면·장치 탭·미션 컨트롤러 ── */
+const screens = SimKit.screens({ focus: true });
+let deviceTabs = null;
+let mc = null;
+function showToast(msg, type) { SimKit.toast(msg, type); }
 
 /* ── 화면 전환 ── */
 function showScreen(id) {
-  $$('.screen').forEach(s => s.classList.remove('active'));
-  const el = document.getElementById(id);
-  if (el) el.classList.add('active');
+  if (id !== 'screenExplore' && mc && missionMode) mc.stop();
+  screens.show(id);
 }
 
 /* ══════════════════════════════════════
@@ -914,6 +977,10 @@ function addSnapshot(dev) {
 async function runExperiment(count) {
   if (animating) return;
   const dev = state.device;
+  if (dev === 'spinner' && state.spinner.slots.reduce((a, s) => a + s.weight, 0) === 0) {
+    setResultLabel('회전판에 먼저 색을 칠해 주세요!');
+    return;
+  }
 
   if (count === 1) {
     lockControls(true);
@@ -962,12 +1029,17 @@ function doSingleTrial(dev) {
   if (dev === 'coin') return Math.random() < 0.5 ? 0 : 1;
   if (dev === 'dice') return Math.floor(Math.random() * 6);
   const totalW = state.spinner.slots.reduce((a, s) => a + s.weight, 0);
+  // 실제 추첨은 "채운 칸"만으로 한다(빈 칸 제외) — 설계 화면의 % 표시도 같은 기준
   let r = Math.random() * totalW;
+  let last = 0;
   for (let i = 0; i < state.spinner.slots.length; i++) {
-    r -= state.spinner.slots[i].weight;
-    if (r <= 0) return i;
+    const w = state.spinner.slots[i].weight;
+    if (w <= 0) continue;
+    last = i;
+    r -= w;
+    if (r < 0) return i;
   }
-  return state.spinner.slots.length - 1;
+  return last;
 }
 
 function recordResult(dev, result) {
@@ -1013,7 +1085,7 @@ async function animateSingle(dev, result) {
       dice.classList.remove('rolling');
       renderDiceFace(result + 1);
     }
-    setResultLabel(`${result + 1} 나왔어요! 🎲`);
+    setResultLabel(`${result + 1}${[0, 2, 5].includes(result) ? '이' : '가'} 나왔어요! 🎲`);
   } else {
     await animateSpinner(result);
     const slot = state.spinner.slots[result];
@@ -1085,8 +1157,8 @@ function updateSummary() {
   if (dev === 'coin') {
     const h = state.counts.coin[0];
     const pct = (h / t * 100).toFixed(1);
-    const word = pct > 45 && pct < 55 ? '거의 반반' : (pct >= 55 ? '앞면이 좀 더 많이' : '뒷면이 좀 더 많이');
-    el.innerHTML = `지금까지 <strong>${t}번</strong> 중 앞면 <strong>${h}번(${pct}%)</strong> — <strong>${word}</strong>이에요!`;
+    const word = pct > 45 && pct < 55 ? '거의 반반이에요' : (pct >= 55 ? '앞면이 조금 더 많아요' : '뒷면이 조금 더 많아요');
+    el.innerHTML = `지금까지 <strong>${t}번</strong> 중 앞면 <strong>${h}번(${pct}%)</strong> — <strong>${word}</strong>!`;
   } else if (dev === 'dice') {
     const max = Math.max(...state.counts.dice);
     const maxIdx = state.counts.dice.indexOf(max);
@@ -1152,6 +1224,9 @@ function renderBarChart(progress) {
 
   html += `<line x1="${marginL}" y1="${marginT + chartH}" x2="${W - marginR}" y2="${marginT + chartH}" stroke="var(--border)" stroke-width="1"/>`;
   svg.innerHTML = html;
+  svg.setAttribute('aria-label', total > 0
+    ? '누적 결과: ' + counts.map((c, i) => `${labels[i]} ${c}번`).join(', ')
+    : '누적 결과: 아직 실험하지 않았어요');
 }
 
 function renderLineChart() {
@@ -1278,7 +1353,8 @@ function renderDesigner() {
   let html = '';
   slots.forEach((slot, i) => {
     const c = COLORS[slot.color];
-    const pct = totalW > 0 ? (slot.weight / 12 * 100).toFixed(0) : 0;
+    // 실제 추첨(doSingleTrial)과 같은 기준: 채운 칸 전체(totalW) 중 이 색의 비율
+    const pct = totalW > 0 ? (slot.weight / totalW * 100).toFixed(0) : 0;
     html += `
       <div class="slot-row">
         <div class="slot-color" style="background:${c.hex}"></div>
@@ -1302,7 +1378,9 @@ function renderDesigner() {
     });
   });
 
-  $('#slotsRemaining').textContent = remaining > 0 ? `남은 칸: ${remaining}/12` : '12칸 모두 배정됨 ✓';
+  $('#slotsRemaining').textContent = remaining > 0
+    ? `남은 칸: ${remaining}/12 (빈 칸은 빼고, 칠한 ${totalW}칸으로 회전판을 만들어요)`
+    : '12칸 모두 배정됨 ✓';
   $('#btnAddSlot').disabled = slots.length >= 6;
   $('#btnRemoveSlot').disabled = slots.length <= 2;
 }
@@ -1368,10 +1446,13 @@ const M1_LABELS = ['불가능하다', '~아닐 것 같다', '반반이다', '~�
 let m1Current = 0;
 let m1Answers = [];
 let m1SelectedScale = -1;
+let m1Locked = false; // 한 문제에 한 번만 답하도록
+// 문항 사이 타이머는 mc.later(미션에 묶임): 다른 미션으로 가면 자동 취소
 
 function renderMission1() {
   m1Current = 0;
   m1Answers = [];
+  $('#m1Next').style.display = 'none';
   renderM1Question();
 }
 
@@ -1384,24 +1465,30 @@ function renderM1Question() {
   const cardsEl = $('#m1Cards');
 
   let html = `<div class="m1-card" id="m1CurrentCard">${q.text}</div>`;
-  html += `<div class="m1-scale" id="m1Scale">`;
+  html += `<div class="m1-scale" id="m1Scale" role="group" aria-label="가능성 표현 고르기">`;
   M1_LABELS.forEach((label, i) => {
-    html += `<button class="m1-scale-btn" data-val="${i}">${label}</button>`;
+    html += `<button type="button" class="m1-scale-btn" data-val="${i}">${label}</button>`;
   });
   html += `</div>`;
-  html += `<div style="text-align:center;color:var(--fg-muted);font-size:12px;margin-top:4px;">${m1Current + 1} / ${M1_QUESTIONS.length}</div>`;
+  html += `<div style="text-align:center;color:var(--fg-muted);font-size:13px;margin-top:4px;">${m1Current + 1} / ${M1_QUESTIONS.length}</div>`;
   cardsEl.innerHTML = html;
   $('#m1Feedback').innerHTML = '';
   m1SelectedScale = -1;
+  m1Locked = false;
 
   cardsEl.querySelectorAll('.m1-scale-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (m1Locked) return;
+      m1Locked = true;
       m1SelectedScale = parseInt(btn.dataset.val);
-      cardsEl.querySelectorAll('.m1-scale-btn').forEach(b => b.classList.remove('selected'));
+      cardsEl.querySelectorAll('.m1-scale-btn').forEach(b => { b.classList.remove('selected'); b.disabled = true; });
       btn.classList.add('selected');
-      setTimeout(() => checkM1Answer(), 300);
+      mc.later(checkM1Answer, 300);
     });
   });
+  // 키보드 사용자: 새 문항의 첫 보기로 초점(앞 문항 버튼이 사라져 초점을 잃지 않게)
+  const first = cardsEl.querySelector('.m1-scale-btn');
+  if (first && document.activeElement && (document.activeElement === document.body || !document.activeElement.isConnected)) first.focus({ preventScroll: true });
 }
 
 function checkM1Answer() {
@@ -1419,24 +1506,27 @@ function checkM1Answer() {
     fb.innerHTML = `<div class="feedback warn">아쉬워요! 정답은 "${M1_LABELS[q.answer]}"예요.</div>`;
   }
 
-  setTimeout(() => {
+  mc.later(() => {
+    const hadFocus = document.activeElement && document.activeElement.closest && document.activeElement.closest('#m1Cards');
     m1Current++;
     renderM1Question();
+    if (hadFocus || document.activeElement === document.body) {
+      const first = $('#m1Cards .m1-scale-btn') || $('#m1Next');
+      if (first && first.offsetParent) first.focus({ preventScroll: true });
+    }
   }, 1200);
 }
 
 function finishMission1() {
   const score = m1Answers.filter(Boolean).length;
   const stars = score >= 5 ? 3 : score >= 3 ? 2 : score >= 1 ? 1 : 0;
-  state.missionStars.m1 = stars;
-  state.missions.m1 = true;
 
   const cardsEl = $('#m1Cards');
   cardsEl.innerHTML = `<div class="feedback success">🎉 ${score}/${M1_QUESTIONS.length} 맞았어요! ${'⭐'.repeat(stars)}</div>`;
-  $('#m1Feedback').innerHTML = '';
+  $('#m1Feedback').textContent = `${M1_QUESTIONS.length}문제 중 ${score}문제를 맞혔어요. 별 ${stars}개!`;
   $('#m1Next').style.display = '';
-  updateMissionNav();
-  saveState();
+  // 완료·별 기록(별 0~3과 완료 여부를 따로 저장)은 컨트롤러 onChange가 state.missions/missionStars로 나눠 저장
+  mc.complete({ stars });
 }
 
 /* ══════════════════════════════════════
@@ -1447,11 +1537,11 @@ function renderMission2() {
   el.innerHTML = `
     <div class="predict-area">
       <p style="font-size:14px;margin-bottom:8px;">동전을 <strong>10번</strong> 던지면 앞면이 몇 번 나올까요?</p>
-      <input type="number" class="predict-input" id="m2Predict" min="0" max="10" placeholder="?">
-      <div class="predict-label">0~10 사이 숫자를 입력하세요</div>
+      <input type="number" class="predict-input" id="m2Predict" min="0" max="10" placeholder="?" inputmode="numeric" aria-describedby="m2PredictHint">
+      <label class="predict-label" for="m2Predict" id="m2PredictHint">0~10 사이 숫자를 입력하세요</label>
     </div>
     <div style="text-align:center;">
-      <button class="fb-btn fb-btn-primary" id="m2RunBtn" style="font-size:14px; padding:10px 24px;" disabled>실험하기</button>
+      <button type="button" class="fb-btn fb-btn-primary" id="m2RunBtn" style="font-size:14px; padding:10px 24px;" disabled>실험하기</button>
     </div>`;
   $('#m2Feedback').innerHTML = '';
 
@@ -1465,6 +1555,7 @@ function renderMission2() {
 }
 
 async function runM2Phase1() {
+  const t = mc.token(); // 이 미션 방문 동안만 이어서 실행(다른 미션으로 가면 멈춤)
   const prediction = parseInt($('#m2Predict').value);
   const el = $('#m2Content');
   el.innerHTML = `<div style="text-align:center;padding:12px;">
@@ -1488,7 +1579,7 @@ async function runM2Phase1() {
         </div>
       </div>
     </div>
-    <p id="m2Progress" style="margin-top:10px;font-size:13px;color:var(--fg-muted);">실험 중...</p>
+    <p id="m2Progress" style="margin-top:10px;font-size:14px;color:var(--fg-muted);">실험 중...</p>
   </div>`;
 
   let heads = 0;
@@ -1498,21 +1589,22 @@ async function runM2Phase1() {
     const coin = $('#m2Coin');
     if (coin) {
       await animateCoinFlip(coin, r === 0, 450);
+      if (!mc.alive(t)) return;
       showCoinResult(r === 0);
     }
     const prog = $('#m2Progress');
     if (prog) prog.textContent = `${i + 1}/10번째... 앞면 ${heads}번`;
-    await sleep(150);
+    if (!(await mc.sleep(150))) return;
   }
 
   const diff = Math.abs(heads - prediction);
   const fb = $('#m2Feedback');
-  let msg = (diff === 0) ? `예측 ${prediction}번, 결과 ${heads}번 — 정확히 맞았어요! 🎯` : `예측 ${prediction}번, 결과 ${heads}번 — ${diff}번 차이나요.`;
+  let msg = (diff === 0) ? `예측 ${prediction}번, 결과 ${heads}번 — 정확히 맞았어요! 🎯` : `예측 ${prediction}번, 결과 ${heads}번 — ${diff}번 차이가 나요.`;
 
   fb.innerHTML = `
     <div class="feedback info">${msg}<br><strong>적게 던지면 예측과 벗어나기 쉬워요.</strong></div>
     <div style="text-align:center;margin-top:10px;">
-      <button class="fb-btn fb-btn-primary" id="m2Run1000" style="font-size:14px; padding:10px 24px;">이번엔 1000번 해 볼까요?</button>
+      <button type="button" class="fb-btn fb-btn-primary" id="m2Run1000" style="font-size:14px; padding:10px 24px;">이번엔 1000번 해 볼까요?</button>
     </div>`;
   
   $('#m2Run1000').addEventListener('click', () => runM2Phase2());
@@ -1557,7 +1649,7 @@ async function runM2Phase2() {
     h += `<line x1="${mL}" y1="${mT + cH}" x2="${W - mR}" y2="${mT + cH}" stroke="var(--border)" stroke-width="1"/>`;
     h += `<text x="${W/2}" y="${H - 4}" text-anchor="middle" font-size="9" fill="var(--fg-muted)">시행 수</text>`;
     svg.innerHTML = h;
-    await sleep(40);
+    if (!(await mc.sleep(40))) return; // 다른 미션으로 가면 그리기 멈춤
   }
 
   const finalRatio = (heads / 1000 * 100).toFixed(1);
@@ -1568,15 +1660,12 @@ async function runM2Phase2() {
       <strong>많이 할수록 가능성(1/2)에 가까워져요!</strong>
     </div>
     <div style="text-align:center;margin-top:10px;">
-      <button class="fb-btn fb-btn-primary" id="m2Done" style="font-size:14px; padding:10px 24px;">다음 미션 →</button>
+      <button type="button" class="fb-btn fb-btn-primary" id="m2Done" style="font-size:14px; padding:10px 24px;">다음 미션 →</button>
     </div>`;
 
-  state.missionStars.m2 = 3;
-  state.missions.m2 = true;
-  updateMissionNav();
-  saveState();
+  mc.complete({ stars: 3 });
 
-  $('#m2Done').addEventListener('click', () => goToMission(3));
+  $('#m2Done').addEventListener('click', () => mc.next());
 }
 
 /* ══════════════════════════════════════
@@ -1590,7 +1679,7 @@ function renderMission3() {
   el.innerHTML = `
     <div style="text-align:center;padding:8px;">
       <p style="font-size:14px;margin-bottom:10px;">주사위를 <strong>1000번</strong> 던져 볼게요!</p>
-      <button class="fb-btn fb-btn-primary" id="m3RunBtn" style="font-size:14px; padding:10px 24px;">1000번 던지기 🎲</button>
+      <button type="button" class="fb-btn fb-btn-primary" id="m3RunBtn" style="font-size:14px; padding:10px 24px;">1000번 던지기 🎲</button>
     </div>
     <div style="margin:8px auto;max-width:320px;">
       <svg id="m3BarChart" class="chart-svg" viewBox="0 0 600 180"></svg>
@@ -1602,6 +1691,7 @@ function renderMission3() {
 
 async function runM3() {
   $('#m3RunBtn').disabled = true;
+  const t = mc.token();
   const counts = [0,0,0,0,0,0];
   for (let i = 0; i < 1000; i++) {
     counts[Math.floor(Math.random() * 6)]++;
@@ -1633,18 +1723,21 @@ async function runM3() {
     });
     h += `<line x1="${mL}" y1="${mT + cH}" x2="${W - mR}" y2="${mT + cH}" stroke="var(--border)" stroke-width="1"/>`;
     svg.innerHTML = h;
-    await sleep(40);
+    if (!(await mc.sleep(40))) return; // 다른 미션으로 가면 그리기 멈춤
   }
+  if (!mc.alive(t)) return;
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', '주사위 1000번 결과: ' + counts.map((c, i) => `${i + 1} ${c}번`).join(', '));
 
   const threeRatio = counts[2] / 1000;
   const el = $('#m3Content');
   el.innerHTML += `
     <div style="text-align:center;margin-top:12px;">
       <p style="font-size:14px;font-weight:700;">눈 3이 나온 비율(${(threeRatio*100).toFixed(1)}%)은 어디에 가까워졌나요?</p>
-      <div class="m3-choices" id="m3Choices">
-        <button class="m3-choice" data-val="0.5">1/2</button>
-        <button class="m3-choice" data-val="0.333">1/3</button>
-        <button class="m3-choice" data-val="0.167">1/6</button>
+      <div class="m3-choices" id="m3Choices" role="group" aria-label="가까워진 가능성 고르기">
+        <button type="button" class="m3-choice" data-val="0.5">1/2</button>
+        <button type="button" class="m3-choice" data-val="0.333">1/3</button>
+        <button type="button" class="m3-choice" data-val="0.167">1/6</button>
       </div>
     </div>`;
 
@@ -1661,17 +1754,14 @@ async function runM3() {
       const fb = $('#m3Feedback');
       if (correct) {
         fb.innerHTML = `<div class="feedback success">🎉 맞아요! 주사위 각 눈의 가능성은 <strong>1/6</strong>이에요.</div>`;
-        state.missionStars.m3 = 3;
       } else {
         fb.innerHTML = `<div class="feedback warn">정답은 <strong>1/6</strong>이에요. 주사위 눈은 6가지니까요!</div>`;
-        state.missionStars.m3 = 1;
       }
-      state.missions.m3 = true;
-      updateMissionNav();
-      saveState();
+      // 오답이어도 별 1로 완료(지금 동작 유지)
+      mc.complete({ stars: correct ? 3 : 1 });
 
-      fb.innerHTML += `<div style="text-align:center;margin-top:10px;"><button class="fb-btn fb-btn-primary" id="m3Next" style="font-size:14px; padding:10px 20px;">다음 미션 →</button></div>`;
-      $('#m3Next').addEventListener('click', () => goToMission(4));
+      fb.innerHTML += `<div style="text-align:center;margin-top:10px;"><button type="button" class="fb-btn fb-btn-primary" id="m3Next" style="font-size:14px; padding:10px 20px;">다음 미션 →</button></div>`;
+      $('#m3Next').addEventListener('click', () => mc.next());
     });
   });
 }
@@ -1695,7 +1785,7 @@ function renderMission4() {
   el.innerHTML = `
     <div class="m4-target">
       <em>노랑</em>이 나올 가능성이 <em>3/4</em>인 회전판을 만들어 보세요!<br>
-      <span style="font-size:12px;color:var(--fg-muted);">(12칸 중 9칸을 노랑으로)</span>
+      <span style="font-size:13px;color:var(--fg-muted);">(12칸 중 9칸을 노랑으로)</span>
     </div>
     <div style="display:flex;flex-direction:column;gap:12px;align-items:center;">
       <div style="width:100%;">
@@ -1703,17 +1793,17 @@ function renderMission4() {
           <div id="m4Slots"></div>
           <div class="slots-remaining" id="m4Remaining"></div>
           <div class="add-remove-slot">
-            <button class="ctrl-btn" id="m4AddSlot" style="font-size:11px;">+ 색 추가</button>
-            <button class="ctrl-btn" id="m4RemoveSlot" style="font-size:11px;">− 색 제거</button>
+            <button type="button" class="ctrl-btn" id="m4AddSlot" style="font-size:13px; padding:8px 10px;">+ 색 추가</button>
+            <button type="button" class="ctrl-btn" id="m4RemoveSlot" style="font-size:13px; padding:8px 10px;">− 색 제거</button>
           </div>
         </div>
       </div>
       <div>
-        <svg id="m4SpinnerSvg" class="spinner-svg" viewBox="0 0 220 220" style="width:120px;height:120px;"></svg>
+        <svg id="m4SpinnerSvg" class="spinner-svg" viewBox="0 0 220 220" style="width:120px;height:120px;" role="img" aria-label="내가 만든 회전판"></svg>
       </div>
     </div>
     <div style="text-align:center;margin-top:12px;">
-      <button class="fb-btn fb-btn-primary" id="m4CheckBtn" style="font-size:14px; padding:10px 24px;">설계 확인하기</button>
+      <button type="button" class="fb-btn fb-btn-primary" id="m4CheckBtn" style="font-size:14px; padding:10px 24px;">설계 확인하기</button>
     </div>
     <div id="m4TestArea"></div>`;
   $('#m4Feedback').innerHTML = '';
@@ -1751,16 +1841,16 @@ function renderM4Designer() {
     const c = COLORS[slot.color];
     const pct = (slot.weight / 12 * 100).toFixed(0);
     html += `
-      <div class="slot-row" style="margin-bottom:4px; gap:6px;">
-        <div class="slot-color" style="background:${c.hex}; width:14px; height:14px;"></div>
-        <div class="slot-name" style="font-size:11px; width:26px;">${c.name}</div>
+      <div class="slot-row m4-slot-row">
+        <div class="slot-color" style="background:${c.hex};" aria-hidden="true"></div>
+        <div class="slot-name">${c.name}</div>
         <div class="slot-stepper">
-          <button class="m4-step" data-slot="${i}" data-dir="-1" ${slot.weight <= 0 ? 'disabled' : ''} style="width:20px; height:20px; font-size:12px;">−</button>
-          <span style="font-size:12px; min-width:12px;">${slot.weight}</span>
-          <button class="m4-step" data-slot="${i}" data-dir="1" ${remaining <= 0 ? 'disabled' : ''} style="width:20px; height:20px; font-size:12px;">+</button>
+          <button type="button" class="m4-step" data-slot="${i}" data-dir="-1" ${slot.weight <= 0 ? 'disabled' : ''} aria-label="${c.name} 한 칸 빼기">−</button>
+          <span aria-label="${c.name} ${slot.weight}칸">${slot.weight}</span>
+          <button type="button" class="m4-step" data-slot="${i}" data-dir="1" ${remaining <= 0 ? 'disabled' : ''} aria-label="${c.name} 한 칸 더하기">+</button>
         </div>
-        <div class="slot-bar" style="height:6px;"><div class="slot-bar-fill" style="width:${pct}%;background:${c.hex}"></div></div>
-        <div class="slot-count-label" style="font-size:10px; min-width:22px;">${pct}%</div>
+        <div class="slot-bar" aria-hidden="true"><div class="slot-bar-fill" style="width:${pct}%;background:${c.hex}"></div></div>
+        <div class="slot-count-label">${pct}%</div>
       </div>`;
   });
   container.innerHTML = html;
@@ -1775,6 +1865,9 @@ function renderM4Designer() {
       m4Spinner.slots[idx].weight = newW;
       renderM4Designer();
       renderM4Spinner();
+      // 다시 그려도 같은 버튼에 초점 유지(키보드)
+      const again = container.querySelector(`.m4-step[data-slot="${idx}"][data-dir="${dir}"]`);
+      if (again && !again.disabled) again.focus({ preventScroll: true });
     });
   });
 
@@ -1793,10 +1886,11 @@ function renderM4Spinner() {
   const totalW = slots.reduce((a, s) => a + s.weight, 0);
   if (totalW === 0) { svg.innerHTML = '<circle cx="110" cy="110" r="100" fill="var(--bg-sec)" stroke="var(--border)" stroke-width="2"/>'; return; }
 
-  let html = '';
+  // 미션 4는 12칸 기준이므로 아직 안 채운 칸은 회색 "빈 칸"으로 그린다(설계 표의 %와 일치)
+  let html = '<circle cx="110" cy="110" r="100" fill="var(--bg-sec)" stroke="var(--border)" stroke-width="2"/>';
   let startAngle = -90;
   slots.forEach((slot, i) => {
-    const angle = (slot.weight / totalW) * 360;
+    const angle = (slot.weight / 12) * 360;
     if (angle <= 0) return;
     const endAngle = startAngle + angle;
     const largeArc = angle > 180 ? 1 : 0;
@@ -1837,23 +1931,20 @@ async function checkM4Design() {
   const yellowWeight = slots.filter(s => s.color === 0).reduce((a, s) => a + s.weight, 0);
   if (yellowWeight === 9) {
     fb.innerHTML = `<div class="feedback success">🎉 정확해요! 노랑이 12칸 중 9칸 = 3/4 가능성!<br>100번 실험으로 확인해 볼까요?</div>`;
-    state.missionStars.m4 = 3;
   } else {
     const ratio = yellowWeight + '/12';
     fb.innerHTML = `<div class="feedback warn">노랑이 ${yellowWeight}칸(${ratio})이에요. 3/4(=9/12)가 되어야 해요.<br>그래도 100번 실험해 볼게요!</div>`;
-    state.missionStars.m4 = 1;
   }
-  state.missions.m4 = true;
-  updateMissionNav();
-  saveState();
+  // 오답이어도 별 1로 완료(지금 동작 유지). 다시 확인하면 별을 덮어씀(keepBest:false)
+  mc.complete({ stars: yellowWeight === 9 ? 3 : 1 });
 
-  await sleep(800);
+  if (!(await mc.sleep(800))) return; // 기다리는 동안 다른 미션으로 가면 멈춤
   const counts = new Array(slots.length).fill(0);
   for (let i = 0; i < 100; i++) {
     let r = Math.random() * totalW;
     for (let j = 0; j < slots.length; j++) {
       r -= slots[j].weight;
-      if (r <= 0) { counts[j]++; break; }
+      if (r < 0) { counts[j]++; break; }
     }
   }
 
@@ -1865,33 +1956,31 @@ async function checkM4Design() {
       이론 가능성 ${(yellowWeight/12*100).toFixed(1)}%에 ${Math.abs(yellowCount - yellowWeight/12*100) < 10 ? '가까워요' : '아직 차이가 있어요'}!
     </div>
     <div style="text-align:center;margin-top:10px;">
-      <button class="fb-btn fb-btn-primary" id="m4ShowResult" style="font-size:14px; padding:10px 24px;">결과 보기 →</button>
+      <button type="button" class="fb-btn fb-btn-primary" id="m4ShowResult" style="font-size:14px; padding:10px 24px;">결과 보기 →</button>
     </div>`;
   $('#m4ShowResult').addEventListener('click', () => showResult());
   $('#btnGoResult').style.display = '';
 }
 
 /* ══════════════════════════════════════
-   미션 네비게이션
+   미션 네비게이션 (SimKit 미션 컨트롤러: 번호 버튼은 마크업의 ①~④)
    ══════════════════════════════════════ */
+const MISSION_TITLES = ['말로 표현', '예측하고 실험', '가능성에 가까워져요', '회전판 설계'];
+
 function updateMissionNav() {
-  $$('.mission-nav-btn').forEach(btn => {
-    const m = parseInt(btn.dataset.m);
-    const key = 'm' + m;
-    btn.classList.toggle('done', !!state.missions[key]);
-  });
-  const allDone = state.missions.m1 && state.missions.m2 && state.missions.m3 && state.missions.m4;
+  if (mc) mc.render();
+  const allDone = MISSION_IDS.every(id => !!state.missions[id]);
   $('#btnGoResult').style.display = allDone ? '' : 'none';
 }
 
-function goToMission(num) {
+/* 미션 화면 준비(컨트롤러 onEnter). 이미 끝낸 미션은 문제를 새로 그리지 않는다(지금 동작 유지) */
+function showMissionPanel(num, done) {
   currentMissionNum = num;
   $$('.mission-panel').forEach(p => p.style.display = 'none');
-  $$('.mission-nav-btn').forEach(b => b.classList.remove('active'));
   const panel = document.getElementById('mission' + num);
   if (panel) panel.style.display = 'block';
-  const navBtn = document.querySelector(`.mission-nav-btn[data-m="${num}"]`);
-  if (navBtn) navBtn.classList.add('active');
+  $('#missionNum').textContent = String(num);
+  $('#missionLabel').textContent = MISSION_TITLES[num - 1] || '미션';
 
   if (num === 1) {
     $('#deviceArea').style.display = 'none';
@@ -1899,7 +1988,7 @@ function goToMission(num) {
     $('#barChartSection').style.display = 'none';
     $('#lineChartSection').style.display = 'none';
     $('#m1CanvasArea').style.display = 'block';
-    if (!state.missions.m1) renderMission1();
+    if (!done) renderMission1();
   } else {
     $('#deviceArea').style.display = 'flex';
     $('#resultLabel').style.display = 'block';
@@ -1910,18 +1999,30 @@ function goToMission(num) {
     if (num === 2) {
       state.device = 'coin';
       renderDevice();
-      if (!state.missions.m2) renderMission2();
+      if (!done) renderMission2();
     } else if (num === 3) {
       state.device = 'dice';
       renderDevice();
-      if (!state.missions.m3) renderMission3();
+      if (!done) renderMission3();
     } else if (num === 4) {
       state.device = 'spinner';
       renderDevice();
-      if (!state.missions.m4) renderMission4();
+      if (!done) renderMission4();
     }
   }
+  // 새로 불러온 뒤 끝낸 미션에 들어가면 패널이 비어 있으므로 안내
+  if (done && num > 1) {
+    const content = $('#m' + num + 'Content');
+    if (content && !content.innerHTML.trim()) {
+      content.innerHTML = `<div class="feedback success">✅ 이미 끝낸 미션이에요! ${SimKit.stars.text(mc.starsOf(num - 1))}</div>`;
+    }
+  } else if (done && num === 1 && !$('#m1Cards').innerHTML.trim()) {
+    $('#m1Cards').innerHTML = `<div class="feedback success">✅ 이미 끝낸 미션이에요! ${SimKit.stars.text(mc.starsOf(0))}</div>`;
+    $('#m1Next').style.display = '';
+  }
 }
+
+function goToMission(num) { mc.go(num - 1); }
 
 function startMissions() {
   missionMode = true;
@@ -1931,15 +2032,12 @@ function startMissions() {
   $('#btnBackLab').style.display = '';
   $('#missionIndicator').style.display = 'flex';
 
-  let targetM = 1;
-  for (let i = 1; i <= 4; i++) {
-    if (!state.missions['m' + i]) { targetM = i; break; }
-  }
-  goToMission(targetM);
+  mc.start(); // 첫 미완료 미션(다 했으면 1번)
   updateMissionNav();
 }
 
 function exitMissionMode() {
+  if (mc) mc.stop(); // 미션 타이머·애니메이션 정리
   missionMode = false;
   currentMissionNum = -1;
   $('#freeplayControls').style.display = 'block';
@@ -1955,6 +2053,7 @@ function exitMissionMode() {
   $('#lineChartSection').style.display = 'block';
   $('#m1CanvasArea').style.display = 'none';
 
+  if (deviceTabs) deviceTabs.select(state.device, { silent: true });
   renderDevice();
 }
 
@@ -1963,15 +2062,15 @@ function exitMissionMode() {
    ══════════════════════════════════════ */
 function showResult() {
   showScreen('screenResult');
-  const totalStars = Object.values(state.missionStars).reduce((a, b) => a + b, 0);
-  const maxStars = 12;
-  $('#resultStars').textContent = '⭐'.repeat(Math.min(totalStars, maxStars));
+  const st = k => Math.max(0, Math.min(3, parseInt(state.missionStars[k]) || 0));
+  const totalStars = st('m1') + st('m2') + st('m3') + st('m4');
+  SimKit.stars.render('#resultStars', totalStars, 12);
 
   let summary = `<strong>미션 결과</strong><br>`;
-  summary += `① 말로 표현: ${'⭐'.repeat(state.missionStars.m1)}<br>`;
-  summary += `② 예측→실험: ${'⭐'.repeat(state.missionStars.m2)}<br>`;
-  summary += `③ 수렴 관찰: ${'⭐'.repeat(state.missionStars.m3)}<br>`;
-  summary += `④ 설계 미션: ${'⭐'.repeat(state.missionStars.m4)}<br><br>`;
+  summary += `① 말로 표현: ${'⭐'.repeat(st('m1'))}<br>`;
+  summary += `② 예측→실험: ${'⭐'.repeat(st('m2'))}<br>`;
+  summary += `③ 수렴 관찰: ${'⭐'.repeat(st('m3'))}<br>`;
+  summary += `④ 설계 미션: ${'⭐'.repeat(st('m4'))}<br><br>`;
   summary += `<strong>배움 정리</strong><br>`;
   summary += `가능성은 <strong>0(불가능)</strong>부터 <strong>1(확실)</strong> 사이의 수로 나타낼 수 있어요.<br>`;
   summary += `<strong>실험을 많이 할수록 결과는 가능성에 가까워져요.</strong>`;
@@ -1986,21 +2085,46 @@ function init() {
   parseShareLink();
   syncSpinnerCounts();
 
+  // 미션 컨트롤러: 마크업의 번호 버튼 ①~④, 별 0~3과 완료 여부를 'full' 모양으로 합쳐 다루고
+  // 저장은 지금처럼 missions(완료: true|null)·missionStars(별)로 나눠서 한다
+  const progress = {};
+  MISSION_IDS.forEach(id => { progress[id] = { done: !!state.missions[id], stars: state.missionStars[id] || 0 }; });
+  mc = SimKit.missions({
+    ids: MISSION_IDS,
+    format: 'full',
+    progress,
+    keepBest: false, // 지금처럼 다시 채점하면 별을 덮어씀(미션 4 다시 확인)
+    navButtons: '#missionNav .mission-nav-btn',
+    onEnter: (i, ctx) => showMissionPanel(i + 1, ctx.done),
+    onChange: (p) => {
+      MISSION_IDS.forEach(id => {
+        state.missions[id] = p[id].done ? true : null;
+        state.missionStars[id] = p[id].stars;
+      });
+      saveState();
+      updateMissionNav();
+    },
+    onFinish: () => { if (mc.allDone()) showResult(); else exitMissionMode(); }
+  });
+
   $('#btnStart').addEventListener('click', () => {
     showScreen('screenExplore');
+    // 공유 링크로 회전판이 열린 경우 탭 표시도 맞춘다
+    deviceTabs.select(state.device, { silent: true });
     renderDevice();
   });
 
-  $$('#deviceTabs .view-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (animating || missionMode) return;
-      $$('#deviceTabs .view-tab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.device = btn.dataset.device;
+  // 장치 탭: 애니메이션 중·미션 중에는 바꾸지 않음
+  deviceTabs = SimKit.tabs('#deviceTabs .view-tab', {
+    attr: 'device',
+    initial: state.device,
+    canSelect: () => !animating && !missionMode,
+    onSelect: (v) => {
+      state.device = v;
       syncSpinnerCounts();
       renderDevice();
       setResultLabel('');
-    });
+    }
   });
 
   $$('#labControls .ctrl-btn[data-count]').forEach(btn => {
@@ -2015,7 +2139,7 @@ function init() {
   $('#btnReset').addEventListener('click', () => {
     if (animating) return;
     if (missionMode) {
-      goToMission(currentMissionNum);
+      mc.retry(); // 같은 미션 다시 준비(끝낸 미션은 그대로)
       return;
     }
     const dev = state.device;
@@ -2031,22 +2155,15 @@ function init() {
   $('#btnRemoveSlot').addEventListener('click', removeSlot);
 
   $('#btnMission').addEventListener('click', startMissions);
-  $('#btnGoMission').addEventListener('click', startMissions);
+  $('#m1Next').addEventListener('click', () => mc.next());
 
   $('#btnBackLab').addEventListener('click', exitMissionMode);
-
-  $$('.mission-nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      goToMission(parseInt(btn.dataset.m));
-    });
-  });
+  // 번호 버튼 ①~④ 클릭은 미션 컨트롤러(navButtons)가 맡는다
 
   $('#btnGoResult').addEventListener('click', showResult);
 
   $('#btnRetry').addEventListener('click', () => {
-    state.missions = { m1: null, m2: null, m3: null, m4: null };
-    state.missionStars = { m1: 0, m2: 0, m3: 0, m4: 0 };
-    saveState();
+    mc.reset(); // onChange → missions·missionStars 초기화·저장
     showScreen('screenExplore');
     exitMissionMode();
     startMissions();
@@ -2057,35 +2174,8 @@ function init() {
     exitMissionMode();
   });
 
-  window.shareCurrentPage = function() {
-    if (state.device === 'spinner' || true) {
-      const payload = JSON.stringify({ v: 1, spinner: state.spinner });
-      const url = location.origin + location.pathname + '#share=' + encodeURIComponent(payload);
-      if (navigator.share) {
-        navigator.share({ title: '가능성 실험실 — 내 회전판', url });
-      } else if (navigator.clipboard) {
-        navigator.clipboard.writeText(url);
-        showToast('공유 링크가 복사되었어요!');
-      }
-    }
-  };
-
-  function showToast(msg) {
-    const el = document.createElement('div');
-    el.style.position = 'fixed';
-    el.style.bottom = '20px';
-    el.style.left = '50%';
-    el.style.transform = 'translateX(-50%)';
-    el.style.background = 'rgba(0,0,0,0.8)';
-    el.style.color = '#fff';
-    el.style.padding = '8px 16px';
-    el.style.borderRadius = '20px';
-    el.style.fontSize = '12px';
-    el.style.zIndex = '9999';
-    el.textContent = msg;
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 2500);
-  }
+  // 셸 공유 버튼 → 내 회전판 링크(받는 쪽은 parseShareLink + sanitizeSpinner)
+  SimKit.share.bind(() => ({ v: 1, spinner: state.spinner }), { title: '가능성 실험실 — 내 회전판' });
 
   updateMissionNav();
 }

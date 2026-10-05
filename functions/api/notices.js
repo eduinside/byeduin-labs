@@ -4,6 +4,9 @@
 //
 // 피드 주소: blog.eduin.info(대표 도메인) 우선, 실패 시 eduin.tistory.com 폴백.
 // (blog.eduin.info의 SSL 인증서 프로비저닝 전까지도 공지가 끊기지 않도록)
+//
+// 성공 응답은 엣지 캐시(caches.default)에 30분 보관 → 요청마다 블로그 RSS를 받지 않는다.
+// 실패 응답은 캐시하지 않는다(일시 장애가 30분 고착되지 않게).
 
 const FEED_URLS = [
   'https://blog.eduin.info/rss',
@@ -14,20 +17,22 @@ const DEFAULT_LIMIT = 6;
 const MAX_LIMIT = 20;
 const SUMMARY_MAX = 200;
 const FETCH_TIMEOUT_MS = 5000;
+const CACHE_SEC = 1800; // 30분
+const FEED_MAX_BYTES = 2 * 1024 * 1024; // RSS 본문 상한
 
 export async function onRequest(ctx) {
   const { request, env } = ctx;
 
   const headers = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Cache-Control': 'public, max-age=1800', // 30분
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': `public, max-age=${CACHE_SEC}`,
   };
+  const errHeaders = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 
   if (request.method !== 'GET') {
     return new Response(
       JSON.stringify({ error: 'Method Not Allowed', posts: [] }),
-      { status: 405, headers }
+      { status: 405, headers: errHeaders }
     );
   }
 
@@ -39,6 +44,14 @@ export async function onRequest(ctx) {
       if (Number.isFinite(n)) limit = Math.min(MAX_LIMIT, Math.max(1, n));
     }
   } catch { /* 기본 limit 유지 */ }
+
+  // 엣지 캐시: limit만 남긴 주소를 키로
+  const cache = globalThis.caches?.default;
+  const cacheKey = new Request(`${new URL(request.url).origin}/api/notices?limit=${limit}`);
+  if (cache) {
+    const hit = await cache.match(cacheKey).catch(() => null);
+    if (hit) return hit;
+  }
 
   // env 오버라이드 > blog.eduin.info > eduin.tistory.com 순으로 시도
   const candidates = [env.NOTICES_FEED_URL, ...FEED_URLS].filter(Boolean);
@@ -54,8 +67,13 @@ export async function onRequest(ctx) {
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible; byeduin-bot/1.0)' },
         signal: ctrl.signal,
       });
-      if (res.ok) { xml = await res.text(); usedUrl = url; break; }
+      if (res.ok) {
+        const len = Number(res.headers.get('content-length'));
+        if (len > FEED_MAX_BYTES) { lastErr = `too large (${url})`; try { await res.body?.cancel(); } catch {} continue; }
+        xml = await res.text(); usedUrl = url; break;
+      }
       lastErr = `status ${res.status} (${url})`;
+      try { await res.body?.cancel(); } catch {}
     } catch (e) {
       lastErr = `${(e && e.message) || 'fetch failed'} (${url})`;
     } finally {
@@ -66,15 +84,17 @@ export async function onRequest(ctx) {
   if (xml == null) {
     console.error('[notices] all feeds failed:', lastErr);
     return new Response(
-      JSON.stringify({ error: lastErr, posts: [], source: SOURCE_URL }),
-      { status: 502, headers }
+      JSON.stringify({ error: '공지를 불러오지 못했어요.', posts: [], source: SOURCE_URL }),
+      { status: 502, headers: errHeaders }
     );
   }
 
   const posts = parseRssItems(xml, limit);
   // source는 실제로 응답한 피드의 도메인으로 (blog 인증서 준비 전에도 '전체 보기' 링크가 안 깨지게)
   const source = originOf(usedUrl) || SOURCE_URL;
-  return new Response(JSON.stringify({ posts, source }), { status: 200, headers });
+  const out = new Response(JSON.stringify({ posts, source }), { status: 200, headers });
+  if (cache) ctx.waitUntil(cache.put(cacheKey, out.clone()).catch(() => {}));
+  return out;
 }
 
 function originOf(u) {

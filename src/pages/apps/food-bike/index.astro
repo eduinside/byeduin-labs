@@ -8,6 +8,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   bodyShell="immersive"
 >
   <Fragment slot="head">
+    <link rel="stylesheet" href="/common/sim-kit.css">
+    <script is:inline src="/common/sim-kit.js"></script>
     <style is:global="">
 /* ── food-bike 전용 스타일 (immersive 전체화면) ── */
 :root {
@@ -24,6 +26,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   --fb-sidebar-w: 320px;
   --fb-grid-bg: #f5f6fa;
   --fb-card-bg: var(--card-bg);
+  --sk-accent: var(--fb-accent);
 }
 [data-theme="dark"] {
   --fb-grid-bg: #121214;
@@ -42,6 +45,8 @@ body {
 
 .screen { display: none; }
 .screen.active { display: flex; }
+/* 화면 전환 때 제목으로 옮긴 초점(화면 읽기용)은 테두리를 그리지 않음 */
+.screen [tabindex="-1"]:focus { outline: none; }
 
 /* ── 인트로 스크린 ── */
 .intro-screen {
@@ -227,19 +232,19 @@ body {
   padding: 16px; position: relative; z-index: 2;
   box-shadow: 0 10px 30px rgba(0,0,0,0.04);
 }
-.plate-title { font-size: 13px; font-weight: 800; color: var(--fg-muted); margin-bottom: 10px; text-align: center; }
+.plate-title { font-size: 14px; font-weight: 800; color: var(--fg-muted); margin-bottom: 10px; text-align: center; }
 .plate-slots {
   display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; min-height: 80px;
   background: rgba(0,0,0,0.01); border-radius: 12px; padding: 10px;
 }
 .plate-slot-empty {
-  color: var(--fg-muted); font-size: 13px; font-weight: 700; align-self: center;
+  color: var(--fg-muted); font-size: 14px; font-weight: 700; align-self: center;
 }
 
 /* 음식 카드 */
 .food-card {
-  padding: 6px 10px; border-radius: 10px; border: 2px solid var(--border);
-  background: var(--fb-card-bg); font-size: 13px; font-weight: 700;
+  padding: 6px 10px; min-height: 40px; border-radius: 10px; border: 2px solid var(--border);
+  background: var(--fb-card-bg); color: var(--fg); font-family: inherit; font-size: 14px; font-weight: 700;
   display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
   box-shadow: 0 4px 10px rgba(0,0,0,0.02); transition: all 0.15s;
   user-select: none;
@@ -279,8 +284,9 @@ body {
 .mode-tab {
   flex: 1; padding: 8px 4px; border-radius: 10px; border: 2px solid var(--border);
   background: var(--bg-sec); text-align: center; cursor: pointer;
-  font-size: 11px; font-weight: 800; font-family: inherit; color: var(--fg-muted);
+  font-size: 13px; font-weight: 800; font-family: inherit; color: var(--fg-muted);
   transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  min-height: 52px; justify-content: center;
 }
 .mode-tab.active {
   border-color: var(--fb-accent); background: rgba(46,125,50,0.1); color: var(--fb-accent);
@@ -292,21 +298,24 @@ body {
   border: 1px solid var(--border); border-radius: 14px; background: var(--bg-sec);
   padding: 12px 14px; margin-bottom: 14px;
 }
-.mission-title { font-size: 11px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.08em; margin-bottom: 8px; }
-.mission-desc { font-size: 13px; line-height: 1.5; font-weight: 600; }
+.mission-title { font-size: 12px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.08em; margin-bottom: 8px; }
+.mission-desc { font-size: 14px; line-height: 1.6; font-weight: 600; }
 
-.mission-nav { display: flex; gap: 4px; margin-top: 10px; justify-content: center; }
-.mission-nav-btn {
-  width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border);
-  background: var(--card-bg); font-size: 12px; font-weight: 700; cursor: pointer;
-  color: var(--fg-muted); transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+.mission-nav { display: flex; gap: 8px; margin-top: 10px; justify-content: center; }
+/* 번호 버튼은 SimKit(.sk-mnav-btn, 44px)이 그린다 */
+
+/* 미션 4 보기 버튼 */
+.m4-choices { margin-top: 14px; display: flex; gap: 8px; }
+.m4-choice {
+  flex: 1; min-height: 44px; border-radius: 10px; border: 2px solid var(--border);
+  background: var(--card-bg); color: var(--fg); font: inherit; font-size: 15px; font-weight: 800; cursor: pointer;
 }
-.mission-nav-btn.active { border-color: var(--fb-accent); color: var(--fb-accent); }
-.mission-nav-btn.done { border-color: var(--fb-accent); color: var(--fb-accent); background: rgba(46,125,50,0.1); }
+.m4-choice:hover { border-color: var(--fb-accent); }
+.m4-choice.selected { border-color: var(--fb-accent); background: rgba(46,125,50,0.12); color: var(--fb-accent); }
 
 /* 피드백 메시지 박스 */
 .feedback-box {
-  padding: 10px; border-radius: 10px; font-size: 13px; line-height: 1.5; text-align: center; margin: 10px 0;
+  padding: 10px; border-radius: 10px; font-size: 14px; line-height: 1.5; text-align: center; margin: 10px 0;
 }
 .feedback-box.ok { background: rgba(46,125,50,0.1); color: var(--fb-accent); }
 .feedback-box.no { background: rgba(231,76,60,0.1); color: var(--group-grain); }
@@ -316,10 +325,10 @@ body {
   flex: 1; display: flex; flex-direction: column; min-height: 0;
 }
 .palette-title { font-size: 11px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.08em; margin-bottom: 8px; }
-.palette-tabs { display: flex; gap: 2px; overflow-x: auto; margin-bottom: 6px; padding-bottom: 4px; }
+.palette-tabs { display: flex; gap: 4px; overflow-x: auto; margin-bottom: 6px; padding-bottom: 4px; }
 .palette-tab {
-  padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-sec);
-  font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  padding: 4px 10px; min-height: 40px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-sec);
+  color: var(--fg); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
 }
 .palette-tab.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 
@@ -327,11 +336,12 @@ body {
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; overflow-y: auto; padding-right: 4px;
 }
 .palette-item {
-  padding: 8px; border-radius: 10px; border: 1px solid var(--border);
-  background: var(--bg-sec); text-align: center; cursor: pointer;
-  font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px; min-height: 44px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--bg-sec); color: var(--fg); text-align: center; cursor: pointer; font-family: inherit;
+  font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;
 }
 .palette-item.placed { background: rgba(46,125,50,0.05); border-color: var(--fb-accent); }
+.palette-item.picked { outline: 3px solid var(--fb-accent); outline-offset: 1px; }
 
 /* 모드 1 분류 미션 전용 바구니 배치 영역 */
 .classify-box-container {
@@ -343,7 +353,10 @@ body {
   align-items: center; justify-content: center; transition: all 0.2s;
 }
 .classify-basket.drag-over { border-color: var(--fb-accent); background: rgba(46,125,50,0.05); }
-.classify-basket-title { font-size: 12px; font-weight: 800; text-align: center; }
+.classify-basket-title {
+  font: inherit; font-size: 14px; font-weight: 800; text-align: center; color: var(--fg);
+  background: none; border: none; min-height: 40px; width: 100%; cursor: pointer; border-radius: 8px;
+}
 
 /* 액션 패널 */
 .action-panel { margin-top: auto; padding-top: 14px; flex-shrink: 0; }
@@ -367,7 +380,7 @@ body {
   border: 1px solid var(--border); border-radius: 14px; padding: 16px; background: var(--bg-sec);
 }
 .trivia-card h4 { font-size: 14px; font-weight: 800; margin-bottom: 6px; color: var(--fb-accent); }
-.trivia-card p { font-size: 13px; line-height: 1.6; color: var(--fg-muted); }
+.trivia-card p { font-size: 14px; line-height: 1.6; color: var(--fg-muted); }
 
 /* ── 결과 화면 ── */
 .result-screen {
@@ -419,7 +432,6 @@ body {
   cursor: not-allowed;
 }
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/food-bike/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"식품구성자전거","description":"음식을 담아 바퀴를 채우는 균형 식단 게임","url":"https://eduin.info/apps/food-bike/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -427,7 +439,7 @@ body {
 
 <!-- ============ 인트로 ============ -->
 <div id="screenIntro" class="screen active intro-screen">
-  <div class="intro-emoji">🚲</div>
+  <div class="intro-emoji" aria-hidden="true">🚲</div>
   <h1>식품구성자전거</h1>
   <p class="intro-sub">균형 잡힌 식단 만들기 시뮬레이션</p>
 
@@ -436,7 +448,7 @@ body {
     <p>음식을 접시에 골고루 담아 뒷바퀴의 6개 식품군 비율을 맞춰보세요. 6가지 식품군을 골고루 알맞게 먹고, 앞바퀴인 물을 마셔야 자전거가 쌩쌩 달릴 수 있답니다!</p>
   </div>
 
-  <button class="fb-btn fb-btn-primary" id="btnStart">시작하기</button>
+  <button type="button" class="fb-btn fb-btn-primary" id="btnStart">시작하기</button>
 </div>
 
 <!-- ============ 메인 탐험 스크린 ============ -->
@@ -454,7 +466,7 @@ body {
       <!-- 무대 및 자전거 -->
       <div class="canvas-viewport" id="canvasViewport">
         <!-- 주행 상태 안내 배너 -->
-        <div class="run-status-banner" id="runStatusBanner">
+        <div class="run-status-banner" id="runStatusBanner" role="status" aria-live="polite">
           🚲 대기 중...
         </div>
 
@@ -463,7 +475,7 @@ body {
           <div class="bike-luggage" id="bikeLuggage"></div>
 
           <!-- 자전거 본체 프레임 실루엣 및 라이더 통합 SVG -->
-          <svg class="bike-body-svg" viewBox="0 0 340 220" id="bikeBodySvg">
+          <svg class="bike-body-svg" viewBox="0 0 340 220" id="bikeBodySvg" aria-hidden="true">
             <!-- 프레임 (뒷바퀴 중심 95,145 / BB 165,155 / 시트포스트 145,95 / 헤드튜브 235,75 / 앞바퀴 중심 262,162) -->
             <path d="M 95 145 L 165 155 L 145 95 Z" fill="none" stroke="var(--fg)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"></path>
             <path d="M 165 155 L 235 75 L 145 95" fill="none" stroke="var(--fg)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"></path>
@@ -496,13 +508,13 @@ body {
 
           <!-- 뒷바퀴 (6개 식품군 부채꼴) -->
           <div class="rear-wheel" id="rearWheel">
-            <svg class="rear-wheel-svg" viewBox="0 0 110 110" id="rearWheelSvg">
+            <svg class="rear-wheel-svg" viewBox="0 0 110 110" id="rearWheelSvg" role="img" aria-label="뒷바퀴: 6가지 식품군">
               <!-- 부채꼴 파트들은 JS에서 동적으로 그립니다 -->
             </svg>
           </div>
 
           <!-- 앞바퀴 (물) + 바퀴살 디자인 오버레이 -->
-          <div class="front-wheel" id="frontWheel">
+          <div class="front-wheel" id="frontWheel" aria-hidden="true">
             <div class="water-gauge" id="waterGauge"></div>
             <svg viewBox="0 0 76 76" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;">
               <circle cx="38" cy="38" r="35" fill="none" stroke="var(--fg)" stroke-width="4"></circle>
@@ -517,8 +529,8 @@ body {
 
         <!-- 식단 접시 -->
         <div class="plate-zone">
-          <div class="plate-title">🍽️ 오늘의 식단 접시 (탭하여 음식 제거)</div>
-          <div class="plate-slots" id="plateSlots">
+          <div class="plate-title" id="plateTitle">🍽️ 오늘의 식단 접시 (탭하여 음식 제거)</div>
+          <div class="plate-slots" id="plateSlots" role="group" aria-labelledby="plateTitle">
             <div class="plate-slot-empty">음식 카드를 선택해 접시에 채워보세요!</div>
           </div>
         </div>
@@ -537,27 +549,27 @@ body {
 
       <div class="side-body">
         <!-- 모드 선택 탭 -->
-        <div class="mode-tabs" id="modeTabs">
-          <button class="mode-tab active" data-mode="1">
-            <span class="em">🍽️</span>식단 빌더
+        <div class="mode-tabs" id="modeTabs" role="group" aria-label="모드 고르기">
+          <button type="button" class="mode-tab active" data-mode="1">
+            <span class="em" aria-hidden="true">🍽️</span>식단 빌더
           </button>
-          <button class="mode-tab" data-mode="2">
-            <span class="em">🏆</span>도전 미션
+          <button type="button" class="mode-tab" data-mode="2">
+            <span class="em" aria-hidden="true">🏆</span>도전 미션
           </button>
-          <button class="mode-tab" data-mode="3">
-            <span class="em">💡</span>자전거 상식
+          <button type="button" class="mode-tab" data-mode="3">
+            <span class="em" aria-hidden="true">💡</span>자전거 상식
           </button>
         </div>
 
         <!-- 미션 카드 (모드 2 전용) -->
         <div class="mission-card" id="missionCard" style="display:none;">
-          <div class="mission-title">도전 미션</div>
+          <h3 class="mission-title">도전 미션</h3>
           <div class="mission-desc" id="missionDesc">미션을 선택하고 올바른 식단을 구성해 보세요.</div>
           <div class="mission-nav" id="missionNav"></div>
         </div>
 
         <!-- 피드백 메시지 -->
-        <div class="feedback-box" id="feedbackBox" style="display:none;"></div>
+        <div class="feedback-box" id="feedbackBox" role="status" aria-live="polite" style="display:none;"></div>
 
         <!-- 상식 공부 뷰 (모드 3 전용) -->
         <div class="trivia-zone" id="triviaZone" style="display:none;">
@@ -582,29 +594,29 @@ body {
 
         <!-- 음식 팔레트 영역 (모드 1, 2 공통) -->
         <div class="palette-section" id="paletteSection">
-          <div class="palette-title">음식 카드 팔레트 (탭하여 접시에 추가)</div>
+          <div class="palette-title" id="paletteTitle">음식 카드 팔레트 (탭하여 접시에 추가)</div>
           
           <!-- 카테고리 탭 -->
-          <div class="palette-tabs" id="paletteTabs">
-            <button class="palette-tab active" data-cat="all">전체</button>
-            <button class="palette-tab" data-cat="1">곡류</button>
-            <button class="palette-tab" data-cat="2">고기·생선</button>
-            <button class="palette-tab" data-cat="3">채소</button>
-            <button class="palette-tab" data-cat="4">과일</button>
-            <button class="palette-tab" data-cat="5">유제품</button>
-            <button class="palette-tab" data-cat="6">유지·당</button>
-            <button class="palette-tab" data-cat="water">물</button>
+          <div class="palette-tabs" id="paletteTabs" role="group" aria-label="식품군으로 골라 보기">
+            <button type="button" class="palette-tab active" data-cat="all">전체</button>
+            <button type="button" class="palette-tab" data-cat="1">곡류</button>
+            <button type="button" class="palette-tab" data-cat="2">고기·생선</button>
+            <button type="button" class="palette-tab" data-cat="3">채소</button>
+            <button type="button" class="palette-tab" data-cat="4">과일</button>
+            <button type="button" class="palette-tab" data-cat="5">유제품</button>
+            <button type="button" class="palette-tab" data-cat="6">유지·당</button>
+            <button type="button" class="palette-tab" data-cat="water">물</button>
           </div>
 
-          <div class="palette-grid" id="paletteGrid">
+          <div class="palette-grid" id="paletteGrid" role="group" aria-labelledby="paletteTitle">
             <!-- 음식 목록 동적 주입 -->
           </div>
         </div>
 
         <!-- 하단 액션 패널 -->
         <div class="action-panel">
-          <button class="action-btn" id="btnVerify">🏆 균형 평가하기</button>
-          <button class="action-btn secondary" id="btnNextScreen" style="display:none;">탐험 완료 →</button>
+          <button type="button" class="action-btn" id="btnVerify">🏆 균형 평가하기</button>
+          <button type="button" class="action-btn secondary" id="btnNextScreen" style="display:none;">탐험 완료 →</button>
         </div>
       </div>
     </div>
@@ -613,13 +625,13 @@ body {
 
 <!-- ============ 결과 화면 ============ -->
 <div id="screenResult" class="screen result-screen">
-  <div style="font-size:72px;">🏆</div>
+  <div style="font-size:72px;" aria-hidden="true">🏆</div>
   <h2 style="margin:8px 0; font-size:28px;">식품구성자전거 마스터!</h2>
   <div class="result-stars" id="resultStars"></div>
   <div class="result-summary" id="resultSummary"></div>
   <div class="result-actions">
-    <button class="fb-btn fb-btn-primary" id="btnRetry">다시 시작</button>
-    <button class="fb-btn fb-btn-primary" style="background:var(--bg-sec); color:var(--fg); border:1px solid var(--border);" id="btnBackToHub">식단 빌더로</button>
+    <button type="button" class="fb-btn fb-btn-primary" id="btnRetry">다시 시작</button>
+    <button type="button" class="fb-btn fb-btn-primary" style="background:var(--bg-sec); color:var(--fg); border:1px solid var(--border);" id="btnBackToHub">식단 빌더로</button>
   </div>
 </div>
 
@@ -637,7 +649,7 @@ body {
    - 감자, 고구마는 탄수화물 주성분이라 '곡류'로 분류.
    - 토마토는 과채류이나 실과 교과서 기준 '채소류'로 매핑.
    - 두부는 콩 가공품이므로 단백질 공급원인 '고기·생선·달걀·콩류'로 분류.
-   - 두유는 우유알레르기 등의 대체제로 '우유·유제품류'로 매핑.
+   - 두유는 콩으로 만든 음료라 식품구성자전거(한국영양학회) 기준 '고기·생선·달걀·콩류'(콩류)로 분류.
 */
 const FOOD_DB = [
   // 1: 곡류 (Grains)
@@ -657,6 +669,7 @@ const FOOD_DB = [
   { id: 'tofu', name: '두부', emoji: '⬜', group: 2 },
   { id: 'peas', name: '완두콩', emoji: '🫛', group: 2 },
   { id: 'squid', name: '오징어', emoji: '🦑', group: 2 },
+  { id: 'soymilk', name: '두유', emoji: '🧃', group: 2 },
 
   // 3: 채소류 (Vegetables)
   { id: 'spinach', name: '시금치', emoji: '🥬', group: 3 },
@@ -681,7 +694,6 @@ const FOOD_DB = [
   { id: 'cheese', name: '치즈', emoji: '🧀', group: 5 },
   { id: 'yogurt', name: '요거트', emoji: '🍦', group: 5 },
   { id: 'icecream', name: '아이스크림', emoji: '🍨', group: 5 },
-  { id: 'soymilk', name: '두유', emoji: '🧃', group: 5 },
 
   // 6: 유지·당류 (Oils, Fats, Sugars)
   { id: 'butter', name: '버터', emoji: '🧈', group: 6 },
@@ -774,7 +786,7 @@ const MISSIONS = [
   },
   {
     id: 'm4', title: '식단 비교와 평가',
-    desc: '대표적인 두 가지 식단 중에서 <strong>어느 식단이 더 골고루 영양소를 갖췄는지</strong> 비교하고 올바른 결론을 골라보세요.<br><br><strong>식단 A: 쌀밥 + 생선구이 + 시금치 + 귤 + 우유 + 물</strong><br><strong>식단 B: 식빵 + 버터 + 설탕물</strong><br><br>1. 식단 B가 에너지를 빨리 내므로 훨씬 균형 잡혔다.<br>2. 식단 A는 6가지 식품군과 물이 모두 포함되어 균형 잡혔고, 식단 B는 채소/단백질/과일/유제품이 비어 있어 불균형하다.<br>3. 두 식단 모두 영양 상태의 차이가 없다.',
+    desc: '대표적인 두 가지 식단 중에서 <strong>어느 식단이 더 골고루 영양소를 갖췄는지</strong> 비교하고 올바른 결론을 골라보세요.<br><br><strong>식단 A: 쌀밥 + 생선구이 + 시금치 + 귤 + 우유 + 물</strong><br><strong>식단 B: 식빵 + 버터 + 설탕물</strong><br><br>1. 식단 B가 에너지를 빨리 내므로 훨씬 균형 잡혔다.<br>2. 식단 A는 곡류, 고기·생선, 채소, 과일, 우유의 5가지 식품군과 물이 골고루 들어 있어 균형 잡혔고, 식단 B는 곡류와 유지·당류뿐이라 채소/단백질/과일/유제품이 비어 있어 불균형하다.<br>3. 두 식단 모두 영양 상태의 차이가 없다.',
     verify: () => {
       const selected = document.querySelector('.m4-choice.selected');
       return selected && selected.dataset.val === '2';
@@ -790,57 +802,77 @@ let state = {
   
   // 현재 접시에 담긴 음식 리스트
   plate: [], // foodId 리스트
-  activeCategory: 'all'
+  activeCategory: 'all',
+  pendingFoodId: null // 분류 미션: 탭으로 고른 음식(다음에 누른 바구니에 넣음)
 };
 
 /* ── 유틸 ── */
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
-/* ── 상태 저장/불러오기 ── */
-const STORAGE_KEY = 'food-bike:v1';
-function saveState() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      missionsCompleted: state.missionsCompleted,
-      lastPlate: state.plate
-    }));
-  } catch(e) {}
-}
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const saved = JSON.parse(raw);
-    if (saved.missionsCompleted) state.missionsCompleted = saved.missionsCompleted;
-    if (saved.lastPlate) state.plate = saved.lastPlate;
-  } catch(e) {}
+/* 받침 유무에 따라 조사 선택: josa('곡류','이','가') → '곡류가' (SimKit.josa) */
+function josa(word, withBatchim, withoutBatchim) {
+  return SimKit.josa(word, withBatchim + '/' + withoutBatchim);
 }
 
-/* ── 공유 링크 ── */
-function parseShareLink() {
-  const hash = location.hash;
-  if (!hash.startsWith('#share=')) return;
-  try {
-    const payload = JSON.parse(decodeURIComponent(hash.slice(7)));
-    if (payload.v === 1 && payload.plate) {
-      state.plate = payload.plate;
-      state.mode = 1;
-    }
-  } catch(e) {}
-  history.replaceState(null, '', location.pathname);
+/* 저장값·공유 링크에서 온 접시 검사: 아는 음식 id만, 중복 없이 최대 12개 */
+function cleanPlate(arr) {
+  if (!Array.isArray(arr)) return [];
+  const out = [];
+  arr.forEach(id => { if (FOOD_BY_ID[id] && !out.includes(id) && out.length < 12) out.push(id); });
+  return out;
 }
+
+/* ── 토스트 (공용 SimKit.toast → VUI.toast) ── */
+function showToast(msg, type) { SimKit.toast(msg, type === 'no' ? 'error' : type); } // 'no' = 빨간 오류 토스트
+
+/* ── 상태 저장/불러오기 (키·모양 그대로: { missionsCompleted, lastPlate }) ── */
+const MISSION_IDS = ['m1', 'm2', 'm3', 'm4'];
+const store = SimKit.store('food-bike:v1', {
+  defaults: { missionsCompleted: { m1: false, m2: false, m3: false, m4: false }, lastPlate: [] },
+  validate: (raw) => {
+    if (!raw || typeof raw !== 'object') return null;
+    return {
+      missionsCompleted: SimKit.clean.flags(raw.missionsCompleted, MISSION_IDS),
+      lastPlate: cleanPlate(raw.lastPlate)
+    };
+  }
+});
+function saveState() {
+  store.save({ missionsCompleted: state.missionsCompleted, lastPlate: state.plate });
+}
+function loadState() {
+  const saved = store.load();
+  state.missionsCompleted = saved.missionsCompleted;
+  state.plate = saved.lastPlate;
+}
+
+/* ── 공유 링크 (예전 #share=<URI-JSON> 링크도 읽음) ── */
+function parseShareLink() {
+  const payload = SimKit.share.read({ version: 1 });
+  if (payload && payload.plate) {
+    state.plate = cleanPlate(payload.plate);
+    state.mode = 1;
+  }
+}
+
+/* ── 공용 조각: 화면·피드백·모드 탭·미션 컨트롤러 ── */
+const screens = SimKit.screens({ focus: true });
+const fb = SimKit.feedback('#feedbackBox', { html: true, classes: { ok: 'ok', no: 'no' } });
+let modeTabs = null;
+let mc = null;
 
 /* ══════════════════════════════════════
    모드 / 미션 화면 전환 및 셋업
    ══════════════════════════════════════ */
 function switchMode(modeNum) {
-  state.mode = parseInt(modeNum);
-  
-  // 탭 활성화
-  $$('.mode-tab').forEach(b => {
-    b.classList.toggle('active', parseInt(b.dataset.mode) === state.mode);
-  });
+  const prevMode = state.mode;
+  state.mode = parseInt(modeNum) || 1;
+
+  // 탭 활성화(표시만)
+  if (modeTabs) modeTabs.select(state.mode, { silent: true });
+  // 미션 모드를 떠나면 미션 컨트롤러 정리
+  if (prevMode === 2 && state.mode !== 2 && mc) mc.stop();
 
   // 미션 및 분류 박스 세팅
   const missionCard = $('#missionCard');
@@ -864,7 +896,7 @@ function switchMode(modeNum) {
     canvasBadgeNum.textContent = '🏆';
     canvasBadgeLabel.textContent = '도전 미션';
     missionCard.style.display = 'block';
-    setupMissionUI();
+    mc.start(state.missionIdx); // 번호 그리기 → onEnter(setupMissionUI)
   } else if (state.mode === 3) {
     canvasBadgeNum.textContent = '💡';
     canvasBadgeLabel.textContent = '자전거 상식';
@@ -878,22 +910,11 @@ function switchMode(modeNum) {
   hideFeedback();
 }
 
+/* 미션 준비: SimKit 미션 컨트롤러의 onEnter에서만 부른다(번호 그리기·문구 숨김은 컨트롤러가 함).
+   성공 처리에서 다시 부르면 접시가 초기화되므로 부르지 말 것. */
 function setupMissionUI() {
   const m = MISSIONS[state.missionIdx];
-  const nav = $('#missionNav');
-  nav.innerHTML = '';
-
-  // 미션 인덱스 버튼
-  MISSIONS.forEach((ms, idx) => {
-    const btn = document.createElement('button');
-    btn.className = `mission-nav-btn ${idx === state.missionIdx ? 'active' : ''} ${state.missionsCompleted[ms.id] ? 'done' : ''}`;
-    btn.textContent = idx + 1;
-    btn.addEventListener('click', () => {
-      state.missionIdx = idx;
-      setupMissionUI();
-    });
-    nav.appendChild(btn);
-  });
+  state.pendingFoodId = null;
 
   $('#missionDesc').innerHTML = m.desc;
 
@@ -921,28 +942,30 @@ function setupMissionUI() {
     // 식단 비교 퀴즈: 퀴즈 선택 버튼 동적 주입 및 팔레트 숨김
     paletteSection.style.display = 'none';
     $('#missionDesc').innerHTML += `
-      <div class="m3-choices" style="margin-top: 14px; display:flex; gap: 8px;">
-        <button class="m4-choice" data-val="1">1번</button>
-        <button class="m4-choice" data-val="2">2번</button>
-        <button class="m4-choice" data-val="3">3번</button>
+      <div class="m4-choices" role="group" aria-label="결론 고르기">
+        <button type="button" class="m4-choice" data-val="1" aria-pressed="false">1번</button>
+        <button type="button" class="m4-choice" data-val="2" aria-pressed="false">2번</button>
+        <button type="button" class="m4-choice" data-val="3" aria-pressed="false">3번</button>
       </div>
     `;
     $$('.m4-choice').forEach(b => {
       b.addEventListener('click', () => {
-        $$('.m4-choice').forEach(btn => btn.classList.remove('selected'));
+        $$('.m4-choice').forEach(btn => { btn.classList.remove('selected'); btn.setAttribute('aria-pressed', 'false'); });
         b.classList.add('selected');
+        b.setAttribute('aria-pressed', 'true');
       });
     });
     // 식단 비교 시 자전거도 대기/시연 렌더링
     setBikeRunState('wobble', '어떤 식품군이 부족할까요?');
   }
 
+  // 미션을 바꿀 때 팔레트도 다시 그린다(분류 미션의 5종 목록이 다음 미션에 남던 문제)
+  renderPalette();
   updateVerifyButtonText();
-  hideFeedback();
 }
 
 function updateVerifyButtonText() {
-  const allMissionsDone = Object.values(state.missionsCompleted).every(Boolean);
+  const allMissionsDone = MISSION_IDS.every(id => state.missionsCompleted[id] === true);
   $('#btnNextScreen').style.display = allMissionsDone ? 'block' : 'none';
 }
 
@@ -977,31 +1000,51 @@ function renderPalette() {
       ? isClassifiedInBasket(f.id)
       : state.plate.includes(f.id);
 
-    const card = document.createElement('div');
-    card.className = `palette-item ${isPlaced ? 'placed' : ''}`;
-    card.draggable = isClassification && !isPlaced; // 분류 미션만 HTML5 드래그앤드롭 사용
-    card.innerHTML = `<span style="font-size:20px;">${f.emoji}</span><span>${f.name}</span>`;
+    const card = document.createElement('button');
+    card.type = 'button';
+    const picked = isClassification && state.pendingFoodId === f.id;
+    card.className = `palette-item ${isPlaced ? 'placed' : ''} ${picked ? 'picked' : ''}`;
+    card.dataset.id = f.id;
+    card.draggable = isClassification && !isPlaced; // 분류 미션만 HTML5 드래그앤드롭 사용(누르기로도 가능)
+    card.innerHTML = `<span style="font-size:20px;" aria-hidden="true">${f.emoji}</span><span>${f.name}</span>`;
+    if (isClassification) {
+      card.setAttribute('aria-pressed', picked ? 'true' : 'false');
+      if (isPlaced) card.setAttribute('aria-label', `${f.name} (바구니에 넣음)`);
+    } else {
+      card.setAttribute('aria-pressed', isPlaced ? 'true' : 'false');
+    }
 
     if (isClassification) {
       card.addEventListener('dragstart', (e) => {
         e.dataTransfer.setData('text/plain', f.id);
       });
-      // 탭 폴백 (접근성)
+      // 탭 폴백 (접근성·터치): 음식을 누른 뒤 바구니를 누르면 그 바구니에 들어간다
       card.addEventListener('click', () => {
-        if (!isPlaced) {
-          // 순차적으로 첫 번째 비어 있는 바구니나 알맞은 곳에 자동 주입해 편의성 제공
-          autoPlaceToBasket(f.id);
-        }
+        if (isPlaced) return;
+        state.pendingFoodId = state.pendingFoodId === f.id ? null : f.id;
+        renderPalette();
+        focusPaletteItem(f.id); // 다시 그려도 키보드 초점 유지
+        if (state.pendingFoodId) showToast(`${josa(f.name, '을', '를')} 넣을 바구니를 눌러 주세요.`);
       });
     } else {
       // 식단 빌더 모드에서는 탭하여 토글 담기/빼기
       card.addEventListener('click', () => {
         toggleFoodInPlate(f.id);
+        focusPaletteItem(f.id);
       });
     }
 
     grid.appendChild(card);
   });
+}
+
+function focusPaletteItem(id) {
+  const el = document.querySelector(`#paletteGrid .palette-item[data-id="${id}"]`);
+  if (el) el.focus({ preventScroll: true });
+}
+
+function isClassifiedAll() {
+  return ['potato', 'tofu', 'tomato', 'sesame_oil', 'soymilk'].every(isClassifiedInBasket);
 }
 
 function isClassifiedInBasket(foodId) {
@@ -1013,13 +1056,6 @@ function isClassifiedInBasket(foodId) {
   return found;
 }
 
-function autoPlaceToBasket(foodId) {
-  // 모드 2 미션 1에서 탭 클릭 시 첫 번째 바구니에 수동 배치
-  const firstBasket = $('.classify-basket');
-  if (firstBasket) {
-    dropFoodToBasket(foodId, firstBasket);
-  }
-}
 
 function toggleFoodInPlate(foodId) {
   const idx = state.plate.indexOf(foodId);
@@ -1056,9 +1092,11 @@ function renderPlateSlots() {
     const f = FOOD_BY_ID[foodId];
     if (!f) return;
 
-    const card = document.createElement('div');
+    const card = document.createElement('button');
+    card.type = 'button';
     card.className = 'food-card active';
-    card.innerHTML = `<span>${f.emoji}</span><span>${f.name}</span>`;
+    card.setAttribute('aria-label', `${f.name} 접시에서 빼기`);
+    card.innerHTML = `<span aria-hidden="true">${f.emoji}</span><span>${f.name}</span>`;
     card.addEventListener('click', () => {
       toggleFoodInPlate(foodId);
     });
@@ -1123,7 +1161,7 @@ function updateBikeSimulation() {
   if (!hasWater) {
     setBikeRunState('stop', '앞바퀴 바람 빠짐! (물이 필요해요 💧)');
   } else if (missingGroups.length > 0) {
-    setBikeRunState('wobble', `비틀비틀! (${missingGroups[0]}이 부족해요)`);
+    setBikeRunState('wobble', `비틀비틀! (${josa(missingGroups[0], '이', '가')} 부족해요)`);
   } else if (oilCount > 2) {
     setBikeRunState('heavy', '느릿느릿! (유지·당류가 많아 짐칸이 무거워요 📦)');
   } else {
@@ -1271,19 +1309,33 @@ function setupClassificationBaskets() {
 
   // 분류 바구니 6종 생성 (유지당류 포함 6개군)
   const list = [
-    { group: '1', name: '🌾 곡류' },
-    { group: '2', name: '🥩 단백질군' },
-    { group: '3', name: '🥬 채소류' },
-    { group: '4', name: '🍎 과일류' },
-    { group: '5', name: '🥛 유제품류' },
-    { group: '6', name: '🏺 유지·당류' }
+    { group: '1', name: '🌾 곡류', label: '곡류' },
+    { group: '2', name: '🥩 단백질군', label: '단백질군' },
+    { group: '3', name: '🥬 채소류', label: '채소류' },
+    { group: '4', name: '🍎 과일류', label: '과일류' },
+    { group: '5', name: '🥛 유제품류', label: '유제품류' },
+    { group: '6', name: '🏺 유지·당류', label: '유지·당류' }
   ];
 
   list.forEach(b => {
     const basket = document.createElement('div');
     basket.className = 'classify-basket';
     basket.dataset.group = b.group;
-    basket.innerHTML = `<div class="classify-basket-title">${b.name}</div>`;
+    basket.setAttribute('role', 'group');
+    basket.setAttribute('aria-label', b.label + ' 바구니');
+    // 제목 버튼: 키보드·화면 읽기용 "넣기" 버튼(바구니 아무 곳이나 눌러도 같음)
+    basket.innerHTML = `<button type="button" class="classify-basket-title" aria-label="고른 음식을 ${b.label} 바구니에 넣기">${b.name}</button>`;
+
+    // 탭 대체 조작: 팔레트에서 고른 음식을 이 바구니에 넣기
+    basket.addEventListener('click', () => {
+      if (!state.pendingFoodId) {
+        if (!isClassifiedAll()) showToast('먼저 아래 음식 카드를 하나 누른 다음 바구니를 눌러 주세요.');
+        return;
+      }
+      const id = state.pendingFoodId;
+      state.pendingFoodId = null;
+      dropFoodToBasket(id, basket);
+    });
 
     // HTML5 dragover/drop 수신
     basket.addEventListener('dragover', (e) => {
@@ -1318,33 +1370,36 @@ function dropFoodToBasket(foodId, basketEl) {
     if (card.dataset.id === foodId) card.remove();
   });
 
-  const card = document.createElement('div');
+  const card = document.createElement('button');
+  card.type = 'button';
   card.className = 'food-card active';
   card.dataset.id = foodId;
-  card.innerHTML = `<span>${f.emoji}</span><span>${f.name}</span>`;
-  
-  // 탭 클릭하여 제거 (접근성)
-  card.addEventListener('click', () => {
+  card.setAttribute('aria-label', `${f.name} 바구니에서 꺼내기`);
+  card.innerHTML = `<span aria-hidden="true">${f.emoji}</span><span>${f.name}</span>`;
+
+  // 탭 클릭하여 제거 (접근성). 바구니 클릭(넣기)으로 번지지 않게 막는다
+  card.addEventListener('click', (e) => {
+    if (state.pendingFoodId) return; // 다른 음식을 넣는 중이면 바구니 클릭으로 처리
+    e.stopPropagation();
     card.remove();
     renderPalette();
+    showToast(`${josa(f.name, '을', '를')} 꺼냈어요.`);
   });
 
   basketEl.appendChild(card);
   renderPalette();
+  showToast(`${josa(f.name, '을', '를')} ${basketEl.getAttribute('aria-label') || '바구니'}에 넣었어요.`);
+  // 키보드 사용자: 아직 남은 음식이 있으면 팔레트의 다음 음식으로 초점
+  const nextItem = document.querySelector('#paletteGrid .palette-item:not(.placed)');
+  if (nextItem && document.activeElement && document.activeElement.closest && document.activeElement.closest('.classify-basket')) nextItem.focus({ preventScroll: true });
 }
 
 /* ══════════════════════════════════════
    피드백 및 결과 검증
    ══════════════════════════════════════ */
-function showFeedback(text, type = 'ok') {
-  const fb = $('#feedbackBox');
-  fb.style.display = 'block';
-  fb.className = `feedback-box ${type}`;
-  fb.innerHTML = text;
-}
-function hideFeedback() {
-  $('#feedbackBox').style.display = 'none';
-}
+/* 문구는 앱이 직접 쓴 고정 문구만(html). 표시·aria-live는 SimKit.feedback */
+function showFeedback(text, type = 'ok') { fb.show(type, text); }
+function hideFeedback() { fb.hide(); }
 
 function verifyCurrentMission() {
   const m = MISSIONS[state.missionIdx];
@@ -1363,25 +1418,25 @@ function verifyCurrentMission() {
     } else if (counts[6] > 2) {
       showFeedback('📦 유지·당류는 건강을 위해 꼭 소량만 조리할 때 사용해야 해요. 너무 많이 담으면 자전거 짐칸이 무거워져요. 몇 개 빼 볼까요?', 'no');
     } else {
-      showFeedback('🎉 완벽합니다! 6대 식품군이 골고루 조화를 이루고 수분까지 보충되어 자전거가 쌩쌩 달리고 있어요!', 'ok');
+      showFeedback('🎉 완벽해요! 여러 식품군이 골고루 조화를 이루고 물까지 마셔서 자전거가 쌩쌩 달리고 있어요!', 'ok');
     }
   } else if (state.mode === 2) {
     // 도전 미션 검증
     const isOk = m.verify();
     if (isOk) {
-      showFeedback('🎉 미션 성공! 올바른 영양학적 기준에 따라 식단을 멋지게 수정/보완했습니다!', 'ok');
-      state.missionsCompleted[m.id] = true;
-      setupMissionUI();
-      saveState();
+      // 완료 기록·번호 갱신·저장은 컨트롤러가(onChange). setupMissionUI는 부르지 않음(접시 초기화 방지)
+      const next = MISSIONS.findIndex((ms, i) => i !== state.missionIdx && !mc.isDone(i));
+      const tail = next === -1 ? ' 미션을 모두 마쳤어요! 아래 [탐험 완료] 버튼을 눌러 보세요.' : ` 위의 ${next + 1}번 버튼을 눌러 다음 미션에 도전해 보세요.`;
+      mc.complete({ message: '🎉 미션 성공! 식단을 멋지게 완성했어요.' + tail });
     } else {
       if (m.id === 'm1') {
-        showFeedback('❌ 일부 음식의 분류가 정확하지 않거나 5개 음식을 모두 넣지 않았습니다. 헷갈리기 쉬운 음식들의 영양 특징을 떠올리며 다시 드래그해 보세요.', 'no');
+        mc.fail('❌ 일부 음식의 분류가 정확하지 않거나 5개 음식을 모두 넣지 않았습니다. 헷갈리기 쉬운 음식들의 영양 특징을 떠올리며 다시 드래그해 보세요.');
       } else if (m.id === 'm2') {
-        showFeedback('❌ 아직 빈 식품군이 남아 있습니다. 고기·생선·달걀·콩류, 채소류, 과일류, 유제품류, 물을 각각 최소 1개 이상 식단에 더 추가해 보세요.', 'no');
+        mc.fail('❌ 아직 빈 식품군이 남아 있습니다. 고기·생선·달걀·콩류, 채소류, 과일류, 유제품류, 물을 각각 최소 1개 이상 식단에 더 추가해 보세요.');
       } else if (m.id === 'm3') {
-        showFeedback('❌ 6개 식품군 및 물이 최소한 1개 이상씩은 모두 담겨야 합니다. 비어 있는 바퀴 칸을 더 채워 보세요.', 'no');
+        mc.fail('❌ 6개 식품군 및 물이 최소한 1개 이상씩은 모두 담겨야 합니다. 비어 있는 바퀴 칸을 더 채워 보세요.');
       } else if (m.id === 'm4') {
-        showFeedback('❌ 퀴즈의 오답을 선택하셨습니다. 식단 A와 식단 B의 식품군 구성 차이를 바퀴 형태로 비교해 보고 정답을 다시 골라보세요.', 'no');
+        mc.fail('❌ 퀴즈의 오답을 선택하셨습니다. 식단 A와 식단 B의 식품군 구성 차이를 바퀴 형태로 비교해 보고 정답을 다시 골라보세요.');
       }
     }
   }
@@ -1389,10 +1444,7 @@ function verifyCurrentMission() {
 
 function showResultScreen() {
   showScreen('screenResult');
-  const score = Object.values(state.missionsCompleted).filter(Boolean).length;
-  const stars = score >= 4 ? 3 : score >= 2 ? 2 : score >= 1 ? 1 : 0;
-  
-  $('#resultStars').textContent = '⭐'.repeat(stars);
+  SimKit.stars.render('#resultStars', SimKit.stars.grade(mc.doneCount(), [1, 2, 4]));
   let summary = `<strong>식품구성자전거 탐험 완료 보고서</strong><br><br>`;
   summary += `① 식품군 바구니 분류: ${state.missionsCompleted.m1 ? '완료 ✓' : '미완료'}<br>`;
   summary += `② 부족 식단 보완하기: ${state.missionsCompleted.m2 ? '완료 ✓' : '미완료'}<br>`;
@@ -1405,9 +1457,8 @@ function showResultScreen() {
 
 /* ── 화면 전환 ── */
 function showScreen(id) {
-  $$('.screen').forEach(s => s.classList.remove('active'));
-  const el = document.getElementById(id);
-  if (el) el.classList.add('active');
+  if (id !== 'screenExplore' && mc) mc.stop();
+  screens.show(id);
 }
 
 /* ══════════════════════════════════════
@@ -1417,6 +1468,17 @@ function init() {
   loadState();
   parseShareLink();
 
+  // 미션 컨트롤러: 번호 버튼(44px)·이동·문구·완료 기록. 성공해도 자동 이동 없음(지금 동작 유지)
+  mc = SimKit.missions({
+    ids: MISSION_IDS,
+    format: 'flags',
+    progress: state.missionsCompleted,
+    nav: '#missionNav',
+    feedback: fb,
+    onEnter: (i) => { state.missionIdx = i; setupMissionUI(); },
+    onChange: (p) => { state.missionsCompleted = p; saveState(); updateVerifyButtonText(); }
+  });
+
   // 시작 버튼
   $('#btnStart').addEventListener('click', () => {
     showScreen('screenExplore');
@@ -1424,17 +1486,15 @@ function init() {
   });
 
   // 모드 탭 클릭
-  $$('.mode-tab').forEach(b => {
-    b.addEventListener('click', () => {
-      switchMode(b.dataset.mode);
-    });
-  });
+  modeTabs = SimKit.tabs('.mode-tab', { attr: 'mode', initial: '1', onSelect: (v) => switchMode(v) });
 
   // 카테고리 필터 탭
   $$('.palette-tab').forEach(tab => {
+    tab.setAttribute('aria-pressed', tab.classList.contains('active') ? 'true' : 'false');
     tab.addEventListener('click', () => {
-      $$('.palette-tab').forEach(t => t.classList.remove('active'));
+      $$('.palette-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-pressed', 'false'); });
       tab.classList.add('active');
+      tab.setAttribute('aria-pressed', 'true');
       state.activeCategory = tab.dataset.cat;
       renderPalette();
     });
@@ -1448,7 +1508,8 @@ function init() {
 
   // 결과 화면 액션
   $('#btnRetry').addEventListener('click', () => {
-    state.missionsCompleted = { m1: false, m2: false, m3: false, m4: false };
+    mc.reset(); // onChange → missionsCompleted 초기화·저장
+    state.missionIdx = 0;
     state.plate = [];
     saveState();
     showScreen('screenExplore');
@@ -1459,34 +1520,11 @@ function init() {
     switchMode(1);
   });
 
-  // vibes-share 규약에 따른 공유 기능
-  window.shareCurrentPage = function() {
-    const payload = JSON.stringify({ v: 1, plate: state.plate });
-    const url = location.origin + location.pathname + '#share=' + encodeURIComponent(payload);
-    if (navigator.share) {
-      navigator.share({ title: '식품구성자전거 — 내가 만든 식단 접시', url });
-    } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(url);
-      showToast('공유 링크가 클립보드에 복사되었습니다.');
-    }
-  };
-
-  function showToast(msg) {
-    const el = document.createElement('div');
-    el.style.position = 'fixed';
-    el.style.bottom = '20px';
-    el.style.left = '50%';
-    el.style.transform = 'translateX(-50%)';
-    el.style.background = 'rgba(0,0,0,0.8)';
-    el.style.color = '#fff';
-    el.style.padding = '8px 16px';
-    el.style.borderRadius = '20px';
-    el.style.fontSize = '12px';
-    el.style.zIndex = '9999';
-    el.textContent = msg;
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 2500);
-  }
+  // 셸 공유 버튼 → 내 식단 접시 링크(기기 공유 → 복사/링크 창). 받는 쪽은 parseShareLink
+  SimKit.share.bind(() => (state.plate.length ? { v: 1, plate: state.plate } : null), {
+    title: '식품구성자전거 — 내가 만든 식단 접시',
+    emptyMessage: '접시에 음식을 담은 다음 공유해 보세요.'
+  });
 }
 
 if (document.readyState === 'loading') {

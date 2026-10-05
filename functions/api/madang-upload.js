@@ -8,12 +8,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { CODE_RE, BOARD_RE, json, parseSettings, ownerToken, checkAccess, madangR2Key } from './_madang-common.js';
+import { appClosed } from './_closed.js';
+const APP_CLOSED = true;
 
 const MAX_IMAGE_BYTES = 400 * 1024;              // 클라이언트 리사이즈 결과 상한(서버 안전망 재검증)
 const MAX_BOARD_IMAGE_TOTAL = 60 * 1024 * 1024;  // 보드당 이미지 총 용량 상한
 const ALLOWED_CONTENT_TYPES = { 'image/webp': 'webp', 'image/jpeg': 'jpg', 'image/png': 'png' };
 
 export async function onRequestPost(ctx) {
+  if (APP_CLOSED) return appClosed(); // 비공개 앱 — functions/api/_closed.js 참고
   const { request, env } = ctx;
   const db = env.BYEDUIN_DB;
   const r2 = env.MEDIA_R2;

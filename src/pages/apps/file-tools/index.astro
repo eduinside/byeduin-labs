@@ -11,17 +11,20 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 >
   <Fragment slot="head">
     <link rel="stylesheet" href="./styles.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" is:inline=""></script>
-  <script src="https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js" is:inline=""></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" is:inline=""></script>
-  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" is:inline=""></script>
-  <script is:inline="">
-    if (window['pdfjsLib']) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
-  </script>
-  <link rel="canonical" href="https://eduin.info/apps/file-tools/">
+    <style is:global>
+      /* 접근성 보강: 누르는 영역 44px, 키보드 포커스 표시 */
+      .file-list-item { align-items: center; }
+      .file-list-remove { min-width: 44px; min-height: 44px; font-size: 1.25rem; border-radius: 0.5rem; }
+      .toggle-group button { min-height: 44px; }
+      .action-btn { min-height: 44px; }
+      .dropzone:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; border-color: var(--primary); }
+      .tab-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: -4px; }
+      .opt-field .opt-label {
+        font-size: 0.75rem; font-weight: 600; color: var(--fg-muted);
+        text-transform: uppercase; letter-spacing: 0.04em;
+      }
+    </style>
+  <!-- jszip·UTIF·pdf.js·pdf-lib는 app.js가 필요할 때 버전 고정 주소로 지연 로드 -->
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"파일 최적화 도구","description":"스캔 이미지 자동 보정, 대용량 PPTX 이미지 최적화. 파일 크기를 획기적으로 줄이세요.","url":"https://eduin.info/apps/file-tools/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -41,36 +44,36 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   </div>
 
   <div class="file-card">
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="scan" onclick="switchTab('scan')">📄 이미지 최적화</button>
-      <button class="tab-btn" data-tab="pptx" onclick="switchTab('pptx')">🗜️ PPTX 압축</button>
+    <div class="tabs" role="tablist" aria-label="도구 고르기">
+      <button class="tab-btn active" id="tab-scan" data-tab="scan" role="tab" aria-selected="true" aria-controls="panel-scan" onclick="switchTab('scan')">📄 이미지 최적화</button>
+      <button class="tab-btn" id="tab-pptx" data-tab="pptx" role="tab" aria-selected="false" aria-controls="panel-pptx" tabindex="-1" onclick="switchTab('pptx')">🗜️ PPTX 압축</button>
     </div>
 
     <div class="card-body">
       <!-- ─────────────── Tab 1: 스캔 최적화 ─────────────── -->
-      <section class="panel active" id="panel-scan">
-        <div class="dropzone" id="scanDrop">
-          <div class="dropzone-icon">📥</div>
+      <section class="panel active" id="panel-scan" role="tabpanel" aria-labelledby="tab-scan">
+        <div class="dropzone" id="scanDrop" role="button" tabindex="0" aria-label="이미지·PDF 파일 고르기" aria-describedby="scanDropHint">
+          <div class="dropzone-icon" aria-hidden="true">📥</div>
           <div class="dropzone-label">TIFF / PDF / JPG / PNG 파일을 끌어다 놓거나 클릭</div>
-          <div class="dropzone-hint">.tif, .tiff, .pdf, .jpg, .jpeg, .png · 다중 선택 가능</div>
+          <div class="dropzone-hint" id="scanDropHint">.tif, .tiff, .pdf, .jpg, .jpeg, .png · 다중 선택 가능</div>
           <input type="file" id="scanInput" accept=".tif,.tiff,.pdf,.jpg,.jpeg,.png,application/pdf,image/tiff,image/jpeg,image/png" multiple="" style="display:none">
         </div>
         <div class="file-list" id="scanFileList"></div>
 
         <div class="options-grid" id="scanOptionsGrid" style="display:none">
           <div class="opt-field" style="grid-column: 1 / -1;">
-            <label>출력 형식</label>
-            <div class="toggle-group" id="scanFormatToggle">
-              <button data-fmt="pdf" class="active">PDF</button>
-              <button data-fmt="jpg">JPG</button>
-              <button data-fmt="png">PNG</button>
+            <span class="opt-label" id="scanFormatLabel">출력 형식</span>
+            <div class="toggle-group" id="scanFormatToggle" role="group" aria-labelledby="scanFormatLabel">
+              <button type="button" data-fmt="pdf" class="active" aria-pressed="true">PDF</button>
+              <button type="button" data-fmt="jpg" aria-pressed="false">JPG</button>
+              <button type="button" data-fmt="png" aria-pressed="false">PNG</button>
             </div>
           </div>
           <div class="opt-field" style="grid-column: 1 / -1;">
-            <label>목표 용량 (MB)</label>
+            <label for="scanTargetMB">목표 용량 (MB)</label>
             <div class="range-row">
               <input type="range" id="scanTargetMB" min="0.1" max="10" step="0.1" value="1.0">
-              <span class="range-val" id="scanTargetMBVal">1.0</span>
+              <span class="range-val" id="scanTargetMBVal" aria-hidden="true">1.0</span>
             </div>
             <div style="font-size:0.75rem; color:var(--fg-muted); margin-top:0.4rem;">
               자동으로 품질과 가로폭이 조절됩니다
@@ -78,7 +81,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           </div>
         </div>
 
-        <div class="estimate" id="scanEstimate" style="display:none"></div>
+        <div class="estimate" id="scanEstimate" style="display:none" aria-live="polite"></div>
 
         <div class="action-row">
           <button class="action-btn" id="scanRunBtn" onclick="runScan()" disabled="">변환 후 다운로드</button>
@@ -87,28 +90,29 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
         <div class="progress" id="scanProgress" style="display:none">
           <div class="progress-msg" id="scanProgressMsg">처리 중…</div>
-          <div class="progress-bar"><div class="progress-bar-fill" id="scanProgressFill"></div></div>
+          <div class="progress-bar" id="scanProgressBar" role="progressbar" aria-labelledby="scanProgressMsg" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-bar-fill" id="scanProgressFill"></div></div>
+          <div class="visually-hidden" id="scanProgressLive" role="status" aria-live="polite"></div>
         </div>
 
-        <div class="result" id="scanResult" style="display:none"></div>
+        <div class="result" id="scanResult" style="display:none" role="status" aria-live="polite"></div>
       </section>
 
       <!-- ─────────────── Tab 2: PPTX 압축 ─────────────── -->
-      <section class="panel" id="panel-pptx">
-        <div class="dropzone" id="pptxDrop">
-          <div class="dropzone-icon">📥</div>
+      <section class="panel" id="panel-pptx" role="tabpanel" aria-labelledby="tab-pptx">
+        <div class="dropzone" id="pptxDrop" role="button" tabindex="0" aria-label="PPTX 파일 고르기" aria-describedby="pptxDropHint">
+          <div class="dropzone-icon" aria-hidden="true">📥</div>
           <div class="dropzone-label">PPTX 파일을 끌어다 놓거나 클릭</div>
-          <div class="dropzone-hint">.pptx · 단일 파일</div>
+          <div class="dropzone-hint" id="pptxDropHint">.pptx · 단일 파일</div>
           <input type="file" id="pptxInput" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none">
         </div>
         <div class="file-list" id="pptxFileList"></div>
 
         <div class="options-grid" id="pptxOptionsGrid" style="display:none">
           <div class="opt-field" style="grid-column: 1 / -1;">
-            <label>목표 용량 (MB)</label>
+            <label for="pptxTargetMB">목표 용량 (MB)</label>
             <div class="range-row">
               <input type="range" id="pptxTargetMB" min="0.5" max="10" step="0.1" value="3">
-              <span class="range-val" id="pptxTargetMBVal">3.0</span>
+              <span class="range-val" id="pptxTargetMBVal" aria-hidden="true">3.0</span>
             </div>
             <div style="font-size:0.75rem; color:var(--fg-muted); margin-top:0.4rem;">
               <span id="pptxTargetMin">최소</span> ~ <span id="pptxTargetMax">최대</span>
@@ -116,7 +120,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           </div>
         </div>
 
-        <div class="estimate" id="pptxEstimate" style="display:none"></div>
+        <div class="estimate" id="pptxEstimate" style="display:none" aria-live="polite"></div>
 
         <div class="action-row">
           <button class="action-btn" id="pptxRunBtn" onclick="runPptx()" disabled="">압축 후 다운로드</button>
@@ -125,16 +129,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
         <div class="progress" id="pptxProgress" style="display:none">
           <div class="progress-msg" id="pptxProgressMsg">처리 중…</div>
-          <div class="progress-bar"><div class="progress-bar-fill" id="pptxProgressFill"></div></div>
+          <div class="progress-bar" id="pptxProgressBar" role="progressbar" aria-labelledby="pptxProgressMsg" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-bar-fill" id="pptxProgressFill"></div></div>
+          <div class="visually-hidden" id="pptxProgressLive" role="status" aria-live="polite"></div>
         </div>
 
-        <div class="result" id="pptxResult" style="display:none"></div>
+        <div class="result" id="pptxResult" style="display:none" role="status" aria-live="polite"></div>
       </section>
     </div>
   </div>
 </div>
-
-<div id="toast"></div>
 
 <script src="./app.js" is:inline=""></script>
 

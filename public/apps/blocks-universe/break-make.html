@@ -3,12 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Break &amp; Make — eduin VIVES</title>
+<title>수 가르기·모으기 (Break &amp; Make) — eduin VIVES</title>
 <meta name="description" content="초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터. 도전 모드와 수별 도감으로 모든 조합을 모아 보세요.">
 <script src="/common/init.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Dongle:wght@300;400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/common/hero-theme.css">
 <link rel="stylesheet" href="/common/app-shell.css">
+<link rel="stylesheet" href="/common/sim-kit.css">
+<script src="/common/ui.js"></script>
+<script src="/common/sim-kit.js"></script>
 <script src="/common/theme.js"></script>
 <script src="/common/app-shell.js" defer></script>
 <style>
@@ -50,6 +53,7 @@
     font-size: 60px; margin: 10px 0 2px; color: var(--dark);
     letter-spacing: 1px; text-shadow: 4px 4px 0 var(--red); line-height: 1;
   }
+  .intro h1 .h1-en { display: block; font-size: 34px; letter-spacing: 0; text-shadow: none; color: #666; margin-top: 4px; }
   .intro .sub { font-size: 28px; color: #666; margin-bottom: 20px; line-height: 1.3; font-weight: 700; }
   .lesson-tag {
     display: inline-block; background: var(--dark); color: var(--pink);
@@ -85,7 +89,7 @@
   .btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--dark); }
   .btn-primary { background: var(--green); }
   .btn.again { background: var(--orange); color: white; }
-  .btn.small { font-size: 24px; padding: 5px 22px; box-shadow: 3px 3px 0 var(--dark); }
+  .btn.small { font-size: 24px; padding: 5px 22px; box-shadow: 3px 3px 0 var(--dark); min-height: 44px; }
 
   /* ===== 탐험 레이아웃 ===== */
   .explore {
@@ -137,6 +141,8 @@
   }
   .bond-box.whole { min-width: 160px; background: #FFF3F4; }
   .bond-box.tappable { cursor: pointer; transition: box-shadow .12s, transform .12s; }
+  .bond-box.tappable:focus { outline: none; }
+  .bond-box.tappable:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
   .bond-box.tappable:hover { box-shadow: 0 0 0 4px rgba(255,71,87,0.18); }
   .bond-box.flash { animation: bump .25s ease; }
   @keyframes bump { 0%{transform:scale(1);} 40%{transform:scale(1.06);} 100%{transform:scale(1);} }
@@ -238,7 +244,7 @@
   /* stage chips / challenge */
   .controls { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
   .chip {
-    font-family: 'Dongle', sans-serif; font-size: 24px; line-height: 1.1;
+    font-family: 'Dongle', sans-serif; font-size: 24px; line-height: 1.1; min-height: 44px;
     padding: 5px 16px; border: 3px solid var(--dark); border-radius: 999px; cursor: pointer;
     box-shadow: 3px 3px 0 var(--dark); background: white; color: var(--dark);
     transition: transform .1s, box-shadow .1s, background .2s;
@@ -246,7 +252,7 @@
   .chip:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--dark); }
   .chip.active { background: var(--orange); color: white; }
   .toggle {
-    font-family: 'Dongle', sans-serif; font-size: 24px; line-height: 1.1;
+    font-family: 'Dongle', sans-serif; font-size: 24px; line-height: 1.1; min-height: 44px;
     padding: 5px 14px; border: 3px dashed var(--dark); border-radius: 999px; cursor: pointer;
     background: white; color: var(--dark); transition: background .2s, color .2s;
   }
@@ -279,7 +285,7 @@
   .rec-title { font-size: 32px; line-height: 1; color: var(--dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
   .rec-cells { display: flex; flex-wrap: wrap; gap: 5px; }
   .rec-cell {
-    font-size: 21px; line-height: 1.1; padding: 3px 8px; border-radius: 8px;
+    font-size: 23px; line-height: 1.1; padding: 3px 8px; border-radius: 8px;
     border: 2px solid #ccc; background: #f3f3f3; color: #aaa;
   }
   .rec-cell.got { border-color: var(--dark); color: #fff; }
@@ -295,16 +301,7 @@
   @keyframes popIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
   @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
-  /* ===== 토스트 ===== */
-  #ssToast {
-    position: fixed; bottom: 1.5rem; left: 50%;
-    transform: translateX(-50%) translateY(1rem);
-    background: var(--dark); color: white; padding: 4px 22px;
-    border-radius: 999px; font-family: 'Dongle', sans-serif; font-size: 25px; line-height: 1.3;
-    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
-    z-index: 9000; white-space: nowrap;
-  }
-  #ssToast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .kbd-tip { font-size: 21px; line-height: 1.25; color: #555; margin-top: 6px; }
 
   /* ===== 태블릿·모바일 ===== */
   @media (max-width: 900px) {
@@ -329,32 +326,33 @@
   }
 </style>
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Break & Make — 가르기 모으기 | eduin VIVES">
+  <meta property="og:title" content="수 가르기·모으기 (Break & Make) | eduin VIVES">
   <meta property="og:description" content="초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터. 도전 모드와 수별 도감으로 모든 조합을 모아 보세요.">
   <meta property="og:image" content="https://eduin.info/og-default.png">
   <meta property="og:url" content="https://eduin.info/apps/blocks-universe/break-make.html">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Break & Make — 가르기 모으기 | eduin VIVES">
+  <meta name="twitter:title" content="수 가르기·모으기 (Break & Make) | eduin VIVES">
   <meta name="twitter:description" content="초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터.">
   <meta name="twitter:image" content="https://eduin.info/og-default.png">
   <link rel="canonical" href="https://eduin.info/apps/blocks-universe/break-make.html">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Break & Make","description":"초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터. 도전 모드와 수별 도감으로 모든 조합을 모아 보세요.","url":"https://eduin.info/apps/blocks-universe/break-make.html","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"수 가르기·모으기 (Break & Make)","description":"초등 1학년 수 가르기·모으기를 구슬 교구로 직접 조작하며 배우는 학습 놀이터. 도전 모드와 수별 도감으로 모든 조합을 모아 보세요.","url":"https://eduin.info/apps/blocks-universe/break-make.html","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   <script src="/common/seo-injector.js" defer></script>
 </head>
 <body data-shell="immersive">
 
 <!-- 플로팅 크롬(홈·공유)은 app-shell.js가 주입 — 음소거 버튼은 크롬으로 끌어올려짐 -->
 <div class="app-actions">
-  <button class="overlay-btn" id="muteBtn" onclick="toggleMute()" title="소리 켜기/끄기" aria-label="소리 켜기/끄기" aria-pressed="false"></button>
+  <button class="overlay-btn" id="muteBtn" title="소리 켜기/끄기" aria-label="소리 켜기/끄기" aria-pressed="false"></button>
 </div>
 
-<div id="ssToast"></div>
+<!-- 구슬을 옮길 때마다 상자 안 개수를 화면 읽기 프로그램에 알려 줌 -->
+<div id="bmLive" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <!-- ===== 인트로 ===== -->
 <div class="wrap">
   <div class="intro">
-    <div class="hero-art">🧩</div>
-    <h1>Break &amp; Make</h1>
+    <div class="hero-art" aria-hidden="true">🧩</div>
+    <h1>수 가르기·모으기 <span class="h1-en">(Break &amp; Make)</span></h1>
     <p class="sub">가르기 모으기 — 구슬로 톡톡!</p>
     <div class="lesson-tag">수를 둘로 가르고, 하나로 모아 보아요</div>
     <div class="concept-card">
@@ -382,58 +380,60 @@
     <div class="viewer-title" id="viewerTitle"><span class="num">✂️</span> 가르기</div>
     <div class="stage-canvas">
       <div id="stageBond"></div>
-      <div class="eq-area" id="stageEq"></div>
+      <div class="eq-area" id="stageEq" aria-live="polite"></div>
     </div>
     <div class="stage-hint" id="stageHint">👆 오른쪽에서 수를 골라 주세요!</div>
   </div>
   <aside class="side">
     <div class="side-head">
       <div class="flag">수 감각 · 1학년</div>
-      <h2>🧩 Break &amp; Make</h2>
+      <h2>🧩 수 가르기·모으기</h2>
     </div>
     <div class="side-body">
-      <div class="mode-pills">
-        <button class="mode-pill active" id="pill-split" onclick="setMode('split')">✂️ 가르기</button>
-        <button class="mode-pill" id="pill-make" onclick="setMode('make')">🤝 모으기</button>
-        <button class="mode-pill" id="pill-record" onclick="setMode('record')">⭐ 기록</button>
+      <div class="mode-pills" role="group" aria-label="모드 고르기">
+        <button class="mode-pill active" id="pill-split" onclick="setMode('split')" aria-pressed="true">✂️ 가르기</button>
+        <button class="mode-pill" id="pill-make" onclick="setMode('make')" aria-pressed="false">🤝 모으기</button>
+        <button class="mode-pill" id="pill-record" onclick="setMode('record')" aria-pressed="false">⭐ 기록</button>
       </div>
 
       <!-- 가르기 -->
       <div id="panel-split">
         <div class="observe-box">
           <h3>🔍 이렇게 해요</h3>
-          <p>위 상자의 구슬을 아래 <b>두 상자에 나눠</b> 담아요. 아래 상자를 톡! 누르면 구슬이 내려가요.</p>
+          <p id="splitHow">위 상자의 구슬을 아래 <b>두 상자에 나눠</b> 담아요. 아래 상자를 톡! 누르면 구슬이 내려가요.</p>
         </div>
         <div class="controls">
-          <button class="chip active" id="stage-single" onclick="setSplitStage('single')">한 자리수</button>
-          <button class="chip" id="stage-ten" onclick="setSplitStage('ten')">10</button>
-          <button class="chip" id="stage-teen" onclick="setSplitStage('teen')">십몇</button>
+          <button class="chip active" id="stage-single" onclick="setSplitStage('single')" aria-pressed="true">한 자리수</button>
+          <button class="chip" id="stage-ten" onclick="setSplitStage('ten')" aria-pressed="false">10</button>
+          <button class="chip" id="stage-teen" onclick="setSplitStage('teen')" aria-pressed="false">십몇</button>
           <button class="toggle" id="splitChallengeBtn" onclick="toggleSplitChallenge()" aria-pressed="false">🎯 도전 모드</button>
         </div>
-        <div class="num-grid" id="splitGrid"></div>
+        <div class="num-grid" id="splitGrid" role="group" aria-label="가를 수 고르기"></div>
         <div class="btn-row">
           <button class="btn small" onclick="resetSplit()">↺ 처음부터</button>
         </div>
-        <div class="tip-box" style="margin-top:14px;">💡 <b>탐험 팁</b> · 같은 수라도 가르는 방법이 여러 가지! 모든 조합을 찾으면 도장을 받아요.</div>
+        <div class="tip-box" style="margin-top:14px;">💡 <b>탐험 팁</b> · 같은 수라도 가르는 방법이 여러 가지! 모든 조합을 찾으면 도장을 받아요.
+          <div class="kbd-tip">⌨️ 키보드: <b>Tab</b>으로 아래 상자를 고르고 <b>Enter</b>로 담기, <b>↑</b>로 다시 올리기 (←·→ 키로 왼쪽·오른쪽 상자에 바로 담기)</div></div>
       </div>
 
       <!-- 모으기 -->
       <div id="panel-make" style="display:none;">
         <div class="observe-box">
           <h3>🔍 이렇게 해요</h3>
-          <p>아래 <b>두 상자</b>를 톡톡 눌러 구슬을 채우고, 목표 수가 되면 위로 <b>모아</b> 올려요!</p>
+          <p id="makeHow">아래 <b>두 상자</b>를 톡톡 눌러 구슬을 채우고, 목표 수가 되면 위로 <b>모아</b> 올려요!</p>
         </div>
         <div class="controls">
-          <button class="chip active" id="mstage-single" onclick="setMakeStage('single')">한 자리수</button>
-          <button class="chip" id="mstage-ten" onclick="setMakeStage('ten')">10</button>
-          <button class="chip" id="mstage-teen" onclick="setMakeStage('teen')">십몇</button>
+          <button class="chip active" id="mstage-single" onclick="setMakeStage('single')" aria-pressed="true">한 자리수</button>
+          <button class="chip" id="mstage-ten" onclick="setMakeStage('ten')" aria-pressed="false">10</button>
+          <button class="chip" id="mstage-teen" onclick="setMakeStage('teen')" aria-pressed="false">십몇</button>
           <button class="toggle" id="makeChallengeBtn" onclick="toggleMakeChallenge()" aria-pressed="false">🎯 도전 모드</button>
         </div>
-        <div class="num-grid" id="makeGrid"></div>
+        <div class="num-grid" id="makeGrid" role="group" aria-label="모을 수 고르기"></div>
         <div class="btn-row">
           <button class="btn small" onclick="resetMake()">↺ 처음부터</button>
         </div>
-        <div class="tip-box" style="margin-top:14px;">💡 <b>탐험 팁</b> · 십몇은 10개를 모으면 한 <b>묶음 📦</b>이 돼요!</div>
+        <div class="tip-box" style="margin-top:14px;">💡 <b>탐험 팁</b> · 십몇은 10개를 모으면 한 <b>묶음 📦</b>이 돼요!
+          <div class="kbd-tip">⌨️ 키보드: <b>Tab</b>으로 아래 상자를 고르고 <b>Enter</b>로 채우기, <b>↑</b>로 빼기 (←·→ 키로 왼쪽·오른쪽 상자에 바로 채우기)</div></div>
       </div>
 
       <!-- 기록 -->
@@ -505,53 +505,27 @@ function tenframeNode(tappable, onTap){
 }
 function beadSize(count){ return count<=6 ? 40 : count<=10 ? 32 : 26; }
 
-/* ════════════════════ 사운드 ════════════════════ */
-let actx = null;
-function ac(){
-  if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } }
-  if(actx && actx.state==='suspended') actx.resume();
-  return actx;
-}
-function tone(freq, dur, type, gain, delay){
-  const c = ac(); if(!c) return;
-  const t = c.currentTime + (delay||0);
-  const o = c.createOscillator(), g = c.createGain();
-  o.type = type||'sine'; o.frequency.setValueAtTime(freq, t);
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(gain||0.14, t+0.012);
-  g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
-  o.connect(g); g.connect(c.destination);
-  o.start(t); o.stop(t+dur+0.03);
-}
-function sfx(type){
-  if(progress.muted) return;
-  switch(type){
-    case 'move':  tone(540,0.08,'triangle',0.10); break;
-    case 'done':  tone(523,0.12,'sine',0.14,0); tone(659,0.12,'sine',0.14,0.09); tone(784,0.18,'sine',0.14,0.18); break;
-    case 'star':  tone(988,0.08,'triangle',0.13,0); tone(1319,0.13,'triangle',0.13,0.07); break;
-    case 'stamp': [523,659,784,1047].forEach((f,i)=>tone(f,0.15,'square',0.10,i*0.11)); break;
-    case 'wrong': tone(233,0.18,'sine',0.13,0); tone(185,0.22,'sine',0.13,0.13); break;
-  }
-}
+/* ════════════════════ 사운드 ════════════════════
+   효과음은 SimKit.sound(예전과 같은 소리). 음소거는 예전처럼 progress.muted에 저장한다. */
+function sfx(type){ SimKit.sound.play(type); }
 const MUTE_ICON_ON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
 const MUTE_ICON_OFF = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>';
-function syncMuteBtn(){
-  const b=document.getElementById('muteBtn');
-  if(b){ b.innerHTML = progress.muted ? MUTE_ICON_OFF : MUTE_ICON_ON; b.setAttribute('aria-pressed', String(progress.muted)); }
-}
-function toggleMute(){
-  progress.muted = !progress.muted; save();
-  syncMuteBtn();
-  if(!progress.muted) sfx('move');
+function setupSound(){
+  SimKit.sound.useKey('breakmake.muted');      // 다른 앱의 음소거와 섞이지 않게
+  SimKit.sound.setMuted(progress.muted);
+  SimKit.sound.bindButton('#muteBtn', {
+    render: (el, m) => {
+      el.innerHTML = m ? MUTE_ICON_OFF : MUTE_ICON_ON;
+      if(progress.muted !== m){ progress.muted = m; save(); }
+    }
+  });
 }
 
 /* ════════════════════ 토스트 ════════════════════ */
-let toastTimer;
-function ssToast(msg){
-  const e = document.getElementById('ssToast');
-  e.textContent = msg; e.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=> e.classList.remove('show'), 2200);
+function ssToast(msg){ SimKit.toast(msg); }
+function announce(text){
+  const e = document.getElementById('bmLive');
+  if(e) e.textContent = text;
 }
 
 /* ════════════════════ 보상 / 조합 ════════════════════ */
@@ -598,11 +572,22 @@ function setMode(m){
   mode = m;
   ['split','make','record'].forEach(x=>{
     document.getElementById('pill-'+x).classList.toggle('active', x===m);
+    document.getElementById('pill-'+x).setAttribute('aria-pressed', String(x===m));
     document.getElementById('panel-'+x).style.display = x===m ? '' : 'none';
   });
+  // 무대의 식·버튼은 모드마다 따로 — 앞 모드의 식이 남지 않게 비우고, 이 모드의 마지막 식만 되살린다
+  document.getElementById('stageEq').innerHTML = '';
   const vt = document.getElementById('viewerTitle');
-  if(m==='split'){ vt.innerHTML = '<span class="num">✂️</span> 가르기' + (S.whole!=null ? ' — ' + S.whole : ''); renderSplit(); }
-  else if(m==='make'){ vt.innerHTML = '<span class="num">🤝</span> 모으기' + (M.target!=null ? ' — ' + M.target : ''); renderMake(); }
+  if(m==='split'){
+    vt.innerHTML = '<span class="num">✂️</span> 가르기' + (S.whole!=null ? ' — ' + S.whole : '');
+    renderSplit();
+    if(S.whole!=null && S.lastEq) showSplitEq.apply(null, S.lastEq);
+  }
+  else if(m==='make'){
+    vt.innerHTML = '<span class="num">🤝</span> 모으기' + (M.target!=null ? ' — ' + M.target : '');
+    renderMake();
+    if(M.target!=null && M.lastEq) showMakeEq.apply(null, M.lastEq);
+  }
   else {
     vt.innerHTML = '<span class="num">⭐</span> 나의 기록';
     renderRecord();
@@ -625,6 +610,9 @@ function renderRecordStage(){
 
 /* ════════════════════ Bond 렌더 공통 ════════════════════ */
 function buildBond(host, opt){
+  // 다시 그려도 키보드 초점이 같은 상자에 남도록
+  const ae = document.activeElement;
+  const focusSide = ae && host.contains(ae) ? ae.getAttribute('data-side') : null;
   host.innerHTML = '';
   const bond = el('div',{class:'bond'});
 
@@ -644,11 +632,26 @@ function buildBond(host, opt){
   opt.rightItems.forEach(it=> rb.appendChild(it));
   lb.onclick = ()=> opt.onPairTap('L');
   rb.onclick = ()=> opt.onPairTap('R');
+  // 키보드: Enter·Space = 담기, ↑·Backspace·Delete = 하나 다시 빼기
+  [[lb,'L',opt.leftLabel],[rb,'R',opt.rightLabel]].forEach(([box, side, label])=>{
+    box.setAttribute('tabindex','0');
+    box.setAttribute('role','button');
+    box.setAttribute('data-side', side);
+    box.setAttribute('aria-label', (label || (side==='L'?'왼쪽 상자':'오른쪽 상자')) + ' — Enter로 담기, 위쪽 화살표로 빼기');
+    box.addEventListener('keydown', e=>{
+      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); opt.onPairTap(side); }
+      else if((e.key==='ArrowUp' || e.key==='Backspace' || e.key==='Delete') && opt.onPairReturn){ e.preventDefault(); opt.onPairReturn(side); }
+    });
+  });
   pair.appendChild(lb); pair.appendChild(rb);
 
   bond.appendChild(single); bond.appendChild(arrows); bond.appendChild(pair);
   host.appendChild(bond);
+  if(opt.live) announce(opt.live);
+  if(focusSide){ const t = focusSide==='L' ? lb : rb; try{ t.focus({preventScroll:true}); }catch(e){ t.focus(); } }
 }
+function countText(n){ return '구슬 '+n+'개'; }
+function teenText(o){ return (o.bundle ? '10 묶음 1개' + (o.loose ? ', ' : '') : '') + (o.loose || !o.bundle ? '낱개 '+o.loose+'개' : ''); }
 function arrowSvg(cls){
   const ns='http://www.w3.org/2000/svg';
   const svg=document.createElementNS(ns,'svg'); svg.setAttribute('viewBox','0 0 38 34'); svg.setAttribute('class',cls);
@@ -665,8 +668,16 @@ const S = { stage:'single', whole:null, top:0, left:0, right:0, done:false,
   teenTopBundle:false, teenTopLoose:0, teenL:{bundle:false,loose:0}, teenR:{bundle:false,loose:0} };
 
 function setSplitStage(stage){
-  S.stage = stage; S.whole = null; S.done = false;
-  ['single','ten','teen'].forEach(s=> document.getElementById('stage-'+s).classList.toggle('active', s===stage));
+  S.stage = stage; S.whole = null; S.done = false; S.lastEq = null;
+  ['single','ten','teen'].forEach(s=>{
+    const b = document.getElementById('stage-'+s);
+    b.classList.toggle('active', s===stage);
+    b.setAttribute('aria-pressed', String(s===stage));
+  });
+  // 십몇: 왜 '10과 몇'으로 가르는지 한 줄 안내
+  document.getElementById('splitHow').innerHTML = stage==='teen'
+    ? '십몇은 <b>10 묶음 📦 하나</b>와 <b>낱개 몇 개</b>로 되어 있어요. 아래 상자를 톡톡 눌러 <b>묶음은 한쪽 상자</b>에, <b>낱개는 다른 쪽 상자</b>에 나눠 담아요!'
+    : '위 상자의 구슬을 아래 <b>두 상자에 나눠</b> 담아요. 아래 상자를 톡! 누르면 구슬이 내려가요.';
   if (stage === 'teen') {
     S.challenge = false;
     const btn = document.getElementById('splitChallengeBtn');
@@ -692,16 +703,16 @@ function renderSplitGrid(){
   else if(S.stage==='ten') nums=[10];
   else for(let n=11;n<=19;n++) nums.push(n);
   nums.forEach(n=>{
-    const b = el('button',{class:'numbtn'+(S.whole===n?' sel':'')}, String(n));
+    const b = el('button',{class:'numbtn'+(S.whole===n?' sel':''), type:'button', 'aria-pressed': String(S.whole===n)}, String(n));
     b.onclick = ()=> selectSplit(n);
     g.appendChild(b);
   });
 }
 function selectSplit(n){
-  S.whole = n; S.done = false; S.flash = null;
+  S.whole = n; S.done = false; S.flash = null; S.lastEq = null;
   if(isTeen(n)){ S.teenTopBundle=true; S.teenTopLoose=n-10; S.teenL={bundle:false,loose:0}; S.teenR={bundle:false,loose:0}; }
   else { S.top=n; S.left=0; S.right=0; }
-  document.querySelectorAll('#splitGrid .numbtn').forEach(b=> b.classList.toggle('sel', b.textContent===String(n)));
+  document.querySelectorAll('#splitGrid .numbtn').forEach(b=>{ const on = b.textContent===String(n); b.classList.toggle('sel', on); b.setAttribute('aria-pressed', String(on)); });
   if(S.challenge && !isTeen(n)){ S.given = 1 + Math.floor(Math.random()*(n-1)); }
   document.getElementById('stageEq').innerHTML='';
   document.getElementById('viewerTitle').innerHTML = '<span class="num">✂️</span> 가르기 — ' + n;
@@ -759,7 +770,7 @@ function checkSplitDone(){
 function checkTeenDone(){
   const n=S.whole, k=n-10, L=S.teenL, R=S.teenR;
   const valid = (L.bundle&&L.loose===0&&!R.bundle&&R.loose===k) || (R.bundle&&R.loose===0&&!L.bundle&&L.loose===k);
-  if(!valid){ ssToast('10 묶음과 낱개를 나눠 담아요! 🙂'); return; }
+  if(!valid){ ssToast('십몇은 10 묶음과 낱개 '+k+'개로 갈라요! 묶음은 한쪽, 낱개는 다른 쪽 상자에 담아 볼까요? 🙂'); return; }
   S.done = true; sfx('done');
   showSplitEq(n+josaEunNeun(n)+' 10과 '+k, true, false);
   recordCombo(n, '10+'+k);
@@ -770,6 +781,7 @@ function finishSplit(n,L,R,viaChallenge){
   recordCombo(n, L+'+'+R);
 }
 function showSplitEq(text, success, retry){
+  S.lastEq = [text, success, retry];
   const e = document.getElementById('stageEq'); e.innerHTML='';
   const b = el('div',{class:'eq pop'+(success?'':' prompt')}, text); e.appendChild(b);
   if(success){
@@ -801,19 +813,24 @@ function renderSplit(){
 
   if(isTeen(n)){
     const k=n-10;
+    hint.textContent = '📦 10 묶음은 한쪽, 낱개 '+k+'개는 다른 쪽에!';
     const topItems=[]; const sz=beadSize(k);
     if(S.teenTopBundle) topItems.push(tenframeNode(false,null));
     for(let i=0;i<S.teenTopLoose;i++) topItems.push(beadNode('orange',sz,false,null));
     const li=teenSideItems(S.teenL,sz,'L'), ri=teenSideItems(S.teenR,sz,'R');
+    const lt='왼쪽 상자, '+teenText(S.teenL), rt='오른쪽 상자, '+teenText(S.teenR);
     buildBond(host,{ dir:'down', singleCls:'whole', singleItems:topItems, leftItems:li, rightItems:ri,
-      onPairTap: splitTapBox, flash:S.flash });
+      onPairTap: splitTapBox, onPairReturn: side=>{ const o=sideObj(side); splitReturn(side, o.loose>0?'loose':'bundle'); },
+      leftLabel: lt, rightLabel: rt, live: lt+', '+rt, flash:S.flash });
   } else {
     const sz=beadSize(n);
     const topItems=[]; for(let i=0;i<S.top;i++) topItems.push(beadNode(ck,sz,false,null));
     const li=[]; for(let i=0;i<S.left;i++) li.push(beadNode(ck,sz,true,()=>splitReturn('L')));
     const ri=[]; for(let i=0;i<S.right;i++) ri.push(beadNode(ck,sz,true,()=>splitReturn('R')));
+    const lt='왼쪽 상자, '+countText(S.left), rt='오른쪽 상자, '+countText(S.right);
     buildBond(host,{ dir:'down', singleCls:'whole', singleItems:topItems, leftItems:li, rightItems:ri,
-      onPairTap: splitTapBox, flash:S.flash });
+      onPairTap: splitTapBox, onPairReturn: side=>splitReturn(side),
+      leftLabel: lt, rightLabel: rt, live: '위 상자 '+countText(S.top)+', '+lt+', '+rt, flash:S.flash });
   }
   S.flash=null;
   if(S.challenge && !S.done && !isTeen(n)){
@@ -835,8 +852,15 @@ const M = { stage:'single', target:null, left:0, right:0, leftB:false, rightB:fa
 function boxVal(side){ return side==='L' ? (M.leftB?10:0)+M.left : (M.rightB?10:0)+M.right; }
 function makeTotal(){ return boxVal('L')+boxVal('R'); }
 function setMakeStage(stage){
-  M.stage=stage; M.target=null; M.done=false;
-  ['single','ten','teen'].forEach(s=> document.getElementById('mstage-'+s).classList.toggle('active', s===stage));
+  M.stage=stage; M.target=null; M.done=false; M.lastEq=null;
+  ['single','ten','teen'].forEach(s=>{
+    const b = document.getElementById('mstage-'+s);
+    b.classList.toggle('active', s===stage);
+    b.setAttribute('aria-pressed', String(s===stage));
+  });
+  document.getElementById('makeHow').innerHTML = stage==='teen'
+    ? '한쪽 상자에 구슬 <b>10개</b>를 모으면 <b>묶음 📦</b>이 돼요. 다른 쪽 상자에는 <b>낱개</b>를 채워 목표 수를 만들어요!'
+    : '아래 <b>두 상자</b>를 톡톡 눌러 구슬을 채우고, 목표 수가 되면 위로 <b>모아</b> 올려요!';
   if (stage === 'teen') {
     M.challenge = false;
     const btn = document.getElementById('makeChallengeBtn');
@@ -853,14 +877,14 @@ function renderMakeGrid(){
   else if(M.stage==='ten') nums=[10];
   else for(let n=11;n<=19;n++) nums.push(n);
   nums.forEach(n=>{
-    const b=el('button',{class:'numbtn'+(M.target===n?' sel':'')}, String(n));
+    const b=el('button',{class:'numbtn'+(M.target===n?' sel':''), type:'button', 'aria-pressed': String(M.target===n)}, String(n));
     b.onclick=()=>selectMake(n); g.appendChild(b);
   });
 }
 function selectMake(n){
-  M.target=n; M.left=0; M.right=0; M.leftB=false; M.rightB=false; M.done=false; M.flash=null;
+  M.target=n; M.left=0; M.right=0; M.leftB=false; M.rightB=false; M.done=false; M.flash=null; M.lastEq=null;
   if(M.challenge && !isTeen(n)) M.given = 1 + Math.floor(Math.random()*(n-1));
-  document.querySelectorAll('#makeGrid .numbtn').forEach(b=> b.classList.toggle('sel', b.textContent===String(n)));
+  document.querySelectorAll('#makeGrid .numbtn').forEach(b=>{ const on = b.textContent===String(n); b.classList.toggle('sel', on); b.setAttribute('aria-pressed', String(on)); });
   document.getElementById('stageEq').innerHTML='';
   document.getElementById('viewerTitle').innerHTML = '<span class="num">🤝</span> 모으기 — ' + n;
   renderMake();
@@ -919,6 +943,7 @@ function finishMake(t,L,R){
   recordCombo(t, L+'+'+R);
 }
 function showMakeEq(text, success, retry){
+  M.lastEq = [text, success, retry];
   const e=document.getElementById('stageEq'); e.innerHTML='';
   e.appendChild(el('div',{class:'eq pop'+(success?'':' prompt')}, text));
   if(success){ const r=el('button',{class:'btn again small'},'또 모아 볼까? 🔁'); r.onclick=resetMake; e.appendChild(r); }
@@ -945,12 +970,15 @@ function renderMake(){
   const t=M.target;
   if(isTeen(t)){
     const k=t-10, tsz=beadSize(k);
+    hint.textContent = '📦 한쪽에 10개를 모아 묶고, 다른 쪽에 낱개 '+k+'개!';
     const tsingle=[];
     if(M.done){ tsingle.push(tenframeNode(false,null)); for(let i=0;i<k;i++) tsingle.push(beadNode('orange',tsz,false,null)); }
+    const lt='왼쪽 상자, '+teenText({bundle:M.leftB, loose:M.left}), rt='오른쪽 상자, '+teenText({bundle:M.rightB, loose:M.right});
     buildBond(host,{ dir:'up', singleCls:'whole', singleItems:tsingle,
       singlePlaceholder: M.done? null : '?',
       leftItems:makeTeenSideItems('L',tsz), rightItems:makeTeenSideItems('R',tsz),
-      onPairTap:makeTapBox, flash:M.flash });
+      onPairTap:makeTapBox, onPairReturn: side=>{ const loose = side==='L'?M.left:M.right; makeReturn(side, loose>0?'loose':'bundle'); },
+      leftLabel: lt, rightLabel: rt, live: lt+', '+rt, flash:M.flash });
     M.flash=null;
     return;
   }
@@ -959,9 +987,11 @@ function renderMake(){
   if(M.done){ for(let i=0;i<t;i++) single.push(beadNode(ck,sz,false,null)); }
   const li=[]; for(let i=0;i<M.left;i++) li.push(beadNode(ck,sz,true,()=>makeReturn('L')));
   const ri=[]; for(let i=0;i<M.right;i++) ri.push(beadNode(ck,sz,true,()=>makeReturn('R')));
+  const lt='왼쪽 상자, '+countText(M.left), rt='오른쪽 상자, '+countText(M.right);
   buildBond(host,{ dir:'up', singleCls:'whole', singleItems:single,
     singlePlaceholder: M.done? null : '?', singleBig:false,
-    leftItems:li, rightItems:ri, onPairTap:makeTapBox, flash:M.flash });
+    leftItems:li, rightItems:ri, onPairTap:makeTapBox, onPairReturn: side=>makeReturn(side),
+    leftLabel: lt, rightLabel: rt, live: lt+', '+rt, flash:M.flash });
   M.flash=null;
   if(M.challenge && !M.done){
     const e=document.getElementById('stageEq');
@@ -1053,8 +1083,20 @@ function startExplore(){
   sfx('done');
 }
 
+/* ════════════════════ 키보드: ←·→ 로 왼쪽·오른쪽 상자에 바로 담기 ════════════════════ */
+document.addEventListener('keydown', e=>{
+  if(!document.body.classList.contains('exploring') || e.ctrlKey || e.metaKey || e.altKey) return;
+  if(e.key!=='ArrowLeft' && e.key!=='ArrowRight') return;
+  const t = e.target;
+  // 상자에 초점이 있거나, 아무 것도 고르지 않은 상태에서만(버튼·입력칸의 화살표 키는 그대로)
+  if(t && t !== document.body && !(t.classList && t.classList.contains('bond-box'))) return;
+  const side = e.key==='ArrowLeft' ? 'L' : 'R';
+  if(mode==='split' && S.whole!=null){ e.preventDefault(); splitTapBox(side); }
+  else if(mode==='make' && M.target!=null){ e.preventDefault(); makeTapBox(side); }
+});
+
 /* ════════════════════ 초기화 ════════════════════ */
-syncMuteBtn();
+setupSound();
 buildConcept();
 renderSplitGrid();
 renderMakeGrid();

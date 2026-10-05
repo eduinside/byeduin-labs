@@ -1,0 +1,601 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+
+// 툴바 아이콘(lucide 경로, 빌드 때 인라인)
+const I = {
+  back: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  dice: '<rect width="12" height="12" x="2" y="10" rx="2" ry="2"/><path d="m17.92 14 3.5-3.5a2.24 2.24 0 0 0 0-3l-5-4.92a2.24 2.24 0 0 0-3 0L10 6"/><path d="M6 18h.01"/><path d="M10 14h.01"/><path d="M15 6h.01"/><path d="M18 9h.01"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>',
+  bookmark: '<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>',
+  compare: '<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>',
+  printer: '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
+  max: '<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>',
+  more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+  panel: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/>',
+  sliders: '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
+  x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+};
+---
+<AppLayout
+  title="자리 배치 — eduin VIVES"
+  description="학생 명단을 붙여 넣고 분단·줄을 정한 뒤 떨어뜨릴 짝·앞줄 우선·성별 균형·이전 짝 피하기를 지켜 랜덤으로 자리를 배치하세요. 끌어 놓기로 바꾸고 A4 한 장으로 인쇄합니다. 명단은 이 기기 브라우저에만 저장돼요."
+  image="https://eduin.info/og-images/seating.png"
+  bodyShell="gallery"
+  bodyWidth="wide"
+>
+  <Fragment slot="head">
+    <style is:global="">
+    /* ───────── 앱 토큰 (라이트) ───────── */
+    :root {
+      --sc-paper: #ffffff;
+      --sc-stage: #f4f4f5;
+      --sc-dot: rgba(0,0,0,0.07);
+      --sc-desk: #ffffff;
+      --sc-desk-empty: #fafafa;
+      --sc-line: #d4d4d8;
+      --sc-line-empty: #dcdce1;
+      --sc-line-hover: #a1a1aa;
+      --sc-m: #3b82f6;
+      --sc-f: #ec4899;
+      --sc-n: #d4d4d8;
+      --sc-warn: #f59e0b;
+      --sc-ok: #16a34a;
+      --sc-sel-soft: rgba(0,111,238,0.18);
+      --sc-bad-soft: rgba(243,18,96,0.16);
+      --sc-ok-soft: rgba(22,163,74,0.18);
+      --sc-un-bg: #fff7ed;
+      --sc-un-line: #fde7c8;
+      --sc-pop-shadow: 0 12px 32px rgba(0,0,0,0.16);
+    }
+    /* ───────── 앱 토큰 (다크) ───────── */
+    [data-theme="dark"] {
+      --sc-paper: #141416;
+      --sc-stage: #0d0d0d;
+      --sc-dot: rgba(255,255,255,0.06);
+      --sc-desk: #1f1f23;
+      --sc-desk-empty: #18181b;
+      --sc-line: #3f3f46;
+      --sc-line-empty: #34343a;
+      --sc-line-hover: #71717a;
+      --sc-m: #60a5fa;
+      --sc-f: #f472b6;
+      --sc-n: #52525b;
+      --sc-sel-soft: rgba(51,142,247,0.28);
+      --sc-bad-soft: rgba(243,18,96,0.28);
+      --sc-ok-soft: rgba(23,201,100,0.24);
+      --sc-un-bg: rgba(245,158,11,0.10);
+      --sc-un-line: rgba(245,158,11,0.30);
+      --sc-pop-shadow: 0 12px 32px rgba(0,0,0,0.55);
+    }
+
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
+      background-size: 40px 40px; pointer-events: none; z-index: 0;
+    }
+    body.in-board { overflow: hidden; }
+    body.in-board::before { display: none; }
+    body.in-board .top-overlay,
+    body.in-board .top-overlay-left { display: none !important; }
+
+    /* ───────── 공통 버튼 ───────── */
+    .sc-btn {
+      height: 36px; padding: 0 14px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg); color: var(--fg);
+      font-weight: 600; font-size: 13px; font-family: inherit; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      white-space: nowrap; transition: background .15s, border-color .15s, color .15s;
+    }
+    .sc-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .sc-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .sc-btn:disabled:hover { border-color: var(--border); color: var(--fg); }
+    .sc-btn.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-fg); }
+    .sc-btn.primary:hover { background: var(--primary-h); color: var(--primary-fg); }
+    .sc-btn.danger { color: var(--danger); }
+    .sc-btn.danger:hover { border-color: var(--danger); background: rgba(243,18,96,0.08); }
+    .sc-btn.sm { height: 30px; padding: 0 10px; font-size: 12px; border-radius: 7px; }
+    .sc-btn.block { width: 100%; }
+    .sc-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+    /* ───────── 목록 화면 ───────── */
+    .sl-top { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; flex-wrap: wrap; }
+    .sl-title {
+      font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--fg-muted);
+      display: flex; align-items: center; gap: 8px; flex: 1; margin: 0; min-width: 120px;
+    }
+    .sl-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .sl-note { font-size: 12.5px; color: var(--fg-muted); margin: 0 0 16px; line-height: 1.6; }
+    .sl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+    .sc-card {
+      position: relative; background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden; transition: border-color .2s, transform .15s, box-shadow .2s;
+      animation: scFadeUp .22s ease both;
+    }
+    .sc-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,111,238,0.1); }
+    .sc-open {
+      display: flex; flex-direction: column; width: 100%; padding: 0; border: 0; margin: 0;
+      background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+    }
+    .sc-thumb { background: var(--sc-paper); border-bottom: 1px solid var(--border); padding: 10px 14px; }
+    .sc-thumb svg { display: block; width: 100%; height: auto; }
+    .sc-info { padding: 12px 48px 13px 14px; }
+    .sc-name { font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sc-meta { font-size: 12px; color: var(--fg-muted); margin-top: 4px; line-height: 1.5; }
+    .sc-cmenu {
+      position: absolute; right: 8px; bottom: 12px; width: 34px; height: 34px; border-radius: 8px;
+      border: 1px solid transparent; background: transparent; color: var(--fg-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .sc-cmenu:hover { background: var(--bg); border-color: var(--border); color: var(--fg); }
+    .sc-cmenu svg { width: 18px; height: 18px; }
+    @keyframes scFadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    /* ───────── 보드 화면 ───────── */
+    #view-board {
+      position: fixed; inset: 0; z-index: 500; display: none; flex-direction: column;
+      background: var(--sc-stage); color: var(--fg); overflow: hidden;
+    }
+    #view-board.active { display: flex; }
+
+    #sb-tb {
+      min-height: 52px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      padding: 7px 12px; background: var(--bg); border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .tb-btn {
+      height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: transparent; color: var(--fg); cursor: pointer; font-family: inherit;
+      font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;
+      white-space: nowrap; transition: background .15s, border-color .15s, color .15s;
+    }
+    .tb-btn:hover { background: var(--bg-sec); }
+    .tb-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .tb-btn.icon { width: 36px; padding: 0; justify-content: center; }
+    .tb-btn.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-fg); }
+    .tb-btn.primary:hover { background: var(--primary-h); }
+    .tb-btn[aria-pressed="true"] { background: var(--sc-ok-soft); border-color: var(--sc-ok); color: var(--sc-ok); }
+    .tb-btn:disabled { opacity: .35; cursor: not-allowed; }
+    #sb-back { border-color: transparent; }
+    #sb-name {
+      background: transparent; color: var(--fg); border: 1px solid var(--border); border-radius: 6px;
+      font-weight: 700; font-size: 14px; font-family: inherit; padding: 6px 10px; width: 140px; min-width: 80px;
+    }
+    #sb-name:hover { border-color: var(--fg-muted); }
+    #sb-name:focus { outline: none; border-color: var(--primary); }
+    .tb-sep { width: 1px; height: 22px; background: var(--border); margin: 0 2px; }
+    .tb-grow { flex: 1; }
+    .tb-settings { display: contents; }
+    .grp { display: flex; align-items: center; gap: 5px; }
+    .grp .lbl { font-size: 11.5px; color: var(--fg-muted); font-weight: 700; }
+    .seg { display: flex; background: var(--bg-sec); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
+    .seg button {
+      border: 0; background: transparent; color: var(--fg-muted); font-weight: 600; font-size: 12.5px; font-family: inherit;
+      padding: 0 10px; height: 28px; border-radius: 6px; cursor: pointer;
+    }
+    .seg button[aria-pressed="true"] { background: var(--bg); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+    .stepper { display: flex; align-items: center; background: var(--bg-sec); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
+    .stepper button {
+      border: 0; background: var(--bg); color: var(--fg); width: 28px; height: 28px; border-radius: 6px;
+      font-size: 16px; cursor: pointer; display: grid; place-items: center; line-height: 1;
+      box-shadow: 0 1px 2px rgba(0,0,0,.08);
+    }
+    .stepper button:disabled { opacity: .35; cursor: not-allowed; }
+    .stepper output { min-width: 24px; text-align: center; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    #sb-settings-btn { display: none; }
+
+    #sb-body { flex: 1; display: flex; min-height: 0; position: relative; }
+    #sb-wrap {
+      flex: 1; min-width: 0; position: relative; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(circle at 1px 1px, var(--sc-dot) 1px, transparent 0) 0 0 / 22px 22px, var(--sc-stage);
+    }
+    #sb-stage { position: relative; flex-shrink: 0; }
+    #sb-canvas {
+      position: absolute; top: 0; left: 0; width: 1000px; height: 700px; transform-origin: top left;
+      background: var(--sc-paper); border: 1px solid var(--border); border-radius: 16px;
+      box-shadow: 0 6px 24px rgba(0,0,0,.06);
+    }
+    .board { position: absolute; left: 0; right: 0; height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; pointer-events: none; }
+    .board.top { top: 14px; }
+    .board.bottom { bottom: 14px; flex-direction: column-reverse; }
+    .board .chalk {
+      width: 46%; height: 22px; background: linear-gradient(#1f4d3a, #173d2e); border-radius: 5px; border: 2px solid #0f2c20;
+      display: grid; place-items: center; color: #cfe9da; font-size: 11px; letter-spacing: 3px; font-weight: 700;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .board .podium {
+      padding: 3px 16px; background: #8b5e34; border-radius: 4px; color: #fff; font-size: 10.5px; font-weight: 700;
+      box-shadow: 0 2px 0 #6f4a28; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+
+    .seat {
+      position: absolute; margin: 0; padding: 0 2px; font: inherit; color: var(--fg);
+      border: 1.5px solid var(--sc-line); border-radius: 11px; background: var(--sc-desk);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none;
+      transition: border-color .1s, background .1s, box-shadow .1s; overflow: hidden; cursor: pointer;
+    }
+    .seat.empty { background: var(--sc-desk-empty); border-style: dashed; border-color: var(--sc-line-empty); }
+    .seat.occupied { box-shadow: 0 1px 1px rgba(0,0,0,.04); }
+    .seat.occupied:hover { border-color: var(--sc-line-hover); }
+    .seat:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+    .seat.selected { border-color: var(--primary) !important; box-shadow: 0 0 0 4px var(--sc-sel-soft); }
+    .seat.violation { border-color: var(--danger) !important; box-shadow: 0 0 0 4px var(--sc-bad-soft); }
+    .seat.moved { border-color: var(--sc-ok) !important; box-shadow: 0 0 0 4px var(--sc-ok-soft); }
+    .seat.dragover { border-color: var(--primary) !important; background: var(--sc-sel-soft) !important; }
+    .seat.dragging { opacity: .35; }
+    .layout-free .seat.occupied, .layout-free .seat { cursor: grab; }
+    .seat .sname { font-size: 15px; font-weight: 700; letter-spacing: -.3px; white-space: nowrap; max-width: 96%; overflow: hidden; text-overflow: ellipsis; line-height: 1.1; }
+    .seat .gdot { width: 8px; height: 8px; border-radius: 50%; background: var(--sc-n); flex-shrink: 0; }
+    .gdot.m { background: var(--sc-m) !important; } .gdot.f { background: var(--sc-f) !important; }
+    .seat .pin { position: absolute; top: 3px; right: 4px; font-size: 10px; line-height: 1; }
+    .seat .ff { position: absolute; top: 3px; left: 4px; font-size: 9px; font-weight: 800; color: #fff; background: var(--sc-warn); border-radius: 4px; padding: 1px 3px; line-height: 1.2; }
+    .arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+    #sb-empty {
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 5;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 22px 24px;
+      box-shadow: var(--shadow); text-align: center; width: min(360px, calc(100% - 32px));
+    }
+    #sb-empty[hidden] { display: none; }
+    #sb-empty h2 { margin: 0 0 6px; font-size: 17px; }
+    #sb-empty p { margin: 0 0 16px; font-size: 13px; color: var(--fg-muted); line-height: 1.6; }
+    #sb-empty .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+    /* 서랍 */
+    #sb-drawer {
+      width: 330px; flex-shrink: 0; background: var(--bg); border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; min-height: 0; transition: opacity .15s;
+    }
+    #view-board.drawer-closed #sb-drawer { display: none; }
+    #sb-drawer.peek { opacity: .2; pointer-events: none; }
+    .dr-tabs { display: flex; gap: 4px; padding: 8px 10px 0; border-bottom: 1px solid var(--border); }
+    .dr-tabs button {
+      flex: 1; height: 38px; border: 0; background: transparent; color: var(--fg-muted); font-weight: 600; font-size: 13px; font-family: inherit;
+      border-radius: 8px 8px 0 0; cursor: pointer; border-bottom: 2px solid transparent;
+    }
+    .dr-tabs button[aria-selected="true"] { color: var(--primary); border-bottom-color: var(--primary); background: rgba(0,111,238,0.06); }
+    .dr-close { display: none !important; }
+    #sb-panel { flex: 1; overflow-y: auto; padding: 12px; overscroll-behavior: contain; }
+    .psec { margin-bottom: 18px; }
+    .psec h3 { margin: 0 0 6px; font-size: 12.5px; color: var(--fg-muted); font-weight: 700; }
+    .prow { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+    .prow.two > * { flex: 1; }
+    .muted { color: var(--fg-muted); }
+    .small { font-size: 12px; line-height: 1.6; }
+    .amp { color: var(--fg-muted); font-weight: 700; }
+    .sc-inp, .sc-sel {
+      width: 100%; min-width: 0; border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; height: 34px;
+      font-size: 13px; background: var(--input-bg); color: var(--fg); font-family: inherit;
+    }
+    .sc-inp:focus, .sc-sel:focus { outline: none; border-color: var(--primary); }
+    .check { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; line-height: 1.55; cursor: pointer; }
+    .check input { margin-top: 3px; accent-color: var(--primary); }
+
+    .rlist { display: flex; flex-direction: column; gap: 3px; }
+    .srow {
+      display: flex; align-items: center; gap: 6px; padding: 4px 6px; border: 1px solid transparent;
+      border-radius: 9px; background: var(--bg-sec);
+    }
+    .srow:hover { border-color: var(--border); }
+    .srow.un { background: var(--sc-un-bg); border-color: var(--sc-un-line); }
+    .srow.picked { border-color: var(--primary); box-shadow: 0 0 0 2px var(--sc-sel-soft); }
+    .srow .grip {
+      width: 22px; height: 30px; flex-shrink: 0; display: grid; place-items: center; color: var(--fg-muted);
+      cursor: grab; touch-action: none; border-radius: 6px;
+    }
+    .srow .grip svg { width: 14px; height: 14px; }
+    .srow .seq { width: 18px; text-align: center; font-size: 11px; color: var(--fg-muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+    .srow .rname {
+      flex: 1; min-width: 0; text-align: left; border: 0; background: none; color: var(--fg); font-weight: 600; font-size: 13.5px; font-family: inherit;
+      padding: 6px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: grab; touch-action: pan-y;
+      user-select: none; -webkit-user-select: none;
+    }
+    .gbtn { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--sc-line); background: var(--bg); padding: 0; flex: none; cursor: pointer; }
+    .gbtn.m { background: var(--sc-m); border-color: var(--sc-m); }
+    .gbtn.f { background: var(--sc-f); border-color: var(--sc-f); }
+    .tag {
+      border: 1px solid var(--border); background: var(--bg); color: var(--fg-muted); font-size: 11px; font-weight: 700;
+      padding: 0 7px; height: 24px; border-radius: 7px; line-height: 1; cursor: pointer; font-family: inherit; flex-shrink: 0;
+    }
+    .tag[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .tag:disabled { opacity: .35; cursor: not-allowed; }
+    .pairlist, .snaplist { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+    .pairrow {
+      display: flex; align-items: center; justify-content: space-between; background: var(--bg-sec); border: 1px solid var(--border);
+      border-radius: 8px; padding: 4px 6px 4px 10px; font-size: 13px;
+    }
+    .pairrow .x { border: 0; background: transparent; color: var(--fg-muted); font-size: 13px; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; }
+    .pairrow .x:hover { color: var(--danger); }
+    .snap { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--bg-sec); }
+    .snap .sinfo { display: flex; flex-direction: column; gap: 1px; margin-bottom: 6px; }
+    .snap .sinfo b { font-size: 13px; }
+    .snap .sbtns { display: flex; gap: 5px; }
+    .snap .sbtns .sc-btn { flex: 1; }
+
+    /* 상태줄 */
+    #sb-status {
+      display: flex; align-items: center; gap: 14px; padding: 8px 14px; background: var(--bg);
+      border-top: 1px solid var(--border); flex-wrap: wrap; font-size: 12.5px; flex-shrink: 0;
+    }
+    #st-viol { font-weight: 700; }
+    #st-viol.bad { color: var(--danger); }
+    #st-viol.good { color: var(--fg-muted); font-weight: 600; }
+    .legend { display: flex; align-items: center; gap: 5px; color: var(--fg-muted); }
+    .legend .gdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+    .legend .ff { font-size: 9px; font-weight: 800; color: #fff; background: var(--sc-warn); border-radius: 4px; padding: 1px 3px; margin-left: 6px; }
+    #st-hint { color: var(--fg-muted); flex: 1; min-width: 200px; text-align: right; }
+
+    /* 발표 모드 */
+    #sb-present-exit { display: none; position: absolute; top: 12px; right: 12px; z-index: 20; }
+    #view-board.present #sb-tb, #view-board.present #sb-drawer, #view-board.present #sb-status { display: none !important; }
+    #view-board.present #sb-present-exit { display: inline-flex; }
+    #view-board.present .seat .sname { font-size: var(--pfs, 15px); max-width: 94%; }
+    #view-board.present .seat .gdot,
+    #view-board.present .seat .pin,
+    #view-board.present .seat .ff,
+    #view-board.present .arrows { display: none; }
+    #view-board.present .seat.selected,
+    #view-board.present .seat.violation,
+    #view-board.present .seat.moved { box-shadow: none; border-color: var(--sc-line) !important; }
+
+    #sb-print-title { display: none; }
+
+    /* 팝업 메뉴 */
+    .sc-pop {
+      position: fixed; z-index: 10010; background: var(--dialog-bg); color: var(--dialog-fg); border: 1px solid var(--dialog-border);
+      border-radius: 11px; box-shadow: var(--sc-pop-shadow); padding: 5px; min-width: 210px; max-width: 280px; font-size: 13px;
+    }
+    .sc-pop[hidden] { display: none; }
+    .sc-pop .phead { padding: 6px 10px; color: var(--fg-muted); font-size: 11.5px; font-weight: 700; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+    .sc-pop button {
+      display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; background: transparent;
+      padding: 0 10px; min-height: 36px; border-radius: 7px; font-weight: 500; font-size: 13px; font-family: inherit; color: inherit; cursor: pointer;
+    }
+    .sc-pop button:hover, .sc-pop button:focus-visible { background: rgba(0,111,238,0.1); color: var(--primary); outline: none; }
+    .sc-pop button.danger { color: var(--danger); }
+    .sc-pop .pdiv { height: 1px; background: var(--border); margin: 4px 0; }
+    .sc-pop .psub { padding: 4px 10px 2px; font-size: 11px; color: var(--fg-muted); font-weight: 700; }
+    .sc-pop .plist { max-height: 220px; overflow-y: auto; }
+
+    .sc-ghost {
+      position: fixed; z-index: 10020; pointer-events: none; padding: 8px 14px; border-radius: 10px;
+      background: var(--primary); color: #fff; font-weight: 700; font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.25);
+      transform: translate(-50%, -130%); white-space: nowrap;
+    }
+
+    /* 모달 */
+    .sc-modal {
+      position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
+      display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .sc-modal.open { display: flex; }
+    .sc-mbox {
+      background: var(--dialog-bg); color: var(--dialog-fg); border: 1px solid var(--dialog-border);
+      border-radius: 16px; width: min(520px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 20px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.25);
+    }
+    .sc-mbox h2 { margin: 0 0 6px; font-size: 17px; }
+    .sc-mbox .mdesc { margin: 0 0 12px; font-size: 13px; color: var(--fg-muted); line-height: 1.6; }
+    .sc-mbox textarea {
+      width: 100%; height: 280px; border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--input-bg);
+      color: var(--fg); font-family: inherit; font-size: 14px; line-height: 1.7; resize: vertical;
+    }
+    .sc-mbox textarea:focus, .sc-mbox .sc-inp:focus { outline: none; border-color: var(--primary); }
+    .sc-mbox .sc-inp { height: 40px; font-size: 15px; }
+    .mfoot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+    .mfoot .left { margin-right: auto; }
+
+    /* ───────── 반응형 ───────── */
+    @media (max-width: 1520px) {
+      .tb-btn .lbl-wide { display: none; }
+      .tb-btn.has-wide { width: 36px; padding: 0; justify-content: center; }
+      .grp .lbl.opt { display: none; }
+    }
+    @media (max-width: 1240px) {
+      /* 좁은 화면: 배열 설정은 ⚙ 버튼으로 접어 두고, 펼치면 툴바 아래 줄에 */
+      #sb-settings-btn { display: inline-flex; }
+      .tb-settings { display: none; }
+      #view-board.show-settings .tb-settings { display: flex; flex-wrap: wrap; gap: 8px 14px; order: 99; width: 100%; padding: 6px 0 2px; }
+      #view-board.show-settings .tb-sep { display: none; }
+      #view-board.show-settings .grp .lbl.opt { display: inline; }
+    }
+    @media (max-width: 899px) {
+      #sb-drawer {
+        position: absolute; top: 0; right: 0; bottom: 0; width: min(340px, 92vw); z-index: 30;
+        box-shadow: -8px 0 24px rgba(0,0,0,.18);
+      }
+      .dr-close { display: inline-flex !important; flex: 0 0 38px !important; }
+      #st-hint { display: none; }
+    }
+    .sc-pop .only-narrow { display: none; }
+    @media (max-width: 560px) {
+      #sb-baseline, #sb-compare, #sb-print, #sb-full, #sb-status .legend { display: none !important; }
+      .sc-pop .only-narrow { display: flex; }
+      #sb-name { width: 96px; }
+      .tb-btn .lbl-sm { display: none; }
+      .tb-btn.has-sm { width: 36px; padding: 0; justify-content: center; }
+      #sb-tb { gap: 4px; padding: 6px 8px; }
+      .tb-sep { display: none; }
+    }
+
+    /* ───────── 인쇄 (A4 가로 한 장) ───────── */
+    @media print {
+      @page { size: A4 landscape; margin: 9mm; }
+      html, body { height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; background: #fff !important; overflow: visible !important; }
+      body::before { display: none !important; }
+      body.in-board > *:not(#view-board) { display: none !important; }
+      body.in-board #view-board {
+        position: static; display: block; z-index: auto; background: #fff !important; color: #000; overflow: visible;
+      }
+      #sb-tb, #sb-drawer, #sb-status, #sb-empty, #sb-present-exit, #sb-kbd-help, .sc-pop, .sc-ghost { display: none !important; }
+      #sb-body, #sb-wrap { display: block !important; overflow: visible !important; background: none !important; height: auto !important; }
+      #sb-print-title {
+        display: block; text-align: center; font-size: 17px; line-height: 1.3; font-weight: 800; color: #000; margin: 0 0 3mm; letter-spacing: -.2px;
+      }
+      /* A4 가로 인쇄 영역(279×192mm ≈ 1054×725px)에 제목 + 1000×700 캔버스(0.95배) */
+      #sb-stage { width: 950px !important; height: 665px !important; margin: 0 auto; overflow: hidden; break-inside: avoid; }
+      #sb-canvas {
+        transform: scale(.95) !important; background: #fff !important; border: 1px solid #bbb !important;
+        box-shadow: none !important; border-radius: 10px;
+      }
+      .seat, .seat.selected, .seat.violation, .seat.moved, .seat.dragover, .seat.dragging {
+        background: #fff !important; color: #000 !important; border: 1.6px solid #444 !important; box-shadow: none !important;
+        opacity: 1 !important; transition: none !important; outline: none !important;
+      }
+      .seat.empty, .seat.empty.selected, .seat.empty.dragover { border: 1.3px dashed #aaa !important; }
+      .seat .sname { font-size: var(--pfs, 15px) !important; max-width: 94%; color: #000 !important; }
+      .seat .gdot, .seat .pin, .seat .ff, .arrows { display: none !important; }
+    }
+  </style>
+  </Fragment>
+
+  <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입합니다 -->
+  <main class="app-main" id="view-list">
+    <div class="app-header">
+      <div class="app-badge">◆ 업무경감</div>
+      <h1 class="app-title">🪑 자리 배치</h1>
+      <p class="app-desc">명단으로 교실 자리표를 만들고, 조건을 지켜 랜덤으로 배치하고, A4 한 장으로 인쇄해요.</p>
+    </div>
+    <div class="sl-top">
+      <h2 class="sl-title">내 학급</h2>
+      <button type="button" class="sc-btn" id="sl-import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.upload}></svg>JSON 불러오기</button>
+      <button type="button" class="sc-btn primary" id="sl-new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.plus}></svg>새 학급</button>
+    </div>
+    <p class="sl-note">명단은 이 기기의 브라우저에만 저장돼요. 다른 기기로 옮길 땐 학급 메뉴의 <b>JSON 내보내기</b>를 쓰세요.</p>
+    <div id="sl-grid" class="sl-grid" aria-live="polite"></div>
+    <input type="file" id="sl-file" accept="application/json,.json" hidden>
+  </main>
+
+  <!-- 보드 화면 (전체화면) -->
+  <section id="view-board" aria-label="자리 배치 보드">
+    <div id="sb-tb" role="toolbar" aria-label="자리 배치 도구">
+      <button type="button" class="tb-btn icon" id="sb-back" title="목록으로" aria-label="목록으로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.back}></svg></button>
+      <input id="sb-name" type="text" maxlength="30" spellcheck="false" autocomplete="off" aria-label="학급 이름" placeholder="학급 이름">
+      <button type="button" class="tb-btn icon" id="sb-settings-btn" title="배열 설정" aria-label="배열 설정" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.sliders}></svg></button>
+      <div class="tb-settings" id="sb-settings">
+        <div class="tb-sep"></div>
+        <div class="grp" role="group" aria-label="배열"><span class="lbl opt" aria-hidden="true">배열</span>
+          <div class="seg" id="seg-layout"><button type="button" data-v="columns">분단</button><button type="button" data-v="free">자유</button></div>
+        </div>
+        <div class="grp" role="group" aria-label="책상"><span class="lbl opt" aria-hidden="true">책상</span>
+          <div class="seg" id="seg-desk"><button type="button" data-v="1">1인</button><button type="button" data-v="2">2인</button></div>
+        </div>
+        <div class="grp" role="group" aria-label="분단 수"><span class="lbl" aria-hidden="true">분단</span>
+          <div class="stepper"><button type="button" id="cols-dec" aria-label="분단 줄이기">−</button><output id="cols-val" aria-live="polite">3</output><button type="button" id="cols-inc" aria-label="분단 늘리기">+</button></div>
+        </div>
+        <div class="grp" role="group" aria-label="줄 수"><span class="lbl" aria-hidden="true">줄</span>
+          <div class="stepper"><button type="button" id="rows-dec" aria-label="줄 줄이기">−</button><output id="rows-val" aria-live="polite">6</output><button type="button" id="rows-inc" aria-label="줄 늘리기">+</button></div>
+        </div>
+        <div class="grp" role="group" aria-label="시점"><span class="lbl opt" aria-hidden="true">시점</span>
+          <div class="seg" id="seg-view"><button type="button" data-v="teacher">교사</button><button type="button" data-v="student">학생</button></div>
+        </div>
+        <div class="tb-sep"></div>
+      </div>
+      <div class="tb-grow"></div>
+      <button type="button" class="tb-btn primary has-sm" id="sb-random" title="랜덤 배치"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.dice}></svg><span class="lbl-sm">랜덤 배치</span></button>
+      <button type="button" class="tb-btn icon" id="sb-undo" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기" aria-keyshortcuts="Control+Z"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.undo}></svg></button>
+      <button type="button" class="tb-btn has-wide has-sm" id="sb-baseline" title="지금 배치를 비교 기준으로 저장"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.bookmark}></svg><span class="lbl-wide lbl-sm">기준 저장</span></button>
+      <button type="button" class="tb-btn has-wide has-sm" id="sb-compare" title="기준과 비교해 이동 화살표 보기" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.compare}></svg><span class="lbl-wide lbl-sm">이동 비교</span></button>
+      <button type="button" class="tb-btn has-wide has-sm" id="sb-print" title="A4 가로 한 장 인쇄"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.printer}></svg><span class="lbl-wide lbl-sm">인쇄</span></button>
+      <button type="button" class="tb-btn icon" id="sb-full" title="전체화면" aria-label="전체화면" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.max}></svg></button>
+      <button type="button" class="tb-btn icon" id="sb-drawer-btn" title="명단·제약·저장 서랍" aria-label="서랍 열기" aria-expanded="true" aria-controls="sb-drawer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.panel}></svg></button>
+      <button type="button" class="tb-btn icon" id="sb-more-btn" title="더보기" aria-label="더보기" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" set:html={I.more}></svg></button>
+    </div>
+
+    <div id="sb-body">
+      <div id="sb-wrap">
+        <div id="sb-print-title"></div>
+        <div id="sb-stage"><div id="sb-canvas" role="group" aria-label="교실 자리" aria-describedby="sb-kbd-help"></div></div>
+        <div id="sb-empty" hidden>
+          <h2>아직 명단이 없어요</h2>
+          <p>한 줄에 한 명씩 이름을 넣어 주세요.<br>먼저 둘러보려면 가상의 예시 명단을 넣어 보세요.</p>
+          <div class="row">
+            <button type="button" class="sc-btn primary" data-act="edit-roster">📝 명단 입력</button>
+            <button type="button" class="sc-btn" data-act="sample">예시 명단 넣기</button>
+          </div>
+        </div>
+        <button type="button" class="sc-btn" id="sb-present-exit">발표 끝내기 (Esc)</button>
+      </div>
+
+      <aside id="sb-drawer" aria-label="명단·제약·저장">
+        <div class="dr-tabs" role="tablist" aria-label="서랍 탭">
+          <button type="button" role="tab" id="tab-roster" data-tab="roster" aria-controls="sb-panel">명단</button>
+          <button type="button" role="tab" id="tab-constraints" data-tab="constraints" aria-controls="sb-panel">제약</button>
+          <button type="button" role="tab" id="tab-storage" data-tab="storage" aria-controls="sb-panel">저장</button>
+          <button type="button" class="dr-close sc-btn sm" id="sb-drawer-close" aria-label="서랍 닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.x}></svg></button>
+        </div>
+        <div id="sb-panel" role="tabpanel" tabindex="-1"></div>
+      </aside>
+    </div>
+
+    <div id="sb-status">
+      <div id="st-counts"></div>
+      <div id="st-viol" class="good"></div>
+      <div id="st-prev" class="muted"></div>
+      <div class="legend" aria-hidden="true"><span class="gdot m"></span>남<span class="gdot f" style="margin-left:8px"></span>여<span class="ff">앞</span>앞줄 우선 <span style="margin-left:6px">📌</span>고정</div>
+      <div id="st-hint"></div>
+    </div>
+    <p id="sb-kbd-help" class="visually-hidden">방향키로 자리를 옮겨 다니고, Enter나 스페이스로 자리를 고른 뒤 다른 자리에서 다시 누르면 서로 바뀝니다. Delete는 자리 비우기, 메뉴 키나 Shift+F10은 자리 메뉴입니다.</p>
+  </section>
+
+  <div id="sb-live" class="visually-hidden" role="status" aria-live="polite"></div>
+
+  <!-- 자리 메뉴 / 더보기 / 카드 메뉴 -->
+  <div id="sb-menu" class="sc-pop" role="menu" hidden></div>
+  <div id="sb-more" class="sc-pop" role="menu" aria-label="더보기" hidden>
+    <button type="button" role="menuitem" data-act="present">🖥 발표 모드 (이름 크게)</button>
+    <button type="button" role="menuitem" class="only-narrow" data-act="baseline">기준 저장</button>
+    <button type="button" role="menuitem" class="only-narrow" data-act="compare">↔ 이동 비교 켜기/끄기</button>
+    <button type="button" role="menuitem" class="only-narrow" data-act="print">🖨 인쇄</button>
+    <button type="button" role="menuitem" data-act="restore">↩ 기준으로 되돌리기</button>
+    <div class="pdiv"></div>
+    <button type="button" role="menuitem" data-act="fill">빈자리 채우기</button>
+    <button type="button" role="menuitem" data-act="clearfill">비우고 번호순 채우기</button>
+    <button type="button" role="menuitem" data-act="edit-roster">📝 명부 일괄 편집</button>
+    <button type="button" role="menuitem" data-act="snap-save">＋ 현재 배치 저장</button>
+    <button type="button" role="menuitem" data-act="export">JSON 내보내기</button>
+    <div class="pdiv"></div>
+    <button type="button" role="menuitem" class="danger" data-act="clear">전체 비우기</button>
+  </div>
+  <div id="sl-menu" class="sc-pop" role="menu" aria-label="학급 메뉴" hidden>
+    <button type="button" role="menuitem" data-cact="open">열기</button>
+    <button type="button" role="menuitem" data-cact="rename">이름 바꾸기</button>
+    <button type="button" role="menuitem" data-cact="dup">복제</button>
+    <button type="button" role="menuitem" data-cact="export">JSON 내보내기</button>
+    <div class="pdiv"></div>
+    <button type="button" role="menuitem" class="danger" data-cact="delete">삭제</button>
+  </div>
+
+  <!-- 명부 일괄 편집 -->
+  <div id="m-roster" class="sc-modal">
+    <div class="sc-mbox">
+      <h2>명부 일괄 편집</h2>
+      <p class="mdesc">한 줄에 한 명. 이름 뒤에 <b>남</b>/<b>여</b>(또는 M/F)를 적으면 성별까지 저장돼요. 이름이 같으면 앞줄 우선·고정 설정이 유지돼요.</p>
+      <textarea id="roster-text" spellcheck="false" aria-label="명단 (한 줄에 한 명)" placeholder="김민준 남&#10;이서연 여&#10;…"></textarea>
+      <div class="mfoot">
+        <button type="button" class="sc-btn left" id="roster-sample">예시 명단 넣기</button>
+        <button type="button" class="sc-btn" data-vui-close>취소</button>
+        <button type="button" class="sc-btn primary" id="roster-apply">명부 적용</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 범용 확인·입력 창 -->
+  <div id="m-dialog" class="sc-modal">
+    <div class="sc-mbox" style="width:min(400px,100%)">
+      <h2 id="dlg-title"></h2>
+      <p class="mdesc" id="dlg-msg"></p>
+      <input class="sc-inp" id="dlg-input" type="text" maxlength="30" autocomplete="off" aria-labelledby="dlg-title">
+      <div class="mfoot">
+        <button type="button" class="sc-btn" id="dlg-cancel">취소</button>
+        <button type="button" class="sc-btn primary" id="dlg-ok">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline src="/apps/seating/app.js"></script>
+</AppLayout>

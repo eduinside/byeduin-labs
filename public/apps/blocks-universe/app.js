@@ -17,9 +17,24 @@ const RECENT_MAX = 50;
 let DATA = null;            // { meta, episodes }
 let byId = new Map();
 const state = { series: null, season: 0, level: 0, theme: false, favOnly: false, recentOnly: false, q: '', aiIds: null };
-let favs = new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]'));
-let recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); // id 배열, 최신순
-let playlist = JSON.parse(localStorage.getItem(PL_KEY) || '{"title":"","ids":[]}');
+// localStorage 값이 깨져 있어도 앱이 멈추지 않도록 형식 검사 후 기본값으로 대체
+function loadJSON(key, def, ok) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw == null) return def;
+    const v = JSON.parse(raw);
+    return ok(v) ? v : def;
+  } catch { return def; }
+}
+const isIdArr = (v) => Array.isArray(v) && v.every(x => typeof x === 'string');
+const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+const loadPlaylist = () => {
+  const p = loadJSON(PL_KEY, null, (v) => isObj(v) && isIdArr(v.ids));
+  return p ? { title: typeof p.title === 'string' ? p.title : '', ids: p.ids } : { title: '', ids: [] };
+};
+let favs = new Set(loadJSON(FAV_KEY, [], isIdArr));
+let recent = loadJSON(RECENT_KEY, [], isIdArr); // id 배열, 최신순
+let playlist = loadPlaylist();
 let modalEp = null;
 let modalLang = 'ko';
 let navIds = [];   // 모달 이전/다음 탐색 대상 (열 때의 필터 결과)
@@ -35,7 +50,7 @@ const seasonMatch = (ep) => !state.season || (state.season === -1 ? ep.season ==
 const playVid = (ep) => ep.ytKo || ep.yt;   // 재생용 영상 ID (한글판 우선)
 
 /* ── 영상 길이 (YouTube Data API, localStorage 캐시) ── */
-let durations = JSON.parse(localStorage.getItem(DUR_KEY) || '{}');
+let durations = loadJSON(DUR_KEY, {}, isObj);
 
 function fmtDur(sec) {
   if (!sec) return '';
@@ -49,36 +64,29 @@ async function ensureDurations(vids) {
   if (!missing.length) return;
   for (let i = 0; i < missing.length; i += 50) {
     try {
-      const res = await fetch('/api/yt-duration?ids=' + missing.slice(i, i + 50).join(','));
-      if (!res.ok) return;
-      const data = await res.json();
-      Object.assign(durations, data.durations || {});
+      // 길이는 덧붙임 정보라 실패해도 조용히 넘어간다(목록·재생은 그대로 동작)
+      const data = await VUI.apiFetch('/api/yt-duration?ids=' + missing.slice(i, i + 50).join(','), { timeout: 10000 });
+      if (data && isObj(data.durations)) Object.assign(durations, data.durations);
     } catch { return; }
   }
-  localStorage.setItem(DUR_KEY, JSON.stringify(durations));
+  try { localStorage.setItem(DUR_KEY, JSON.stringify(durations)); } catch { /* 용량 초과 시 캐시 생략 */ }
 }
 
-/* ── 토스트 ── */
-let toastTimer = null;
-function toast(msg, ms = 2400) {
-  const el = $('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  if (ms > 0) toastTimer = setTimeout(() => el.classList.remove('show'), ms);
-}
-function hideToast() {
-  clearTimeout(toastTimer);
-  $('toast').classList.remove('show');
-}
+/* ── 토스트 (공용 VUI.toast) ──
+   opts: 'error' | 표시 시간(ms) | { type, duration }. 0 = 다음 토스트가 덮을 때까지(최대 30초) */
+function toast(msg, opts) { VUI.toast(msg, opts === 0 ? 30000 : opts); }
+function hideToast() { VUI.toast.hide(); }
+const escAttr = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
 /* ── 데이터 로드 ── */
 async function init() {
   try {
-    const res = await fetch('episodes.json');
-    DATA = await res.json();
-  } catch {
-    $('epGrid').innerHTML = '<p class="empty-state">데이터를 불러오지 못했습니다. 새로고침 해주세요.</p>';
+    DATA = await VUI.apiFetch('episodes.json', { timeout: 30000 });
+    if (!DATA || !Array.isArray(DATA.episodes) || !isObj(DATA.meta)) throw new Error('형식 오류');
+  } catch (e) {
+    DATA = null;
+    $('epGrid').innerHTML = '<p class="empty-state" role="alert">에피소드 목록을 불러오지 못했어요. 새로고침해 주세요.</p>';
+    if (e && e.code) toast(e.message, 'error');
     return;
   }
   DATA.episodes.forEach(ep => byId.set(ep.id, ep));
@@ -106,7 +114,9 @@ function renderSeriesTabs() {
   for (const s of SERIES) {
     const m = DATA.meta[s.id] || { count: 0, seasons: 0 };
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className = 'series-tab' + (state.series === s.id ? ' active' : '');
+    btn.setAttribute('aria-pressed', String(state.series === s.id));
     btn.style.setProperty('--sc', s.color);
     btn.innerHTML = `
       <span class="st-emoji">${s.emoji}</span>
@@ -131,7 +141,9 @@ function renderToolbar() {
   chips.innerHTML = '';
   const mk = (label, active, onClick, cls = '') => {
     const c = document.createElement('button');
+    c.type = 'button';
     c.className = 'chip' + (cls ? ' ' + cls : '') + (active ? ' active' : '');
+    c.setAttribute('aria-pressed', String(!!active));
     c.style.setProperty('--sc', s.color);
     c.textContent = label;
     c.onclick = onClick;
@@ -153,7 +165,9 @@ function renderToolbar() {
   const levels = [...new Set(DATA.episodes.filter(e => e.series === state.series && e.level).map(e => e.level))].sort();
   const mkSeg = (label, val) => {
     const b = document.createElement('button');
+    b.type = 'button';
     b.className = state.level === val ? 'active' : '';
+    b.setAttribute('aria-pressed', String(state.level === val));
     b.textContent = label;
     b.onclick = () => { state.level = val; renderToolbar(); renderGrid(); };
     seg.appendChild(b);
@@ -163,7 +177,9 @@ function renderToolbar() {
   if (state.level && !levels.includes(state.level)) state.level = 0;
 
   $('favToggle').classList.toggle('active', state.favOnly);
+  $('favToggle').setAttribute('aria-pressed', String(state.favOnly));
   $('recentToggle').classList.toggle('active', state.recentOnly);
+  $('recentToggle').setAttribute('aria-pressed', String(state.recentOnly));
 }
 
 /* ── 필터링 + 그리드 ── */
@@ -209,7 +225,7 @@ function renderGrid() {
       banner.className = 'ai-banner';
       $('epGrid').before(banner);
     }
-    banner.innerHTML = `✨ AI 검색 결과 ${state.aiIds.size}편 <button onclick="clearAiIds()">✕ 초기화</button>`;
+    banner.innerHTML = `✨ AI 검색 결과 ${state.aiIds.size}편 <button type="button" onclick="clearAiIds()" aria-label="AI 검색 결과 지우기">✕ 초기화</button>`;
   } else {
     banner?.remove();
   }
@@ -225,23 +241,27 @@ function renderGrid() {
   for (const ep of list) {
     const card = document.createElement('article');
     card.className = 'ep-card';
+    card.dataset.id = ep.id;
     card.style.setProperty('--sc', s.color);
+    const favOn = favs.has(ep.id);
+    // 카드 전체를 덮는 투명 '열기' 버튼(.ep-open) + 그 위의 즐겨찾기 버튼. 키보드는 열기 → 즐겨찾기 순서
     card.innerHTML = `
+      <button type="button" class="ep-open" aria-label="${escAttr(dispTitle(ep))} (${seLabel(ep)}${ep.ytKo ? ', 한글판' : ''}${ep.level ? ', 레벨 ' + ep.level : ''}) 보기"></button>
       <div class="ep-thumb">
         <img src="${thumb(ep, 'mqdefault')}" alt="" loading="lazy">
         <span class="ep-se">${seLabel(ep)}</span>
         ${ep.ytKo ? '<span class="ep-ko-badge">한글판</span>' : ''}
-        <button class="ep-fav ${favs.has(ep.id) ? 'on' : ''}" title="즐겨찾기">${favs.has(ep.id) ? '★' : '☆'}</button>
+        <button type="button" class="ep-fav ${favOn ? 'on' : ''}" aria-pressed="${favOn}" aria-label="즐겨찾기: ${escAttr(dispTitle(ep))}" title="즐겨찾기">${favOn ? '★' : '☆'}</button>
       </div>
       <div class="ep-body">
-        <div class="ep-title">${dispTitle(ep)}</div>
+        <div class="ep-title" aria-hidden="true">${dispTitle(ep)}</div>
         <div class="ep-sub">
           ${ep.level ? `<span class="ep-level" style="background:${LEVEL_COLORS[ep.level]}">Lv${ep.level}</span>` : ''}
           ${ep.ytKo && ep.titleKo ? `<span class="ep-en">${ep.title}</span>` : ''}
         </div>
       </div>`;
     card.querySelector('.ep-fav').onclick = (e) => { e.stopPropagation(); toggleFav(ep.id); };
-    card.onclick = () => openEpisode(ep.id);
+    card.querySelector('.ep-open').onclick = () => openEpisode(ep.id);
     frag.appendChild(card);
   }
   grid.appendChild(frag);
@@ -252,7 +272,7 @@ function renderWelcome() {
   if (document.getElementById('welcomeSection')) return;
   const total = DATA ? DATA.episodes.length : 372;
   const seriesBtns = SERIES.map(s =>
-    `<button class="wf-random-btn" style="--sc:${s.color}" onclick="randomPlay('${s.id}')">${s.emoji} ${s.ko}</button>`
+    `<button type="button" class="wf-random-btn" style="--sc:${s.color}" onclick="randomPlay('${s.id}')" aria-label="${s.ko} 랜덤 재생">${s.emoji} ${s.ko}</button>`
   ).join('');
   const sec = document.createElement('div');
   sec.id = 'welcomeSection';
@@ -293,6 +313,9 @@ function renderWelcome() {
 function randomPlay(seriesId) {
   const s = SERIES.find(x => x.id === seriesId);
   if (!s || !DATA) return;
+  // 랜덤 재생은 내 재생목록을 바꾸므로, 비어 있지 않으면 먼저 확인
+  if (playlist.ids.length &&
+      !confirm(`🔀 ${s.ko} 랜덤 재생을 시작하면 지금 재생목록(${playlist.ids.length}편)이 랜덤 목록으로 바뀝니다.\n계속할까요?`)) return;
   state.series = seriesId; state.season = 0; state.theme = false; state.aiIds = null;
   renderSeriesTabs(); renderToolbar(); renderGrid();
   const eps = DATA.episodes.filter(ep => ep.series === seriesId);
@@ -324,21 +347,16 @@ async function aiRecommend() {
   if (!episodes.length) { hideToast(); toast('필터 결과가 없습니다. 필터를 조정해 주세요', 4000); return; }
 
   try {
-    const res = await fetch('/api/bu-recommend', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q, episodes }),
-    });
-    const data = await res.json();
-    if (!res.ok || !Array.isArray(data.ids)) throw new Error(data.error || `HTTP ${res.status}`);
-    if (!data.ids.length) { hideToast(); toast('관련 에피소드를 찾지 못했습니다', 4000); return; }
-    state.aiIds = new Set(data.ids);
+    const data = await VUI.apiFetch('/api/bu-recommend', { json: { q, episodes }, timeout: 40000 });
+    const allowed = new Set(base.map(e => e.id));   // 보낸 후보(현재 시리즈·필터) 안의 id만
+    const ids = data && Array.isArray(data.ids) ? [...new Set(data.ids.filter(id => typeof id === 'string' && allowed.has(id)))] : null;
+    if (!ids) throw new Error('추천 결과를 읽지 못했어요. 잠시 후 다시 해 주세요.');
+    if (!ids.length) { toast('관련 에피소드를 찾지 못했어요', 4000); return; }
+    state.aiIds = new Set(ids);
     renderGrid();
-    hideToast();
-    toast(`✨ AI 검색 결과 ${data.ids.length}편`);
+    toast(`✨ AI 검색 결과 ${ids.length}편`);
   } catch (e) {
-    hideToast();
-    toast(`❌ AI 검색 실패: ${e.message}`, 5000);
+    toast(`AI 검색 실패: ${e.message}`, 'error');
   }
 }
 
@@ -350,9 +368,15 @@ function clearAiIds() {
 /* ── 즐겨찾기 ── */
 function toggleFav(id) {
   if (favs.has(id)) favs.delete(id); else favs.add(id);
-  localStorage.setItem(FAV_KEY, JSON.stringify([...favs]));
+  try { localStorage.setItem(FAV_KEY, JSON.stringify([...favs])); } catch { /* 저장 불가 시 화면만 반영 */ }
+  // 다시 그리면 누른 버튼이 사라지므로, 키보드 포커스를 같은 자리 버튼으로 되돌린다
+  const a = document.activeElement;
+  const refocus = a && a.id === 'mFav' ? 'modal' : a && a.classList && a.classList.contains('ep-fav') ? 'card' : null;
   renderGrid();
   if (modalEp && modalEp.id === id) renderModalActions();
+  if (refocus === 'modal') $('mFav')?.focus();
+  else if (refocus === 'card') document.querySelector(`.ep-card[data-id="${CSS.escape(id)}"] .ep-fav`)?.focus();
+  toast(favs.has(id) ? '⭐ 즐겨찾기에 넣었어요' : '즐겨찾기에서 뺐어요', 1800);
 }
 
 /* ── 상세 모달 ── */
@@ -369,17 +393,27 @@ function openEpisode(id, updateHash = true) {
   renderModalNav();
   renderModal();
   $('epModal').hidden = false;
+  epDialog.open();   // 이미 열려 있으면(이전/다음) 아무 일 없음
   document.body.style.overflow = 'hidden';
   if (updateHash) history.replaceState(null, '', '#v=' + id);
 }
 
 function closeModal() {
+  if (!modalEp && $('epModal').hidden) return;
+  const lastId = modalEp && modalEp.id;
+  epDialog.close();   // 포커스를 연 버튼으로 되돌림(ESC로 닫혔으면 이미 닫힌 상태라 무시)
   $('epModal').hidden = true;
   $('modalVideoWrap').innerHTML = '';
   document.body.style.overflow = '';
   modalEp = null;
   navIds = [];
   history.replaceState(null, '', location.pathname);
+  // 연 카드가 다시 그려져 사라졌으면 같은 에피소드 카드(없으면 목록 첫 카드)로
+  if (!document.activeElement || document.activeElement === document.body) {
+    const btn = (lastId && document.querySelector(`.ep-card[data-id="${CSS.escape(lastId)}"] .ep-open`))
+      || document.querySelector('.ep-open');
+    btn?.focus();
+  }
 }
 
 /* 현재 필터 안에서 이전/다음 영상 */
@@ -422,11 +456,11 @@ function renderModal(skipVideo = false) {
     ${showLangToggle ? `
       <span class="lang-toggle">
         ${isAiDesc ? `
-          <button id="langEn" class="${useKo ? '' : 'active'}">EN</button>
-          <button id="langKo" class="${useKo ? 'active' : ''} ai-lang" title="AI 번역 설명">🤖 한글번역</button>
+          <button type="button" id="langEn" class="${useKo ? '' : 'active'}" aria-pressed="${!useKo}" aria-label="영어 설명">EN</button>
+          <button type="button" id="langKo" class="${useKo ? 'active' : ''} ai-lang" aria-pressed="${useKo}" title="AI 번역 설명">🤖 한글번역</button>
         ` : `
-          <button id="langKo" class="${useKo ? 'active' : ''}">한글</button>
-          <button id="langEn" class="${useKo ? '' : 'active'}">EN</button>
+          <button type="button" id="langKo" class="${useKo ? 'active' : ''}" aria-pressed="${useKo}">한글</button>
+          <button type="button" id="langEn" class="${useKo ? '' : 'active'}" aria-pressed="${!useKo}" aria-label="영어">EN</button>
         `}
       </span>` : ''}`;
   if (showLangToggle) {
@@ -437,15 +471,10 @@ function renderModal(skipVideo = false) {
         renderModal(isAiDesc);
         $('modalDesc').textContent = '✨ 번역 중…';
         try {
-          const res = await fetch('/api/bu-translate', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: ep.desc }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.ko) ep.descKo = data.ko;
-          }
-        } catch { /* 실패 시 영문 표시 */ }
+          const data = await VUI.apiFetch('/api/bu-translate', { json: { text: ep.desc }, timeout: 30000 });
+          if (data && typeof data.ko === 'string' && data.ko) ep.descKo = data.ko;
+        } catch (e) { toast(`번역하지 못해 영문 설명을 보여 드려요. (${e.message})`, 'error'); }
+        if (modalEp !== ep) return;   // 번역을 기다리는 사이 다른 편으로 넘어감
       }
       renderModal(isAiDesc);
     };
@@ -464,9 +493,9 @@ function renderModalActions() {
   const inPl = playlist.ids.includes(ep.id);
   const favOn = favs.has(ep.id);
   $('modalActions').innerHTML = `
-    <button class="m-act${favOn ? ' on-fav' : ''}" id="mFav">⭐ ${favOn ? '즐겨찾기 해제' : '즐겨찾기'}</button>
-    <button class="m-act" id="mShare">🔗 공유</button>
-    <button class="m-act${inPl ? ' on-pl' : ''}" id="mPl">${inPl ? '✅ 재생목록에 있음' : '➕ 재생목록'}</button>
+    <button type="button" class="m-act${favOn ? ' on-fav' : ''}" id="mFav" aria-pressed="${favOn}">⭐ ${favOn ? '즐겨찾기 해제' : '즐겨찾기'}</button>
+    <button type="button" class="m-act" id="mShare">🔗 공유</button>
+    <button type="button" class="m-act${inPl ? ' on-pl' : ''}" id="mPl" aria-pressed="${inPl}">${inPl ? '✅ 재생목록에 있음' : '➕ 재생목록'}</button>
     ${ep.official ? `<a class="m-act" href="${ep.official}" target="_blank" rel="noopener">🌐 공식 페이지</a>` : ''}`;
   $('mFav').onclick = () => toggleFav(ep.id);
   $('mShare').onclick = () => shareEpisode(ep);
@@ -476,14 +505,11 @@ function renderModalActions() {
 async function shareEpisode(ep) {
   const url = location.href.split('#')[0] + `#v=${ep.id}`;
   if (navigator.share) {
-    try { await navigator.share({ title: dispTitle(ep), url }); return; } catch { /* 취소 시 무시 */ }
+    try { await navigator.share({ title: dispTitle(ep), url }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; /* 그 밖의 실패는 복사로 */ }
   }
-  try {
-    await navigator.clipboard.writeText(url);
-    toast('🔗 링크가 복사되었습니다');
-  } catch {
-    prompt('링크를 복사하세요:', url);
-  }
+  // 복사 실패 시 링크·QR 창(VUI)이 열린다
+  await VUI.share.copyOrShow(url, { title: '🔗 에피소드 공유', desc: dispTitle(ep) });
 }
 
 /* ── 재생목록 ── */
@@ -507,13 +533,16 @@ function togglePlaylist(id) {
 
 function openPlDrawer() {
   renderPlDrawer();
-  $('plDrawer').classList.add('open');
+  plDialog.open();   // 'open' 클래스 + 포커스 가두기·ESC
+  $('plFab').setAttribute('aria-expanded', 'true');
   document.body.classList.add('pl-open');
   ensureDurations(playlist.ids.filter(id => byId.has(id)).map(id => playVid(byId.get(id))))
     .then(() => { if ($('plDrawer').classList.contains('open')) renderPlDrawer(); });
 }
 function closePlDrawer() {
+  plDialog.close();
   $('plDrawer').classList.remove('open');
+  $('plFab').setAttribute('aria-expanded', 'false');
   document.body.classList.remove('pl-open');
 }
 
@@ -535,16 +564,30 @@ function renderPlDrawer() {
     const row = document.createElement('div');
     row.className = 'pl-item';
     row.draggable = true;
+    const t = escAttr(dispTitle(ep));
     row.innerHTML = `
-      <span class="pl-drag" title="드래그해서 순서 변경">⠿</span>
-      <img src="${thumb(ep, 'default')}" alt="">
-      <span class="pl-item-title">${i + 1}. ${dispTitle(ep)}
-        ${dur ? `<small class="pl-item-dur">${fmtDur(dur)}</small>` : ''}</span>
-      <button class="pl-del-btn" title="제거">✕</button>`;
-    row.querySelector('.pl-del-btn').onclick = (e) => {
+      <span class="pl-drag" title="드래그해서 순서 변경" aria-hidden="true">⠿</span>
+      <button type="button" class="pl-open" aria-label="${i + 1}번 ${t} 보기">
+        <img src="${thumb(ep, 'default')}" alt="">
+        <span class="pl-item-title">${i + 1}. ${dispTitle(ep)}
+          ${dur ? `<small class="pl-item-dur">${fmtDur(dur)}</small>` : ''}</span>
+      </button>
+      <span class="pl-move">
+        <button type="button" class="pl-del-btn pl-up-btn" title="위로" aria-label="${t} 위로 이동"${i === 0 ? ' disabled' : ''}>▲</button>
+        <button type="button" class="pl-del-btn pl-down-btn" title="아래로" aria-label="${t} 아래로 이동"${i === playlist.ids.length - 1 ? ' disabled' : ''}>▼</button>
+      </span>
+      <button type="button" class="pl-del-btn pl-rm-btn" title="제거" aria-label="${t} 재생목록에서 제거">✕</button>`;
+    // 터치 기기·키보드는 드래그를 못 하므로 ▲▼ 버튼으로 순서 변경(누른 뒤에도 같은 항목 버튼에 포커스 유지)
+    row.querySelector('.pl-up-btn').onclick = (e) => { e.stopPropagation(); movePl(i, -1, '.pl-up-btn'); };
+    row.querySelector('.pl-down-btn').onclick = (e) => { e.stopPropagation(); movePl(i, 1, '.pl-down-btn'); };
+    row.querySelector('.pl-rm-btn').onclick = (e) => {
       e.stopPropagation(); playlist.ids.splice(i, 1); savePl(); renderPlDrawer();
+      toast('재생목록에서 뺐어요', 1800);
+      const rows = $('plList').querySelectorAll('.pl-item');
+      const next = rows[Math.min(i, rows.length - 1)];
+      (next ? next.querySelector('.pl-rm-btn') : $('plCloseBtn')).focus();
     };
-    row.onclick = () => { closePlDrawer(); openEpisode(id); };
+    row.querySelector('.pl-open').onclick = () => { closePlDrawer(); openEpisode(id); };
     row.addEventListener('dragstart', (e) => {
       dragSrc = i; e.dataTransfer.effectAllowed = 'move';
       setTimeout(() => row.classList.add('dragging'), 0);
@@ -573,58 +616,40 @@ function renderPlDrawer() {
   });
 }
 
-function movePl(i, dir) {
+function movePl(i, dir, focusSel) {
   const j = i + dir;
   if (j < 0 || j >= playlist.ids.length) return;
   [playlist.ids[i], playlist.ids[j]] = [playlist.ids[j], playlist.ids[i]];
   savePl(); renderPlDrawer();
-}
-
-/* ── 재생목록 공유 (vives-share 패턴: base64url + 단축) ── */
-function b64uEncode(obj) {
-  return btoa(encodeURIComponent(JSON.stringify(obj)))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-}
-function b64uDecode(str) {
-  try {
-    const raw = str.replace(/-/g, '+').replace(/_/g, '/');
-    const pad = (4 - raw.length % 4) % 4;
-    return JSON.parse(decodeURIComponent(atob(raw + '='.repeat(pad))));
-  } catch { return null; }
-}
-
-async function sharePlaylist() {
-  if (playlist.ids.length === 0) { toast('재생목록이 비어 있습니다'); return; }
-  savePl();
-  const payload = b64uEncode({ t: playlist.title, ids: playlist.ids });
-  const longURL = location.href.split('#')[0] + `#list=${payload}`;
-  toast('⏳ 공유 링크 생성 중…', 0);
-  let url = longURL;
-  try {
-    const res = await fetch('/api/shorten', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: longURL }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.shortURL) url = data.shortURL;
-    }
-  } catch { /* 단축 실패 시 원본 URL 사용 */ }
-  try {
-    await navigator.clipboard.writeText(url);
-    toast(url === longURL ? '🔗 링크 복사됨 (단축 실패, 원본 링크)' : '🔗 단축 링크가 복사되었습니다');
-  } catch {
-    prompt('링크를 복사하세요:', url);
+  if (focusSel) {
+    const row = $('plList').querySelectorAll('.pl-item')[j];
+    const b = row && row.querySelector(focusSel);
+    (b && !b.disabled ? b : row && row.querySelector('.pl-open'))?.focus();
   }
 }
 
+/* ── 재생목록 공유 (VUI.share: base64url + 단축 + 복사 실패 시 링크·QR 창) ──
+   새 링크는 UTF-8 base64url(VUI.share.encode). 예전 링크(btoa(encodeURIComponent(json)))도 decode가 읽는다. */
+async function sharePlaylist() {
+  if (playlist.ids.length === 0) { toast('재생목록이 비어 있어요'); return; }
+  savePl();
+  const payload = VUI.share.encode({ t: playlist.title, ids: playlist.ids });
+  const longURL = location.href.split('#')[0] + `#list=${payload}`;
+  toast('⏳ 공유 링크를 만드는 중이에요…', 0);
+  await VUI.share.link(longURL, {
+    title: '🔗 재생목록 공유',
+    desc: '링크를 연 사람은 이 재생목록을 가져올 수 있어요.',
+    copiedMessage: '🔗 재생목록 링크를 복사했어요',
+  });
+}
+
 function importPlaylist(payload) {
-  const p = b64uDecode(payload);
+  const p = VUI.share.decode(payload, (o) => o && Array.isArray(o.ids));
   history.replaceState(null, '', location.pathname);
-  if (!p || !Array.isArray(p.ids) || p.ids.length === 0) { toast('재생목록 링크가 올바르지 않습니다'); return; }
-  const valid = p.ids.filter(id => byId.has(id));
-  const name = p.t || '공유된 재생목록';
+  if (!p || p.ids.length === 0) { toast('재생목록 링크가 올바르지 않아요', 'error'); return; }
+  const valid = p.ids.filter(id => typeof id === 'string' && byId.has(id));
+  if (!valid.length) { toast('이 링크의 에피소드를 찾지 못했어요', 'error'); return; }
+  const name = (typeof p.t === 'string' && p.t.trim() ? p.t.trim() : '공유된 재생목록').slice(0, 80);
   if (!confirm(`📋 "${name}" (${valid.length}편) 재생목록을 가져올까요?\n현재 내 재생목록을 대체합니다.`)) return;
   playlist = { title: name, ids: valid };
   savePl();
@@ -638,7 +663,7 @@ let queue = [];
 let queueIdx = 0;
 let ytApiReady = null;
 let watchdogTimer = null;
-let durCache = JSON.parse(localStorage.getItem(DUR_KEY) || '{}');
+let durCache = loadJSON(DUR_KEY, {}, isObj);
 
 function clearWatchdog() {
   clearTimeout(watchdogTimer);
@@ -648,13 +673,11 @@ function clearWatchdog() {
 async function fetchDuration(videoId) {
   if (durCache[videoId]) return durCache[videoId];
   try {
-    const res = await fetch(`/api/yt-duration?ids=${videoId}`);
-    if (!res.ok) return 0;
-    const data = await res.json();
-    const sec = data.durations?.[videoId] || 0;
+    const data = await VUI.apiFetch(`/api/yt-duration?ids=${encodeURIComponent(videoId)}`, { timeout: 10000 });
+    const sec = Number(data?.durations?.[videoId]) || 0;
     if (sec > 0) {
       durCache[videoId] = sec;
-      localStorage.setItem(DUR_KEY, JSON.stringify(durCache));
+      try { localStorage.setItem(DUR_KEY, JSON.stringify(durCache)); } catch { /* 캐시 생략 */ }
     }
     return sec;
   } catch { return 0; }
@@ -689,14 +712,17 @@ function loadYtApi() {
 async function startSequentialPlay(title) {
   if (playlist.ids.length === 0) { toast('재생목록이 비어 있습니다'); return; }
   queue = playlist.ids.filter(id => byId.has(id));
+  if (!queue.length) { toast('재생할 수 있는 에피소드가 없어요'); return; }
   queueIdx = 0;
   closePlDrawer();
   $('playerOverlay').hidden = false;
+  playerDialog.open();
   document.body.classList.add('player-open');
   document.body.style.overflow = 'hidden';
   $('playerTitle').textContent = title || '재생목록';
   ensureDurations(queue.map(id => playVid(byId.get(id)))).then(renderPlayerUi);
   await loadYtApi();
+  if ($('playerOverlay').hidden) return;   // 불러오는 사이 닫음
   if (ytPlayer) { ytPlayer.destroy(); ytPlayer = null; }
   $('playerStage').innerHTML = '<div id="ytPlayerHost"></div>';
   ytPlayer = new YT.Player('ytPlayerHost', {
@@ -763,26 +789,32 @@ function renderPlayerUi() {
   q.innerHTML = '';
   queue.forEach((id, i) => {
     const e = byId.get(id);
-    const d = document.createElement('div');
+    const d = document.createElement('button');
+    d.type = 'button';
     d.className = 'pq-item' + (i === queueIdx ? ' current' : '');
+    if (i === queueIdx) d.setAttribute('aria-current', 'true');
+    d.setAttribute('aria-label', `${i + 1}번 ${dispTitle(e)}${i === queueIdx ? ' (재생 중)' : ''}`);
     const dd = durations[playVid(e)];
-    d.innerHTML = `<img src="${thumb(e, 'default')}" alt="" title="${dispTitle(e)}">
+    d.innerHTML = `<img src="${thumb(e, 'default')}" alt="" title="${escAttr(dispTitle(e))}">
       ${dd ? `<span class="pq-dur">${fmtDur(dd)}</span>` : ''}`;
-    d.onclick = () => playAt(i);
+    d.onclick = () => { playAt(i); q.children[i]?.focus(); };
     q.appendChild(d);
   });
   const cur = q.children[queueIdx];
-  if (cur) cur.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  if (cur) cur.scrollIntoView({ block: 'nearest', inline: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
 
 function closePlayer() {
   clearWatchdog();
   stopWatchdog();
   if (ytPlayer) { ytPlayer.destroy(); ytPlayer = null; }
+  playerDialog.close();
   $('playerStage').innerHTML = '';
   $('playerOverlay').hidden = true;
   document.body.classList.remove('player-open');
   document.body.style.overflow = '';
+  // 연 버튼(랜덤 재생 등)이 다시 그려져 사라졌으면 재생목록 버튼으로
+  if (!document.activeElement || document.activeElement === document.body) $('plFab').focus();
 }
 
 /* ── 해시 라우팅 ── */
@@ -800,6 +832,20 @@ function handleHash() {
     importPlaylist(h.slice(5));
   }
 }
+
+/* ── 대화상자 접근성 (VUI.modal: role·포커스 가두기·ESC·포커스 복귀) ── */
+const epDialog = VUI.modal.bind('#epModal', {
+  manual: true, dialog: '.modal-card', initialFocus: '#modalCloseBtn',
+  onClose: () => closeModal(),
+});
+const plDialog = VUI.modal.bind('#plDrawer', {
+  className: 'open', initialFocus: '#plCloseBtn',
+  onClose: () => closePlDrawer(),
+});
+const playerDialog = VUI.modal.bind('#playerOverlay', {
+  manual: true, initialFocus: '#playerCloseBtn',
+  onClose: () => closePlayer(),
+});
 
 /* ── 이벤트 바인딩 ── */
 function bind() {
@@ -837,16 +883,12 @@ function bind() {
   }
   window.addEventListener('scroll', updateStuck, { passive: true });
   updateStuck();
+  // ESC 닫기는 VUI.modal이 맡는다(맨 위 창부터). 여기서는 상세 창의 ←/→ 이전·다음만
   document.addEventListener('keydown', (e) => {
     if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !$('epModal').hidden && $('playerOverlay').hidden
         && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) {
       stepModal(e.key === 'ArrowLeft' ? -1 : 1);
-      return;
     }
-    if (e.key !== 'Escape') return;
-    if (!$('playerOverlay').hidden) closePlayer();
-    else if (!$('epModal').hidden) closeModal();
-    else if ($('plDrawer').classList.contains('open')) closePlDrawer();
   });
 }
 
@@ -855,9 +897,11 @@ init();
 
 // 선택 동기화: 헤더 '동기화' 버튼 (즐겨찾기·재생목록·최근을 코드 하나로 기기 간 이어쓰기)
 function reloadSyncedState() {
-  try { favs = new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]')); } catch (e) {}
-  try { recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch (e) {}
-  try { playlist = JSON.parse(localStorage.getItem(PL_KEY) || '{"title":"","ids":[]}'); } catch (e) {}
+  favs = new Set(loadJSON(FAV_KEY, [], isIdArr));
+  recent = loadJSON(RECENT_KEY, [], isIdArr);
+  playlist = loadPlaylist();
+  updatePlFab();
+  if ($('plDrawer').classList.contains('open')) renderPlDrawer();
   if (DATA) { renderToolbar(); renderGrid(); }
 }
 if (window.VivesSync) VivesSync.mountDocSync({

@@ -116,7 +116,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       background: none; border: none; cursor: pointer;
       color: var(--fg-muted); padding: 4px; border-radius: 0.375rem;
       transition: color 0.15s, background 0.15s; flex-shrink: 0;
-      min-width: 28px; min-height: 28px;
+      min-width: 44px; min-height: 44px;
       display: flex; align-items: center; justify-content: center;
     }
 
@@ -147,7 +147,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     .history-header span { font-size: 0.9rem; font-weight: 700; }
-    .btn-clear-h { font-size: 0.75rem; color: var(--danger); background: none; border: none; cursor: pointer; font-family: inherit; }
+    .btn-clear-h { font-size: 0.875rem; color: var(--danger); background: none; border: none; cursor: pointer; font-family: inherit; min-height: 44px; padding: 0 8px; margin-right: -8px; }
 
     .history-list {
       display: flex;
@@ -158,16 +158,22 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .history-item {
       display: flex;
       align-items: center;
-      gap: 0.625rem;
+      gap: 0.25rem;
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 0.75rem;
-      padding: 0.5rem 0.625rem;
-      cursor: pointer;
+      padding: 0.25rem 0.25rem 0.25rem 0.375rem;
       transition: border-color 0.15s, background 0.15s;
     }
 
     .history-item:hover { border-color: var(--primary); background: var(--bg-hover); }
+    /* 기록 열기 = 버튼(키보드 Tab·Enter), 지우기 버튼은 그 옆 */
+    .history-open {
+      flex: 1; min-width: 0; min-height: 44px;
+      display: flex; align-items: center; gap: 0.625rem;
+      padding: 0.25rem; border: 0; border-radius: 0.5rem; background: none;
+      font: inherit; color: inherit; text-align: left; cursor: pointer;
+    }
 
     .history-thumb {
       width: 64px; height: 40px;
@@ -194,7 +200,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .btn-del-h {
       background: none; border: none; color: var(--fg-muted);
       cursor: pointer; padding: 4px; font-size: 0.875rem;
-      min-width: 24px; min-height: 24px;
+      min-width: 44px; min-height: 44px; border-radius: 0.5rem;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
     .btn-del-h:hover { color: var(--danger); }
@@ -340,9 +346,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       align-items: center;
       margin-bottom: 1rem;
     }
-    .url-input-row .hero-input { flex: 1; }
+    .url-input-row .hero-input { flex: 1; min-width: 0; }
+    .dual-tab-btn { min-height: 44px; font-family: inherit; }
     .btn-analyze {
-      width: 42px; height: 42px;
+      width: 44px; height: 44px;
       border-radius: 0.625rem;
       border: none;
       background: var(--primary);
@@ -381,7 +388,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       transition: width 0.3s;
     }
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/yt-thumb/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"YT Thumbnail","description":"유튜브 URL만 입력하면 고화질 썸네일을 추출. 아카이빙과 다운로드 지원.","url":"https://eduin.info/apps/yt-thumb/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -404,9 +410,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     <!-- 통합 URL 입력 -->
     <div class="url-input-row">
-      <input type="url" id="youtubeUrl" class="hero-input" placeholder="YouTube 영상 또는 재생목록 URL" onkeyup="if(event.key==='Enter')analyzeUrl()">
-      <button class="btn-analyze" onclick="analyzeUrl()" title="분석 시작">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <input type="url" id="youtubeUrl" class="hero-input" placeholder="YouTube 영상 또는 재생목록 URL" aria-label="YouTube 영상 또는 재생목록 주소" onkeyup="if(event.key==='Enter')analyzeUrl()">
+      <button type="button" class="btn-analyze" onclick="analyzeUrl()" title="분석 시작" aria-label="분석 시작">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <line x1="5" y1="12" x2="19" y2="12"></line>
           <polyline points="12 5 19 12 12 19"></polyline>
         </svg>
@@ -415,31 +421,31 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     <!-- 듀얼 모드 탭 (영상+재생목록 동시) -->
     <div id="dual-mode-tabs" style="display:none; margin-top:1rem; margin-bottom:1rem;">
-      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:0.5rem;">
-        <button onclick="switchDualModeTab('thumbnail')" id="tab-thumbnail" class="dual-tab-btn dual-tab-active" style="padding:0.5rem; border-radius:0.5rem; border:1px solid var(--border); background:var(--primary); color:#fff; cursor:pointer; font-weight:600; font-size:0.875rem; transition:all 0.2s;">썸네일</button>
-        <button onclick="switchDualModeTab('playlist')" id="tab-playlist" class="dual-tab-btn" style="padding:0.5rem; border-radius:0.5rem; border:1px solid var(--border); background:transparent; color:var(--fg); cursor:pointer; font-weight:600; font-size:0.875rem; transition:all 0.2s;">재생목록</button>
-        <button onclick="switchDualModeTab('history')" id="tab-history" class="dual-tab-btn" style="padding:0.5rem; border-radius:0.5rem; border:1px solid var(--border); background:transparent; color:var(--fg); cursor:pointer; font-weight:600; font-size:0.875rem; transition:all 0.2s;">히스토리</button>
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:0.5rem;" role="group" aria-label="보기 선택">
+        <button type="button" aria-pressed="true" onclick="switchDualModeTab('thumbnail')" id="tab-thumbnail" class="dual-tab-btn dual-tab-active" style="padding:0.5rem; border-radius:0.5rem; border:1px solid var(--border); background:var(--primary); color:#fff; cursor:pointer; font-weight:600; font-size:0.875rem; transition:all 0.2s;">썸네일</button>
+        <button type="button" aria-pressed="false" onclick="switchDualModeTab('playlist')" id="tab-playlist" class="dual-tab-btn" style="padding:0.5rem; border-radius:0.5rem; border:1px solid var(--border); background:transparent; color:var(--fg); cursor:pointer; font-weight:600; font-size:0.875rem; transition:all 0.2s;">재생목록</button>
+        <button type="button" aria-pressed="false" onclick="switchDualModeTab('history')" id="tab-history" class="dual-tab-btn" style="padding:0.5rem; border-radius:0.5rem; border:1px solid var(--border); background:transparent; color:var(--fg); cursor:pointer; font-weight:600; font-size:0.875rem; transition:all 0.2s;">히스토리</button>
       </div>
     </div>
 
     <!-- 단일영상 UI -->
     <div id="single-ui" style="display:none; margin-top:1rem;">
-      <div id="result"></div>
+      <div id="result" aria-live="polite"></div>
     </div>
 
     <!-- 재생목록 UI -->
     <div id="playlist-ui" style="display:none; margin-top:1rem;">
-      <button onclick="showApiKeyModal()" class="hero-btn hero-btn-ghost" id="plApiKeyBtn" style="display:none;width:100%;margin-top:0.5rem;font-size:0.8rem;">⚙️ API 키 설정</button>
-      <div id="plResult" class="pl-result-wide"></div>
+      <button type="button" onclick="showApiKeyModal()" class="hero-btn hero-btn-ghost" id="plApiKeyBtn" style="display:none;width:100%;margin-top:0.5rem;font-size:0.875rem;min-height:44px;">⚙️ API 키 설정</button>
+      <div id="plResult" class="pl-result-wide" aria-live="polite"></div>
     </div>
 
     <!-- 통합 히스토리 -->
     <div class="history-section" id="historySection" style="margin-top:1.5rem;">
       <div class="history-header">
-        <span>최근 검색</span>
-        <button class="btn-clear-h" onclick="clearAllHistory()">전체 삭제</button>
+        <span id="historyHeading">최근 검색</span>
+        <button type="button" class="btn-clear-h" onclick="clearAllHistory()">전체 삭제</button>
       </div>
-      <div class="history-list" id="historyList"></div>
+      <div class="history-list" id="historyList" role="list" aria-labelledby="historyHeading"></div>
     </div>
 
   </div>
@@ -542,6 +548,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     playlistUi.style.display = 'none';
     historySection.style.display = 'none';
 
+    [thumbnailBtn, playlistBtn, historyBtn].forEach(b => b.setAttribute('aria-pressed', 'false'));
+    const pressed = tab === 'thumbnail' ? thumbnailBtn : tab === 'playlist' ? playlistBtn : historyBtn;
+    if (!pressed.disabled) pressed.setAttribute('aria-pressed', 'true');
+
     // 선택된 탭 활성화
     if (tab === 'thumbnail' && !thumbnailBtn.disabled) {
       thumbnailBtn.classList.add('dual-tab-active');
@@ -567,7 +577,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   }
 
   /* ───────────────────────── 단일 영상 ───────────────────────── */
-  const HISTORY_KEY = 'youtube_thumbnail_history_v2';
   const YT_REGEX = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?|shorts|live)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
 
   async function extractThumbnail() {
@@ -577,20 +586,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const match = url.match(YT_REGEX);
     if (match && match[1]) {
       const videoId = match[1];
-      saveToHistory(videoId);
 
-      // 영상 제목 조회
+      // 영상 제목 조회(기록 표시용 — 실패해도 썸네일은 그대로 보여 준다)
       try {
-        const res = await fetch('/api/yt-video-info', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ videoId }),
-        });
-        const data = await res.json();
+        const data = await VUI.apiFetch('/api/yt-video-info', { json: { videoId }, timeout: 10000 });
         const videoData = {
           videoId,
-          title: data.title || 'Unknown Title',
-          author: data.author || 'Unknown Channel',
+          title: (data && typeof data.title === 'string' && data.title) || 'Unknown Title',
+          author: (data && typeof data.author === 'string' && data.author) || 'Unknown Channel',
         };
         saveToUnifiedHistory('video', videoData);
       } catch (e) {
@@ -615,13 +618,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <div class="thumb-item">
         <div class="thumb-label">최대 해상도 (maxresdefault)</div>
         <div class="thumb-preview">
-          <img src="${maxRes}" alt="maxres thumbnail"
+          <img src="${maxRes}" alt="최대 해상도 썸네일"
                onerror="this.parentElement.innerHTML='<span style=&quot;color:#888;font-size:0.8rem&quot;>이미지 없음 (1080p 미지원 영상)</span>'">
         </div>
         <div class="thumb-url-row">
           <a href="${maxRes}" target="_blank" class="thumb-url" rel="noopener">${maxRes}</a>
-          <button class="btn-copy" onclick="copyUrl(this,'${maxRes}')" title="복사">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button type="button" class="btn-copy" onclick="copyUrl(this,'${maxRes}')" title="복사" aria-label="최대 해상도 썸네일 주소 복사">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
             </svg>
           </button>
@@ -630,12 +633,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <div class="thumb-item">
         <div class="thumb-label">고화질 (hqdefault)</div>
         <div class="thumb-preview">
-          <img src="${hq}" alt="hq thumbnail">
+          <img src="${hq}" alt="고화질 썸네일">
         </div>
         <div class="thumb-url-row">
           <a href="${hq}" target="_blank" class="thumb-url" rel="noopener">${hq}</a>
-          <button class="btn-copy" onclick="copyUrl(this,'${hq}')" title="복사">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button type="button" class="btn-copy" onclick="copyUrl(this,'${hq}')" title="복사" aria-label="고화질 썸네일 주소 복사">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
             </svg>
           </button>
@@ -647,77 +650,47 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   function showError(msg) {
     const result = document.getElementById('result');
     result.style.display = 'block';
-    result.innerHTML = `<div class="error-box">${msg}</div>`;
+    result.innerHTML = `<div class="error-box" role="alert">${escHtml(String(msg))}</div>`;
   }
 
+  // 복사는 공용 VUI.copy(성공 토스트), 실패하면 링크 창(VUI.share.show)으로 주소를 보여 준다
   function copyUrl(btn, url) {
-    navigator.clipboard.writeText(url).then(() => {
-      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    VUI.copy(url, '주소를 복사했어요 ✓').then((ok) => {
+      if (!ok) { VUI.share.show(url, { title: '🔗 썸네일 주소', qr: false, note: '자동 복사가 안 돼서 주소를 보여 드려요.' }); return; }
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
       setTimeout(() => {
-        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
       }, 1500);
-    }).catch(() => alert('복사 실패'));
-  }
-
-  function saveToHistory(videoId) {
-    let h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-    h = h.filter(id => id !== videoId);
-    h.unshift(videoId);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 30)));
-  }
-
-  function toggleHistory() {
-    const sec = document.getElementById('historySection');
-    const hidden = sec.style.display === 'none' || !sec.style.display;
-    sec.style.display = hidden ? 'block' : 'none';
-    if (hidden) renderHistory();
-  }
-
-  function renderHistory() {
-    const list = document.getElementById('historyList');
-    const h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-    if (!h.length) {
-      list.innerHTML = '<p style="text-align:center;color:var(--fg-muted);font-size:0.8rem;padding:1rem">기록이 없습니다.</p>';
-      return;
-    }
-    list.innerHTML = h.map(id => `
-      <div class="history-item" onclick="applyFromHistory('${id}')">
-        <img class="history-thumb" src="https://img.youtube.com/vi/${id}/mqdefault.jpg" alt="">
-        <div class="history-info">
-          <div class="history-vid">${id}</div>
-          <div class="history-links">
-            <a href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener" onclick="event.stopPropagation()">영상 보기</a>
-          </div>
-        </div>
-        <button class="btn-del-h" onclick="event.stopPropagation();deleteFromHistory('${id}')">✕</button>
-      </div>
-    `).join('');
-  }
-
-  function applyFromHistory(videoId) {
-    document.getElementById('youtubeUrl').value = `https://www.youtube.com/watch?v=${videoId}`;
-    displayResult(videoId);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function deleteFromHistory(videoId) {
-    let h = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]').filter(id => id !== videoId);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
-    renderHistory();
-  }
-
-  function clearHistory() {
-    if (confirm('모든 기록을 삭제하시겠습니까?')) {
-      localStorage.removeItem(HISTORY_KEY);
-      renderHistory();
-    }
+    });
   }
 
   // ── 통합 히스토리 ──
   const UNIFIED_HISTORY_KEY = 'youtube_unified_history';
 
+  // 저장값이 깨져 있어도 앱이 멈추지 않도록 형식 검사
+  function loadUnifiedHistory() {
+    try {
+      const v = JSON.parse(localStorage.getItem(UNIFIED_HISTORY_KEY) || '[]');
+      return Array.isArray(v) ? v.filter(h => h && (h.type === 'video' || h.type === 'playlist') && h.data) : [];
+    } catch { return []; }
+  }
+  // 기록 항목의 키(영상 ID 또는 재생목록 URL)
+  function historyKey(h) {
+    if (h.type === 'video') return String(typeof h.data === 'object' ? h.data.videoId : h.data);
+    return String(typeof h.data === 'object' ? h.data.url : h.data);
+  }
+  // 인라인 onclick에는 순번만 넣고 값은 저장소에서 다시 읽는다(따옴표·역슬래시가 든 URL로 깨지지 않게)
+  function openHistoryAt(idx) {
+    const h = loadUnifiedHistory()[idx];
+    if (h) applyFromUnifiedHistory(h.type, historyKey(h));
+  }
+  function deleteHistoryAt(idx) {
+    const h = loadUnifiedHistory()[idx];
+    if (h) deleteFromUnifiedHistory(h.type, historyKey(h));
+  }
+
   function saveToUnifiedHistory(type, data) {
-    let hist = JSON.parse(localStorage.getItem(UNIFIED_HISTORY_KEY) || '[]');
+    let hist = loadUnifiedHistory();
     const item = { type, data, timestamp: new Date().toISOString() };
     // 중복 제거
     hist = hist.filter(h => {
@@ -735,12 +708,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       return true;
     });
     hist.unshift(item);
-    localStorage.setItem(UNIFIED_HISTORY_KEY, JSON.stringify(hist.slice(0, 30)));
+    try { localStorage.setItem(UNIFIED_HISTORY_KEY, JSON.stringify(hist.slice(0, 30))); } catch {}
   }
 
   function renderUnifiedHistory() {
     const list = document.getElementById('historyList');
-    const hist = JSON.parse(localStorage.getItem(UNIFIED_HISTORY_KEY) || '[]');
+    const hist = loadUnifiedHistory();
     if (!hist.length) {
       list.innerHTML = '<p style="text-align:center;color:var(--fg-muted);font-size:0.8rem;padding:1rem">기록이 없습니다.</p>';
       return;
@@ -755,13 +728,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         const videoTitle = isNewFormat ? item.data.title : 'Unknown Title';
 
         return `
-          <div class="history-item" onclick="applyFromUnifiedHistory('video', '${videoId}')">
-            <img class="history-thumb" src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" alt="">
-            <div class="history-info">
-              <div class="history-title">${escHtml(videoTitle)}</div>
-              <div class="history-time">${dateStr} · 영상</div>
-            </div>
-            <button class="btn-del-h" onclick="event.stopPropagation(); deleteFromUnifiedHistory('${item.type}', ${isNewFormat ? "'" + videoId.replace(/'/g, "\\'") + "'" : "'" + item.data.replace(/'/g, "\\'") + "'"})">✕</button>
+          <div class="history-item" role="listitem">
+            <button type="button" class="history-open" onclick="openHistoryAt(${idx})">
+              <img class="history-thumb" src="https://img.youtube.com/vi/${encodeURIComponent(videoId)}/mqdefault.jpg" alt="">
+              <span class="history-info">
+                <span class="history-title" style="display:block">${escHtml(String(videoTitle || ''))}</span>
+                <span class="history-time" style="display:block">${dateStr} · 영상</span>
+              </span>
+            </button>
+            <button type="button" class="btn-del-h" onclick="deleteHistoryAt(${idx})" aria-label="${escHtml(String(videoTitle || '영상'))} 기록 지우기" title="기록 지우기">✕</button>
           </div>
         `;
       } else if (item.type === 'playlist') {
@@ -775,19 +750,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         const playlistTitle = isNewFormat ? item.data.title : null;
 
         const thumbUrl = firstVideoId
-          ? `https://img.youtube.com/vi/${firstVideoId}/mqdefault.jpg`
+          ? `https://img.youtube.com/vi/${encodeURIComponent(firstVideoId)}/mqdefault.jpg`
           : 'https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg';
 
         const displayTitle = playlistTitle || '재생목록';
 
         return `
-          <div class="history-item" onclick="applyFromUnifiedHistory('playlist', '${playlistUrl.replace(/'/g, "\\'")}')">
-            <img class="history-thumb" src="${thumbUrl}" alt="">
-            <div class="history-info">
-              <div class="history-title">${escHtml(displayTitle)}</div>
-              <div class="history-time">${dateStr} · 재생목록</div>
-            </div>
-            <button class="btn-del-h" onclick="event.stopPropagation(); deleteFromUnifiedHistory('${item.type}', ${typeof item.data === 'object' ? "'" + item.data.url.replace(/'/g, "\\'") + "'" : "'" + item.data.replace(/'/g, "\\'") + "'"})">✕</button>
+          <div class="history-item" role="listitem">
+            <button type="button" class="history-open" onclick="openHistoryAt(${idx})">
+              <img class="history-thumb" src="${thumbUrl}" alt="">
+              <span class="history-info">
+                <span class="history-title" style="display:block">${escHtml(String(displayTitle))}</span>
+                <span class="history-time" style="display:block">${dateStr} · 재생목록</span>
+              </span>
+            </button>
+            <button type="button" class="btn-del-h" onclick="deleteHistoryAt(${idx})" aria-label="${escHtml(String(displayTitle))} 기록 지우기" title="기록 지우기">✕</button>
           </div>
         `;
       }
@@ -824,7 +801,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   }
 
   function deleteFromUnifiedHistory(type, data) {
-    let hist = JSON.parse(localStorage.getItem(UNIFIED_HISTORY_KEY) || '[]');
+    let hist = loadUnifiedHistory();
     hist = hist.filter(h => {
       if (h.type !== type) return true;
       // video는 ID를 비교 (객체든 문자열이든)
@@ -839,8 +816,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }
       return true;
     });
-    localStorage.setItem(UNIFIED_HISTORY_KEY, JSON.stringify(hist));
+    try { localStorage.setItem(UNIFIED_HISTORY_KEY, JSON.stringify(hist)); } catch {}
     renderUnifiedHistory();
+    // 지운 줄의 버튼이 사라졌으므로 키보드 포커스를 목록의 다음 지우기 버튼(없으면 '전체 삭제')으로
+    const btns = document.querySelectorAll('#historyList .btn-del-h');
+    (btns[0] || document.querySelector('.btn-clear-h')).focus();
+    VUI.toast('기록을 지웠어요', 1800);
   }
 
   function clearAllHistory() {
@@ -850,21 +831,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
   }
 
-  function scrollToHistory() {
-    const section = document.getElementById('historySection');
-    if (!section) return;
-
-    // 펄스 애니메이션 추가
-    section.classList.add('pulse');
-    setTimeout(() => section.classList.remove('pulse'), 1200);
-
-    // 히스토리 섹션으로 부드럽게 스크롤
-    section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
-
   /* ───────────────────────── 플레이리스트 ───────────────────────── */
   const PL_REGEX = /[?&]list=([A-Za-z0-9_-]+)/;
-  const PL_HISTORY_KEY = 'youtube_playlist_history';
   const API_KEY_STORAGE = 'yt_api_key_custom';
 
   let plItems = [];       // 전체 영상 목록
@@ -909,17 +877,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           data = res;
           usingCustomKey = true;
         } else {
-          // Netlify Function 사용
-          res = await fetch('/api/yt-playlist', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-          });
-          data = await res.json();
+          // 서버 함수(/api/yt-playlist) — VUI.apiFetch: 시간 제한·한국어 오류. 실패해도 상태·본문을 보고 분기
+          try {
+            data = await VUI.apiFetch('/api/yt-playlist', { json: body, timeout: 30000 });
+            res = { ok: true, status: 200 };
+          } catch (e) {
+            if (!e.status) { showPlError(e.message); return; }   // 오프라인·시간 초과 등
+            data = e.data || { error: e.message };
+            if (typeof data.error !== 'string' || !/[가-힣]/.test(data.error)) data = Object.assign({}, data, { error: e.message, rawError: data.error });
+            res = { ok: false, status: e.status };
+          }
         }
 
-        // Netlify Function 실패 시 API 키 설정 안내
-        if (!useCustomKey && (res?.status === 403 || res?.status === 400) && data?.error?.includes?.('referer')) {
+        // 서버 함수 실패(리퍼러 제한) 시 API 키 설정 안내
+        const refErr = String((data && (data.rawError || data.error)) || '');
+        if (!useCustomKey && (res?.status === 403 || res?.status === 400) && refErr.includes('referer')) {
           const saved = localStorage.getItem(API_KEY_STORAGE);
           if (saved) {
             useCustomKey = true;
@@ -927,6 +899,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           } else {
             showPlError('API 키 설정이 필요합니다. ⚙️ 설정 버튼을 클릭해주세요.');
             document.getElementById('plApiKeyBtn').style.display = 'inline-flex';
+            document.getElementById('plApiKeyBtn').focus();
             return;
           }
         }
@@ -948,7 +921,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       } while (pageToken);
 
       renderPlaylist();
-      savePLToHistory(plUrl);
       // 첫 영상 정보를 포함하여 히스토리에 저장
       const firstVideo = plItems[0];
       const playlistData = {
@@ -1022,8 +994,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         <div class="pl-meta">총 ${plItems.length}개 영상</div>
       </div>
       <div class="pl-actions">
-        <button class="hero-btn" onclick="openInMdEditor()">📋 MD로 정리</button>
-        <button class="hero-btn hero-btn-ghost" id="zipBtn" onclick="downloadZip()">📦 다운로드(ZIP)</button>
+        <button type="button" class="hero-btn" onclick="openInMdEditor()">📋 MD로 정리</button>
+        <button type="button" class="hero-btn hero-btn-ghost" id="zipBtn" onclick="downloadZip()">📦 다운로드(ZIP)</button>
       </div>
       <div class="pl-list">
         ${plItems.map((item, i) => `
@@ -1057,6 +1029,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
   async function downloadZip() {
     const btn = document.getElementById('zipBtn');
+    if (!window.JSZip) {
+      alert('압축 도구를 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침해 주세요.');
+      return;
+    }
     btn.disabled = true;
 
     const zip = new JSZip();
@@ -1069,42 +1045,62 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const progress = document.createElement('div');
     progress.className = 'progress-wrap';
     progress.innerHTML = `
-      <div id="zipProgressText">썸네일 다운로드 중 (0 / ${plItems.length})</div>
+      <div id="zipProgressText" role="status" aria-live="polite">썸네일 다운로드 중 (0 / ${plItems.length})</div>
       <div class="progress-bar-bg">
         <div class="progress-bar-fill" id="zipProgressBar" style="width:0%"></div>
       </div>
     `;
     document.getElementById('plResult').appendChild(progress);
 
-    let done = 0;
-    await Promise.all(plItems.map(async (item, i) => {
-      try {
-        const res = await fetch(
-          `/.netlify/functions/yt-thumb-img?id=${item.videoId}&q=hq`
-        );
-        if (res.ok) {
-          const blob = await res.blob();
-          const num = String(i + 1).padStart(2, '0');
-          folder.file(`${num}_${item.videoId}.jpg`, blob);
+    let done = 0, saved = 0;
+    try {
+      // 동시 요청은 6개로 제한(긴 재생목록에서 한꺼번에 수백 개 요청하지 않도록)
+      let next = 0;
+      const worker = async () => {
+        while (next < plItems.length) {
+          const i = next++;
+          const item = plItems[i];
+          try {
+            const res = await fetch(`/api/yt-thumb-img?id=${encodeURIComponent(item.videoId)}&q=hq`);
+            if (res.ok) {
+              const blob = await res.blob();
+              const num = String(i + 1).padStart(2, '0');
+              folder.file(`${num}_${item.videoId}.jpg`, blob);
+              saved++;
+            }
+          } catch { /* 개별 실패는 개수로만 집계 */ }
+          done++;
+          const pct = Math.round((done / plItems.length) * 100);
+          const el = document.getElementById('zipProgressText');
+          const bar = document.getElementById('zipProgressBar');
+          if (el) el.textContent = `썸네일 다운로드 중 (${done} / ${plItems.length})`;
+          if (bar) bar.style.width = `${pct}%`;
         }
-      } catch { /* 개별 실패는 무시 */ }
-      done++;
-      const pct = Math.round((done / plItems.length) * 100);
-      const el = document.getElementById('zipProgressText');
-      const bar = document.getElementById('zipProgressBar');
-      if (el) el.textContent = `썸네일 다운로드 중 (${done} / ${plItems.length})`;
-      if (bar) bar.style.width = `${pct}%`;
-    }));
+      };
+      await Promise.all(Array.from({ length: Math.min(6, plItems.length) }, worker));
 
-    const blob = await zip.generateAsync({ type: 'blob' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${sanitizeFilename(plTitle || 'playlist')}.zip`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+      // 한 장도 받지 못했으면 빈 ZIP을 내려받지 않고 오류 안내
+      if (saved === 0) {
+        alert('썸네일을 한 장도 받지 못했습니다. 잠시 후 다시 시도해 주세요.');
+        return;
+      }
 
-    progress.remove();
-    btn.disabled = false;
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${sanitizeFilename(plTitle || 'playlist')}.zip`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+
+      if (saved < plItems.length) {
+        alert(`썸네일 ${plItems.length}장 중 ${saved}장만 받았습니다. 나머지 ${plItems.length - saved}장은 ZIP에 빠져 있습니다.`);
+      }
+    } catch {
+      alert('ZIP 파일을 만들지 못했습니다. 다시 시도해 주세요.');
+    } finally {
+      progress.remove();
+      btn.disabled = false;
+    }
   }
 
   function buildMarkdown() {
@@ -1132,97 +1128,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     return lines.join('\n');
   }
 
-  function savePLToHistory(url) {
-    let plHistory = [];
-    try {
-      const raw = localStorage.getItem(PL_HISTORY_KEY);
-      if (raw) plHistory = JSON.parse(raw);
-    } catch { plHistory = []; }
-
-    // 중복 제거 및 최신순으로 정렬
-    plHistory = plHistory.filter(u => u !== url);
-    plHistory.unshift(url);
-
-    // 최대 30개만 유지
-    plHistory = plHistory.slice(0, 30);
-
-    localStorage.setItem(PL_HISTORY_KEY, JSON.stringify(plHistory));
-  }
-
-  function renderPLHistory() {
-    let plHistory = [];
-    try {
-      const raw = localStorage.getItem(PL_HISTORY_KEY);
-      if (raw) plHistory = JSON.parse(raw);
-    } catch { plHistory = []; }
-
-    if (plHistory.length === 0) return;
-
-    let historySection = document.getElementById('plHistorySection');
-    if (!historySection) {
-      historySection = document.createElement('div');
-      historySection.id = 'plHistorySection';
-      historySection.style.marginTop = '1.5rem';
-      const plResult = document.getElementById('plResult');
-      if (plResult.parentNode) {
-        plResult.parentNode.insertBefore(historySection, plResult.nextSibling);
-      }
-    }
-
-    historySection.innerHTML = `
-      <div style="margin-bottom:0.75rem; font-size:0.85rem; font-weight:600; color:var(--fg-muted); text-transform:uppercase;">히스토리</div>
-      <ul style="list-style:none; padding:0; margin:0;">
-        ${plHistory.map(url => `
-          <li style="padding:0.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-            <button onclick="applyFromPLHistory('${url.replace(/'/g, "\\'")}')"
-              title="${url}"
-              style="flex:1; text-align:left; background:none; border:none; color:var(--primary); cursor:pointer; padding:0; font-size:0.875rem;">
-              ${escHtml(url.substring(0, 50))}${url.length > 50 ? '...' : ''}
-            </button>
-            <button class="del-btn" onclick="deleteFromPLHistory('${url.replace(/'/g, "\\'")}')"
-              style="padding:0.25rem 0.5rem; font-size:0.75rem; background:none; border:1px solid var(--border); cursor:pointer; border-radius:0.25rem;">×</button>
-          </li>
-        `).join('')}
-      </ul>
-    `;
-  }
-
-  function applyFromPLHistory(url) {
-    document.getElementById('youtubeUrl').value = url;
-    fetchPlaylist();
-  }
-
-  function deleteFromPLHistory(url) {
-    let plHistory = [];
-    try {
-      const raw = localStorage.getItem(PL_HISTORY_KEY);
-      if (raw) plHistory = JSON.parse(raw);
-    } catch { plHistory = []; }
-
-    plHistory = plHistory.filter(u => u !== url);
-    localStorage.setItem(PL_HISTORY_KEY, JSON.stringify(plHistory));
-
-    renderPLHistory();
-  }
-
-  function togglePLHistory() {
-    const historySection = document.getElementById('plHistorySection');
-    if (historySection) {
-      historySection.style.display = historySection.style.display === 'none' ? 'block' : 'none';
-    }
-  }
-
   function showPlLoading(msg) {
     document.getElementById('plResult').innerHTML = `
-      <div class="loading-box">
-        <div class="spinner"></div>
+      <div class="loading-box" role="status">
+        <div class="spinner" aria-hidden="true"></div>
         <span>${msg}</span>
       </div>
     `;
   }
 
   function showPlError(msg) {
-    document.getElementById('plResult').innerHTML = `<div class="error-box">${escHtml(msg)}</div>`;
+    document.getElementById('plResult').innerHTML = `<div class="error-box" role="alert">${escHtml(String(msg))}</div>`;
   }
 
   /* ───────────────────────── 유틸 ───────────────────────── */

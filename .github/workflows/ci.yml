@@ -1,0 +1,32 @@
+name: CI (빌드 + 스모크 테스트)
+
+# 배포는 Cloudflare Pages Git 연동 빌드가 한다. 여기서는 배포하지 않고
+# 빌드가 되는지, 각 페이지에 잡히지 않은 스크립트 오류가 없는지만 확인한다.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: 헤드리스 브라우저 설치
+        run: npx playwright-core install --with-deps chromium
+
+      - name: 스모크 테스트
+        run: npm run smoke
+        env:
+          SMOKE_CHANNEL: chromium

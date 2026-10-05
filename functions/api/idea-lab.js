@@ -14,6 +14,11 @@
 //   — 클라이언트가 검열을 건너뛰어도 서버가 매번 다시 검사하므로 우회 불가.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { generateContent, generateImage } from './_ai.js';
+import { guard, json, readJson, errorResponse } from './_guard.js';
+
+// 입력 상한
+const BODY_MAX = 16 * 1024;
 const ITEM_MAX = 20;
 const ANSWER_MAX = 100;
 const NAME_MAX = 20;
@@ -25,16 +30,33 @@ const MAGIC_LABEL = {
   material: '재료 바꾸기',
 };
 const MOD_TIMEOUT_MS = 2500;
+const AI_FAIL = 'AI가 잠시 대답하지 못했어요. 잠시 후 다시 시도해 주세요.';
+const PARSE_FAIL = 'AI 응답을 읽지 못했어요. 다시 시도해 주세요.';
 
-// 로컬 금칙어 프리필터 — madang과 동일한 1차 방어선(API 왕복 없이 즉시 차단).
+// 로컬 금칙어 프리필터 — madang과 같은 목록의 1차 방어선(API 왕복 없이 즉시 차단).
+// 글자 사이 공백 허용 규칙: 붙여 쓴 형태("씨발")는 어디서든 잡고, 글자 사이에 공백을 넣은 형태("씨 발")는
+// 그 글자들이 앞뒤 낱말과 떨어져 있을 때만 잡는다. 예전 /시\s*발/은 "다시 발명"·"도시 발전"·"출시 발표"처럼
+// 앞 낱말의 끝 글자와 뒷 낱말의 첫 글자가 우연히 이어지는 경우까지 막았다(발명 앱의 핵심 낱말과 충돌).
+// 놓친 변형은 뒤이은 OpenAI Moderation이 다시 거른다.
+const HANGUL = '가-힣ㄱ-ㅎㅏ-ㅣ';
+const SPACED_WORDS = [
+  '씨발', '시발', '씨팔', 'ㅅㅂ', 'ㅆㅂ',
+  '개새끼', '개색끼', '개새기',
+  '병신', '븅신', 'ㅂㅅ',
+  '존나', '조낸',
+  '지랄', 'ㅈㄹ',
+  '창녀',
+];
+function spacedWordRe(word) {
+  const chars = [...word];
+  // 붙여 쓴 형태 | (앞에 한글이 붙지 않은 자리에서) 글자 사이 공백 허용 + 끝은 낱말 경계 또는 흔한 접미(야·아·들·놈·년)
+  return new RegExp(`${word}|(?<![${HANGUL}])${chars.join('\\s*')}(?=$|[^${HANGUL}]|[야아들놈년])`, 'i');
+}
 const LOCAL_BAD_PATTERNS = [
-  /씨\s*발|시\s*발|씨\s*팔|ㅅ\s*ㅂ|ㅆ\s*ㅂ/i,
-  /개\s*새\s*끼|개\s*색\s*끼|개\s*새\s*기/i,
-  /병\s*신|븅\s*신|ㅂ\s*ㅅ/i,
-  /좆|존\s*나|조\s*낸/i,
-  /지\s*랄|ㅈ\s*ㄹ/i,
+  ...SPACED_WORDS.map(spacedWordRe),
+  /좆/i,
   /미친\s*놈|미친\s*년/i,
-  /창\s*녀|걸레\s*년/i,
+  /걸레\s*년/i,
   /죽어라|뒤져라/i,
   /fuck|shit|bitch|asshole/i,
 ];
@@ -70,10 +92,6 @@ async function moderateAll(env, texts) {
   return moderate(env, joined);
 }
 
-const cors = { 'Access-Control-Allow-Origin': '*' };
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
-}
 
 function cleanStr(v, max) {
   if (typeof v !== 'string') return '';
@@ -93,14 +111,16 @@ function extractJson(text) {
 
 export async function onRequest(ctx) {
   const { request, env } = ctx;
-  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-  if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+  if (request.method !== 'POST') return json({ error: '허용되지 않은 방식입니다.' }, 405);
 
-  let body;
-  try { body = await request.json(); } catch { return json({ error: 'JSON 파싱 실패' }, 400); }
+  // 같은 출처에서만 받는다. 한도: LIMITS['idea-lab'] + AI 텍스트·그림 한도(_ai.js가 따로 셈)
+  const blocked = await guard(request, 'idea-lab');
+  if (blocked) return blocked;
+
+  const body = await readJson(request, BODY_MAX);
+  if (body instanceof Response) return body;
 
   const action = body.action;
-  const { generateContent, generateImage } = await import('./_ai.js');
 
   // ── 공통 입력 정리 ──
   const item = cleanStr(body.item, ITEM_MAX);
@@ -141,18 +161,20 @@ export async function onRequest(ctx) {
       try {
         text = await generateContent({ systemPrompt, userMessage, env, temperature: 0.8, request });
       } catch (e) {
-        return json({ error: e.message }, e.status || 502);
+        console.error('[idea-lab]', action, e && e.message);
+        return errorResponse(e, AI_FAIL);
       }
       let out;
       try {
         out = extractJson(text);
         if (typeof out.question !== 'string' || !Array.isArray(out.choices)) throw new Error('shape');
       } catch {
-        return json({ error: `LLM 응답 파싱 실패: ${text.slice(0, 120)}` }, 502);
+        console.error('[idea-lab] 응답 파싱 실패:', text.slice(0, 120));
+        return json({ error: PARSE_FAIL }, 502);
       }
       const question = cleanStr(out.question, 40);
       const choices = out.choices.filter((c) => typeof c === 'string').map((c) => cleanStr(c, 20)).slice(0, 3);
-      if (!question || choices.length < 2) return json({ error: 'LLM 응답 형식이 올바르지 않습니다' }, 502);
+      if (!question || choices.length < 2) return json({ error: PARSE_FAIL }, 502);
       return json({ question, choices });
     }
 
@@ -178,17 +200,19 @@ export async function onRequest(ctx) {
       try {
         text = await generateContent({ systemPrompt, userMessage, env, temperature: 0.8, request });
       } catch (e) {
-        return json({ error: e.message }, e.status || 502);
+        console.error('[idea-lab]', action, e && e.message);
+        return errorResponse(e, AI_FAIL);
       }
       let out;
       try {
         out = extractJson(text);
         if (typeof out.summary !== 'string') throw new Error('shape');
       } catch {
-        return json({ error: `LLM 응답 파싱 실패: ${text.slice(0, 120)}` }, 502);
+        console.error('[idea-lab] 응답 파싱 실패:', text.slice(0, 120));
+        return json({ error: PARSE_FAIL }, 502);
       }
       const summary = cleanStr(out.summary, SUMMARY_MAX);
-      if (!summary) return json({ error: 'LLM 응답 형식이 올바르지 않습니다' }, 502);
+      if (!summary) return json({ error: PARSE_FAIL }, 502);
       return json({ summary });
     }
 
@@ -218,17 +242,19 @@ export async function onRequest(ctx) {
       try {
         text = await generateContent({ systemPrompt, userMessage, env, temperature: 0.9, request });
       } catch (e) {
-        return json({ error: e.message, customNameOk }, e.status || 502);
+        console.error('[idea-lab] name', e && e.message);
+        return json({ error: e && e.expose ? e.message : AI_FAIL, customNameOk }, (e && e.status) || 502);
       }
       let out;
       try {
         out = extractJson(text);
         if (!Array.isArray(out.names)) throw new Error('shape');
       } catch {
-        return json({ error: `LLM 응답 파싱 실패: ${text.slice(0, 120)}`, customNameOk }, 502);
+        console.error('[idea-lab] 응답 파싱 실패:', text.slice(0, 120));
+        return json({ error: PARSE_FAIL, customNameOk }, 502);
       }
       const names = out.names.filter((n) => typeof n === 'string').map((n) => cleanStr(n, NAME_MAX)).slice(0, 3);
-      if (!names.length) return json({ error: 'LLM 응답 형식이 올바르지 않습니다', customNameOk }, 502);
+      if (!names.length) return json({ error: PARSE_FAIL, customNameOk }, 502);
       return json({ names, customNameOk });
     }
 
@@ -251,13 +277,15 @@ export async function onRequest(ctx) {
       try {
         b64 = await generateImage({ prompt, env, request });
       } catch (e) {
-        return json({ error: e.message || '이미지 생성에 실패했습니다.' }, e.status || 502);
+        console.error('[idea-lab] image', e && e.message);
+        return errorResponse(e, '그림을 만들지 못했어요. 잠시 후 다시 시도해 주세요.');
       }
       return json({ b64 });
     }
 
-    return json({ error: `알 수 없는 action: ${action}` }, 400);
+    return json({ error: '알 수 없는 요청입니다.' }, 400);
   } catch (e) {
-    return json({ error: e && e.message ? e.message : '서버 오류' }, 500);
+    console.error('[idea-lab] 서버 오류:', e && e.message);
+    return json({ error: '서버 오류가 발생했어요. 잠시 후 다시 시도해 주세요.' }, 500);
   }
 }

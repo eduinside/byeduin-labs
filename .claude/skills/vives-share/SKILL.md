@@ -6,7 +6,7 @@ description: >
   or when the user mentions "공유 기능", "share link", "URL 공유", or wants
   users to share app state via a link. Covers the full pattern:
   base64url encoding of state into the URL hash (#share=...), short.io URL
-  shortening via the existing /.netlify/functions/shorten proxy, permission
+  shortening via the existing /api/shorten proxy, permission
   levels (보기 전용 / 복제 허용) embedded in the payload, and recipient-side
   decoding with view-only mode or a modal — all consistent with the patterns
   already used in book-share and chalkboard.
@@ -16,6 +16,18 @@ description: >
 
 This skill codifies the sharing pattern used in book-share and chalkboard.
 Follow these steps when adding share to a new app or extending an existing one.
+
+> **2026-10 update — use the shared helpers.** Every AppLayout page loads
+> `/common/ui.js` (`window.VUI`, docs: `docs/common-ui.md`). Use
+> `VUI.share.encode(obj)` / `VUI.share.decode(str, validate)` instead of a
+> hand-written `btoa(encodeURIComponent())` (UTF-8 base64url, ~1/3 the length
+> for Korean; `decode` still reads the legacy formats), and
+> `VUI.share.link(url, {show})` instead of hand-written shorten + clipboard code
+> (falls back to a link/QR dialog when copying fails). Always validate decoded
+> data field by field (`VSafe.num/int/safeUrl`) before using it, and never put
+> it into `innerHTML` or inline `onclick`. Simulation apps can use
+> `SimKit.share` (`docs/sim-kit.md`). The step-by-step code below shows the
+> underlying pattern; prefer the helpers in new code.
 
 ## Step 1: Gather requirements
 
@@ -55,7 +67,7 @@ function buildShareURL(permission) {
 
 ## Step 3: 단축 URL + 클립보드 복사 (발신 측)
 
-`/.netlify/functions/shorten`은 이미 배포된 프록시다. **재구현하지 않는다.**
+`/api/shorten`은 이미 배포된 프록시다. **재구현하지 않는다.**
 
 ```js
 async function doShare(permission) {
@@ -65,7 +77,7 @@ async function doShare(permission) {
   const btn = document.getElementById('btn-share');
   btn.disabled = true;
   try {
-    const res = await fetch('/.netlify/functions/shorten', {
+    const res = await fetch('/api/shorten', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: longURL }),
@@ -286,7 +298,7 @@ function cloneAndOpen() {
 - [ ] 모든 mutation 함수에 `if (viewOnlyData) return;` 가드 추가
 - [ ] 보기 전용 상태에서 공유 버튼 및 편집 컨트롤 비활성화
 - [ ] `navigator.clipboard` 실패 시 fallback (로컬 http에서 미지원)
-- [ ] `/.netlify/functions/shorten` 실패 시 원본 URL 복사로 fallback
+- [ ] `/api/shorten` 실패 시 원본 URL 복사로 fallback
 - [ ] 화면 이동(홈으로 돌아가기 등) 시 `viewOnlyData` 초기화 + CSS 클래스 제거
 - [ ] undo 스택이 있다면 보기 전용 진입/이탈 시 초기화
 

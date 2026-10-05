@@ -20,6 +20,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         pointer-events: none; z-index: 0;
       }
       .oc-root { position: relative; z-index: 1; }
+      .oc-root .app-badge { font-size: 14px; }   /* 학생용: 글자 14px 이상 */
 
       /* ── 검색 ── */
       .oc-search {
@@ -47,10 +48,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         box-shadow: 0 0 0 3px rgba(0,111,238,0.14);
       }
       .oc-clear {
-        position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-        width: 28px; height: 28px; border-radius: 50%;
-        border: none; background: var(--bg-sec); color: var(--fg-muted);
-        font-size: 14px; cursor: pointer; display: none;
+        position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+        width: 44px; height: 44px; border-radius: 50%;
+        border: none; background: transparent; color: var(--fg-muted);
+        font-size: 16px; cursor: pointer; display: none;
+      }
+      .oc-clear::before {
+        content: ''; position: absolute; inset: 8px; border-radius: 50%;
+        background: var(--bg-sec); z-index: -1;
       }
       .oc-clear.show { display: block; }
       .oc-clear:hover { color: var(--fg); }
@@ -61,9 +66,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         margin-top: 12px;
       }
       .oc-topic {
-        padding: 6px 11px; border-radius: 99px;
+        min-height: 40px; padding: 6px 13px; border-radius: 99px;
         border: 1px solid var(--border); background: var(--bg);
-        color: var(--fg-muted); font-size: 12.5px; font-weight: 600; font-family: inherit;
+        color: var(--fg-muted); font-size: 14px; font-weight: 600; font-family: inherit;
         cursor: pointer; transition: border-color .15s, color .15s, background .15s;
       }
       .oc-topic:hover { border-color: var(--success); color: var(--fg); }
@@ -81,23 +86,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }
       .oc-filter::-webkit-scrollbar { display: none; }
       .oc-filter button {
-        flex: 1; min-width: max-content;
+        flex: 1; min-width: max-content; min-height: 44px;
         padding: 8px 10px; border-radius: 9px; border: none;
         background: transparent; color: var(--fg-muted);
-        font-size: 13px; font-weight: 600; font-family: inherit;
+        font-size: 14px; font-weight: 600; font-family: inherit;
         cursor: pointer; transition: background .15s, color .15s;
         display: inline-flex; align-items: center; justify-content: center; gap: 5px;
       }
       .oc-filter button:hover { color: var(--fg); }
       .oc-filter button.on { background: var(--bg); color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
       [data-theme="dark"] .oc-filter button.on { background: #262626; }
-      .oc-filter .cnt { font-size: 11px; font-weight: 700; opacity: .55; }
-      .oc-filter .dot { width: 7px; height: 7px; border-radius: 50%; }
+      .oc-filter .cnt { font-size: 14px; font-weight: 700; opacity: .7; }
+      .oc-filter .dot { width: 8px; height: 8px; border-radius: 50%; }
 
       .oc-info {
-        display: flex; justify-content: space-between; align-items: baseline;
+        display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px;
         margin: 18px 2px 8px;
-        font-size: 12.5px; color: var(--fg-muted);
+        font-size: 14px; color: var(--fg-muted);
       }
       .oc-info b { color: var(--fg); }
 
@@ -112,12 +117,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         margin-bottom: 8px;
       }
       .oc-pick-label {
-        font-size: 11px; font-weight: 800; letter-spacing: .12em; color: #0e9f4f;
+        margin: 0; font-size: 14px; font-weight: 800; letter-spacing: .08em; color: #0b7a3e;
       }
       [data-theme="dark"] .oc-pick-label { color: #4ade80; }
       .oc-pick-again {
+        min-height: 44px; padding: 0 8px; margin-right: -8px;
         border: none; background: none; font-family: inherit;
-        font-size: 12px; font-weight: 600; color: var(--fg-muted); cursor: pointer;
+        font-size: 14px; font-weight: 600; color: var(--fg-muted); cursor: pointer;
       }
       .oc-pick-again:hover { color: var(--primary); }
       .oc-pick .oc-item { border: none; padding: 0; background: none; }
@@ -132,7 +138,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }
       @keyframes ocIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
       .oc-title { font-size: 15.5px; font-weight: 700; line-height: 1.4; letter-spacing: -.01em; }
-      .oc-kw { margin-top: 4px; font-size: 12.5px; color: var(--fg-muted); line-height: 1.6; }
+      .oc-kw { margin-top: 4px; font-size: 14px; color: var(--fg-muted); line-height: 1.6; }
       .oc-kw span + span::before { content: '·'; margin: 0 5px; opacity: .5; }
       .oc-where { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
       .oc-item mark {
@@ -143,9 +149,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       .pf {
         display: inline-flex; align-items: center; gap: 5px;
         padding: 5px 9px; border-radius: 7px;
-        font-size: 11.5px; font-weight: 700; line-height: 1.3; letter-spacing: -.01em;
+        font-size: 14px; font-weight: 700; line-height: 1.3; letter-spacing: -.01em;
         text-decoration: none;
       }
+      a.pf { min-height: 40px; padding: 5px 12px; }
       .pf b { font-weight: 800; }
       .pf-nf   { background: rgba(229,9,20,0.09);  color: #d10812; }
       .pf-tv   { background: rgba(255,21,60,0.08); color: #e0103a; }
@@ -165,21 +172,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         color: var(--fg-muted); font-size: 14px; line-height: 1.8;
       }
       .oc-more {
-        display: block; width: 100%; margin-top: 10px; padding: 11px;
+        display: block; width: 100%; margin-top: 10px; padding: 11px; min-height: 48px;
         border: 1px dashed var(--border); border-radius: 12px;
         background: transparent; color: var(--fg-muted);
-        font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+        font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
       }
       .oc-more[hidden] { display: none; }
       .oc-more:hover { border-color: var(--primary); color: var(--primary); }
       .oc-note {
         margin-top: 28px; text-align: center;
-        font-size: 11.5px; color: var(--fg-muted); line-height: 1.7;
+        font-size: 14px; color: var(--fg-muted); line-height: 1.7;
       }
 
       @media (max-width: 480px) {
-        .oc-search input { font-size: 15px; padding: 14px 40px 14px 42px; }
-        .oc-filter button { font-size: 12px; padding: 8px 8px; }
+        .oc-search input { font-size: 16px; padding: 14px 48px 14px 42px; }
+        .oc-filter button { font-size: 14px; padding: 8px 8px; }
         .oc-filter .cnt { display: none; }
       }
     </style>
@@ -198,14 +205,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <input id="q" type="search" placeholder="생물이나 주제 검색 (예: 해파리, 사막)" autocomplete="off" aria-label="생물·주제 검색">
       <button class="oc-clear" id="clear" type="button" aria-label="검색어 지우기">✕</button>
     </div>
-    <div class="oc-topics" id="topics" aria-label="자주 찾는 주제"></div>
+    <div class="oc-topics" id="topics" role="group" aria-label="자주 찾는 주제"></div>
 
-    <div class="oc-filter" id="filter" role="tablist" aria-label="시청처 필터"></div>
+    <div class="oc-filter" id="filter" role="group" aria-label="볼 수 있는 곳으로 거르기"></div>
 
     <div id="pickWrap"></div>
-    <div class="oc-info"><span id="info"></span><span id="hint"></span></div>
-    <div class="oc-list" id="list"></div>
+    <div class="oc-info"><span id="info" role="status" aria-live="polite"></span><span id="hint"></span></div>
+    <div class="oc-list" id="list" role="list" aria-label="옥토넛 편 목록"></div>
     <button class="oc-more" id="more" type="button" hidden>더 보기</button>
+    <button class="oc-more" id="showAll" type="button" hidden>전체 목록 보기</button>
 
     <p class="oc-note">시청처는 2026년 10월 기준이며 서비스 사정에 따라 바뀔 수 있어요.<br>대기중 = 국내 OTT에 아직 공개되지 않은 편</p>
   </main>
@@ -234,8 +242,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     var $hint = document.getElementById('hint');
     var $list = document.getElementById('list');
     var $more = document.getElementById('more');
+    var $showAll = document.getElementById('showAll');
 
     var F = 'all', shown = PAGE, pick = null;
+    var browse = false;   // 첫 화면은 오늘의 추천만 — 검색·필터·주제를 고르거나 '전체 목록 보기'를 누르면 목록 표시
 
     function esc(s) {
       return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -259,7 +269,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         c += '<span class="pf pf-tv"><b>티빙</b> ' + esc(t[0]) + ' ' + (isSeries ? t[1] + '화' : '#' + t[1]) + '</span>';
       }
       if (e[4]) {
-        c += '<a class="pf pf-yt" target="_blank" rel="noopener" href="https://youtu.be/' + encodeURIComponent(e[4]) + '">▶ 유튜브</a>';
+        c += '<a class="pf pf-yt" target="_blank" rel="noopener" href="https://youtu.be/' + encodeURIComponent(e[4]) + '" aria-label="' + esc(e[0]) + ' 유튜브에서 보기 (새 창)">▶ 유튜브</a>';
       }
       if (e[5]) {
         var w = e[5].split('#');
@@ -270,8 +280,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     function item(e, k) {
       var kws = e[1].split(/\s+/).filter(Boolean).map(function (w) { return '<span>' + hl(w, k) + '</span>'; }).join('');
-      return '<div class="oc-item"><div class="oc-title">' + hl(e[0], k) + '</div>' +
-        '<div class="oc-kw">' + kws + '</div>' +
+      return '<div class="oc-item" role="listitem"><h2 class="oc-title" style="margin:0">' + hl(e[0], k) + '</h2>' +
+        '<div class="oc-kw"><b class="visually-hidden">낱말: </b>' + kws + '</div>' +
         '<div class="oc-where">' + where(e) + '</div></div>';
     }
 
@@ -287,28 +297,51 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     function renderPick(show) {
       if (!show) { $pick.innerHTML = ''; return; }
       if (!pick) pick = todayPick(false);
-      $pick.innerHTML = '<div class="oc-pick"><div class="oc-pick-head"><span class="oc-pick-label">오늘의 추천</span>' +
-        '<button class="oc-pick-again" id="again" type="button">다른 편 보기 ↻</button></div>' + item(pick, '') + '</div>';
+      $pick.innerHTML = '<section class="oc-pick" aria-labelledby="pickLabel"><div class="oc-pick-head"><h2 class="oc-pick-label" id="pickLabel">오늘의 추천</h2>' +
+        '<button class="oc-pick-again" id="again" type="button">다른 편 보기 ↻</button></div>' +
+        '<div role="list" aria-live="polite">' + item(pick, '') + '</div></section>';
       document.getElementById('again').onclick = function () {
         var prev = pick;
         do { pick = todayPick(true); } while (pick === prev && D.length > 1);
         renderPick(true);
+        var again = document.getElementById('again');   // 다시 그린 버튼으로 키보드 포커스 복원
+        if (again) again.focus();
       };
     }
 
+    // 필터·주제 버튼은 처음 한 번만 만들고 이후에는 상태·개수만 바꾼다
+    // (매번 innerHTML로 다시 그리면 Tab/Enter로 누른 버튼의 키보드 포커스가 사라짐)
+    var filterBtns = null, topicBtns = null;
     function renderFilter(base) {
-      $filter.innerHTML = FILTERS.map(function (f) {
-        var n = base.filter(f.test).length;
-        var dot = f.id === 'all' ? '' : '<span class="dot dot-' + f.id + '"></span>';
-        return '<button type="button" role="tab" data-f="' + f.id + '" aria-selected="' + (F === f.id) + '" class="' + (F === f.id ? 'on' : '') + '">' +
-          dot + f.label + ' <span class="cnt">' + n + '</span></button>';
-      }).join('');
+      if (!filterBtns) {
+        $filter.innerHTML = FILTERS.map(function (f) {
+          var dot = f.id === 'all' ? '' : '<span class="dot dot-' + f.id + '"></span>';
+          return '<button type="button" data-f="' + f.id + '">' +
+            dot.replace('<span ', '<span aria-hidden="true" ') + f.label + ' <span class="cnt"></span></button>';
+        }).join('');
+        filterBtns = $filter.querySelectorAll('button[data-f]');
+      }
+      FILTERS.forEach(function (f, i) {
+        var b = filterBtns[i], on = F === f.id, n = base.filter(f.test).length;
+        b.className = on ? 'on' : '';
+        b.setAttribute('aria-pressed', String(on));
+        b.querySelector('.cnt').textContent = n;
+        b.setAttribute('aria-label', f.label + ' ' + n + '편');
+      });
     }
 
     function renderTopics(k) {
-      $topics.innerHTML = TOPICS.map(function (t) {
-        return '<button type="button" class="oc-topic' + (k === t ? ' on' : '') + '">' + t + '</button>';
-      }).join('');
+      if (!topicBtns) {
+        $topics.innerHTML = TOPICS.map(function (t) {
+          return '<button type="button" class="oc-topic">' + t + '</button>';
+        }).join('');
+        topicBtns = $topics.querySelectorAll('.oc-topic');
+      }
+      TOPICS.forEach(function (t, i) {
+        var on = k === t;
+        topicBtns[i].classList.toggle('on', on);
+        topicBtns[i].setAttribute('aria-pressed', String(on));
+      });
     }
 
     function syncUrl(k) {
@@ -331,6 +364,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       renderTopics(k);
       renderPick(!kk && F === 'all');
 
+      var landing = !kk && F === 'all' && !browse;
+      $showAll.hidden = !landing;
+      if (landing) {
+        $info.innerHTML = '전체 <b>' + r.length + '편</b>';
+        $hint.textContent = '생물·주제를 검색하거나 위에서 골라 보세요';
+        $showAll.textContent = '전체 ' + r.length + '편 목록 보기';
+        $list.innerHTML = '';
+        $more.hidden = true;
+        syncUrl(k);
+        return;
+      }
+
       if (kk) {
         $info.innerHTML = '<b>' + r.length + '편</b> 찾았어요';
         $hint.textContent = '';
@@ -340,7 +385,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }
 
       if (!r.length) {
-        $list.innerHTML = '<div class="oc-empty">일치하는 편이 없어요 🐙<br>다른 낱말(예: 고래, 상어, 사막)로 찾아보세요.</div>';
+        $list.innerHTML = '<div class="oc-empty" role="listitem">일치하는 편이 없어요 🐙<br>다른 낱말(예: 고래, 상어, 사막)로 찾아보세요.</div>';
         $more.hidden = true;
       } else {
         $list.innerHTML = r.slice(0, shown).map(function (e) { return item(e, k); }).join('');
@@ -361,7 +406,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       var b = ev.target.closest('button[data-f]'); if (!b) return;
       F = b.dataset.f; run();
     });
-    $more.addEventListener('click', function () { shown += PAGE; run(false); });
+    $showAll.addEventListener('click', function () {
+      browse = true; run();
+      var first = $list.children[0];
+      if (first) { first.setAttribute('tabindex', '-1'); first.focus(); }
+    });
+    $more.addEventListener('click', function () {
+      var before = shown;
+      shown += PAGE; run(false);
+      // 새로 나온 첫 편으로 키보드 포커스를 옮겨 이어 읽게 한다
+      var first = $list.children[before];
+      if (first) { first.setAttribute('tabindex', '-1'); first.focus(); }
+    });
     document.addEventListener('keydown', function (ev) {
       if (ev.key === '/' && document.activeElement !== $q) { ev.preventDefault(); $q.focus(); }
       else if (ev.key === 'Escape' && document.activeElement === $q && $q.value) { $q.value = ''; run(); }

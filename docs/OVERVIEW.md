@@ -12,7 +12,7 @@
 src/
 ├── pages/
 │   ├── index.astro        ← 홈 (카테고리 트리 사이드바)
-│   └── apps/<id>/index.astro ← 앱 페이지 (36개)
+│   └── apps/<id>/index.astro ← 앱 페이지 (공개 35개 + `_<id>/` 비공개 5개는 빌드 제외)
 └── layouts/AppLayout.astro ← 공통 헤드(SEO 메타·공통 CSS/JS)와 <body data-shell> 래퍼
 
 public/                    ← 빌드 시 dist/로 그대로 복사 (경로 유지)
@@ -52,7 +52,7 @@ docs/                  ← 개발 문서
 | `moon-phase-v2` | 달의 위상 3D | 달을 직접 돌려 위상 이해 + 일식·월식 |
 | `moon-phase` | Moon Phase | 오늘의 달 위상 시뮬레이터(월령 자동 계산) |
 | `solar-system` | 태양계 여행 | 여덟 행성 공전·크기·거리 비교 + 행성 도감 |
-| `volcano` | 화산 탐험대 | 3D 위성지도로 세계 화산 11개 탐험 |
+| `volcano` | 화산 탐험대 | 3D 위성지도로 세계의 산 11곳 탐험(화산 7·화산 아닌 산 4) |
 | `circuit-lab` | 전기회로 공작소 | 전지·전구·스위치 연결로 직렬·병렬 밝기 비교 |
 | `eco-web` | 생태계 탐험대 | 먹이그물 잇기·피라미드·평형 시나리오 종합 실험 |
 | `food-bike` | 식품구성자전거 | 음식을 담아 바퀴를 채우는 균형 식단 게임 |
@@ -80,12 +80,14 @@ docs/                  ← 개발 문서
 | `allowance-calculator` | 수당 계산기 | 세전·세후 수당·기타소득 세금 자동 계산 |
 | `search` | 교육문서 검색 | AI 기반 교육문서 검색·출처 확인 |
 | `login-helper` | 에듀나비 로그인 | 에듀나비 교원업무지원 로그인 도우미 (모달·외부 링크) |
+| `seating` | 자리 배치 | 여러 학급 자리표 · 조건 지켜 랜덤 배치(떨어뜨릴 쌍·앞줄·성별·이전 짝) · 끌어 놓기 · A4 인쇄 (브라우저 저장만) |
 
 ### 생활편의 (`util-life`)
 | ID | 이름 | 설명 |
 |---|---|---|
 | `md-editor` | 마크다운 편집기 | 마크다운 열기·편집·미리보기·공유 |
 | `qr` | QR | QR 생성·스캔·단축주소 (PWA 지원) |
+| `spell-checker` | AI 맞춤법 검사 | AI가 한국어 맞춤법·문법을 교정하고 이유 설명. GAS·외부 앱에서 API로도 호출 가능 |
 
 ### 크롬 확장 (`util-chrome`)
 | ID | 이름 | 설명 |
@@ -97,8 +99,8 @@ docs/                  ← 개발 문서
 | ID | 이름 | 설명 |
 |---|---|---|
 | `book-share` | 도서 공유 | ISBN 도서 정보 조회·파일 저장·공유 — 카카오 책 검색 API(target=isbn) 조회는 D1 `book_cache` 90일 캐시 경유, 호출량 초과 시 429 안내 후 중단 (알라딘 Open API 종료 대응, `docs/book-share-aladin-plan.md`) |
-| `bubble-chat` | 버블챗 | P2P 실시간 채팅 |
-| `madang` | 마당 | 패들렛형 실시간 응답 보드 — rev 조건부 폴링, 텍스트·HTML·사진·그림(R2) 카드, 이모지 반응, 저학년 모드, 사전승인·잠금·이름숨김·발표모드·복제, QR 초대·코드 신원·자동검열 |
+| `bubble-chat` | 버블챗 (비공개) | P2P 실시간 채팅 |
+| `madang` | 마당 (비공개) | 패들렛형 실시간 응답 보드 — rev 조건부 폴링, 텍스트·HTML·사진·그림(R2) 카드, 이모지 반응, 저학년 모드, 사전승인·잠금·이름숨김·발표모드·복제, QR 초대·코드 신원·자동검열 |
 | `edulink` | 에듀링크 | 교육용 단축주소·설문·체험 지도 (모달·외부 링크) |
 | `eduteam` | 에듀팀 | 팀 전용 공유 대시보드 (모달·외부 링크) |
 
@@ -107,16 +109,17 @@ docs/                  ← 개발 문서
 |---|---|---|
 | `yt-thumb` | 유튜브 썸네일 | 유튜브 썸네일 추출기 |
 | `grid-maker` | 그리드 메이커 | 이미지 그리드 분할 저장 |
-| `signage-maker` | 사이니지 메이커 | 사이니지용 세로 이미지 AI 생성기 |
-| `tts-reader` | 로컬 TTS 리더 | 브라우저 내장 음성으로 텍스트를 읽어주는 완전 로컬 TTS, MP3 다운로드 지원 |
+| `signage-maker` | 사이니지 메이커 (비공개) | 사이니지용 세로 이미지 AI 생성기 |
+| `tts-reader` | 로컬 TTS 리더 | 브라우저 내장 음성으로 텍스트를 읽어주는 TTS(입력 글은 서버로 보내지 않음, 온라인 음성은 브라우저 회사 서버 경유 가능), MP3 다운로드 지원 |
+| `padlet-bulk-uploader` | 패들렛 일괄 업로더 | 붙여넣은 텍스트를 내 패들렛 보드에 한 번에 업로드(실패·취소분만 재시도) |
 
 ### 노션 도구 (`util-notion`)
 | ID | 이름 | 설명 |
 |---|---|---|
-| `embed` | 임베드 | 외부 URL → 반응형 iframe → 노션 임베드 |
+| `embed` | 임베드 (비공개) | 외부 URL → 반응형 iframe → 노션 임베드 |
 | `notion-image-downloader` | 노션 이미지 다운로드 | 노션 DB 이미지 일괄 다운로드 |
 | `notion-styler` | 노션 스타일러 | 노션 수식 LaTeX 스타일러 |
-| `shortcut` | 빠른 버튼 | 웹 링크 → 딥링크 버튼 변환·저장 |
+| `shortcut` | 빠른 버튼 (비공개) | 웹 링크 → 딥링크 버튼 변환·저장 |
 
 ---
 
@@ -178,7 +181,9 @@ docs/                  ← 개발 문서
 >
 > **주의(2026-07-04)**: `madang-img`는 폴더 이름 자체를 `[board]`처럼 대괄호로 만들면 Cloudflare Pages Functions 빌드가 깨져 배포 전체가 정적 사이트로 떨어진 적이 있다(`/api/*` 전체 404). 다중 세그먼트 동적 라우트는 반드시 `[[path]].js` 형태의 **단일 파일 catch-all**로 작성할 것 — 디렉터리 자체를 `[param]`으로 만들지 말 것.
 >
-> **AI 호출 빈도 제한 (Rate Limiting)**: `functions/api/_ai.js` 모듈을 통하는 모든 AI API 호출은 `CF-Connecting-IP` 헤더를 바탕으로 한 엣지 메모리 sharded rate limiting 시스템의 감시를 받습니다. 무차별적인 자동화 공격 및 비용 과다 방지를 위해 **텍스트 생성 분당 30회 / 이미지 생성 분당 5회**의 한도를 엄격히 초과할 시 `429 Too Many Requests` 에러를 반환합니다.
+> **출처 검사·요청 상한 (`functions/api/_guard.js`)**: AI·외부 프록시·동기화 쓰기 엔드포인트는 공용 가드를 거친다. ① 요청 호스트·Origin(없으면 Referer)이 `eduin.info`·`*.byeduin-labs.pages.dev`(미리보기)·localhost일 때만 처리(CORS `*` 없음), ② Cache API 카운터로 IP당 분·일 한도 + 사이트 전체 일 상한(값은 `_guard.js`의 `LIMITS`, colo별 근사치), ③ 본문 크기 상한 읽기, ④ 외부 원문 오류는 로그에만. 학교는 공인 IP 하나를 함께 쓰므로 IP당 한도는 넉넉히 두고 비용은 사이트 일 상한으로 막는다. 외부 `fetch`에는 모두 `AbortSignal.timeout`.
+>
+> **비공개 앱 API**: `madang*`·`signage*`는 `functions/api/_closed.js`로 410을 돌려준다(코드는 보존, `APP_CLOSED` 플래그).
 
 ---
 
@@ -196,6 +201,25 @@ docs/                  ← 개발 문서
 ---
 
 ## 주요 변경 이력
+
+### 2026-10 — 3단계: 공용 모듈·홈 개편·접근성, 자리 배치 신규
+- **공용 모듈**: `public/common/ui.js`(`window.VUI` — 토스트·모달 접근성·공유 인코딩/단축/링크·QR 대화상자·apiFetch·조사·저장, 문서 `docs/common-ui.md`), `public/common/sim-kit.{js,css}`(`window.SimKit` — 미션 컨트롤러·피드백·저장·공유·타이머·효과음, 문서 `docs/sim-kit.md`). 시뮬레이션 12개 앱과 일반 앱 전부 이관.
+- **레이아웃**: 앱 헤더·JSON-LD·SEO 메타를 빌드 시 출력(`src/components/app-meta.ts`), `seo-injector.js`는 독립 HTML 3종에서만 동작.
+- **홈**: 카드 빌드 시 출력, 검색창(초성·`?q=`·`/` 단축키), 공지 접기, 모바일 카테고리 칩, 영문 앱 제목 한국어 우선.
+- **접근성**: 모달 포커스·ESC, 키보드 조작, 라벨·aria-live, 터치 44px, 글자 14px, `prefers-reduced-motion` 전역 규칙(`data-motion="keep"` 예외).
+- **chalkboard**: Pointer Events로 터치·펜 입력.
+- **동기화**: 코드 연결 시 덮어쓰기 확인, set 모드 삭제 표식(`'__del__'`).
+- **받아쓰기 데이터** 216건 정정(`docs/dictation-review-2026-10.md`).
+- **자리 배치(`seating`) 신규** — 업무경감. 학급 목록 → 전체화면 보드, 조건 랜덤 배치, Pointer Events, 인쇄(이름 크게·표시 숨김), localStorage만 사용. 계획 `docs/seating-plan.md`.
+- 배포: Actions 워크플로 삭제, Cloudflare Git 연동 빌드만 사용.
+
+### 2026-10 — 전체 점검 후속 조치 (`docs/audit-2026-10.md`)
+- **숨김 앱 5개 비공개**: bubble-chat·madang·signage-maker·embed·shortcut 페이지 폴더를 `src/pages/apps/_<id>/`로 옮겨 빌드에서 제외(주소로도 404), 사이트맵·404 추천 제외, 관련 API 410. `hidden: true`는 이제 "비공개"를 뜻한다.
+- **공통**: `astro.config`에 `site` 설정(canonical·og:url localhost 문제), 앱별 중복 canonical 제거, 동기화 코드 화면 가림(`AB••••`, 패널에서 '보기'), 공용 `public/common/safe.js`(VSafe.esc·safeUrl·num·int), lucide 자체 호스팅(`public/vendor/`), 로고 축소본, `public/_headers`(캐시·최소 CSP).
+- **보안**: 공유 링크·QR·AI 답변이 HTML로 들어가던 경로 차단(md-editor·search는 DOMPurify, 인라인 onclick → data-* 위임, 공유 데이터 디코드 직후 형식 검증). 서버 공용 가드(위 API 절).
+- **앱 버그**: 시뮬레이션 미션 진행 불가(chance-lab·moon-phase-v2·eco-web·food-bike·circuit-lab·shape-move·solar-system 등), 공유 URL `/apps/` 누락(book-share·signage·scoring-table·flash-deck·chalkboard), yt-thumb 빈 ZIP, flash-deck 공유 버튼, timer 알람 막힘, file-tools 목표 용량 탐색, 수당 계산기 역산 등 — 상세는 커밋 이력.
+- **도구**: `npm run smoke`(빌드 결과 전 페이지 스크립트 오류 검사), `.github/workflows/ci.yml`(빌드 + 스모크), `scripts/cleanup-sync.mjs`·`cleanup-madang.mjs`(정리 스크립트, 기본 미리 보기), `migrations/0014`(중복 인덱스 삭제, 미적용).
+- **교사 검토 목록**: `docs/dictation-review-2026-10.md`(받아쓰기 발음·규칙 태그 의심 101건).
 
 ### 2026-10 — 옥토넛 어디서 보지 추가 (학습지원)
 

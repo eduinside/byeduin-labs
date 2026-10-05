@@ -9,11 +9,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   bodyWidth="wide"
 >
   <Fragment slot="head">
-    <script src="https://cdn.tailwindcss.com" is:inline=""></script>
+    <!-- 외부 런타임은 정확한 버전으로 고정(2026-10 기준). 자체 호스팅(public/vendor/)은 별도 과제 -->
+    <script src="https://cdn.tailwindcss.com/3.4.17" is:inline=""></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-  <script crossorigin="" src="https://unpkg.com/react@18/umd/react.production.min.js" is:inline=""></script>
-  <script crossorigin="" src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" is:inline=""></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js" is:inline=""></script>
+  <script crossorigin="" src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" is:inline=""></script>
+  <script crossorigin="" src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" is:inline=""></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.9/babel.min.js" is:inline=""></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" is:inline=""></script>
   <style is:global="">
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
@@ -214,7 +215,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         /* ── 코드 블록 다크모드 ── */
         [data-theme="dark"] .ns-code { background: #0d0d1a; border-color: #1e1e30; }
     </style>
-  <link rel="canonical" href="https://eduin.info/apps/notion-styler/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"Notion Styler","description":"LaTeX 수식을 아름답게 스타일링하고 HTML로 변환. 노션, 블로그에 바로 붙여넣기.","url":"https://eduin.info/apps/notion-styler/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -342,6 +342,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             </IconBase>
         );
 
+        // --- LaTeX 특수문자 이스케이프 (노션 수식 = KaTeX) ---
+        // 입력 글자 중 %(주석), &(열 구분), _(아래첨자), #, $, {, }, \, ^, ~ 는 LaTeX 명령으로 해석돼
+        // 결과가 깨지므로 글자 그대로 보이도록 바꾼다. '수식 (Math)' 스타일은 사용자가 LaTeX를 직접
+        // 쓰는 모드라 이스케이프하지 않는다. (KaTeX 0.16.8에서 \text·\textbf·\mathbb 등 렌더 확인)
+        const LATEX_TEXT_ESC = {
+            '\\': '\\textbackslash{}', '{': '\\{', '}': '\\}', '%': '\\%', '&': '\\&', '_': '\\_',
+            '#': '\\#', '$': '\\$', '^': '\\textasciicircum{}', '~': '\\textasciitilde{}',
+        };
+        const LATEX_MATH_ESC = {
+            '\\': '\\backslash{}', '{': '\\{', '}': '\\}', '%': '\\%', '&': '\\&', '_': '\\_',
+            '#': '\\#', '$': '\\$', '^': '\\hat{~}', '~': '\\sim{}',
+        };
+        const escapeLatexText = (s) => s.replace(/[\\{}%&_#$^~]/g, (c) => LATEX_TEXT_ESC[c]);
+        const escapeLatexMath = (s) => s.replace(/[\\{}%&_#$^~]/g, (c) => LATEX_MATH_ESC[c]);
+
         // --- Main App ---
 
         const NotionFormulaGenerator = () => {
@@ -420,11 +435,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
                     // Special handling for math fonts that ignore spaces (Bb, Cal, Frak)
                     if (['mathbb', 'mathcal', 'mathfrak'].includes(fontStyle)) {
-                        const processedLine = line.split(' ').join('~');
+                        const processedLine = escapeLatexMath(line).split(' ').join('~');
                         return `${cmd}{${processedLine}}`;
                     }
 
-                    return `${cmd}{${line}}`;
+                    return `${cmd}{${escapeLatexText(line)}}`;
                 });
                 const innerContent = styledLines.join(' \\\\ ');
                 const alignedContent = `\\begin{array}{${alignment}}${innerContent}\\end{array}`;
@@ -470,6 +485,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
             const handleCopy = () => {
                 const latex = generateLatex();
+                // 공용 VUI.copy(클립보드 → execCommand). 실패하면 코드 영역을 선택해 직접 복사하게 안내
+                if (window.VUI && VUI.copy) {
+                    VUI.copy(latex, '코드를 복사했어요 ✓').then((ok) => {
+                        if (ok) { setIsCopied(true); setTimeout(() => setIsCopied(false), 2000); return; }
+                        VUI.toast('자동 복사가 안 돼요. 코드를 길게 눌러 직접 복사해 주세요.', 'error');
+                    });
+                    return;
+                }
                 try {
                     const textArea = document.createElement("textarea");
                     textArea.value = latex;
@@ -547,6 +570,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                                 value={text}
                                 onChange={(e) => setText(e.target.value)}
                                 placeholder="여기에 텍스트를 입력하세요..."
+                                aria-label="수식으로 바꿀 텍스트"
                                 className="ns-textarea"
                             />
                         </div>
@@ -559,25 +583,25 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                             <div className="ns-label-row" style={{marginBottom:'16px'}}>
                                 <label className="ns-label" style={{margin:0}}>정렬</label>
                                 <div className="ns-align-btns">
-                                    <button onClick={() => setAlignment('l')} className={`ns-align-btn ${alignment === 'l' ? 'active' : ''}`} title="왼쪽"><AlignLeft size={14}/></button>
-                                    <button onClick={() => setAlignment('c')} className={`ns-align-btn ${alignment === 'c' ? 'active' : ''}`} title="가운데"><AlignCenter size={14}/></button>
-                                    <button onClick={() => setAlignment('r')} className={`ns-align-btn ${alignment === 'r' ? 'active' : ''}`} title="오른쪽"><AlignRight size={14}/></button>
+                                    <button type="button" onClick={() => setAlignment('l')} className={`ns-align-btn ${alignment === 'l' ? 'active' : ''}`} title="왼쪽" aria-label="왼쪽 정렬" aria-pressed={alignment === 'l'}><AlignLeft size={14}/></button>
+                                    <button type="button" onClick={() => setAlignment('c')} className={`ns-align-btn ${alignment === 'c' ? 'active' : ''}`} title="가운데" aria-label="가운데 정렬" aria-pressed={alignment === 'c'}><AlignCenter size={14}/></button>
+                                    <button type="button" onClick={() => setAlignment('r')} className={`ns-align-btn ${alignment === 'r' ? 'active' : ''}`} title="오른쪽" aria-label="오른쪽 정렬" aria-pressed={alignment === 'r'}><AlignRight size={14}/></button>
                                 </div>
                             </div>
 
                             {/* 색상 */}
                             <label className="ns-label">색상</label>
                             <div className="ns-tab-group" style={{marginBottom:'10px'}}>
-                                <button onClick={() => setColorMode('text')} className={`ns-tab ${colorMode === 'text' ? 'active' : ''}`}>
+                                <button type="button" onClick={() => setColorMode('text')} className={`ns-tab ${colorMode === 'text' ? 'active' : ''}`} aria-pressed={colorMode === 'text'}>
                                     <Type size={13}/> 글자색
                                 </button>
-                                <button onClick={() => setColorMode('background')} className={`ns-tab ${colorMode === 'background' ? 'active' : ''}`}>
+                                <button type="button" onClick={() => setColorMode('background')} className={`ns-tab ${colorMode === 'background' ? 'active' : ''}`} aria-pressed={colorMode === 'background'}>
                                     <PaintBucket size={13}/> 배경색
                                 </button>
                             </div>
                             <div className="ns-color-grid">
                                 {colorMode === 'background' && (
-                                    <button onClick={() => setBgColor('transparent')} className={`ns-swatch ns-swatch-transparent ${bgColor === 'transparent' ? 'selected' : ''}`} title="투명"/>
+                                    <button type="button" onClick={() => setBgColor('transparent')} className={`ns-swatch ns-swatch-transparent ${bgColor === 'transparent' ? 'selected' : ''}`} title="투명" aria-label="배경 투명" aria-pressed={bgColor === 'transparent'}/>
                                 )}
                                 {colors.map((c) => {
                                     const isActive = colorMode === 'text' ? textColor === c.value : bgColor === c.value;
@@ -585,8 +609,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                                     const displayClass = colorMode === 'text' ? c.class : c.bgClass;
                                     if (colorMode === 'background' && c.value === 'default') return null;
                                     return (
-                                        <button key={c.value} onClick={() => setFn(c.value)}
-                                            className={`ns-swatch ${displayClass} ${isActive ? 'selected' : ''}`} title={c.name}>
+                                        <button type="button" key={c.value} onClick={() => setFn(c.value)}
+                                            className={`ns-swatch ${displayClass} ${isActive ? 'selected' : ''}`} title={c.name}
+                                            aria-label={(colorMode === 'text' ? '글자색 ' : '배경색 ') + c.name} aria-pressed={isActive}>
                                             {c.value === 'custom' && (
                                                 <div className="ns-custom-color">
                                                     <input type="color" className="ns-color-input"
@@ -611,7 +636,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                             <label className="ns-label" style={{marginTop:'16px'}}>크기 (Size)</label>
                             <div className="ns-tab-group">
                                 {sizes.map(s => (
-                                    <button key={s.value} onClick={() => setSize(s.value)} className={`ns-tab ${size === s.value ? 'active' : ''}`}>{s.name}</button>
+                                    <button type="button" key={s.value} onClick={() => setSize(s.value)} className={`ns-tab ${size === s.value ? 'active' : ''}`} aria-pressed={size === s.value}>{s.name}</button>
                                 ))}
                             </div>
 
@@ -619,7 +644,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                             <label className="ns-label" style={{marginTop:'16px'}}>글꼴 스타일</label>
                             <div className="ns-font-grid">
                                 {fontStyles.map(style => (
-                                    <button key={style.value} onClick={() => setFontStyle(style.value)}
+                                    <button type="button" key={style.value} onClick={() => setFontStyle(style.value)} aria-pressed={fontStyle === style.value}
                                         className={`ns-font-btn ${fontStyle === style.value ? 'active' : ''}`}
                                         title={style.note || style.name}>
                                         {style.name}
@@ -648,7 +673,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                             <div className="ns-card-title">생성된 코드 (Notion용)</div>
                             <div className="ns-code-wrap">
                                 <pre className="ns-code">{currentLatex}</pre>
-                                <button onClick={handleCopy} className={`ns-copy-btn ${isCopied ? 'copied' : ''}`} title="복사">
+                                <button type="button" onClick={handleCopy} className={`ns-copy-btn ${isCopied ? 'copied' : ''}`} title="복사" aria-label={isCopied ? '복사됨' : '코드 복사'}>
                                     {isCopied ? <Check size={16}/> : <Copy size={16}/>}
                                 </button>
                             </div>
@@ -670,6 +695,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<NotionFormulaGenerator />);
+    </script>
+
+    <script is:inline="">
+        // 외부 CDN(React·Babel 등) 중 하나라도 막히면 빈 화면만 남으므로 안내를 보여준다
+        window.addEventListener('load', function () {
+            setTimeout(function () {
+                var r = document.getElementById('root');
+                if (!r || r.childElementCount) return;
+                var missing = [];
+                if (!window.React || !window.ReactDOM) missing.push('React');
+                if (!window.Babel) missing.push('Babel');
+                if (!window.katex) missing.push('KaTeX');
+                r.innerHTML = '<div style="max-width:560px;margin:4rem auto;padding:1.25rem 1.5rem;border:1px solid var(--border);border-radius:12px;background:var(--card-bg);color:var(--fg);line-height:1.6">' +
+                    '<b>화면을 불러오지 못했습니다.</b><br>필요한 외부 도구' + (missing.length ? '(' + missing.join(', ') + ')' : '') +
+                    '를 받지 못했어요. 학교망에서 외부 사이트(unpkg.com, cdn.jsdelivr.net, cdn.tailwindcss.com)가 막혀 있을 수 있습니다. 새로고침하거나 다른 네트워크에서 열어 주세요.</div>';
+            }, 2500);
+        });
     </script>
 
 

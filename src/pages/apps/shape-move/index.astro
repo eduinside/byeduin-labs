@@ -8,6 +8,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   bodyShell="immersive"
 >
   <Fragment slot="head">
+    <link rel="stylesheet" href="/common/sim-kit.css">
+    <script is:inline src="/common/sim-kit.js"></script>
     <style is:global="">
 /* ══════════════════════════════════════════════
    shape-move — 도형의 이동 시뮬레이터
@@ -33,6 +35,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   --sm-radius: 18px;
   --sm-danger: #ef5350;
   --sm-star: #ffc107;
+  --sm-ok-fg: #2e7d32;
+  --sm-warn-fg: #e65100;
+  --sk-accent: var(--sm-shape);
 }
 [data-theme="dark"] {
   --sm-grid: #37474f;
@@ -48,6 +53,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   --sm-btn-bg: #263238;
   --sm-btn-hover: #37474f;
   --sm-btn-active: #455a64;
+  --sm-ok-fg: #69f0ae;
+  --sm-warn-fg: #ffab40;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -113,7 +120,7 @@ body {
 }
 .intro-tag {
   display: inline-block; background: var(--sm-shape);
-  color: #fff; font-size: 12px; font-weight: 700;
+  color: #fff; font-size: 14px; font-weight: 700;
   padding: 5px 14px; border-radius: 99px;
   margin-bottom: 18px; letter-spacing: 0.05em;
 }
@@ -142,7 +149,7 @@ body {
   margin-bottom: 24px;
 }
 .intro-preview {
-  text-align: center; font-size: 12px; font-weight: 600;
+  text-align: center; font-size: 14px; font-weight: 600;
   color: var(--sm-text-muted);
 }
 .intro-preview .icon {
@@ -208,21 +215,6 @@ body {
   max-width: 100%; max-height: 100%;
 }
 
-/* 토스트 */
-.toast {
-  position: absolute;
-  bottom: 16px; left: 50%; transform: translateX(-50%);
-  background: rgba(38,50,56,0.88);
-  color: #fff; font-size: 13px; font-weight: 600;
-  padding: 10px 20px; border-radius: 99px;
-  backdrop-filter: blur(6px);
-  pointer-events: none;
-  opacity: 0; transition: opacity 0.3s;
-  z-index: 10;
-  white-space: nowrap;
-}
-.toast.show { opacity: 1; }
-
 /* 미션 인디케이터 */
 .mission-indicator {
   position: absolute;
@@ -237,9 +229,9 @@ body {
 }
 .mission-indicator .num {
   background: var(--sm-shape);
-  width: 24px; height: 24px; border-radius: 50%;
+  min-width: 26px; height: 26px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700;
+  font-size: 14px; font-weight: 700;
 }
 .mission-indicator .stars { color: var(--sm-star); font-size: 14px; }
 
@@ -262,24 +254,26 @@ body {
   background: radial-gradient(circle at 80% -20%, rgba(255,255,255,0.15) 0, transparent 55%);
 }
 .side-head h2 { font-size: 20px; font-weight: 700; position: relative; z-index: 1; }
-.side-head .side-sub { font-size: 12px; opacity: 0.8; position: relative; z-index: 1; margin-top: 2px; }
+.side-head .side-sub { font-size: 14px; opacity: 0.8; position: relative; z-index: 1; margin-top: 2px; }
 
 .side-body { padding: 14px 16px 20px; flex: 1; }
 
-/* 도형 선택 */
+/* 도형 선택 — 2칸 격자(글자 14px, 누르는 칸 44px 이상) */
 .shape-select {
-  display: flex; gap: 6px; margin-bottom: 14px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 14px;
 }
 .shape-opt {
-  flex: 1; padding: 8px 4px; border-radius: 10px;
+  min-height: 44px; padding: 6px 8px; border-radius: 10px;
   border: 2px solid var(--sm-panel-border);
   background: var(--sm-btn-bg);
   text-align: center; cursor: pointer;
-  font-size: 11px; font-weight: 700;
+  font-size: 14px; font-weight: 700;
   font-family: inherit; color: var(--sm-text-muted);
   transition: all 0.15s;
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  word-break: keep-all;
 }
+.shape-opt:disabled { cursor: not-allowed; opacity: 0.55; }
 .shape-opt svg { width: 28px; height: 28px; }
 .shape-opt.active {
   border-color: var(--sm-shape);
@@ -292,7 +286,7 @@ body {
   margin-bottom: 14px;
 }
 .ctrl-group-title {
-  font-size: 11px; font-weight: 700;
+  font-size: 14px; font-weight: 700;
   color: var(--sm-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -320,10 +314,11 @@ body {
   transition: all 0.1s;
 }
 .dpad-btn:hover { background: var(--sm-btn-hover); }
+.dpad-btn:disabled, .tf-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .dpad-btn:active { background: var(--sm-btn-active); transform: scale(0.92); }
 .dpad-center {
   background: none !important; border: none !important;
-  font-size: 11px; font-weight: 700; color: var(--sm-text-muted);
+  font-size: 14px; font-weight: 700; color: var(--sm-text-muted);
   cursor: default;
 }
 
@@ -338,7 +333,7 @@ body {
   border: 1px solid var(--sm-panel-border);
   background: var(--sm-btn-bg);
   border-radius: 10px;
-  font-size: 12px; font-weight: 700;
+  font-size: 14px; font-weight: 700;
   cursor: pointer; font-family: inherit;
   color: var(--sm-text);
   display: flex; align-items: center; justify-content: center; gap: 4px;
@@ -357,7 +352,7 @@ body {
   flex: 1; padding: 10px 8px; border-radius: 10px;
   border: 1px solid var(--sm-panel-border);
   background: var(--sm-btn-bg);
-  font-size: 12px; font-weight: 700;
+  font-size: 14px; font-weight: 700;
   cursor: pointer; font-family: inherit;
   color: var(--sm-text); min-height: 44px;
   transition: all 0.15s;
@@ -383,8 +378,9 @@ body {
   font-size: 15px; font-weight: 700;
   margin-bottom: 8px;
 }
+.mission-panel small { font-size: 14px; display: inline-block; margin-top: 4px; }
 .mission-panel p {
-  font-size: 13px; line-height: 1.6;
+  font-size: 15px; line-height: 1.6;
   color: var(--sm-text-muted);
 }
 
@@ -394,6 +390,7 @@ body {
   margin-top: 12px;
 }
 .quiz-choice {
+  min-height: 48px;
   padding: 12px 14px; border-radius: 12px;
   border: 2px solid var(--sm-panel-border);
   background: var(--sm-btn-bg);
@@ -404,18 +401,21 @@ body {
   text-align: center;
 }
 .quiz-choice:hover { border-color: var(--sm-shape); }
-.quiz-choice.correct { border-color: var(--sm-accent); background: rgba(0,200,83,0.1); color: #2e7d32; }
-.quiz-choice.wrong { border-color: var(--sm-danger); background: rgba(239,83,80,0.08); color: #c62828; }
+.quiz-choice:disabled { cursor: default; }
+.quiz-choice.correct { border-color: var(--sm-accent); background: rgba(0,200,83,0.1); color: var(--sm-ok-fg); }
+.quiz-choice.wrong { border-color: var(--sm-danger); background: rgba(239,83,80,0.08); color: var(--sm-danger); }
+.quiz-choice.correct::after { content: ' ✓'; }
+.quiz-choice.wrong::after { content: ' ✗'; }
 
 /* 미션 피드백 */
 .m-feedback {
   padding: 12px 14px; border-radius: 12px;
-  font-size: 13px; line-height: 1.6;
+  font-size: 15px; line-height: 1.6;
   margin-top: 10px; text-align: center;
   animation: popIn 0.3s ease;
 }
-.m-feedback.success { background: rgba(0,200,83,0.1); color: #2e7d32; }
-.m-feedback.warn { background: rgba(255,109,0,0.1); color: #e65100; }
+.m-feedback.success { background: rgba(0,200,83,0.1); color: var(--sm-ok-fg); }
+.m-feedback.warn { background: rgba(255,109,0,0.1); color: var(--sm-warn-fg); }
 .m-feedback.info { background: rgba(92,107,192,0.1); color: var(--sm-shape-stroke); }
 
 /* 미션 진행 바 */
@@ -432,7 +432,7 @@ body {
 
 /* 변환 횟수 카운터 */
 .move-counter {
-  text-align: center; font-size: 12px; font-weight: 600;
+  text-align: center; font-size: 14px; font-weight: 600;
   color: var(--sm-text-muted); margin-top: 6px;
 }
 
@@ -463,9 +463,9 @@ body {
   border: 1px solid var(--sm-panel-border);
   border-radius: 10px;
   padding: 8px 4px;
-  font-size: 11px; font-weight: 600;
+  font-size: 14px; font-weight: 600;
 }
-.result-cell .num { font-size: 13px; font-weight: 700; }
+.result-cell .num { font-size: 15px; font-weight: 700; }
 .result-cell .stars { color: var(--sm-star); font-size: 14px; }
 
 .result-summary-box {
@@ -505,7 +505,6 @@ body {
   .shape-opt { min-width: calc(50% - 4px); }
 }
 </style>
-  <link rel="canonical" href="https://eduin.info/apps/shape-move/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"도형의 이동","description":"모눈 위 도형을 직접 밀고 뒤집고 돌려 보세요. 초등 수학 4학년 평면도형의 이동을 애니메이션으로 체험하는 무료 학습 시뮬레이션.","url":"https://eduin.info/apps/shape-move/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -514,7 +513,7 @@ body {
 <!-- ============ 인트로 ============ -->
 <div id="screenIntro" class="screen intro-screen active">
   <div class="intro-tag">수학 4학년 · 평면도형의 이동</div>
-  <div class="intro-art">🔷</div>
+  <div class="intro-art" aria-hidden="true">🔷</div>
   <h1>도형의 이동</h1>
   <p class="intro-sub">모눈 위 도형을 밀고·뒤집고·돌려 보세요</p>
 
@@ -552,7 +551,6 @@ body {
         <span class="stars" id="missionStarsDisp"></span>
       </div>
       <!-- SVG는 JS가 렌더 -->
-      <div class="toast" id="toast"></div>
     </div>
 
     <!-- 사이드바 -->
@@ -573,13 +571,13 @@ body {
           <div class="ctrl-group-title">밀기</div>
           <div class="dpad">
             <div></div>
-            <button class="dpad-btn" data-action="up" title="위로 밀기">↑</button>
+            <button class="dpad-btn" data-action="up" title="위로 밀기 (↑ 키)" aria-label="위로 한 칸 밀기">↑</button>
             <div></div>
-            <button class="dpad-btn" data-action="left" title="왼쪽 밀기">←</button>
-            <div class="dpad-btn dpad-center">밀기</div>
-            <button class="dpad-btn" data-action="right" title="오른쪽 밀기">→</button>
+            <button class="dpad-btn" data-action="left" title="왼쪽으로 밀기 (← 키)" aria-label="왼쪽으로 한 칸 밀기">←</button>
+            <div class="dpad-btn dpad-center" aria-hidden="true">밀기</div>
+            <button class="dpad-btn" data-action="right" title="오른쪽으로 밀기 (→ 키)" aria-label="오른쪽으로 한 칸 밀기">→</button>
             <div></div>
-            <button class="dpad-btn" data-action="down" title="아래로 밀기">↓</button>
+            <button class="dpad-btn" data-action="down" title="아래로 밀기 (↓ 키)" aria-label="아래로 한 칸 밀기">↓</button>
             <div></div>
           </div>
         </div>
@@ -588,15 +586,15 @@ body {
         <div class="ctrl-group">
           <div class="ctrl-group-title">뒤집기 · 돌리기</div>
           <div class="transform-btns">
-            <button class="tf-btn" data-action="flipX"><span class="icon">↔</span> 좌우 뒤집기</button>
-            <button class="tf-btn" data-action="flipY"><span class="icon">↕</span> 상하 뒤집기</button>
-            <button class="tf-btn" data-action="rotateCW"><span class="icon">⟳</span> 90° 돌리기</button>
-            <button class="tf-btn" data-action="rotateCCW"><span class="icon">⟲</span> -90° 돌리기</button>
+            <button class="tf-btn" data-action="flipX" title="F 키"><span class="icon" aria-hidden="true">↔</span> 좌우 뒤집기</button>
+            <button class="tf-btn" data-action="flipY" title="G 키"><span class="icon" aria-hidden="true">↕</span> 상하 뒤집기</button>
+            <button class="tf-btn" data-action="rotateCW" title="R 키" aria-label="시계 방향으로 90도 돌리기"><span class="icon" aria-hidden="true">⟳</span> 90° 돌리기</button>
+            <button class="tf-btn" data-action="rotateCCW" title="E 키" aria-label="시계 반대 방향으로 90도 돌리기"><span class="icon" aria-hidden="true">⟲</span> -90° 돌리기</button>
           </div>
         </div>
 
         <!-- 변환 횟수 (미션 시) -->
-        <div class="move-counter" id="moveCounter" style="display:none;"></div>
+        <div class="move-counter" id="moveCounter" style="display:none;" aria-live="polite" aria-atomic="true"></div>
 
         <!-- 미션/안내 패널 -->
         <div id="missionArea"></div>
@@ -613,11 +611,11 @@ body {
 
 <!-- ============ 결과 ============ -->
 <div id="screenResult" class="screen result-screen">
-  <div class="result-trophy">🏆</div>
+  <div class="result-trophy" aria-hidden="true">🏆</div>
   <h1>미션 완료!</h1>
   <div class="score-text" id="resultScoreText"></div>
-  <div class="result-stars-row" id="resultStarsRow"></div>
-  <div class="result-grid" id="resultGrid"></div>
+  <div class="result-stars-row" id="resultStarsRow" aria-hidden="true"></div>
+  <div class="result-grid" id="resultGrid" role="list" aria-label="미션별 별"></div>
   <div class="result-summary-box">
     <h3>📖 배움 정리</h3>
     <p>밀기·뒤집기·돌리기 모두 <strong>모양과 크기는 변하지 않아요.</strong><br><strong>위치·방향만 바뀌어요.</strong></p>
@@ -664,7 +662,7 @@ let hintCount = 0;
 let missionStars = {};
 let animating = false;
 let actionQueue = [];
-let toastTimer = null;
+let controlsLocked = false; // 식별 미션·성공 직후: 버튼과 키보드 조작을 함께 막는다
 let toastShown = {};  // 관찰 유도 문구 1회성
 
 const STORAGE_KEY = 'shape-move:v1';
@@ -673,7 +671,8 @@ const STORAGE_KEY = 'shape-move:v1';
 const MISSIONS = [
   // ① 식별 (4개) — 두 그림 보여주고 변환 종류 맞추기
   { type: 'identify', shape: 'L', from: {x:1,y:1,flipX:false,flipY:false,rot:0}, to: {x:4,y:1,flipX:false,flipY:false,rot:0}, answer: 'slide', choices: ['밀기','뒤집기','돌리기'] },
-  { type: 'identify', shape: 'L', from: {x:2,y:1,flipX:false,flipY:false,rot:0}, to: {x:2,y:1,flipX:true,flipY:false,rot:0}, answer: 'flip', choices: ['밀기','뒤집기','돌리기'] },
+  // ㄴ자는 대각선 대칭이라 좌우 뒤집기 = 90° 돌리기가 되어 정답이 둘 → 비대칭인 직각삼각형으로
+  { type: 'identify', shape: 'tri', from: {x:2,y:1,flipX:false,flipY:false,rot:0}, to: {x:2,y:1,flipX:true,flipY:false,rot:0}, answer: 'flip', choices: ['밀기','뒤집기','돌리기'] },
   { type: 'identify', shape: 'tri', from: {x:1,y:2,flipX:false,flipY:false,rot:0}, to: {x:1,y:2,flipX:false,flipY:false,rot:90}, answer: 'rotate', choices: ['밀기','뒤집기','돌리기'] },
   { type: 'identify', shape: 'flag', from: {x:1,y:1,flipX:false,flipY:false,rot:0}, to: {x:1,y:1,flipX:false,flipY:true,rot:0}, answer: 'flip', choices: ['밀기','뒤집기','돌리기'] },
   // ② 고스트 맞추기 (4개, 1~2회 변환)
@@ -686,44 +685,47 @@ const MISSIONS = [
   { type: 'ghost', shape: 'flag', start: {x:1,y:1,flipX:false,flipY:false,rot:0}, goal: {x:3,y:3,flipX:true,flipY:false,rot:0}, minMoves: 2 },
 ];
 
-/* ── 저장/복원 ── */
+const MISSION_IDS = MISSIONS.map((_, i) => 'm' + (i + 1));
+
+/* ── 저장/복원 — 키·모양은 예전 그대로 { missions: { m1: 별 0~3 }, freeState } ── */
+const store = SimKit.store(STORAGE_KEY, {
+  defaults: { missions: {}, freeState: null },
+  validate: raw => (raw && typeof raw === 'object') ? {
+    missions: SimKit.clean.stars(raw.missions, MISSION_IDS, 3),
+    freeState: raw.freeState && typeof raw.freeState === 'object' ? raw.freeState : null,
+  } : null,
+});
 function saveState() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      missions: missionStars,
-      freeState: missionMode ? null : state,
-    }));
-  } catch(e) {}
+  store.save({ missions: missionStars, freeState: missionMode ? null : state });
 }
 function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const saved = JSON.parse(raw);
-    if (saved.missions) missionStars = saved.missions;
-    if (saved.freeState) Object.assign(state, saved.freeState);
-  } catch(e) {}
+  const saved = store.load();
+  missionStars = saved.missions;
+  if (saved.freeState) applySavedShape(saved.freeState);
 }
 
-/* ── 공유 링크 ── */
+/* 저장값·공유 링크에서 온 도형 상태는 허용된 필드만 형식을 맞춰 복사 */
+function applySavedShape(src) {
+  if (!src || typeof src !== 'object') return;
+  const n = (v, d) => (window.VSafe ? VSafe.int(v, 0, GRID, d) : (Number.isInteger(v) ? Math.min(GRID, Math.max(0, v)) : d));
+  if (SHAPES.hasOwnProperty(src.shapeId)) state.shapeId = src.shapeId;
+  state.x = n(src.x, 2);
+  state.y = n(src.y, 2);
+  state.flipX = src.flipX === true;
+  state.flipY = src.flipY === true;
+  state.rot = [0, 90, 180, 270].includes(src.rot) ? src.rot : 0;
+  clampState(state.shapeId, state);
+}
+
+/* ── 공유 링크 — 예전 btoa 링크와 새 base64url 링크를 모두 읽는다 ── */
 function parseShareLink() {
-  const hash = location.hash;
-  if (!hash.startsWith('#share=')) return;
-  try {
-    const payload = JSON.parse(decodeURIComponent(atob(hash.slice(7))));
-    if (payload.v === 1 && payload.state) {
-      Object.assign(state, payload.state);
-    }
-  } catch(e) {}
-  history.replaceState(null, '', location.pathname);
+  const payload = SimKit.share.read({ version: 1 });
+  if (payload && payload.state) applySavedShape(payload.state);
 }
 
 /* ── 화면 전환 ── */
-function showScreen(id) {
-  $$('.screen').forEach(s => s.classList.remove('active'));
-  const el = document.getElementById(id);
-  if (el) el.classList.add('active');
-}
+const screens = SimKit.screens({ focus: true });
+function showScreen(id) { screens.show(id); }
 
 /* ══════════════════════════════════════
    SVG 렌더링
@@ -786,6 +788,8 @@ function renderSVG() {
 
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('class', 'grid-svg');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', `모눈 위의 파란 ${SHAPES[state.shapeId].name} 도형` + (ghostState ? ' · 점선 도형이 목표예요' : ''));
   svg.setAttribute('viewBox', `-0.5 -0.5 ${GRID + 1} ${GRID + 1}`);
   svg.style.width = '90%';
   svg.style.height = '90%';
@@ -864,15 +868,67 @@ function normalizeState(st) {
   return s;
 }
 
-function statesMatch(a, b) {
-  const na = normalizeState(a);
-  const nb = normalizeState(b);
-  return na.x === nb.x && na.y === nb.y &&
-         na.flipX === nb.flipX && na.flipY === nb.flipY &&
-         na.rot === nb.rot;
+/* 화면에 보이는 모양(꼭짓점 집합)으로 비교한다.
+   대칭인 도형(ㄴ자는 대각선 대칭, 사다리꼴은 좌우 대칭)은 상태값이 달라도 같은 모양일 수 있음. */
+function shapeKey(shape, st) {
+  return getTransformedPoints(shape, st)
+    .map(([px, py]) => Math.round(px * 2) + ',' + Math.round(py * 2))
+    .sort().join(' ');
+}
+function statesMatch(a, b, shape) {
+  const sh = shape || state.shapeId;
+  return shapeKey(sh, a) === shapeKey(sh, b);
+}
+
+/* 버튼 하나의 결과(순수 함수). 미션 최소 횟수 계산에도 같은 규칙을 쓴다. */
+function transformState(shape, st, action) {
+  const s = { ...st };
+  // 모델은 "뒤집은 뒤 돌리기" 순서라, 90°·270°로 돌아간 상태에서 화면 기준 좌우 뒤집기는
+  // 모델의 상하 뒤집기와 같다(반대도 마찬가지).
+  const sideways = s.rot === 90 || s.rot === 270;
+  switch (action) {
+    case 'left':  s.x--; break;
+    case 'right': s.x++; break;
+    case 'up':    s.y--; break;
+    case 'down':  s.y++; break;
+    case 'flipX': if (sideways) s.flipY = !s.flipY; else s.flipX = !s.flipX; break;
+    case 'flipY': if (sideways) s.flipX = !s.flipX; else s.flipY = !s.flipY; break;
+    case 'rotateCW':  s.rot = (s.rot + 90) % 360; break;
+    case 'rotateCCW': s.rot = (s.rot + 270) % 360; break;
+  }
+  clampState(shape, s);
+  return normalizeState(s);
+}
+
+/* 시작 → 목표까지 실제 최소 버튼 횟수(밀기 한 칸도 1번). 너비 우선 탐색 */
+const ALL_ACTIONS = ['left','right','up','down','flipX','flipY','rotateCW','rotateCCW'];
+function computeMinMoves(m) {
+  const start = { ...m.start };
+  clampState(m.shape, start);
+  const goalKey = shapeKey(m.shape, m.goal);
+  const stKey = s => `${s.x},${s.y},${s.flipX},${s.flipY},${s.rot}`;
+  let frontier = [normalizeState(start)];
+  const seen = new Set([stKey(frontier[0])]);
+  for (let depth = 0; depth <= 20; depth++) {
+    for (const s of frontier) if (shapeKey(m.shape, s) === goalKey) return depth;
+    const next = [];
+    for (const s of frontier) {
+      for (const a of ALL_ACTIONS) {
+        const n = transformState(m.shape, s, a);
+        const k = stKey(n);
+        if (!seen.has(k)) { seen.add(k); next.push(n); }
+      }
+    }
+    if (!next.length) break;
+    frontier = next;
+  }
+  return m.minMoves;
 }
 
 function applyAction(action) {
+  if (controlsLocked) return;
+  // 성공 뒤 자동 이동을 기다리는 동안: 도형이 또 움직여 두 번 채점되지 않게
+  if (missionMode && mc.pending()) return;
   if (animating && actionQueue.length >= 2) return; // 큐 상한
   if (animating) { actionQueue.push(action); return; }
 
@@ -881,26 +937,15 @@ function applyAction(action) {
 
 async function doAction(action) {
   animating = true;
-  const oldState = { ...state };
 
-  switch (action) {
-    case 'left':  state.x--; break;
-    case 'right': state.x++; break;
-    case 'up':    state.y--; break;
-    case 'down':  state.y++; break;
-    case 'flipX': state.flipX = !state.flipX; break;
-    case 'flipY': state.flipY = !state.flipY; break;
-    case 'rotateCW':  state.rot = (state.rot + 90) % 360; break;
-    case 'rotateCCW': state.rot = (state.rot + 270) % 360; break;
-    case 'reset':
-      resetShape();
-      animating = false;
-      actionQueue = [];
-      return;
+  if (action === 'reset') {
+    resetShape();
+    animating = false;
+    actionQueue = [];
+    return;
   }
 
-  clampState(state.shapeId, state);
-  state = normalizeState(state);
+  state = { ...transformState(state.shapeId, state, action), shapeId: state.shapeId };
 
   if (missionMode && MISSIONS[currentMission] && MISSIONS[currentMission].type === 'ghost') {
     moveCount++;
@@ -910,16 +955,19 @@ async function doAction(action) {
   // 토스트 (관찰 유도, 1회성)
   showObserveToast(action);
 
+  const visit = mc.token();
   renderSVG();
   await sleep(420);
 
-  // 미션 판정
-  if (missionMode && ghostState && MISSIONS[currentMission] && MISSIONS[currentMission].type === 'ghost') {
+  // 움직이는 사이에 다른 미션으로 옮겼으면 채점하지 않는다
+  const sameVisit = mc.alive(visit);
+  if (sameVisit && missionMode && ghostState && MISSIONS[currentMission] && MISSIONS[currentMission].type === 'ghost') {
     checkGhostMission();
   }
 
   animating = false;
   saveState();
+  if (!sameVisit) { actionQueue = []; return; }
 
   // 큐 처리
   if (actionQueue.length > 0) {
@@ -965,21 +1013,15 @@ function showObserveToast(action) {
   showToast(msg);
 }
 
-function showToast(msg) {
-  const el = $('#toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
-}
+function showToast(msg) { SimKit.toast(msg); }
 
 /* ── 도형 선택 UI ── */
 function renderShapeSelect() {
   const container = $('#shapeSelect');
   container.innerHTML = SHAPE_IDS.map(id => {
     const s = SHAPES[id];
-    return `<button class="shape-opt ${id === state.shapeId ? 'active' : ''}" data-shape="${id}">
-      <span style="font-size:18px;">${s.emoji}</span>
+    return `<button type="button" class="shape-opt ${id === state.shapeId ? 'active' : ''}" data-shape="${id}" aria-pressed="${id === state.shapeId}"${missionMode ? ' disabled' : ''}>
+      <span style="font-size:18px;" aria-hidden="true">${s.emoji}</span>
       <span>${s.name}</span>
     </button>`;
   }).join('');
@@ -998,23 +1040,29 @@ function renderShapeSelect() {
 }
 
 /* ══════════════════════════════════════
-   미션 시스템
+   미션 시스템 — 이동·자동 넘김·문구 표시는 SimKit 미션 컨트롤러(docs/sim-kit.md)
    ══════════════════════════════════════ */
+const mc = SimKit.missions({
+  ids: MISSION_IDS,
+  format: 'stars',      // 저장 모양 { m1: 0~3 } 그대로(0 = 아직 안 함)
+  keepBest: true,       // 고스트 미션은 최고 기록 유지
+  feedback: () => document.getElementById('missionFeedback'),
+  feedbackOptions: { classes: { ok: 'm-feedback success', no: 'm-feedback warn', warn: 'm-feedback warn', info: 'm-feedback info' } },
+  onEnter: i => setupMission(i),
+  onFinish: () => showResult(),
+  onChange: p => { missionStars = p; saveState(); updateMissionLabel(); },
+});
+
 function startMissions() {
   missionMode = true;
-  currentMission = 0;
-  // 첫 미완료 미션부터
-  for (let i = 0; i < MISSIONS.length; i++) {
-    if (!missionStars['m' + (i + 1)]) { currentMission = i; break; }
-    if (i === MISSIONS.length - 1) currentMission = 0; // 전부 완료면 처음부터
-  }
-  setupMission(currentMission);
+  mc.start(); // 첫 미완료 미션부터(다 했으면 1번부터)
 }
 
 function setupMission(idx) {
   currentMission = idx;
   moveCount = 0;
   hintCount = 0;
+  actionQueue = [];
   const m = MISSIONS[idx];
   const area = $('#missionArea');
 
@@ -1024,185 +1072,143 @@ function setupMission(idx) {
   updateMissionLabel();
 
   // 진행 바
-  let html = `<div class="progress-bar"><div class="progress-fill" style="width:${((idx) / MISSIONS.length) * 100}%"></div></div>`;
+  let html = `<div class="progress-bar" role="progressbar" aria-label="미션 진행" aria-valuemin="0" aria-valuemax="${MISSIONS.length}" aria-valuenow="${idx}"><div class="progress-fill" style="width:${((idx) / MISSIONS.length) * 100}%"></div></div>`;
 
+  state.shapeId = m.shape;
   if (m.type === 'identify') {
     // 식별 미션: 두 그림 보여주고 3지선다
-    ghostState = null;
-    state.shapeId = m.shape;
     Object.assign(state, m.from);
     clampState(state.shapeId, state);
-
-    // 두 번째 상태를 고스트로 표시
     ghostState = { ...m.to, shape: m.shape };
 
     html += `<div class="mission-panel">
       <h3>미션 ${idx + 1}: 어떤 변환일까요?</h3>
       <p>파란 도형이 점선 도형으로 바뀌려면<br>어떤 변환이 필요할까요?</p>
       <div class="quiz-choices" id="quizChoices">
-        ${m.choices.map(c => `<button class="quiz-choice" data-choice="${c}">${c}</button>`).join('')}
+        ${m.choices.map(c => `<button type="button" class="quiz-choice" data-choice="${c}">${c}</button>`).join('')}
       </div>
-      <div id="identifyFeedback"></div>
+      <div id="missionFeedback"></div>
     </div>`;
-
     area.innerHTML = html;
-    updateMoveCounter();
-    renderSVG();
-
     area.querySelectorAll('.quiz-choice').forEach(btn => {
       btn.addEventListener('click', () => checkIdentifyAnswer(btn, m));
     });
-    // 도형 선택 비활성화
-    $$('.shape-opt').forEach(b => b.style.pointerEvents = 'none');
-    // 컨트롤 비활성화 (식별은 버튼 맞추기만)
-    disableControls(true);
-
+    disableControls(true); // 식별은 보기 고르기만
   } else {
-    // 고스트 맞추기 미션
-    state.shapeId = m.shape;
+    // 고스트 맞추기 미션 — 버튼 한 번(한 칸 밀기·한 번 뒤집기·한 번 돌리기)이 1번
     Object.assign(state, { ...m.start });
     clampState(state.shapeId, state);
     ghostState = { ...m.goal, shape: m.shape };
 
-    const stage = idx < 4 ? '①' : idx < 8 ? '②' : '③';
     html += `<div class="mission-panel">
       <h3>미션 ${idx + 1}: 도형을 움직여요</h3>
-      <p>파란 도형을 점선 위치에 맞춰 보세요!<br>최소 <strong>${m.minMoves}번</strong>으로 할 수 있어요.</p>
-      <div id="ghostFeedback"></div>
+      <p>파란 도형을 점선 위치에 맞춰 보세요!<br>버튼을 최소 <strong>${computeMinMoves(m)}번</strong> 눌러서 맞출 수 있어요.<br><small>한 칸 밀기, 한 번 뒤집기, 한 번 돌리기가 각각 1번이에요.</small></p>
+      <div id="missionFeedback"></div>
     </div>`;
-
     area.innerHTML = html;
-    updateMoveCounter();
-    renderSVG();
     disableControls(false);
-    $$('.shape-opt').forEach(b => b.style.pointerEvents = 'none');
   }
+  updateMoveCounter();
+  renderShapeSelect();
+  renderSVG();
 
-  // 액션 버튼 업데이트
+  // 건너뛰기 — onclick 하나만 쓴다(addEventListener와 섞으면 두 번 실행됨)
   $('#btnMission').textContent = '⏭ 건너뛰기';
-  $('#btnMission').onclick = () => skipMission();
+  $('#btnMission').onclick = () => mc.skip();
+
+  // 자동으로 넘어와 초점을 잃었으면 새 미션 제목으로
+  const ae = document.activeElement;
+  if (!ae || ae === document.body) {
+    const h = area.querySelector('h3');
+    if (h) { h.tabIndex = -1; try { h.focus({ preventScroll: true }); } catch (e) { h.focus(); } }
+  }
 }
 
 function checkIdentifyAnswer(btn, mission) {
-  const correct = (btn.dataset.choice === '밀기' && mission.answer === 'slide') ||
-                  (btn.dataset.choice === '뒤집기' && mission.answer === 'flip') ||
-                  (btn.dataset.choice === '돌리기' && mission.answer === 'rotate');
+  if (mc.pending()) return;
+  const answerText = mission.answer === 'slide' ? '밀기' : mission.answer === 'flip' ? '뒤집기' : '돌리기';
+  const correct = btn.dataset.choice === answerText;
 
-  $$('.quiz-choice').forEach(b => b.style.pointerEvents = 'none');
+  $$('.quiz-choice').forEach(b => {
+    b.disabled = true;
+    if (b.dataset.choice === answerText) b.classList.add('correct');
+  });
 
   if (correct) {
     btn.classList.add('correct');
-    missionStars['m' + (currentMission + 1)] = 3;
-    const fb = $('#identifyFeedback');
-    fb.innerHTML = `<div class="m-feedback success">🎉 정답! ${btn.dataset.choice}예요!</div>`;
+    mc.complete({ stars: 3, message: `🎉 정답! ${btn.dataset.choice}예요!`, advance: 1500, keepBest: false });
   } else {
     btn.classList.add('wrong');
-    // 정답 표시
-    const answerText = mission.answer === 'slide' ? '밀기' : mission.answer === 'flip' ? '뒤집기' : '돌리기';
-    $$('.quiz-choice').forEach(b => {
-      if (b.dataset.choice === answerText) b.classList.add('correct');
-    });
-    missionStars['m' + (currentMission + 1)] = 1;
-    const fb = $('#identifyFeedback');
-    fb.innerHTML = `<div class="m-feedback warn">정답은 "${answerText}"예요!</div>`;
+    // 오답도 별 1개로 완료하고 넘어간다(예전 동작 그대로 — 식별 미션은 다시 풀면 덮어씀)
+    mc.complete({ stars: 1, tone: 'warn', message: `정답은 "${answerText}"예요!`, advance: 1500, keepBest: false });
   }
-  saveState();
-  updateMissionLabel();
-
-  setTimeout(() => nextMission(), 1500);
 }
 
 function checkGhostMission() {
-  if (!ghostState) return;
-  const goal = MISSIONS[currentMission].goal;
-  if (statesMatch(state, goal)) {
+  if (!ghostState || mc.pending()) return;
+  const m = MISSIONS[currentMission];
+  if (statesMatch(state, m.goal, m.shape)) {
     // 성공!
-    const m = MISSIONS[currentMission];
-    const min = m.minMoves;
+    const min = computeMinMoves(m);
     let stars = 1;
     if (moveCount <= min) stars = 3;
     else if (moveCount <= min + 1) stars = 2;
-
-    missionStars['m' + (currentMission + 1)] = Math.max(
-      stars,
-      missionStars['m' + (currentMission + 1)] || 0
-    );
-    saveState();
-
-    const fb = $('#ghostFeedback');
-    fb.innerHTML = `<div class="m-feedback success">🎉 성공! ${moveCount}번 만에 맞췄어요! ${'⭐'.repeat(stars)}</div>`;
-    updateMissionLabel();
     disableControls(true);
-
-    setTimeout(() => nextMission(), 1800);
+    actionQueue = [];
+    mc.complete({ stars, message: `🎉 성공! ${moveCount}번 만에 맞췄어요! ${'⭐'.repeat(stars)}`, advance: 1800 });
   } else {
-    // 초과 시 힌트
+    // 3번 어긋나면 힌트(한 번만)
     hintCount++;
-    if (hintCount >= 3 && !$('#ghostHint')) {
-      const m = MISSIONS[currentMission];
-      const goal = m.goal;
+    if (hintCount === 3 && mc.feedback) {
       let hint = '';
-      if (goal.flipX !== (m.start.flipX || false)) hint = '뒤집기가 필요해요!';
-      else if (goal.rot !== (m.start.rot || 0)) hint = '돌리기가 필요해요!';
+      if (m.goal.flipX !== (m.start.flipX || false)) hint = '뒤집기가 필요해요!';
+      else if (m.goal.rot !== (m.start.rot || 0)) hint = '돌리기가 필요해요!';
       else hint = '밀기로 위치를 맞춰 보세요!';
-
-      const fb = $('#ghostFeedback');
-      fb.innerHTML = `<div class="m-feedback info" id="ghostHint">💡 힌트: ${hint}</div>`;
+      mc.feedback.show('info', `💡 힌트: ${hint}`);
     }
   }
 }
 
-function nextMission() {
-  if (currentMission + 1 >= MISSIONS.length) {
-    // 모든 미션 완료
-    showResult();
-    return;
-  }
-  setupMission(currentMission + 1);
-}
-
-function skipMission() {
-  if (!missionStars['m' + (currentMission + 1)]) {
-    missionStars['m' + (currentMission + 1)] = 0;
-  }
-  nextMission();
-}
-
 function updateMissionLabel() {
+  if (currentMission < 0) return;
   const stars = missionStars['m' + (currentMission + 1)] || 0;
   $('#missionLabel').textContent = `미션 ${currentMission + 1}/${MISSIONS.length}`;
   $('#missionStarsDisp').textContent = stars > 0 ? '⭐'.repeat(stars) : '';
+  $('#missionStarsDisp').setAttribute('aria-label', stars > 0 ? `별 ${stars}개` : '');
 }
 
 function updateMoveCounter() {
   const el = $('#moveCounter');
   if (missionMode && MISSIONS[currentMission] && MISSIONS[currentMission].type === 'ghost') {
     el.style.display = '';
-    el.textContent = `변환 횟수: ${moveCount}번`;
+    el.textContent = `누른 횟수: ${moveCount}번`;
   } else {
     el.style.display = 'none';
   }
 }
 
 function disableControls(disabled) {
+  controlsLocked = disabled;
   $$('.dpad-btn:not(.dpad-center)').forEach(b => b.disabled = disabled);
   $$('.tf-btn').forEach(b => b.disabled = disabled);
 }
 
 function exitMissionMode() {
+  mc.stop(); // 대기 중인 자동 이동·미션 타이머 취소
   missionMode = false;
   currentMission = -1;
   ghostState = null;
   moveCount = 0;
+  actionQueue = [];
   $('#missionArea').innerHTML = '';
   $('#missionIndicator').style.display = 'none';
   $('#moveCounter').style.display = 'none';
   $('#btnMission').textContent = '🏆 미션 도전';
   $('#btnMission').onclick = () => startMissions();
   disableControls(false);
-  $$('.shape-opt').forEach(b => b.style.pointerEvents = '');
   state.x = 2; state.y = 2;
   state.flipX = false; state.flipY = false; state.rot = 0;
+  renderShapeSelect();
   renderSVG();
 }
 
@@ -1212,16 +1218,17 @@ function exitMissionMode() {
 function showResult() {
   missionMode = false;
   ghostState = null;
+  currentMission = -1;
+  actionQueue = [];
   showScreen('screenResult');
 
-  let totalStars = 0;
+  const totalStars = mc.totalStars();
   let gridHtml = '';
   for (let i = 0; i < MISSIONS.length; i++) {
-    const s = missionStars['m' + (i + 1)] || 0;
-    totalStars += s;
-    gridHtml += `<div class="result-cell">
-      <div class="num">${i + 1}</div>
-      <div class="stars">${s > 0 ? '⭐'.repeat(s) : '—'}</div>
+    const s = mc.starsOf(i);
+    gridHtml += `<div class="result-cell" role="listitem" aria-label="미션 ${i + 1}: ${s > 0 ? '별 ' + s + '개' : '안 함'}">
+      <div class="num" aria-hidden="true">${i + 1}</div>
+      <div class="stars" aria-hidden="true">${SimKit.stars.text(s, 3, '—')}</div>
     </div>`;
   }
 
@@ -1234,19 +1241,10 @@ function showResult() {
    공유 확장
    ══════════════════════════════════════ */
 function setupShare() {
-  const origShare = window.shareCurrentPage;
-  window.shareCurrentPage = function() {
-    const payload = btoa(encodeURIComponent(JSON.stringify({ v: 1, state: { shapeId: state.shapeId, x: state.x, y: state.y, flipX: state.flipX, flipY: state.flipY, rot: state.rot } })));
-    const url = location.origin + location.pathname + '#share=' + payload;
-    if (navigator.share) {
-      navigator.share({ title: '도형의 이동 — 내 도형 배치', url });
-    } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(url);
-      showToast('공유 링크가 복사되었어요!');
-    } else if (origShare) {
-      origShare();
-    }
-  };
+  SimKit.share.bind(() => ({
+    v: 1,
+    state: { shapeId: state.shapeId, x: state.x, y: state.y, flipX: state.flipX, flipY: state.flipY, rot: state.rot },
+  }), { title: '도형의 이동 — 내 도형 배치' });
 }
 
 /* ══════════════════════════════════════
@@ -1255,11 +1253,14 @@ function setupShare() {
 function setupKeyboard() {
   document.addEventListener('keydown', (e) => {
     if (!$('#screenExplore').classList.contains('active')) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return; // Ctrl+R(새로고침) 같은 단축키는 건드리지 않음
+    const t = e.target;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
     const keyMap = {
       'ArrowLeft': 'left', 'ArrowRight': 'right',
       'ArrowUp': 'up', 'ArrowDown': 'down',
-      'f': 'flipX', 'g': 'flipY',
-      'r': 'rotateCW', 'e': 'rotateCCW',
+      'f': 'flipX', 'g': 'flipY', 'F': 'flipX', 'G': 'flipY',
+      'r': 'rotateCW', 'e': 'rotateCCW', 'R': 'rotateCW', 'E': 'rotateCCW',
     };
     const action = keyMap[e.key];
     if (action) {
@@ -1274,6 +1275,7 @@ function setupKeyboard() {
    ══════════════════════════════════════ */
 function init() {
   loadState();
+  mc.setProgress(missionStars);
   parseShareLink();
 
   // 시작
@@ -1299,13 +1301,12 @@ function init() {
     resetShape();
   });
 
-  // 미션
-  $('#btnMission').addEventListener('click', () => startMissions());
+  // 미션 — onclick 하나만 사용(setupMission·exitMissionMode가 교체). addEventListener와 섞으면 이중 실행됨
+  $('#btnMission').onclick = () => startMissions();
 
   // 결과 화면
   $('#btnRetry').addEventListener('click', () => {
-    missionStars = {};
-    saveState();
+    mc.reset(); // 별 기록 지우기(onChange → 저장)
     showScreen('screenExplore');
     exitMissionMode();
     startMissions();
