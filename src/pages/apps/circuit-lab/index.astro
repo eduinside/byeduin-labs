@@ -289,7 +289,6 @@ body {
   cursor: not-allowed;
 }
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/circuit-lab/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"전기회로 공작소","description":"전지·전구·스위치를 이어 불을 켜고 직렬·병렬 밝기 비교","url":"https://eduin.info/apps/circuit-lab/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -390,7 +389,7 @@ body {
             💡 <strong>도움말:</strong><br>
             - <strong>부품 배치:</strong> 부품을 선택하고 격자의 회색 회로 꼬마선을 탭하세요.<br>
             - <strong>전선 잇기:</strong> 전선 툴을 켜고 부품의 끝점(노드)을 다른 노드로 이어주세요.<br>
-            - <strong>작작 모드:</strong> 스위치를 클릭해 껐다 켰다 할 수 있습니다.
+            - <strong>조작 모드:</strong> 스위치를 누르면 열고 닫을 수 있고, 전지를 누르면 (+)극과 (-)극 방향이 바뀝니다.
           </div>
         </div>
 
@@ -532,7 +531,8 @@ let state = {
   litBulbs: new Set(), // lit된 bulb의 key 집합
   hasShortCircuit: false,
   circuitType: 'unknown', // 'base', 'series_bulb', 'parallel_bulb', 'series_battery', 'unknown'
-  bulbBrightness: 2 // 1: 어두움, 2: 보통, 3: 밝음
+  bulbBrightness: 2, // 1: 어두움, 2: 보통, 3: 밝음 (가장 밝은 전구 기준)
+  bulbLevels: new Map() // 전구별 밝기 단계 (key → 1~3)
 };
 
 const STORAGE_KEY = 'circuit-lab:v1';
@@ -552,14 +552,40 @@ function saveState() {
   } catch(e) {}
 }
 
+/* 저장값·공유 링크에서 온 회로 검사: 격자 안의 이웃한 두 점을 잇는 선분과 알려진 부품만 남긴다 */
+function cleanSegments(obj) {
+  const out = new Map();
+  if (!obj || typeof obj !== 'object') return out;
+  const re = /^(\d),(\d)-(\d),(\d)$/;
+  Object.keys(obj).forEach(key => {
+    const m = re.exec(key);
+    const v = obj[key];
+    if (!m || !v || !['wire', 'battery', 'bulb', 'switch'].includes(v.type)) return;
+    const [x1, y1, x2, y2] = m.slice(1).map(Number);
+    if (x2 >= COLS || y2 >= ROWS) return;
+    const neighbor = (x1 === x2 && y2 === y1 + 1) || (y1 === y2 && x2 === x1 + 1);
+    if (!neighbor) return;
+    const seg = { type: v.type };
+    if (v.type === 'switch') seg.switchOpen = v.switchOpen !== false;
+    if (v.type === 'battery' && v.flipped === true) seg.flipped = true;
+    out.set(key, seg);
+  });
+  return out;
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const saved = JSON.parse(raw);
-    if (saved.missionsCompleted) state.missionsCompleted = saved.missionsCompleted;
+    if (!saved || typeof saved !== 'object') return;
+    if (saved.missionsCompleted && typeof saved.missionsCompleted === 'object') {
+      Object.keys(state.missionsCompleted).forEach(k => {
+        state.missionsCompleted[k] = saved.missionsCompleted[k] === true;
+      });
+    }
     if (saved.lastCircuit) {
-      state.segments = new Map(Object.entries(saved.lastCircuit));
+      state.segments = cleanSegments(saved.lastCircuit);
     }
   } catch(e) {}
 }
@@ -569,8 +595,8 @@ function parseShareLink() {
   if (!hash.startsWith('#share=')) return;
   try {
     const payload = JSON.parse(decodeURIComponent(hash.slice(7)));
-    if (payload.v === 1 && payload.circuit) {
-      state.segments = new Map(Object.entries(payload.circuit));
+    if (payload && payload.v === 1 && payload.circuit) {
+      state.segments = cleanSegments(payload.circuit);
       state.mode = 1;
     }
   } catch(e) {}
@@ -612,11 +638,10 @@ function switchMode(modeNum) {
   hideFeedback();
 }
 
-function setupMissionUI() {
-  const m = MISSIONS[state.missionIdx];
+/* 미션 번호 버튼만 다시 그림(완료 표시 갱신용). 회로·피드백은 건드리지 않는다 */
+function renderMissionNav() {
   const nav = $('#missionNav');
   nav.innerHTML = '';
-
   MISSIONS.forEach((ms, idx) => {
     const btn = document.createElement('button');
     btn.className = `mission-nav-btn ${idx === state.missionIdx ? 'active' : ''} ${state.missionsCompleted[ms.id] ? 'done' : ''}`;
@@ -627,6 +652,12 @@ function setupMissionUI() {
     });
     nav.appendChild(btn);
   });
+  updateVerifyButtonText();
+}
+
+function setupMissionUI() {
+  const m = MISSIONS[state.missionIdx];
+  renderMissionNav();
 
   $('#missionDesc').innerHTML = m.desc;
 
@@ -742,9 +773,11 @@ function drawSegmentLine(svg, key, pos1, pos2) {
   // 가로 방향인지 확인
   const isHorizontal = pos1.y === pos2.y;
 
-  // 세로 방향일 경우 가로 그리기 결과를 90도 회전시켜 재사용
-  if (!isHorizontal) {
-    group.setAttribute('transform', `rotate(90, ${midX}, ${midY})`);
+  // 세로 방향일 경우 가로 그리기 결과를 90도 회전시켜 재사용.
+  // 전지는 기본이 (+)극 오른쪽/아래쪽, 뒤집으면(flipped) 180도 돌려 (+)극이 왼쪽/위쪽
+  const rot = (isHorizontal ? 0 : 90) + (seg && seg.type === 'battery' && seg.flipped ? 180 : 0);
+  if (rot) {
+    group.setAttribute('transform', `rotate(${rot}, ${midX}, ${midY})`);
   }
 
   // 가로 기준 로컬 좌표계 설정 (L = 노드 간 실제 거리)
@@ -899,13 +932,14 @@ function drawSegmentLine(svg, key, pos1, pos2) {
   } else if (seg.type === 'bulb') {
     // 전구 💡
     const isLit = state.litBulbs.has(key);
-    
-    // 점등 시 광량 그라디언트 글로우 효과
+
+    // 점등 시 광량 그라디언트 글로우 효과 (전구마다 실제 흐르는 전류에 따라 밝기 다름)
     if (isLit) {
       const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       glow.setAttribute('cx', midX);
       glow.setAttribute('cy', midY);
-      const r = state.bulbBrightness === 3 ? 55 : state.bulbBrightness === 1 ? 25 : 40;
+      const level = state.bulbLevels.get(key) || state.bulbBrightness;
+      const r = level === 3 ? 55 : level === 1 ? 25 : 40;
       glow.setAttribute('r', r);
       glow.setAttribute('fill', 'url(#bulb-glow-grad)');
       group.appendChild(glow);
@@ -1052,6 +1086,11 @@ function handleSegmentClick(key) {
       seg.switchOpen = !seg.switchOpen;
       solveCircuit();
       saveState();
+    } else if (seg && seg.type === 'battery') {
+      // 전지를 누르면 (+)극·(-)극 방향을 바꾼다
+      seg.flipped = !seg.flipped;
+      solveCircuit();
+      saveState();
     }
   }
 }
@@ -1064,6 +1103,7 @@ function solveCircuit() {
   state.hasShortCircuit = false;
   state.circuitType = 'unknown';
   state.bulbBrightness = 2;
+  state.bulbLevels = new Map();
   state.activeRawNodes = new Set();
   state.activeElectricNodes = new Set();
 
@@ -1101,7 +1141,10 @@ function solveCircuit() {
       if (find(p1) === find(p2)) {
         state.hasShortCircuit = true; // 전지 합선 발생!
       } else {
-        activeBatteries.push({ key, u: find(p1), v: find(p2) });
+        // 기본: (+)극이 p2(오른쪽/아래), flipped면 p1
+        const pos = seg.flipped ? find(p1) : find(p2);
+        const neg = seg.flipped ? find(p2) : find(p1);
+        activeBatteries.push({ key, u: find(p1), v: find(p2), pos, neg });
       }
     } else if (seg.type === 'bulb') {
       if (find(p1) !== find(p2)) {
@@ -1110,8 +1153,6 @@ function solveCircuit() {
     }
   });
 
-  // 합선 위험 배너 토글
-  $('#shortCircuitBanner').style.display = state.hasShortCircuit ? 'block' : 'none';
 
   // 3. 축약 그래프 인접 리스트 생성
   const adj = {};
@@ -1125,32 +1166,21 @@ function solveCircuit() {
   activeBatteries.forEach(b => addEdge(b.u, b.v, false, b.key));
   activeBulbs.forEach(b => addEdge(b.u, b.v, true, b.key));
 
-  // 4. 전구별 닫힌 루프 판별
+  // 4. 전구별 전류 계산 (전지의 (+)/(-) 방향을 반영한 마디 전압 해석)
+  //    예전에는 "전지가 있는 닫힌 길"만 찾아 극 방향을 무시했기 때문에
+  //    서로 반대로 놓은 전지 2개도 '직렬·밝음'으로 판정됐다.
+  const circuit = solveNodal(activeBatteries, activeBulbs);
   activeBulbs.forEach(bulb => {
-    let found = false;
-    const visited = new Set();
-    function dfs(curr, hasBat) {
-      if (curr === bulb.v) {
-        if (hasBat) found = true;
-        return;
-      }
-      visited.add(curr);
-      const neighbors = adj[curr] || [];
-      for (let i = 0; i < neighbors.length; i++) {
-        const edge = neighbors[i];
-        if (edge.key === bulb.key) continue;
-        if (!visited.has(edge.to)) {
-          dfs(edge.to, hasBat || !edge.isBulb);
-          if (found) return;
-        }
-      }
-      visited.delete(curr);
-    }
-    dfs(bulb.u, false);
-    if (found) {
+    const ratio = circuit.bulbRatio.get(bulb.key) || 0;
+    if (ratio > 0.2) {
       state.litBulbs.add(bulb.key);
+      state.bulbLevels.set(bulb.key, ratio >= 1.5 ? 3 : ratio <= 0.7 ? 1 : 2);
     }
   });
+  if (circuit.batteryOverload) state.hasShortCircuit = true; // 전지끼리 맞물려 큰 전류가 흐르는 경우
+
+  // 합선 위험 배너 토글
+  $('#shortCircuitBanner').style.display = state.hasShortCircuit ? 'block' : 'none';
 
   // 5. 전력을 공급받는 활성 전기 노드(activeElectricNodes) 및 격자 원 노드(activeRawNodes) 탐색
   if (state.litBulbs.size > 0 && !state.hasShortCircuit) {
@@ -1196,6 +1226,8 @@ function solveCircuit() {
   if (state.litBulbs.size > 0 && !state.hasShortCircuit) {
     const M = activeBatteries.length;
     const N = state.litBulbs.size;
+    const levels = [...state.bulbLevels.values()];
+    const maxLevel = levels.length ? Math.max(...levels) : 2;
 
     // 회로가 심플한 단일 폐회로(루프)인지 판정
     const isSingleLoop = checkSingleLoop(activeBatteries, activeBulbs);
@@ -1207,9 +1239,12 @@ function solveCircuit() {
       } else if (M === 1 && N > 1) {
         state.circuitType = 'series_bulb';
         state.bulbBrightness = 1; // 전구 직렬: 어두움
-      } else if (M > 1 && N === 1) {
+      } else if (M > 1 && N === 1 && maxLevel === 3) {
+        // 전지 직렬: 모든 전지가 같은 방향일 때만 밝아진다
         state.circuitType = 'series_battery';
         state.bulbBrightness = 3; // 전지 직렬: 밝음
+      } else {
+        state.bulbBrightness = maxLevel;
       }
     } else {
       // 병렬 여부 검사: 모든 불 켜진 전구가 동일한 전지 전위단 사이에 1:1로 직접 묶여있는 경우
@@ -1217,12 +1252,67 @@ function solveCircuit() {
       if (isParallel) {
         state.circuitType = 'parallel_bulb';
         state.bulbBrightness = 2; // 보통
+      } else {
+        state.bulbBrightness = maxLevel;
       }
     }
   }
 
   // 캔버스 다시 그리기
   drawBoard();
+}
+
+/* 마디 전압 해석: 전지 = 1.5V + 작은 내부저항, 전구 = 같은 저항.
+   반환값 bulbRatio: 전구 전류 ÷ (전지 1개·전구 1개 회로의 전류). 1이면 기본 밝기 */
+function solveNodal(batteries, bulbs) {
+  const E = 1.5, R_BULB = 10, R_INT = 0.2;
+  const I0 = E / (R_BULB + R_INT);
+  const result = { bulbRatio: new Map(), batteryOverload: false };
+  const index = new Map();
+  const idx = n => { if (!index.has(n)) index.set(n, index.size); return index.get(n); };
+  batteries.forEach(b => { idx(b.pos); idx(b.neg); });
+  bulbs.forEach(b => { idx(b.u); idx(b.v); });
+  const n = index.size;
+  if (n === 0 || batteries.length === 0) return result;
+
+  const G = Array.from({ length: n }, () => new Array(n).fill(0));
+  const I = new Array(n).fill(0);
+  const addG = (a, b, g) => { G[a][a] += g; G[b][b] += g; G[a][b] -= g; G[b][a] -= g; };
+  batteries.forEach(b => {
+    const pi = idx(b.pos), ni = idx(b.neg);
+    addG(pi, ni, 1 / R_INT);           // 노턴 등가: 내부저항 ∥ 전류원
+    I[pi] += E / R_INT;
+    I[ni] -= E / R_INT;
+  });
+  bulbs.forEach(b => addG(idx(b.u), idx(b.v), 1 / R_BULB));
+  for (let i = 0; i < n; i++) G[i][i] += 1e-9; // 떠 있는 마디가 있어도 풀리도록 아주 작은 누설
+
+  // 가우스 소거 (부분 피벗)
+  for (let c = 0; c < n; c++) {
+    let piv = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(G[r][c]) > Math.abs(G[piv][c])) piv = r;
+    if (Math.abs(G[piv][c]) < 1e-15) continue;
+    [G[c], G[piv]] = [G[piv], G[c]];
+    [I[c], I[piv]] = [I[piv], I[c]];
+    for (let r = 0; r < n; r++) {
+      if (r === c) continue;
+      const f = G[r][c] / G[c][c];
+      if (f === 0) continue;
+      for (let k = c; k < n; k++) G[r][k] -= f * G[c][k];
+      I[r] -= f * I[c];
+    }
+  }
+  const V = I.map((val, i) => (Math.abs(G[i][i]) < 1e-15 ? 0 : val / G[i][i]));
+
+  bulbs.forEach(b => {
+    const cur = Math.abs(V[idx(b.u)] - V[idx(b.v)]) / R_BULB;
+    result.bulbRatio.set(b.key, cur / I0);
+  });
+  batteries.forEach(b => {
+    const cur = Math.abs(E - (V[idx(b.pos)] - V[idx(b.neg)])) / R_INT;
+    if (cur > 3) result.batteryOverload = true; // 정상 회로의 20배 이상
+  });
+  return result;
 }
 
 // 단일 루프 폐쇄 검사 (모든 노드의 차수가 정확히 2)
@@ -1274,21 +1364,24 @@ function verifyCurrentMission() {
     if (state.hasShortCircuit) {
       showFeedback('❌ 합선 위험! 전선이 전구 없이 직접 연결되었습니다. 전선 위치를 변경하세요.', 'no');
     } else if (state.litBulbs.size > 0) {
-      const typeStr = state.circuitType === 'series_bulb' ? '전구 직렬연결' : 
-                      state.circuitType === 'parallel_bulb' ? '전구 병렬연결' : 
-                      state.circuitType === 'series_battery' ? '전지 직렬연결' : '혼합 회로';
+      const typeStr = state.circuitType === 'series_bulb' ? '전구 직렬연결' :
+                      state.circuitType === 'parallel_bulb' ? '전구 병렬연결' :
+                      state.circuitType === 'series_battery' ? '전지 직렬연결' :
+                      state.circuitType === 'base' ? '기본 회로(전지 1개·전구 1개)' : '여러 부품이 섞인 회로';
       showFeedback(`🎉 닫힌 회로 완성! 현재 <strong>${typeStr}</strong> 상태입니다. 전구 밝기는 <strong>${state.bulbBrightness === 3 ? '밝음 🌟' : state.bulbBrightness === 1 ? '어두움 💡' : '보통'}</strong>입니다.`, 'ok');
     } else {
-      showFeedback('💡 전구에 불이 켜지지 않았습니다. 전지 양극-전구-음극이 닫힌 루프(폐회로)로 끊김 없이 이어지도록 다시 이어보세요.', 'no');
+      showFeedback('💡 전구에 불이 켜지지 않았어요. 전지의 (+)극 → 전구 → (-)극이 끊김 없이 이어지도록 다시 이어 보세요. 전지가 2개라면 (+)극 방향이 서로 같은지도 확인해요(전지를 누르면 방향이 바뀌어요).', 'no');
     }
   } else if (state.mode === 2) {
     // 도전 미션 검증
     const isOk = m.verify(state);
     if (isOk) {
-      showFeedback('🎉 미션 성공! 교과서에 맞는 올바른 회로 구성을 완료했습니다.', 'ok');
       state.missionsCompleted[m.id] = true;
-      setupMissionUI();
+      renderMissionNav(); // 완료 표시만 갱신 (setupMissionUI는 문구를 지우고, 미션 6은 회로를 합선 상태로 되돌림)
       saveState();
+      const next = MISSIONS.findIndex(ms => !state.missionsCompleted[ms.id]);
+      const tail = next === -1 ? ' 미션을 모두 마쳤어요! 아래 [탐험 완료] 버튼을 눌러 보세요.' : ` 위의 ${next + 1}번 버튼을 눌러 다음 미션에 도전해 보세요.`;
+      showFeedback('🎉 미션 성공! 회로를 올바르게 만들었어요.' + tail, 'ok');
     } else {
       if (m.id === 'm1') {
         showFeedback('❌ 아직 불이 들어오지 않았습니다. 전구 양쪽 단자에 전선의 두 극이 끊김 없이 연결되도록 전선을 배치하세요.', 'no');
@@ -1299,7 +1392,7 @@ function verifyCurrentMission() {
       } else if (m.id === 'm4') {
         showFeedback('❌ 전구 2개가 갈래길(병렬)로 연결되어 각각 불이 들어오는지, 그리고 예측(켜질 것이다)을 선택했는지 다시 확인해 보세요.', 'no');
       } else if (m.id === 'm5') {
-        showFeedback('❌ 전지 2개가 일렬(직렬)로 연결되어 전구 1개로 향하도록 구성해 보세요.', 'no');
+        showFeedback('❌ 전지 2개를 한 줄(직렬)로 이어 전구 1개에 연결해 보세요. 두 전지의 (+)극이 같은 방향을 향해야 해요. 전지를 누르면 방향이 바뀌어요.', 'no');
       } else if (m.id === 'm6') {
         showFeedback('❌ 합선 위험 경고등을 해제하고, 전구를 포함한 닫힌 회로를 다시 구성해 불을 켜 보세요.', 'no');
       }
@@ -1409,10 +1502,11 @@ function init() {
     const payload = JSON.stringify({ v: 1, circuit: segmentsObj });
     const url = location.origin + location.pathname + '#share=' + encodeURIComponent(payload);
     if (navigator.share) {
-      navigator.share({ title: '전기회로 공작소 — 내가 만든 전기 회로', url });
+      navigator.share({ title: '전기회로 공작소 — 내가 만든 전기 회로', url }).catch(() => {});
     } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(url);
-      alert('공유 링크가 클립보드에 복사되었습니다.');
+      navigator.clipboard.writeText(url)
+        .then(() => alert('공유 링크를 복사했어요.'))
+        .catch(() => prompt('아래 링크를 복사해 주세요.', url));
     }
   };
 }

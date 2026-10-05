@@ -481,7 +481,6 @@ body {
   .dice-wrap, .dice { width: 70px; height: 70px; }
 }
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/chance-lab/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"가능성 실험실","description":"동전과 주사위를 1000번 던지고 나만의 회전판을 설계해 보세요. 초등 수학 5학년 가능성 개념을 실험으로 익히는 무료 학습 시뮬레이션.","url":"https://eduin.info/apps/chance-lab/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -599,8 +598,6 @@ body {
             <div id="mission1" class="mission-panel active" style="display:none;">
               <h3>① 가능성을 말로 표현해요</h3>
               <p>각 상황의 가능성에 맞는 표현을 골라 주세요.</p>
-              <div id="m1Cards"></div>
-              <div id="m1Feedback"></div>
               <div style="text-align:center; margin-top:10px;">
                 <button class="fb-btn fb-btn-primary" id="m1Next" style="display:none; font-size:14px; padding:10px 20px;">다음 미션 →</button>
               </div>
@@ -718,14 +715,37 @@ function saveState() {
     }));
   } catch(e) {}
 }
+/* 저장값·공유 링크에서 온 회전판을 검사: 2~6칸, 색 0~5 중복 없음, 칸 수 0~12 정수, 합계 12 이하 */
+function sanitizeSpinner(sp) {
+  if (!sp || !Array.isArray(sp.slots)) return null;
+  const slots = sp.slots;
+  if (slots.length < 2 || slots.length > 6) return null;
+  const used = new Set();
+  let total = 0;
+  const out = [];
+  for (const s of slots) {
+    const color = Number(s && s.color);
+    const weight = Number(s && s.weight);
+    if (!Number.isInteger(color) || color < 0 || color > 5 || used.has(color)) return null;
+    if (!Number.isInteger(weight) || weight < 0 || weight > 12) return null;
+    used.add(color);
+    total += weight;
+    out.push({ color, weight });
+  }
+  if (total > 12) return null;
+  return { slots: out };
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const saved = JSON.parse(raw);
+    if (!saved || typeof saved !== 'object') return;
     if (saved.missions) state.missions = saved.missions;
     if (saved.missionStars) state.missionStars = saved.missionStars;
-    if (saved.spinner) state.spinner = saved.spinner;
+    const sp = sanitizeSpinner(saved.spinner);
+    if (sp) state.spinner = sp;
     if (saved.counts) state.counts = saved.counts;
     if (saved.total) state.total = saved.total;
     if (saved.snapshots) state.snapshots = saved.snapshots;
@@ -748,8 +768,9 @@ function parseShareLink() {
   if (!hash.startsWith('#share=')) return;
   try {
     const payload = JSON.parse(decodeURIComponent(hash.slice(7)));
-    if (payload.v === 1 && payload.spinner) {
-      state.spinner = payload.spinner;
+    const sp = payload && payload.v === 1 ? sanitizeSpinner(payload.spinner) : null;
+    if (sp) {
+      state.spinner = sp;
       syncSpinnerCounts();
       state.device = 'spinner';
     }
@@ -914,6 +935,10 @@ function addSnapshot(dev) {
 async function runExperiment(count) {
   if (animating) return;
   const dev = state.device;
+  if (dev === 'spinner' && state.spinner.slots.reduce((a, s) => a + s.weight, 0) === 0) {
+    setResultLabel('회전판에 먼저 색을 칠해 주세요!');
+    return;
+  }
 
   if (count === 1) {
     lockControls(true);
@@ -962,12 +987,17 @@ function doSingleTrial(dev) {
   if (dev === 'coin') return Math.random() < 0.5 ? 0 : 1;
   if (dev === 'dice') return Math.floor(Math.random() * 6);
   const totalW = state.spinner.slots.reduce((a, s) => a + s.weight, 0);
+  // 실제 추첨은 "채운 칸"만으로 한다(빈 칸 제외) — 설계 화면의 % 표시도 같은 기준
   let r = Math.random() * totalW;
+  let last = 0;
   for (let i = 0; i < state.spinner.slots.length; i++) {
-    r -= state.spinner.slots[i].weight;
-    if (r <= 0) return i;
+    const w = state.spinner.slots[i].weight;
+    if (w <= 0) continue;
+    last = i;
+    r -= w;
+    if (r < 0) return i;
   }
-  return state.spinner.slots.length - 1;
+  return last;
 }
 
 function recordResult(dev, result) {
@@ -1013,7 +1043,7 @@ async function animateSingle(dev, result) {
       dice.classList.remove('rolling');
       renderDiceFace(result + 1);
     }
-    setResultLabel(`${result + 1} 나왔어요! 🎲`);
+    setResultLabel(`${result + 1}${[0, 2, 5].includes(result) ? '이' : '가'} 나왔어요! 🎲`);
   } else {
     await animateSpinner(result);
     const slot = state.spinner.slots[result];
@@ -1085,8 +1115,8 @@ function updateSummary() {
   if (dev === 'coin') {
     const h = state.counts.coin[0];
     const pct = (h / t * 100).toFixed(1);
-    const word = pct > 45 && pct < 55 ? '거의 반반' : (pct >= 55 ? '앞면이 좀 더 많이' : '뒷면이 좀 더 많이');
-    el.innerHTML = `지금까지 <strong>${t}번</strong> 중 앞면 <strong>${h}번(${pct}%)</strong> — <strong>${word}</strong>이에요!`;
+    const word = pct > 45 && pct < 55 ? '거의 반반이에요' : (pct >= 55 ? '앞면이 조금 더 많아요' : '뒷면이 조금 더 많아요');
+    el.innerHTML = `지금까지 <strong>${t}번</strong> 중 앞면 <strong>${h}번(${pct}%)</strong> — <strong>${word}</strong>!`;
   } else if (dev === 'dice') {
     const max = Math.max(...state.counts.dice);
     const maxIdx = state.counts.dice.indexOf(max);
@@ -1278,7 +1308,8 @@ function renderDesigner() {
   let html = '';
   slots.forEach((slot, i) => {
     const c = COLORS[slot.color];
-    const pct = totalW > 0 ? (slot.weight / 12 * 100).toFixed(0) : 0;
+    // 실제 추첨(doSingleTrial)과 같은 기준: 채운 칸 전체(totalW) 중 이 색의 비율
+    const pct = totalW > 0 ? (slot.weight / totalW * 100).toFixed(0) : 0;
     html += `
       <div class="slot-row">
         <div class="slot-color" style="background:${c.hex}"></div>
@@ -1302,7 +1333,9 @@ function renderDesigner() {
     });
   });
 
-  $('#slotsRemaining').textContent = remaining > 0 ? `남은 칸: ${remaining}/12` : '12칸 모두 배정됨 ✓';
+  $('#slotsRemaining').textContent = remaining > 0
+    ? `남은 칸: ${remaining}/12 (빈 칸은 빼고, 칠한 ${totalW}칸으로 회전판을 만들어요)`
+    : '12칸 모두 배정됨 ✓';
   $('#btnAddSlot').disabled = slots.length >= 6;
   $('#btnRemoveSlot').disabled = slots.length <= 2;
 }
@@ -1368,10 +1401,14 @@ const M1_LABELS = ['불가능하다', '~아닐 것 같다', '반반이다', '~�
 let m1Current = 0;
 let m1Answers = [];
 let m1SelectedScale = -1;
+let m1Token = 0;      // 미션을 다시 시작하면 이전 타이머가 무시되도록
+let m1Locked = false; // 한 문제에 한 번만 답하도록
 
 function renderMission1() {
+  m1Token++;
   m1Current = 0;
   m1Answers = [];
+  $('#m1Next').style.display = 'none';
   renderM1Question();
 }
 
@@ -1393,18 +1430,22 @@ function renderM1Question() {
   cardsEl.innerHTML = html;
   $('#m1Feedback').innerHTML = '';
   m1SelectedScale = -1;
+  m1Locked = false;
 
+  const token = m1Token;
   cardsEl.querySelectorAll('.m1-scale-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (m1Locked) return;
+      m1Locked = true;
       m1SelectedScale = parseInt(btn.dataset.val);
-      cardsEl.querySelectorAll('.m1-scale-btn').forEach(b => b.classList.remove('selected'));
+      cardsEl.querySelectorAll('.m1-scale-btn').forEach(b => { b.classList.remove('selected'); b.disabled = true; });
       btn.classList.add('selected');
-      setTimeout(() => checkM1Answer(), 300);
+      setTimeout(() => { if (token === m1Token) checkM1Answer(token); }, 300);
     });
   });
 }
 
-function checkM1Answer() {
+function checkM1Answer(token) {
   const q = M1_QUESTIONS[m1Current];
   const correct = m1SelectedScale === q.answer;
   m1Answers.push(correct);
@@ -1420,6 +1461,7 @@ function checkM1Answer() {
   }
 
   setTimeout(() => {
+    if (token !== m1Token) return;
     m1Current++;
     renderM1Question();
   }, 1200);
@@ -1507,7 +1549,7 @@ async function runM2Phase1() {
 
   const diff = Math.abs(heads - prediction);
   const fb = $('#m2Feedback');
-  let msg = (diff === 0) ? `예측 ${prediction}번, 결과 ${heads}번 — 정확히 맞았어요! 🎯` : `예측 ${prediction}번, 결과 ${heads}번 — ${diff}번 차이나요.`;
+  let msg = (diff === 0) ? `예측 ${prediction}번, 결과 ${heads}번 — 정확히 맞았어요! 🎯` : `예측 ${prediction}번, 결과 ${heads}번 — ${diff}번 차이가 나요.`;
 
   fb.innerHTML = `
     <div class="feedback info">${msg}<br><strong>적게 던지면 예측과 벗어나기 쉬워요.</strong></div>
@@ -1793,10 +1835,11 @@ function renderM4Spinner() {
   const totalW = slots.reduce((a, s) => a + s.weight, 0);
   if (totalW === 0) { svg.innerHTML = '<circle cx="110" cy="110" r="100" fill="var(--bg-sec)" stroke="var(--border)" stroke-width="2"/>'; return; }
 
-  let html = '';
+  // 미션 4는 12칸 기준이므로 아직 안 채운 칸은 회색 "빈 칸"으로 그린다(설계 표의 %와 일치)
+  let html = '<circle cx="110" cy="110" r="100" fill="var(--bg-sec)" stroke="var(--border)" stroke-width="2"/>';
   let startAngle = -90;
   slots.forEach((slot, i) => {
-    const angle = (slot.weight / totalW) * 360;
+    const angle = (slot.weight / 12) * 360;
     if (angle <= 0) return;
     const endAngle = startAngle + angle;
     const largeArc = angle > 180 ? 1 : 0;
@@ -1853,7 +1896,7 @@ async function checkM4Design() {
     let r = Math.random() * totalW;
     for (let j = 0; j < slots.length; j++) {
       r -= slots[j].weight;
-      if (r <= 0) { counts[j]++; break; }
+      if (r < 0) { counts[j]++; break; }
     }
   }
 
@@ -1955,6 +1998,7 @@ function exitMissionMode() {
   $('#lineChartSection').style.display = 'block';
   $('#m1CanvasArea').style.display = 'none';
 
+  $$('#deviceTabs .view-tab').forEach(b => b.classList.toggle('active', b.dataset.device === state.device));
   renderDevice();
 }
 
@@ -1963,15 +2007,15 @@ function exitMissionMode() {
    ══════════════════════════════════════ */
 function showResult() {
   showScreen('screenResult');
-  const totalStars = Object.values(state.missionStars).reduce((a, b) => a + b, 0);
-  const maxStars = 12;
-  $('#resultStars').textContent = '⭐'.repeat(Math.min(totalStars, maxStars));
+  const st = k => Math.max(0, Math.min(3, parseInt(state.missionStars[k]) || 0));
+  const totalStars = st('m1') + st('m2') + st('m3') + st('m4');
+  $('#resultStars').textContent = '⭐'.repeat(totalStars);
 
   let summary = `<strong>미션 결과</strong><br>`;
-  summary += `① 말로 표현: ${'⭐'.repeat(state.missionStars.m1)}<br>`;
-  summary += `② 예측→실험: ${'⭐'.repeat(state.missionStars.m2)}<br>`;
-  summary += `③ 수렴 관찰: ${'⭐'.repeat(state.missionStars.m3)}<br>`;
-  summary += `④ 설계 미션: ${'⭐'.repeat(state.missionStars.m4)}<br><br>`;
+  summary += `① 말로 표현: ${'⭐'.repeat(st('m1'))}<br>`;
+  summary += `② 예측→실험: ${'⭐'.repeat(st('m2'))}<br>`;
+  summary += `③ 수렴 관찰: ${'⭐'.repeat(st('m3'))}<br>`;
+  summary += `④ 설계 미션: ${'⭐'.repeat(st('m4'))}<br><br>`;
   summary += `<strong>배움 정리</strong><br>`;
   summary += `가능성은 <strong>0(불가능)</strong>부터 <strong>1(확실)</strong> 사이의 수로 나타낼 수 있어요.<br>`;
   summary += `<strong>실험을 많이 할수록 결과는 가능성에 가까워져요.</strong>`;
@@ -1988,6 +2032,8 @@ function init() {
 
   $('#btnStart').addEventListener('click', () => {
     showScreen('screenExplore');
+    // 공유 링크로 회전판이 열린 경우 탭 표시도 맞춘다
+    $$('#deviceTabs .view-tab').forEach(b => b.classList.toggle('active', b.dataset.device === state.device));
     renderDevice();
   });
 
@@ -2031,7 +2077,7 @@ function init() {
   $('#btnRemoveSlot').addEventListener('click', removeSlot);
 
   $('#btnMission').addEventListener('click', startMissions);
-  $('#btnGoMission').addEventListener('click', startMissions);
+  $('#m1Next').addEventListener('click', () => goToMission(2));
 
   $('#btnBackLab').addEventListener('click', exitMissionMode);
 
@@ -2062,10 +2108,11 @@ function init() {
       const payload = JSON.stringify({ v: 1, spinner: state.spinner });
       const url = location.origin + location.pathname + '#share=' + encodeURIComponent(payload);
       if (navigator.share) {
-        navigator.share({ title: '가능성 실험실 — 내 회전판', url });
+        navigator.share({ title: '가능성 실험실 — 내 회전판', url }).catch(() => {});
       } else if (navigator.clipboard) {
-        navigator.clipboard.writeText(url);
-        showToast('공유 링크가 복사되었어요!');
+        navigator.clipboard.writeText(url)
+          .then(() => showToast('공유 링크가 복사되었어요!'))
+          .catch(() => showToast('링크를 복사하지 못했어요.'));
       }
     }
   };

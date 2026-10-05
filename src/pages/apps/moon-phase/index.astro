@@ -46,7 +46,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             width: 95%;
             max-width: 1240px;
             display: grid;
-            grid-template-columns: 440px 1fr;
+            /* minmax(0, …): 캔버스 고유 폭이 열을 밀어내지 않도록 */
+            grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
             gap: 25px;
             padding: 20px;
             position: relative;
@@ -79,6 +80,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         .moon-canvas-container {
             position: relative;
             margin-bottom: 25px;
+            max-width: 100%;
+        }
+
+        /* 캔버스는 내부 해상도(width/height 속성)를 유지한 채 화면 폭에 맞춰 줄어든다.
+           (고정 폭 340·550px 때문에 1024px 태블릿에서 궤도 그림이 잘리던 문제) */
+        #moonCanvas, #orbitCanvas, #skySimCanvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            margin: 0 auto;
         }
 
         /* 3D Orbit Display */
@@ -277,12 +288,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             box-shadow: 0 0 10px rgba(76, 201, 240, 0.5);
         }
 
-        @media (max-width: 1000px) {
-            .dashboard { grid-template-columns: 1fr; }
+        @media (max-width: 1100px) {
+            .dashboard { grid-template-columns: minmax(0, 1fr); }
             .info-card { min-height: auto; }
         }
     </style>
-  <link rel="canonical" href="https://eduin.info/apps/moon-phase/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"Moon Phase","description":"태양-지구-달의 위치 관계를 3D 시뮬레이션으로 직관적으로 이해. 월령 계산 포함.","url":"https://eduin.info/apps/moon-phase/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -577,7 +587,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             if (p < 0.72) return {
                 name: "이지러지는 달", dir: "심야 남서쪽 하늘",
                 sky: "저녁 늦게 떠올라 새벽 내내 남쪽과 서쪽 하늘을 비춥니다.",
-                points: ["왼쪽 부분이 조금씩 깎이기 시작하는 위상입니다.", "새벽 일찍 관측하기 좋은 대상입니다."],
+                points: ["보름달의 오른쪽 부분부터 조금씩 어두워지는 모양입니다.", "새벽 일찍 관측하기 좋은 대상입니다."],
                 skySim: "초저녁에는 아직 지평선 아래에 있어 보이지 않습니다."
             };
             if (p < 0.78) return {
@@ -588,7 +598,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             };
             return {
                 name: "그믐달", dir: "새벽 동쪽 하늘",
-                sky: "해 뜨기 직전 동쪽 하늘 낮은 곳에서 잠깐 보이다 해와 함께 뜹니다.",
+                sky: "새벽, 해 뜨기 전 동쪽 하늘 낮은 곳에서 잠깐 보이다가 해가 뜨면 밝은 하늘에 묻혀 보이지 않습니다.",
                 points: ["가장 가느다란 왼쪽 눈썹 모양의 달입니다.", "동트기 전 짧은 시간 동안만 관측 가능한 신비로운 모습입니다."],
                 skySim: "초저녁에는 보이지 않습니다."
             };
@@ -605,14 +615,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             mCtx.save();
             mCtx.beginPath();
             
+            // 명암 경계(터미네이터) 타원의 가로 반지름 = r·cos(2π·위상).
+            // (예전 선형 근사 1 - phase/0.25는 초승달·그믐달을 실제보다 두껍게 그렸음)
+            const s = Math.cos(2 * Math.PI * phase);
             if (phase <= 0.5) {
                 mCtx.arc(cx, cy, r, -Math.PI/2, Math.PI/2, false);
-                const s = 1 - (phase / 0.25);
                 if (phase < 0.25) mCtx.ellipse(cx, cy, r*s, r, 0, Math.PI/2, -Math.PI/2, true);
                 else mCtx.ellipse(cx, cy, r*Math.abs(s), r, 0, Math.PI/2, -Math.PI/2, false);
             } else {
                 mCtx.arc(cx, cy, r, Math.PI/2, -Math.PI/2, false);
-                const s = (phase - 0.75) / 0.25;
                 if (phase < 0.75) mCtx.ellipse(cx, cy, r*Math.abs(s), r, 0, -Math.PI/2, Math.PI/2, false);
                 else mCtx.ellipse(cx, cy, r*s, r, 0, -Math.PI/2, Math.PI/2, true);
             }
@@ -767,14 +778,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                 sCtx.fillStyle = "#111"; sCtx.fill();
                 
                 sCtx.beginPath();
+                const s = Math.cos(2 * Math.PI * p); // drawMoon과 같은 터미네이터 공식
                 if (p <= 0.5) {
                     sCtx.arc(mx, my, 6, -Math.PI/2, Math.PI/2, false);
-                    const s = 1 - (p / 0.25);
                     if (p < 0.25) sCtx.ellipse(mx, my, 6*s, 6, 0, Math.PI/2, -Math.PI/2, true);
                     else sCtx.ellipse(mx, my, 6*Math.abs(s), 6, 0, Math.PI/2, -Math.PI/2, false);
                 } else {
                     sCtx.arc(mx, my, 6, Math.PI/2, -Math.PI/2, false);
-                    const s = (p - 0.75) / 0.25;
                     if (p < 0.75) sCtx.ellipse(mx, my, 6*Math.abs(s), 6, 0, -Math.PI/2, Math.PI/2, false);
                     else sCtx.ellipse(mx, my, 6*s, 6, 0, -Math.PI/2, Math.PI/2, true);
                 }

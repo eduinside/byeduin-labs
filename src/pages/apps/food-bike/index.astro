@@ -419,7 +419,6 @@ body {
   cursor: not-allowed;
 }
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/food-bike/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"식품구성자전거","description":"음식을 담아 바퀴를 채우는 균형 식단 게임","url":"https://eduin.info/apps/food-bike/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -774,7 +773,7 @@ const MISSIONS = [
   },
   {
     id: 'm4', title: '식단 비교와 평가',
-    desc: '대표적인 두 가지 식단 중에서 <strong>어느 식단이 더 골고루 영양소를 갖췄는지</strong> 비교하고 올바른 결론을 골라보세요.<br><br><strong>식단 A: 쌀밥 + 생선구이 + 시금치 + 귤 + 우유 + 물</strong><br><strong>식단 B: 식빵 + 버터 + 설탕물</strong><br><br>1. 식단 B가 에너지를 빨리 내므로 훨씬 균형 잡혔다.<br>2. 식단 A는 6가지 식품군과 물이 모두 포함되어 균형 잡혔고, 식단 B는 채소/단백질/과일/유제품이 비어 있어 불균형하다.<br>3. 두 식단 모두 영양 상태의 차이가 없다.',
+    desc: '대표적인 두 가지 식단 중에서 <strong>어느 식단이 더 골고루 영양소를 갖췄는지</strong> 비교하고 올바른 결론을 골라보세요.<br><br><strong>식단 A: 쌀밥 + 생선구이 + 시금치 + 귤 + 우유 + 물</strong><br><strong>식단 B: 식빵 + 버터 + 설탕물</strong><br><br>1. 식단 B가 에너지를 빨리 내므로 훨씬 균형 잡혔다.<br>2. 식단 A는 곡류, 고기·생선, 채소, 과일, 우유의 5가지 식품군과 물이 골고루 들어 있어 균형 잡혔고, 식단 B는 곡류와 유지·당류뿐이라 채소/단백질/과일/유제품이 비어 있어 불균형하다.<br>3. 두 식단 모두 영양 상태의 차이가 없다.',
     verify: () => {
       const selected = document.querySelector('.m4-choice.selected');
       return selected && selected.dataset.val === '2';
@@ -790,12 +789,47 @@ let state = {
   
   // 현재 접시에 담긴 음식 리스트
   plate: [], // foodId 리스트
-  activeCategory: 'all'
+  activeCategory: 'all',
+  pendingFoodId: null // 분류 미션: 탭으로 고른 음식(다음에 누른 바구니에 넣음)
 };
 
 /* ── 유틸 ── */
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
+
+/* 받침 유무에 따라 조사 선택: josa('곡류','이','가') → '곡류가' */
+function josa(word, withBatchim, withoutBatchim) {
+  const code = word.charCodeAt(word.length - 1) - 0xAC00;
+  const has = code >= 0 && code <= 11171 && code % 28 !== 0;
+  return word + (has ? withBatchim : withoutBatchim);
+}
+
+/* 저장값·공유 링크에서 온 접시 검사: 아는 음식 id만, 중복 없이 최대 12개 */
+function cleanPlate(arr) {
+  if (!Array.isArray(arr)) return [];
+  const out = [];
+  arr.forEach(id => { if (FOOD_BY_ID[id] && !out.includes(id) && out.length < 12) out.push(id); });
+  return out;
+}
+
+/* ── 토스트 (init 밖: 어디서나 호출 가능) ── */
+let toastEl = null;
+let toastTimer = null;
+function showToast(msg) {
+  if (!toastEl) {
+    toastEl = document.createElement('div');
+    toastEl.setAttribute('role', 'status');
+    toastEl.setAttribute('aria-live', 'polite');
+    toastEl.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%);'
+      + 'background:rgba(0,0,0,0.8); color:#fff; padding:10px 18px; border-radius:20px; font-size:14px;'
+      + 'z-index:9999; max-width:min(90vw,520px); text-align:center; line-height:1.5;';
+    document.body.appendChild(toastEl);
+  }
+  toastEl.textContent = msg;
+  toastEl.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastEl.style.display = 'none'; }, Math.max(2500, msg.length * 90));
+}
 
 /* ── 상태 저장/불러오기 ── */
 const STORAGE_KEY = 'food-bike:v1';
@@ -812,8 +846,13 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const saved = JSON.parse(raw);
-    if (saved.missionsCompleted) state.missionsCompleted = saved.missionsCompleted;
-    if (saved.lastPlate) state.plate = saved.lastPlate;
+    if (!saved || typeof saved !== 'object') return;
+    if (saved.missionsCompleted && typeof saved.missionsCompleted === 'object') {
+      Object.keys(state.missionsCompleted).forEach(k => {
+        state.missionsCompleted[k] = saved.missionsCompleted[k] === true;
+      });
+    }
+    if (saved.lastPlate) state.plate = cleanPlate(saved.lastPlate);
   } catch(e) {}
 }
 
@@ -823,8 +862,8 @@ function parseShareLink() {
   if (!hash.startsWith('#share=')) return;
   try {
     const payload = JSON.parse(decodeURIComponent(hash.slice(7)));
-    if (payload.v === 1 && payload.plate) {
-      state.plate = payload.plate;
+    if (payload && payload.v === 1 && payload.plate) {
+      state.plate = cleanPlate(payload.plate);
       state.mode = 1;
     }
   } catch(e) {}
@@ -878,12 +917,10 @@ function switchMode(modeNum) {
   hideFeedback();
 }
 
-function setupMissionUI() {
-  const m = MISSIONS[state.missionIdx];
+/* 미션 번호 버튼만 다시 그림(완료 표시 갱신용). 접시·피드백은 건드리지 않는다 */
+function renderMissionNav() {
   const nav = $('#missionNav');
   nav.innerHTML = '';
-
-  // 미션 인덱스 버튼
   MISSIONS.forEach((ms, idx) => {
     const btn = document.createElement('button');
     btn.className = `mission-nav-btn ${idx === state.missionIdx ? 'active' : ''} ${state.missionsCompleted[ms.id] ? 'done' : ''}`;
@@ -894,6 +931,13 @@ function setupMissionUI() {
     });
     nav.appendChild(btn);
   });
+  updateVerifyButtonText();
+}
+
+function setupMissionUI() {
+  const m = MISSIONS[state.missionIdx];
+  state.pendingFoodId = null;
+  renderMissionNav();
 
   $('#missionDesc').innerHTML = m.desc;
 
@@ -937,6 +981,8 @@ function setupMissionUI() {
     setBikeRunState('wobble', '어떤 식품군이 부족할까요?');
   }
 
+  // 미션을 바꿀 때 팔레트도 다시 그린다(분류 미션의 5종 목록이 다음 미션에 남던 문제)
+  renderPalette();
   updateVerifyButtonText();
   hideFeedback();
 }
@@ -979,6 +1025,7 @@ function renderPalette() {
 
     const card = document.createElement('div');
     card.className = `palette-item ${isPlaced ? 'placed' : ''}`;
+    if (isClassification && state.pendingFoodId === f.id) card.style.outline = '3px solid var(--fb-accent)';
     card.draggable = isClassification && !isPlaced; // 분류 미션만 HTML5 드래그앤드롭 사용
     card.innerHTML = `<span style="font-size:20px;">${f.emoji}</span><span>${f.name}</span>`;
 
@@ -986,12 +1033,12 @@ function renderPalette() {
       card.addEventListener('dragstart', (e) => {
         e.dataTransfer.setData('text/plain', f.id);
       });
-      // 탭 폴백 (접근성)
+      // 탭 폴백 (접근성·터치): 음식을 누른 뒤 바구니를 누르면 그 바구니에 들어간다
       card.addEventListener('click', () => {
-        if (!isPlaced) {
-          // 순차적으로 첫 번째 비어 있는 바구니나 알맞은 곳에 자동 주입해 편의성 제공
-          autoPlaceToBasket(f.id);
-        }
+        if (isPlaced) return;
+        state.pendingFoodId = state.pendingFoodId === f.id ? null : f.id;
+        renderPalette();
+        if (state.pendingFoodId) showToast(`${josa(f.name, '을', '를')} 넣을 바구니를 눌러 주세요.`);
       });
     } else {
       // 식단 빌더 모드에서는 탭하여 토글 담기/빼기
@@ -1013,13 +1060,6 @@ function isClassifiedInBasket(foodId) {
   return found;
 }
 
-function autoPlaceToBasket(foodId) {
-  // 모드 2 미션 1에서 탭 클릭 시 첫 번째 바구니에 수동 배치
-  const firstBasket = $('.classify-basket');
-  if (firstBasket) {
-    dropFoodToBasket(foodId, firstBasket);
-  }
-}
 
 function toggleFoodInPlate(foodId) {
   const idx = state.plate.indexOf(foodId);
@@ -1123,7 +1163,7 @@ function updateBikeSimulation() {
   if (!hasWater) {
     setBikeRunState('stop', '앞바퀴 바람 빠짐! (물이 필요해요 💧)');
   } else if (missingGroups.length > 0) {
-    setBikeRunState('wobble', `비틀비틀! (${missingGroups[0]}이 부족해요)`);
+    setBikeRunState('wobble', `비틀비틀! (${josa(missingGroups[0], '이', '가')} 부족해요)`);
   } else if (oilCount > 2) {
     setBikeRunState('heavy', '느릿느릿! (유지·당류가 많아 짐칸이 무거워요 📦)');
   } else {
@@ -1285,6 +1325,14 @@ function setupClassificationBaskets() {
     basket.dataset.group = b.group;
     basket.innerHTML = `<div class="classify-basket-title">${b.name}</div>`;
 
+    // 탭 대체 조작: 팔레트에서 고른 음식을 이 바구니에 넣기
+    basket.addEventListener('click', () => {
+      if (!state.pendingFoodId) return;
+      const id = state.pendingFoodId;
+      state.pendingFoodId = null;
+      dropFoodToBasket(id, basket);
+    });
+
     // HTML5 dragover/drop 수신
     basket.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -1323,8 +1371,10 @@ function dropFoodToBasket(foodId, basketEl) {
   card.dataset.id = foodId;
   card.innerHTML = `<span>${f.emoji}</span><span>${f.name}</span>`;
   
-  // 탭 클릭하여 제거 (접근성)
-  card.addEventListener('click', () => {
+  // 탭 클릭하여 제거 (접근성). 바구니 클릭(넣기)으로 번지지 않게 막는다
+  card.addEventListener('click', (e) => {
+    if (state.pendingFoodId) return; // 다른 음식을 넣는 중이면 바구니 클릭으로 처리
+    e.stopPropagation();
     card.remove();
     renderPalette();
   });
@@ -1363,16 +1413,18 @@ function verifyCurrentMission() {
     } else if (counts[6] > 2) {
       showFeedback('📦 유지·당류는 건강을 위해 꼭 소량만 조리할 때 사용해야 해요. 너무 많이 담으면 자전거 짐칸이 무거워져요. 몇 개 빼 볼까요?', 'no');
     } else {
-      showFeedback('🎉 완벽합니다! 6대 식품군이 골고루 조화를 이루고 수분까지 보충되어 자전거가 쌩쌩 달리고 있어요!', 'ok');
+      showFeedback('🎉 완벽해요! 여러 식품군이 골고루 조화를 이루고 물까지 마셔서 자전거가 쌩쌩 달리고 있어요!', 'ok');
     }
   } else if (state.mode === 2) {
     // 도전 미션 검증
     const isOk = m.verify();
     if (isOk) {
-      showFeedback('🎉 미션 성공! 올바른 영양학적 기준에 따라 식단을 멋지게 수정/보완했습니다!', 'ok');
       state.missionsCompleted[m.id] = true;
-      setupMissionUI();
+      renderMissionNav(); // 완료 표시만 갱신 (setupMissionUI는 문구를 지우고 접시를 초기화함)
       saveState();
+      const next = MISSIONS.findIndex(ms => !state.missionsCompleted[ms.id]);
+      const tail = next === -1 ? ' 미션을 모두 마쳤어요! 아래 [탐험 완료] 버튼을 눌러 보세요.' : ` 위의 ${next + 1}번 버튼을 눌러 다음 미션에 도전해 보세요.`;
+      showFeedback('🎉 미션 성공! 식단을 멋지게 완성했어요.' + tail, 'ok');
     } else {
       if (m.id === 'm1') {
         showFeedback('❌ 일부 음식의 분류가 정확하지 않거나 5개 음식을 모두 넣지 않았습니다. 헷갈리기 쉬운 음식들의 영양 특징을 떠올리며 다시 드래그해 보세요.', 'no');
@@ -1464,29 +1516,13 @@ function init() {
     const payload = JSON.stringify({ v: 1, plate: state.plate });
     const url = location.origin + location.pathname + '#share=' + encodeURIComponent(payload);
     if (navigator.share) {
-      navigator.share({ title: '식품구성자전거 — 내가 만든 식단 접시', url });
+      navigator.share({ title: '식품구성자전거 — 내가 만든 식단 접시', url }).catch(() => {});
     } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(url);
-      showToast('공유 링크가 클립보드에 복사되었습니다.');
+      navigator.clipboard.writeText(url)
+        .then(() => showToast('공유 링크를 복사했어요.'))
+        .catch(() => showToast('링크를 복사하지 못했어요.'));
     }
   };
-
-  function showToast(msg) {
-    const el = document.createElement('div');
-    el.style.position = 'fixed';
-    el.style.bottom = '20px';
-    el.style.left = '50%';
-    el.style.transform = 'translateX(-50%)';
-    el.style.background = 'rgba(0,0,0,0.8)';
-    el.style.color = '#fff';
-    el.style.padding = '8px 16px';
-    el.style.borderRadius = '20px';
-    el.style.fontSize = '12px';
-    el.style.zIndex = '9999';
-    el.textContent = msg;
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 2500);
-  }
 }
 
 if (document.readyState === 'loading') {

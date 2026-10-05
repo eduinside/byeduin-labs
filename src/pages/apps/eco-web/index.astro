@@ -135,7 +135,7 @@ body {
 
 /* 생물 노드(카드) */
 .node-card {
-  position: absolute; width: 84px; height: 106px;
+  position: absolute; width: 84px; height: 106px; pointer-events: auto;
   background: var(--eco-card-bg); border: 2px solid var(--border);
   border-radius: 14px; display: flex; flex-direction: column; align-items: center;
   justify-content: center; padding: 6px; cursor: grab; z-index: 3;
@@ -401,7 +401,6 @@ body {
   cursor: not-allowed;
 }
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/eco-web/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"생태계 탐험대","description":"먹이그물 잇기·피라미드·평형 시나리오 종합 실험","url":"https://eduin.info/apps/eco-web/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -451,7 +450,8 @@ body {
         </svg>
 
         <!-- 모드 1: 먹이그물 캔버스 카드 배치 영역 -->
-        <div id="placedNodesContainer" style="position:absolute; inset:0; z-index:2;"></div>
+        <!-- pointer-events:none: 빈 곳 클릭이 아래 SVG 화살표(선 지우기)와 분류 상자에 닿도록. 카드만 클릭을 받음 -->
+        <div id="placedNodesContainer" style="position:absolute; inset:0; z-index:2; pointer-events:none;"></div>
 
         <!-- 모드 1 미션 3: 생물 분류 상자 (기본 숨김) -->
         <div class="classify-zones" id="classifyZones" style="display:none;">
@@ -480,7 +480,7 @@ body {
               <div class="pyramid-tier-slots" data-level="3"></div>
             </div>
             <div class="pyramid-tier" data-tier="3">
-              <div class="pyramid-tier-label">🐍 2차 소비자</div>
+              <div class="pyramid-tier-label">🐸 2차 소비자</div>
               <div class="pyramid-tier-slots" data-level="2"></div>
             </div>
             <div class="pyramid-tier" data-tier="2">
@@ -624,7 +624,8 @@ const SPECIES = [
   { id: 'rabbit', name: '토끼', emoji: '🐇', role: 'consumer-1', level: 1 },
   { id: 'squirrel', name: '다람쥐', emoji: '🐿️', role: 'consumer-1', level: 1 },
   { id: 'frog', name: '개구리', emoji: '🐸', role: 'consumer-2', level: 2 },
-  { id: 'sparrow', name: '참새', emoji: '🐦', role: 'consumer-2', level: 2 },
+  // 참새는 벼(생산자)도 먹고 메뚜기(1차 소비자)도 먹으므로 1차·2차 소비자 둘 다 될 수 있다
+  { id: 'sparrow', name: '참새', emoji: '🐦', role: 'consumer-2', level: 2, altRoles: ['consumer-1'], altLevels: [1] },
   { id: 'snake', name: '뱀', emoji: '🐍', role: 'consumer-3', level: 3 },
   { id: 'fox', name: '여우', emoji: '🦊', role: 'consumer-3', level: 3 },
   { id: 'hawk', name: '매', emoji: '🦅', role: 'consumer-3', level: 3 },
@@ -632,6 +633,15 @@ const SPECIES = [
   { id: 'mold', name: '곰팡이', emoji: '🦠', role: 'decomposer', level: -1 },
 ];
 const SPECIES_BY_ID = Object.fromEntries(SPECIES.map(s => [s.id, s]));
+const roleOk = (sp, role) => sp.role === role || (sp.altRoles || []).includes(role);
+const levelOk = (sp, level) => sp.level === level || (sp.altLevels || []).includes(level);
+
+/* 받침 유무에 따라 조사 선택: josa('뱀','과','와') → '뱀과' */
+function josa(word, withBatchim, withoutBatchim) {
+  const code = word.charCodeAt(word.length - 1) - 0xAC00;
+  const has = code >= 0 && code <= 11171 && code % 28 !== 0;
+  return word + (has ? withBatchim : withoutBatchim);
+}
 
 // 올바른 먹고 먹히는 방향성 간선 정의 (preyId ➔ predatorId)
 const VALID_RELATIONS = [
@@ -648,6 +658,7 @@ const VALID_RELATIONS = [
   ['rabbit', 'fox'],
   ['rabbit', 'hawk'],
   ['frog', 'snake'],
+  ['frog', 'hawk'],
   ['sparrow', 'snake'],
   ['sparrow', 'hawk'],
   ['snake', 'hawk'],
@@ -715,7 +726,7 @@ const MISSIONS = {
     },
     {
       id: 'm1_3', title: '역할에 맞게 분류하기',
-      desc: '생물들을 역할에 맞게 화면의 5개 분류 상자(생산자, 1·2·3차 소비자, 분해자)로 드래그하여 알맞게 분류하세요. (각 상자에 1종 이상 배치)',
+      desc: '생물들을 역할에 맞게 화면의 5개 분류 상자(생산자, 1·2·3차 소비자, 분해자)로 드래그하여 알맞게 분류하세요. (각 상자에 1종 이상 배치)<br><span style="font-size:12px;opacity:0.8;">잘못 넣은 카드는 상자 밖으로 다시 끌어내면 돼요.</span>',
       verify: (placed, edges) => {
         // 각 상자별 드롭된 노드 체크
         const boxes = document.querySelectorAll('.classify-box');
@@ -729,7 +740,7 @@ const MISSIONS = {
             count++;
             const spId = card.dataset.id;
             const sp = SPECIES_BY_ID[spId];
-            if (sp.role !== role) {
+            if (!sp || !roleOk(sp, role)) {
               allCorrect = false;
             }
           });
@@ -744,17 +755,19 @@ const MISSIONS = {
       id: 'm2_1', title: '생태 피라미드 완성',
       desc: '벼, 토끼, 개구리, 매를 생태 피라미드의 알맞은 영양 단계(생산자 ➔ 1차 ➔ 2차 ➔ 3차)에 올바르게 드래그하여 쌓아 완성하세요.',
       verify: (placed, edges) => {
+        // 벼·토끼·개구리·매가 모두 알맞은 층에 있고, 잘못 놓인 카드가 없어야 성공
         const tiers = document.querySelectorAll('.pyramid-tier-slots');
-        let score = 0;
+        const correctIds = new Set();
+        let wrong = 0;
         tiers.forEach(tier => {
           const level = parseInt(tier.dataset.level);
-          const cards = tier.querySelectorAll('.node-card');
-          cards.forEach(card => {
+          tier.querySelectorAll('.node-card').forEach(card => {
             const sp = SPECIES_BY_ID[card.dataset.id];
-            if (sp.level === level) score++;
+            if (sp && levelOk(sp, level)) correctIds.add(sp.id);
+            else wrong++;
           });
         });
-        return score >= 4; // 최소 4개 맞춤
+        return wrong === 0 && ['rice', 'rabbit', 'frog', 'hawk'].every(id => correctIds.has(id));
       }
     },
     {
@@ -869,7 +882,8 @@ let state = {
   activeScenario: 'A',
   simulationStep: 0,
   simulationInterval: null,
-  predictions: { grasshopper: null, rice: null }
+  predictions: { grasshopper: null, rice: null },
+  pendingPyramidId: null // 탭으로 피라미드에 놓을 카드(드래그가 안 되는 터치 기기용)
 };
 
 /* ── 유틸 ── */
@@ -892,10 +906,39 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const saved = JSON.parse(raw);
-    if (saved.missionsCompleted) state.missionsCompleted = saved.missionsCompleted;
-    if (saved.placedNodes) state.placedNodes = saved.placedNodes;
-    if (saved.edges) state.edges = saved.edges;
+    if (!saved || typeof saved !== 'object') return;
+    if (saved.missionsCompleted && typeof saved.missionsCompleted === 'object') {
+      Object.keys(state.missionsCompleted).forEach(k => {
+        state.missionsCompleted[k] = saved.missionsCompleted[k] === true;
+      });
+    }
+    state.placedNodes = cleanPlacedNodes(saved.placedNodes);
+    state.edges = cleanEdges(saved.edges);
   } catch(e) {}
+}
+
+/* 저장값·공유 링크에서 온 값 검사: 아는 생물 id와 올바른 먹이 관계만 남긴다 */
+function cleanPlacedNodes(obj) {
+  const out = {};
+  if (!obj || typeof obj !== 'object') return out;
+  Object.keys(obj).forEach(id => {
+    const p = obj[id];
+    if (!SPECIES_BY_ID[id] || !p) return;
+    const x = Number(p.x), y = Number(p.y);
+    if (isFinite(x) && isFinite(y)) out[id] = { x: Math.max(0, Math.min(4000, x)), y: Math.max(0, Math.min(4000, y)) };
+  });
+  return out;
+}
+function cleanEdges(arr) {
+  if (!Array.isArray(arr)) return [];
+  const seen = new Set();
+  return arr.filter(e => {
+    if (!Array.isArray(e) || e.length !== 2) return false;
+    const key = `${e[0]}->${e[1]}`;
+    if (!RELATION_MAP.has(key) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).map(e => [e[0], e[1]]);
 }
 
 /* ── 공유 링크 ── */
@@ -904,9 +947,9 @@ function parseShareLink() {
   if (!hash.startsWith('#share=')) return;
   try {
     const payload = JSON.parse(decodeURIComponent(hash.slice(7)));
-    if (payload.v === 1 && payload.edges) {
-      state.edges = payload.edges;
-      state.placedNodes = payload.placedNodes || {};
+    if (payload && payload.v === 1 && payload.edges) {
+      state.edges = cleanEdges(payload.edges);
+      state.placedNodes = cleanPlacedNodes(payload.placedNodes);
       state.mode = 1;
     }
   } catch(e) {}
@@ -916,9 +959,24 @@ function parseShareLink() {
 /* ══════════════════════════════════════
    모드 / 미션 화면 전환 및 셋업
    ══════════════════════════════════════ */
-function switchMode(modeNum) {
-  state.mode = parseInt(modeNum);
-  state.missionIdx = 0;
+function stopSimulation() {
+  if (state.simulationInterval) {
+    clearInterval(state.simulationInterval);
+    state.simulationInterval = null;
+  }
+}
+
+function selectScenario(key) {
+  state.activeScenario = key;
+  $$('.scenario-btn').forEach(b => b.classList.toggle('active', b.dataset.sc === key));
+}
+
+function switchMode(modeNum, keepMissionIdx) {
+  const newMode = parseInt(modeNum);
+  if (!keepMissionIdx || newMode !== state.mode) state.missionIdx = 0;
+  state.mode = newMode;
+  stopSimulation();
+  state.pendingPyramidId = null;
   
   // 탭 활성화
   $$('.mode-tab').forEach(b => {
@@ -979,6 +1037,7 @@ function switchMode(modeNum) {
     const curMission = getActiveMission();
     if (curMission && curMission.id === 'm3_1') {
       $('#predictionBox').style.display = 'block';
+      selectScenario('B'); // 미션은 '개구리 전멸' 시나리오로 채점한다
     }
     renderScenarioVisual();
   }
@@ -1005,7 +1064,7 @@ function setupMissionUI() {
     btn.textContent = idx + 1;
     btn.addEventListener('click', () => {
       state.missionIdx = idx;
-      switchMode(state.mode); // 리셋 겸 재구축
+      switchMode(state.mode, true); // 리셋 겸 재구축 (고른 미션 번호 유지)
     });
     nav.appendChild(btn);
   });
@@ -1061,11 +1120,13 @@ function renderPalette() {
   grid.innerHTML = '';
   SPECIES.forEach(sp => {
     // 생산자, 분해자, 소비자에 따라 필터링 할 수도 있지만 팔레트에 모두 표시
-    const isPlaced = !!state.placedNodes[sp.id];
+    // 캔버스 배치 여부는 먹이그물(모드 1)에서만 의미가 있다. 피라미드에서는 언제든 꺼내 쓸 수 있음
+    const isPlaced = state.mode === 1 && !!state.placedNodes[sp.id];
     
     // 미션 1-3 (분류 미션) 시, 캔버스에 없는 물건만 팔레트에 노출
     const card = document.createElement('div');
-    card.className = `palette-item ${isPlaced ? 'placed' : ''}`;
+    card.className = `palette-item ${isPlaced ? 'placed' : ''} ${state.mode === 2 && state.pendingPyramidId === sp.id ? 'selected' : ''}`;
+    if (state.mode === 2 && state.pendingPyramidId === sp.id) card.style.outline = '3px solid var(--eco-accent)';
     card.innerHTML = `<span style="font-size:24px;">${sp.emoji}</span><span>${sp.name}</span>`;
     
     // 드래그 지원
@@ -1076,6 +1137,13 @@ function renderPalette() {
 
     // 클릭 시 바로 배치하는 대체 수단도 함께 제공 (접근성)
     card.addEventListener('click', () => {
+      if (state.mode === 2) {
+        // 터치 기기용: 카드를 누른 뒤 피라미드 층을 누르면 그 층에 놓인다
+        state.pendingPyramidId = state.pendingPyramidId === sp.id ? null : sp.id;
+        renderPalette();
+        if (state.pendingPyramidId) showToast(`${josa(sp.name, '을', '를')} 놓을 피라미드 층을 눌러 주세요.`);
+        return;
+      }
       if (!isPlaced) {
         placeNodeToCanvas(sp.id);
       }
@@ -1123,6 +1191,8 @@ function renderPlacedNodes() {
     // 화면 상단에 벼, 메뚜기, 개구리, 매, 버섯 등을 드래그할 수 있게 팔레트 형식 대신 캔버스 탑에 배치
     const initialClassificationItems = ['rice', 'clover', 'grasshopper', 'rabbit', 'frog', 'hawk', 'mushroom'];
     initialClassificationItems.forEach((id, i) => {
+      // 이미 분류 상자에 들어간 카드는 다시 만들지 않는다(중복 방지)
+      if (document.querySelector(`.classify-box .node-card[data-id="${id}"]`)) return;
       state.placedNodes[id] = { x: 30 + i * 90, y: 80 };
     });
   }
@@ -1161,6 +1231,19 @@ function renderPlacedNodes() {
       if (state.eraserMode) {
         // 노드 제거는 하지 않고 노드 연결만 지움
         return;
+      }
+
+      // 분류 상자 안의 카드를 다시 잡으면 상자에서 꺼내 자유 영역으로 옮긴 뒤 계속 끌 수 있게 한다
+      if (card.parentElement && card.parentElement.classList.contains('classify-box')) {
+        const vr = viewport.getBoundingClientRect();
+        const cr = card.getBoundingClientRect();
+        const x = Math.max(0, cr.left - vr.left);
+        const y = Math.max(0, cr.top - vr.top);
+        card.style.position = '';
+        card.style.left = `${x}px`;
+        card.style.top = `${y}px`;
+        $('#placedNodesContainer').appendChild(card);
+        state.placedNodes[id] = { x, y };
       }
 
       isDragging = true;
@@ -1292,7 +1375,7 @@ function handleConnectTap(id) {
 
     // 유효 관계 검사
     if (!RELATION_MAP.has(key)) {
-      showToast(`⚠️ ${SPECIES_BY_ID[source].name}와 ${SPECIES_BY_ID[id].name}은 직접 먹고 먹히는 관계가 아닙니다.`, 'no');
+      showToast(`⚠️ ${josa(SPECIES_BY_ID[source].name, '과', '와')} ${josa(SPECIES_BY_ID[id].name, '은', '는')} 직접 먹고 먹히는 관계가 아니에요.`, 'no');
       triggerNodeShake(id);
       return;
     }
@@ -1344,11 +1427,21 @@ function redrawConnections() {
     line.setAttribute('stroke', 'var(--fg-muted)');
     line.setAttribute('stroke-width', '3');
     line.setAttribute('marker-end', 'url(#arrow)');
-    line.style.cursor = state.eraserMode ? 'pointer' : 'default';
-    line.style.pointerEvents = 'auto';
+    line.style.pointerEvents = 'none';
+
+    // 지우개 모드용 굵은 투명 선(손가락으로도 누르기 쉽게)
+    const hit = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    hit.setAttribute('x1', x1);
+    hit.setAttribute('y1', y1);
+    hit.setAttribute('x2', x2);
+    hit.setAttribute('y2', y2);
+    hit.setAttribute('stroke', 'transparent');
+    hit.setAttribute('stroke-width', '18');
+    hit.style.cursor = state.eraserMode ? 'pointer' : 'default';
+    hit.style.pointerEvents = state.eraserMode ? 'stroke' : 'none';
 
     // 지우개 모드 지원
-    line.addEventListener('click', (e) => {
+    hit.addEventListener('click', (e) => {
       e.stopPropagation();
       if (state.eraserMode) {
         state.edges.splice(idx, 1);
@@ -1358,6 +1451,7 @@ function redrawConnections() {
     });
 
     g.appendChild(line);
+    g.appendChild(hit);
   });
 }
 
@@ -1368,6 +1462,17 @@ function renderPyramidSlots() {
   const tiers = $$('.pyramid-tier-slots');
   tiers.forEach(tier => {
     tier.innerHTML = '';
+    if (tier.dataset.bound) return; // 리스너는 한 번만 (모드를 바꿀 때마다 중복 등록되던 문제)
+    tier.dataset.bound = '1';
+
+    // 탭 대체 조작: 팔레트에서 고른 카드를 이 층에 놓기
+    tier.parentElement.addEventListener('click', () => {
+      if (!state.pendingPyramidId) return;
+      const id = state.pendingPyramidId;
+      state.pendingPyramidId = null;
+      dropCardToPyramidTier(id, parseInt(tier.dataset.level));
+      renderPalette();
+    });
     
     // HTML5 dragover/drop 바인딩
     tier.addEventListener('dragover', (e) => {
@@ -1407,6 +1512,8 @@ function dropCardToPyramidTier(id, targetLevel) {
   // 이미 존재하는지 확인
   const existing = container.querySelector(`.node-card[data-id="${id}"]`);
   if (existing) return;
+  // 같은 생물은 피라미드에 한 곳에만 (다른 층에 있던 카드는 옮긴다)
+  $$(`.pyramid-tier-slots .node-card[data-id="${id}"]`).forEach(c => c.remove());
 
   // 오개념 경고 체크: 상위 영양 단계에 하위보다 많은 종류/개체가 쌓일 때
   // 초등 과정: "생산자(0)가 가장 많고, 최상위 소비자(3)가 가장 적어야 함"
@@ -1447,6 +1554,14 @@ function dropCardToPyramidTier(id, targetLevel) {
     e.dataTransfer.setData('text/plain', id);
     // 드래그 시 티어에서 일단 뗌
     setTimeout(() => card.remove(), 0);
+  });
+
+  // 피라미드에 놓인 카드를 누르면 빼낼 수 있다(드래그가 안 되는 기기용)
+  card.title = '누르면 피라미드에서 빼요';
+  card.addEventListener('click', (e) => {
+    if (state.pendingPyramidId) return; // 다른 카드를 놓는 중이면 층 클릭으로 처리(전파 유지)
+    e.stopPropagation();
+    card.remove();
   });
 
   card.innerHTML = `
@@ -1493,7 +1608,7 @@ function startScenarioSimulation() {
   if (!sc) return;
 
   // 인터벌 리셋
-  if (state.simulationInterval) clearInterval(state.simulationInterval);
+  stopSimulation();
   state.simulationStep = 0;
 
   // 피드백 초기화
@@ -1550,7 +1665,9 @@ function runSimulationStep() {
 
 function finishScenarioSimulation() {
   const curMission = getActiveMission();
-  if (curMission && curMission.id === 'm3_1') {
+  if (curMission && curMission.id === 'm3_1' && state.activeScenario !== 'B') {
+    showFeedback('🍀 실험 관찰 완료! 미션 채점은 <strong>🐸 개구리 전멸 시나리오</strong>로 실험했을 때만 해요. 시나리오를 바꿔 다시 실험해 보세요.', 'no');
+  } else if (curMission && curMission.id === 'm3_1') {
     // 미션 완료 판정
     // 사용자가 메뚜기(up), 벼(down) 예측했는지 비교
     const grassVal = document.querySelector('.prediction-btns[data-sp="grasshopper"] .pred-btn.active')?.dataset.val;
@@ -1608,11 +1725,20 @@ function verifyCurrentMission() {
     }
   } else if (state.mode === 3) {
     // 평형 시나리오는 실험 재생 후에 자동 판정
+    if (curMission.id === 'm3_1') {
+      const g = $('.prediction-btns[data-sp="grasshopper"] .pred-btn.active');
+      const r = $('.prediction-btns[data-sp="rice"] .pred-btn.active');
+      if (!g || !r) {
+        showFeedback('먼저 메뚜기와 벼가 어떻게 변할지 ▲/▼/― 중에서 골라 예측해 주세요.', 'no');
+        return;
+      }
+    }
     startScenarioSimulation();
   }
 }
 
 function showResultScreen() {
+  stopSimulation();
   showScreen('screenResult');
   const score = Object.values(state.missionsCompleted).filter(Boolean).length;
   const stars = score >= 6 ? 3 : score >= 4 ? 2 : score >= 1 ? 1 : 0;
@@ -1653,11 +1779,7 @@ function init() {
   // 모드 탭 이동
   $$('.mode-tab').forEach(b => {
     b.addEventListener('click', () => {
-      if (state.simulationInterval) {
-        clearInterval(state.simulationInterval);
-        state.simulationInterval = null;
-      }
-      switchMode(b.dataset.mode);
+      switchMode(b.dataset.mode); // switchMode가 진행 중인 실험 타이머도 멈춘다
     });
   });
 
@@ -1683,6 +1805,7 @@ function init() {
     if (confirm('캔버스를 처음 상태로 초기화할까요?')) {
       state.placedNodes = {};
       state.edges = [];
+      $$('.classify-box .node-card').forEach(c => c.remove());
       renderPalette();
       renderPlacedNodes();
       redrawConnections();
@@ -1711,9 +1834,9 @@ function init() {
   // 시나리오 버튼 바인딩
   $$('.scenario-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      $$('.scenario-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.activeScenario = btn.dataset.sc;
+      stopSimulation(); // 실험 도중 시나리오를 바꾸면 이전 실험을 멈춘다
+      hideFeedback();
+      selectScenario(btn.dataset.sc);
       renderScenarioVisual();
     });
   });
@@ -1735,29 +1858,33 @@ function init() {
     const payload = JSON.stringify({ v: 1, edges: state.edges, placedNodes: state.placedNodes });
     const url = location.origin + location.pathname + '#share=' + encodeURIComponent(payload);
     if (navigator.share) {
-      navigator.share({ title: '생태계 탐험대 — 내가 만든 먹이그물', url });
+      navigator.share({ title: '생태계 탐험대 — 내가 만든 먹이그물', url }).catch(() => {});
     } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(url);
-      showToast('공유 링크가 클립보드에 복사되었습니다.');
+      navigator.clipboard.writeText(url)
+        .then(() => showToast('공유 링크를 복사했어요.'))
+        .catch(() => showToast('링크를 복사하지 못했어요.', 'no'));
     }
   };
+}
 
-  function showToast(msg) {
-    const el = document.createElement('div');
-    el.style.position = 'fixed';
-    el.style.bottom = '20px';
-    el.style.left = '50%';
-    el.style.transform = 'translateX(-50%)';
-    el.style.background = 'rgba(0,0,0,0.8)';
-    el.style.color = '#fff';
-    el.style.padding = '8px 16px';
-    el.style.borderRadius = '20px';
-    el.style.fontSize = '12px';
-    el.style.zIndex = '9999';
-    el.textContent = msg;
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 2500);
+/* ── 토스트 (init 밖: 연결 모드 등 어디서나 호출) ── */
+let toastEl = null;
+let toastTimer = null;
+function showToast(msg, type) {
+  if (!toastEl) {
+    toastEl = document.createElement('div');
+    toastEl.setAttribute('role', 'status');
+    toastEl.setAttribute('aria-live', 'polite');
+    toastEl.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%);'
+      + 'color:#fff; padding:10px 18px; border-radius:20px; font-size:14px; z-index:9999;'
+      + 'max-width:min(90vw,520px); text-align:center; line-height:1.5;';
+    document.body.appendChild(toastEl);
   }
+  toastEl.style.background = type === 'no' ? 'rgba(192,57,43,0.92)' : 'rgba(0,0,0,0.8)';
+  toastEl.textContent = msg;
+  toastEl.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastEl.style.display = 'none'; }, Math.max(2500, msg.length * 90));
 }
 
 if (document.readyState === 'loading') {
