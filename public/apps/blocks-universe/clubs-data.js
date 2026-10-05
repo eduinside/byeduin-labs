@@ -22,9 +22,9 @@ function isTriangular(n) {
   return false;
 }
 
-// n = a² - b² (a ≥ b + 2, b ≥ 1) 여부
-// (odd)² - (odd)² 또는 (even)² - (even)² 형태만 가능
-// → n은 4의 배수여야 함 (n ≥ 8)
+// 큰 정사각형(a×a) 한가운데에 작은 정사각형(b×b) 구멍을 뚫은 모양: n = a² - b² (a ≥ b + 2, b ≥ 1)
+// 구멍이 가운데 오려면 테두리 두께가 사방 같아야 하므로 a, b가 둘 다 홀수이거나 둘 다 짝수
+// → n은 4의 배수여야 함 (n ≥ 8). descKo/descEn도 이 규칙과 맞춰 둘 것
 function isSquareWithHole(n) {
   return n >= 8 && n % 4 === 0;
 }
@@ -222,8 +222,8 @@ const CLUBS = [
     nameKo: '구멍있는 정사각형 클럽',
     nameEn: 'Squares-with-holes-in Club',
     shortKo: '구멍있는 정사각형 클럽',
-    descKo: '실제 정사각형 구멍을 만들 수 있는 수예요. a²-b² (a≥b+2, b≥1) 예: 8=3²-1², 12=4²-2², 16=5²-3², 24=5²-1²',
-    descEn: 'Members can form actual square holes: a²-b² where a ≥ b+2, b ≥ 1. Examples: 8=3²-1², 12=4²-2², 16=5²-3², 24=5²-1²',
+    descKo: '큰 정사각형 한가운데에 정사각형 구멍을 뚫은 모양을 만들 수 있는 수예요. 구멍이 딱 가운데 오려면 4의 배수(8, 12, 16, 20…)가 돼요. 예: 8 = 3×3 − 1×1, 12 = 4×4 − 2×2, 16 = 5×5 − 3×3, 24 = 5×5 − 1×1',
+    descEn: 'Members can make a square with a square hole right in the middle. For the hole to sit exactly in the middle, the number must be a multiple of 4 (8, 12, 16, 20…). Examples: 8 = 3×3 − 1×1, 12 = 4×4 − 2×2, 16 = 5×5 − 3×3, 24 = 5×5 − 1×1',
     check: isSquareWithHole,
     examples: (max) => {
       const r = [];

@@ -505,7 +505,6 @@ body {
   .shape-opt { min-width: calc(50% - 4px); }
 }
 </style>
-  <link rel="canonical" href="https://eduin.info/apps/shape-move/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"도형의 이동","description":"모눈 위 도형을 직접 밀고 뒤집고 돌려 보세요. 초등 수학 4학년 평면도형의 이동을 애니메이션으로 체험하는 무료 학습 시뮬레이션.","url":"https://eduin.info/apps/shape-move/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -673,7 +672,8 @@ const STORAGE_KEY = 'shape-move:v1';
 const MISSIONS = [
   // ① 식별 (4개) — 두 그림 보여주고 변환 종류 맞추기
   { type: 'identify', shape: 'L', from: {x:1,y:1,flipX:false,flipY:false,rot:0}, to: {x:4,y:1,flipX:false,flipY:false,rot:0}, answer: 'slide', choices: ['밀기','뒤집기','돌리기'] },
-  { type: 'identify', shape: 'L', from: {x:2,y:1,flipX:false,flipY:false,rot:0}, to: {x:2,y:1,flipX:true,flipY:false,rot:0}, answer: 'flip', choices: ['밀기','뒤집기','돌리기'] },
+  // ㄴ자는 대각선 대칭이라 좌우 뒤집기 = 90° 돌리기가 되어 정답이 둘 → 비대칭인 직각삼각형으로
+  { type: 'identify', shape: 'tri', from: {x:2,y:1,flipX:false,flipY:false,rot:0}, to: {x:2,y:1,flipX:true,flipY:false,rot:0}, answer: 'flip', choices: ['밀기','뒤집기','돌리기'] },
   { type: 'identify', shape: 'tri', from: {x:1,y:2,flipX:false,flipY:false,rot:0}, to: {x:1,y:2,flipX:false,flipY:false,rot:90}, answer: 'rotate', choices: ['밀기','뒤집기','돌리기'] },
   { type: 'identify', shape: 'flag', from: {x:1,y:1,flipX:false,flipY:false,rot:0}, to: {x:1,y:1,flipX:false,flipY:true,rot:0}, answer: 'flip', choices: ['밀기','뒤집기','돌리기'] },
   // ② 고스트 맞추기 (4개, 1~2회 변환)
@@ -701,8 +701,21 @@ function loadState() {
     if (!raw) return;
     const saved = JSON.parse(raw);
     if (saved.missions) missionStars = saved.missions;
-    if (saved.freeState) Object.assign(state, saved.freeState);
+    if (saved.freeState) applySavedShape(saved.freeState);
   } catch(e) {}
+}
+
+/* 저장값·공유 링크에서 온 도형 상태는 허용된 필드만 형식을 맞춰 복사 */
+function applySavedShape(src) {
+  if (!src || typeof src !== 'object') return;
+  const n = (v, d) => (window.VSafe ? VSafe.int(v, 0, GRID, d) : (Number.isInteger(v) ? Math.min(GRID, Math.max(0, v)) : d));
+  if (SHAPES.hasOwnProperty(src.shapeId)) state.shapeId = src.shapeId;
+  state.x = n(src.x, 2);
+  state.y = n(src.y, 2);
+  state.flipX = src.flipX === true;
+  state.flipY = src.flipY === true;
+  state.rot = [0, 90, 180, 270].includes(src.rot) ? src.rot : 0;
+  clampState(state.shapeId, state);
 }
 
 /* ── 공유 링크 ── */
@@ -712,7 +725,7 @@ function parseShareLink() {
   try {
     const payload = JSON.parse(decodeURIComponent(atob(hash.slice(7))));
     if (payload.v === 1 && payload.state) {
-      Object.assign(state, payload.state);
+      applySavedShape(payload.state);
     }
   } catch(e) {}
   history.replaceState(null, '', location.pathname);
@@ -864,12 +877,61 @@ function normalizeState(st) {
   return s;
 }
 
-function statesMatch(a, b) {
-  const na = normalizeState(a);
-  const nb = normalizeState(b);
-  return na.x === nb.x && na.y === nb.y &&
-         na.flipX === nb.flipX && na.flipY === nb.flipY &&
-         na.rot === nb.rot;
+/* 화면에 보이는 모양(꼭짓점 집합)으로 비교한다.
+   대칭인 도형(ㄴ자는 대각선 대칭, 사다리꼴은 좌우 대칭)은 상태값이 달라도 같은 모양일 수 있음. */
+function shapeKey(shape, st) {
+  return getTransformedPoints(shape, st)
+    .map(([px, py]) => Math.round(px * 2) + ',' + Math.round(py * 2))
+    .sort().join(' ');
+}
+function statesMatch(a, b, shape) {
+  const sh = shape || state.shapeId;
+  return shapeKey(sh, a) === shapeKey(sh, b);
+}
+
+/* 버튼 하나의 결과(순수 함수). 미션 최소 횟수 계산에도 같은 규칙을 쓴다. */
+function transformState(shape, st, action) {
+  const s = { ...st };
+  // 모델은 "뒤집은 뒤 돌리기" 순서라, 90°·270°로 돌아간 상태에서 화면 기준 좌우 뒤집기는
+  // 모델의 상하 뒤집기와 같다(반대도 마찬가지).
+  const sideways = s.rot === 90 || s.rot === 270;
+  switch (action) {
+    case 'left':  s.x--; break;
+    case 'right': s.x++; break;
+    case 'up':    s.y--; break;
+    case 'down':  s.y++; break;
+    case 'flipX': if (sideways) s.flipY = !s.flipY; else s.flipX = !s.flipX; break;
+    case 'flipY': if (sideways) s.flipX = !s.flipX; else s.flipY = !s.flipY; break;
+    case 'rotateCW':  s.rot = (s.rot + 90) % 360; break;
+    case 'rotateCCW': s.rot = (s.rot + 270) % 360; break;
+  }
+  clampState(shape, s);
+  return normalizeState(s);
+}
+
+/* 시작 → 목표까지 실제 최소 버튼 횟수(밀기 한 칸도 1번). 너비 우선 탐색 */
+const ALL_ACTIONS = ['left','right','up','down','flipX','flipY','rotateCW','rotateCCW'];
+function computeMinMoves(m) {
+  const start = { ...m.start };
+  clampState(m.shape, start);
+  const goalKey = shapeKey(m.shape, m.goal);
+  const stKey = s => `${s.x},${s.y},${s.flipX},${s.flipY},${s.rot}`;
+  let frontier = [normalizeState(start)];
+  const seen = new Set([stKey(frontier[0])]);
+  for (let depth = 0; depth <= 20; depth++) {
+    for (const s of frontier) if (shapeKey(m.shape, s) === goalKey) return depth;
+    const next = [];
+    for (const s of frontier) {
+      for (const a of ALL_ACTIONS) {
+        const n = transformState(m.shape, s, a);
+        const k = stKey(n);
+        if (!seen.has(k)) { seen.add(k); next.push(n); }
+      }
+    }
+    if (!next.length) break;
+    frontier = next;
+  }
+  return m.minMoves;
 }
 
 function applyAction(action) {
@@ -881,26 +943,15 @@ function applyAction(action) {
 
 async function doAction(action) {
   animating = true;
-  const oldState = { ...state };
 
-  switch (action) {
-    case 'left':  state.x--; break;
-    case 'right': state.x++; break;
-    case 'up':    state.y--; break;
-    case 'down':  state.y++; break;
-    case 'flipX': state.flipX = !state.flipX; break;
-    case 'flipY': state.flipY = !state.flipY; break;
-    case 'rotateCW':  state.rot = (state.rot + 90) % 360; break;
-    case 'rotateCCW': state.rot = (state.rot + 270) % 360; break;
-    case 'reset':
-      resetShape();
-      animating = false;
-      actionQueue = [];
-      return;
+  if (action === 'reset') {
+    resetShape();
+    animating = false;
+    actionQueue = [];
+    return;
   }
 
-  clampState(state.shapeId, state);
-  state = normalizeState(state);
+  state = { ...transformState(state.shapeId, state, action), shapeId: state.shapeId };
 
   if (missionMode && MISSIONS[currentMission] && MISSIONS[currentMission].type === 'ghost') {
     moveCount++;
@@ -1067,7 +1118,7 @@ function setupMission(idx) {
     const stage = idx < 4 ? '①' : idx < 8 ? '②' : '③';
     html += `<div class="mission-panel">
       <h3>미션 ${idx + 1}: 도형을 움직여요</h3>
-      <p>파란 도형을 점선 위치에 맞춰 보세요!<br>최소 <strong>${m.minMoves}번</strong>으로 할 수 있어요.</p>
+      <p>파란 도형을 점선 위치에 맞춰 보세요!<br>최소 <strong>${computeMinMoves(m)}번</strong>으로 할 수 있어요.</p>
       <div id="ghostFeedback"></div>
     </div>`;
 
@@ -1115,10 +1166,10 @@ function checkIdentifyAnswer(btn, mission) {
 function checkGhostMission() {
   if (!ghostState) return;
   const goal = MISSIONS[currentMission].goal;
-  if (statesMatch(state, goal)) {
+  if (statesMatch(state, goal, MISSIONS[currentMission].shape)) {
     // 성공!
     const m = MISSIONS[currentMission];
-    const min = m.minMoves;
+    const min = computeMinMoves(m);
     let stars = 1;
     if (moveCount <= min) stars = 3;
     else if (moveCount <= min + 1) stars = 2;
@@ -1299,8 +1350,8 @@ function init() {
     resetShape();
   });
 
-  // 미션
-  $('#btnMission').addEventListener('click', () => startMissions());
+  // 미션 — onclick 하나만 사용(setupMission·exitMissionMode가 교체). addEventListener와 섞으면 이중 실행됨
+  $('#btnMission').onclick = () => startMissions();
 
   // 결과 화면
   $('#btnRetry').addEventListener('click', () => {

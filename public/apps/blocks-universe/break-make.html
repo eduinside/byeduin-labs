@@ -600,9 +600,19 @@ function setMode(m){
     document.getElementById('pill-'+x).classList.toggle('active', x===m);
     document.getElementById('panel-'+x).style.display = x===m ? '' : 'none';
   });
+  // 무대의 식·버튼은 모드마다 따로 — 앞 모드의 식이 남지 않게 비우고, 이 모드의 마지막 식만 되살린다
+  document.getElementById('stageEq').innerHTML = '';
   const vt = document.getElementById('viewerTitle');
-  if(m==='split'){ vt.innerHTML = '<span class="num">✂️</span> 가르기' + (S.whole!=null ? ' — ' + S.whole : ''); renderSplit(); }
-  else if(m==='make'){ vt.innerHTML = '<span class="num">🤝</span> 모으기' + (M.target!=null ? ' — ' + M.target : ''); renderMake(); }
+  if(m==='split'){
+    vt.innerHTML = '<span class="num">✂️</span> 가르기' + (S.whole!=null ? ' — ' + S.whole : '');
+    renderSplit();
+    if(S.whole!=null && S.lastEq) showSplitEq.apply(null, S.lastEq);
+  }
+  else if(m==='make'){
+    vt.innerHTML = '<span class="num">🤝</span> 모으기' + (M.target!=null ? ' — ' + M.target : '');
+    renderMake();
+    if(M.target!=null && M.lastEq) showMakeEq.apply(null, M.lastEq);
+  }
   else {
     vt.innerHTML = '<span class="num">⭐</span> 나의 기록';
     renderRecord();
@@ -665,7 +675,7 @@ const S = { stage:'single', whole:null, top:0, left:0, right:0, done:false,
   teenTopBundle:false, teenTopLoose:0, teenL:{bundle:false,loose:0}, teenR:{bundle:false,loose:0} };
 
 function setSplitStage(stage){
-  S.stage = stage; S.whole = null; S.done = false;
+  S.stage = stage; S.whole = null; S.done = false; S.lastEq = null;
   ['single','ten','teen'].forEach(s=> document.getElementById('stage-'+s).classList.toggle('active', s===stage));
   if (stage === 'teen') {
     S.challenge = false;
@@ -698,7 +708,7 @@ function renderSplitGrid(){
   });
 }
 function selectSplit(n){
-  S.whole = n; S.done = false; S.flash = null;
+  S.whole = n; S.done = false; S.flash = null; S.lastEq = null;
   if(isTeen(n)){ S.teenTopBundle=true; S.teenTopLoose=n-10; S.teenL={bundle:false,loose:0}; S.teenR={bundle:false,loose:0}; }
   else { S.top=n; S.left=0; S.right=0; }
   document.querySelectorAll('#splitGrid .numbtn').forEach(b=> b.classList.toggle('sel', b.textContent===String(n)));
@@ -770,6 +780,7 @@ function finishSplit(n,L,R,viaChallenge){
   recordCombo(n, L+'+'+R);
 }
 function showSplitEq(text, success, retry){
+  S.lastEq = [text, success, retry];
   const e = document.getElementById('stageEq'); e.innerHTML='';
   const b = el('div',{class:'eq pop'+(success?'':' prompt')}, text); e.appendChild(b);
   if(success){
@@ -835,7 +846,7 @@ const M = { stage:'single', target:null, left:0, right:0, leftB:false, rightB:fa
 function boxVal(side){ return side==='L' ? (M.leftB?10:0)+M.left : (M.rightB?10:0)+M.right; }
 function makeTotal(){ return boxVal('L')+boxVal('R'); }
 function setMakeStage(stage){
-  M.stage=stage; M.target=null; M.done=false;
+  M.stage=stage; M.target=null; M.done=false; M.lastEq=null;
   ['single','ten','teen'].forEach(s=> document.getElementById('mstage-'+s).classList.toggle('active', s===stage));
   if (stage === 'teen') {
     M.challenge = false;
@@ -858,7 +869,7 @@ function renderMakeGrid(){
   });
 }
 function selectMake(n){
-  M.target=n; M.left=0; M.right=0; M.leftB=false; M.rightB=false; M.done=false; M.flash=null;
+  M.target=n; M.left=0; M.right=0; M.leftB=false; M.rightB=false; M.done=false; M.flash=null; M.lastEq=null;
   if(M.challenge && !isTeen(n)) M.given = 1 + Math.floor(Math.random()*(n-1));
   document.querySelectorAll('#makeGrid .numbtn').forEach(b=> b.classList.toggle('sel', b.textContent===String(n)));
   document.getElementById('stageEq').innerHTML='';
@@ -919,6 +930,7 @@ function finishMake(t,L,R){
   recordCombo(t, L+'+'+R);
 }
 function showMakeEq(text, success, retry){
+  M.lastEq = [text, success, retry];
   const e=document.getElementById('stageEq'); e.innerHTML='';
   e.appendChild(el('div',{class:'eq pop'+(success?'':' prompt')}, text));
   if(success){ const r=el('button',{class:'btn again small'},'또 모아 볼까? 🔁'); r.onclick=resetMake; e.appendChild(r); }

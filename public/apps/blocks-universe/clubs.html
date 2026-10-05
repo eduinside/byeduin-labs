@@ -102,9 +102,13 @@
   }
   .stage-canvas {
     position: absolute; inset: 0;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 14px;
     padding: 96px 28px 60px; overflow: auto;
   }
+  /* justify-content:center는 내용이 넘칠 때 위쪽을 스크롤로도 못 보게 자른다(36처럼 배지가 많은 수).
+     auto 여백으로 가운데 정렬하면 넘칠 때는 위에서부터 보인다 */
+  .stage-canvas > :first-child { margin-top: auto; }
+  .stage-canvas > :last-child { margin-bottom: auto; }
   .stage-hint {
     position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 5;
     background: rgba(45,45,45,.85); color: #fff; font-size: 23px; line-height: 1.2;
@@ -301,6 +305,8 @@
     body.exploring .explore { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
     .stage-zone { position: sticky; top: 0; z-index: 40; height: 46vh; min-height: 300px; flex-shrink: 0; }
     .stage-canvas { padding: 70px 14px 56px; justify-content: flex-start; }
+    .stage-canvas > :first-child { margin-top: 0; }
+    .stage-canvas > :last-child { margin-bottom: 0; }
     .side { border-left: none; border-top: 3px solid var(--dark); }
     .intro h1 { font-size: 44px; }
     .viewer-title { font-size: 23px; padding: 3px 13px; }
@@ -455,11 +461,18 @@ function getClubIcon(clubId, color = 'white') {
   return icons[clubId] || icons['made-of-ones'];
 }
 
+/* ──────────────────────── 조사(은/는, 이/가) ──────────────────────── */
+/* 수를 한국어로 읽었을 때 마지막 글자의 받침 유무(break-make와 같은 규칙).
+   일의 자리가 0이면 십·백·천·만으로 끝나 받침이 있다 */
+function batchim(n) { n = Math.abs(n); if (n % 10 === 0) return true; return { 1: 1, 3: 1, 6: 1, 7: 1, 8: 1 }[n % 10] ? true : false; }
+function josaEunNeun(n) { return batchim(n) ? '은' : '는'; }
+function josaIGa(n) { return batchim(n) ? '이' : '가'; }
+
 /* ──────────────────────── 클럽 이유 ──────────────────────── */
 function getClubReason(club, n) {
   if (club.id === 'made-of-ones') return '1 이상의 모든 수예요.';
   if (club.id === 'even-tops') return `${n} ÷ 2 = ${n/2} (나누어떨어짐)`;
-  if (club.id === 'odd-tops') return `${n}은 홀수예요!`;
+  if (club.id === 'odd-tops') return `${n}${josaEunNeun(n)} 홀수예요!`;
   if (club.id === 'three-club') return `${n} ÷ 3 = ${n/3} (나누어떨어짐)`;
   if (club.id === 'rainbow-sevens') return `${n} ÷ 7 = ${n/7} (나누어떨어짐)`;
   if (club.id === 'football-club') return `${n} ÷ 11 = ${n/11} (나누어떨어짐)`;
@@ -478,16 +491,10 @@ function getClubReason(club, n) {
     return `∛${n} = ${cbrt} (완전세제곱수)`;
   }
   if (club.id === 'squares-holes') {
-    if (n % 2 !== 0) {
-      const a = (n + 1) / 2;
-      const b = (n - 1) / 2;
-      return `${n} = ${a}² - ${b}² (${a * a} - ${b * b})`;
-    } else if (n % 4 === 0) {
-      const a = (n / 4) + 1;
-      const b = (n / 4) - 1;
-      return `${n} = ${a}² - ${b}² (${a * a} - ${b * b})`;
-    }
-    return `${n} = a² - b² 형태`;
+    // 판정식(4의 배수, 8 이상)과 같은 규칙: 테두리 한 칸짜리 정사각형 = (n/4+1)×(n/4+1) − (n/4−1)×(n/4−1)
+    const a = (n / 4) + 1;
+    const b = (n / 4) - 1;
+    return `${n} = ${a}×${a} − ${b}×${b} (${a * a} − ${b * b})`;
   }
   if (club.id === 'super-rect') {
     let count = 0;
@@ -523,7 +530,7 @@ const viewerTitle = () => document.getElementById('viewerTitle');
 
 function badgeGridHtml(n, matches) {
   if (matches.length === 0) {
-    return `<div class="badge-grid"><div class="no-club-msg">😔 ${n.toLocaleString('ko-KR')}은(는) 어떤 클럽에도 속하지 않아요!</div></div>`;
+    return `<div class="badge-grid"><div class="no-club-msg">😔 ${n.toLocaleString('ko-KR')}${josaEunNeun(n)} 어떤 클럽에도 속하지 않아요!</div></div>`;
   }
   return `<div class="badge-grid">` + matches.map((club, i) => `
     <div class="club-badge" style="background:${club.color};color:${club.textColor};animation-delay:${i * 0.06}s;">
@@ -708,7 +715,7 @@ function nextQuizQuestion() {
       <div class="progress-track"><div class="progress-fill" style="width:${quizIdx / QUIZ_TOTAL * 100}%"></div></div>
       <div class="progress-label"><span>퀴즈 진행 중</span><span>${quizIdx + 1} / ${QUIZ_TOTAL}</span></div>
     </div>
-    <div class="quiz-q">무대의 <b style="color:var(--orange);">${qzCurrentN}</b>이(가) 멤버인 클럽을 고르세요!</div>
+    <div class="quiz-q">무대의 <b style="color:var(--orange);">${qzCurrentN}</b>${josaIGa(qzCurrentN)} 멤버인 클럽을 고르세요!</div>
     <div class="quiz-choices" id="quizChoices"></div>
     <div id="quizReveal"></div>`;
 
@@ -749,7 +756,7 @@ function selectChoice(club, btnEl) {
       <div class="reveal-banner ${isCorrect ? 'correct' : 'wrong'}">
         ${isCorrect ? '🎉 딩동댕! 정답이에요!' : '🤔 아쉬워요!'}
       </div>
-      <div class="explain"><b>${qzCurrentN}</b>은(는) <b>${qzCorrectClub.nameKo}</b>의 멤버예요. ${reason}<br>무대에서 ${qzCurrentN}의 배지를 모두 확인해 보세요!</div>
+      <div class="explain"><b>${qzCurrentN}</b>${josaEunNeun(qzCurrentN)} <b>${qzCorrectClub.nameKo}</b>의 멤버예요. ${reason}<br>무대에서 ${qzCurrentN}의 배지를 모두 확인해 보세요!</div>
       <div class="next-zone">
         <button class="btn btn-primary" onclick="afterQuestion()">
           ${quizIdx === QUIZ_TOTAL - 1 ? '결과 보기 🏁' : '다음 문제! ➡️'}

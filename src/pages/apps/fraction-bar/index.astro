@@ -508,7 +508,6 @@ body {
   .intro-art { font-size: 64px; }
 }
 </style>
-  <link rel="canonical" href="https://eduin.info/apps/fraction-bar/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"분수 막대","description":"초콜릿 막대와 피자를 직접 등분하고 칠해 보세요. 초등 수학 3학년 분수 개념과 크기 비교를 눈으로 익히는 무료 학습 시뮬레이션.","url":"https://eduin.info/apps/fraction-bar/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -692,13 +691,25 @@ function loadState() {
     if (!raw) return;
     const saved = JSON.parse(raw);
     if (saved.missions) missionStars = saved.missions;
-    if (saved.lastState) {
-      state.view = saved.lastState.view;
-      state.compare = saved.lastState.compare;
-      state.a = saved.lastState.a;
-      state.b = saved.lastState.b;
-    }
+    if (saved.lastState) applySavedFrac(saved.lastState);
   } catch(e) {}
+}
+
+/* 저장값·공유 링크의 상태는 허용된 필드만 형식을 맞춰 복사 */
+function cleanFrac(f, def) {
+  if (!f || typeof f !== 'object') return def;
+  const denom = Number.isInteger(f.denom) && f.denom >= 1 && f.denom <= 12 ? f.denom : def.denom;
+  const filled = Array.isArray(f.filled)
+    ? [...new Set(f.filled.filter(i => Number.isInteger(i) && i >= 0 && i < denom))]
+    : [];
+  return { denom, filled };
+}
+function applySavedFrac(src) {
+  if (!src || typeof src !== 'object') return;
+  if (src.view === 'bar' || src.view === 'pizza') state.view = src.view;
+  if (typeof src.compare === 'boolean') state.compare = src.compare;
+  state.a = cleanFrac(src.a, state.a);
+  state.b = cleanFrac(src.b, state.b);
 }
 
 /* ── 공유 링크 ── */
@@ -708,7 +719,7 @@ function parseShareLink() {
   try {
     const payload = JSON.parse(decodeURIComponent(atob(hash.slice(7))));
     if (payload.v === 1 && payload.state) {
-      Object.assign(state, payload.state);
+      applySavedFrac(payload.state);
     }
   } catch(e) {}
   history.replaceState(null, '', location.pathname);
@@ -957,7 +968,7 @@ function renderPizzaSVG(svg) {
   // 겹치기 시 B가 A의 중심으로 이동
   let translateB = '';
   if (state.compare && state.overlap) {
-    translateB = `translate(${cxA - cxB}, ${cyA - cyB})`;
+    translateB = `translate(${cxA - cxB}px, ${cyA - cyB}px)`; // CSS transform이라 단위(px) 필수
   }
 
   // 1. 전체 가이드 외곽 원형 선

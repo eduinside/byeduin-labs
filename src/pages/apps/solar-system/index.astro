@@ -262,7 +262,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       opacity: 1;
     }
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/solar-system/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"태양계 여행","description":"여덟 행성을 공전시키고 크기와 거리를 실제 비율로 비교해 보세요. 행성 도감과 퀴즈까지, 초등 5~6학년 태양계와 별을 체험하는 무료 학습 시뮬레이션.","url":"https://eduin.info/apps/solar-system/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -322,7 +321,7 @@ function loadStore(){
 function saveStore(patch){
   const cur = loadStore();
   const next = Object.assign({}, cur, patch);
-  localStorage.setItem(STORE_KEY, JSON.stringify(next));
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(next)); }catch(e){}
   return next;
 }
 let store = Object.assign({ missions:{}, favorites:[] }, loadStore());
@@ -572,22 +571,31 @@ function renderTravel(){
   drawTravelFrame();
   if(travelPlaying) startTravelLoop();
 }
+function travelTokenSize(p){ return 10 + Math.min(p.diameterEarth, 6)*1.6; }
+// 행성 요소는 화면에 들어올 때 한 번만 만들고, 프레임마다 transform 속성만 바꾼다(P8)
 function drawTravelFrame(){
   const cx = 400, cy = 400;
   const holder = document.getElementById('planetHolder');
   if(!holder) return;
-  holder.innerHTML = PLANETS.map((p,i) => {
+  if(holder.childElementCount !== PLANETS.length){
+    holder.innerHTML = PLANETS.map((p,i) => {
+      const size = travelTokenSize(p);
+      return `<g class="planet-token" tabindex="0" role="button" aria-label="${p.name}"
+                onclick="openTravelInfo('${p.id}')"
+                onkeydown="if(event.key==='Enter')openTravelInfo('${p.id}')">
+                ${planetSVG(p, size)}
+                <text class="planet-label" x="${size}" y="${size*2 + 11}" text-anchor="middle" fill="var(--ss-fg-muted)" font-size="11px" font-weight="700" opacity="0.8">${p.name}</text>
+              </g>`;
+    }).join('');
+  }
+  const tokens = holder.children;
+  PLANETS.forEach((p,i) => {
     const r = ORBIT_BASE + i*ORBIT_STEP;
     const a = travelAngle[i];
+    const size = travelTokenSize(p);
     const x = cx + r*Math.cos(a), y = cy + r*Math.sin(a);
-    const size = 10 + Math.min(p.diameterEarth, 6)*1.6;
-    return `<g class="planet-token" tabindex="0" role="button" aria-label="${p.name}"
-              transform="translate(${x-size},${y-size})" onclick="openTravelInfo('${p.id}')"
-              onkeydown="if(event.key==='Enter')openTravelInfo('${p.id}')">
-              ${planetSVG(p, size)}
-              <text class="planet-label" x="${size}" y="${size*2 + 11}" text-anchor="middle" fill="var(--ss-fg-muted)" font-size="11px" font-weight="700" opacity="0.8">${p.name}</text>
-            </g>`;
-  }).join('');
+    tokens[i].setAttribute('transform', `translate(${(x-size).toFixed(2)},${(y-size).toFixed(2)})`);
+  });
 }
 
 function startTravelLoop(){
@@ -649,7 +657,6 @@ function sizeLayout(){
 function renderSize(){
   const { laid, width } = sizeLayout();
   const earth = laid.find(x=>x.id==='earth');
-  const trackH = Math.max(...laid.map(x=>x.r))*2 + 40;
   app.innerHTML = `
   <div class="ss-topbar">
     <button class="ss-btn ss-btn-ghost ss-btn-sm" onclick="go('hub')">◀ 허브로</button>
@@ -657,7 +664,7 @@ function renderSize(){
   </div>
   <div class="cmp-hint">🌍 지구를 끌어서 다른 행성 옆에 대 보세요!</div>
   <div class="cmp-scroll" id="sizeScroll">
-    <div class="cmp-track" id="sizeTrack" style="width:${width}px;height:${trackH}px">
+    <div class="cmp-track" id="sizeTrack" style="width:${width}px">
       ${laid.map(it => `
         <div class="cmp-label" style="left:${it.cx}px">${it.isSun?'☀️ 태양':it.name}</div>
         <div style="position:absolute;left:${it.cx-it.r}px;top:calc(50% - ${it.r}px)">${it.isSun?sunSVG(it.r):planetSVG(it,it.r)}</div>
@@ -842,6 +849,21 @@ function missionShell(inner){
     ${inner}
   </div></div>`;
 }
+// 정답 뒤 자동 이동: 그사이 사용자가 다른 화면으로 갔으면 건너뛰지 않음
+function advanceAfter(ms){
+  const step = missionStep;
+  setTimeout(() => {
+    if(state.screen !== 'missions' || missionStep !== step) return;
+    missionDraft = {}; nextMission();
+  }, ms);
+}
+// 틀렸을 때: 다시 풀기 + 다음 미션으로
+function retryRow(retryCall){
+  return `<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">
+    <button class="ss-btn ss-btn-sm" onclick="${retryCall}">다시 풀기</button>
+    <button class="ss-btn ss-btn-ghost ss-btn-sm" onclick="missionDraft={};nextMission()">다음 미션 →</button>
+  </div>`;
+}
 function nextMission(){
   missionStep++;
   if(missionStep >= MISSION_IDS.length){ go('result'); return; }
@@ -901,7 +923,7 @@ function checkOrder(){
   </div>`;
   if(allCorrect){
     store = saveStore({ missions: Object.assign({}, store.missions, { order:true }) });
-    setTimeout(() => { missionDraft = {}; nextMission(); }, 1600);
+    advanceAfter(1600);
   }
   renderMissionOrder();
 }
@@ -952,6 +974,7 @@ function renderMissionSizeB(){
     </div>
     ${answered ? `<div class="feedback-box ${missionDraft.sizeBResult?'ok':'no'}">
         ${missionDraft.sizeBResult?'🎉 정확해요!':'🤔 다시 확인해 보세요.'} 지구보다 작은 행성은 <b>수성·금성·화성</b>이에요.
+        ${missionDraft.sizeBResult ? '' : retryRow("missionDraft.sizeBResult=undefined;missionDraft.sizeBSel=[];renderMissionSizeB()")}
       </div>`
       : `<div style="text-align:center"><button class="ss-btn" ${sel.size===0?'disabled':''} onclick="checkSizeB()">확인</button></div>`}`);
 }
@@ -968,7 +991,7 @@ function checkSizeB(){
   missionDraft.sizeBResult = ok;
   if(ok){
     store = saveStore({ missions: Object.assign({}, store.missions, { size:true }) });
-    setTimeout(() => { missionDraft = {}; nextMission(); }, 1800);
+    advanceAfter(1800);
   }
   renderMissionSizeB();
 }
@@ -989,6 +1012,7 @@ function renderMissionDistance(){
     </div>
     ${answered ? `<div class="feedback-box ${missionDraft.distResult?'ok':'no'}">
         ${missionDraft.distResult?'🎉 정확해요!':'🤔 다시 확인해 보세요.'} 화성·목성·토성·천왕성·해왕성이 지구보다 멀어요.
+        ${missionDraft.distResult ? '' : retryRow("missionDraft.distResult=undefined;missionDraft.distSel=[];renderMissionDistance()")}
       </div>`
       : `<div style="text-align:center"><button class="ss-btn" ${sel.size===0?'disabled':''} onclick="checkDist()">확인</button></div>`}`);
 }
@@ -1005,7 +1029,7 @@ function checkDist(){
   missionDraft.distResult = ok;
   if(ok){
     store = saveStore({ missions: Object.assign({}, store.missions, { distance:true }) });
-    setTimeout(() => { missionDraft = {}; nextMission(); }, 1800);
+    advanceAfter(1800);
   }
   renderMissionDistance();
 }
@@ -1029,6 +1053,7 @@ function renderMissionConcept(){
     </div>
     ${answered ? `<div class="feedback-box ${missionDraft.conceptSel==='reflect'?'ok':'no'}">
       ${missionDraft.conceptSel==='reflect'?'🎉 맞아요!':'🤔 아쉬워요.'} 행성은 스스로 빛을 내지 못하고, <b>태양빛을 반사</b>해서 빛나 보여요.
+      ${missionDraft.conceptSel==='reflect' ? '' : retryRow("missionDraft.conceptSel=undefined;renderMissionConcept()")}
     </div>` : ''}`);
 }
 function answerConcept(id){
@@ -1036,7 +1061,7 @@ function answerConcept(id){
   const ok = id === 'reflect';
   if(ok){
     store = saveStore({ missions: Object.assign({}, store.missions, { concept:true }) });
-    setTimeout(() => { missionDraft = {}; nextMission(); }, 1800);
+    advanceAfter(1800);
   }
   renderMissionConcept();
 }

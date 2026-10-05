@@ -268,7 +268,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .il-privacy-note { font-size: 12px; color: var(--fg-muted); text-align: center; margin: 10px 0 0; }
     .il-attempt-note { font-size: 12px; color: var(--fg-muted); text-align: center; margin-top: 8px; }
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/idea-lab/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"발명 아이디어 공작소","description":"합치기·나누기·크기 바꾸기·재료 바꾸기 4가지 발명 마법으로 아이디어를 떠올리고, AI 코치의 질문으로 다듬어 이름 짓고 그림까지 완성하는 초등 저학년 창의 발명 학습 앱.","url":"https://eduin.info/apps/idea-lab/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -508,7 +507,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       ],
     };
     const OFFLINE_QUESTIONS = {
-      combine: ['{things}를 합치면 언제 좋을까요?', '누가 제일 좋아할까요?', '어떤 점이 제일 편해질까요?'],
+      combine: ['{things}{을를} 합치면 언제 좋을까요?', '누가 제일 좋아할까요?', '어떤 점이 제일 편해질까요?'],
       split:   ['{things}에서 어떤 부분을 빼면 좋을까요?', '왜 그 부분이 필요 없을까요?', '그러면 무엇이 더 좋아질까요?'],
       resize:  ['{things} 크기를 바꾸면 언제 편할까요?', '어디에 넣고 다니면 좋을까요?', '누구랑 같이 쓰면 좋을까요?'],
       material:['{things}의 재료를 무엇으로 바꾸면 좋을까요?', '왜 그 재료가 좋을까요?', '새 재료면 뭐가 달라질까요?'],
@@ -519,7 +518,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       /씨\s*발|시\s*발|씨\s*팔|ㅅ\s*ㅂ|ㅆ\s*ㅂ/i, /개\s*새\s*끼|개\s*색\s*끼/i, /병\s*신|븅\s*신|ㅂ\s*ㅅ/i,
       /좆|존\s*나|조\s*낸/i, /지\s*랄|ㅈ\s*ㄹ/i, /미친\s*놈|미친\s*년/i, /fuck|shit|bitch|asshole/i,
     ];
-    function localBadHit(t) { return LOCAL_BAD_PATTERNS.some(re => re.test(t)); }
+    // 오탐 방지: "다시 발명", "씨 발아" 같은 보통 말은 검사 전에 지운다(lookbehind는 구형 사파리에서 문법 오류라 쓰지 않음)
+    const LOCAL_SAFE_PHRASES = /다\s*시\s*발|시\s*발(?=[견명표전달생사송])|씨\s*발(?=[아육])/g;
+    function localBadHit(t) {
+      const s = String(t == null ? '' : t).replace(LOCAL_SAFE_PHRASES, '');
+      return LOCAL_BAD_PATTERNS.some(re => re.test(s));
+    }
 
     /* ══════════════════════ 상태 ══════════════════════ */
     const state = {
@@ -538,7 +542,42 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     function getEl(id) { return document.getElementById(id); }
     function uid() { return (crypto.randomUUID ? crypto.randomUUID() : 'w-' + Date.now() + '-' + Math.random().toString(36).slice(2)); }
     function escHtml(s) {
-      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      if (window.VSafe) return VSafe.esc(s);
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    // 받침 유무로 조사 고르기. 한글이 아니면 "을(를)"처럼 둘 다 보여 준다
+    function josa(word, withB, withoutB) {
+      const w = String(word || '');
+      const code = w.charCodeAt(w.length - 1) - 0xAC00;
+      if (code < 0 || code > 11171) return `${withB}(${withoutB})`;
+      return code % 28 ? withB : withoutB;
+    }
+    // 그림(base64 PNG)은 문자열로 HTML에 끼우지 않고 img.src로만 넣는다
+    function isB64Png(b64) { return typeof b64 === 'string' && b64.length > 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(b64); }
+    function makeArtImg(b64, alt) {
+      const img = document.createElement('img');
+      img.src = 'data:image/png;base64,' + b64;
+      img.alt = alt || '';
+      return img;
+    }
+    function timeoutSignal(ms) {
+      if (window.AbortSignal && typeof AbortSignal.timeout === 'function') return AbortSignal.timeout(ms);
+      const c = new AbortController();
+      setTimeout(() => c.abort(), ms);
+      return c.signal;
+    }
+    // 실패 이유별 안내(429는 '오프라인'이 아니라 '사용자가 많음')
+    function fallbackNoteText(err, what) {
+      if (err && err.status === 429) return `⏳ 지금 쓰는 친구가 많아요. 준비된 ${what} 계속할게요`;
+      if (err && (err.name === 'TimeoutError' || err.name === 'AbortError')) return `⏱️ 응답이 늦어서 준비된 ${what} 계속할게요`;
+      if (err && err.status) return `🛠️ 코치 선생님이 잠깐 쉬고 있어요. 준비된 ${what} 계속할게요`;
+      return `📴 인터넷 연결이 불안정해서 준비된 ${what} 계속할게요`;
+    }
+    function noteSpan(text) {
+      const span = document.createElement('span');
+      span.className = 'il-offline-note';
+      span.textContent = text;
+      return span;
     }
     let toastTimer;
     function showToast(msg) {
@@ -596,8 +635,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
       titleEl.textContent = title;
       chipsEl.innerHTML = chips;
-      if (artB64) {
-        artEl.innerHTML = `<img src="data:image/png;base64,${artB64}" alt="">`;
+      if (isB64Png(artB64)) {
+        artEl.innerHTML = '';
+        artEl.appendChild(makeArtImg(artB64, ''));
         artEl.hidden = false; emojiEl.hidden = true;
       } else {
         artEl.hidden = true; artEl.innerHTML = '';
@@ -623,16 +663,19 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       });
     }
 
-    async function callIdeaLab(action, payload) {
+    const TEXT_TIMEOUT_MS = 15000;
+    async function callIdeaLab(action, payload, timeoutMs) {
       const res = await fetch('/api/idea-lab', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, ...payload }),
+        signal: timeoutSignal(timeoutMs || TEXT_TIMEOUT_MS),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const err = new Error(data.error || '요청 실패');
         err.flagged = !!data.flagged;
+        err.status = res.status;
         throw err;
       }
       return data;
@@ -642,17 +685,33 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     function loadStore() {
       try {
         const raw = localStorage.getItem(LS_KEY);
-        if (raw) return JSON.parse(raw);
+        if (raw) {
+          const s = JSON.parse(raw);
+          if (s && Array.isArray(s.works)) return s;
+        }
       } catch {}
       return { works: [], settings: {} };
     }
-    function saveStore(store) { localStorage.setItem(LS_KEY, JSON.stringify(store)); }
+    // 성공하면 true. 용량 초과 등으로 실패해도 예외를 밖으로 던지지 않는다
+    function saveStore(store) {
+      try { localStorage.setItem(LS_KEY, JSON.stringify(store)); return true; }
+      catch (e) { return false; }
+    }
+    // 그림(base64)이 커서 저장 공간이 모자라면 그림만 빼고 저장한다. 화면의 그림은 그대로 둔다
+    // 돌려주는 값: 'full'(그대로 저장) | 'slim'(그림 빼고 저장) | false(저장 못 함)
+    const SLIM_SAVED_MSG = '저장 공간이 꽉 차서 그림은 빼고 작품집에 저장했어요. 오래된 작품을 지우면 그림도 저장돼요.';
     function upsertWork(work) {
       const store = loadStore();
       const idx = store.works.findIndex(w => w.id === work.id);
       if (idx >= 0) store.works[idx] = work; else store.works.unshift(work);
-      saveStore(store);
+      let result = saveStore(store) ? 'full' : false;
+      if (!result && work.b64) {
+        store.works[idx >= 0 ? idx : 0] = { ...work, b64: null };
+        if (saveStore(store)) result = 'slim';
+      }
+      if (!result) showToast('저장 공간이 꽉 차서 작품집에 저장하지 못했어요. 오래된 작품을 지워 주세요.');
       updateCollectionBadge();
+      return result;
     }
     function deleteWork(id) {
       const store = loadStore();
@@ -813,9 +872,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (state.build.magics.includes('combine') && !state.build.item2) { showToast('무엇과 합칠지 골라주세요!'); return; }
       state.workId = uid();
       state.coach = { step: 1, answers: [] };
+      state.refineFlags = 0;
       state.summary = '';
       state.finalName = '';
-      state.image = { b64: null, attempts: 0, failed: false };
+      state.image = { b64: null, attempts: 0, failed: false, note: '' };
       showScreen('coach');
       fetchCoachStep();
     }
@@ -823,7 +883,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     /* ══════════════════════ 3. AI 코치와 궁리 ══════════════════════ */
     function thingsLabel() {
       return state.build.magics.includes('combine') && state.build.item2
-        ? `${state.build.item}와(과) ${state.build.item2}`
+        ? `${state.build.item}${josa(state.build.item, '과', '와')} ${state.build.item2}`
         : state.build.item;
     }
     function magicLabelText() {
@@ -883,12 +943,49 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }
       return base;
     }
+    // 서버가 "쓰면 안 되는 말"로 판단했을 때: 방금 낸 답을 빼고 입력칸에 돌려줘 고쳐 쓰게 한다.
+    // (예전에는 걸린 답이 answers에 남은 채 계속 다시 보내져 빠져나올 수 없었음)
+    function showFlaggedNote(editText, itemProblem) {
+      const box = getEl('coachOfflineNote');
+      box.innerHTML = '';
+      const div = document.createElement('div');
+      div.className = 'il-feedback no';
+      div.style.marginBottom = '10px';
+      div.textContent = itemProblem
+        ? '물건 이름에 쓰기 어려운 말이 있대요. 물건을 다시 골라 볼까요?'
+        : '이 답에 쓰기 어려운 말이 있대요. 아래 칸에서 고쳐 쓰거나 다른 답을 골라 볼까요?';
+      if (itemProblem) {
+        const back = document.createElement('button');
+        back.type = 'button';
+        back.className = 'il-btn il-btn-ghost';
+        back.style.marginTop = '8px';
+        back.textContent = '← 물건 다시 고르기';
+        back.addEventListener('click', () => { setupBuildScreen(); showScreen('build'); });
+        div.appendChild(document.createElement('br'));
+        div.appendChild(back);
+      }
+      box.appendChild(div);
+      if (editText) getEl('coachCustomInput').value = editText;
+      getEl('coachLoading').hidden = true;
+      getEl('coachBody').hidden = false;
+      renderCoachProgress();
+    }
+    function restartCoach(msg) {
+      state.coach = { step: 1, answers: [] };
+      state.summary = '';
+      state.refineFlags = 0;
+      showScreen('coach');
+      if (msg) showToast(msg);
+      fetchCoachStep();
+    }
     async function fetchCoachStep() {
       renderCoachProgress();
       getEl('coachLoading').hidden = false;
+      getEl('coachLoading').querySelector('.il-loading-text').textContent = '코치 선생님이 질문을 생각하고 있어요…';
       getEl('coachBody').hidden = true;
       getEl('coachOfflineNote').innerHTML = '';
       let attempt = 0;
+      let lastErr = null;
       while (attempt < 2) {
         try {
           const data = await callIdeaLab('coach', {
@@ -903,19 +1000,30 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         } catch (e) {
           if (e.flagged) {
             showToast('표현을 다시 써볼까요?');
-            getEl('coachLoading').hidden = true;
-            getEl('coachBody').hidden = false;
+            if (state.coach.step > 1 && state.coach.answers.length) {
+              // 바로 전 단계까지는 통과했으므로 방금 낸 답이 원인 → 그 답만 되돌림
+              const last = state.coach.answers.pop();
+              state.coach.step--;
+              showFlaggedNote(last, false);
+            } else {
+              showFlaggedNote('', true);
+            }
             return;
           }
+          lastErr = e;
+          if (e.status === 429) break; // 요청이 몰릴 때는 곧바로 다시 보내지 않음
           attempt++;
         }
       }
-      // 오프라인 질문 뱅크로 대체
+      // 준비된 질문 뱅크로 대체
       const magicKey = state.build.magics[0];
       const qTpl = OFFLINE_QUESTIONS[magicKey][state.coach.step - 1];
-      const q = qTpl.replace('{things}', thingsLabel());
+      const tl = thingsLabel();
+      const q = qTpl.replace('{things}', tl).replace('{을를}', josa(tl, '을', '를'));
       const choices = getOfflineChoices(state.build.item, magicKey, state.coach.step);
-      getEl('coachOfflineNote').innerHTML = '<span class="il-offline-note">📴 오프라인 질문으로 계속할게요</span>';
+      const note = getEl('coachOfflineNote');
+      note.innerHTML = '';
+      note.appendChild(noteSpan(fallbackNoteText(lastErr, '질문으로')));
       renderCoachQuestion(q, choices, true);
     }
     function renderCoachQuestion(question, choices, isOffline) {
@@ -966,12 +1074,22 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           goToName();
           return;
         } catch (e) {
-          if (e.flagged) { showToast('표현을 다시 써볼까요?'); getEl('coachBody').hidden = false; getEl('coachLoading').hidden = true; return; }
+          if (e.flagged) {
+            showToast('표현을 다시 써볼까요?');
+            state.refineFlags = (state.refineFlags || 0) + 1;
+            if (state.refineFlags >= 2) { restartCoach('생각을 처음부터 다시 골라 볼까요?'); return; }
+            // 마지막 답을 되돌려 고쳐 쓰게 한다(같은 답을 계속 다시 보내지 않도록)
+            const last = state.coach.answers.pop();
+            showFlaggedNote(last, false);
+            return;
+          }
+          if (e.status === 429) break;
           attempt++;
         }
       }
-      // 오프라인 정리문
-      state.summary = `${thingsLabel()}을(를) ${magicLabelText()} 마법으로 바꿔봤어요! ${state.coach.answers.join(', ')}. 정말 멋진 발명품이에요!`;
+      // 준비된 정리문
+      const tl = thingsLabel();
+      state.summary = `${tl}${josa(tl, '을', '를')} ${magicLabelText()} 마법으로 바꿔봤어요! ${state.coach.answers.join(', ')}. 정말 멋진 발명품이에요!`;
       goToName();
     }
 
@@ -988,17 +1106,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
     async function fetchNameCandidates() {
       let attempt = 0;
+      let lastNameErr = null;
       while (attempt < 2) {
         try {
           const data = await callIdeaLab('name', { summary: state.summary });
           renderNameChoices(data.names);
           return;
         } catch (e) {
-          if (e.flagged) { showToast('표현을 다시 써볼까요?'); showScreen('coach'); return; }
+          // 정리문이 걸렸으면 코치 화면이 로딩 상태로 멈춰 있으므로 처음부터 다시 고르게 한다
+          if (e.flagged) { restartCoach('생각을 처음부터 다시 골라 볼까요?'); return; }
+          lastNameErr = e;
+          if (e.status === 429) break;
           attempt++;
         }
       }
-      getEl('coachOfflineNote2').innerHTML = '<span class="il-offline-note">📴 오프라인 이름 후보예요</span>';
+      const note2 = getEl('coachOfflineNote2');
+      note2.innerHTML = '';
+      note2.appendChild(noteSpan(fallbackNoteText(lastNameErr, '이름 후보로')));
       const base = state.build.magics.includes('combine') && state.build.item2 ? `${state.build.item}${state.build.item2}` : state.build.item;
       renderNameChoices([`${base} 친구`, `슈퍼 ${base}`, `${base} ${magicLabelText().split(' ')[0]}`]);
     }
@@ -1045,7 +1169,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         b64: state.image.b64,
         createdAt: new Date().toISOString(),
       };
-      upsertWork(work);
+      if (upsertWork(work) === 'slim') showToast(SLIM_SAVED_MSG);
     }
     async function startDraw(isRegen) {
       if (isRegen) {
@@ -1058,6 +1182,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), DRAW_TIMEOUT_MS);
+      let drawErr = null;
       try {
         const res = await fetch('/api/idea-lab', {
           method: 'POST',
@@ -1067,33 +1192,51 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         });
         const data = await res.json().catch(() => ({}));
         clearTimeout(timer);
-        if (!res.ok || !data.b64) throw new Error(data.error || '이미지 생성 실패');
+        if (!res.ok || !isB64Png(data.b64)) {
+          const err = new Error(data.error || '이미지 생성 실패');
+          err.status = res.status;
+          throw err;
+        }
         state.image.b64 = data.b64;
         state.image.failed = false;
-        renderDrawResult();
-        saveWorkAutomatically();
+        state.image.note = '';
       } catch (e) {
         clearTimeout(timer);
-        state.image.failed = true;
-        state.image.b64 = null;
-        renderDrawResult();
-        saveWorkAutomatically();
+        drawErr = e;
       }
+      if (drawErr) {
+        const busy = drawErr.status === 429;
+        if (state.image.b64) {
+          // 다시 그리기가 실패해도 먼저 그린 그림은 그대로 둔다
+          state.image.failed = false;
+          state.image.note = busy ? '지금 그림 그리는 친구가 많아서 새 그림을 못 그렸어요. 먼저 그린 그림을 그대로 둘게요.'
+                                  : '새 그림을 그리지 못했어요. 먼저 그린 그림을 그대로 둘게요.';
+        } else {
+          state.image.failed = true;
+          state.image.note = busy ? '지금 그림 그리는 친구가 많아서 이모지 카드로 완성했어요. 잠시 뒤 다시 그려 보세요.'
+                                  : '그림 생성이 어려워 이모지 카드로 완성했어요.';
+        }
+      }
+      // 화면 표시는 저장 성공 여부와 상관없이 먼저(저장 용량 초과가 그림을 지우지 않도록)
+      renderDrawResult();
+      saveWorkAutomatically();
     }
     function renderDrawResult() {
       getEl('drawLoading').hidden = true;
       getEl('drawBody').hidden = false;
       const wrap = getEl('drawArtWrap');
-      if (state.image.b64) {
-        wrap.innerHTML = `<img src="data:image/png;base64,${state.image.b64}" alt="${escHtml(state.finalName)} 그림">`;
+      if (isB64Png(state.image.b64)) {
+        wrap.innerHTML = '';
+        wrap.appendChild(makeArtImg(state.image.b64, state.finalName + ' 그림'));
       } else {
         wrap.innerHTML = emojiArtHtml();
       }
       const remain = IMAGE_MAX_REGEN - state.image.attempts;
       getEl('drawRegenBtn').disabled = remain <= 0;
-      getEl('drawAttemptNote').textContent = state.image.failed
-        ? '그림 생성이 어려워 이모지 카드로 완성했어요.'
-        : (remain > 0 ? `다시 그리기 ${remain}번 더 가능해요.` : '다시 그리기를 모두 사용했어요.');
+      const remainText = remain > 0 ? `다시 그리기 ${remain}번 더 가능해요.` : '다시 그리기를 모두 사용했어요.';
+      getEl('drawAttemptNote').textContent = state.image.note
+        ? (state.image.failed ? state.image.note : state.image.note + ' ' + remainText)
+        : remainText;
     }
     function emojiArtHtml() {
       const combine = state.build.magics.includes('combine') && state.build.item2;
@@ -1114,20 +1257,24 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         b64: state.image.b64,
         createdAt: new Date().toISOString(),
       };
-      upsertWork(work);
+      const saved = upsertWork(work);
       renderFinalCard(getEl('finalCardRoot'), work, state.image.b64, {});
       showScreen('card');
-      showToast('내 작품집에 저장되었어요! 📂');
+      if (saved === 'full') showToast('내 작품집에 저장되었어요! 📂');
+      else if (saved === 'slim') showToast(SLIM_SAVED_MSG);
     }
     function badgesHtml(magicKeys) {
       return `<div class="il-final-badges">${magicKeys.map(k => `<span class="il-final-badge">${MAGIC_BY_KEY[k].em} ${MAGIC_BY_KEY[k].label}</span>`).join('')}</div>`;
     }
     function renderFinalCard(root, work, b64, opts) {
       const combine = work.item2;
-      const art = b64
-        ? `<div class="il-final-art"><img src="data:image/png;base64,${b64}" alt="${escHtml(work.name)} 그림"></div>`
+      const hasArt = isB64Png(b64);
+      const art = hasArt
+        ? `<div class="il-final-art" data-il-art></div>`
         : `<div class="il-final-art">${combine ? `<div class="il-emoji-art">${work.itemEmoji}<span>+</span>${work.item2Emoji}</div>` : `<div class="il-emoji-art">${work.itemEmoji}</div>`}</div>`;
-      
+      const magicKeys = (Array.isArray(work.magic) ? work.magic : []).filter(k => Object.prototype.hasOwnProperty.call(MAGIC_BY_KEY, k));
+      work = { ...work, magic: magicKeys };
+
       const magicNames = work.magic.map(k => MAGIC_BY_KEY[k] ? MAGIC_BY_KEY[k].label : k).join(', ');
       
       root.innerHTML = `
@@ -1154,6 +1301,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           ` : ''}
         </div>
       `;
+      if (hasArt) {
+        const artEl = root.querySelector('[data-il-art]');
+        if (artEl) artEl.appendChild(makeArtImg(b64, (work.name || '발명품') + ' 그림'));
+      }
     }
 
     /* ══════════════════════ 공유 ══════════════════════ */
@@ -1193,6 +1344,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         } catch { showToast('공유에 실패했습니다.'); }
       }
     }
+    // 공유 링크(#share=)로 들어온 값은 믿지 않는다: 허용한 글자 필드만 길이를 잘라 복사, 그림(b64)은 받지 않음
+    function sanitizeShared(d) {
+      if (!d || typeof d !== 'object' || d.v !== 1) return null;
+      const str = (v, max) => (typeof v === 'string' ? v : '').slice(0, max).trim();
+      const item = str(d.item, 20);
+      if (!item) return null;
+      return {
+        v: 1,
+        item,
+        item2: str(d.item2, 20),
+        magic: Array.isArray(d.magic) ? d.magic.filter(k => typeof k === 'string' && Object.prototype.hasOwnProperty.call(MAGIC_BY_KEY, k)).slice(0, 2) : [],
+        summary: str(d.summary, 500),
+        name: str(d.name, 40),
+      };
+    }
     function emojiFor(label) {
       const hit = ITEMS.find(it => it.label === label);
       return hit ? hit.em : '💡';
@@ -1208,7 +1374,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const artWrap = root.querySelector('.il-final-art');
       if (artWrap) artWrap.innerHTML = '<div class="il-loading" style="padding:16px"><div class="il-spinner" style="width:32px;height:32px;margin-bottom:8px"></div><div class="il-loading-sub">그림을 그리고 있어요…</div></div>';
       try {
-        const data = await callIdeaLab('image', { summary: state.shared.summary });
+        const data = await callIdeaLab('image', { summary: state.shared.summary }, DRAW_TIMEOUT_MS);
         renderFinalCard(getEl('sharedCardRoot'), { ...state.shared, itemEmoji: emojiFor(state.shared.item), item2Emoji: emojiFor(state.shared.item2) }, data.b64, {});
       } catch {
         showToast('그림 생성에 실패했어요.');
@@ -1221,8 +1387,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         id: uid(), item: s.item, itemEmoji: emojiFor(s.item), item2: s.item2 || '', item2Emoji: emojiFor(s.item2),
         magic: s.magic || [], answers: [], summary: s.summary, name: s.name, createdAt: new Date().toISOString(),
       };
-      upsertWork(work);
-      showToast('내 작품집에 저장했어요!');
+      if (upsertWork(work)) showToast('내 작품집에 저장했어요!');
     }
 
     /* ══════════════════════ 7. 작품집 ══════════════════════ */
@@ -1258,9 +1423,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         const artWrap = root.querySelector('.il-final-art');
         artWrap.innerHTML = '<div class="il-loading" style="padding:16px"><div class="il-spinner" style="width:32px;height:32px;margin-bottom:8px"></div><div class="il-loading-sub">그림을 그리고 있어요…</div></div>';
         try {
-          const data = await callIdeaLab('image', { summary: work.summary });
+          const data = await callIdeaLab('image', { summary: work.summary }, DRAW_TIMEOUT_MS);
           work.b64 = data.b64;
-          upsertWork(work);
+          if (upsertWork(work) === 'slim') showToast(SLIM_SAVED_MSG);
           renderFinalCard(root, work, data.b64, {});
           root.appendChild(btnRow);
         } catch { showToast('그림 생성에 실패했어요.'); renderFinalCard(root, work, work.b64, {}); root.appendChild(btnRow); }
@@ -1284,8 +1449,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const hash = location.hash;
       if (hash.startsWith('#share=')) {
         try {
-          const data = b64urlDecode(hash.slice(7));
-          if (data && data.item) {
+          const data = sanitizeShared(b64urlDecode(hash.slice(7)));
+          if (data) {
             history.replaceState(null, '', location.pathname);
             state.shared = data;
             renderSharedCard();

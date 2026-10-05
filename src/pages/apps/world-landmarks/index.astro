@@ -12,7 +12,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
   <link href="https://fonts.googleapis.com/css2?family=Jua&amp;family=Gowun+Dodum&amp;display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js" crossorigin="anonymous" is:inline=""></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js" crossorigin="anonymous" defer is:inline=""></script>
   <script src="/apps/world-landmarks/countries.js" is:inline=""></script>
   <style is:global="">
 /* ── world-landmarks 전용 스타일 (immersive 전체화면) ── */
@@ -39,6 +39,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   --ok-bg: #e3f5ea;
   --bad-bg: #fdeaea;
   --bad-fg: #c0392b;
+  /* 흰 글씨를 올리는 진한 남색 면(헤더·수료증·주 버튼). --navy는 다크에서 밝은 글자색으로 뒤집히므로 따로 둔다 */
+  --hero-bg: #0d1b2a;
+  --hero-bg-deep: #060b11;
+  --on-gold: #0d1b2a; /* 금색 바탕 위 글자 */
 }
 [data-theme="dark"] {
   --navy: #e0e6ed;
@@ -60,6 +64,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   --ok-bg: #14301f;
   --bad-bg: #351a1b;
   --bad-fg: #f08b82;
+  --hero-bg: #1b3050;
+  --hero-bg-deep: #0b0f19;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -83,7 +89,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 .intro h1 { font-size: 34px; margin: 14px 0 6px; color: var(--navy); }
 .intro .sub { font-size: 16px; color: var(--navy); opacity: 0.8; margin-bottom: 22px; line-height: 1.7; }
 .lesson-tag {
-  display: inline-block; background: var(--navy); color: var(--gold);
+  display: inline-block; background: var(--hero-bg); color: var(--gold);
   font-size: 13px; padding: 6px 16px; border-radius: 99px; margin-bottom: 18px;
 }
 .mission-card {
@@ -101,7 +107,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 }
 .btn:active { transform: scale(.96); }
 .btn-primary {
-  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  background: linear-gradient(135deg, var(--hero-bg) 0%, var(--hero-bg-deep) 100%);
   color: #fff; box-shadow: 0 6px 0 var(--gold-deep);
 }
 .btn-primary:active { box-shadow: 0 2px 0 var(--gold-deep); transform: translateY(4px); }
@@ -123,7 +129,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 }
 .viewer-title .num {
   background: var(--gold); width: 26px; height: 26px; border-radius: 50%;
-  display: inline-flex; align-items: center; justify-content: center; font-size: 14px; color: var(--navy);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 14px; color: var(--on-gold);
 }
 .cam-bar {
   position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%); z-index: 5;
@@ -137,7 +143,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   -webkit-tap-highlight-color: transparent;
 }
 .cam-btn:active { transform: scale(.94); }
-.cam-btn.active { background: var(--gold); color: var(--navy); border-color: var(--gold); }
+.cam-btn.active { background: var(--gold); color: var(--on-gold); border-color: var(--gold); }
 .cam-btn.return-btn { background: rgba(13,27,42,0.95); border-color: var(--gold); }
 
 .map-loading {
@@ -172,7 +178,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   box-shadow: -8px 0 24px rgba(13,27,42,0.15);
 }
 .side-head {
-  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  background: linear-gradient(135deg, var(--hero-bg) 0%, var(--hero-bg-deep) 100%);
   color: #fff; padding: 20px 22px 16px; position: relative; overflow: hidden; flex-shrink: 0;
 }
 .side-head::after {
@@ -317,7 +323,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 .result { text-align: center; animation: fadeUp .5s ease both; }
 .result .score { font-family: 'Jua'; font-size: 19px; color: var(--navy); margin-bottom: 16px; opacity: 0.8; }
 .certificate-box {
-  background: var(--navy); color: #fffdf9; border-radius: 20px;
+  background: var(--hero-bg); color: #fffdf9; border-radius: 20px;
   border: 4px double var(--gold); padding: 22px 20px; text-align: center; margin-bottom: 18px;
   box-shadow: var(--shadow); position: relative;
 }
@@ -332,7 +338,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   background: var(--cream); border-radius: 10px; padding: 8px; font-size: 12px; font-weight: 700;
   cursor: pointer; transition: transform 0.15s; text-align: center;
 }
-.revisit-item:hover { transform: scale(1.03); background: var(--gold); color: var(--navy); }
+.revisit-item:hover { transform: scale(1.03); background: var(--gold); color: var(--on-gold); }
 
 @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 @keyframes popIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
@@ -365,7 +371,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 .howto-step { background: var(--cream); border-radius: 12px; padding: 10px 8px; text-align: center; font-size: 12.5px; line-height: 1.5; }
 .howto-step .step-num {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px; border-radius: 50%; background: var(--gold); color: var(--navy);
+  width: 22px; height: 22px; border-radius: 50%; background: var(--gold); color: var(--on-gold);
   font-family: 'Jua'; font-size: 12px; margin-bottom: 4px;
 }
 
@@ -377,7 +383,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   transition: transform .12s, background .15s; -webkit-tap-highlight-color: transparent;
 }
 .continent-tab:active { transform: scale(.95); }
-.continent-tab.active { background: var(--navy); color: var(--gold); border-color: var(--navy); }
+.continent-tab.active { background: var(--hero-bg); color: var(--gold); border-color: var(--hero-bg); }
 .continent-tab .cnt { opacity: .65; font-size: 12px; margin-left: 3px; }
 
 /* 나라 카드 그리드 */
@@ -407,7 +413,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 
 /* 나라 상세 */
 .country-head {
-  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+  background: linear-gradient(135deg, var(--hero-bg) 0%, var(--hero-bg-deep) 100%);
   border-radius: var(--radius); color: #fff; padding: 22px 20px; text-align: center;
   margin-bottom: 14px; position: relative; overflow: hidden;
 }
@@ -525,7 +531,6 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   .cam-bar { flex-wrap: wrap; justify-content: center; }
 }
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/world-landmarks/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"세계 탐험대","description":"세계 랜드마크 11곳을 3D 위성지도로 탐험하고, 27개국의 국기·위치·수도·인사말·음식·자랑거리·문화를 살펴보며 조사 보고서를 완성하는 세계 여러 나라 학습 앱","url":"https://eduin.info/apps/world-landmarks/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -562,7 +567,7 @@ const LANDMARKS = [
     capital: '베이징', greeting: '니하오!', food: '만두 🥟', clothes: '치파오 👘', house: '사합원 🏠',
     observe: '험난한 산봉우리를 따라 끝없이 이어져 있는 성벽의 형태를 3D 지도로 감상해 보세요.',
     tip: '🔄 한 바퀴를 눌러 산맥 위에 성벽이 어떻게 지어졌는지 확인해 보세요.',
-    explain: '만리장성은 중국의 대표적인 <b>고대 성곽</b>이에요. 우주에서도 보일 정도로 아주 길며, 흙과 돌을 쌓아 산맥을 따라 만들었습니다.',
+    explain: '만리장성은 중국의 대표적인 <b>고대 성곽</b>이에요. 여러 시대에 걸쳐 이어 쌓아 길이가 수천 킬로미터나 될 만큼 아주 길며, 흙과 돌을 쌓아 산맥을 따라 만들었습니다.',
     lat: 40.4319, lng: 116.5704, zoom: 15.5,
     quiz: {
       q: '만리장성이 있는 중국의 네모난 전통 마당 집은 무엇일까요?',
@@ -588,7 +593,7 @@ const LANDMARKS = [
     capital: '파리', greeting: '봉주르!', food: '바게트 🥖', clothes: '전통 드레스 👚', house: '석조 공동주택 🏢',
     observe: '샹 드 마르스 공원 한가운데 솟아 있는 철탑과 주변 도로·강을 위에서 관찰하세요.',
     tip: '위에서 보기를 눌러 에펠탑이 공원 중앙에 자리 잡은 배치를 확인해 보세요.',
-    explain: '에펠탑은 프랑스 파리를 상징하는 <b>철골 탑</b>이에요. 약 330미터가 넘는 높이로, 철골들을 그물망처럼 촘촘히 엮어 만들었습니다.',
+    explain: '에펠탑은 프랑스 파리를 상징하는 <b>철골 탑</b>이에요. 높이가 약 330미터로, 철골들을 그물망처럼 촘촘히 엮어 만들었습니다.',
     lat: 48.8584, lng: 2.2945, zoom: 17.0,
     quiz: {
       q: '에펠탑이 멋지게 솟아 있는 프랑스의 수도는 어디일까요?',
@@ -653,7 +658,7 @@ const LANDMARKS = [
     capital: '워싱턴 D.C.', greeting: '헬로!', food: '햄버거 🍔', clothes: '청바지 👖', house: '목조 단독주택 🏡',
     observe: '리버티 섬의 넓은 잔디마당 정가운데 우뚝 서서 횃불을 높이 들고 있는 여신상을 위에서 내려다보세요.',
     tip: '여신상이 밟고 있는 별 모양의 단상 배치를 위에서 관찰하세요.',
-    explain: '자유의 여신상은 미국 뉴욕 앞바다 섬에 세워진 <b>거대한 횃불 동상</b>이에요. 프랑스가 미국 독립 100주년을 기념하여 선물한 청동상입니다.',
+    explain: '자유의 여신상은 미국 뉴욕 앞바다 섬에 세워진 <b>거대한 횃불 동상</b>이에요. 프랑스가 미국 독립 100주년을 기념하여 선물했어요. 겉면은 구리로 만들어졌는데, 오랜 세월 녹이 슬어 지금의 초록빛이 되었습니다.',
     lat: 40.6892, lng: -74.0445, zoom: 16.5,
     quiz: {
       q: '미국을 대표하며 질긴 천으로 만들어 전 세계 사람들이 즐겨 입는 의상은?',
@@ -666,7 +671,7 @@ const LANDMARKS = [
     capital: '브라질리아', greeting: '올라!', food: '슈하스코 🥩', clothes: '삼바 의상 👗', house: '포르투갈풍 주택 🏠',
     observe: '세계 최대의 열대우림 속에서 강이 구불구불 흘러가는 아마존 강 유역을 위성지도로 관찰하세요.',
     tip: '위에서 보기를 눌러 초록빛 숲 사이를 흘러가는 거대한 강줄기를 확인해 보세요.',
-    explain: '아마존 열대우림은 브라질에 위치한 <b>세계 최대의 열대우림</b>이에요. 지구 산소의 약 20%를 만들어내는 "지구의 허파"로 불립니다.',
+    explain: '아마존 열대우림은 브라질에 위치한 <b>세계 최대의 열대우림</b>이에요. 수많은 동식물이 살고 이산화 탄소를 흡수해 "지구의 허파"로 불립니다.',
     lat: -3.4653, lng: -62.2159, zoom: 10.5,
     quiz: {
       q: '아마존이 있는 브라질의 대표적인 쇠고기 꼬치구이 요리는?',
@@ -696,6 +701,12 @@ let map = null;
 let orbiting = false;
 let mapFailed = false;
 const app = document.getElementById('app');
+
+function shuffleArr(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
 
 function getGoogleEarthUrl(m) {
   return `https://earth.google.com/web/@${m.lat},${m.lng},1500a,30000d,35y,0h,60t,0r`;
@@ -761,7 +772,10 @@ function buildMap() {
       if (mapLoaded) return;
       mapLoaded = true;
       document.getElementById('mapLoading')?.classList.add('hide');
-      flyToLandmark(LANDMARKS[idx]);
+      // 로드가 늦어도 지금 보고 있는 곳 기준(결과 화면이면 세계 전체)
+      const m = curLandmark();
+      if (m) flyToLandmark(m);
+      else if (map) map.easeTo({ zoom: 2.2, pitch: 0, duration: 1500 });
     };
 
     map.on('load', () => {
@@ -801,20 +815,26 @@ function flyToLandmark(m) {
 }
 
 /* ── 카메라 컨트롤 (window 노출) ── */
+// 결과 화면에서는 idx가 LANDMARKS.length라 현재 랜드마크가 없다 → 세계 전체 보기 기준으로 동작
+function curLandmark() { return LANDMARKS[idx] || null; }
 window.camReturn = function() {
   if (mapFailed || !map) return;
   stopOrbit();
-  flyToLandmark(LANDMARKS[idx]);
+  const m = curLandmark();
+  if (m) flyToLandmark(m);
+  else map.easeTo({ zoom: 2.2, pitch: 0, bearing: 0, duration: 1500 });
 };
 window.camTop = function() {
   if (mapFailed || !map) return;
   stopOrbit();
-  map.easeTo({ pitch: 0, bearing: 0, zoom: LANDMARKS[idx].zoom + 0.4, duration: 1200 });
+  const m = curLandmark();
+  map.easeTo({ pitch: 0, bearing: 0, zoom: m ? m.zoom + 0.4 : 2.2, duration: 1200 });
 };
 window.camTilt = function() {
   if (mapFailed || !map) return;
   stopOrbit();
-  map.easeTo({ pitch: 65, zoom: LANDMARKS[idx].zoom, duration: 1200 });
+  const m = curLandmark();
+  map.easeTo({ pitch: 65, zoom: m ? m.zoom : map.getZoom(), duration: 1200 });
 };
 window.toggleOrbit = function() {
   if (mapFailed || !map) return;
@@ -973,7 +993,7 @@ function renderPanel() {
     bodyHtml += `
       <div class="quiz-q">${m.quiz.q}</div>
       <div class="quiz-btns">
-        ${m.quiz.choices.map(c => `
+        ${shuffleArr(m.quiz.choices).map(c => `
           <button class="quiz-btn" onclick="submitAnswer('${c}')">${c}</button>
         `).join('')}
       </div>
@@ -1020,7 +1040,9 @@ window.speakCulture = function(landmarkId) {
   const btn = document.getElementById('speakBtn');
   if (btn) btn.classList.add('speaking');
 
-  const text = `이곳은 ${m.countryName}의 ${m.name}입니다. 수도는 ${m.capital}이고, 인사말은 ${m.greeting}입니다. ${m.countryName}의 대표적인 음식은 ${m.food.split(' ')[0]}이고, 전통 옷은 ${m.clothes.split(' ')[0]}입니다. 대표적인 집은 ${m.house.split(' ')[0]}입니다.`;
+  // 이름 뒤 이모지만 떼고 읽는다(예: "미트 파이 🥩" → "미트 파이"). 공백 기준으로 자르면 "미트"만 남음
+  const plain = s => String(s).replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, '').trim();
+  const text = `이곳은 ${m.countryName}의 ${m.name}입니다. 수도는 ${m.capital}이고, 인사말은 ${plain(m.greeting)}입니다. ${m.countryName}의 대표적인 음식은 ${plain(m.food)}이고, 전통 옷은 ${plain(m.clothes)}입니다. 대표적인 집은 ${plain(m.house)}입니다.`;
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = 'ko-KR';
@@ -1118,24 +1140,36 @@ function renderResult() {
   if (vt) vt.innerHTML = `🏆 세계 탐험 완료!`;
 
   const totalScore = stamps.length;
+  const total = LANDMARKS.length;
+  const complete = totalScore >= total;
+  const missing = LANDMARKS.filter(lm => !stamps.includes(lm.id));
 
   document.getElementById('sideHead').innerHTML = `
     <div class="flag">🌏 세계 탐험대</div>
     <h2>🏆 탐험 수료식</h2>
-    <div class="height">11개 나라 여권 스탬프 완성!</div>
+    <div class="height">${complete ? `${total}개 나라 여권 스탬프 완성!` : `여권 스탬프 ${totalScore} / ${total}개`}</div>
   `;
 
   document.getElementById('sideBody').innerHTML = `
     <div class="result">
+      ${complete ? `
       <div class="certificate-box">
         <div class="certificate-title">🎖️ 세계 탐험 챔피언</div>
         <div class="certificate-stamp">🌏</div>
         <div class="certificate-text">
-          위 어린이는 3D 지도를 활용하여 경복궁, 에펠탑, 피라미드 등 세계 랜드마크 11곳을 성실히 탐험하고, 나라마다 다른 국기, 수도, 의상, 음식, 집의 다양성을 훌륭히 공부하였으므로 이 세계 탐험 인증서를 수여합니다.
+          위 어린이는 3D 지도를 활용하여 경복궁, 에펠탑, 피라미드 등 세계 랜드마크 ${total}곳을 성실히 탐험하고, 나라마다 다른 국기, 수도, 의상, 음식, 집의 다양성을 훌륭히 공부하였으므로 이 세계 탐험 인증서를 수여합니다.
         </div>
-      </div>
+      </div>` : `
+      <div class="certificate-box">
+        <div class="certificate-title">✈️ 거의 다 왔어요!</div>
+        <div class="certificate-text">
+          도장을 <b>${totalScore}개</b> 모았어요. 아직 <b>${missing.length}개</b> 나라의 도장이 남았어요.<br>
+          ${missing.map(lm => `${lm.emoji} ${lm.name}`).join(', ')}<br>
+          아래에서 골라 퀴즈를 풀면 인증서를 받을 수 있어요!
+        </div>
+      </div>`}
 
-      <div class="observe-box" style="text-align:left; background:#fffdf9;">
+      <div class="observe-box" style="text-align:left;">
         <h3 style="color:var(--gold-deep)">📚 배움 정리</h3>
         <p style="font-size:13.5px; line-height:1.75;">
           세계 여러 나라 사람들은 각자의 환경과 역사에 따라 서로 다른 <strong>국기, 음식, 옷, 집</strong>을 가지고 살아가요.<br>
@@ -1199,7 +1233,7 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const saved = JSON.parse(raw);
-    if (saved.stamps) stamps = saved.stamps;
+    if (Array.isArray(saved.stamps)) stamps = saved.stamps.filter(id => LANDMARKS.some(l => l.id === id));
   } catch (e) {}
 }
 
@@ -1226,7 +1260,10 @@ let researchChecks = {};
 function loadResearch() {
   try {
     const saved = JSON.parse(localStorage.getItem(RESEARCH_KEY) || '{}');
-    if (saved.checks) researchChecks = saved.checks;
+    if (saved.checks && typeof saved.checks === 'object') {
+      researchChecks = {};
+      Object.keys(saved.checks).forEach(k => { if (Array.isArray(saved.checks[k])) researchChecks[k] = saved.checks[k]; });
+    }
   } catch (e) {}
 }
 function saveResearch() {
@@ -1534,16 +1571,7 @@ window.exploreFromResearch = function(landmarkIdx) {
 loadResearch();
 route();
 
-window.shareCurrentPage = function() {
-  const payload = JSON.stringify({ v: 1, stamps });
-  const url = location.origin + location.pathname + '#share=' + encodeURIComponent(payload);
-  if (navigator.share) {
-    navigator.share({ title: '세계 탐험대 — 내 여권 스탬프', url });
-  } else if (navigator.clipboard) {
-    navigator.clipboard.writeText(url);
-    alert('공유 링크가 클립보드에 복사되었습니다.');
-  }
-};
+// 예전 '#share=' 스탬프 링크는 받는 쪽에서 읽지 않아 제거했다. 공유 버튼은 셸 기본 동작(현재 주소 공유)을 쓴다.
 
 })();
 </script>
