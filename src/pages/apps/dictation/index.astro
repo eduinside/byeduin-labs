@@ -40,21 +40,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
     .dt-step {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 7px 12px; border-radius: 9px; border: none; background: none;
-      font-size: 12px; font-weight: 600; color: var(--fg-muted);
+      padding: 7px 12px; min-height: 44px; border-radius: 9px; border: none; background: none;
+      font-size: 14px; font-weight: 600; color: var(--fg-muted);
       cursor: pointer; font-family: inherit; transition: all 0.15s; white-space: nowrap;
     }
     .dt-step .dt-step-num {
       display: inline-flex; align-items: center; justify-content: center;
-      width: 18px; height: 18px; border-radius: 50%;
+      width: 22px; height: 22px; border-radius: 50%;
       background: var(--border); color: var(--fg-muted);
-      font-size: 10px; font-weight: 700;
+      font-size: 13px; font-weight: 700;
     }
     .dt-step.active { background: rgba(0,111,238,0.1); color: var(--primary); }
     .dt-step.active .dt-step-num { background: var(--primary); color: #fff; }
     .dt-step.done .dt-step-num { background: var(--success); color: #fff; }
     .dt-step:disabled { opacity: 0.45; cursor: not-allowed; }
-    .dt-step-sep { color: var(--border); font-size: 11px; user-select: none; }
+    .dt-step-sep { color: var(--fg-muted); font-size: 14px; user-select: none; }
 
     /* ── 카드 · 섹션 ── */
     .dt-card {
@@ -63,12 +63,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       animation: fadeUp 0.22s ease both;
     }
     .dt-section-title {
-      font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+      font-size: 14px; font-weight: 700; letter-spacing: 0.08em;
       text-transform: uppercase; color: var(--fg-muted); margin: 0 0 14px;
       display: flex; align-items: center; gap: 8px;
     }
     .dt-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-    .dt-label { display: block; font-size: 12px; font-weight: 600; color: var(--fg-muted); margin-bottom: 8px; }
+    .dt-label { display: block; font-size: 14px; font-weight: 600; color: var(--fg-muted); margin-bottom: 8px; }
     .dt-field { margin-bottom: 18px; }
     .dt-field:last-child { margin-bottom: 0; }
 
@@ -77,8 +77,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       display: inline-flex; align-items: center; justify-content: center; gap: 6px;
       padding: 9px 16px; border-radius: 10px; border: 1px solid var(--border);
       background: var(--card-bg); color: var(--fg);
-      font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
-      white-space: nowrap; transition: all 0.15s; min-height: 40px; text-decoration: none;
+      font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+      white-space: nowrap; transition: all 0.15s; min-height: 44px; text-decoration: none;
     }
     .dt-btn:hover { border-color: var(--primary); color: var(--primary); }
     .dt-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -96,11 +96,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       display: inline-flex; align-items: center; gap: 6px;
       padding: 10px 18px; border-radius: 12px; border: 1px solid var(--border);
       background: var(--bg); color: var(--fg-muted);
-      font-size: 13.5px; font-weight: 600; cursor: pointer; font-family: inherit;
-      transition: all 0.2s ease; user-select: none;
+      font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: all 0.2s ease; user-select: none; min-height: 44px; position: relative;
       box-shadow: 0 1px 3px rgba(0,0,0,0.01);
     }
-    .dt-chip input { display: none; }
+    /* 체크박스는 화면에서만 숨김(display:none이면 키보드로 고를 수 없음) */
+    .dt-chip input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+    .dt-chip:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .dt-chip:has(input:focus:not(:focus-visible)) { outline: none; }
     .dt-chip:hover {
       border-color: var(--primary);
       color: var(--primary);
@@ -138,9 +141,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       box-shadow: 0 2px 8px rgba(0,111,238,0.08);
     }
     .dt-count-wrap { display: flex; align-items: center; gap: 8px; }
-    .dt-count-wrap .dt-number { width: 84px; text-align: center; height: 42px; font-weight: 700; }
+    .dt-count-wrap .dt-number { width: 84px; text-align: center; height: 44px; font-weight: 700; }
     .dt-count-btn {
-      width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--border);
+      width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--border);
       background: var(--bg); color: var(--fg); font-size: 17px; font-weight: 700;
       cursor: pointer; font-family: inherit; transition: all 0.15s;
     }
@@ -156,10 +159,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       display: inline-flex; align-items: center;
       padding: 2px 8px; border-radius: 99px;
       background: rgba(0,111,238,0.08); color: var(--primary);
-      font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap;
+      font-size: 14px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap;
     }
     .dt-tag.none { background: var(--bg-sec); color: var(--fg-muted); }
-    .dt-diff { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+    .dt-diff { font-size: 14px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
     .dt-diff.d1 { background: rgba(23,201,100,0.10); color: var(--success); }
     .dt-diff.d2 { background: rgba(245,165,36,0.12); color: #f5a524; }
     .dt-diff.d3 { background: rgba(243,18,96,0.10); color: var(--danger); }
@@ -174,12 +177,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       background: var(--bg); animation: fadeUp 0.2s ease both;
     }
     .dt-item-num {
-      flex: none; width: 26px; height: 26px; border-radius: 8px;
+      flex: none; width: 28px; height: 28px; border-radius: 8px;
       display: inline-flex; align-items: center; justify-content: center;
       background: var(--bg-sec); color: var(--fg-muted);
-      font-size: 12px; font-weight: 700;
+      font-size: 14px; font-weight: 700;
     }
-    .dt-item-text { flex: 1; font-size: 14px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+    .dt-item-text { flex: 1; font-size: 15px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
     .dt-item-text.masked { color: var(--fg-muted); letter-spacing: 0.2em; }
     .dt-item-meta { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
 
@@ -188,22 +191,22 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       display: flex; align-items: center; gap: 8px;
       padding: 10px 14px; border-radius: 11px; margin-bottom: 14px;
       background: rgba(245,165,36,0.10); color: #b45309;
-      font-size: 12.5px; font-weight: 600; line-height: 1.5;
+      font-size: 14px; font-weight: 600; line-height: 1.5;
     }
     [data-theme="dark"] .dt-read-note { color: #fbbf24; }
     .dt-read-card {
       text-align: center; padding: 34px 20px 28px;
       border: 1px solid var(--border); border-radius: 16px; background: var(--bg);
     }
-    .dt-read-kind { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); margin-bottom: 14px; }
+    .dt-read-kind { font-size: 14px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-muted); margin-bottom: 14px; }
     .dt-read-text { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.4; overflow-wrap: anywhere; }
     .dt-read-pron { margin-top: 10px; font-size: 16px; font-weight: 600; color: var(--primary); }
-    .dt-read-pron .lbl { font-size: 11px; font-weight: 700; color: var(--fg-muted); margin-right: 6px; letter-spacing: 0.08em; }
+    .dt-read-pron .lbl { font-size: 14px; font-weight: 700; color: var(--fg-muted); margin-right: 6px; letter-spacing: 0.08em; }
     .dt-read-tags { margin-top: 16px; display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
     .dt-read-progress { margin: 18px 0 10px; }
     .dt-progress-bar { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; }
     .dt-progress-fill { height: 100%; width: 0%; background: var(--primary); border-radius: 99px; transition: width 0.3s ease; }
-    .dt-read-counter { text-align: center; font-size: 12px; font-weight: 700; color: var(--fg-muted); margin-top: 8px; }
+    .dt-read-counter { text-align: center; font-size: 14px; font-weight: 700; color: var(--fg-muted); margin-top: 8px; }
     .dt-read-ctrl { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
 
     /* ── 채점 입력 그리드 ── */
@@ -211,16 +214,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .dt-grade-row { display: flex; align-items: center; gap: 10px; }
     .dt-grade-row .dt-input {
       flex: 1; background: var(--bg); border: 1px solid var(--border);
-      border-radius: 10px; padding: 10px 12px; font-size: 15px;
+      border-radius: 10px; padding: 10px 12px; font-size: 16px; min-height: 44px;
       color: var(--fg); outline: none; font-family: inherit; transition: border-color 0.2s; min-width: 0;
     }
     .dt-grade-row .dt-input:focus { border-color: var(--primary); }
     .dt-grade-row .dt-input.ok { border-color: var(--success); background: rgba(23,201,100,0.06); }
     .dt-grade-row .dt-input.bad { border-color: var(--danger); background: rgba(243,18,96,0.05); }
-    .dt-grade-mark { flex: none; width: 22px; text-align: center; font-size: 15px; font-weight: 700; }
+    .dt-grade-mark { flex: none; width: 24px; text-align: center; font-size: 17px; font-weight: 700; }
     .dt-grade-mark.ok { color: var(--success); }
     .dt-grade-mark.bad { color: var(--danger); }
-    .dt-diff-line { font-size: 12px; color: var(--fg-muted); padding: 0 0 2px 36px; margin-top: -2px; line-height: 1.6; }
+    .dt-diff-line { font-size: 14px; color: var(--fg-muted); padding: 0 0 2px 38px; margin-top: -2px; line-height: 1.6; }
     .dt-diff-line .miss { color: var(--danger); font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
 
     /* ── 결과 ── */
@@ -232,34 +235,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .dt-score-tile .v { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
     .dt-score-tile .v.good { color: var(--success); }
     .dt-score-tile .v.warn { color: var(--danger); }
-    .dt-score-tile .k { font-size: 11px; font-weight: 700; color: var(--fg-muted); margin-top: 4px; letter-spacing: 0.06em; }
+    .dt-score-tile .k { font-size: 14px; font-weight: 700; color: var(--fg-muted); margin-top: 4px; letter-spacing: 0.06em; }
     .dt-rule-rows { display: flex; flex-direction: column; gap: 10px; }
     .dt-rule-row { display: grid; grid-template-columns: 110px 1fr 52px; align-items: center; gap: 10px; }
-    .dt-rule-row .name { font-size: 12.5px; font-weight: 700; }
+    .dt-rule-row .name { font-size: 14px; font-weight: 700; }
     .dt-rule-row .bar { height: 10px; background: var(--border); border-radius: 99px; overflow: hidden; }
     .dt-rule-row .bar > i { display: block; height: 100%; background: var(--danger); border-radius: 99px; transition: width 0.4s ease; }
     .dt-rule-row .bar > i.low { background: var(--success); }
-    .dt-rule-row .pct { font-size: 12px; font-weight: 700; color: var(--fg-muted); text-align: right; }
+    .dt-rule-row .pct { font-size: 14px; font-weight: 700; color: var(--fg-muted); text-align: right; }
     .dt-guide {
       border: 1px solid var(--border); border-radius: 13px; background: var(--bg);
       padding: 14px 16px; margin-bottom: 10px;
     }
-    .dt-guide .g-rule { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
-    .dt-guide .g-text { font-size: 13.5px; line-height: 1.65; }
+    .dt-guide .g-rule { font-size: 14px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+    .dt-guide .g-text { font-size: 15px; line-height: 1.65; }
     .dt-guide .g-text .ex { color: var(--fg-muted); }
-    .dt-empty { text-align: center; color: var(--fg-muted); font-size: 13px; padding: 26px 0; }
+    .dt-empty { text-align: center; color: var(--fg-muted); font-size: 14px; padding: 26px 0; }
 
-    /* ── 토스트 ── */
-    #fd-toast {
-      position: fixed; bottom: 2rem; left: 50%;
-      transform: translateX(-50%) translateY(1rem);
-      background: var(--fg); color: var(--bg);
-      padding: 10px 18px; border-radius: 10px;
-      font-size: 13px; font-weight: 600;
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.2s, transform 0.2s; z-index: 9999;
-    }
-    #fd-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(8px); }
@@ -271,7 +263,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     @media print {
       html, body { min-height: 0 !important; height: auto !important; margin: 0 !important; padding: 0 !important; background: #fff; }
       body::before { display: none; }
-      .app-main, .dt-root, .top-overlay, .top-overlay-left, #fd-toast, #helpModal, .dt-mode-tabs { display: none !important; }
+      .app-main, .dt-root, .top-overlay, .top-overlay-left, #helpModal, .dt-mode-tabs { display: none !important; }
       .dt-print-area:not(.printing) { display: none !important; }
       .dt-print-area.printing { display: block !important; }
       .dt-print-sheet { font-family: 'Pretendard', sans-serif; color: #111; padding: 5mm 6mm; page-break-after: avoid; }
@@ -297,8 +289,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
     .dt-mode-tab {
       flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-      padding: 10px 14px; border-radius: 10px; border: none; background: none;
-      font-size: 13px; font-weight: 700; color: var(--fg-muted);
+      padding: 10px 14px; min-height: 44px; border-radius: 10px; border: none; background: none;
+      font-size: 15px; font-weight: 700; color: var(--fg-muted);
       cursor: pointer; font-family: inherit; transition: all 0.18s; white-space: nowrap;
     }
     .dt-mode-tab.active { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(0,111,238,0.18); }
@@ -320,9 +312,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       position: fixed; inset: 0; z-index: 9998;
       background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
       display: flex; align-items: center; justify-content: center;
-      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+      opacity: 0; pointer-events: none; visibility: hidden;
+      transition: opacity 0.2s, visibility 0s linear 0.2s;
     }
-    .dt-modal-overlay.open { opacity: 1; pointer-events: auto; }
+    /* 닫혀 있을 때 visibility:hidden — 안쪽 버튼이 Tab으로 잡히지 않게.
+       열 때는 visibility를 바로 바꿔 VUI가 곧장 포커스를 옮길 수 있게 함
+       (안쪽 요소에 transition: all을 쓰면 visibility까지 늦게 바뀌어 포커스가 안 들어감) */
+    .dt-modal-overlay.open { opacity: 1; pointer-events: auto; visibility: visible; transition: opacity 0.2s; }
     .dt-modal {
       background: var(--card-bg); border: 1px solid var(--border);
       border-radius: 18px; padding: 24px; max-width: 560px; width: 92vw;
@@ -331,21 +327,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
     .dt-modal-close {
       position: absolute; top: 12px; right: 12px;
-      width: 30px; height: 30px; border-radius: 50%;
+      width: 44px; height: 44px; border-radius: 50%;
       display: inline-flex; align-items: center; justify-content: center;
       border: 1px solid var(--border); background: var(--bg); color: var(--fg-muted);
-      font-size: 16px; cursor: pointer; font-family: inherit; transition: all 0.15s;
+      font-size: 18px; cursor: pointer; font-family: inherit; transition: border-color 0.15s, color 0.15s;
     }
     .dt-modal-close:hover { border-color: var(--danger); color: var(--danger); }
-    .dt-modal h3 { font-size: 16px; font-weight: 700; margin: 0 0 12px; }
-    .dt-modal h4 { font-size: 13px; font-weight: 700; color: var(--fg-muted); margin: 18px 0 8px; letter-spacing: 0.06em; }
-    .dt-modal p, .dt-modal li { font-size: 13.5px; line-height: 1.7; color: var(--fg); }
+    .dt-modal h3 { font-size: 17px; font-weight: 700; margin: 0 0 12px; padding-right: 48px; }
+    .dt-modal h4 { font-size: 14px; font-weight: 700; color: var(--fg-muted); margin: 18px 0 8px; letter-spacing: 0.06em; }
+    .dt-modal p, .dt-modal li { font-size: 15px; line-height: 1.7; color: var(--fg); }
     .dt-modal ul { padding-left: 18px; margin: 0; }
     .dt-modal .stat-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-    .dt-modal .stat-bar-row .label { font-size: 12px; font-weight: 700; width: 90px; flex-shrink: 0; }
+    .dt-modal .stat-bar-row .label { font-size: 14px; font-weight: 700; width: 120px; flex-shrink: 0; }
     .dt-modal .stat-bar-row .bar { flex: 1; height: 12px; background: var(--border); border-radius: 99px; overflow: hidden; }
     .dt-modal .stat-bar-row .bar > i { display: block; height: 100%; background: var(--primary); border-radius: 99px; transition: width 0.5s ease; }
-    .dt-modal .stat-bar-row .val { font-size: 11px; font-weight: 700; color: var(--fg-muted); width: 40px; text-align: right; }
+    .dt-modal .stat-bar-row .val { font-size: 14px; font-weight: 700; color: var(--fg-muted); width: 44px; text-align: right; }
 
     /* ── AI 맞춤 학습 모드 ── */
     .dt-ai-view { animation: fadeUp 0.22s ease both; }
@@ -357,21 +353,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .dt-ai-summary-row .rank {
       flex: none; width: 28px; height: 28px; border-radius: 50%;
       display: inline-flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 800; color: #fff;
+      font-size: 14px; font-weight: 800; color: #fff;
     }
     .dt-ai-summary-row .rank.r1 { background: var(--danger); }
     .dt-ai-summary-row .rank.r2 { background: #f5a524; }
     .dt-ai-summary-row .rank.r3 { background: var(--primary); }
     .dt-ai-summary-row .info { flex: 1; }
     .dt-ai-summary-row .info .name { font-size: 14px; font-weight: 700; }
-    .dt-ai-summary-row .info .detail { font-size: 11.5px; color: var(--fg-muted); margin-top: 2px; }
+    .dt-ai-summary-row .info .detail { font-size: 14px; color: var(--fg-muted); margin-top: 2px; }
     .dt-ai-response { margin-top: 16px; }
     .dt-ai-response .ai-text { font-size: 14px; line-height: 1.8; margin-bottom: 14px; white-space: pre-wrap; }
     .dt-ai-response .ai-tips { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
     .dt-ai-response .ai-tip {
       display: flex; align-items: flex-start; gap: 8px;
       padding: 10px 14px; border: 1px solid var(--border); border-radius: 11px; background: var(--bg);
-      font-size: 13.5px; line-height: 1.6;
+      font-size: 15px; line-height: 1.6;
     }
     .dt-ai-response .ai-tip .icon { flex: none; font-size: 16px; margin-top: 1px; }
     .dt-ai-loading {
@@ -383,7 +379,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 10px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .dt-ai-empty { text-align: center; padding: 40px 20px; color: var(--fg-muted); font-size: 13.5px; line-height: 1.7; }
+    .dt-ai-empty { text-align: center; padding: 40px 20px; color: var(--fg-muted); font-size: 15px; line-height: 1.7; }
   </style>
   </Fragment>
 
@@ -400,21 +396,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       </div>
 
       <!-- ── 모드 탭 ── -->
-      <div class="dt-mode-tabs">
-        <button class="dt-mode-tab active" data-mode="textbook">📖 교과서 모드</button>
-        <button class="dt-mode-tab" data-mode="ai">🤖 AI 맞춤 학습</button>
+      <div class="dt-mode-tabs" role="group" aria-label="모드">
+        <button class="dt-mode-tab active" data-mode="textbook" aria-pressed="true">📖 교과서 모드</button>
+        <button class="dt-mode-tab" data-mode="ai" aria-pressed="false">🤖 AI 맞춤 학습</button>
       </div>
 
       <!-- ── 스텝 내비 ── -->
       <nav class="dt-steps" aria-label="진행 단계">
-        <button class="dt-step active" data-goto="setup"><span class="dt-step-num">1</span>출제</button>
-        <span class="dt-step-sep">›</span>
+        <button class="dt-step active" data-goto="setup" aria-current="step"><span class="dt-step-num">1</span>출제</button>
+        <span class="dt-step-sep" aria-hidden="true">›</span>
         <button class="dt-step" data-goto="sheet" disabled><span class="dt-step-num">2</span>급수표</button>
-        <span class="dt-step-sep">›</span>
+        <span class="dt-step-sep" aria-hidden="true">›</span>
         <button class="dt-step" data-goto="read" disabled><span class="dt-step-num">3</span>불러주기</button>
-        <span class="dt-step-sep">›</span>
+        <span class="dt-step-sep" aria-hidden="true">›</span>
         <button class="dt-step" data-goto="grade" disabled><span class="dt-step-num">4</span>채점</button>
-        <span class="dt-step-sep">›</span>
+        <span class="dt-step-sep" aria-hidden="true">›</span>
         <button class="dt-step" data-goto="result" disabled><span class="dt-step-num">5</span>결과</button>
       </nav>
 
@@ -477,8 +473,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           </div>
 
           <div class="dt-field">
-            <span class="dt-label">유형</span>
-            <div class="dt-chips" id="kindChips">
+            <span class="dt-label" id="kindLabel">유형</span>
+            <div class="dt-chips" id="kindChips" role="group" aria-labelledby="kindLabel">
               <label class="dt-chip on"><input type="checkbox" value="낱말" checked>낱말</label>
               <label class="dt-chip on"><input type="checkbox" value="구절" checked>구절</label>
               <label class="dt-chip on"><input type="checkbox" value="문장" checked>문장</label>
@@ -486,8 +482,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           </div>
 
           <div class="dt-field">
-            <span class="dt-label">난이도</span>
-            <div class="dt-chips" id="diffChips">
+            <span class="dt-label" id="diffLabel">난이도</span>
+            <div class="dt-chips" id="diffChips" role="group" aria-labelledby="diffLabel">
               <label class="dt-chip on"><input type="checkbox" value="하" checked>하</label>
               <label class="dt-chip on"><input type="checkbox" value="중" checked>중</label>
               <label class="dt-chip on"><input type="checkbox" value="상" checked>상</label>
@@ -504,8 +500,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           </div>
 
           <div class="dt-field">
-            <span class="dt-label">순서</span>
-            <div class="dt-chips" id="orderChips">
+            <span class="dt-label" id="orderLabel">순서</span>
+            <div class="dt-chips" id="orderChips" role="radiogroup" aria-labelledby="orderLabel">
               <label class="dt-chip on"><input type="radio" name="order" value="shuffle" checked>섞기</label>
               <label class="dt-chip"><input type="radio" name="order" value="original">원본 순서</label>
             </div>
@@ -550,7 +546,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             ⚠️ 이 화면은 선생님만 보세요. 프로젝터·화면 공유에 띄우지 마세요.
           </div>
 
-          <div class="dt-read-card">
+          <div class="dt-read-card" aria-live="polite" aria-atomic="true">
             <div class="dt-read-kind" id="readKind">문장 · 난이도 중</div>
             <div class="dt-read-text" id="readText">급수표를 먼저 만들어 주세요</div>
             <div class="dt-read-pron" id="readPron"><span class="lbl">발음</span>[ — ]</div>
@@ -587,6 +583,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <div class="dt-btn-row" style="margin-top: 16px;">
             <button id="btnGrade" class="dt-btn primary grow">채점하기</button>
           </div>
+          <div id="gradeLive" class="visually-hidden" role="status" aria-live="polite"></div>
         </div>
       </section>
 
@@ -594,6 +591,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <section id="view-result" class="dt-view" hidden>
         <div class="dt-card">
           <h2 class="dt-section-title">결과 요약</h2>
+          <div id="resultLive" class="visually-hidden" role="status" aria-live="polite"></div>
           <div class="dt-score-band">
             <div class="dt-score-tile"><div class="v" id="resScore">—</div><div class="k">점수</div></div>
             <div class="dt-score-tile"><div class="v good" id="resCorrect">—</div><div class="k">맞은 문항</div></div>
@@ -636,10 +634,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             <div class="dt-ai-empty">
               <div style="font-size:32px; margin-bottom:12px;">📊</div>
               <div style="font-weight:700; font-size:15px; color:var(--fg); margin-bottom:8px;">아직 채점 기록이 없습니다</div>
-              <div style="font-size:13px; line-height:1.6; max-width:340px; margin:0 auto 20px; color:var(--fg-muted);">
+              <div style="font-size:14px; line-height:1.6; max-width:340px; margin:0 auto 20px; color:var(--fg-muted);">
                 교과서 모드에서 받아쓰기를 연습하고 채점하면, 이곳에 취약 음운규칙 오답 분석 보고서가 자동으로 누적됩니다.
               </div>
-              <div style="text-align:left; background:var(--bg-sec); padding:16px; border-radius:12px; max-width:420px; margin:0 auto; font-size:12.5px; border:1px solid var(--border);">
+              <div style="text-align:left; background:var(--bg-sec); padding:16px; border-radius:12px; max-width:420px; margin:0 auto; font-size:14px; border:1px solid var(--border);">
                 <div style="font-weight:700; margin-bottom:8px; color:var(--fg); display:flex; align-items:center; gap:6px;">
                   <span>💡</span> AI 맞춤 학습 로드맵
                 </div>
@@ -656,14 +654,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
         <div class="dt-card" id="aiAskCard" hidden>
           <h2 class="dt-section-title">AI 맞춤 조언</h2>
-          <div id="aiResponseArea">
+          <div id="aiResponseArea" aria-live="polite">
             <div class="dt-ai-empty">아래 버튼을 눌러 AI 선생님께 약점 분석과 학습 조언을 받아보세요.</div>
           </div>
           <div class="dt-btn-row" style="margin-top: 14px;">
             <button id="btnAskAI" class="dt-btn primary grow">🤖 AI에게 물어보기</button>
             <button id="btnClearAttempts" class="dt-btn" type="button">🗑 채점 기록 지우기</button>
           </div>
-          <p class="app-desc" style="font-size: 11.5px; margin: 10px 0 0;">
+          <p class="app-desc" style="font-size: 14px; margin: 10px 0 0;">
             버튼을 누르면 약점 규칙 통계와 최근 틀린 문항(문제 낱말)만 AI 분석 서버로 보내요. 학생이 쓴 답과 이름은 보내지 않아요.
           </p>
         </div>
@@ -679,7 +677,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         </div>
       </section>
 
-      <p class="app-desc" style="text-align:center; font-size: 11.5px; margin-top: 20px; margin-bottom: 10px; width: 100%; clear: both;">
+      <p class="app-desc" style="text-align:center; font-size: 14px; margin-top: 20px; margin-bottom: 10px; width: 100%; clear: both;">
         답안과 채점 기록은 이 기기(브라우저)에만 저장됩니다(최근 50회) · AI 맞춤 학습에서 'AI에게 물어보기'를 누를 때만 약점 규칙과 틀린 문항이 서버로 전송됩니다(학생 답·이름 제외)
       </p>
     </div>
@@ -687,7 +685,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
   <div id="helpModal" class="dt-modal-overlay">
     <div class="dt-modal">
-      <button class="dt-modal-close" id="btnHelpClose" aria-label="닫기">✕</button>
+      <button class="dt-modal-close" id="btnHelpClose" aria-label="도움말 닫기" data-vui-close>✕</button>
       <h3>📖 받아쓰기 도우미 — 도움말</h3>
       <h4>📋 활용 방법</h4>
       <ul>
@@ -702,7 +700,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <h4>🤖 AI 맞춤 학습</h4>
       <p>모드 탭에서 "AI 맞춤 학습"을 선택하면, 채점 기록 기반으로 AI가 약점 분석과 조언을 제공합니다.</p>
       <h4>📊 전체 키워드 통계</h4>
-      <div id="helpStats"><p style="color:var(--fg-muted); font-size: 12px;">데이터 로딩 중...</p></div>
+      <div id="helpStats"><p style="color:var(--fg-muted); font-size: 14px;">데이터 로딩 중...</p></div>
     </div>
   </div>
 
@@ -724,8 +722,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <div id="printAnswerRows"></div>
     </div>
   </div>
-
-  <div id="fd-toast"></div>
 
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"받아쓰기 도우미","url":"https://eduin.info/apps/dictation/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
 
@@ -765,14 +761,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     const RULE_TAGS = ['연음화', '경음화', '격음화', '비음화', '겹받침_단순화', '받침없음/규칙없음'];
 
-    let _toastTimer;
-    function showToast(msg) {
-      const el = $('#fd-toast');
-      el.textContent = msg;
-      el.classList.add('show');
-      clearTimeout(_toastTimer);
-      _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
-    }
+    // 토스트: 공용 VUI(글자 수에 맞춘 표시 시간, 스크린리더 알림)
+    function showToast(msg, type) { VUI.toast(msg, type); }
 
     /* ── 뷰 전환 ── */
     const VIEWS = ['setup', 'sheet', 'read', 'grade', 'result'];
@@ -782,6 +772,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         const v = btn.dataset.goto;
         btn.classList.toggle('active', v === view);
         btn.classList.toggle('done', VIEWS.indexOf(v) < VIEWS.indexOf(view));
+        if (v === view) btn.setAttribute('aria-current', 'step'); else btn.removeAttribute('aria-current');
       });
       window.scrollTo({ top: 0, behavior: 'smooth' });
       state.lastTextbookView = view;
@@ -794,6 +785,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     /* ── 모드 탭 전환 ── */
+    function setModeTab(mode) {
+      $$('.dt-mode-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.mode === mode);
+        t.setAttribute('aria-pressed', String(t.dataset.mode === mode));
+      });
+    }
     const textbookSections = $$('.dt-steps, #view-setup, #view-sheet, #view-read, #view-grade, #view-result');
     const aiView = $('#view-ai');
 
@@ -801,7 +798,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       tab.addEventListener('click', () => {
         const mode = tab.dataset.mode;
         state.currentMode = mode;
-        $$('.dt-mode-tab').forEach(t => t.classList.toggle('active', t === tab));
+        setModeTab(mode);
 
         if (mode === 'textbook') {
           textbookSections.forEach(el => { if (el) el.style.display = ''; });
@@ -837,12 +834,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     let unitLoadToken = 0;
     function loadUnit(unitCode) {
       const myToken = ++unitLoadToken;
-      fetch('/apps/dictation/data/unit-' + unitCode + '.json')
-        .then(r => {
-          if (!r.ok) throw new Error('데이터를 불러오지 못했습니다.');
-          return r.json();
-        })
+      VUI.apiFetch('/apps/dictation/data/unit-' + unitCode + '.json', { method: 'GET' })
         .then(bank => {
+          if (!bank || typeof bank !== 'object') throw new Error('단원 데이터 형식이 올바르지 않아요.');
           if (myToken !== unitLoadToken) return; // 더 최신 요청이 있으면 무시(경쟁 상태 방지)
           state.bank = bank;
           state.unitBank = bank;
@@ -852,7 +846,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         })
         .catch(err => {
           if (myToken !== unitLoadToken) return;
-          showToast('오류: ' + err.message);
+          showToast('단원 데이터를 불러오지 못했어요. ' + err.message, 'error');
         });
     }
 
@@ -884,7 +878,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         });
         _allUnitsPromise = null;
         if (loaded === 0) {   // 전부 실패(오프라인 등) — 저장하지 않고 다음에 다시 시도
-          showToast('단원 데이터를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.');
+          showToast('단원 데이터를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.', 'error');
           return merged;
         }
         state.allBanks = merged;
@@ -1089,11 +1083,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       state.confirmedEmptyGrade = false;
       $('#gradeGrid').innerHTML = state.items.map((_, i) =>
         '<div class="dt-grade-row">' +
-          '<span class="dt-item-num">' + (i + 1) + '</span>' +
-          '<input class="dt-input" data-idx="' + i + '" placeholder="학생이 쓴 그대로" autocomplete="off">' +
+          '<span class="dt-item-num" aria-hidden="true">' + (i + 1) + '</span>' +
+          '<input class="dt-input" data-idx="' + i + '" placeholder="학생이 쓴 그대로" autocomplete="off" aria-label="' + (i + 1) + '번 답" aria-describedby="dt-diff-' + i + '">' +
           '<span class="dt-grade-mark" data-mark="' + i + '"></span>' +
         '</div>' +
-        '<div class="dt-diff-line" data-diff="' + i + '" hidden></div>'
+        '<div class="dt-diff-line" id="dt-diff-' + i + '" data-diff="' + i + '" hidden></div>'
       ).join('');
     }
 
@@ -1156,9 +1150,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
         input.classList.toggle('ok', ok);
         input.classList.toggle('bad', !ok);
+        input.setAttribute('aria-invalid', String(!ok));
         const mark = document.querySelector('[data-mark="' + i + '"]');
         mark.textContent = ok ? '○' : '✕';
         mark.className = 'dt-grade-mark ' + (ok ? 'ok' : 'bad');
+        mark.setAttribute('role', 'img');
+        mark.setAttribute('aria-label', ok ? '맞음' : '틀림');
 
         const diffLine = document.querySelector('[data-diff="' + i + '"]');
         if (ok || !userVal) {
@@ -1216,6 +1213,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       saveAttempt();
       unlockSteps('result');
       goto('result');
+      // 스크린리더: 채점 결과를 바로 읽어 줌
+      const live = $('#gradeLive');
+      if (live) live.textContent = '채점 끝. ' + Math.round(correct / n * 100) + '점, ' + n + '문항 중 ' + correct + '문항 맞음, ' + (n - correct) + '문항 틀림.';
+      const resLive = $('#resultLive');
+      if (resLive) { resLive.textContent = ''; setTimeout(() => { resLive.textContent = live ? live.textContent : ''; }, 50); }
     });
 
     /* ── 결과 분석 및 지도안 렌더링 ── */
@@ -1327,7 +1329,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         
         list.push(attempt);
         if (list.length > ATTEMPTS_MAX) list.splice(0, list.length - ATTEMPTS_MAX);
-        localStorage.setItem('dictation:attempts', JSON.stringify(list));
+        VUI.storage.set('dictation:attempts', list);   // 용량 초과면 VUI가 오류 토스트
       } catch (err) {
         console.error('LocalStorage 저장 오류:', err);
       }
@@ -1388,18 +1390,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     /* ══════════════════════════════════════════════
        도움말 모달
     ══════════════════════════════════════════════ */
-    const helpModal = $('#helpModal');
+    // VUI.modal: role=dialog, 포커스 가두기·복귀, ESC·배경 클릭·닫기 버튼(data-vui-close)
+    const helpModal = VUI.modal.bind('#helpModal', { className: 'open', backdropClose: true, dialog: '#helpModal .dt-modal' });
     $('#btnHelp').addEventListener('click', () => {
-      helpModal.classList.add('open');
+      helpModal.open();
       if (!state.allBanks) {
         loadAllUnits();
       } else {
         renderHelpStats();
       }
     });
-    $('#btnHelpClose').addEventListener('click', () => helpModal.classList.remove('open'));
-    helpModal.addEventListener('click', (e) => { if (e.target === helpModal) helpModal.classList.remove('open'); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && helpModal.classList.contains('open')) helpModal.classList.remove('open'); });
 
     function renderHelpStats() {
       if (!state.allBanks) return;
@@ -1413,7 +1413,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const maxCount = Math.max(...Object.values(tagCounts), 1);
       const totalItems = Object.values(tagCounts).reduce((a, b) => a + b, 0);
 
-      let html = '<p style="font-size:12.5px; margin-bottom:10px; color:var(--fg-muted);">31개 단원 · 총 ' + totalItems + '개 태그 (문항당 복수 태그 포함)</p>';
+      let html = '<p style="font-size:14px; margin-bottom:10px; color:var(--fg-muted);">31개 단원 · 총 ' + totalItems + '개 태그 (문항당 복수 태그 포함)</p>';
       RULE_TAGS.forEach(tag => {
         const c = tagCounts[tag];
         const pct = Math.round(c / maxCount * 100);
@@ -1488,7 +1488,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         '</div>';
       });
       summaryHtml += '</div>';
-      summaryHtml += '<p style="font-size:12px; color:var(--fg-muted);">총 ' + analysis.totalAttempts + '회 채점 기록 기반</p>';
+      summaryHtml += '<p style="font-size:14px; color:var(--fg-muted);">총 ' + analysis.totalAttempts + '회 채점 기록 기반</p>';
       $('#aiWeakSummary').innerHTML = summaryHtml;
 
       $('#aiAskCard').hidden = false;
@@ -1506,43 +1506,45 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       btn.textContent = '⏳ AI 분석 중...';
       $('#aiResponseArea').innerHTML = '<div class="dt-ai-loading"><div class="spinner"></div><div>AI 선생님이 분석 중입니다...</div></div>';
 
-      fetch('/api/dictation-ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const area = $('#aiResponseArea');
+      area.setAttribute('aria-busy', 'true');
+      // VUI.apiFetch: 시간 제한·오프라인·429·5xx를 한국어 문구로 알려 줌
+      VUI.apiFetch('/api/dictation-ai', {
+        json: {
           weakRules: analysis.weakRules.slice(0, 5),
           recentWrong: analysis.wrongItems.slice(-10),
           grade: state.unit || ''
-        })
+        },
+        timeout: 45000
       })
-      .then(r => r.json())
       .then(data => {
+        area.removeAttribute('aria-busy');
         btn.disabled = false;
         btn.textContent = '🤖 AI에게 다시 물어보기';
 
-        if (data.error) {
-          $('#aiResponseArea').innerHTML = '<div class="dt-ai-empty">⚠️ ' + esc(data.error) + '</div>';
+        if (!data || typeof data !== 'object' || data.error) {
+          area.innerHTML = '<div class="dt-ai-empty">⚠️ ' + esc((data && typeof data.error === 'string' && data.error) || 'AI가 답을 만들지 못했어요. 잠시 후 다시 해 주세요.') + '</div>';
           return;
         }
 
         let html = '<div class="dt-ai-response">';
         html += '<div class="ai-text">' + esc(data.explanation || '') + '</div>';
 
-        if (data.tips && data.tips.length) {
+        if (Array.isArray(data.tips) && data.tips.length) {
           html += '<div class="ai-tips">';
           data.tips.forEach(tip => {
-            html += '<div class="ai-tip"><span class="icon">💡</span><span>' + esc(tip) + '</span></div>';
+            html += '<div class="ai-tip"><span class="icon" aria-hidden="true">💡</span><span>' + esc(tip) + '</span></div>';
           });
           html += '</div>';
         }
         html += '</div>';
-        $('#aiResponseArea').innerHTML = html;
+        area.innerHTML = html;
 
-        if (data.recommendedRules && data.recommendedRules.length) {
-          state.aiRecommendedRules = data.recommendedRules;
+        if (Array.isArray(data.recommendedRules) && data.recommendedRules.length) {
+          state.aiRecommendedRules = data.recommendedRules.map(String);
           $('#aiRecommendCard').hidden = false;
           let rulesHtml = '<div style="display:flex; gap:6px; flex-wrap:wrap;">';
-          data.recommendedRules.forEach(r => {
+          state.aiRecommendedRules.forEach(r => {
             rulesHtml += '<span class="dt-tag">' + esc(r) + '</span>';
           });
           rulesHtml += '</div>';
@@ -1550,16 +1552,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         }
       })
       .catch(err => {
+        area.removeAttribute('aria-busy');
         btn.disabled = false;
         btn.textContent = '🤖 AI에게 물어보기';
-        $('#aiResponseArea').innerHTML = '<div class="dt-ai-empty">⚠️ 연결 오류: ' + esc(err.message) + '</div>';
+        area.innerHTML = '<div class="dt-ai-empty">⚠️ ' + esc(err && err.message ? err.message : 'AI에 연결하지 못했어요.') + '</div>';
       });
     });
 
     // 채점 기록 지우기 (이 기기에 저장된 기록 전체)
     $('#btnClearAttempts').addEventListener('click', () => {
       if (!confirm('이 기기에 저장된 채점 기록을 모두 지울까요? 지운 기록은 되살릴 수 없어요.')) return;
-      try { localStorage.removeItem('dictation:attempts'); } catch (e) {}
+      VUI.storage.remove('dictation:attempts');
       renderAiMode();
       showToast('채점 기록을 지웠어요.');
     });
@@ -1568,7 +1571,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     $('#btnAiToSheet').addEventListener('click', () => {
       if (!state.aiRecommendedRules.length) return;
 
-      $$('.dt-mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === 'textbook'));
+      setModeTab('textbook');
       state.currentMode = 'textbook';
       textbookSections.forEach(el => { if (el) el.style.display = ''; });
       aiView.hidden = true;
@@ -1592,7 +1595,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     // 교과서 모드로 돌아가기
     $('#btnAiBackToTextbook').addEventListener('click', () => {
-      $$('.dt-mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === 'textbook'));
+      setModeTab('textbook');
       state.currentMode = 'textbook';
       textbookSections.forEach(el => { if (el) el.style.display = ''; });
       aiView.hidden = true;

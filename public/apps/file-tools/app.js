@@ -10,13 +10,10 @@ function escHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-let _toastTimer;
-function showToast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+// 토스트: 공용 VUI(AppLayout이 <head>에서 불러옴). 없으면 콘솔에만
+function showToast(msg, type) {
+  if (window.VUI) VUI.toast(msg, type);
+  else console.log('[file-tools]', msg);
 }
 
 function downloadBlob(blob, filename) {
@@ -30,9 +27,46 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-function switchTab(tab) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+function switchTab(tab, focus) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const on = b.dataset.tab === tab;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', String(on));
+    b.tabIndex = on ? 0 : -1;
+    if (on && focus) b.focus();
+  });
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
+}
+// 탭: 왼쪽·오른쪽 화살표로 옮겨 다님(WAI-ARIA 탭 패턴)
+document.querySelector('.tabs')?.addEventListener('keydown', e => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return;
+  const tabs = Array.from(document.querySelectorAll('.tab-btn'));
+  const cur = tabs.findIndex(b => b.classList.contains('active'));
+  let next = cur;
+  if (e.key === 'ArrowLeft') next = (cur - 1 + tabs.length) % tabs.length;
+  else if (e.key === 'ArrowRight') next = (cur + 1) % tabs.length;
+  else if (e.key === 'Home') next = 0;
+  else next = tabs.length - 1;
+  e.preventDefault();
+  switchTab(tabs[next].dataset.tab, true);
+});
+
+// 진행 표시: 막대(progressbar) 값과, 단계가 바뀔 때만 스크린리더에 읽어 줄 문구
+const _progressPhase = {};
+function setProgressUI(prefix, pct, msg) {
+  const v = Math.round(Math.max(0, Math.min(100, pct)));
+  document.getElementById(prefix + 'Progress').style.display = 'block';
+  document.getElementById(prefix + 'ProgressFill').style.width = v + '%';
+  document.getElementById(prefix + 'ProgressMsg').textContent = msg;
+  const bar = document.getElementById(prefix + 'ProgressBar');
+  if (bar) { bar.setAttribute('aria-valuenow', String(v)); bar.setAttribute('aria-valuetext', v + '% · ' + msg); }
+  // "시도 2/6 — 이미지 3/20"처럼 자주 바뀌는 뒷부분은 빼고 앞부분이 바뀔 때만 알림
+  const phase = String(msg).split(' — ')[0];
+  if (_progressPhase[prefix] !== phase) {
+    _progressPhase[prefix] = phase;
+    const live = document.getElementById(prefix + 'ProgressLive');
+    if (live) live.textContent = phase;
+  }
 }
 
 // ─────────────── 외부 라이브러리 지연 로드 (버전 고정) ───────────────
@@ -75,6 +109,10 @@ function loadLibs(names) { return Promise.all(names.map(loadLib)); }
 // 드롭존 바인딩
 function bindDropzone(zoneEl, inputEl, onFiles) {
   zoneEl.addEventListener('click', () => inputEl.click());
+  // 키보드: Enter·Space로 파일 고르기 창 열기
+  zoneEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputEl.click(); }
+  });
   inputEl.addEventListener('change', () => {
     if (inputEl.files.length) onFiles(Array.from(inputEl.files));
     inputEl.value = '';
@@ -170,7 +208,10 @@ bindDropzone(
 document.querySelectorAll('#scanFormatToggle button').forEach(btn => {
   btn.addEventListener('click', () => {
     scanState.format = btn.dataset.fmt;
-    document.querySelectorAll('#scanFormatToggle button').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('#scanFormatToggle button').forEach(b => {
+      b.classList.toggle('active', b === btn);
+      b.setAttribute('aria-pressed', String(b === btn));
+    });
     updateScanEstimate();
   });
 });
@@ -186,7 +227,7 @@ function renderScanList() {
   el.innerHTML = scanState.files.map((f, i) =>
     `<div class="file-list-item">
        <span>${escHtml(f.name)}</span>
-       <span class="meta">${fmtBytes(f.size)} <button class="file-list-remove" onclick="removeScanFile(${i})" title="제거">×</button></span>
+       <span class="meta">${fmtBytes(f.size)} <button type="button" class="file-list-remove" onclick="removeScanFile(${i})" title="제거" aria-label="${escHtml(f.name)} 목록에서 빼기">×</button></span>
      </div>`).join('');
   const grid = document.getElementById('scanOptionsGrid');
   if (scanState.files.length > 0) {
@@ -272,11 +313,7 @@ function updateScanEstimate() {
   }, 200);
 }
 
-function setScanProgress(pct, msg) {
-  document.getElementById('scanProgress').style.display = 'block';
-  document.getElementById('scanProgressFill').style.width = Math.max(0, Math.min(100, pct)) + '%';
-  document.getElementById('scanProgressMsg').textContent = msg;
-}
+function setScanProgress(pct, msg) { setProgressUI('scan', pct, msg); }
 
 // 모든 입력을 페이지 단위 캔버스 배열로 변환
 async function rasterizeAll(maxWidth, onProgress) {
@@ -463,13 +500,14 @@ async function runScan() {
         ? '✓ 목표 용량 안에서 가장 좋은 화질로 만들었어요'
         : '⚠️ 가장 작게 줄여도 목표 용량보다 커요. 시도한 것 중 가장 작은 파일을 내려받았어요. 목표 용량을 조금 올리거나 JPG/PDF 형식을 골라 보세요.'}`;
 
-    showToast(reached ? '변환 완료 ✓' : '목표 용량에는 못 미쳤어요');
+    showToast(reached ? '변환 완료 ✓' : '목표 용량에는 못 미쳤어요', reached ? 'success' : undefined);
   } catch (e) {
     console.error(e);
     const r = document.getElementById('scanResult');
     r.className = 'result error';
     r.style.display = 'block';
     r.textContent = '❌ 변환 중 오류: ' + (e.message || e);
+    showToast('변환하지 못했어요', 'error');
   } finally {
     for (const pages of rasterCache.values()) releasePages(pages);
     rasterCache.clear();
@@ -523,7 +561,7 @@ function renderPptxList() {
   const f = pptxState.file;
   el.innerHTML = `<div class="file-list-item">
        <span>${escHtml(f.name)}</span>
-       <span class="meta">${fmtBytes(f.size)} <button class="file-list-remove" onclick="window.clearPptx()" title="제거">×</button></span>
+       <span class="meta">${fmtBytes(f.size)} <button type="button" class="file-list-remove" onclick="window.clearPptx()" title="제거" aria-label="${escHtml(f.name)} 빼기">×</button></span>
      </div>`;
   grid.style.display = 'grid';
   document.getElementById('pptxRunBtn').disabled = false;
@@ -572,7 +610,7 @@ async function scanPptxMedia() {
     updatePptxEstimate();
   } catch (e) {
     console.error(e);
-    showToast(/불러오지 못했어요/.test(e?.message || '') ? e.message : 'PPTX 파일을 열 수 없습니다');
+    showToast(/불러오지 못했어요/.test(e?.message || '') ? e.message : 'PPTX 파일을 열 수 없어요. 파일이 손상되지 않았는지 확인해 주세요.', 'error');
   }
 }
 
@@ -587,11 +625,7 @@ function updatePptxEstimate() {
     `목표 용량: <strong>${fmtBytes(targetBytes)}</strong> — 이미지 폭과 품질을 자동 조절합니다`;
 }
 
-function setPptxProgress(pct, msg) {
-  document.getElementById('pptxProgress').style.display = 'block';
-  document.getElementById('pptxProgressFill').style.width = Math.max(0, Math.min(100, pct)) + '%';
-  document.getElementById('pptxProgressMsg').textContent = msg;
-}
+function setPptxProgress(pct, msg) { setProgressUI('pptx', pct, msg); }
 
 // 전체 내용 SHA-256 (같은 그림 판정용). 사용할 수 없는 환경이면 null
 async function hashBlob(blob) {
@@ -776,13 +810,14 @@ async function runPptx() {
 
     // 압축된 PPTX 자동 다운로드
     downloadBlob(bestBlob, fname);
-    showToast(reached ? '다운로드 완료 ✓' : '목표 용량에는 못 미쳤어요');
+    showToast(reached ? '다운로드 완료 ✓' : '목표 용량에는 못 미쳤어요', reached ? 'success' : undefined);
   } catch (e) {
     console.error(e);
     const r = document.getElementById('pptxResult');
     r.className = 'result error';
     r.style.display = 'block';
     r.textContent = '❌ 압축 중 오류: ' + (e.message || e);
+    showToast('압축하지 못했어요', 'error');
   } finally {
     document.getElementById('pptxRunBtn').disabled = false;
     document.getElementById('pptxTargetMB').disabled = false;

@@ -56,7 +56,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     .tb-btn {
-      height: 36px; padding: 0 14px;
+      height: 40px; min-width: 40px; padding: 0 14px;
       border-radius: 8px;
       border: 1px solid transparent;
       cursor: pointer; font-size: 13px; font-weight: 600;
@@ -108,7 +108,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     #share-dropdown { position: fixed; display: none; flex-direction: column; gap: 3px; padding: 6px; border-radius: 10px; border: 1px solid transparent; z-index: 9500; min-width: 150px; box-shadow: 0 4px 20px rgba(0,0,0,0.45); }
     #share-dropdown.open { display: flex; }
     .save-opt {
-      height: 36px; padding: 0 12px;
+      min-height: 44px; padding: 0 12px;
       border-radius: 7px; border: none;
       cursor: pointer; font-size: 13px; font-weight: 600;
       font-family: inherit;
@@ -118,7 +118,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     #btn-back {
-      width: 36px; height: 36px;
+      width: 40px; height: 40px; flex-shrink: 0;
       border-radius: 8px; border: 1px solid transparent;
       background: transparent; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
@@ -128,6 +128,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     /* ── Canvas ── */
     #cb-canvas {
       flex: 1; position: relative; overflow: hidden;
+      /* 전자칠판·태블릿: 그리는 면에서만 스크롤·확대 제스처를 끄고 펜·손가락 입력을 직접 받음 */
+      touch-action: none;
+      user-select: none; -webkit-user-select: none;
+      -webkit-touch-callout: none;
     }
     #cb-canvas.mode-text { cursor: text; }
     #cb-canvas.mode-line { cursor: crosshair; }
@@ -152,7 +156,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
     .cb-el:active { cursor: grabbing; }
     .cb-el.selected { border-color: rgba(255,255,255,0.35); }
-    .cb-el[contenteditable="true"] { cursor: text; user-select: text; caret-color: currentColor; }
+    .cb-el[contenteditable="true"] { cursor: text; user-select: text; -webkit-user-select: text; caret-color: currentColor; }
+    .cb-el.dragging { cursor: grabbing; }
 
     /* ── Context menu ── */
     #cb-ctx {
@@ -167,7 +172,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     .ctx-btn {
-      width: 36px; height: 36px; border-radius: 8px;
+      width: 40px; height: 40px; border-radius: 8px;
       border: 1px solid rgba(255,255,255,0.15);
       cursor: pointer; font-size: 13px; font-weight: 700;
       font-family: inherit; background: rgba(0,0,0,0.3); color: #fff;
@@ -217,7 +222,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       gap: 12px; margin-bottom: 20px;
     }
     .btn-new {
-      height: 36px; padding: 0 16px; border-radius: 10px;
+      height: 44px; padding: 0 16px; border-radius: 10px;
       background: var(--primary); color: #fff; border: none;
       cursor: pointer; font-size: 13px; font-weight: 600;
       font-family: inherit; display: flex; align-items: center; gap: 6px;
@@ -232,6 +237,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       gap: 12px;
     }
     .board-card {
+      position: relative;
       background: var(--card-bg); border: 1px solid var(--border);
       border-radius: 14px; overflow: hidden;
       cursor: pointer; transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
@@ -269,9 +275,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
     .board-info { flex: 1; min-width: 0; }
     .board-name { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* 카드 전체를 덮는 열기 버튼(키보드·스크린리더용 실제 버튼) */
+    .board-open {
+      all: unset; display: block; max-width: 100%;
+      font-size: 14px; font-weight: 700; color: var(--fg);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+    }
+    .board-open::after { content: ''; position: absolute; inset: 0; border-radius: 14px; }
+    .board-open:focus-visible::after { outline: 2px solid var(--primary); outline-offset: -2px; }
     .board-meta { font-size: 11px; color: var(--fg-muted); margin-top: 3px; }
     .board-del {
-      width: 30px; height: 30px; border: none; background: none;
+      position: relative; z-index: 1;
+      width: 40px; height: 40px; border: none; background: none;
       cursor: pointer; color: var(--fg-muted); border-radius: 8px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
       transition: color 0.15s, background 0.15s;
@@ -303,7 +318,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .modal-input:focus { border-color: var(--primary); }
     .modal-type-row { display: flex; gap: 8px; margin-bottom: 16px; }
     .type-btn {
-      flex: 1; padding: 10px; border-radius: 10px;
+      flex: 1; padding: 10px; min-height: 44px; border-radius: 10px;
       border: 2px solid var(--border); cursor: pointer;
       text-align: center; font-size: 13px; font-weight: 600;
       font-family: inherit; background: var(--bg); color: var(--fg-muted);
@@ -312,13 +327,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .type-btn.sel { border-color: var(--primary); background: rgba(0,111,238,0.08); color: var(--primary); }
     .modal-actions { display: flex; gap: 8px; }
     .btn-cancel {
-      flex: 1; padding: 10px; border-radius: 8px;
+      flex: 1; padding: 10px; min-height: 44px; border-radius: 8px;
       border: 1px solid var(--border); background: var(--bg);
       color: var(--fg-muted); cursor: pointer; font-size: 14px;
       font-weight: 600; font-family: inherit;
     }
     .btn-confirm {
-      flex: 2; padding: 10px; border-radius: 8px;
+      flex: 2; padding: 10px; min-height: 44px; border-radius: 8px;
       border: none; background: var(--primary); color: #fff;
       cursor: pointer; font-size: 14px; font-weight: 600;
       font-family: inherit;
@@ -336,8 +351,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     @media (max-width: 600px) {
       #btn-save, #btn-share { display: none !important; }
       #btn-more { display: flex; }
-      #btn-type, #btn-add-text, #btn-draw, #btn-undo { font-size: 0; padding: 0 8px; }
-      #btn-more { padding: 0 10px; }
+      #btn-type, #btn-add-text, #btn-draw, #btn-undo { font-size: 0; padding: 0 8px; justify-content: center; }
+      #btn-more { padding: 0 10px; justify-content: center; }
+      /* 좁은 화면: 툴바가 가로로 넘치지 않게 이름 칸이 남는 폭만 씀 */
+      #cb-tb { padding: 0 8px; gap: 4px; }
+      #tb-name { flex: 1 1 auto; min-width: 0; width: 100%; }
+      .tb-sep { display: none; }
+      .is-view-only #btn-type, .is-view-only #btn-add-text, .is-view-only #btn-draw,
+      .is-view-only #btn-undo, .is-view-only #btn-more { display: none !important; }
+      #btn-view-badge { padding: 0 8px; flex-shrink: 0; }
+      #btn-clone { padding: 0 10px; flex-shrink: 0; }
     }
 
     /* ── View-only mode ── */
@@ -351,8 +374,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .is-view-only #tb-name { opacity: 0.3; pointer-events: none; }
     #btn-view-badge {
       display: none; align-items: center; gap: 4px;
-      height: 36px;
-      font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+      height: 40px;
+      font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
       padding: 0 10px; border-radius: 6px; border: 1px solid currentColor;
       opacity: 0.7; white-space: nowrap;
     }
@@ -365,18 +388,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       margin: -0.5rem 0 1rem; text-align: center;
     }
 
-    /* ── Toast ── */
-    #cb-toast {
-      position: fixed; bottom: 2rem; left: 50%;
-      transform: translateX(-50%) translateY(1rem);
-      background: rgba(20,20,20,0.92); color: #fff;
-      padding: 0.6rem 1.2rem; border-radius: 99px;
-      font-size: 13px; font-weight: 600;
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.2s, transform 0.2s;
-      z-index: 9999; white-space: nowrap;
-    }
-    #cb-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"Chalkboard","description":"분필 느낌의 디지털 칠판으로 아이디어를 자유롭게 기록. 수업 판서, 브레인스토밍에 최적화.","url":"https://eduin.info/apps/chalkboard/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
@@ -414,39 +425,39 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <div id="view-board">
     <div id="cb-tb">
       <!-- 왼쪽: 닫기 + 보드 이름 -->
-      <button id="btn-back" onclick="goHome()" title="목록으로">
+      <button id="btn-back" onclick="goHome()" title="목록으로" aria-label="보드 목록으로">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 6L6 18M6 6l12 12"></path>
         </svg>
       </button>
-      <input id="tb-name" type="text" spellcheck="false" autocomplete="off" onchange="renameCurrent(this.value)">
+      <input id="tb-name" type="text" spellcheck="false" autocomplete="off" aria-label="보드 이름" onchange="renameCurrent(this.value)">
       <div class="tb-sep"></div>
       <!-- 오른쪽: 기능 버튼들 -->
-      <button id="btn-type" class="tb-btn" onclick="switchBoardType()" title="칠판 / 화이트보드 전환">
+      <button id="btn-type" class="tb-btn" onclick="switchBoardType()" title="칠판 / 화이트보드 전환" aria-label="칠판·화이트보드 전환">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="3" width="20" height="14" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line>
         </svg>
         <span id="type-label">칠판</span>
       </button>
-      <button id="btn-add-text" class="tb-btn" onclick="activateTextMode()">
+      <button id="btn-add-text" class="tb-btn" onclick="activateTextMode()" title="텍스트 추가: 보드를 누른 곳에 글자를 넣어요" aria-label="텍스트 추가" aria-pressed="false">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" x2="15" y1="20" y2="20"></line><line x1="12" x2="12" y1="4" y2="20"></line>
         </svg>
         텍스트
       </button>
-      <button id="btn-draw" class="tb-btn" onclick="activateDrawMode()">
+      <button id="btn-draw" class="tb-btn" onclick="activateDrawMode()" title="선 긋기: 보드에서 끌어서 선을 그어요" aria-label="선 긋기" aria-pressed="false">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="5" y1="19" x2="19" y2="5"></line>
         </svg>
         선
       </button>
-      <button id="btn-undo" class="tb-btn" onclick="undoLast()" title="되돌리기 (Ctrl+Z)">
+      <button id="btn-undo" class="tb-btn" onclick="undoLast()" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
         </svg>
         되돌리기
       </button>
-      <button id="btn-save" class="tb-btn" onclick="toggleSaveMenu(event)">
+      <button id="btn-save" class="tb-btn" onclick="toggleSaveMenu(event)" aria-haspopup="true" aria-expanded="false" aria-controls="save-dropdown">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line>
         </svg>
@@ -461,10 +472,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         </svg>
         복제하기
       </button>
-      <button id="btn-more" class="tb-btn" onclick="toggleMoreMenu(event)" title="더보기">
+      <button id="btn-more" class="tb-btn" onclick="toggleMoreMenu(event)" title="더보기" aria-label="더보기" aria-haspopup="true" aria-expanded="false" aria-controls="more-dropdown">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="19" cy="12" r="2"></circle></svg>
       </button>
-      <button id="btn-share" class="tb-btn" onclick="toggleShareMenu(event)" title="공유">
+      <button id="btn-share" class="tb-btn" onclick="toggleShareMenu(event)" title="공유" aria-haspopup="true" aria-expanded="false" aria-controls="share-dropdown">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle>
           <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
@@ -520,7 +531,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     </button>
   </div>
 
-    <div id="cb-canvas">
+    <div id="cb-canvas" aria-label="보드: 텍스트는 두 번 누르거나 길게 눌러 고치고, 끌어서 옮겨요">
       <svg id="cb-svg" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
   </div>
@@ -531,12 +542,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <div class="ctx-row" id="ctx-colors" style="display:none"></div>
   </div>
 
-  <div id="cb-toast"></div>
 
   <!-- 공유 링크 모달 -->
   <div id="modal-share" class="modal-bg">
     <div class="modal-box">
-      <p class="modal-title">공유된 칠판</p>
+      <h2 class="modal-title">공유된 칠판</h2>
       <p id="modal-share-name" class="modal-share-name"></p>
       <p style="font-size:13px;color:var(--fg-muted);margin-bottom:1.2rem;text-align:center">이 칠판을 어떻게 열겠습니까?</p>
       <div class="modal-actions">
@@ -549,11 +559,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <!-- 새 보드 모달 -->
   <div id="modal-new" class="modal-bg">
     <div class="modal-box">
-      <p class="modal-title">새 보드 만들기</p>
-      <input type="text" id="new-board-name" class="modal-input" placeholder="보드 이름 (선택)" maxlength="30">
+      <h2 class="modal-title">새 보드 만들기</h2>
+      <input type="text" id="new-board-name" class="modal-input" placeholder="보드 이름 (선택)" aria-label="보드 이름 (선택)" maxlength="30">
       <div class="modal-type-row">
-        <button class="type-btn sel" id="opt-chalk" onclick="selectNewType('chalkboard')">🟩 칠판</button>
-        <button class="type-btn" id="opt-white" onclick="selectNewType('whiteboard')">⬜ 화이트보드</button>
+        <button class="type-btn sel" id="opt-chalk" aria-pressed="true" onclick="selectNewType('chalkboard')">🟩 칠판</button>
+        <button class="type-btn" id="opt-white" aria-pressed="false" onclick="selectNewType('whiteboard')">⬜ 화이트보드</button>
       </div>
       <div class="modal-actions">
         <button class="btn-cancel" onclick="closeNewModal()">취소</button>
@@ -617,7 +627,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       try { localStorage.setItem(SK, JSON.stringify(d)); }
       catch (e) {
         console.warn('[chalkboard] 저장 실패:', e);
-        if (typeof showToast === 'function') showToast('저장 공간이 부족해 저장하지 못했어요');
+        if (typeof showToast === 'function') showToast('저장 공간이 부족해 저장하지 못했어요', 'error');
       }
     };
     const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -654,12 +664,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     let selectedType = null; // 'text' | 'line'
     let colorRowOpen = false;
     let newBoardType = 'chalkboard';
-    // drag state
-    let didDrag = false;
-    let lineDidDrag = false;
-    // line drawing state
-    let drawingLine = false;
-    let lineStart = null;
+    // 선 긋기 중 보이는 점선(임시 선)
     let tempLine = null;
     // undo history
     let undoStack = [];
@@ -723,14 +728,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           : `<span class="board-preview-text" style="opacity:0.4;color:${type === 'chalkboard' ? '#c8ddd0' : '#888'}">${esc(b.name)}</span>`;
         const typeLabel = type === 'chalkboard' ? '칠판' : '화이트보드';
         return `
-        <div class="board-card" onclick="openBoard('${b.id}')">
-          <div class="board-thumb" style="background:${s.bg}">${thumbContent}</div>
+        <div class="board-card">
+          <div class="board-thumb" style="background:${s.bg}" aria-hidden="true">${thumbContent}</div>
           <div class="board-info-row">
             <div class="board-info">
-              <div class="board-name">${esc(b.name)}</div>
+              <button type="button" class="board-open" onclick="openBoard('${esc(b.id)}')">${esc(b.name)}</button>
               <div class="board-meta">${typeLabel} · ${fmtDate(b.lastEdited)} · 요소 ${(b.elements||[]).filter(e=>e.type).length}개</div>
             </div>
-            <button class="board-del" onclick="deleteBoard(event,'${b.id}')" title="삭제">
+            <button class="board-del" onclick="deleteBoard(event,'${esc(b.id)}')" title="삭제" aria-label="${esc(b.name)} 삭제">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
               </svg>
@@ -741,18 +746,20 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     /* ── New board modal ── */
+    const newModal = VUI.modal.bind('#modal-new', { className: 'active', backdropClose: true, dialog: '#modal-new .modal-box', initialFocus: '#new-board-name' });
     function openNewModal() {
       newBoardType = 'chalkboard';
       document.getElementById('new-board-name').value = '';
       selectNewType('chalkboard');
-      document.getElementById('modal-new').classList.add('active');
-      setTimeout(() => document.getElementById('new-board-name').focus(), 80);
+      newModal.open();
     }
-    function closeNewModal() { document.getElementById('modal-new').classList.remove('active'); }
+    function closeNewModal() { newModal.close(); }
     function selectNewType(t) {
       newBoardType = t;
       document.getElementById('opt-chalk').classList.toggle('sel', t === 'chalkboard');
       document.getElementById('opt-white').classList.toggle('sel', t === 'whiteboard');
+      document.getElementById('opt-chalk').setAttribute('aria-pressed', String(t === 'chalkboard'));
+      document.getElementById('opt-white').setAttribute('aria-pressed', String(t === 'whiteboard'));
     }
     function createBoard() {
       const nm = document.getElementById('new-board-name').value.trim() || (newBoardType === 'chalkboard' ? '새 칠판' : '새 화이트보드');
@@ -881,67 +888,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       g.appendChild(vis);
       svg.appendChild(g);
 
-      hit.addEventListener('click', e => {
-        e.stopPropagation();
-        if (mode !== 'select') return;
-        if (!lineDidDrag) selectEl(el.id, 'line');
-      });
-
-      hit.addEventListener('dblclick', e => {
-        e.stopPropagation();
-        if (viewOnlyBoard) return;
-        selectEl(el.id, 'line');
-        showCtx(el.id, 'line');
-      });
-
-      hit.addEventListener('mousedown', e => {
-        if (viewOnlyBoard) return;
-        if (mode !== 'select') return;
-        e.stopPropagation(); e.preventDefault();
-        lineDidDrag = false;
-        const sx = e.clientX, sy = e.clientY;
-        const ox1 = el.x1, oy1 = el.y1, ox2 = el.x2, oy2 = el.y2;
-        hit.style.cursor = 'grabbing';
-        vis.style.cursor = 'grabbing';
-
-        const onMv = mv => {
-          const dx = mv.clientX - sx, dy = mv.clientY - sy;
-          if (!lineDidDrag && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
-            lineDidDrag = true;
-            hideCtx();
-          }
-          if (lineDidDrag) {
-            vis.setAttribute('x1', ox1 + dx); vis.setAttribute('y1', oy1 + dy);
-            vis.setAttribute('x2', ox2 + dx); vis.setAttribute('y2', oy2 + dy);
-            hit.setAttribute('x1', ox1 + dx); hit.setAttribute('y1', oy1 + dy);
-            hit.setAttribute('x2', ox2 + dx); hit.setAttribute('y2', oy2 + dy);
-            const glow = g.querySelector('line:first-child');
-            if (glow && g.children.length > 2) {
-              glow.setAttribute('x1', ox1 + dx); glow.setAttribute('y1', oy1 + dy);
-              glow.setAttribute('x2', ox2 + dx); glow.setAttribute('y2', oy2 + dy);
-            }
-          }
-        };
-        const onUp = mu => {
-          document.removeEventListener('mousemove', onMv);
-          document.removeEventListener('mouseup', onUp);
-          hit.style.cursor = 'pointer'; vis.style.cursor = '';
-          if (lineDidDrag) {
-            const dx = mu.clientX - sx, dy = mu.clientY - sy;
-            pushHistory();
-            el.x1 = ox1 + dx; el.y1 = oy1 + dy;
-            el.x2 = ox2 + dx; el.y2 = oy2 + dy;
-            const board = getBoard();
-            const saved = board.elements.find(e2 => e2.id === el.id);
-            if (saved) { saved.x1 = el.x1; saved.y1 = el.y1; saved.x2 = el.x2; saved.y2 = el.y2; }
-            board.lastEdited = Date.now();
-            saveBoard(board);
-            selectEl(el.id, 'line');
-          }
-        };
-        document.addEventListener('mousemove', onMv);
-        document.addEventListener('mouseup', onUp);
-      });
+      // 누르기·끌기·두 번 누르기는 캔버스의 포인터 처리(아래 'Pointer 입력')가 맡음
     }
 
     function renderTexts() {
@@ -965,13 +912,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         div.style.borderColor = BS[board.type].selBorder;
       }
       div.textContent = el.text;
-      div.addEventListener('mousedown', onElMouseDown);
-      div.addEventListener('click', e => { e.stopPropagation(); if (!didDrag) selectEl(el.id, 'text'); });
-      div.addEventListener('dblclick', e => {
-        e.stopPropagation();
-        if (viewOnlyBoard) return;
-        selectEl(el.id, 'text');
-        startEdit(el.id);
+      // 키보드: Tab으로 고르고 Enter(F2)로 편집, Delete로 삭제(아래 전역 키 처리)
+      div.tabIndex = 0;
+      div.addEventListener('focus', () => {
+        if (!gesture && !div.isContentEditable && selectedId !== el.id) selectEl(el.id, 'text');
+      });
+      div.addEventListener('keydown', e => {
+        if (div.isContentEditable || viewOnlyBoard) return;
+        if (e.key === 'Enter' || e.key === 'F2') { e.preventDefault(); selectEl(el.id, 'text'); startEdit(el.id); }
       });
       canvas.appendChild(div);
     }
@@ -1027,6 +975,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         b.className = 'ctx-btn' + (cls ? ' ' + cls : '');
         b.innerHTML = html;
         b.title = title;
+        b.setAttribute('aria-label', title);
         b.onclick = e => { e.stopPropagation(); fn(e); };
         return b;
       }
@@ -1038,6 +987,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
       // Color button — dot colored with current element color
       const colBtn = mkBtn('●', '색상', '', () => toggleColorRow(id, type));
+      colBtn.setAttribute('aria-expanded', 'false');
       colBtn.style.color = el.color;
       colBtn.style.fontSize = '18px';
       main.appendChild(colBtn);
@@ -1059,6 +1009,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     function toggleColorRow(id, type) {
       const colRow = document.getElementById('ctx-colors');
       colorRowOpen = !colorRowOpen;
+      const colBtn = document.querySelector('#ctx-main .ctx-btn[title="색상"]');
+      if (colBtn) colBtn.setAttribute('aria-expanded', String(colorRowOpen));
       if (!colorRowOpen) { colRow.style.display = 'none'; return; }
 
       const board = getBoard();
@@ -1066,11 +1018,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const palette = getPalette(board.type);
       colRow.innerHTML = '';
 
-      palette.forEach(color => {
+      const COLOR_NAMES = ['기본색', '노랑', '분홍', '하늘'];
+      palette.forEach((color, ci) => {
         const b = document.createElement('button');
         b.className = 'ctx-btn ctx-swatch' + (el.color === color ? ' cur' : '');
         b.dataset.color = color;
-        b.style.cssText = `background:${color};width:32px;height:32px;border-radius:50%;font-size:0;`;
+        b.setAttribute('aria-label', COLOR_NAMES[ci] || color);
+        b.setAttribute('aria-pressed', String(el.color === color));
+        b.style.cssText = `background:${color};width:40px;height:40px;border-radius:50%;font-size:0;`;
         // Light swatches need a visible border
         if (color === '#ffffff' || color === '#f7f7f4') b.style.border = '2px solid rgba(150,150,150,0.4)';
         else if (color === '#111111') b.style.border = '2px solid rgba(80,80,80,0.3)';
@@ -1144,13 +1099,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         renderLines();
       }
       // Update color dot and swatches
-      const colBtn = document.querySelector('#ctx-main .ctx-btn:not(.ctx-del)');
       // Update main color dot
       document.querySelectorAll('#ctx-main .ctx-btn').forEach(b => {
         if (b.title === '색상') { b.style.color = color; }
       });
       document.querySelectorAll('#ctx-colors .ctx-swatch').forEach(s => {
         s.classList.toggle('cur', s.dataset.color === color);
+        s.setAttribute('aria-pressed', String(s.dataset.color === color));
       });
     }
 
@@ -1226,37 +1181,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       selectEl(id, 'text');
     }
 
-    /* ── Drag text elements ── */
-    function onElMouseDown(e) {
-      if (viewOnlyBoard) return;
-      if (e.target.contentEditable === 'true') return;
-      const div = e.currentTarget;
-      const id = div.dataset.id;
-      e.preventDefault(); e.stopPropagation();
-      didDrag = false;
-      const sx = e.clientX, sy = e.clientY;
-      const ox = parseInt(div.style.left) || 0;
-      const oy = parseInt(div.style.top) || 0;
-
-      const onMv = mv => {
-        const dx = mv.clientX - sx, dy = mv.clientY - sy;
-        if (!didDrag && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) { didDrag = true; hideCtx(); }
-        if (didDrag) { div.style.left = (ox + dx) + 'px'; div.style.top = (oy + dy) + 'px'; }
-      };
-      const onUp = () => {
-        document.removeEventListener('mousemove', onMv);
-        document.removeEventListener('mouseup', onUp);
-        if (didDrag) {
-          const board = getBoard();
-          const el = board.elements.find(e => e.id === id);
-          if (el) { pushHistory(); el.x = parseInt(div.style.left); el.y = parseInt(div.style.top); board.lastEdited = Date.now(); saveBoard(board); }
-          selectEl(id, 'text');
-        }
-      };
-      document.addEventListener('mousemove', onMv);
-      document.addEventListener('mouseup', onUp);
-    }
-
     /* ── Toolbar modes ── */
     function activateTextMode() {
       mode = mode === 'add-text' ? 'select' : 'add-text';
@@ -1273,6 +1197,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     function updateTbState() {
       document.getElementById('btn-add-text').classList.toggle('on', mode === 'add-text');
       document.getElementById('btn-draw').classList.toggle('on', mode === 'draw-line');
+      document.getElementById('btn-add-text').setAttribute('aria-pressed', String(mode === 'add-text'));
+      document.getElementById('btn-draw').setAttribute('aria-pressed', String(mode === 'draw-line'));
       const canvas = document.getElementById('cb-canvas');
       canvas.className = mode === 'add-text' ? 'mode-text' : mode === 'draw-line' ? 'mode-line' : 'mode-select';
       // Visual active state on buttons
@@ -1283,70 +1209,211 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       document.getElementById('btn-draw').style.background = mode === 'draw-line' ? activeColor : '';
     }
 
-    /* ── Canvas events ── */
+    /* ── Pointer 입력 (마우스·터치·펜 공통) ──
+       전자칠판·태블릿에서도 똑같이 동작하도록 mouse* 대신 Pointer Events만 씀.
+       - 한 번에 하나의 포인터만 따라감(pointerId). 긋는 중 들어온 두 번째 손가락은 무시
+       - 캔버스에 setPointerCapture → 손가락이 요소 밖으로 나가도 끌기가 이어짐
+       - 두 번 누르기 = 더블클릭(글자 편집, 선 메뉴), 길게 누르기(0.5초) = 터치용 오른쪽 클릭
+       - 펜 압력은 쓰지 않음(선 굵기 일정) */
     const canvas = document.getElementById('cb-canvas');
+    const LONG_PRESS_MS = 500;
+    let gesture = null;  // 진행 중인 누르기 { pointerId, ptype, kind:'text'|'line'|'draw'|'bg', … }
+    let lastTap = null;  // 두 번 누르기 판별 { id, t, x, y }
 
-    canvas.addEventListener('click', e => {
-      // Only handle clicks directly on canvas or SVG background (not on elements)
-      if (e.target !== canvas && e.target !== document.getElementById('cb-svg')) return;
-      if (mode === 'add-text') {
+    function editingEl() {
+      const a = document.activeElement;
+      return a && a.classList && a.classList.contains('cb-el') && a.isContentEditable ? a : null;
+    }
+    function closeMenus() { closeMoreMenu(); closeSaveMenu(); closeShareMenu(); }
+    function moveSlop(g) { return g.ptype === 'mouse' ? (g.kind === 'line' ? 4 : 5) : 8; }
+
+    canvas.addEventListener('pointerdown', e => {
+      // 편집 중인 글자 안: 커서 옮기기·글자 선택은 브라우저 기본 동작 그대로(화상 키보드도 유지)
+      const ed = editingEl();
+      if (ed && ed.contains(e.target)) return;
+      if (gesture) {
+        // 긋는·옮기는 중에 닿은 두 번째 손가락·손바닥은 무시
+        if (e.pointerId !== gesture.pointerId) e.preventDefault();
+        return;
+      }
+      if (!e.isPrimary || e.button !== 0) return;   // 오른쪽 버튼·펜 지우개 버튼은 contextmenu에서 처리
+      closeMenus();
+      const textDiv = e.target.closest('.cb-el');
+      const lineG = e.target.closest('.cb-line-g');
+      const textId = textDiv ? textDiv.dataset.id : null;
+      const lineId = lineG ? lineG.dataset.id : null;
+      // 터치 뒤 따라오는 mousedown(포커스 이동 → 편집 종료)과 글자 선택·길게 누르기 메뉴를 막음
+      e.preventDefault();
+      // 다른 곳을 누르면 편집을 마침(blur → endEdit). 이때 요소가 다시 그려질 수 있어 아래에서 id로 다시 찾음
+      if (ed) ed.blur();
+      const board = getBoard();
+      if (!board) return;
+      const r = canvas.getBoundingClientRect();
+      const g = {
+        pointerId: e.pointerId, ptype: e.pointerType || 'mouse',
+        sx: e.clientX, sy: e.clientY, px: e.clientX - r.left, py: e.clientY - r.top,
+        moved: false, longPress: false, timer: null,
+      };
+      const div = textId ? canvas.querySelector(`.cb-el[data-id="${textId}"]`) : null;
+      const lineEl = lineId ? board.elements.find(x => x.id === lineId) : null;
+      if (div) {
+        g.kind = 'text'; g.id = textId; g.div = div;
+        g.ox = parseInt(div.style.left) || 0; g.oy = parseInt(div.style.top) || 0;
+        g.draggable = !viewOnlyBoard;
+      } else if (mode === 'draw-line' && !viewOnlyBoard) {
+        g.kind = 'draw';
+        const svg = document.getElementById('cb-svg');
+        if (tempLine) tempLine.remove();
+        tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        tempLine.id = 'cb-temp-line';
+        tempLine.setAttribute('x1', g.px); tempLine.setAttribute('y1', g.py);
+        tempLine.setAttribute('x2', g.px); tempLine.setAttribute('y2', g.py);
+        tempLine.setAttribute('stroke', BS[board.type].tempStroke);
+        tempLine.setAttribute('stroke-width', '3');
+        tempLine.setAttribute('stroke-linecap', 'round');
+        tempLine.setAttribute('stroke-dasharray', '7 5');
+        svg.appendChild(tempLine);
+      } else if (lineEl && mode === 'select') {
+        g.kind = 'line'; g.id = lineId;
+        g.o = { x1: lineEl.x1, y1: lineEl.y1, x2: lineEl.x2, y2: lineEl.y2 };
+        g.draggable = !viewOnlyBoard;
+      } else {
+        g.kind = 'bg';
+      }
+      // 길게 누르기(터치·펜): 0.5초 동안 거의 움직이지 않으면 선택해 보여 주고, 손을 떼면 편집/메뉴
+      if ((g.kind === 'text' || g.kind === 'line') && g.ptype !== 'mouse' && !viewOnlyBoard) {
+        g.timer = setTimeout(() => {
+          if (gesture !== g || g.moved) return;
+          g.longPress = true;
+          selectEl(g.id, g.kind);
+          if (navigator.vibrate) { try { navigator.vibrate(15); } catch (_) {} }
+        }, LONG_PRESS_MS);
+      }
+      gesture = g;
+      try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+
+    window.addEventListener('pointermove', e => {
+      const g = gesture;
+      if (!g || e.pointerId !== g.pointerId) return;
+      const dx = e.clientX - g.sx, dy = e.clientY - g.sy;
+      if (!g.moved && !g.longPress && (Math.abs(dx) > moveSlop(g) || Math.abs(dy) > moveSlop(g))) {
+        g.moved = true;
+        clearTimeout(g.timer);
+        if (g.kind === 'text' || g.kind === 'line') hideCtx();
+        if (g.kind === 'text' && g.draggable) g.div.classList.add('dragging');
+      }
+      if (g.kind === 'draw' && tempLine) {
         const r = canvas.getBoundingClientRect();
-        addText(e.clientX - r.left - 60, e.clientY - r.top - 30);
-        mode = 'select'; updateTbState();
-      } else if (mode === 'select') {
-        deselectAll();
+        tempLine.setAttribute('x2', e.clientX - r.left);
+        tempLine.setAttribute('y2', e.clientY - r.top);
+      } else if (g.moved && g.draggable && g.kind === 'text') {
+        g.div.style.left = (g.ox + dx) + 'px';
+        g.div.style.top = (g.oy + dy) + 'px';
+      } else if (g.moved && g.draggable && g.kind === 'line') {
+        const lg = document.querySelector(`#cb-svg .cb-line-g[data-id="${g.id}"]`);
+        if (lg) lg.querySelectorAll('line').forEach(l => {
+          l.setAttribute('x1', g.o.x1 + dx); l.setAttribute('y1', g.o.y1 + dy);
+          l.setAttribute('x2', g.o.x2 + dx); l.setAttribute('y2', g.o.y2 + dy);
+        });
       }
     });
 
-    // Line drawing: mousedown → mousemove → mouseup (document level for reliability)
-    canvas.addEventListener('mousedown', e => {
-      if (mode !== 'draw-line') return;
-      if (e.target !== canvas && e.target !== document.getElementById('cb-svg')) return;
-      const r = canvas.getBoundingClientRect();
-      lineStart = { x: e.clientX - r.left, y: e.clientY - r.top };
-      drawingLine = true;
-      // Temp rubber-band line
-      const svg = document.getElementById('cb-svg');
-      tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      tempLine.id = 'cb-temp-line';
-      tempLine.setAttribute('x1', lineStart.x); tempLine.setAttribute('y1', lineStart.y);
-      tempLine.setAttribute('x2', lineStart.x); tempLine.setAttribute('y2', lineStart.y);
+    function endGesture(g) {
+      clearTimeout(g.timer);
+      if (gesture === g) gesture = null;
+      try { if (canvas.hasPointerCapture(g.pointerId)) canvas.releasePointerCapture(g.pointerId); } catch (_) {}
+      if (g.div) g.div.classList.remove('dragging');
+    }
+
+    window.addEventListener('pointerup', e => {
+      const g = gesture;
+      if (!g || e.pointerId !== g.pointerId) return;
+      endGesture(g);
       const board = getBoard();
-      tempLine.setAttribute('stroke', BS[board.type].tempStroke);
-      tempLine.setAttribute('stroke-width', '3');
-      tempLine.setAttribute('stroke-linecap', 'round');
-      tempLine.setAttribute('stroke-dasharray', '7 5');
-      svg.appendChild(tempLine);
+      if (!board) return;
+      const dx = e.clientX - g.sx, dy = e.clientY - g.sy;
+      if (g.kind === 'draw') {
+        const r = canvas.getBoundingClientRect();
+        const x2 = Math.max(0, Math.min(e.clientX - r.left, r.width));
+        const y2 = Math.max(0, Math.min(e.clientY - r.top, r.height));
+        if (tempLine) { tempLine.remove(); tempLine = null; }
+        if (Math.hypot(x2 - g.px, y2 - g.py) < 8) return;
+        const el = { id: uid(), type: 'line', x1: g.px, y1: g.py, x2, y2, color: getPalette(board.type)[0] };
+        pushHistory();
+        board.elements.push(el);
+        board.lastEdited = Date.now();
+        saveBoard(board);
+        buildLineEl(el);
+        return;
+      }
+      if (g.kind === 'bg') {
+        if (g.moved) return;
+        if (mode === 'add-text') {
+          addText(g.px - 60, g.py - 30);   // pointerup 안에서 focus → 터치 기기에서도 화상 키보드가 뜸
+          mode = 'select'; updateTbState();
+        } else if (mode === 'select') {
+          deselectAll();
+        }
+        return;
+      }
+      if (g.moved && g.draggable) {
+        const el = board.elements.find(x => x.id === g.id);
+        if (el) {
+          pushHistory();
+          if (g.kind === 'text') { el.x = g.ox + dx; el.y = g.oy + dy; }
+          else { el.x1 = g.o.x1 + dx; el.y1 = g.o.y1 + dy; el.x2 = g.o.x2 + dx; el.y2 = g.o.y2 + dy; }
+          board.lastEdited = Date.now();
+          saveBoard(board);
+        }
+        selectEl(g.id, g.kind);
+        return;
+      }
+      if (g.moved) return;
+      if (g.longPress) { lastTap = null; secondaryAction(g.id, g.kind); return; }
+      // 짧은 시간 안에 같은 요소를 또 누르면 두 번 누르기(마우스는 더블클릭과 같은 동작)
+      const now = Date.now();
+      const isDouble = lastTap && lastTap.id === g.id &&
+        now - lastTap.t < (g.ptype === 'mouse' ? 500 : 450) &&
+        Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < (g.ptype === 'mouse' ? 10 : 30);
+      if (isDouble) { lastTap = null; secondaryAction(g.id, g.kind); return; }
+      lastTap = { id: g.id, t: now, x: e.clientX, y: e.clientY };
+      selectEl(g.id, g.kind);
     });
 
-    document.addEventListener('mousemove', e => {
-      if (!drawingLine || !tempLine) return;
-      const r = canvas.getBoundingClientRect();
-      tempLine.setAttribute('x2', e.clientX - r.left);
-      tempLine.setAttribute('y2', e.clientY - r.top);
+    window.addEventListener('pointercancel', e => {
+      const g = gesture;
+      if (!g || e.pointerId !== g.pointerId) return;
+      endGesture(g);
+      if (g.kind === 'draw') cancelDraw();
+      else if (g.kind === 'text' && g.moved) { g.div.style.left = g.ox + 'px'; g.div.style.top = g.oy + 'px'; }
+      else if (g.kind === 'line' && g.moved) renderLines();
     });
 
-    document.addEventListener('mouseup', e => {
-      if (!drawingLine || !lineStart) return;
-      drawingLine = false;
-      const r = canvas.getBoundingClientRect();
-      const x2 = Math.max(0, Math.min(e.clientX - r.left, r.width));
-      const y2 = Math.max(0, Math.min(e.clientY - r.top, r.height));
-      if (tempLine) { tempLine.remove(); tempLine = null; }
-      const len = Math.hypot(x2 - lineStart.x, y2 - lineStart.y);
-      if (len < 8) { lineStart = null; return; }
-      const board = getBoard();
-      const el = { id: uid(), type: 'line', x1: lineStart.x, y1: lineStart.y, x2, y2, color: getPalette(board.type)[0] };
-      pushHistory();
-      board.elements.push(el);
-      board.lastEdited = Date.now();
-      saveBoard(board);
-      buildLineEl(el);
-      lineStart = null;
+    // 두 번 누르기·길게 누르기: 글자는 편집, 선은 메뉴
+    function secondaryAction(id, kind) {
+      selectEl(id, kind);
+      if (viewOnlyBoard) return;
+      if (kind === 'text') startEdit(id);
+      else showCtx(id, 'line');
+    }
+
+    // 캔버스 안의 클릭은 위 Pointer 처리가 모두 맡음(바깥 클릭 처리기가 방금 한 선택을 지우지 않게)
+    canvas.addEventListener('click', e => e.stopPropagation());
+    // 길게 누르기 메뉴(모바일)·오른쪽 클릭: 편집 중인 글자 안에서는 기본 메뉴(붙여넣기 등) 유지
+    canvas.addEventListener('contextmenu', e => {
+      const ed = editingEl();
+      if (ed && ed.contains(e.target)) return;
+      e.preventDefault();
+      if (gesture) return;   // 터치 길게 누르기는 위에서 처리
+      const t = e.target.closest('.cb-el');
+      const l = e.target.closest('.cb-line-g');
+      if (t) selectEl(t.dataset.id, 'text');
+      else if (l && mode === 'select') selectEl(l.dataset.id, 'line');
     });
 
     function cancelDraw() {
-      drawingLine = false; lineStart = null;
+      if (gesture && gesture.kind === 'draw') endGesture(gesture);
       if (tempLine) { tempLine.remove(); tempLine = null; }
     }
 
@@ -1359,6 +1426,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (!getBoard()) return;
       moreMenuOpen = !moreMenuOpen;
       const dd = document.getElementById('more-dropdown');
+      document.getElementById('btn-more').setAttribute('aria-expanded', String(moreMenuOpen));
       if (!moreMenuOpen) { dd.classList.remove('open'); return; }
       const board = getBoard();
       const s = board ? BS[board.type] : BS.chalkboard;
@@ -1370,6 +1438,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         b.onmouseenter = () => b.style.background = s.saveDdHover;
         b.onmouseleave = () => b.style.background = 'transparent';
       });
+      loadQR();
       const btn = document.getElementById('btn-more');
       const r = btn.getBoundingClientRect();
       dd.style.left = Math.max(8, r.right - 170) + 'px';
@@ -1378,6 +1447,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
     function closeMoreMenu() {
       moreMenuOpen = false;
+      document.getElementById('btn-more').setAttribute('aria-expanded', 'false');
       document.getElementById('more-dropdown').classList.remove('open');
     }
 
@@ -1385,6 +1455,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       e.stopPropagation();
       saveMenuOpen = !saveMenuOpen;
       const dd = document.getElementById('save-dropdown');
+      document.getElementById('btn-save').setAttribute('aria-expanded', String(saveMenuOpen));
       if (!saveMenuOpen) { dd.classList.remove('open'); return; }
       // Style by board type
       const board = getBoard();
@@ -1407,18 +1478,22 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     function closeSaveMenu() {
       saveMenuOpen = false;
+      document.getElementById('btn-save').setAttribute('aria-expanded', 'false');
       document.getElementById('save-dropdown').classList.remove('open');
     }
 
     /* ── Share modal ── */
+    // ESC로 닫으면 저장하지 않는 '보기 전용'으로 엶
+    const shareModal = VUI.modal.bind('#modal-share', { className: 'active', dialog: '#modal-share .modal-box', onClose: () => enterViewOnly() });
     function openShareModal(board) {
       _pendingShared = board;
       document.getElementById('modal-share-name').textContent = board.name;
-      document.getElementById('modal-share').classList.add('active');
+      shareModal.open();
     }
 
     function enterViewOnly() {
-      document.getElementById('modal-share').classList.remove('active');
+      shareModal.close();
+      if (!_pendingShared) return;
       viewOnlyBoard = _pendingShared;
       _pendingShared = null;
       history.replaceState(null, '', location.pathname);
@@ -1427,8 +1502,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     function cloneAndOpen() {
-      document.getElementById('modal-share').classList.remove('active');
+      shareModal.close();
       const shared = _pendingShared;
+      if (!shared) return;
       _pendingShared = null;
       const board = {
         id: uid(), name: shared.name || '공유된 보드',
@@ -1459,23 +1535,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       showToast('복제했습니다');
     }
 
-    /* ── Toast ── */
-    let _toastTimer;
-    function showToast(msg) {
-      const el = document.getElementById('cb-toast');
-      el.textContent = msg;
-      el.classList.add('show');
-      clearTimeout(_toastTimer);
-      _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
-    }
+    /* ── Toast (공용 VUI) ── */
+    function showToast(msg, type) { VUI.toast(msg, type); }
 
     /* ── Share ── */
     function buildShareURL(permission) {
       const board = getBoard();
       if (!board) return null;
-      const payload = JSON.stringify({ elements: board.elements, type: board.type, name: board.name, permission });
-      const encoded = btoa(encodeURIComponent(payload))
-        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      // 새 링크는 UTF-8 base64url(한글이 약 3배 짧음). 옛 링크는 VUI.share.decode가 그대로 읽음
+      const encoded = VUI.share.encode({ elements: board.elements, type: board.type, name: board.name, permission });
       return `${location.origin}/apps/chalkboard/#share=${encoded}`;
     }
 
@@ -1486,7 +1554,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (!getBoard()) return;
       shareMenuOpen = !shareMenuOpen;
       const dd = document.getElementById('share-dropdown');
+      document.getElementById('btn-share').setAttribute('aria-expanded', String(shareMenuOpen));
       if (!shareMenuOpen) { dd.classList.remove('open'); return; }
+      loadQR();   // 복사가 안 될 때 보여 줄 QR 라이브러리를 미리 받아 둠
       const board = getBoard();
       const s = board ? BS[board.type] : BS.chalkboard;
       dd.style.background = s.saveDdBg;
@@ -1506,35 +1576,39 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     function closeShareMenu() {
       shareMenuOpen = false;
+      document.getElementById('btn-share').setAttribute('aria-expanded', 'false');
       document.getElementById('share-dropdown').classList.remove('open');
+    }
+
+    // QR 라이브러리: 복사가 안 될 때 보여 주는 링크 창에서 QR을 그림(공유 메뉴를 열 때 미리 받음)
+    let _qrPromise = null;
+    function loadQR() {
+      if (window.QRCode) return Promise.resolve(true);
+      if (_qrPromise) return _qrPromise;
+      _qrPromise = new Promise(resolve => {
+        const sc = document.createElement('script');
+        sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+        sc.async = true;
+        sc.onload = () => resolve(true);
+        sc.onerror = () => { _qrPromise = null; resolve(false); };
+        document.head.appendChild(sc);
+      });
+      return _qrPromise;
     }
 
     async function doShare(permission) {
       closeShareMenu();
       const btn = document.getElementById('btn-share');
       btn.disabled = true;
-      const longURL = buildShareURL(permission);
-      if (!longURL) { btn.disabled = false; return; }
-      let url = longURL;
-      let shortened = false;
       try {
-        const res = await fetch('/api/shorten', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: longURL }),
+        const longURL = buildShareURL(permission);
+        if (!longURL) return;
+        await Promise.race([loadQR(), new Promise(r => setTimeout(r, 1500))]);
+        // 단축 → 복사. 복사가 안 되면 링크·QR 창을 보여 줌
+        await VUI.share.link(longURL, {
+          title: '🔗 칠판 공유',
+          desc: permission === 'view' ? '받는 사람은 보기만 할 수 있어요.' : '받는 사람이 자기 보드로 복제할 수 있어요.',
         });
-        const data = await res.json().catch(() => null);
-        if (res.ok && data && data.shortURL) { url = data.shortURL; shortened = true; }
-        else console.error('[shorten] failed:', res.status, data);
-      } catch (err) {
-        console.error('[shorten] failed:', err);
-      }
-      try {
-        await navigator.clipboard.writeText(url);
-        showToast(shortened ? '링크가 복사되었습니다 ✓' : '링크가 복사되었습니다 (단축 미적용)');
-      } catch {
-        // 클립보드를 쓸 수 없는 환경: 링크를 직접 보여 주어 손으로 복사할 수 있게 함
-        window.prompt('자동 복사가 안 돼요. 아래 링크를 길게 누르거나 Ctrl+C로 복사해 주세요.', url);
       } finally { btn.disabled = false; }
     }
 
@@ -1620,7 +1694,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (document.activeElement.tagName === 'INPUT') return;
       if (!document.getElementById('view-board').classList.contains('active')) return;
       if (e.key === 'Escape') {
-        if (mode !== 'select') { mode = 'select'; cancelDraw(); updateTbState(); }
+        if (moreMenuOpen || saveMenuOpen || shareMenuOpen) closeMenus();
+        else if (mode !== 'select') { mode = 'select'; cancelDraw(); updateTbState(); }
         else deselectAll();
       }
       // 보기 전용 보드에서는 삭제·되돌리기·복사·붙여넣기를 막음
@@ -1657,12 +1732,27 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     /* ── Modal keyboard ── */
     document.getElementById('new-board-name').addEventListener('keydown', e => {
-      if (e.key === 'Enter') createBoard();
-      if (e.key === 'Escape') closeNewModal();
+      // preventDefault: 모달이 닫히며 포커스가 '새 보드' 버튼으로 돌아간 뒤 Enter가 그 버튼을 다시 누르지 않게
+      if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); createBoard(); }
     });
-    document.getElementById('modal-new').addEventListener('click', e => {
-      if (e.target === document.getElementById('modal-new')) closeNewModal();
-    });
+
+    // 공유 링크로 받은 요소는 외부 입력: 모양이 맞는 것만, 숫자·문자열로 다시 만듦
+    function sanitizeElements(list) {
+      const num = v => (typeof v === 'number' && isFinite(v) ? Math.max(-5000, Math.min(20000, v)) : 0);
+      const col = v => (typeof v === 'string' && /^(#[0-9a-fA-F]{3,8}|[a-z]{3,20}|rgba?\([\d.,\s%]+\))$/.test(v) ? v : '#ffffff');
+      const out = [];
+      (Array.isArray(list) ? list : []).slice(0, 2000).forEach(e => {
+        if (!e || typeof e !== 'object') return;
+        const id = typeof e.id === 'string' && e.id.length <= 40 ? e.id : uid();
+        if (e.type === 'text') {
+          out.push({ id, type: 'text', x: num(e.x), y: num(e.y), text: String(e.text == null ? '' : e.text).slice(0, 5000),
+            color: col(e.color), size: SIZES.includes(e.size) ? e.size : (num(e.size) > 0 ? Math.min(400, num(e.size)) : 80) });
+        } else if (e.type === 'line') {
+          out.push({ id, type: 'line', x1: num(e.x1), y1: num(e.y1), x2: num(e.x2), y2: num(e.y2), color: col(e.color) });
+        }
+      });
+      return out;
+    }
 
     /* ── Init ── */
     (function init() {
@@ -1670,15 +1760,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (hash.startsWith('#share=')) {
         const encoded = hash.slice(7);
         try {
-          const raw = encoded.replace(/-/g, '+').replace(/_/g, '/');
-          const pad = (4 - raw.length % 4) % 4;
-          const payload = decodeURIComponent(atob(raw + '='.repeat(pad)));
-          const shared = JSON.parse(payload);
-          if (shared && shared.elements && shared.type) {
+          // 새 형식(UTF-8 base64url)과 옛 형식(btoa(encodeURIComponent)) 모두 읽음
+          const shared = VUI.share.decode(encoded, o => o && Array.isArray(o.elements) && typeof o.type === 'string');
+          if (shared) {
             const boardData = {
-              name: shared.name || '공유된 보드',
+              name: typeof shared.name === 'string' && shared.name.trim() ? shared.name.slice(0, 60) : '공유된 보드',
               type: BS[shared.type] ? shared.type : 'chalkboard',
-              elements: shared.elements,
+              elements: sanitizeElements(shared.elements),
             };
             history.replaceState(null, '', location.pathname);
             showView('home'); renderHome();
