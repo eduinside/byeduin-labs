@@ -307,7 +307,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     /* ───────── 요약 (코드 · 진행 · 뱃지) ───────── */
     function renderSummary() {
       const code = Store.getCode();
-      $('#homeCode').textContent = code || '동기화 꺼짐';
+      const hc = $('#homeCode'); if (hc) hc.textContent = code || '동기화 꺼짐';
       const lo = $('#logoutBtn'); if (lo) lo.hidden = !code;   // 연결됐을 때만 해제 버튼
       const chip = $('#codeChip'); if (chip) chip.title = code ? '코드 복사' : '우상단 동기화 버튼으로 코드 연결';
       $('#readCount').textContent = readCount();
@@ -420,6 +420,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     /* ───────── 읽음 토글 (모든 표시 위치 동기화) ───────── */
     function toggleRead(id) {
       const now = Store.toggle(id);
+      // 서버 저장을 화면 갱신보다 먼저 — 렌더 중 오류가 나도 저장은 빠지지 않게
+      const _code = Store.getCode();
+      if (now) Sync.put(_code, id, Store.getReads()[id]); else Sync.del(_code, id);
       const book = BOOKS.find(b => b.id === id);
       document.querySelectorAll('[data-id="' + cssEsc(id) + '"]').forEach(node => {
         node.classList.toggle('read', now);
@@ -439,8 +442,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           $('#resultInfo').textContent = 'Lv ' + activeLevel + ' · 읽음 ' + levelRead(activeLevel) + '/' + levelTotal(activeLevel) + '권';
       }
       renderSummary();
-      const _code = Store.getCode();
-      if (now) Sync.put(_code, id, Store.getReads()[id]); else Sync.del(_code, id);
     }
 
     /* ───────── 진입 / 화면 전환 ───────── */
@@ -502,12 +503,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         row.hidden = !open;
         $('#badgeToggle').setAttribute('aria-expanded', String(open));
       });
+      // 칩 안의 #homeCode 요소는 그대로 두고 글자만 잠깐 바꾼다.
+      // (칩 innerHTML을 통째로 바꾸면 그 사이 renderSummary가 #homeCode를 못 찾아 오류 → 서버 저장 누락)
+      let copyTimer = null;
       $('#codeChip').addEventListener('click', () => {
         const c = Store.getCode(); if (!c) return;
         if (navigator.clipboard) navigator.clipboard.writeText(c).catch(() => {});
-        const chip = $('#codeChip'); const old = chip.innerHTML;
-        chip.textContent = '복사됨 ✓';
-        setTimeout(() => { chip.innerHTML = old; }, 1200);
+        const hc = $('#homeCode'); if (!hc) return;
+        hc.textContent = '복사됨 ✓';
+        clearTimeout(copyTimer);
+        copyTimer = setTimeout(() => { hc.textContent = Store.getCode() || '동기화 꺼짐'; }, 1200);
       });
     }
 

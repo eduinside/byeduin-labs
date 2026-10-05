@@ -293,22 +293,43 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         var prev = pick;
         do { pick = todayPick(true); } while (pick === prev && D.length > 1);
         renderPick(true);
+        var again = document.getElementById('again');   // 다시 그린 버튼으로 키보드 포커스 복원
+        if (again) again.focus();
       };
     }
 
+    // 필터·주제 버튼은 처음 한 번만 만들고 이후에는 상태·개수만 바꾼다
+    // (매번 innerHTML로 다시 그리면 Tab/Enter로 누른 버튼의 키보드 포커스가 사라짐)
+    var filterBtns = null, topicBtns = null;
     function renderFilter(base) {
-      $filter.innerHTML = FILTERS.map(function (f) {
-        var n = base.filter(f.test).length;
-        var dot = f.id === 'all' ? '' : '<span class="dot dot-' + f.id + '"></span>';
-        return '<button type="button" role="tab" data-f="' + f.id + '" aria-selected="' + (F === f.id) + '" class="' + (F === f.id ? 'on' : '') + '">' +
-          dot + f.label + ' <span class="cnt">' + n + '</span></button>';
-      }).join('');
+      if (!filterBtns) {
+        $filter.innerHTML = FILTERS.map(function (f) {
+          var dot = f.id === 'all' ? '' : '<span class="dot dot-' + f.id + '"></span>';
+          return '<button type="button" role="tab" data-f="' + f.id + '">' +
+            dot + f.label + ' <span class="cnt"></span></button>';
+        }).join('');
+        filterBtns = $filter.querySelectorAll('button[data-f]');
+      }
+      FILTERS.forEach(function (f, i) {
+        var b = filterBtns[i], on = F === f.id;
+        b.className = on ? 'on' : '';
+        b.setAttribute('aria-selected', String(on));
+        b.querySelector('.cnt').textContent = base.filter(f.test).length;
+      });
     }
 
     function renderTopics(k) {
-      $topics.innerHTML = TOPICS.map(function (t) {
-        return '<button type="button" class="oc-topic' + (k === t ? ' on' : '') + '">' + t + '</button>';
-      }).join('');
+      if (!topicBtns) {
+        $topics.innerHTML = TOPICS.map(function (t) {
+          return '<button type="button" class="oc-topic">' + t + '</button>';
+        }).join('');
+        topicBtns = $topics.querySelectorAll('.oc-topic');
+      }
+      TOPICS.forEach(function (t, i) {
+        var on = k === t;
+        topicBtns[i].classList.toggle('on', on);
+        topicBtns[i].setAttribute('aria-pressed', String(on));
+      });
     }
 
     function syncUrl(k) {

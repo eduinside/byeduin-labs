@@ -9,11 +9,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   bodyWidth="wide"
 >
   <Fragment slot="head">
-    <script src="https://cdn.tailwindcss.com" is:inline=""></script>
+    <!-- 외부 런타임은 정확한 버전으로 고정(2026-10 기준). 자체 호스팅(public/vendor/)은 별도 과제 -->
+    <script src="https://cdn.tailwindcss.com/3.4.17" is:inline=""></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-  <script crossorigin="" src="https://unpkg.com/react@18/umd/react.production.min.js" is:inline=""></script>
-  <script crossorigin="" src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" is:inline=""></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js" is:inline=""></script>
+  <script crossorigin="" src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" is:inline=""></script>
+  <script crossorigin="" src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" is:inline=""></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.9/babel.min.js" is:inline=""></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" is:inline=""></script>
   <style is:global="">
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
@@ -342,6 +343,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             </IconBase>
         );
 
+        // --- LaTeX 특수문자 이스케이프 (노션 수식 = KaTeX) ---
+        // 입력 글자 중 %(주석), &(열 구분), _(아래첨자), #, $, {, }, \, ^, ~ 는 LaTeX 명령으로 해석돼
+        // 결과가 깨지므로 글자 그대로 보이도록 바꾼다. '수식 (Math)' 스타일은 사용자가 LaTeX를 직접
+        // 쓰는 모드라 이스케이프하지 않는다. (KaTeX 0.16.8에서 \text·\textbf·\mathbb 등 렌더 확인)
+        const LATEX_TEXT_ESC = {
+            '\\': '\\textbackslash{}', '{': '\\{', '}': '\\}', '%': '\\%', '&': '\\&', '_': '\\_',
+            '#': '\\#', '$': '\\$', '^': '\\textasciicircum{}', '~': '\\textasciitilde{}',
+        };
+        const LATEX_MATH_ESC = {
+            '\\': '\\backslash{}', '{': '\\{', '}': '\\}', '%': '\\%', '&': '\\&', '_': '\\_',
+            '#': '\\#', '$': '\\$', '^': '\\hat{~}', '~': '\\sim{}',
+        };
+        const escapeLatexText = (s) => s.replace(/[\\{}%&_#$^~]/g, (c) => LATEX_TEXT_ESC[c]);
+        const escapeLatexMath = (s) => s.replace(/[\\{}%&_#$^~]/g, (c) => LATEX_MATH_ESC[c]);
+
         // --- Main App ---
 
         const NotionFormulaGenerator = () => {
@@ -420,11 +436,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
                     // Special handling for math fonts that ignore spaces (Bb, Cal, Frak)
                     if (['mathbb', 'mathcal', 'mathfrak'].includes(fontStyle)) {
-                        const processedLine = line.split(' ').join('~');
+                        const processedLine = escapeLatexMath(line).split(' ').join('~');
                         return `${cmd}{${processedLine}}`;
                     }
 
-                    return `${cmd}{${line}}`;
+                    return `${cmd}{${escapeLatexText(line)}}`;
                 });
                 const innerContent = styledLines.join(' \\\\ ');
                 const alignedContent = `\\begin{array}{${alignment}}${innerContent}\\end{array}`;
@@ -670,6 +686,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<NotionFormulaGenerator />);
+    </script>
+
+    <script is:inline="">
+        // 외부 CDN(React·Babel 등) 중 하나라도 막히면 빈 화면만 남으므로 안내를 보여준다
+        window.addEventListener('load', function () {
+            setTimeout(function () {
+                var r = document.getElementById('root');
+                if (!r || r.childElementCount) return;
+                var missing = [];
+                if (!window.React || !window.ReactDOM) missing.push('React');
+                if (!window.Babel) missing.push('Babel');
+                if (!window.katex) missing.push('KaTeX');
+                r.innerHTML = '<div style="max-width:560px;margin:4rem auto;padding:1.25rem 1.5rem;border:1px solid var(--border);border-radius:12px;background:var(--card-bg);color:var(--fg);line-height:1.6">' +
+                    '<b>화면을 불러오지 못했습니다.</b><br>필요한 외부 도구' + (missing.length ? '(' + missing.join(', ') + ')' : '') +
+                    '를 받지 못했어요. 학교망에서 외부 사이트(unpkg.com, cdn.jsdelivr.net, cdn.tailwindcss.com)가 막혀 있을 수 있습니다. 새로고침하거나 다른 네트워크에서 열어 주세요.</div>';
+            }, 2500);
+        });
     </script>
 
 

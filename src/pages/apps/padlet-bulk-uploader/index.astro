@@ -257,7 +257,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         <div class="log" id="log"></div>
       </div>
 
-      <button class="hero-btn btn-run" id="runBtn" onclick="run()">🚀 패들렛에 일괄 업로드</button>
+      <button class="hero-btn btn-run" id="runBtn" onclick="onRunClick()">🚀 패들렛에 일괄 업로드</button>
     </div>
   </div>
 
@@ -270,6 +270,9 @@ function toggleGuide() {
 }
 
 let mode = 'simple';
+const posted = new Map();   // 업로드 성공 기록: 보드+내용 key → 성공 횟수
+let running = false;
+let cancelRequested = false;
 
 const PLACEHOLDERS = {
   simple: '김철수\n이영희\n박민준\n최수아\n...',
@@ -284,6 +287,8 @@ function setMode(m) {
   updateParseCount();
 }
 setMode('simple');
+document.getElementById('boardId').addEventListener('input', updateParseCount);
+document.getElementById('color').addEventListener('change', updateParseCount);
 
 // 보드 URL을 붙여넣어도 끝의 16자리 영숫자 코드를 추출
 function extractBoardId(raw) {
@@ -320,7 +325,55 @@ function parseItems(text, m) {
 
 function updateParseCount() {
   const items = parseItems(document.getElementById('bulkText').value, mode);
-  document.getElementById('parseCount').innerHTML = `<b>${items.length}</b>개 항목으로 인식됨`;
+  const boardId = extractBoardId(document.getElementById('boardId').value);
+  const color = document.getElementById('color').value;
+  const { skip } = planUpload(items, boardId, color);
+  document.getElementById('parseCount').innerHTML = `<b>${items.length}</b>개 항목으로 인식됨` +
+    (skip ? ` · 이미 올린 ${skip}개는 건너뜀` : '');
+  updateRunBtn();
+}
+
+/* ── 항목별 업로드 기록 (이 탭이 열려 있는 동안만) ──
+   보드+내용이 같은 게시물을 몇 번 성공했는지 센다. 다시 실행하면 성공분은 건너뛰고
+   실패·취소된 항목만 올린다. 같은 줄이 여러 번 있으면 그 수만큼 따로 센다.
+   (posted·running·cancelRequested는 setMode() 첫 호출 전에 선언돼야 하므로 위쪽에 둠) */
+function itemPayload(item, color) {
+  const payload = { subject: item.subject, body: item.body, linkUrl: item.linkUrl };
+  if (color) payload.color = color;
+  return payload;
+}
+function itemKey(boardId, payload) { return boardId + '|' + JSON.stringify(payload); }
+
+// items 중 이미 올린 것은 skip, 나머지는 todo(원래 순번 유지)
+function planUpload(items, boardId, color) {
+  const used = new Map();
+  const todo = [];
+  let skip = 0;
+  items.forEach((item, i) => {
+    const payload = itemPayload(item, color);
+    const key = itemKey(boardId, payload);
+    const u = used.get(key) || 0;
+    if (u < (posted.get(key) || 0)) { used.set(key, u + 1); skip++; }
+    else todo.push({ i, item, payload, key });
+  });
+  return { todo, skip };
+}
+
+function updateRunBtn() {
+  if (running) return;
+  document.getElementById('runBtn').textContent =
+    posted.size ? '🔁 남은(실패·취소) 항목 업로드' : '🚀 패들렛에 일괄 업로드';
+}
+
+function onRunClick() {
+  if (running) {
+    cancelRequested = true;
+    const btn = document.getElementById('runBtn');
+    btn.disabled = true;
+    btn.textContent = '중지하는 중...';
+    return;
+  }
+  run();
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -397,62 +450,85 @@ async function run() {
 
   if (!apiKey || !boardId) { alert('API 키와 Board ID를 모두 입력해 주세요.'); return; }
   if (!items.length) { alert('업로드할 항목이 없습니다. 텍스트를 입력해 주세요.'); return; }
-  if (items.length > 20 && !confirm(`정말 ${items.length}개 항목을 패들렛에 업로드할까요?`)) return;
+
+  const { todo, skip } = planUpload(items, boardId, color);
+  if (!todo.length) {
+    alert(`${items.length}개 항목이 모두 이미 업로드되었습니다.\n같은 내용을 한 번 더 올리려면 페이지를 새로고침한 뒤 실행하세요.`);
+    return;
+  }
+  if (skip > 0) {
+    if (!confirm(`이미 올린 ${skip}개는 건너뛰고, 남은 ${todo.length}개만 업로드할까요?`)) return;
+  } else if (todo.length > 20 && !confirm(`정말 ${todo.length}개 항목을 패들렛에 업로드할까요?`)) return;
 
   const btn = document.getElementById('runBtn');
-  btn.disabled = true;
-  btn.textContent = '업로드 중...';
+  running = true;
+  cancelRequested = false;
+  btn.disabled = false;   // 업로드 중에는 '중지' 버튼으로 동작
+  btn.textContent = '⏹ 업로드 중지';
 
   document.getElementById('progressWrap').style.display = 'block';
   document.getElementById('logWrap').style.display = 'block';
   document.getElementById('summary').style.display = 'none';
   document.getElementById('log').innerHTML = '';
 
-  let ok = 0, failed = 0;
+  if (skip > 0) addLog('info', '◆', `이미 올린 ${skip}개는 건너뜁니다.`);
 
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    setProgress(i + 1, items.length, `업로드 중... ${i + 1} / ${items.length}`);
+  let ok = 0, failed = 0, cancelled = 0;
 
-    const payload = { subject: item.subject, body: item.body, linkUrl: item.linkUrl };
-    if (color) payload.color = color;
-
-    let attempt = 0;
-    while (true) {
-      try {
-        await padletCall(apiKey, boardId, 'createPost', payload);
-        addLog('ok', '✓', item.subject || item.body.slice(0, 30) || item.linkUrl);
-        ok++;
-        break;
-      } catch (e) {
-        if (e.status === 429 && attempt === 0) {
-          attempt++;
-          addLog('info', '◆', '요청 제한 — 잠시 후 재시도합니다...');
-          await sleep(1500);
-          continue;
-        }
-        if (e.status === 401) {
-          addLog('err', '✗', e.message);
-          failed += items.length - i;
-          i = items.length; // 전체 중단
-        } else {
-          addLog('err', '✗', `[${item.subject || i + 1}] ${e.message}`);
-          failed++;
-        }
+  try {
+    for (let n = 0; n < todo.length; n++) {
+      if (cancelRequested) {
+        cancelled = todo.length - n;
+        addLog('info', '◆', `중지됨 — 남은 ${cancelled}개는 올리지 않았습니다.`);
         break;
       }
+      const { i, item, payload, key } = todo[n];
+      setProgress(n + 1, todo.length, `업로드 중... ${n + 1} / ${todo.length}`);
+
+      let attempt = 0;
+      let stopAll = false;
+      while (true) {
+        try {
+          await padletCall(apiKey, boardId, 'createPost', payload);
+          posted.set(key, (posted.get(key) || 0) + 1);   // 성공 기록 → 다시 실행해도 중복 게시 안 함
+          addLog('ok', '✓', item.subject || item.body.slice(0, 30) || item.linkUrl);
+          ok++;
+          break;
+        } catch (e) {
+          if (e.status === 429 && attempt === 0) {
+            attempt++;
+            addLog('info', '◆', '요청 제한 — 잠시 후 재시도합니다...');
+            await sleep(1500);
+            continue;
+          }
+          if (e.status === 401) {
+            addLog('err', '✗', e.message);
+            failed += todo.length - n;
+            stopAll = true; // 전체 중단
+          } else {
+            addLog('err', '✗', `[${item.subject || i + 1}] ${e.message}`);
+            failed++;
+          }
+          break;
+        }
+      }
+      if (stopAll) break;
+      await sleep(500);
     }
-    await sleep(500);
+  } finally {
+    const sumEl = document.getElementById('summary');
+    sumEl.style.display = 'block';
+    const left = todo.length - ok;
+    sumEl.textContent = `${cancelled ? '중지됨.' : '완료!'} 성공 ${ok}개 · 실패 ${failed}개` +
+      (cancelled ? ` · 취소 ${cancelled}개` : '') + (skip ? ` · 건너뜀 ${skip}개` : '') +
+      (left ? ` — API 키를 다시 입력하고 아래 버튼을 누르면 남은 ${left}개만 다시 올립니다.` : '');
+
+    // 실행 완료 후 API 키 초기화 (메모리에서 제거)
+    document.getElementById('apiKey').value = '';
+    running = false;
+    btn.disabled = false;
+    updateParseCount();
   }
-
-  const sumEl = document.getElementById('summary');
-  sumEl.style.display = 'block';
-  sumEl.textContent = `완료! 성공 ${ok}개 · 실패 ${failed}개`;
-
-  // 실행 완료 후 API 키 초기화 (메모리에서 제거)
-  document.getElementById('apiKey').value = '';
-  btn.disabled = false;
-  btn.textContent = '🚀 패들렛에 일괄 업로드';
 }
 </script>
 

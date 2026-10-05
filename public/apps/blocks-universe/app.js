@@ -17,9 +17,24 @@ const RECENT_MAX = 50;
 let DATA = null;            // { meta, episodes }
 let byId = new Map();
 const state = { series: null, season: 0, level: 0, theme: false, favOnly: false, recentOnly: false, q: '', aiIds: null };
-let favs = new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]'));
-let recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); // id 배열, 최신순
-let playlist = JSON.parse(localStorage.getItem(PL_KEY) || '{"title":"","ids":[]}');
+// localStorage 값이 깨져 있어도 앱이 멈추지 않도록 형식 검사 후 기본값으로 대체
+function loadJSON(key, def, ok) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw == null) return def;
+    const v = JSON.parse(raw);
+    return ok(v) ? v : def;
+  } catch { return def; }
+}
+const isIdArr = (v) => Array.isArray(v) && v.every(x => typeof x === 'string');
+const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+const loadPlaylist = () => {
+  const p = loadJSON(PL_KEY, null, (v) => isObj(v) && isIdArr(v.ids));
+  return p ? { title: typeof p.title === 'string' ? p.title : '', ids: p.ids } : { title: '', ids: [] };
+};
+let favs = new Set(loadJSON(FAV_KEY, [], isIdArr));
+let recent = loadJSON(RECENT_KEY, [], isIdArr); // id 배열, 최신순
+let playlist = loadPlaylist();
 let modalEp = null;
 let modalLang = 'ko';
 let navIds = [];   // 모달 이전/다음 탐색 대상 (열 때의 필터 결과)
@@ -35,7 +50,7 @@ const seasonMatch = (ep) => !state.season || (state.season === -1 ? ep.season ==
 const playVid = (ep) => ep.ytKo || ep.yt;   // 재생용 영상 ID (한글판 우선)
 
 /* ── 영상 길이 (YouTube Data API, localStorage 캐시) ── */
-let durations = JSON.parse(localStorage.getItem(DUR_KEY) || '{}');
+let durations = loadJSON(DUR_KEY, {}, isObj);
 
 function fmtDur(sec) {
   if (!sec) return '';
@@ -55,7 +70,7 @@ async function ensureDurations(vids) {
       Object.assign(durations, data.durations || {});
     } catch { return; }
   }
-  localStorage.setItem(DUR_KEY, JSON.stringify(durations));
+  try { localStorage.setItem(DUR_KEY, JSON.stringify(durations)); } catch { /* 용량 초과 시 캐시 생략 */ }
 }
 
 /* ── 토스트 ── */
@@ -293,6 +308,9 @@ function renderWelcome() {
 function randomPlay(seriesId) {
   const s = SERIES.find(x => x.id === seriesId);
   if (!s || !DATA) return;
+  // 랜덤 재생은 내 재생목록을 바꾸므로, 비어 있지 않으면 먼저 확인
+  if (playlist.ids.length &&
+      !confirm(`🔀 ${s.ko} 랜덤 재생을 시작하면 지금 재생목록(${playlist.ids.length}편)이 랜덤 목록으로 바뀝니다.\n계속할까요?`)) return;
   state.series = seriesId; state.season = 0; state.theme = false; state.aiIds = null;
   renderSeriesTabs(); renderToolbar(); renderGrid();
   const eps = DATA.episodes.filter(ep => ep.series === seriesId);
@@ -536,12 +554,19 @@ function renderPlDrawer() {
     row.className = 'pl-item';
     row.draggable = true;
     row.innerHTML = `
-      <span class="pl-drag" title="드래그해서 순서 변경">⠿</span>
+      <span class="pl-drag" title="드래그해서 순서 변경" aria-hidden="true">⠿</span>
+      <span style="display:flex;flex-direction:column;flex-shrink:0">
+        <button class="pl-del-btn pl-up-btn" title="위로" aria-label="위로 이동"${i === 0 ? ' disabled' : ''}>▲</button>
+        <button class="pl-del-btn pl-down-btn" title="아래로" aria-label="아래로 이동"${i === playlist.ids.length - 1 ? ' disabled' : ''}>▼</button>
+      </span>
       <img src="${thumb(ep, 'default')}" alt="">
       <span class="pl-item-title">${i + 1}. ${dispTitle(ep)}
         ${dur ? `<small class="pl-item-dur">${fmtDur(dur)}</small>` : ''}</span>
-      <button class="pl-del-btn" title="제거">✕</button>`;
-    row.querySelector('.pl-del-btn').onclick = (e) => {
+      <button class="pl-del-btn pl-rm-btn" title="제거" aria-label="재생목록에서 제거">✕</button>`;
+    // 터치 기기에서는 드래그가 안 되므로 ▲▼ 버튼으로 순서 변경
+    row.querySelector('.pl-up-btn').onclick = (e) => { e.stopPropagation(); movePl(i, -1); };
+    row.querySelector('.pl-down-btn').onclick = (e) => { e.stopPropagation(); movePl(i, 1); };
+    row.querySelector('.pl-rm-btn').onclick = (e) => {
       e.stopPropagation(); playlist.ids.splice(i, 1); savePl(); renderPlDrawer();
     };
     row.onclick = () => { closePlDrawer(); openEpisode(id); };
@@ -638,7 +663,7 @@ let queue = [];
 let queueIdx = 0;
 let ytApiReady = null;
 let watchdogTimer = null;
-let durCache = JSON.parse(localStorage.getItem(DUR_KEY) || '{}');
+let durCache = loadJSON(DUR_KEY, {}, isObj);
 
 function clearWatchdog() {
   clearTimeout(watchdogTimer);
@@ -855,9 +880,11 @@ init();
 
 // 선택 동기화: 헤더 '동기화' 버튼 (즐겨찾기·재생목록·최근을 코드 하나로 기기 간 이어쓰기)
 function reloadSyncedState() {
-  try { favs = new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]')); } catch (e) {}
-  try { recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch (e) {}
-  try { playlist = JSON.parse(localStorage.getItem(PL_KEY) || '{"title":"","ids":[]}'); } catch (e) {}
+  favs = new Set(loadJSON(FAV_KEY, [], isIdArr));
+  recent = loadJSON(RECENT_KEY, [], isIdArr);
+  playlist = loadPlaylist();
+  updatePlFab();
+  if ($('plDrawer').classList.contains('open')) renderPlDrawer();
   if (DATA) { renderToolbar(); renderGrid(); }
 }
 if (window.VivesSync) VivesSync.mountDocSync({

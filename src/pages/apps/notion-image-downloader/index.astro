@@ -243,7 +243,8 @@ function addLog(type, icon, msg) {
   const log = document.getElementById('log');
   const item = document.createElement('div');
   item.className = `log-item ${type}`;
-  item.innerHTML = `<span class="log-icon">${icon}</span><span>${msg}</span>`;
+  item.innerHTML = `<span class="log-icon">${icon}</span><span></span>`;
+  item.querySelector('span:last-child').textContent = msg;   // 노션 제목·오류문은 텍스트로만 표시
   log.appendChild(item);
   log.scrollTop = log.scrollHeight;
 }
@@ -313,17 +314,33 @@ function getImageUrlsFromProps(page) {
   return urls;
 }
 
-async function getImageUrlsFromBlocks(token, pageId) {
+// 노션은 블록을 한 번에 100개까지만 돌려준다. has_more면 start_cursor로 다음 묶음을 요청한다.
+// 단, 서버 프록시(functions/api/notion.js)가 경로 뒤 쿼리(?start_cursor=)를 아직 허용하지 않으면
+// 두 번째 요청이 거절되므로, 그때는 앞의 100개만 쓰고 로그로 알린다.
+async function getImageUrlsFromBlocks(token, pageId, title) {
   const urls = [];
+  let cursor = null, first = true;
   try {
-    const data = await notionCall(token, `/v1/blocks/${pageId}/children`);
-    for (const block of data.results || []) {
-      if (block.type === 'image') {
-        const img = block.image;
-        if (img.type === 'file') urls.push(img.file.url);
-        else if (img.type === 'external') urls.push(img.external.url);
+    do {
+      const path = `/v1/blocks/${pageId}/children` +
+        (cursor ? `?start_cursor=${encodeURIComponent(cursor)}&page_size=100` : '');
+      let data;
+      try {
+        data = await notionCall(token, path);
+      } catch (e) {
+        if (!first) addLog('skip', '–', `[${title}] 블록이 100개를 넘어 뒤쪽 본문 이미지는 읽지 못했습니다.`);
+        break;
       }
-    }
+      first = false;
+      for (const block of data.results || []) {
+        if (block.type === 'image') {
+          const img = block.image;
+          if (img.type === 'file') urls.push(img.file.url);
+          else if (img.type === 'external') urls.push(img.external.url);
+        }
+      }
+      cursor = data.has_more && data.next_cursor ? data.next_cursor : null;
+    } while (cursor);
   } catch (_) {}
   return urls;
 }
@@ -334,18 +351,21 @@ async function downloadAsBlob(imgUrl) {
   return r.blob();
 }
 
-function blobToCanvas(blob) {
+// fillWhite: JPG에는 투명이 없어 투명 PNG가 검은 배경이 되므로 흰색을 먼저 깐다
+function blobToCanvas(blob, fillWhite) {
   return new Promise((res, rej) => {
     const img = new Image();
     const url = URL.createObjectURL(blob);
     img.onload = () => {
       const c = document.createElement('canvas');
       c.width = img.naturalWidth; c.height = img.naturalHeight;
-      c.getContext('2d').drawImage(img, 0, 0);
+      const ctx = c.getContext('2d');
+      if (fillWhite) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height); }
+      ctx.drawImage(img, 0, 0);
       URL.revokeObjectURL(url);
       res(c);
     };
-    img.onerror = rej;
+    img.onerror = (e) => { URL.revokeObjectURL(url); rej(e); };
     img.src = url;
   });
 }
@@ -391,7 +411,7 @@ async function run() {
       setProgress(i + 1, pages.length, `처리 중... ${i + 1} / ${pages.length}`);
 
       const propUrls  = getImageUrlsFromProps(page);
-      const blockUrls = await getImageUrlsFromBlocks(token, page.id);
+      const blockUrls = await getImageUrlsFromBlocks(token, page.id, title);
       const allUrls   = [...propUrls, ...blockUrls];
 
       if (!allUrls.length) {
@@ -403,7 +423,7 @@ async function run() {
       for (let j = 0; j < allUrls.length; j++) {
         try {
           const blob   = await downloadAsBlob(allUrls[j]);
-          const canvas = await blobToCanvas(blob);
+          const canvas = await blobToCanvas(blob, fmt === 'jpg');
           const out    = await canvasToBlob(canvas, fmt);
           const fname  = allUrls.length === 1
             ? `${title}.${fmt}`

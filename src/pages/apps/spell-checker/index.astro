@@ -180,7 +180,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       </div>
       <div class="corrected-box" id="correctedBox"></div>
       <div class="btn-row">
-        <button class="btn btn-ghost" onclick="copyResult()">교정본 복사</button>
+        <button class="btn btn-ghost" onclick="copyResult(this)">교정본 복사</button>
         <button class="btn btn-ghost" onclick="toggleGas()">📋 GAS 연동</button>
       </div>
       <div class="error-list" id="errorList"></div>
@@ -227,16 +227,33 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || `오류 ${res.status}`);
-        renderResult(data);
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(koError(data && data.error, res.status));
+        // 응답 형식 검사 — 형식이 다르면 영문 런타임 오류 대신 한국어 안내
+        if (!data || typeof data.corrected !== 'string') {
+          throw new Error('검사 결과를 읽지 못했습니다. 잠시 후 다시 시도해 주세요.');
+        }
+        const errors = (Array.isArray(data.errors) ? data.errors : [])
+          .filter(e => e && typeof e === 'object')
+          .map(e => ({ original: String(e.original ?? ''), corrected: String(e.corrected ?? ''), reason: String(e.reason ?? '') }));
+        renderResult({ corrected: data.corrected, changed: !!data.changed || errors.length > 0, errors });
       } catch (e) {
-        errorAlert.textContent = `⚠️ ${e.message}`;
+        const msg = e && /[가-힣]/.test(e.message || '') ? e.message
+          : '검사 중 문제가 생겼습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.';
+        errorAlert.textContent = `⚠️ ${msg}`;
         errorAlert.classList.add('show');
       } finally {
         checkBtn.disabled = false;
         loadingRow.classList.remove('show');
       }
+    }
+
+    // 서버 오류 메시지가 영문이면 상태 코드별 한국어 안내로 바꾼다
+    function koError(msg, status) {
+      if (msg && /[가-힣]/.test(msg)) return msg;
+      if (status === 429) return '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.';
+      if (status === 400) return '입력 내용을 확인해 주세요. (최대 3000자)';
+      return `AI 교정 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요. (오류 ${status})`;
     }
 
     function renderResult({ corrected, changed, errors }) {
@@ -266,7 +283,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       let html = esc(text);
       errors.forEach(({ corrected: c }) => {
         const s = esc(c);
-        html = html.replace(s, `<mark>${s}</mark>`);
+        if (s) html = html.replace(s, `<mark>${s}</mark>`);
       });
       return html;
     }
@@ -277,12 +294,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    function copyResult() {
-      navigator.clipboard.writeText(correctedBox.innerText).then(() => {
-        const btn = event.currentTarget;
+    // 버튼은 클릭 시점에 인자로 받는다(Promise 콜백 안에서는 window.event가 비어 있어 표시가 안 뜨던 문제)
+    let copyTimer = null;
+    function copyResult(btn) {
+      const text = correctedBox.innerText;
+      const done = () => {
+        if (!btn) return;
         btn.textContent = '복사됨 ✓';
-        setTimeout(() => { btn.textContent = '교정본 복사'; }, 1500);
-      });
+        clearTimeout(copyTimer);
+        copyTimer = setTimeout(() => { btn.textContent = '교정본 복사'; }, 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, () => prompt('아래 내용을 복사하세요:', text));
+      } else {
+        prompt('아래 내용을 복사하세요:', text);
+      }
     }
 
     function toggleGas() {

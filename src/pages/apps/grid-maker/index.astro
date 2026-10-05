@@ -510,21 +510,40 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       updateUI();
     }
 
+    // ── 입력 검증 ──
+    // 비율 항은 1~100 정수, 가로세로 차이는 10배 이내(0:5 같은 값은 0으로 나누기 → 깨짐).
+    // 칸 수는 가로·세로 각각 1~10.
+    const RATIO_MAX = 100, RATIO_SPREAD = 10, GRID_MAX = 10;
+    function parseRatio(str) {
+      const m = String(str || '').trim().match(/^(\d{1,3})\s*:\s*(\d{1,3})$/);
+      if (!m) return null;
+      const w = +m[1], h = +m[2];
+      if (w < 1 || h < 1 || w > RATIO_MAX || h > RATIO_MAX) return null;
+      if (Math.max(w / h, h / w) > RATIO_SPREAD) return null;
+      return [w, h];
+    }
+    const validGridN = (n) => Number.isInteger(n) && n >= 1 && n <= GRID_MAX;
+
     // ── 설정 저장/복원 ──
     function saveSettings() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        ratio: state.ratio, cols: state.cols, rows: state.rows,
-        customRatios: state.customRatios, customGrids: state.customGrids,
-      }));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          ratio: state.ratio, cols: state.cols, rows: state.rows,
+          customRatios: state.customRatios, customGrids: state.customGrids,
+        }));
+      } catch { /* 저장 불가 시 무시 */ }
     }
     function loadSettings() {
       try {
-        const p = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-        state.ratio = p.ratio || '1:1';
-        state.cols  = p.cols  || 2;
-        state.rows  = p.rows  || 1;
-        state.customRatios = p.customRatios || [];
-        state.customGrids  = p.customGrids  || [];
+        const p = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {};
+        // 예전에 저장된 잘못된 값(0:5, 0×3, 아주 큰 칸 수 등)은 걸러낸다
+        state.ratio = parseRatio(p.ratio) ? p.ratio : '1:1';
+        state.cols  = validGridN(p.cols) ? p.cols : 2;
+        state.rows  = validGridN(p.rows) ? p.rows : 1;
+        state.customRatios = Array.isArray(p.customRatios) ? p.customRatios.filter(r => typeof r === 'string' && parseRatio(r)) : [];
+        state.customGrids  = Array.isArray(p.customGrids)
+          ? p.customGrids.filter(g => g && validGridN(g.c) && validGridN(g.r)).map(g => ({ label: `${g.c} × ${g.r}`, c: g.c, r: g.r }))
+          : [];
       } catch {}
     }
 
@@ -571,23 +590,34 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     function addCustomRatio() {
-      const val = el.customRatioInput.value.trim();
-      if (/^\d+:\d+$/.test(val) && !state.customRatios.includes(val)) {
+      const raw = el.customRatioInput.value.trim();
+      if (!raw) return;
+      const pr = parseRatio(raw);
+      if (!pr) {
+        showToast(`비율은 1~${RATIO_MAX} 사이 숫자 두 개로 입력해 주세요 (예: 16:9, 가로세로 차이 ${RATIO_SPREAD}배 이내)`);
+        return;
+      }
+      const val = `${pr[0]}:${pr[1]}`;
+      if (!state.customRatios.includes(val) && val !== '1:1' && val !== '4:5') {
         state.customRatios.push(val);
-        el.customRatioInput.value = '';
         saveSettings(); renderPresets();
       }
+      el.customRatioInput.value = '';
     }
     function addCustomGrid() {
-      const match = el.customGridInput.value.trim().toLowerCase().match(/^(\d+)[x*×](\d+)$/);
-      if (match) {
-        const c = +match[1], r = +match[2];
-        if (c > 0 && r > 0 && !state.customGrids.find(g => g.c === c && g.r === r)) {
-          state.customGrids.push({ label: `${c} × ${r}`, c, r });
-          el.customGridInput.value = '';
-          saveSettings(); renderPresets();
-        }
+      const raw = el.customGridInput.value.trim();
+      if (!raw) return;
+      const match = raw.toLowerCase().match(/^(\d{1,3})\s*[x*×]\s*(\d{1,3})$/);
+      const c = match ? +match[1] : 0, r = match ? +match[2] : 0;
+      if (!validGridN(c) || !validGridN(r)) {
+        showToast(`칸 수는 가로·세로 각각 1~${GRID_MAX} 사이로 입력해 주세요 (예: 4×1)`);
+        return;
       }
+      if (!state.customGrids.find(g => g.c === c && g.r === r)) {
+        state.customGrids.push({ label: `${c} × ${r}`, c, r });
+        saveSettings(); renderPresets();
+      }
+      el.customGridInput.value = '';
     }
 
     function changeRatio(r) { state.ratio = r; saveSettings(); updateUI(); }
@@ -755,15 +785,24 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     // ── 압축 파일 저장 ──
     el.saveBtn.onclick = async () => {
       if (!state.image) return;
-      el.loader.classList.add('show');
-      const zip = new JSZip();
+      if (!window.JSZip) { showToast('압축 도구를 불러오지 못했습니다. 새로고침해 주세요.'); return; }
       const [uw, uh] = state.ratio.split(':').map(Number);
       const qw = 1080, qh = Math.round((qw / uw) * uh);
+      const fullW = qw * state.cols, fullH = qh * state.rows;
+      // 브라우저 캔버스 한계(한 변 16384px, 넓이 약 1억 px)를 넘으면 빈 이미지가 나오므로 미리 막는다
+      if (!(qh > 0) || fullW > 16384 || fullH > 16384 || fullW * fullH > 100000000) {
+        showToast('전체 크기가 너무 큽니다. 칸 수를 줄이거나 다른 비율을 골라 주세요.');
+        return;
+      }
+      el.loader.classList.add('show');
+      const zip = new JSZip();
 
       const masterCanvas = document.createElement('canvas');
       const mCtx = masterCanvas.getContext('2d');
-      const fullW = qw * state.cols, fullH = qh * state.rows;
       masterCanvas.width = fullW; masterCanvas.height = fullH;
+      // JPG에는 투명이 없어 투명 부분이 검게 저장되므로 흰 배경을 먼저 깐다
+      mCtx.fillStyle = '#ffffff';
+      mCtx.fillRect(0, 0, fullW, fullH);
 
       mCtx.save();
       mCtx.translate(fullW / 2, fullH / 2);
