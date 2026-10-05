@@ -13,7 +13,9 @@
 -- read_tree_codes: 0001에서 만든 코드 등록 테이블. 0002에서 set 스키마로 바꾼 뒤 어떤 코드도 읽거나 쓰지 않는다.
 -- (먼저 행 수를 보고 싶으면: SELECT COUNT(*) FROM read_tree_codes;)
 --
--- 아직 적용하지 않았다. 적용:
+-- 원격 적용: 2026-10-06 (적용 직전 D1 Time Travel 북마크 00000121-00000000-000050fb-75278077b39653fd613302b53b10a080).
+-- read_tree_codes에는 2026-06-18 코드 1건만 있었다(읽음 기록은 read_tree_reads에 있어 영향 없음).
+-- 다시 적용할 때:
 --   로컬:  npx wrangler d1 execute byeduin --local  --file=migrations/0014_drop_redundant_indexes.sql
 --   원격:  npx wrangler d1 execute byeduin --remote --file=migrations/0014_drop_redundant_indexes.sql
 
