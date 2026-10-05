@@ -91,8 +91,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       transition: transform 0.2s;
     }
     .upload-zone:hover .upload-icon { transform: scale(1.12) translateY(-2px); }
-    .upload-zone p { font-size: 13px; font-weight: 600; color: var(--fg); margin: 0 0 2px; }
-    .upload-zone small { font-size: 11px; color: var(--fg-muted); }
+    .upload-zone p { font-size: 14px; font-weight: 600; color: var(--fg); margin: 0 0 2px; }
+    .upload-zone small { font-size: 12px; color: var(--fg-muted); }
+    .upload-zone:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-color: var(--primary); }
 
     /* ── 프리셋 버튼 그리드 ── */
     .preset-grid {
@@ -101,11 +102,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       gap: 0.4rem;
     }
     .preset-btn {
+      min-height: 40px;
       padding: 0.5rem 0.375rem;
       background: var(--bg);
       border: 1.5px solid var(--border);
       border-radius: 0.625rem;
-      font-size: 12px; font-weight: 600;
+      font-size: 13px; font-weight: 600; font-family: inherit;
       color: var(--fg-muted);
       cursor: pointer;
       transition: all 0.15s;
@@ -129,14 +131,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       background: var(--input-bg);
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 3px 7px;
-      font-size: 11px; color: var(--fg);
-      outline: none; width: 72px;
+      padding: 3px 7px; min-height: 36px;
+      font-size: 14px; color: var(--fg);
+      outline: none; width: 80px;
     }
     .custom-input.show { display: block; }
     .custom-input:focus { border-color: var(--primary); }
     .icon-btn {
-      width: 26px; height: 26px;
+      width: 40px; height: 40px;
       display: inline-flex; align-items: center; justify-content: center;
       background: var(--bg-sec); border: 1px solid var(--border);
       border-radius: 6px; cursor: pointer; color: var(--fg-muted);
@@ -251,11 +253,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       border: 2px solid var(--bg); box-shadow: 0 2px 6px rgba(0,111,238,0.3);
     }
     .value-input {
-      width: 44px; text-align: center;
-      font-weight: 700; font-size: 12px; color: var(--primary);
+      width: 56px; min-height: 32px; text-align: center;
+      font-weight: 700; font-size: 13px; color: var(--primary);
       background: var(--input-bg); border: 1px solid var(--border);
-      border-radius: 5px; padding: 2px 0; outline: none;
+      border-radius: 5px; padding: 2px 0;
     }
+    input[type="range"] { margin: 10px 0; }
+    input[type="range"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 8px; }
+    #preview-box:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
     .unit { font-size: 11px; color: var(--fg-muted); }
 
     .help-row {
@@ -290,8 +295,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .fd-btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 5px;
       padding: 8px 14px; border-radius: 8px; border: none;
-      font-size: 12px; font-weight: 600; cursor: pointer;
-      transition: all 0.15s; min-height: 36px;
+      font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: all 0.15s; min-height: 44px;
     }
     .fd-btn-primary { background: var(--primary); color: #fff; }
     .fd-btn-primary:hover { background: var(--primary-h); }
@@ -330,9 +335,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <!-- 01. 업로드 -->
           <div class="step-section">
             <div class="fd-section-title">01. 이미지 업로드</div>
-            <div class="upload-zone" id="upload-zone">
-              <input type="file" id="file-input" accept="image/*" style="display:none">
-              <div class="upload-icon">📤</div>
+            <div class="upload-zone" id="upload-zone" role="button" tabindex="0" aria-label="이미지 올리기 (클릭하거나 파일을 끌어다 놓기)">
+              <input type="file" id="file-input" accept="image/*" style="display:none" tabindex="-1" aria-hidden="true">
+              <div class="upload-icon" aria-hidden="true">📤</div>
               <p>클릭 또는 드래그하여 업로드</p>
               <small>PNG, JPG, WEBP 지원</small>
             </div>
@@ -343,11 +348,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             <div class="step-header">
               <span class="fd-section-title" style="margin:0">02. 개별 비율</span>
               <div class="custom-add-row">
-                <input type="text" id="custom-ratio-input" class="custom-input" placeholder="16:9">
-                <button class="icon-btn" onclick="toggleInput('custom-ratio-input')" title="커스텀 비율 추가">+</button>
+                <input type="text" id="custom-ratio-input" class="custom-input" placeholder="16:9" aria-label="새 비율 (예: 16:9) 입력 후 Enter">
+                <button type="button" class="icon-btn" onclick="toggleInput('custom-ratio-input')" title="커스텀 비율 추가" aria-label="커스텀 비율 추가" aria-expanded="false" aria-controls="custom-ratio-input">+</button>
               </div>
             </div>
-            <div class="preset-grid" id="ratio-container"></div>
+            <div class="preset-grid" id="ratio-container" role="group" aria-label="개별 비율"></div>
           </div>
 
           <!-- 03. 레이아웃 -->
@@ -355,11 +360,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             <div class="step-header">
               <span class="fd-section-title" style="margin:0">03. 전체 레이아웃</span>
               <div class="custom-add-row">
-                <input type="text" id="custom-grid-input" class="custom-input" placeholder="4×1">
-                <button class="icon-btn" onclick="toggleInput('custom-grid-input')" title="커스텀 그리드 추가">+</button>
+                <input type="text" id="custom-grid-input" class="custom-input" placeholder="4×1" aria-label="새 칸 수 (예: 4×1) 입력 후 Enter">
+                <button type="button" class="icon-btn" onclick="toggleInput('custom-grid-input')" title="커스텀 그리드 추가" aria-label="커스텀 그리드 추가" aria-expanded="false" aria-controls="custom-grid-input">+</button>
               </div>
             </div>
-            <div class="preset-grid" id="preset-container"></div>
+            <div class="preset-grid" id="preset-container" role="group" aria-label="전체 레이아웃"></div>
           </div>
 
         </div>
@@ -384,7 +389,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           </div>
 
           <!-- 미리보기 -->
-          <div id="preview-box" class="crop-target" style="display:none">
+          <div id="preview-box" class="crop-target" style="display:none" tabindex="0" role="group" aria-roledescription="이미지 위치 조정" aria-label="미리보기 — 화살표 키로 위치 이동(Shift는 크게), +/−로 확대·축소" aria-describedby="info-badge">
             <img id="preview-img" src="" alt="">
             <div id="grid-overlay" class="grid-overlay"></div>
             <div id="info-badge" class="glass-info" style="display:none"></div>
@@ -392,18 +397,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         </div>
 
         <!-- 조정 패널 -->
-        <div id="adjustment-panel" class="adj-panel disabled">
+        <div id="adjustment-panel" class="adj-panel disabled" inert>
           <div class="action-row">
-            <button class="fd-btn fd-btn-primary" onclick="smartAutoFit()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2m0 20v-2M8 8l-1.5-1.5M18.5 18.5 17 17m0-9 1.5-1.5M5.5 18.5 7 17M4 15H2m20 0h-2"></path><circle cx="12" cy="12" r="4"></circle></svg>
+            <button type="button" class="fd-btn fd-btn-primary" onclick="smartAutoFit()">
+              <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2m0 20v-2M8 8l-1.5-1.5M18.5 18.5 17 17m0-9 1.5-1.5M5.5 18.5 7 17M4 15H2m20 0h-2"></path><circle cx="12" cy="12" r="4"></circle></svg>
               스마트 핏
             </button>
-            <button class="fd-btn fd-btn-ghost" onclick="rotate90()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
+            <button type="button" class="fd-btn fd-btn-ghost" onclick="rotate90()">
+              <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
               90° 회전
             </button>
-            <button class="fd-btn fd-btn-ghost" onclick="resetAdjustments()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            <button type="button" class="fd-btn fd-btn-ghost" onclick="resetAdjustments()">
+              <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
               초기화
             </button>
           </div>
@@ -411,23 +416,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <div class="adj-sliders">
             <div class="adj-field">
               <div class="adj-label-row">
-                <span class="fd-section-title" style="margin:0;font-size:10px">확대/축소</span>
+                <span class="fd-section-title" style="margin:0;font-size:11px" id="zoomLabel">확대/축소</span>
                 <div style="display:flex;align-items:center;gap:3px">
-                  <input type="number" id="zoom-val-input" class="value-input" value="100" min="10" max="500">
+                  <input type="number" id="zoom-val-input" class="value-input" value="100" min="10" max="500" aria-label="확대/축소 비율(%)">
                   <span class="unit">%</span>
                 </div>
               </div>
-              <input type="range" id="zoom-slider" min="0.1" max="5" step="0.01" value="1">
+              <input type="range" id="zoom-slider" min="0.1" max="5" step="0.01" value="1" aria-labelledby="zoomLabel">
             </div>
             <div class="adj-field">
               <div class="adj-label-row">
-                <span class="fd-section-title" style="margin:0;font-size:10px">회전</span>
+                <span class="fd-section-title" style="margin:0;font-size:11px" id="rotateLabel">회전</span>
                 <div style="display:flex;align-items:center;gap:3px">
-                  <input type="number" id="rotate-val-input" class="value-input" value="0" min="-360" max="360">
+                  <input type="number" id="rotate-val-input" class="value-input" value="0" min="-360" max="360" aria-label="회전 각도(도)">
                   <span class="unit">°</span>
                 </div>
               </div>
-              <input type="range" id="rotate-slider" min="-180" max="180" step="1" value="0">
+              <input type="range" id="rotate-slider" min="-180" max="180" step="1" value="0" aria-labelledby="rotateLabel">
             </div>
           </div>
 
@@ -447,16 +452,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   </div>
 
   <!-- 로더 -->
-  <div id="loader">
+  <div id="loader" role="status" aria-live="polite">
     <div class="loader-box">
-      <div class="spinner"></div>
+      <div class="spinner" aria-hidden="true"></div>
       <p>이미지 분할 중</p>
       <small>잠시만 기다려 주세요...</small>
     </div>
   </div>
 
-  <!-- 토스트 -->
-  <div id="fd-toast"></div>
+  <!-- 토스트는 공용 VUI.toast -->
 
   <script is:inline="">
     const STORAGE_KEY = 'grid_maker_pro_settings_v5';
@@ -552,8 +556,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       el.ratioContainer.innerHTML = '';
       ['1:1', '4:5', ...state.customRatios].forEach(r => {
         const btn = document.createElement('button');
+        btn.type = 'button';
         btn.className = 'preset-btn';
         btn.textContent = r;
+        btn.setAttribute('aria-label', `비율 ${r}`);
         btn.dataset.id = `ratio-${r}`;
         btn.onclick = () => changeRatio(r);
         el.ratioContainer.appendChild(btn);
@@ -562,8 +568,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       el.presetContainer.innerHTML = '';
       [...defaultGridPresets, ...state.customGrids].forEach(p => {
         const btn = document.createElement('button');
+        btn.type = 'button';
         btn.className = 'preset-btn';
         btn.textContent = p.label;
+        btn.setAttribute('aria-label', `가로 ${p.c}칸 세로 ${p.r}칸`);
         btn.dataset.id = `grid-${p.c}-${p.r}`;
         btn.onclick = () => updateGrid(p.c, p.r);
         el.presetContainer.appendChild(btn);
@@ -574,16 +582,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     // ── 커스텀 입력 토글 ──
     function toggleInput(id) {
       const input = document.getElementById(id);
-      input.classList.toggle('show');
+      const toggleBtn = document.querySelector(`[aria-controls="${id}"]`);
+      const setOpen = (open) => {
+        input.classList.toggle('show', open);
+        if (toggleBtn) toggleBtn.setAttribute('aria-expanded', String(open));
+      };
+      setOpen(!input.classList.contains('show'));
       if (input.classList.contains('show')) {
         input.focus();
         input.onkeydown = (e) => {
           if (e.key === 'Enter') {
-            if (id === 'custom-ratio-input') addCustomRatio();
-            else addCustomGrid();
-            input.classList.remove('show');
+            e.preventDefault();   // 포커스를 + 버튼으로 옮긴 뒤 같은 Enter가 그 버튼을 다시 누르지 않게
+            const ok = id === 'custom-ratio-input' ? addCustomRatio() : addCustomGrid();
+            if (ok === false) { input.select(); return; }   // 잘못 입력: 칸을 열어 둔 채 고치게
+            setOpen(false);
+            if (toggleBtn) toggleBtn.focus();
           }
-          if (e.key === 'Escape') input.classList.remove('show');
+          if (e.key === 'Escape') { e.preventDefault(); setOpen(false); if (toggleBtn) toggleBtn.focus(); }
         };
       }
     }
@@ -593,8 +608,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (!raw) return;
       const pr = parseRatio(raw);
       if (!pr) {
-        showToast(`비율은 1~${RATIO_MAX} 사이 숫자 두 개로 입력해 주세요 (예: 16:9, 가로세로 차이 ${RATIO_SPREAD}배 이내)`);
-        return;
+        showToast(`비율은 1~${RATIO_MAX} 사이 숫자 두 개로 입력해 주세요 (예: 16:9, 가로세로 차이 ${RATIO_SPREAD}배 이내)`, 'error');
+        return false;
       }
       const val = `${pr[0]}:${pr[1]}`;
       if (!state.customRatios.includes(val) && val !== '1:1' && val !== '4:5') {
@@ -609,8 +624,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const match = raw.toLowerCase().match(/^(\d{1,3})\s*[x*×]\s*(\d{1,3})$/);
       const c = match ? +match[1] : 0, r = match ? +match[2] : 0;
       if (!validGridN(c) || !validGridN(r)) {
-        showToast(`칸 수는 가로·세로 각각 1~${GRID_MAX} 사이로 입력해 주세요 (예: 4×1)`);
-        return;
+        showToast(`칸 수는 가로·세로 각각 1~${GRID_MAX} 사이로 입력해 주세요 (예: 4×1)`, 'error');
+        return false;
       }
       if (!state.customGrids.find(g => g.c === c && g.r === r)) {
         state.customGrids.push({ label: `${c} × ${r}`, c, r });
@@ -686,6 +701,24 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     el.fileInput.onchange = (e) => handleFile(e.target.files[0]);
     el.uploadZone.onclick = () => el.fileInput.click();
+    el.uploadZone.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.fileInput.click(); }
+    });
+    // 키보드로 구도 조정: 화살표 = 10px 이동(Shift 50px), +/- = 확대·축소
+    el.previewBox.addEventListener('keydown', (e) => {
+      if (!state.image) return;
+      const step = e.shiftKey ? 50 : 10;
+      const k = e.key;
+      if (k === 'ArrowLeft') state.offsetX -= step;
+      else if (k === 'ArrowRight') state.offsetX += step;
+      else if (k === 'ArrowUp') state.offsetY -= step;
+      else if (k === 'ArrowDown') state.offsetY += step;
+      else if (k === '+' || k === '=') state.scale = Math.min(5, +(state.scale + 0.05).toFixed(2));
+      else if (k === '-' || k === '_') state.scale = Math.max(0.1, +(state.scale - 0.05).toFixed(2));
+      else return;
+      e.preventDefault();
+      updateSliderUI(); applyTransform();
+    });
     el.uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); el.uploadZone.classList.add('drag-over'); });
     el.uploadZone.addEventListener('dragleave', (e) => { if (!el.uploadZone.contains(e.relatedTarget)) el.uploadZone.classList.remove('drag-over'); });
     el.uploadZone.addEventListener('drop', (e) => {
@@ -758,6 +791,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       el.saveBtn.disabled = false;
       el.saveBtn.classList.add('ready');
       el.adjPanel.classList.remove('disabled');
+      el.adjPanel.inert = false;
 
       const [uw, uh] = state.ratio.split(':').map(Number);
       el.previewBox.style.aspectRatio = `${uw * state.cols} / ${uh * state.rows}`;
@@ -794,6 +828,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         return;
       }
       el.loader.classList.add('show');
+      el.saveBtn.disabled = true;
       const zip = new JSZip();
 
       const masterCanvas = document.createElement('canvas');
@@ -839,19 +874,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         link.download = `grid_pack_${Date.now()}.zip`;
         link.click();
         showToast('압축 파일이 저장되었습니다.');
-      } catch { showToast('오류가 발생했습니다.'); }
-      finally { el.loader.classList.remove('show'); }
+      } catch { showToast('압축 파일을 만들지 못했습니다. 다시 시도해 주세요.', 'error'); }
+      finally { el.loader.classList.remove('show'); el.saveBtn.disabled = false; el.saveBtn.focus(); }
     };
 
-    // ── 토스트 (design system 패턴) ──
-    let _toastTimer;
-    function showToast(msg) {
-      const el = document.getElementById('fd-toast');
-      el.textContent = msg;
-      el.classList.add('show');
-      clearTimeout(_toastTimer);
-      _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
-    }
+    // ── 토스트: 공용 VUI.toast (함수 이름은 그대로) ──
+    function showToast(msg, type) { VUI.toast(msg, type); }
 
     init();
   </script>

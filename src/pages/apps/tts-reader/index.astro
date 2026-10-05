@@ -53,8 +53,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       .fd-btn {
         display: inline-flex; align-items: center; justify-content: center; gap: 6px;
         padding: 10px 14px; border-radius: 10px; border: none;
-        font-size: 13px; font-weight: 600; cursor: pointer;
-        transition: all 0.15s; min-height: 40px;
+        font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+        transition: all 0.15s; min-height: 44px;
       }
       .fd-btn-primary { background: var(--primary); color: #fff; }
       .fd-btn-primary:hover { background: var(--primary-h); }
@@ -80,20 +80,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       .field-grid-2 .fd-label:first-of-type { margin-top: 0; }
 
       .opt-check {
-        display: flex; align-items: center; gap: 8px;
-        font-size: 13px; color: var(--fg); cursor: pointer;
-        padding: 6px 0;
+        display: flex; align-items: center; gap: 10px;
+        font-size: 14px; color: var(--fg); cursor: pointer;
+        padding: 6px 0; min-height: 44px;
       }
-      .opt-check input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+      .opt-check input { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--primary); cursor: pointer; }
 
       .range-row { display: flex; align-items: center; justify-content: space-between; }
       .range-val { font-size: 12px; font-weight: 700; color: var(--primary); }
       input[type="range"] {
-        -webkit-appearance: none; width: 100%; margin-top: 6px;
-        height: 4px; background: var(--border); border-radius: 99px; outline: none;
+        -webkit-appearance: none; width: 100%; margin: 12px 0;
+        height: 4px; background: var(--border); border-radius: 99px;
       }
+      input[type="range"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 8px; }
       input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none; width: 16px; height: 16px;
+        -webkit-appearance: none; width: 24px; height: 24px;
         background: var(--primary); border-radius: 50%; cursor: pointer;
         border: 2px solid var(--bg); box-shadow: 0 2px 6px rgba(0,111,238,0.3);
       }
@@ -108,19 +109,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       #text { flex: 1; min-height: 400px; }
       #text::selection { background: rgba(0,111,238,0.35); color: var(--fg); }
       #text::-moz-selection { background: rgba(0,111,238,0.35); color: var(--fg); }
-      .hint { font-size: 11.5px; color: var(--fg-muted); line-height: 1.6; text-align: center; min-height: 2.8em; }
+      .hint { font-size: 13px; color: var(--fg-muted); line-height: 1.6; text-align: center; min-height: 2.8em; }
       .hint code { background: var(--bg-sec); padding: 1px 5px; border-radius: 4px; }
-
-      #fd-toast {
-        position: fixed; bottom: 2rem; left: 50%;
-        transform: translateX(-50%) translateY(1rem);
-        background: var(--fg); color: var(--bg);
-        padding: 10px 18px; border-radius: 10px;
-        font-size: 13px; font-weight: 600;
-        opacity: 0; pointer-events: none;
-        transition: opacity 0.2s, transform 0.2s; z-index: 9999;
-      }
-      #fd-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+      /* 토스트는 공용 VUI.toast(public/common/ui.js) */
     </style>
   </Fragment>
 
@@ -139,23 +130,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <div class="fd-card">
         <div class="fd-section-title">재생</div>
         <div class="btn-grid-2">
-          <button id="playPause" class="fd-btn fd-btn-primary">▶ 재생</button>
-          <button id="stop" class="fd-btn fd-btn-ghost" disabled>■ 중지</button>
+          <button type="button" id="playPause" class="fd-btn fd-btn-primary">▶ 재생</button>
+          <button type="button" id="stop" class="fd-btn fd-btn-ghost" disabled>■ 중지</button>
         </div>
 
-        <label class="fd-label">음성 (Voice)</label>
+        <label class="fd-label" for="voice">음성 (Voice)</label>
         <select id="voice" class="fd-input"></select>
 
         <div class="field-grid-2">
           <div>
-            <label class="fd-label">
-              <span class="range-row"><span>속도</span><span class="range-val" id="rateVal">1.0</span></span>
+            <label class="fd-label" for="rate">
+              <span class="range-row"><span>속도</span><span class="range-val" id="rateVal" aria-hidden="true">1.0</span></span>
             </label>
             <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1">
           </div>
           <div>
-            <label class="fd-label">
-              <span class="range-row"><span>음높이</span><span class="range-val" id="pitchVal">1.0</span></span>
+            <label class="fd-label" for="pitch">
+              <span class="range-row"><span>음높이</span><span class="range-val" id="pitchVal" aria-hidden="true">1.0</span></span>
             </label>
             <input type="range" id="pitch" min="0" max="2" step="0.1" value="1">
           </div>
@@ -171,22 +162,20 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
       <div class="fd-card">
         <div class="fd-section-title">다운로드</div>
-        <button id="record" class="fd-btn fd-btn-danger">⬇ MP3로 다운로드</button>
-        <p class="hint-mini">공유 창에서 <b>전체 화면</b> + <b>시스템 오디오 공유</b>를 선택해야 소리가 녹음됩니다.</p>
+        <button type="button" id="record" class="fd-btn fd-btn-danger" aria-describedby="recordHint">⬇ MP3로 다운로드</button>
+        <p class="hint-mini" id="recordHint">공유 창에서 <b>전체 화면</b> + <b>시스템 오디오 공유</b>를 선택해야 소리가 녹음됩니다.</p>
       </div>
     </aside>
 
     <!-- ── 메인: 텍스트 입력 ── -->
     <div class="main-col">
+      <label for="text" class="visually-hidden">읽을 텍스트</label>
       <textarea id="text" class="fd-textarea" placeholder="여기에 영어(또는 다른 언어) 텍스트를 붙여넣으세요...">Hello! This is a local text-to-speech reader running entirely in your browser.</textarea>
-      <p class="hint" id="mainStatus"><span id="statusText">대기 중</span><span id="statusTimer"></span></p>
+      <p class="hint" id="mainStatus"><span id="statusText" role="status" aria-live="polite">대기 중</span><span id="statusTimer" aria-hidden="true"></span></p>
     </div>
   </div>
   </div>
   </main>
-
-  <!-- 토스트 -->
-  <div id="fd-toast"></div>
 
   <script type="module" is:inline>
 // MP3 인코더는 외부 CDN(esm.sh)에서 동적으로 불러온다. 정적 import로 두면 CDN이 막혔을 때
@@ -656,14 +645,8 @@ function encodeToMp3(audioBuffer) {
   return new Blob(mp3Data, { type: 'audio/mp3' });
 }
 
-let _toastTimer;
-function showToast(msg) {
-  const el = document.getElementById('fd-toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
-}
+// 공용 토스트(VUI.toast) — 함수 이름은 그대로 두어 호출부는 바꾸지 않음
+function showToast(msg, type) { VUI.toast(msg, type); }
 
 recordBtn.addEventListener('click', async () => {
   const segments = processText(textEl.value, getOpts());
@@ -760,7 +743,7 @@ recordBtn.addEventListener('click', async () => {
     showToast('MP3 다운로드 완료');
   } catch (e) {
     statusEl.textContent = '변환 오류: ' + e.message;
-    showToast('변환 중 오류가 발생했습니다.');
+    showToast('변환 중 오류가 발생했습니다.', 'error');
   } finally {
     recordBtn.disabled = false;
     playPauseBtn.disabled = false;

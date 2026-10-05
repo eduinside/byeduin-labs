@@ -485,6 +485,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
             const handleCopy = () => {
                 const latex = generateLatex();
+                // 공용 VUI.copy(클립보드 → execCommand). 실패하면 코드 영역을 선택해 직접 복사하게 안내
+                if (window.VUI && VUI.copy) {
+                    VUI.copy(latex, '코드를 복사했어요 ✓').then((ok) => {
+                        if (ok) { setIsCopied(true); setTimeout(() => setIsCopied(false), 2000); return; }
+                        VUI.toast('자동 복사가 안 돼요. 코드를 길게 눌러 직접 복사해 주세요.', 'error');
+                    });
+                    return;
+                }
                 try {
                     const textArea = document.createElement("textarea");
                     textArea.value = latex;
@@ -562,6 +570,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                                 value={text}
                                 onChange={(e) => setText(e.target.value)}
                                 placeholder="여기에 텍스트를 입력하세요..."
+                                aria-label="수식으로 바꿀 텍스트"
                                 className="ns-textarea"
                             />
                         </div>
@@ -574,25 +583,25 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                             <div className="ns-label-row" style={{marginBottom:'16px'}}>
                                 <label className="ns-label" style={{margin:0}}>정렬</label>
                                 <div className="ns-align-btns">
-                                    <button onClick={() => setAlignment('l')} className={`ns-align-btn ${alignment === 'l' ? 'active' : ''}`} title="왼쪽"><AlignLeft size={14}/></button>
-                                    <button onClick={() => setAlignment('c')} className={`ns-align-btn ${alignment === 'c' ? 'active' : ''}`} title="가운데"><AlignCenter size={14}/></button>
-                                    <button onClick={() => setAlignment('r')} className={`ns-align-btn ${alignment === 'r' ? 'active' : ''}`} title="오른쪽"><AlignRight size={14}/></button>
+                                    <button type="button" onClick={() => setAlignment('l')} className={`ns-align-btn ${alignment === 'l' ? 'active' : ''}`} title="왼쪽" aria-label="왼쪽 정렬" aria-pressed={alignment === 'l'}><AlignLeft size={14}/></button>
+                                    <button type="button" onClick={() => setAlignment('c')} className={`ns-align-btn ${alignment === 'c' ? 'active' : ''}`} title="가운데" aria-label="가운데 정렬" aria-pressed={alignment === 'c'}><AlignCenter size={14}/></button>
+                                    <button type="button" onClick={() => setAlignment('r')} className={`ns-align-btn ${alignment === 'r' ? 'active' : ''}`} title="오른쪽" aria-label="오른쪽 정렬" aria-pressed={alignment === 'r'}><AlignRight size={14}/></button>
                                 </div>
                             </div>
 
                             {/* 색상 */}
                             <label className="ns-label">색상</label>
                             <div className="ns-tab-group" style={{marginBottom:'10px'}}>
-                                <button onClick={() => setColorMode('text')} className={`ns-tab ${colorMode === 'text' ? 'active' : ''}`}>
+                                <button type="button" onClick={() => setColorMode('text')} className={`ns-tab ${colorMode === 'text' ? 'active' : ''}`} aria-pressed={colorMode === 'text'}>
                                     <Type size={13}/> 글자색
                                 </button>
-                                <button onClick={() => setColorMode('background')} className={`ns-tab ${colorMode === 'background' ? 'active' : ''}`}>
+                                <button type="button" onClick={() => setColorMode('background')} className={`ns-tab ${colorMode === 'background' ? 'active' : ''}`} aria-pressed={colorMode === 'background'}>
                                     <PaintBucket size={13}/> 배경색
                                 </button>
                             </div>
                             <div className="ns-color-grid">
                                 {colorMode === 'background' && (
-                                    <button onClick={() => setBgColor('transparent')} className={`ns-swatch ns-swatch-transparent ${bgColor === 'transparent' ? 'selected' : ''}`} title="투명"/>
+                                    <button type="button" onClick={() => setBgColor('transparent')} className={`ns-swatch ns-swatch-transparent ${bgColor === 'transparent' ? 'selected' : ''}`} title="투명" aria-label="배경 투명" aria-pressed={bgColor === 'transparent'}/>
                                 )}
                                 {colors.map((c) => {
                                     const isActive = colorMode === 'text' ? textColor === c.value : bgColor === c.value;
@@ -600,8 +609,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                                     const displayClass = colorMode === 'text' ? c.class : c.bgClass;
                                     if (colorMode === 'background' && c.value === 'default') return null;
                                     return (
-                                        <button key={c.value} onClick={() => setFn(c.value)}
-                                            className={`ns-swatch ${displayClass} ${isActive ? 'selected' : ''}`} title={c.name}>
+                                        <button type="button" key={c.value} onClick={() => setFn(c.value)}
+                                            className={`ns-swatch ${displayClass} ${isActive ? 'selected' : ''}`} title={c.name}
+                                            aria-label={(colorMode === 'text' ? '글자색 ' : '배경색 ') + c.name} aria-pressed={isActive}>
                                             {c.value === 'custom' && (
                                                 <div className="ns-custom-color">
                                                     <input type="color" className="ns-color-input"
@@ -626,7 +636,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                             <label className="ns-label" style={{marginTop:'16px'}}>크기 (Size)</label>
                             <div className="ns-tab-group">
                                 {sizes.map(s => (
-                                    <button key={s.value} onClick={() => setSize(s.value)} className={`ns-tab ${size === s.value ? 'active' : ''}`}>{s.name}</button>
+                                    <button type="button" key={s.value} onClick={() => setSize(s.value)} className={`ns-tab ${size === s.value ? 'active' : ''}`} aria-pressed={size === s.value}>{s.name}</button>
                                 ))}
                             </div>
 
@@ -634,7 +644,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                             <label className="ns-label" style={{marginTop:'16px'}}>글꼴 스타일</label>
                             <div className="ns-font-grid">
                                 {fontStyles.map(style => (
-                                    <button key={style.value} onClick={() => setFontStyle(style.value)}
+                                    <button type="button" key={style.value} onClick={() => setFontStyle(style.value)} aria-pressed={fontStyle === style.value}
                                         className={`ns-font-btn ${fontStyle === style.value ? 'active' : ''}`}
                                         title={style.note || style.name}>
                                         {style.name}
@@ -663,7 +673,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                             <div className="ns-card-title">생성된 코드 (Notion용)</div>
                             <div className="ns-code-wrap">
                                 <pre className="ns-code">{currentLatex}</pre>
-                                <button onClick={handleCopy} className={`ns-copy-btn ${isCopied ? 'copied' : ''}`} title="복사">
+                                <button type="button" onClick={handleCopy} className={`ns-copy-btn ${isCopied ? 'copied' : ''}`} title="복사" aria-label={isCopied ? '복사됨' : '코드 복사'}>
                                     {isCopied ? <Check size={16}/> : <Copy size={16}/>}
                                 </button>
                             </div>

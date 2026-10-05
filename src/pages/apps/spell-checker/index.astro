@@ -44,13 +44,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       align-items: center;
       margin-top: 8px;
     }
-    .char-count { font-size: 12px; color: var(--fg-muted); }
-    .char-count.warn { color: #f59e0b; }
+    .char-count { font-size: 13px; color: var(--fg-muted); }
+    .char-count.warn { color: #b45309; }
+    [data-theme="dark"] .char-count.warn { color: #f59e0b; }
 
     .btn {
+      min-height: 44px;
       padding: 9px 22px;
       border-radius: 8px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
       transition: opacity .15s, border-color .15s, color .15s;
@@ -81,7 +83,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .alert { display: none; margin-top: 14px; padding: 12px 14px; border-radius: 8px; font-size: 13px; }
+    .alert { display: none; margin-top: 14px; padding: 12px 14px; border-radius: 8px; font-size: 14px; }
     .alert.show { display: block; }
     .alert-error { background: #fee2e2; color: #991b1b; }
     [data-theme="dark"] .alert-error { background: #7f1d1d; color: #fca5a5; }
@@ -161,26 +163,27 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <p class="app-desc">AI가 한국어 맞춤법·문법을 교정하고 수정 이유를 설명합니다.</p>
     </div>
 
-    <textarea id="inputText" placeholder="교정할 텍스트를 입력하세요 (최대 3000자)…" maxlength="3000"></textarea>
+    <label for="inputText" class="visually-hidden">교정할 텍스트</label>
+    <textarea id="inputText" placeholder="교정할 텍스트를 입력하세요 (최대 3000자)…" maxlength="3000" aria-describedby="charCount"></textarea>
     <div class="input-footer">
       <span class="char-count" id="charCount">0 / 3,000</span>
-      <button class="btn btn-primary" id="checkBtn" onclick="runCheck()">검사하기</button>
+      <button type="button" class="btn btn-primary" id="checkBtn" onclick="runCheck()">검사하기</button>
     </div>
 
-    <div class="status-row" id="loadingRow">
-      <span class="spinner"></span><span>AI가 교정 중입니다…</span>
+    <div class="status-row" id="loadingRow" role="status" aria-live="polite">
+      <span class="spinner" aria-hidden="true"></span><span id="loadingText"></span>
     </div>
-    <div class="alert alert-error" id="errorAlert"></div>
+    <div class="alert alert-error" id="errorAlert" role="alert"></div>
 
-    <div class="result-panel" id="resultPanel">
-      <div class="result-meta">
+    <div class="result-panel" id="resultPanel" aria-labelledby="resultPill">
+      <div class="result-meta" role="status" aria-live="polite">
         <span class="pill" id="resultPill"></span>
         <span class="result-note" id="resultNote"></span>
       </div>
       <div class="corrected-box" id="correctedBox"></div>
       <div class="btn-row">
-        <button class="btn btn-ghost" onclick="copyResult(this)">교정본 복사</button>
-        <button class="btn btn-ghost" onclick="toggleGas()">📋 GAS 연동</button>
+        <button type="button" class="btn btn-ghost" id="copyBtn" onclick="copyResult(this)">교정본 복사</button>
+        <button type="button" class="btn btn-ghost" id="gasBtn" onclick="toggleGas()" aria-expanded="false" aria-controls="gasPanel">📋 GAS 연동</button>
       </div>
       <div class="error-list" id="errorList"></div>
     </div>
@@ -214,20 +217,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     async function runCheck() {
       const text = inputText.value.trim();
-      if (!text) return;
+      if (!text) { inputText.focus(); VUI.toast('교정할 텍스트를 먼저 입력해 주세요.'); return; }
       checkBtn.disabled = true;
       loadingRow.classList.add('show');
+      document.getElementById('loadingText').textContent = 'AI가 교정 중입니다…';
       errorAlert.classList.remove('show');
+      errorAlert.textContent = '';
       resultPanel.classList.remove('show');
       gasPanel.hidden = true;
+      document.getElementById('gasBtn').setAttribute('aria-expanded', 'false');
       try {
-        const res = await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text }),
-        });
-        const data = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(koError(data && data.error, res.status));
+        let data;
+        try {
+          data = await VUI.apiFetch(API_URL, { json: { text }, timeout: 45000 });
+        } catch (e) {
+          // 400(글자 수 등)은 이 앱에 맞는 안내로, 나머지(시간 초과·429·5xx·오프라인)는 공용 한국어 문구
+          throw new Error(e.status === 400 ? koError(e.serverMessage, 400) : e.message);
+        }
         // 응답 형식 검사 — 형식이 다르면 영문 런타임 오류 대신 한국어 안내
         if (!data || typeof data.corrected !== 'string') {
           throw new Error('검사 결과를 읽지 못했습니다. 잠시 후 다시 시도해 주세요.');
@@ -244,6 +250,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       } finally {
         checkBtn.disabled = false;
         loadingRow.classList.remove('show');
+        document.getElementById('loadingText').textContent = '';
       }
     }
 
@@ -294,24 +301,26 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     // 버튼은 클릭 시점에 인자로 받는다(Promise 콜백 안에서는 window.event가 비어 있어 표시가 안 뜨던 문제)
+    // 복사는 공용 VUI.copy(클립보드 → execCommand 순서로 시도, 성공 시 토스트)
     let copyTimer = null;
-    function copyResult(btn) {
+    async function copyResult(btn) {
       const text = correctedBox.innerText;
-      const done = () => {
-        if (!btn) return;
-        btn.textContent = '복사됨 ✓';
-        clearTimeout(copyTimer);
-        copyTimer = setTimeout(() => { btn.textContent = '교정본 복사'; }, 1500);
-      };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(done, () => prompt('아래 내용을 복사하세요:', text));
-      } else {
-        prompt('아래 내용을 복사하세요:', text);
+      const ok = await VUI.copy(text, '교정본을 복사했어요 ✓');
+      if (!ok) {
+        VUI.toast('자동 복사가 안 돼요. 교정본을 길게 눌러 직접 복사해 주세요.', 'error');
+        const r = document.createRange(); r.selectNodeContents(correctedBox);
+        const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        return;
       }
+      if (!btn) return;
+      btn.textContent = '복사됨 ✓';
+      clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => { btn.textContent = '교정본 복사'; }, 1500);
     }
 
     function toggleGas() {
       gasPanel.hidden = !gasPanel.hidden;
+      document.getElementById('gasBtn').setAttribute('aria-expanded', String(!gasPanel.hidden));
     }
 
     document.getElementById('gasCode').textContent =

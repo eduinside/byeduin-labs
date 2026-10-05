@@ -22,7 +22,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
     .panel-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-    label.field-label { display: block; font-size: 13px; font-weight: 500; color: var(--fg-muted); margin-bottom: 6px; }
+    .field-label { display: block; font-size: 13px; font-weight: 500; color: var(--fg-muted); margin-bottom: 6px; }
     .hero-input { margin-bottom: 14px; font-family: 'JetBrains Mono', 'Consolas', monospace; }
     .hero-input.no-mb { margin-bottom: 0; }
     select.hero-input { font-family: inherit; }
@@ -55,9 +55,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       padding: 16px 20px; margin-bottom: 16px;
     }
     .guide-header {
-      display: flex; align-items: center; gap: 8px; width: 100%;
+      display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px;
       background: none; border: none; padding: 0; cursor: pointer;
-      font-size: 12px; font-weight: 700; color: var(--primary); text-align: left;
+      font-size: 14px; font-weight: 700; color: var(--primary); text-align: left; font-family: inherit;
     }
     .guide-header .chevron { margin-left: auto; font-size: 11px; color: var(--fg-muted); transition: transform 0.2s; }
     .guide.is-open .guide-header .chevron { transform: rotate(180deg); }
@@ -70,14 +70,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .guide a:hover { text-decoration: underline; }
 
     .verify-row { display: flex; gap: 8px; margin-bottom: 14px; }
-    .verify-row .hero-input { margin-bottom: 0; flex: 1; }
+    .verify-row .hero-input { margin-bottom: 0; flex: 1; min-width: 0; }
+    .verify-row .hero-btn { min-height: 44px; white-space: nowrap; }
     .verify-result { font-size: 12.5px; margin-bottom: 4px; min-height: 18px; }
     .verify-result.ok { color: var(--success); }
     .verify-result.err { color: var(--danger); }
 
     .options { display: flex; gap: 8px; margin-bottom: 14px; }
     .opt-btn {
-      flex: 1; padding: 9px; background: var(--bg);
+      flex: 1; padding: 9px; min-height: 44px; background: var(--bg);
       border: 1px solid var(--border); border-radius: 0.75rem;
       color: var(--fg-muted); font-size: 13px; font-family: inherit; cursor: pointer;
       transition: all 0.15s; text-align: center;
@@ -176,17 +177,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   </div>
 
   <div class="guide is-open" id="guide">
-    <button type="button" class="guide-header" onclick="toggleGuide()" aria-expanded="true">
+    <button type="button" class="guide-header" onclick="toggleGuide()" aria-expanded="true" aria-controls="guideBody">
       <span>📋 API 키 · Board ID 발급 방법 (최초 1회)</span>
-      <span class="chevron">▾</span>
+      <span class="chevron" aria-hidden="true">▾</span>
     </button>
-    <div class="guide-body">
+    <div class="guide-body" id="guideBody">
       <ol>
-        <li><a href="https://padlet.com/dashboard" target="_blank">패들렛 대시보드</a>에 로그인 → 업로드할 보드를 엽니다.</li>
+        <li><a href="https://padlet.com/dashboard" target="_blank" rel="noopener">패들렛 대시보드</a>에 로그인 → 업로드할 보드를 엽니다.</li>
         <li>보드 화면 우측 상단 <code>···</code>(더보기) 메뉴 → <code>Developer</code>를 클릭합니다.</li>
         <li>열린 패널에서 <code>Generate</code>(또는 <code>Copy</code>) 버튼으로 API 키를 발급/복사합니다. 계정당 키는 1개이며, 이 계정이 관리자인 모든 보드에 재사용할 수 있습니다.</li>
         <li>같은 패널이나 보드 URL 끝부분에서 <b>Board ID</b>(16자리 영숫자)를 복사합니다. 이 앱에는 보드 URL을 그대로 붙여넣어도 자동으로 인식합니다.</li>
-        <li>API 키를 계정 설정에서 바로 발급하려면 <a href="https://padlet.com/dashboard/settings/developers" target="_blank">Settings → Developer</a> 페이지를 이용하세요.</li>
+        <li>API 키를 계정 설정에서 바로 발급하려면 <a href="https://padlet.com/dashboard/settings/developers" target="_blank" rel="noopener">Settings → Developer</a> 페이지를 이용하세요.</li>
       </ol>
     </div>
   </div>
@@ -197,32 +198,32 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <div class="panel">
         <div class="panel-title">연결 설정</div>
 
-        <label class="field-label">패들렛 API 키</label>
-        <input type="password" id="apiKey" class="hero-input" placeholder="Developer 패널에서 발급한 키" autocomplete="off">
+        <label class="field-label" for="apiKey">패들렛 API 키</label>
+        <input type="password" id="apiKey" class="hero-input" placeholder="Developer 패널에서 발급한 키" autocomplete="off" aria-describedby="apiKeyNote">
 
-        <div class="security-note">
-          <span class="icon">🔒</span>
+        <div class="security-note" id="apiKeyNote">
+          <span class="icon" aria-hidden="true">🔒</span>
           <span>API 키는 브라우저에서 이 서버의 프록시 함수로만 전달되며, 서버에 저장되거나 로그에 기록되지 않습니다.</span>
         </div>
 
-        <label class="field-label">Board ID (또는 보드 URL)</label>
+        <label class="field-label" for="boardId">Board ID (또는 보드 URL)</label>
         <div class="verify-row">
           <input type="text" id="boardId" class="hero-input" placeholder="abcd1234efgh5678 또는 https://padlet.com/.../제목-abcd1234efgh5678">
-          <button class="hero-btn hero-btn-ghost" id="verifyBtn" onclick="verifyBoard()">연결 확인</button>
+          <button type="button" class="hero-btn hero-btn-ghost" id="verifyBtn" onclick="verifyBoard()">연결 확인</button>
         </div>
-        <div class="verify-result" id="verifyResult"></div>
+        <div class="verify-result" id="verifyResult" role="status" aria-live="polite"></div>
       </div>
 
       <div class="panel">
         <div class="panel-title">입력 방식</div>
 
-        <label class="field-label">텍스트 구분 방식</label>
-        <div class="options">
-          <button class="opt-btn active" id="modeSimpleBtn" onclick="setMode('simple')">간단 모드 (줄바꿈=1개)</button>
-          <button class="opt-btn" id="modeDelimBtn" onclick="setMode('delim')">구분자 모드 (제목+본문+링크)</button>
+        <div class="field-label" id="modeLabel">텍스트 구분 방식</div>
+        <div class="options" role="group" aria-labelledby="modeLabel">
+          <button type="button" class="opt-btn active" id="modeSimpleBtn" onclick="setMode('simple')" aria-pressed="true">간단 모드 (줄바꿈=1개)</button>
+          <button type="button" class="opt-btn" id="modeDelimBtn" onclick="setMode('delim')" aria-pressed="false">구분자 모드 (제목+본문+링크)</button>
         </div>
 
-        <label class="field-label">전체 항목 공통 색상</label>
+        <label class="field-label" for="color">전체 항목 공통 색상</label>
         <select id="color" class="hero-input no-mb">
           <option value="">지정 안 함</option>
           <option value="red">🔴 빨강</option>
@@ -237,26 +238,26 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <!-- Right Column: 데이터 입력 및 실행 결과 -->
     <div class="pbu-col-right">
       <div class="panel">
-        <div class="panel-title">붙여넣기</div>
+        <div class="panel-title" id="bulkLabel">붙여넣기</div>
         <div class="textarea-wrap">
-          <textarea id="bulkText" class="fd-textarea" placeholder="" oninput="updateParseCount()"></textarea>
+          <textarea id="bulkText" class="fd-textarea" placeholder="" oninput="updateParseCount()" aria-labelledby="bulkLabel" aria-describedby="parseCount"></textarea>
         </div>
         <div class="parse-count" id="parseCount">0개 항목으로 인식됨</div>
       </div>
 
       <div class="progress-wrap" id="progressWrap">
         <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
-        <div class="progress-text" id="progressText">준비 중...</div>
+        <div class="progress-text" id="progressText" role="status" aria-live="polite">준비 중...</div>
       </div>
 
-      <div class="summary" id="summary"></div>
+      <div class="summary" id="summary" role="status" aria-live="polite"></div>
 
       <div class="log-wrap" id="logWrap">
-        <div class="log-header">진행 로그</div>
-        <div class="log" id="log"></div>
+        <div class="log-header" id="logLabel">진행 로그</div>
+        <div class="log" id="log" role="log" aria-labelledby="logLabel" tabindex="0"></div>
       </div>
 
-      <button class="hero-btn btn-run" id="runBtn" onclick="onRunClick()">🚀 패들렛에 일괄 업로드</button>
+      <button type="button" class="hero-btn btn-run" id="runBtn" onclick="onRunClick()">🚀 패들렛에 일괄 업로드</button>
     </div>
   </div>
 
@@ -282,6 +283,8 @@ function setMode(m) {
   mode = m;
   document.getElementById('modeSimpleBtn').classList.toggle('active', m === 'simple');
   document.getElementById('modeDelimBtn').classList.toggle('active', m === 'delim');
+  document.getElementById('modeSimpleBtn').setAttribute('aria-pressed', String(m === 'simple'));
+  document.getElementById('modeDelimBtn').setAttribute('aria-pressed', String(m === 'delim'));
   document.getElementById('bulkText').placeholder = PLACEHOLDERS[m];
   updateParseCount();
 }
@@ -377,24 +380,17 @@ function onRunClick() {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+// 공용 VUI.apiFetch: 시간 제한·네트워크 오류·5xx를 한국어 문구로. 패들렛 고유 상태만 따로 안내
 async function padletCall(apiKey, boardId, action, item) {
-  const resp = await fetch('/api/padlet', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apiKey, boardId, action, item }),
-  });
-  const data = await resp.json().catch(() => null);
-  if (!resp.ok) {
-    let msg = data?.error || `오류 ${resp.status}`;
-    if (resp.status === 401) msg = '401 — API 키가 올바르지 않습니다. 키를 다시 확인해 주세요.';
-    else if (resp.status === 403) msg = '403 — 보드 관리자 권한이 없거나, 무료/그룹(조직) 계정은 API를 사용할 수 없습니다.';
-    else if (resp.status === 404) msg = '404 — 보드를 찾을 수 없습니다. Board ID를 다시 확인해 주세요.';
-    else if (resp.status === 429) msg = '429 — 요청이 너무 잦습니다.';
-    const err = new Error(msg);
-    err.status = resp.status;
-    throw err;
+  try {
+    return await VUI.apiFetch('/api/padlet', { json: { apiKey, boardId, action, item }, timeout: 30000 });
+  } catch (e) {
+    if (e.status === 401) e.message = '401 — API 키가 올바르지 않습니다. 키를 다시 확인해 주세요.';
+    else if (e.status === 403) e.message = '403 — 보드 관리자 권한이 없거나, 무료/그룹(조직) 계정은 API를 사용할 수 없습니다.';
+    else if (e.status === 404) e.message = '404 — 보드를 찾을 수 없습니다. Board ID를 다시 확인해 주세요.';
+    else if (e.status === 429) e.message = '429 — 요청이 너무 잦습니다. 잠시 후 다시 해 주세요.';
+    throw e;
   }
-  return data;
 }
 
 async function verifyBoard() {
