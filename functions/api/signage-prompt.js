@@ -1,6 +1,9 @@
 import { generateContent } from './_ai.js';
+import { appClosed } from './_closed.js';
+const APP_CLOSED = true;
 
 export async function onRequest(ctx) {
+  if (APP_CLOSED) return appClosed(); // 비공개 앱 — functions/api/_closed.js 참고
   if (ctx.request.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
   }

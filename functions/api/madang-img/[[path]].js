@@ -9,8 +9,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { CODE_RE, BOARD_RE, ownerToken, parseSettings, checkAccess, madangR2Key } from '../_madang-common.js';
+import { appClosed } from '../_closed.js';
+const APP_CLOSED = true;
 
 export async function onRequestGet(ctx) {
+  if (APP_CLOSED) return appClosed(); // 비공개 앱 — functions/api/_closed.js 참고
   const { request, env, params } = ctx;
   const db = env.BYEDUIN_DB;
   const r2 = env.MEDIA_R2;

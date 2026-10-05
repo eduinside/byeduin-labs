@@ -25,6 +25,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { CODE_RE, BOARD_RE, json, nowIso, parseSettings, isExpired, ownerToken, authorToken, pinHashOf, checkAccess, madangR2Key, madangR2Prefix } from './_madang-common.js';
+import { appClosed } from './_closed.js';
+const APP_CLOSED = true;
 
 const BOARD_ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const PIN_RE    = /^[0-9]{4,8}$/;
@@ -165,6 +167,7 @@ function boardMeta(board, settings) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 export async function onRequest(ctx) {
+  if (APP_CLOSED) return appClosed(); // 비공개 앱 — functions/api/_closed.js 참고
   const { request, env } = ctx;
   const db = env.BYEDUIN_DB;
   if (!db) return json({ error: 'D1 바인딩(BYEDUIN_DB)이 설정되지 않았습니다.' }, 500);

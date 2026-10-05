@@ -71,9 +71,9 @@
 | 앱 | 경로 | 설명 |
 |---|---|---|
 | **도서 정보 나눔** | `/apps/book-share/` | ISBN으로 도서 정보 자동 조회, 파일 저장 및 링크 공유 |
-| **Bubble Chat** | `/apps/bubble-chat/` | P2P 기반 실시간 채팅, 코드 공유로 쉽게 접속 |
+| **Bubble Chat** | `/apps/bubble-chat/` (비공개) | P2P 기반 실시간 채팅, 코드 공유로 쉽게 접속 |
 | **에듀링크** | `https://dgedu.link/` | 교육용 단축주소·설문조사·체험 지도 서비스 (모달) |
-| **마당** | `/apps/madang/` | QR로 초대하면 응답이 실시간 카드로 쌓이는 패들렛형 보드 — 텍스트·HTML·사진·그림 카드, 이모지 반응, 저학년 모드(자동 별명), 교사 통제(사전승인·잠금·이름숨김·발표모드), 코드=신원·OpenAI 자동 검열 |
+| **마당** | `/apps/madang/` (비공개) | QR로 초대하면 응답이 실시간 카드로 쌓이는 패들렛형 보드 — 텍스트·HTML·사진·그림 카드, 이모지 반응, 저학년 모드(자동 별명), 교사 통제(사전승인·잠금·이름숨김·발표모드), 코드=신원·OpenAI 자동 검열 |
 | **에듀팀** | `https://team.dgedu.link` | 팀원의 일정·노트·자료를 쉽게 공유하는 팀 전용 대시보드 (모달) |
 
 #### 🎨 크리에이티브
@@ -81,17 +81,17 @@
 |---|---|---|
 | **YT Thumbnail** | `/apps/yt-thumb/` | 유튜브 썸네일 추출기 |
 | **Grid Maker** | `/apps/grid-maker/` | 이미지를 그리드로 분할 저장 |
-| **Signage Maker** | `/apps/signage-maker/` | 사이니지용 세로 이미지 AI 생성기 (Gemini) |
+| **Signage Maker** | `/apps/signage-maker/` (비공개) | 사이니지용 세로 이미지 AI 생성기 (Gemini) |
 | **패들렛 일괄 업로더** | `/apps/padlet-bulk-uploader/` | 텍스트를 붙여넣으면 내 패들렛 보드에 항목을 한 번에 업로드 (Padlet API) |
 | **로컬 TTS 리더** | `/apps/tts-reader/` | 브라우저 내장 음성으로 텍스트를 읽어주는 완전 로컬 TTS, MP3 다운로드 지원 |
 
 #### 📐 노션도구
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **임베드 생성기** | `/apps/embed/` | 외부 URL을 반응형 iframe으로 감싸 노션 임베드 블록에 삽입 |
+| **임베드 생성기** | `/apps/embed/` (비공개) | 외부 URL을 반응형 iframe으로 감싸 노션 임베드 블록에 삽입 |
 | **Notion Image DL** | `/apps/notion-image-downloader/` | 노션 DB 이미지 일괄 다운로드 |
 | **Notion Styler** | `/apps/notion-styler/` | 노션 수식 LaTeX 스타일러 |
-| **빠른 버튼 만들기** | `/apps/shortcut/` | 복사한 웹 링크를 앱을 바로 여는 딥링크 버튼으로 변환·저장 (모바일 런처) |
+| **빠른 버튼 만들기** | `/apps/shortcut/` (비공개) | 복사한 웹 링크를 앱을 바로 여는 딥링크 버튼으로 변환·저장 (모바일 런처) |
 
 > 홈 화면에는 외부 연동·확장 항목(에듀링크, Content ID Viewer, MP4 Finder, Login Helper, 어린이 쉬운 사전, 에듀팀)도 모달로 노출됩니다.
 
