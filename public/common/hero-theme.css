@@ -19,6 +19,15 @@
   --danger:    #f31260;
   --success:   #17c964;
   --shadow:    0 4px 24px rgba(0,0,0,0.08);
+  /* 토스트·공용 대화상자(ui.js) — 배경·글자를 한 쌍으로 정의해, 앱이 --bg/--fg 하나만
+     바꿔도(예: clubs) 밝은 바탕에 밝은 글씨가 되지 않게 한다. */
+  --toast-bg:       #18181b;
+  --toast-fg:       #fafafa;
+  --toast-error-bg: #be123c;
+  --toast-error-fg: #ffffff;
+  --dialog-bg:      #ffffff;
+  --dialog-fg:      #11181c;
+  --dialog-border:  #e4e4e7;
 }
 
 /* --- Dark Mode --- */
@@ -36,6 +45,13 @@
   --danger:    #f31260;
   --success:   #17c964;
   --shadow:    0 4px 24px rgba(0,0,0,0.4);
+  --toast-bg:       #f4f4f5;
+  --toast-fg:       #18181b;
+  --toast-error-bg: #be123c;
+  --toast-error-fg: #ffffff;
+  --dialog-bg:      #1a1a1a;
+  --dialog-fg:      #ecedee;
+  --dialog-border:  #2a2a2a;
 }
 
 /* --- Base --- */
@@ -314,11 +330,68 @@ body {
   background: rgba(244, 244, 245, 0.9);
 }
 
-/* ── 모바일: 텍스트 숨기고 아이콘만 표시 ── */
+/* 터치 영역: 보이는 버튼은 작아도 누르는 영역은 최소 44×44px.
+   position은 :where로 0 특이도 — 앱이 버튼 위치를 따로 정하면 그쪽이 이긴다. */
+:where(.overlay-btn) { position: relative; }
+.overlay-btn::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+/* ── 모바일: 텍스트 숨기고 아이콘만 표시 ──
+   보이는 크기 36×36, 누르는 영역은 위 ::after로 44×44. 간격 8px이라 옆 버튼과 겹치지 않음. */
 @media (max-width: 540px) {
-  .overlay-btn { padding: 5px 8px; min-height: 30px; gap: 0; }
+  .overlay-btn { padding: 5px 9px; min-height: 36px; min-width: 36px; justify-content: center; gap: 0; }
   .overlay-btn span { display: none; }
-  .top-overlay, .top-overlay-left { top: 8px; gap: 6px; }
+  .top-overlay, .top-overlay-left { top: 8px; gap: 8px; }
   .top-overlay { right: 8px; }
   .top-overlay-left { left: 8px; }
+}
+
+/* =====================================================
+   접근성 공통 (docs/audit-2026-10.md 7.3)
+   ===================================================== */
+
+/* 키보드 포커스 표시 — 마우스 클릭 때는 나타나지 않음(:focus-visible).
+   tabindex="-1"(스크립트로만 포커스하는 대화상자 등)은 제외. */
+a[href]:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 2px solid var(--primary, #006fee);
+  outline-offset: 2px;
+}
+
+/* 화면에는 안 보이고 스크린리더만 읽는 글자 */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* 움직임 줄이기 설정 — 애니메이션·전환을 거의 0으로.
+   0이 아니라 0.01ms라서 transitionend/animationend 이벤트는 그대로 발생한다.
+   애니메이션 자체가 내용인 부분(시뮬레이션 등)은 data-motion="keep"을 붙이면 제외된다. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+  *:not([data-motion="keep"]):not([data-motion="keep"] *),
+  *:not([data-motion="keep"]):not([data-motion="keep"] *)::before,
+  *:not([data-motion="keep"]):not([data-motion="keep"] *)::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

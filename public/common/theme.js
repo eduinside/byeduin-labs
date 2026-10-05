@@ -26,8 +26,9 @@
   var ICONS = { auto: '💻', light: '☀️', dark: '🌙' };
   var LABELS = { auto: '자동 (시스템)', light: '라이트 모드', dark: '다크 모드' };
 
+  // 저장소가 막힌 환경(일부 시크릿 창·학교 정책)에서도 스크립트가 멈추지 않게
   function getStoredTheme() {
-    return localStorage.getItem(KEY) || 'auto';
+    try { return localStorage.getItem(KEY) || 'auto'; } catch (e) { return 'auto'; }
   }
 
   function resolveTheme(theme) {
@@ -52,7 +53,7 @@
   function cycleTheme() {
     var current = getStoredTheme();
     var next = current === 'auto' ? 'light' : current === 'light' ? 'dark' : 'auto';
-    localStorage.setItem(KEY, next);
+    try { localStorage.setItem(KEY, next); } catch (e) {}
     applyTheme(next);
     updateIcon(next);
   }
@@ -61,9 +62,11 @@
   applyTheme(getStoredTheme());
 
   // 시스템 테마 변경 감지 (auto 모드일 때만 반응)
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
-    if (getStoredTheme() === 'auto') applyTheme('auto');
-  });
+  // (옛 Safari는 MediaQueryList.addEventListener가 없어 addListener로 대체 — 여기서 멈추면 cycleTheme가 노출되지 않음)
+  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+  var onScheme = function () { if (getStoredTheme() === 'auto') applyTheme('auto'); };
+  if (mq.addEventListener) mq.addEventListener('change', onScheme);
+  else if (mq.addListener) mq.addListener(onScheme);
 
   // DOM 로드 후 아이콘 업데이트
   if (document.readyState === 'loading') {
@@ -72,31 +75,42 @@
     updateIcon(getStoredTheme());
   }
 
-  // 공유 피드백 토스트 (앱 자체 토스트 없을 때 직접 생성)
+  // 공유 피드백 토스트
+  //  1) 공용 VUI.toast(ui.js)가 있으면 그것을 쓴다 — 색은 --toast-bg/--toast-fg 한 쌍이라
+  //     앱이 --bg만 바꿔도(clubs 등) 밝은 바탕에 밝은 글씨가 되지 않는다(docs/audit-2026-10.md 7.2).
+  //  2) ui.js가 없는 독립 HTML: 앱 자체 토스트 요소(옛 id 4개)를 쓰고,
+  //  3) 그것도 없으면 같은 토큰으로 임시 토스트를 만든다.
   function _shareToast(msg) {
+    if (window.VUI && window.VUI.toast) { window.VUI.toast(msg); return; }
     var existing = document.getElementById('qr-toast') ||
                    document.getElementById('md-toast') ||
                    document.getElementById('fd-toast') ||
                    document.getElementById('ssToast');
+    var dur = Math.max(2500, Math.min(8000, 1500 + String(msg).length * 60));
     if (existing) {
       existing.textContent = msg;
       existing.classList.add('show');
-      setTimeout(function() { existing.classList.remove('show'); }, 2500);
+      setTimeout(function() { existing.classList.remove('show'); }, dur);
       return;
     }
     // 없으면 임시 생성
     var t = document.createElement('div');
     t.textContent = msg;
+    t.setAttribute('role', 'status');
     t.style.cssText = 'position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);' +
-      'background:var(--fg,#11181c);color:var(--bg,#fff);padding:0.55rem 1.25rem;' +
-      'border-radius:2rem;font-size:0.85rem;font-weight:600;z-index:9999;' +
-      'white-space:nowrap;pointer-events:none;';
+      'background:var(--toast-bg,#18181b);color:var(--toast-fg,#fafafa);padding:0.55rem 1.25rem;' +
+      'border-radius:1rem;font-size:0.85rem;font-weight:600;z-index:10050;' +
+      'max-width:92vw;text-align:center;overflow-wrap:anywhere;pointer-events:none;';
     document.body.appendChild(t);
-    setTimeout(function() { t.remove(); }, 2500);
+    setTimeout(function() { t.remove(); }, dur);
   }
 
-  // 클립보드 복사 + 피드백
+  // 클립보드 복사 + 피드백. 복사가 안 되면 링크 창(ui.js)으로 보여 준다.
   function _copyWithFallback(url) {
+    if (window.VUI && window.VUI.share) {
+      window.VUI.share.copyOrShow(url, { title: '🔗 이 페이지 공유' });
+      return;
+    }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(url)
         .then(function() { _shareToast('링크가 복사되었습니다 ✓'); })
