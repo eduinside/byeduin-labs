@@ -1,20 +1,97 @@
+---
+/**
+ * 홈 — 카테고리 트리와 앱 카드는 빌드 때 apps.json으로 정적 출력한다(검색엔진 노출·첫 화면 속도·스크립트 차단 환경).
+ * 기기별로 달라지는 부분(최근 방문, 최근 방문 강조, 공지)과 검색 필터·모달만 아래 인라인 스크립트가 덧붙인다.
+ * 정적 마크업을 다시 그리지 않고 그대로 두고 보강(hydrate)만 한다.
+ */
+import appsData from '../../public/apps.json';
+
+const SITE_TITLE = 'eduin VIVES — 교육 미니앱 모음';
+const SITE_DESC = '교육 현장에서 바로 쓸 수 있는 미니 웹 앱 모음. 채점표, AI 검색, 플래시카드, QR, 타이머, 마크다운 에디터 등 다양한 도구를 무료로 사용하세요.';
+
+const categories = appsData.categories || [];
+// hidden: 비공개 앱 — 페이지 폴더가 src/pages/apps/_<id>/라 빌드되지 않음(주소로도 404)
+const apps = (appsData.apps || []).filter((a) => !a.hidden);
+
+const isModalApp = (a) => a.type === 'modal';
+const isExternalApp = (a) => !isModalApp(a) && (a.type === 'link' || !!a.external);
+
+/* 섹션 블록 — 예전 런타임 렌더러(render())와 같은 순서·구조
+   header: 서브카테고리가 있는 카테고리의 머리말만 / sub: 서브카테고리 / extra: 서브카테고리 미배정 / flat: 서브카테고리 없는 카테고리 */
+const blocks = [];
+for (const cat of categories) {
+  const items = apps.filter((a) => a.category === cat.id);
+  if (items.length === 0) continue;
+  const subcats = cat.subcategories;
+  if (subcats) {
+    blocks.push({ type: 'header', id: cat.id, cat: cat.id, label: cat.label, desc: cat.desc, items: [] });
+    const subIds = new Set(subcats.map((sc) => sc.id));
+    for (const sc of subcats) {
+      const scItems = items.filter((a) => a.subcategory === sc.id);
+      if (scItems.length) blocks.push({ type: 'sub', id: sc.id, cat: cat.id, label: sc.label, items: scItems });
+    }
+    const unassigned = items.filter((a) => !a.subcategory || !subIds.has(a.subcategory));
+    if (unassigned.length) blocks.push({ type: 'extra', id: null, cat: cat.id, items: unassigned });
+  } else {
+    blocks.push({ type: 'flat', id: cat.id, cat: cat.id, label: cat.label, desc: cat.desc, items });
+  }
+}
+const sectionIds = new Set(blocks.filter((b) => b.id).map((b) => b.id));
+const navCategories = categories
+  .filter((cat) => sectionIds.has(cat.id))
+  .map((cat) => ({ ...cat, subs: (cat.subcategories || []).filter((sc) => sectionIds.has(sc.id)) }));
+// 모바일 가로 칩: 실제 카드가 있는 서브카테고리(또는 서브카테고리 없는 카테고리)
+const chipBlocks = blocks.filter((b) => b.type === 'sub' || b.type === 'flat');
+
+/* 스크립트용 데이터 — 검색 색인(제목·설명·키워드·카테고리 이름), 최근 방문 저장, 모달 내용 */
+const catLabel = new Map();
+const subLabel = new Map();
+for (const c of categories) {
+  catLabel.set(c.id, c.label);
+  for (const s of c.subcategories || []) subLabel.set(s.id, s.label);
+}
+const clientApps = apps.map((a) => {
+  const seo = a.seo || {};
+  const o = {
+    id: a.id,
+    href: a.href,
+    title: a.title,
+    desc: a.desc,
+    emoji: a.emoji,
+    category: a.category,
+    subcategory: a.subcategory,
+    lucideIcon: a.lucideIcon,
+    s: [a.title, a.desc, a.badge, seo.title, ...(seo.keywords || []), catLabel.get(a.category), subLabel.get(a.subcategory)]
+      .filter(Boolean)
+      .join(' ')
+      .replace(/eduin vives/gi, ' ')
+      .toLowerCase(),
+  };
+  if (isModalApp(a)) {
+    o.modal = { badge: a.badge, modalDesc: a.modalDesc, features: a.features || [], linkLabel: a.linkLabel, external: !!a.external };
+  }
+  return o;
+});
+// </script> 등이 JSON 안에서 스크립트를 끊지 않도록 '<'를 이스케이프
+const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
+---
 <!DOCTYPE html>
 <html lang="ko">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>eduin VIVES — 교육 미니앱 모음</title>
-  <meta name="description" content="교육 현장에서 바로 쓸 수 있는 미니 웹 앱 모음. 채점표, AI 검색, 플래시카드, QR, 타이머, 마크다운 에디터 등 다양한 도구를 무료로 사용하세요." />
-  <meta property="og:title" content="eduin VIVES — 교육 미니앱 모음" />
-  <meta property="og:description" content="교육 현장에서 바로 쓸 수 있는 미니 웹 앱 모음. 채점표, AI 검색, 플래시카드, QR, 타이머, 마크다운 에디터 등 다양한 도구를 무료로 사용하세요." />
+  <title>{SITE_TITLE}</title>
+  <meta name="description" content={SITE_DESC} />
+  <meta property="og:title" content={SITE_TITLE} />
+  <meta property="og:description" content={SITE_DESC} />
   <meta property="og:image" content="https://eduin.info/og-default.png" />
   <meta property="og:url" content="https://eduin.info/" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="eduin VIVES" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="eduin VIVES — 교육 미니앱 모음" />
-  <meta name="twitter:description" content="교육 현장에서 바로 쓸 수 있는 미니 웹 앱 모음. 채점표, AI 검색, 플래시카드, QR, 타이머, 마크다운 에디터 등 다양한 도구를 무료로 사용하세요." />
+  <meta name="twitter:title" content={SITE_TITLE} />
+  <meta name="twitter:description" content={SITE_DESC} />
   <meta name="twitter:image" content="https://eduin.info/og-default.png" />
   <link rel="canonical" href="https://eduin.info/" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -55,6 +132,27 @@
       z-index: 0;
     }
 
+    /* 화면에는 숨기고 보조기기에는 읽히게 (hero-theme.css에도 같은 유틸리티가 있을 수 있음 — 정의 동일) */
+    .visually-hidden {
+      position: absolute !important;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* hidden 속성이 .app-card{display:block} 같은 규칙에 덮이지 않도록 */
+    #main [hidden] { display: none !important; }
+
+    @media (prefers-reduced-motion: no-preference) {
+      html { scroll-behavior: smooth; }
+    }
+
     .site-header, main { position: relative; z-index: 1; }
 
     .site-header {
@@ -79,6 +177,7 @@
     }
 
     .logo-title {
+      margin: 0;
       font-size: 1.4rem;
       font-weight: 700;
       letter-spacing: -0.03em;
@@ -99,6 +198,136 @@
       max-width: 1280px;
       margin: 0 auto;
     }
+
+    /* ── 키보드 포커스 표시 ── */
+    #main a:focus-visible,
+    #main button:focus-visible,
+    .modal-box a:focus-visible,
+    .modal-box button:focus-visible {
+      outline: 3px solid var(--primary);
+      outline-offset: 2px;
+    }
+    .modal-box:focus { outline: none; }
+
+    /* ── 검색 + (모바일) 카테고리 칩 ── */
+    .home-toolbar {
+      display: flex;
+      flex-direction: column;
+      gap: 0.625rem;
+      margin-bottom: 1rem;
+    }
+
+    .app-search {
+      position: relative;
+      max-width: 560px;
+      margin: 0;
+    }
+
+    .app-search-icon {
+      position: absolute;
+      left: 0.9rem;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      color: var(--fg-muted);
+      pointer-events: none;
+    }
+
+    .app-search input {
+      width: 100%;
+      min-height: 48px;
+      padding: 0.7rem 2.75rem 0.7rem 2.6rem;
+      border: 1px solid var(--border);
+      border-radius: 0.875rem;
+      background: var(--input-bg, var(--card-bg));
+      color: var(--fg);
+      font: inherit;
+      font-size: 1rem; /* 16px 미만이면 iOS가 확대함 */
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .app-search input::placeholder { color: var(--fg-muted); }
+    .app-search input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 111, 238, 0.25);
+    }
+
+    .app-search-kbd {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font: 600 0.75rem/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--fg-muted);
+      border: 1px solid var(--border);
+      border-radius: 0.35rem;
+      padding: 0.25rem 0.45rem;
+      background: var(--bg);
+      pointer-events: none;
+    }
+    .app-search input:focus ~ .app-search-kbd,
+    .app-search input:not(:placeholder-shown) ~ .app-search-kbd { display: none; }
+    @media (hover: none) {
+      .app-search-kbd { display: none; }
+    }
+
+    .cat-chips { display: none; }
+
+    .cat-chip {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 1rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--card-bg);
+      color: var(--fg);
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .cat-chip:hover { border-color: rgba(0, 111, 238, 0.4); }
+    .cat-chip.is-active {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(0, 111, 238, 0.08);
+    }
+
+    /* 검색 결과 없음 */
+    .search-empty {
+      text-align: center;
+      padding: 3rem 1rem;
+      border: 1px dashed var(--border);
+      border-radius: 1rem;
+      color: var(--fg-muted);
+    }
+    .search-empty-title {
+      margin: 0 0 0.4rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--fg);
+    }
+    .search-empty-desc { margin: 0 0 1rem; font-size: 0.875rem; }
+    .search-empty-btn {
+      min-height: 44px;
+      padding: 0 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      background: var(--card-bg);
+      color: var(--fg);
+      font: inherit;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .search-empty-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* 검색 중에는 최근 방문·공지를 접어 결과를 위로 */
+    body.is-searching .recent-section,
+    body.is-searching .notices-section { display: none !important; }
 
     /* ── 트리 네비 레이아웃 ── */
     .page-layout {
@@ -140,6 +369,7 @@
       border-radius: 0.5rem;
       font-size: 0.875rem;
       font-weight: 600;
+      font-family: inherit;
       cursor: pointer;
       background: none;
       border: none;
@@ -165,17 +395,20 @@
     }
     .tree-node.is-open > .tree-item .tree-chevron { transform: rotate(90deg); }
 
-    /* 서브트리 */
+    /* 서브트리 — 접혔을 때는 visibility로 Tab 이동에서도 빠지게 */
     .subtree {
       list-style: none;
       padding: 0 0 0 1rem;
       margin: 0;
       overflow: hidden;
       max-height: 0;
-      transition: max-height 0.25s ease;
+      visibility: hidden;
+      transition: max-height 0.25s ease, visibility 0s linear 0.25s;
     }
     .tree-node.is-open > .subtree {
       max-height: 20rem;
+      visibility: visible;
+      transition: max-height 0.25s ease;
     }
 
     .subtree-item {
@@ -198,21 +431,10 @@
     .subtree-item:hover { background: rgba(124,106,247,0.06); color: var(--fg); }
     .subtree-item.is-active { color: var(--primary); font-weight: 600; }
 
-    /* 모바일: 사이드바 접기 토글 */
-    .sidebar-toggle {
-      display: none;
-      align-items: center;
-      gap: 0.4rem;
-      width: 100%;
-      padding: 0.5rem 0.75rem;
-      margin-bottom: 0.5rem;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 0.6rem;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--fg);
-      cursor: pointer;
+    /* 터치 기기(사이드바가 보이는 넓은 태블릿)에서는 누르기 영역 44px */
+    @media (pointer: coarse) {
+      .tree-node > .tree-item,
+      .subtree-item { min-height: 44px; }
     }
 
     /* 콘텐츠 영역 */
@@ -228,18 +450,29 @@
       }
     }
 
-    /* 태블릿: 사이드바 접힘 */
+    /* 태블릿·모바일: 사이드바 대신 검색창 아래 가로 칩 */
     @media (max-width: 860px) {
       .page-layout { flex-direction: column; gap: 0.5rem; }
-      .tree-sidebar { width: 100%; position: static; }
-      .sidebar-toggle { display: flex; }
-      .tree-nav { display: none; }
-      .tree-sidebar.is-open .tree-nav { display: block; }
+      .tree-sidebar { display: none; }
+      .cat-chips {
+        display: flex;
+        gap: 0.5rem;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+        margin: 0 -1.5rem;
+        padding: 0 1.5rem 0.25rem;
+        scroll-padding: 0 1.5rem;
+        -webkit-overflow-scrolling: touch;
+      }
+      .cat-chips::-webkit-scrollbar { display: none; }
+      .app-search { max-width: none; }
     }
 
     /* 카테고리 섹션 */
     .category-section {
       margin-bottom: 2.5rem;
+      scroll-margin-top: 3.5rem; /* 우상단 떠 있는 버튼에 머리말이 가리지 않게 */
     }
 
     .category-header {
@@ -252,6 +485,7 @@
     }
 
     .category-label {
+      margin: 0;
       font-size: 1rem;
       font-weight: 700;
     }
@@ -315,7 +549,8 @@
       height: 22px;
       stroke-width: 2.2;
     }
-    
+    .card-emoji i { font-style: normal; }
+
     /* 카테고리별 소프트 컬러 배경 블롭 */
     .card-emoji.sub-edu-sim { background: rgba(0, 111, 238, 0.08); color: #006fee; }
     .card-emoji.sub-edu-learn { background: rgba(23, 201, 100, 0.08); color: #17c964; }
@@ -371,6 +606,11 @@
       opacity: 0.6;
     }
 
+    @media (prefers-reduced-motion: reduce) {
+      .app-card, .card-emoji, .subtree, .notice-body, .modal-backdrop, .modal-box { transition: none !important; }
+      .app-card:hover, .app-card:hover .card-emoji { transform: none; }
+    }
+
     footer {
       text-align: center;
       font-size: 0.75rem;
@@ -379,7 +619,7 @@
       border-top: 1px solid var(--border);
     }
 
-    /* 모달 */
+    /* 모달 — 닫혔을 때는 visibility로 Tab 이동에서 빠지게 */
     .modal-backdrop {
       position: fixed; inset: 0; z-index: 1000;
       background: rgba(0,0,0,0.45);
@@ -387,9 +627,14 @@
       display: flex; align-items: center; justify-content: center;
       padding: 1rem;
       opacity: 0; pointer-events: none;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0s linear 0.2s;
+    }
+    .modal-backdrop.open {
+      opacity: 1; pointer-events: auto;
+      visibility: visible;
       transition: opacity 0.2s;
     }
-    .modal-backdrop.open { opacity: 1; pointer-events: auto; }
     .modal-box {
       background: var(--bg);
       border: 1px solid var(--border);
@@ -397,6 +642,8 @@
       padding: 1.75rem;
       max-width: 420px;
       width: 100%;
+      max-height: calc(100vh - 2rem);
+      overflow-y: auto;
       transform: translateY(12px);
       transition: transform 0.2s;
     }
@@ -410,9 +657,11 @@
     }
     .modal-badge::before { content: '◆'; font-size: 7px; }
     .modal-title {
-      font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px;
+      margin: 0 0 8px;
+      font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em;
     }
     .modal-desc {
+      margin-top: 0;
       font-size: 0.85rem; color: var(--fg-muted); line-height: 1.65; margin-bottom: 16px;
     }
     .modal-features {
@@ -430,7 +679,9 @@
       display: flex; gap: 8px; flex-direction: column;
     }
     .modal-btn-primary {
-      display: block; text-align: center; text-decoration: none;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 44px;
+      text-align: center; text-decoration: none;
       background: var(--primary); color: #fff;
       border: none; border-radius: 0.75rem;
       padding: 12px 16px; font-size: 0.9rem; font-weight: 700;
@@ -439,9 +690,11 @@
     .modal-btn-primary:hover { background: var(--primary-h); }
     .modal-btn-ghost {
       display: block; text-align: center;
+      min-height: 44px;
       background: none; color: var(--fg-muted);
       border: 1px solid var(--border); border-radius: 0.75rem;
       padding: 10px 16px; font-size: 0.85rem; font-weight: 500;
+      font-family: inherit;
       cursor: pointer; transition: border-color 0.15s;
     }
     .modal-btn-ghost:hover { border-color: var(--fg-muted); }
@@ -479,8 +732,74 @@
       border-color: rgba(124, 106, 247, 0.8);
     }
 
-    /* 공지사항 섹션 — 아코디언 */
+    /* 공지사항 — 기본은 한 줄(공지 N건 보기), 최근 30일 안 글이 있을 때만 펼침 */
+    .notices-section {
+      margin-bottom: 1.5rem;
+    }
+    .notices-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .notices-toggle {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 44px;
+      padding: 0.5rem 0.875rem;
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      background: var(--card-bg);
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .notices-toggle:hover:not(:disabled) { border-color: rgba(0, 111, 238, 0.4); }
+    .notices-toggle:disabled { cursor: default; }
+    .notices-title {
+      font-size: 0.875rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .notices-new {
+      flex: 0 0 auto;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #fff;
+      background: var(--primary);
+      border-radius: 99px;
+      padding: 2px 8px;
+    }
+    .notices-meta {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-size: 0.78rem;
+      color: var(--fg-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .notices-toggle .notice-chevron { margin-left: auto; }
+    .notices-section.is-expanded .notices-toggle .notice-chevron { transform: rotate(180deg); }
+    .notices-more {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--primary);
+      text-decoration: none;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .notices-more:hover { text-decoration: underline; }
     .notices-list {
+      margin-top: 0.5rem;
       border: 1px solid var(--border);
       border-radius: 1rem;
       background: var(--card-bg);
@@ -493,6 +812,7 @@
       align-items: center;
       gap: 0.75rem;
       width: 100%;
+      min-height: 44px;
       padding: 0.8rem 1rem;
       background: none;
       border: none;
@@ -534,11 +854,14 @@
       max-height: 0;
       overflow: hidden;
       padding: 0 1rem;
-      transition: max-height 0.25s ease, padding 0.25s ease;
+      visibility: hidden;
+      transition: max-height 0.25s ease, padding 0.25s ease, visibility 0s linear 0.25s;
     }
     .notice-item.is-open .notice-body {
       max-height: 30rem;
       padding: 0 1rem 0.9rem;
+      visibility: visible;
+      transition: max-height 0.25s ease, padding 0.25s ease;
     }
     .notice-summary {
       margin: 0 0 0.7rem;
@@ -547,7 +870,9 @@
       color: var(--fg-muted);
     }
     .notice-go {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
       text-decoration: none;
       background: transparent;
       color: var(--fg-muted);
@@ -559,45 +884,9 @@
       transition: border-color 0.15s, color 0.15s;
     }
     .notice-go:hover { border-color: var(--primary); color: var(--primary); }
-    /* 로딩 스켈레톤 — 실제 notice-header와 동일한 높이로 고정(레이아웃 점프 방지) */
-    .notice-skeleton {
-      display: flex;
-      align-items: center;
-      padding: 0.8rem 1rem;
-      border-bottom: 1px solid var(--border);
-      box-sizing: border-box;
-    }
-    .notice-skeleton:last-child { border-bottom: none; }
-    .notice-skeleton::before {
-      content: '';
-      height: 0.9rem;
-      width: 58%;
-      border-radius: 5px;
-      background: var(--border);
-      animation: noticeShimmer 1.3s ease-in-out infinite;
-    }
-    .notice-skeleton::after {
-      content: '';
-      height: 0.75rem;
-      width: 4rem;
-      border-radius: 5px;
-      background: var(--border);
-      animation: noticeShimmer 1.3s ease-in-out infinite 0.2s;
-      margin-left: auto;
-    }
-    @keyframes noticeShimmer { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.85; } }
-    .notices-more {
-      margin-left: auto;
-      font-size: 0.72rem;
-      font-weight: 600;
-      color: var(--primary);
-      text-decoration: none;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .notices-more:hover { text-decoration: underline; }
     @media (max-width: 480px) {
       .notice-date { display: none; }
+      .notices-meta { display: none; }
     }
   </style>
 </head>
@@ -607,36 +896,169 @@
   <header class="site-header">
     <div>
       <div class="logo-group">
-        <img src="/logo-64.png" alt="eduin VIVES 로고" width="32" height="32" />
-        <span class="logo-title">eduin <span>VIVES</span></span>
+        <img src="/logo-64.png" alt="" width="32" height="32" />
+        <h1 class="logo-title">eduin <span>VIVES</span><span class="visually-hidden"> — 교육 미니앱 모음</span></h1>
       </div>
       <div class="logo-sub" style="margin-left:44px;">바이브 코딩으로 만든 작은 앱 모음</div>
     </div>
   </header>
 
-  <main id="main"></main>
+  <main id="main">
+    <div class="home-toolbar">
+      <form class="app-search" id="appSearchForm" role="search" action="/" method="get">
+        <label for="appSearch" class="visually-hidden">앱 이름·설명으로 찾기</label>
+        <span class="app-search-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </span>
+        <input
+          id="appSearch"
+          name="q"
+          type="search"
+          placeholder="앱 이름·설명으로 찾기"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          enterkeyhint="search"
+          aria-describedby="appSearchHint"
+          aria-controls="appContent"
+        />
+        <kbd class="app-search-kbd" aria-hidden="true">/</kbd>
+        <span id="appSearchHint" class="visually-hidden">/ 키를 누르면 검색창으로 이동하고, Esc 키로 검색어를 지워요.</span>
+      </form>
+
+      <nav class="cat-chips" aria-label="카테고리 바로가기">
+        {chipBlocks.map((b) => (
+          <a class="cat-chip" href={`#section-${b.id}`} data-nav-id={b.id}>{b.label}</a>
+        ))}
+      </nav>
+    </div>
+
+    <p id="searchStatus" class="visually-hidden" role="status" aria-live="polite"></p>
+
+    <section class="notices-section" id="noticesSection" aria-label="공지사항" hidden>
+      <div class="notices-bar">
+        <button type="button" class="notices-toggle" id="noticesToggle" aria-expanded="false" aria-controls="noticesList" disabled>
+          <span aria-hidden="true">📢</span>
+          <span class="notices-title" id="noticesTitle">공지사항</span>
+          <span class="notices-new" id="noticesNew" hidden>새 글</span>
+          <span class="notices-meta" id="noticesMeta">불러오는 중…</span>
+          <span class="notice-chevron" aria-hidden="true">▾</span>
+        </button>
+        <a class="notices-more" id="noticesMore" href="https://blog.eduin.info/" target="_blank" rel="noopener noreferrer">전체 공지 보기 →</a>
+      </div>
+      <div class="notices-list" id="noticesList" hidden></div>
+    </section>
+
+    <div class="page-layout">
+      <nav class="tree-sidebar" aria-label="카테고리">
+        <div class="sidebar-label">카테고리</div>
+        <ul class="tree-nav">
+          {navCategories.map((cat) => (
+            <li class:list={['tree-node', cat.subs.length > 0 && 'is-open']} data-cat-id={cat.id}>
+              {cat.subs.length > 0 ? (
+                <button class="tree-item" type="button" aria-expanded="true" aria-controls={`subtree-${cat.id}`}>
+                  {cat.label}<span class="tree-chevron" aria-hidden="true">▶</span>
+                </button>
+              ) : (
+                <a class="tree-item" href={`#section-${cat.id}`}>{cat.label}</a>
+              )}
+              {cat.subs.length > 0 && (
+                <ul class="subtree" id={`subtree-${cat.id}`}>
+                  {cat.subs.map((sc) => (
+                    <li><a class="subtree-item" href={`#section-${sc.id}`} data-subcat-id={sc.id}>{sc.label}</a></li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <div class="content-area" id="appContent">
+        {blocks.map((b) => {
+          const Tag = b.type === 'extra' ? 'div' : 'section';
+          return (
+            <Tag
+              class={b.type !== 'extra' ? 'category-section' : undefined}
+              id={b.id ? `section-${b.id}` : undefined}
+              data-nav-id={b.id || undefined}
+              data-block={b.type}
+              data-cat={b.cat}
+              style={b.type === 'sub' ? 'margin-top:0' : undefined}
+            >
+              {b.type === 'sub' && (
+                <div class="category-header" style="border-bottom-style:dashed; opacity:0.75;">
+                  <h3 class="category-label" style="font-size:0.85rem;">{b.label}</h3>
+                </div>
+              )}
+              {(b.type === 'header' || b.type === 'flat') && (
+                <div class="category-header">
+                  <h2 class="category-label">{b.label}</h2>
+                  <span class="category-desc">{b.desc}</span>
+                </div>
+              )}
+              {b.items.length > 0 && (
+                <div class="card-grid" id={b.type === 'flat' ? `grid-${b.id}` : undefined}>
+                  {b.items.map((app) => {
+                    const modal = isModalApp(app);
+                    const external = isExternalApp(app);
+                    const newTab = external || (modal && !!app.external);
+                    return (
+                      <a
+                        class:list={['app-card', modal && 'modal-card']}
+                        href={app.href}
+                        data-app-id={app.id}
+                        target={newTab ? '_blank' : undefined}
+                        rel={newTab ? 'noopener noreferrer' : undefined}
+                        aria-haspopup={modal ? 'dialog' : undefined}
+                      >
+                        {external && <span class="external-badge" aria-hidden="true">↗</span>}
+                        {modal && <span class="external-badge" aria-hidden="true">ℹ</span>}
+                        <div class={`card-emoji sub-${app.subcategory || 'default'}`} aria-hidden="true">
+                          {app.lucideIcon ? <i data-lucide={app.lucideIcon}>{app.emoji}</i> : app.emoji}
+                        </div>
+                        <div class="card-title">{app.title}</div>
+                        <div class="card-desc">{app.desc}</div>
+                        {external && <span class="visually-hidden">(새 창에서 열려요)</span>}
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+            </Tag>
+          );
+        })}
+
+        <div class="search-empty" id="searchEmpty" hidden>
+          <p class="search-empty-title">찾는 앱이 없어요</p>
+          <p class="search-empty-desc">다른 낱말로 찾아보거나 전체 앱을 둘러보세요.</p>
+          <button type="button" class="search-empty-btn" id="searchReset">전체 앱 보기</button>
+        </div>
+      </div>
+    </div>
+  </main>
 
   <footer>eduin · built with vibe coding</footer>
 
   <!-- 모달 -->
-  <div class="modal-backdrop" id="appModal" onclick="closeModal(event)">
-    <div class="modal-box">
+  <div class="modal-backdrop" id="appModal">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalDesc" tabindex="-1">
       <div class="modal-badge" id="modalBadge"></div>
-      <div class="modal-title" id="modalTitle"></div>
+      <h2 class="modal-title" id="modalTitle"></h2>
       <p class="modal-desc" id="modalDesc"></p>
       <ul class="modal-features" id="modalFeatures"></ul>
       <div class="modal-actions">
         <a id="modalLink" href="#" class="modal-btn-primary" target="_blank" rel="noopener noreferrer"></a>
-        <button class="modal-btn-ghost" onclick="document.getElementById('appModal').classList.remove('open')">닫기</button>
+        <button type="button" class="modal-btn-ghost" id="modalClose">닫기</button>
       </div>
     </div>
   </div>
 
   <!-- 우상단 테마 토글 + 공유 -->
   <div class="top-overlay">
-    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
-    <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드" aria-label="보기 모드">💻</button>
+    <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유" aria-label="공유">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
         <polyline points="16 6 12 2 8 6"/>
         <line x1="12" x2="12" y1="2" y2="15"/>
@@ -645,31 +1067,62 @@
     </button>
   </div>
 
-  <script is:inline is:inline>
-    /* =============================================
-       앱 데이터: apps.json에서 로드
-       ============================================= */
-    let APPS = [];
-    let CATEGORIES = [];
+  <script type="application/json" id="homeData" set:html={homeJson}></script>
 
-    async function loadApps() {
-      try {
-        const res = await fetch('/apps.json');
-        const data = await res.json();
-        APPS = (data.apps || []).filter(a => !a.hidden); // hidden: 비공개 앱 — 페이지 폴더가 src/pages/apps/_<id>/라 빌드되지 않음(주소로도 404)
-        CATEGORIES = data.categories || [];
-      } catch (e) {
-        console.error('[apps.json] 로드 실패:', e);
-      }
+  <script is:inline>
+  (() => {
+    'use strict';
+
+    /* =============================================
+       준비: 빌드 때 넣어 둔 앱 데이터 + 정적 마크업 참조
+       ============================================= */
+    const RECENT_KEY = 'byeduin_recent_apps';
+    const NOTICE_CACHE_KEY = 'byeduin_notices_cache';
+    const NOTICE_CFG_KEY = 'byeduin_notices_cfg';
+    const NOTICE_TTL = 60 * 60 * 1000; // 1시간
+    const NOTICE_FRESH_MS = 30 * 24 * 60 * 60 * 1000; // 30일 안 글이 있으면 펼침
+
+    const store = {
+      get(key, fallback) {
+        try {
+          const v = JSON.parse(localStorage.getItem(key) || 'null');
+          return v == null ? fallback : v;
+        } catch { return fallback; }
+      },
+      set(key, value) {
+        try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* 저장소 막힘 — 무시 */ }
+      },
+    };
+
+    let data = { apps: [] };
+    try {
+      data = JSON.parse(document.getElementById('homeData').textContent || '{}');
+    } catch (e) {
+      console.error('[home] 앱 데이터 읽기 실패:', e);
+    }
+    const APPS = Array.isArray(data.apps) ? data.apps : [];
+    const APP_BY_ID = new Map(APPS.map((a) => [a.id, a]));
+
+    const content = document.getElementById('appContent');
+    const staticCards = Array.from(content.querySelectorAll('.app-card[data-app-id]'));
+    const blocks = Array.from(content.querySelectorAll('[data-block]'));
+    const chips = Array.from(document.querySelectorAll('.cat-chip'));
+    const cardByHref = new Map();
+    staticCards.forEach((card) => {
+      const app = APP_BY_ID.get(card.dataset.appId);
+      if (app && !app.modal && !cardByHref.has(app.href)) cardByHref.set(app.href, card);
+    });
+
+    /* =============================================
+       최근 방문 (기기별)
+       ============================================= */
+    function readRecent() {
+      const list = store.get(RECENT_KEY, []);
+      return Array.isArray(list) ? list.filter((a) => a && typeof a.href === 'string') : [];
     }
 
-    /* =============================================
-       렌더링
-       ============================================= */
     function saveRecentApp(app) {
-      const KEY = 'byeduin_recent_apps';
-      let list = JSON.parse(localStorage.getItem(KEY) || '[]');
-      list = list.filter(a => a.href !== app.href);
+      const list = readRecent().filter((a) => a.href !== app.href);
       list.unshift({
         href: app.href,
         emoji: app.emoji,
@@ -677,91 +1130,353 @@
         desc: app.desc,
         category: app.category,
         subcategory: app.subcategory,
-        lucideIcon: app.lucideIcon
+        lucideIcon: app.lucideIcon,
       });
-      if (list.length > 10) list = list.slice(0, 10);
-      localStorage.setItem(KEY, JSON.stringify(list));
+      store.set(RECENT_KEY, list.slice(0, 10));
     }
 
-    const DEFAULT_NOTICES_CFG = { mode: 'recent', recentLimit: 5, pinned: [] };
+    // 정적 카드를 복제해 쓰므로 제목·아이콘이 apps.json 최신값과 항상 같다
+    function renderRecentSection(recent) {
+      const list = recent.filter((a) => cardByHref.has(a.href)).slice(0, 4);
+      if (list.length === 0) return;
 
-    function formatNoticeDate(iso) {
-      if (!iso) return '';
-      const d = new Date(iso);
-      if (Number.isNaN(d.getTime())) return '';
-      return d.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
-    }
-
-    async function loadNoticesConfig() {
-      try {
-        const res = await fetch('/notices.json', { cache: 'no-cache' });
-        if (!res.ok) return DEFAULT_NOTICES_CFG;
-        const c = await res.json();
-        return {
-          mode: ['recent', 'pinned', 'both'].includes(c.mode) ? c.mode : 'recent',
-          recentLimit: Math.min(20, Math.max(1, parseInt(c.recentLimit, 10) || 5)),
-          pinned: Array.isArray(c.pinned) ? c.pinned.filter(p => p && p.link) : [],
-        };
-      } catch { return DEFAULT_NOTICES_CFG; }
-    }
-
-    async function renderNoticesSection(main) {
-      // ── 스켈레톤을 await 이전에 동기로 그려서 페이지 로드 즉시 공간 확보 ──
-      const SKELETON_COUNT = 4;
       const section = document.createElement('section');
-      section.className = 'category-section notices-section';
+      section.className = 'category-section recent-section';
+      section.setAttribute('aria-labelledby', 'recentHeading');
       section.innerHTML = `
         <div class="category-header">
-          <span class="category-label">📢 공지사항</span>
-          <span class="category-desc">에듀인 블로그 소식</span>
+          <h2 class="category-label" id="recentHeading">⏱ 최근 방문</h2>
+          <span class="category-desc">최근에 사용한 앱</span>
         </div>
-        <div class="notices-list"></div>
+        <div class="card-grid" id="grid-recent"></div>
       `;
-      const list = section.querySelector('.notices-list');
-      for (let i = 0; i < SKELETON_COUNT; i++) {
-        const sk = document.createElement('div');
-        sk.className = 'notice-skeleton';
-        list.appendChild(sk);
-      }
-      const more = document.createElement('a');
-      more.className = 'notices-more';
-      more.href = 'https://blog.eduin.info/';
-      more.target = '_blank'; more.rel = 'noopener noreferrer';
-      more.textContent = '전체 공지 보기 →';
-      section.querySelector('.category-header').appendChild(more);
-      main.prepend(section); // 항상 <main> 최상단
+      const grid = section.querySelector('.card-grid');
+      list.forEach((item) => {
+        const clone = cardByHref.get(item.href).cloneNode(true);
+        clone.classList.remove('is-recent-visited');
+        clone.hidden = false;
+        grid.appendChild(clone);
+      });
+      content.prepend(section);
+    }
 
-      // ── 이후 비동기로 설정·데이터 로드 ──
-      const cfg = await loadNoticesConfig();
+    function markMostRecent(recent) {
+      // 가장 최근 방문 앱(1개)만 하이라이트
+      const first = recent[0];
+      const card = first && cardByHref.get(first.href);
+      if (card) card.classList.add('is-recent-visited');
+    }
+
+    /* =============================================
+       모달 (외부 서비스·확장 프로그램 안내)
+       ============================================= */
+    const modal = document.getElementById('appModal');
+    const modalBox = modal.querySelector('.modal-box');
+    let modalReturnFocus = null;
+
+    function openModal(app, opener) {
+      const m = app.modal || {};
+      document.getElementById('modalBadge').textContent = m.badge || '';
+
+      const titleEl = document.getElementById('modalTitle');
+      titleEl.textContent = '';
+      const icon = document.createElement('div');
+      icon.className = 'card-emoji sub-' + (app.subcategory || 'default');
+      icon.setAttribute('aria-hidden', 'true');
+      icon.style.cssText = 'display:inline-flex; vertical-align:middle; margin-right:8px; margin-bottom:0;';
+      if (app.lucideIcon) {
+        const i = document.createElement('i');
+        i.setAttribute('data-lucide', app.lucideIcon);
+        icon.appendChild(i);
+      } else {
+        icon.textContent = app.emoji || '';
+      }
+      const name = document.createElement('span');
+      name.style.verticalAlign = 'middle';
+      name.textContent = app.title;
+      titleEl.append(icon, name);
+      if (window.lucide) window.lucide.createIcons();
+
+      document.getElementById('modalDesc').textContent = m.modalDesc || app.desc || '';
+      // features는 빌드 때 apps.json에서 온 신뢰된 HTML(링크 포함)
+      document.getElementById('modalFeatures').innerHTML = (m.features || []).map((f) => `<li><span>${f}</span></li>`).join('');
+      const link = document.getElementById('modalLink');
+      link.href = app.href;
+      link.textContent = m.linkLabel || '바로가기';
+      if (m.external) { link.target = '_blank'; link.rel = 'noopener noreferrer'; }
+      else { link.removeAttribute('target'); link.removeAttribute('rel'); }
+
+      modalReturnFocus = opener || document.activeElement;
+      modal.classList.add('open');
+      modalBox.focus({ preventScroll: true });
+    }
+
+    function closeModal() {
+      if (!modal.classList.contains('open')) return;
+      modal.classList.remove('open');
+      const back = modalReturnFocus;
+      modalReturnFocus = null;
+      if (back && document.contains(back) && typeof back.focus === 'function') back.focus({ preventScroll: true });
+    }
+
+    function trapModalFocus(e) {
+      const items = Array.from(modalBox.querySelectorAll('a[href], button:not([disabled])'));
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || active === modalBox)) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (active === last || !modalBox.contains(active))) { e.preventDefault(); first.focus(); }
+    }
+
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+
+    /* 카드 클릭: 모달형은 안내창, 나머지는 최근 방문 기록 (복제된 최근 카드 포함 — 위임) */
+    document.addEventListener('click', (e) => {
+      const card = e.target instanceof Element ? e.target.closest('a.app-card[data-app-id]') : null;
+      if (!card) return;
+      const app = APP_BY_ID.get(card.dataset.appId);
+      if (!app) return;
+      if (app.modal) {
+        if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) return; // 새 탭 열기 등은 그대로
+        e.preventDefault();
+        openModal(app, card);
+      } else {
+        saveRecentApp(app);
+      }
+    });
+
+    /* =============================================
+       검색 (제목·설명·키워드·카테고리 이름, 초성·IME 조합 중 입력 지원)
+       ============================================= */
+    const form = document.getElementById('appSearchForm');
+    const input = document.getElementById('appSearch');
+    const statusEl = document.getElementById('searchStatus');
+    const emptyEl = document.getElementById('searchEmpty');
+
+    const CHO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+    // 홑받침 → 같은 소리의 첫소리 (조합 중 '탕'이 곧 '타이'가 되는 경우를 위해)
+    const JONG_TO_CHO = { 1: 'ㄱ', 2: 'ㄲ', 4: 'ㄴ', 7: 'ㄷ', 8: 'ㄹ', 16: 'ㅁ', 17: 'ㅂ', 19: 'ㅅ', 20: 'ㅆ', 21: 'ㅇ', 22: 'ㅈ', 23: 'ㅊ', 24: 'ㅋ', 25: 'ㅌ', 26: 'ㅍ', 27: 'ㅎ' };
+    const isSyllable = (code) => code >= 0xAC00 && code <= 0xD7A3;
+    const choOf = (code) => CHO[Math.floor((code - 0xAC00) / 588)];
+    const normalize = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+    function toChoseong(str) {
+      let out = '';
+      for (const ch of str) {
+        const code = ch.charCodeAt(0);
+        out += isSyllable(code) ? choOf(code) : ch;
+      }
+      return out;
+    }
+
+    const searchIndex = staticCards.map((card) => {
+      const app = APP_BY_ID.get(card.dataset.appId);
+      const text = normalize((app && app.s) || card.textContent);
+      const compact = text.replace(/\s+/g, '');
+      // 초성 검색(ㅌㅇㅁ → 타이머)은 앱 이름에만 — 설명·키워드까지 넣으면 두세 글자로도 너무 많이 걸림
+      const titleCompact = normalize((app && app.title) || '').replace(/\s+/g, '');
+      return { card, text, compact, cho: toChoseong(titleCompact) };
+    });
+
+    function termMatches(entry, term, composingTail) {
+      if (entry.text.includes(term) || entry.compact.includes(term)) return true;
+      if (/^[ㄱ-ㅎ]+$/.test(term)) return entry.cho.includes(term);
+      if (!composingTail) return false;
+      const last = term.charCodeAt(term.length - 1);
+      if (!isSyllable(last)) return false;
+      const jong = (last - 0xAC00) % 28;
+      const nextCho = JONG_TO_CHO[jong];
+      if (!nextCho) return false;
+      const head = term.slice(0, -1) + String.fromCharCode(last - jong);
+      let i = entry.compact.indexOf(head);
+      while (i !== -1) {
+        const next = entry.compact.charCodeAt(i + head.length);
+        if (isSyllable(next) && choOf(next) === nextCho) return true;
+        i = entry.compact.indexOf(head, i + 1);
+      }
+      return false;
+    }
+
+    let composing = false;
+    let announceTimer = 0;
+    let urlTimer = 0;
+
+    function announce(text) {
+      clearTimeout(announceTimer);
+      announceTimer = setTimeout(() => { statusEl.textContent = text; }, 400);
+    }
+
+    function syncUrl() {
+      clearTimeout(urlTimer);
+      urlTimer = setTimeout(() => {
+        try {
+          const url = new URL(location.href);
+          const q = input.value.trim();
+          if (q) url.searchParams.set('q', q);
+          else url.searchParams.delete('q');
+          const next = url.pathname + url.search + url.hash;
+          if (next !== location.pathname + location.search + location.hash) history.replaceState(history.state, '', next);
+        } catch { /* 무시 */ }
+      }, 300);
+    }
+
+    function applyFilter(updateUrl = true) {
+      const q = normalize(input.value);
+      const terms = q ? q.split(' ') : [];
+      let count = 0;
+
+      searchIndex.forEach((entry) => {
+        const ok = terms.every((t, i) => termMatches(entry, t, composing && i === terms.length - 1));
+        entry.card.hidden = !ok;
+        if (ok) count++;
+      });
+
+      // 카드가 하나도 안 남은 섹션은 숨김, 카테고리 머리말은 그 아래 섹션이 하나라도 있으면 유지
+      const visibleCats = new Set();
+      blocks.forEach((b) => {
+        if (b.dataset.block === 'header') return;
+        const any = !!b.querySelector('.app-card:not([hidden])');
+        b.hidden = !any;
+        if (any) visibleCats.add(b.dataset.cat);
+      });
+      blocks.forEach((b) => {
+        if (b.dataset.block === 'header') b.hidden = !visibleCats.has(b.dataset.cat);
+      });
+      chips.forEach((chip) => {
+        const sec = document.getElementById('section-' + chip.dataset.navId);
+        chip.hidden = !sec || sec.hidden;
+      });
+
+      const searching = terms.length > 0;
+      document.body.classList.toggle('is-searching', searching);
+      emptyEl.hidden = !(searching && count === 0);
+      announce(searching ? (count > 0 ? `앱 ${count}개를 찾았어요` : '찾는 앱이 없어요') : '');
+      if (updateUrl) syncUrl();
+      return count;
+    }
+
+    function clearSearch() {
+      input.value = '';
+      composing = false;
+      applyFilter();
+    }
+
+    input.addEventListener('compositionstart', () => { composing = true; });
+    input.addEventListener('compositionend', () => { composing = false; applyFilter(); });
+    input.addEventListener('input', (e) => {
+      if (typeof e.isComposing === 'boolean') composing = e.isComposing;
+      applyFilter();
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || e.isComposing) return;
+      e.stopPropagation();
+      if (input.value) { e.preventDefault(); clearSearch(); }
+      else input.blur();
+    });
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      composing = false;
+      if (applyFilter() > 0 && input.value.trim()) {
+        const first = searchIndex.find((entry) => !entry.card.hidden);
+        if (first) first.card.focus();
+      }
+    });
+    document.getElementById('searchReset').addEventListener('click', () => {
+      clearSearch();
+      input.focus();
+    });
+
+    /* =============================================
+       키보드: / 로 검색, Esc로 모달 닫기, 모달 안 Tab 순환
+       ============================================= */
+    document.addEventListener('keydown', (e) => {
+      const modalOpen = modal.classList.contains('open');
+      if (modalOpen) {
+        if (e.key === 'Escape') { e.preventDefault(); closeModal(); }
+        else if (e.key === 'Tab') trapModalFocus(e);
+        return;
+      }
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || e.isComposing || e.defaultPrevented) return;
+      const t = e.target;
+      if (t instanceof Element && t.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+      e.preventDefault();
+      input.focus();
+      input.select();
+    });
+
+    /* =============================================
+       카테고리 내비: 트리 접기·펼치기, 스크롤 스파이
+       ============================================= */
+    document.querySelectorAll('.tree-node > button.tree-item').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const open = btn.parentElement.classList.toggle('is-open');
+        btn.setAttribute('aria-expanded', String(open));
+      });
+    });
+
+    function setActiveNav(id) {
+      document.querySelectorAll('.tree-item.is-active, .subtree-item.is-active, .cat-chip.is-active')
+        .forEach((el) => el.classList.remove('is-active'));
+      const sel = window.CSS && CSS.escape ? CSS.escape(id) : id;
+      document.querySelectorAll(`[data-cat-id="${sel}"] > .tree-item, .subtree-item[data-subcat-id="${sel}"], .cat-chip[data-nav-id="${sel}"]`)
+        .forEach((el) => el.classList.add('is-active'));
+    }
+
+    function setupScrollSpy() {
+      if (!('IntersectionObserver' in window)) return;
+      const targets = Array.from(content.querySelectorAll('[data-nav-id]'));
+      if (!targets.length) return;
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach((en) => { if (en.isIntersecting) setActiveNav(en.target.dataset.navId); });
+      }, { rootMargin: '-20% 0px -60% 0px' });
+      targets.forEach((el) => obs.observe(el));
+    }
+
+    /* =============================================
+       공지사항 — 비동기. 검색·카드는 기다리지 않음.
+       캐시가 있으면 즉시 그리고(오래돼도) 뒤에서 갱신
+       ============================================= */
+    const notices = {
+      section: document.getElementById('noticesSection'),
+      toggle: document.getElementById('noticesToggle'),
+      title: document.getElementById('noticesTitle'),
+      meta: document.getElementById('noticesMeta'),
+      badge: document.getElementById('noticesNew'),
+      list: document.getElementById('noticesList'),
+      more: document.getElementById('noticesMore'),
+      count: 0,
+      sig: null,
+      userToggled: false,
+    };
+    const DEFAULT_NOTICES_CFG = { mode: 'recent', recentLimit: 5, pinned: [] };
+    const isHttpUrl = (u) => typeof u === 'string' && /^https?:\/\//i.test(u);
+
+    function normalizeNoticesCfg(c) {
+      c = c || {};
+      return {
+        mode: ['recent', 'pinned', 'both'].includes(c.mode) ? c.mode : 'recent',
+        recentLimit: Math.min(20, Math.max(1, parseInt(c.recentLimit, 10) || 5)),
+        pinned: Array.isArray(c.pinned) ? c.pinned.filter((p) => p && p.link) : [],
+      };
+    }
+
+    async function loadNoticesConfig(fallback) {
+      try {
+        const res = await fetch('/notices.json', { cache: 'no-cache' });
+        if (!res.ok) return fallback;
+        return normalizeNoticesCfg(await res.json());
+      } catch { return fallback; }
+    }
+
+    function buildNoticeItems(cfg, posts) {
+      posts = Array.isArray(posts) ? posts : [];
       const wantRecent = cfg.mode === 'recent' || cfg.mode === 'both';
       const wantPinned = (cfg.mode === 'pinned' || cfg.mode === 'both') && cfg.pinned.length > 0;
-      if (!wantRecent && !wantPinned) { section.remove(); return; }
-
-      // 최신글 (recent/both 모드에서 RSS 로드) — 1시간 localStorage 캐시
-      let recent = [];
-      if (wantRecent) {
-        const CACHE_KEY = 'byeduin_notices_cache';
-        const CACHE_TTL = 60 * 60 * 1000; // 1시간
-        try {
-          const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
-          if (cached && Date.now() - cached.ts < CACHE_TTL) {
-            recent = cached.posts;
-            if (cached.source) more.href = cached.source;
-          } else {
-            const res = await fetch('/api/notices?limit=' + cfg.recentLimit);
-            if (res.ok) {
-              const data = await res.json();
-              recent = Array.isArray(data.posts) ? data.posts : [];
-              if (data.source) more.href = data.source;
-              localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), posts: recent, source: data.source || '' }));
-            }
-          }
-        } catch (e) { console.error('[notices] 로드 실패:', e); }
-      }
-
       // 지정글: 제목·요약 없으면 최신글에서 link 매칭으로 보완
-      const byLink = new Map(recent.map(p => [p.link, p]));
-      const pinned = wantPinned ? cfg.pinned.map(p => {
+      const byLink = new Map(posts.filter(Boolean).map((p) => [p.link, p]));
+      const pinned = wantPinned ? cfg.pinned.map((p) => {
         const hit = byLink.get(p.link);
         return {
           title: p.title || (hit && hit.title) || p.link,
@@ -771,370 +1486,171 @@
           pinned: true,
         };
       }) : [];
-
       // both: 최신글에서 지정글과 중복 제거
-      const pinnedLinks = new Set(pinned.map(p => p.link));
-      const recentShown = wantRecent ? recent.filter(p => !pinnedLinks.has(p.link)) : [];
-
-      const items = [...pinned, ...recentShown];
-
-      // 스켈레톤 제거 후 실제 항목 렌더 (표시할 게 없으면 섹션 숨김)
-      list.innerHTML = '';
-      if (items.length === 0) { section.remove(); return; }
-
-      items.forEach(post => {
-        if (!post || !post.title || !post.link) return;
-
-        const item = document.createElement('div');
-        item.className = 'notice-item' + (post.pinned ? ' is-pinned' : '');
-
-        // ── 헤더(클릭 시 아코디언 토글) ──
-        const header = document.createElement('button');
-        header.type = 'button';
-        header.className = 'notice-header';
-        header.setAttribute('aria-expanded', 'false');
-
-        const titleEl = document.createElement('span');
-        titleEl.className = 'notice-title';
-        titleEl.textContent = (post.pinned ? '📌 ' : '') + post.title; // XSS 안전
-        titleEl.title = post.title;
-
-        const dateEl = document.createElement('span');
-        dateEl.className = 'notice-date';
-        dateEl.textContent = formatNoticeDate(post.date);
-
-        const chev = document.createElement('span');
-        chev.className = 'notice-chevron';
-        chev.textContent = '▾';
-
-        header.appendChild(titleEl);
-        header.appendChild(dateEl);
-        header.appendChild(chev);
-
-        // ── 본문(펼침 영역): 요약 + 이동 버튼 ──
-        const body = document.createElement('div');
-        body.className = 'notice-body';
-        if (post.summary) {
-          const p = document.createElement('p');
-          p.className = 'notice-summary';
-          p.textContent = post.summary; // XSS 안전
-          body.appendChild(p);
-        }
-        const go = document.createElement('a');
-        go.className = 'notice-go';
-        go.href = post.link;
-        go.target = '_blank';
-        go.rel = 'noopener noreferrer';
-        go.textContent = '글 보러가기 →';
-        body.appendChild(go);
-
-        // ── 아코디언 토글(한 번에 하나만 열림) ──
-        header.addEventListener('click', () => {
-          const isOpen = item.classList.contains('is-open');
-          list.querySelectorAll('.notice-item.is-open').forEach(el => {
-            el.classList.remove('is-open');
-            const h = el.querySelector('.notice-header');
-            if (h) h.setAttribute('aria-expanded', 'false');
-          });
-          if (!isOpen) {
-            item.classList.add('is-open');
-            header.setAttribute('aria-expanded', 'true');
-          }
-        });
-
-        item.appendChild(header);
-        item.appendChild(body);
-        list.appendChild(item);
-      });
+      const pinnedLinks = new Set(pinned.map((p) => p.link));
+      const recent = wantRecent ? posts.slice(0, cfg.recentLimit).filter((p) => p && !pinnedLinks.has(p.link)) : [];
+      return [...pinned, ...recent].filter((p) => p && p.title && isHttpUrl(p.link));
     }
 
-    function renderRecentSection(main) {
-      const KEY = 'byeduin_recent_apps';
-      const visible = new Set(APPS.map(a => a.href));
-      const list = JSON.parse(localStorage.getItem(KEY) || '[]').filter(a => visible.has(a.href)).slice(0, 4);
-      if (list.length === 0) return;
-
-      const section = document.createElement('section');
-      section.className = 'category-section recent-section';
-      section.innerHTML = `
-        <div class="category-header">
-          <span class="category-label">⏱ 최근 방문</span>
-          <span class="category-desc">최근에 사용한 앱</span>
-        </div>
-        <div class="card-grid" id="grid-recent"></div>
-      `;
-      main.appendChild(section);
-
-      const grid = section.querySelector('#grid-recent');
-      list.forEach(app => {
-        const a = document.createElement('a');
-        a.className = 'app-card';
-        a.href = app.href;
-        a.innerHTML = `
-          <div class="card-emoji sub-${app.subcategory || 'default'}">
-            ${app.lucideIcon ? `<i data-lucide="${app.lucideIcon}"></i>` : app.emoji}
-          </div>
-          <div class="card-title">${app.title}</div>
-          <div class="card-desc">${app.desc}</div>
-        `;
-        a.addEventListener('click', () => saveRecentApp(app));
-        grid.appendChild(a);
-      });
+    function formatNoticeDate(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return '';
+      return d.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
     }
 
-    /* ── 서브카테고리는 apps.json의 categories[].subcategories + 앱별 subcategory에서 옴 ── */
-
-    function buildSidebar(categories) {
-      const sidebar = document.createElement('nav');
-      sidebar.className = 'tree-sidebar';
-
-      // 모바일 토글 버튼
-      const toggle = document.createElement('button');
-      toggle.className = 'sidebar-toggle';
-      toggle.innerHTML = '☰ 카테고리 &nbsp;<span style="margin-left:auto;font-size:0.7rem;color:var(--fg-muted)">▾</span>';
-      toggle.addEventListener('click', () => sidebar.classList.toggle('is-open'));
-      sidebar.appendChild(toggle);
-
-      const p = document.createElement('div');
-      p.className = 'sidebar-label';
-      p.textContent = '카테고리';
-      sidebar.appendChild(p);
-
-      const ul = document.createElement('ul');
-      ul.className = 'tree-nav';
-      sidebar.appendChild(ul);
-
-      categories.forEach(cat => {
-        const subcats = cat.subcategories || [];
-        const hasChildren = subcats.length > 0;
-        const li = document.createElement('li');
-        li.className = 'tree-node' + (hasChildren ? ' is-open' : '');
-        li.dataset.catId = cat.id;
-
-        const btn = document.createElement('button');
-        btn.className = 'tree-item';
-        btn.type = 'button';
-        btn.innerHTML = cat.label + (hasChildren ? '<span class="tree-chevron">▶</span>' : '');
-        btn.addEventListener('click', () => {
-          if (hasChildren) {
-            li.classList.toggle('is-open');
-          } else {
-            scrollToSection(cat.id);
-          }
-        });
-        li.appendChild(btn);
-
-        if (hasChildren) {
-          const sub = document.createElement('ul');
-          sub.className = 'subtree';
-          subcats.forEach(sc => {
-            const sli = document.createElement('li');
-            const sbtn = document.createElement('button');
-            sbtn.className = 'subtree-item';
-            sbtn.type = 'button';
-            sbtn.dataset.subcatId = sc.id;
-            sbtn.textContent = sc.label;
-            sbtn.addEventListener('click', () => scrollToSection(sc.id));
-            sli.appendChild(sbtn);
-            sub.appendChild(sli);
-          });
-          li.appendChild(sub);
-        }
-        ul.appendChild(li);
-      });
-
-      return sidebar;
+    function isFreshNotice(post) {
+      const t = new Date(post.date || '').getTime();
+      return Number.isFinite(t) && Date.now() - t <= NOTICE_FRESH_MS;
     }
 
-    function scrollToSection(id) {
-      const el = document.getElementById('section-' + id);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    function updateNoticesLabel() {
+      const expanded = notices.toggle.getAttribute('aria-expanded') === 'true';
+      notices.title.textContent = expanded ? '공지사항' : `공지 ${notices.count}건 보기`;
+      notices.meta.textContent = '에듀인 블로그 소식';
     }
 
-    function setActiveNav(id) {
-      document.querySelectorAll('.tree-item, .subtree-item').forEach(el => el.classList.remove('is-active'));
-      const active = document.querySelector(`[data-cat-id="${id}"] > .tree-item, .subtree-item[data-subcat-id="${id}"]`);
-      if (active) active.classList.add('is-active');
+    function setNoticesExpanded(open) {
+      notices.toggle.setAttribute('aria-expanded', String(open));
+      notices.section.classList.toggle('is-expanded', open);
+      notices.list.hidden = !open;
+      updateNoticesLabel();
     }
 
-    function setupScrollSpy(sectionIds) {
-      const targets = sectionIds.map(id => document.getElementById('section-' + id)).filter(Boolean);
-      if (!targets.length) return;
-      const obs = new IntersectionObserver((entries) => {
-        entries.forEach(e => { if (e.isIntersecting) setActiveNav(e.target.dataset.navId); });
-      }, { rootMargin: '-20% 0px -60% 0px' });
-      targets.forEach(el => obs.observe(el));
-    }
-
-    function renderCardGrid(container, items, mostRecentHref) {
-      items.forEach(app => {
-        const isModal = app.type === 'modal';
-        const isExternal = !isModal && (app.type === 'link' || app.external);
-        const a = document.createElement('a');
-        const isRecentVisited = !isModal && app.href === mostRecentHref;
-        a.className = 'app-card' + (isModal ? ' modal-card' : '') + (isRecentVisited ? ' is-recent-visited' : '');
-        if (isModal) {
-          a.href = '#';
-          a.addEventListener('click', (e) => { e.preventDefault(); openModal(app); });
-        } else {
-          a.href = app.href;
-          if (isExternal) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
-          a.addEventListener('click', () => saveRecentApp(app));
-        }
-        a.innerHTML = `
-          ${isExternal ? '<span class="external-badge">↗</span>' : ''}
-          ${isModal ? '<span class="external-badge">ℹ</span>' : ''}
-          <div class="card-emoji sub-${app.subcategory || 'default'}">
-            ${app.lucideIcon ? `<i data-lucide="${app.lucideIcon}"></i>` : app.emoji}
-          </div>
-          <div class="card-title">${app.title}</div>
-          <div class="card-desc">${app.desc}</div>
-        `;
-        container.appendChild(a);
-      });
-    }
-
-    function render() {
-      const main = document.getElementById('main');
-      main.innerHTML = '';
-
-      // 공지사항: 비동기 하이드레이션 (prepend로 항상 최상단, page-layout 위)
-      renderNoticesSection(main);
-
-      // 페이지 레이아웃 컨테이너 (사이드바 + 콘텐츠)
-      const layout = document.createElement('div');
-      layout.className = 'page-layout';
-      main.appendChild(layout);
-
-      // 사이드바 빌드
-      const sidebar = buildSidebar(CATEGORIES);
-      layout.appendChild(sidebar);
-
-      // 콘텐츠 영역
-      const content = document.createElement('div');
-      content.className = 'content-area';
-      layout.appendChild(content);
-
-      // 가장 최근 방문 앱(1개)만 하이라이트
-      const KEY = 'byeduin_recent_apps';
-      const recentList = JSON.parse(localStorage.getItem(KEY) || '[]');
-      const mostRecentHref = recentList.length > 0 ? recentList[0].href : null;
-
-      renderRecentSection(content);
-
-      const spyIds = [];
-
-      CATEGORIES.forEach(cat => {
-        const allItems = APPS.filter(a => a.category === cat.id);
-        if (allItems.length === 0) return;
-
-        const subcats = cat.subcategories;
-
-        const section = document.createElement('section');
-        section.className = 'category-section';
-        section.id = 'section-' + cat.id;
-        section.dataset.navId = cat.id;
-        spyIds.push(cat.id);
-
-        if (subcats) {
-          // 카테고리 헤더만 (그리드 없음 — 서브카트별 렌더)
-          section.innerHTML = `
-            <div class="category-header">
-              <span class="category-label">${cat.label}</span>
-              <span class="category-desc">${cat.desc}</span>
-            </div>
-          `;
-          content.appendChild(section);
-
-          // 서브카테고리별 섹션
-          const subIds = new Set(subcats.map(sc => sc.id));
-          const unassigned = allItems.filter(a => !a.subcategory || !subIds.has(a.subcategory));
-
-          subcats.forEach(sc => {
-            const scItems = allItems.filter(a => a.subcategory === sc.id);
-            if (!scItems.length) return;
-
-            const scSec = document.createElement('section');
-            scSec.className = 'category-section';
-            scSec.id = 'section-' + sc.id;
-            scSec.dataset.navId = sc.id;
-            scSec.style.marginTop = '0';
-            spyIds.push(sc.id);
-
-            scSec.innerHTML = `
-              <div class="category-header" style="border-bottom-style:dashed; opacity:0.75;">
-                <span class="category-label" style="font-size:0.85rem;">${sc.label}</span>
-              </div>
-              <div class="card-grid"></div>
-            `;
-            renderCardGrid(scSec.querySelector('.card-grid'), scItems, mostRecentHref);
-            content.appendChild(scSec);
-          });
-
-          // 서브카테고리 미배정 앱 (있으면 기타로 추가)
-          if (unassigned.length > 0) {
-            const extra = document.createElement('div');
-            extra.innerHTML = `<div class="card-grid"></div>`;
-            renderCardGrid(extra.querySelector('.card-grid'), unassigned, mostRecentHref);
-            content.appendChild(extra);
-          }
-        } else {
-          section.innerHTML = `
-            <div class="category-header">
-              <span class="category-label">${cat.label}</span>
-              <span class="category-desc">${cat.desc}</span>
-            </div>
-            <div class="card-grid" id="grid-${cat.id}"></div>
-          `;
-          content.appendChild(section);
-          renderCardGrid(section.querySelector(`#grid-${cat.id}`), allItems, mostRecentHref);
-        }
-      });
-
-      // 스크롤 스파이 — 렌더 완료 후 설정
-      requestAnimationFrame(() => setupScrollSpy(spyIds));
-      
-      // Lucide 아이콘 변환
-      if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-      }
-    }
-
-    // 앱 데이터 로드 후 렌더링
-    loadApps().then(() => render());
-
-    function openModal(app) {
-      document.getElementById('modalBadge').textContent = app.badge || '';
-      const titleEl = document.getElementById('modalTitle');
-      titleEl.innerHTML = `
-        <div class="card-emoji sub-${app.subcategory || 'default'}" style="display:inline-flex; vertical-align:middle; margin-right:8px; margin-bottom:0;">
-          ${app.lucideIcon ? `<i data-lucide="${app.lucideIcon}"></i>` : app.emoji}
-        </div>
-        <span style="vertical-align:middle;">${app.title}</span>
-      `;
-      if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-      }
-      document.getElementById('modalDesc').textContent = app.modalDesc || app.desc;
-      const ul = document.getElementById('modalFeatures');
-      ul.innerHTML = (app.features || []).map(f => `<li><span>${f}</span></li>`).join('');
-      const link = document.getElementById('modalLink');
-      link.href = app.href;
-      link.textContent = app.linkLabel || '바로가기';
-      if (app.external) { link.target = '_blank'; link.rel = 'noopener noreferrer'; }
-      else { link.removeAttribute('target'); link.removeAttribute('rel'); }
-      document.getElementById('appModal').classList.add('open');
-    }
-
-    function closeModal(e) {
-      if (e.target === document.getElementById('appModal')) {
-        document.getElementById('appModal').classList.remove('open');
-      }
-    }
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') document.getElementById('appModal').classList.remove('open');
+    notices.toggle.addEventListener('click', () => {
+      notices.userToggled = true;
+      setNoticesExpanded(notices.toggle.getAttribute('aria-expanded') !== 'true');
     });
+
+    let noticeSeq = 0;
+    function buildNoticeItem(post) {
+      const item = document.createElement('div');
+      item.className = 'notice-item' + (post.pinned ? ' is-pinned' : '');
+      const bodyId = 'notice-body-' + (++noticeSeq);
+
+      // ── 헤더(클릭 시 아코디언 토글) ──
+      const header = document.createElement('button');
+      header.type = 'button';
+      header.className = 'notice-header';
+      header.setAttribute('aria-expanded', 'false');
+      header.setAttribute('aria-controls', bodyId);
+
+      const titleEl = document.createElement('span');
+      titleEl.className = 'notice-title';
+      titleEl.textContent = (post.pinned ? '📌 ' : '') + post.title; // XSS 안전
+      titleEl.title = post.title;
+
+      const dateEl = document.createElement('span');
+      dateEl.className = 'notice-date';
+      dateEl.textContent = formatNoticeDate(post.date);
+
+      const chev = document.createElement('span');
+      chev.className = 'notice-chevron';
+      chev.setAttribute('aria-hidden', 'true');
+      chev.textContent = '▾';
+
+      header.append(titleEl, dateEl, chev);
+
+      // ── 본문(펼침 영역): 요약 + 이동 버튼 ──
+      const body = document.createElement('div');
+      body.className = 'notice-body';
+      body.id = bodyId;
+      if (post.summary) {
+        const p = document.createElement('p');
+        p.className = 'notice-summary';
+        p.textContent = post.summary; // XSS 안전
+        body.appendChild(p);
+      }
+      const go = document.createElement('a');
+      go.className = 'notice-go';
+      go.href = post.link; // http(s)만 통과
+      go.target = '_blank';
+      go.rel = 'noopener noreferrer';
+      go.textContent = '글 보러가기 →';
+      body.appendChild(go);
+
+      // ── 아코디언 토글(한 번에 하나만 열림) ──
+      header.addEventListener('click', () => {
+        const isOpen = item.classList.contains('is-open');
+        notices.list.querySelectorAll('.notice-item.is-open').forEach((el) => {
+          el.classList.remove('is-open');
+          const h = el.querySelector('.notice-header');
+          if (h) h.setAttribute('aria-expanded', 'false');
+        });
+        if (!isOpen) {
+          item.classList.add('is-open');
+          header.setAttribute('aria-expanded', 'true');
+        }
+      });
+
+      item.append(header, body);
+      return item;
+    }
+
+    function renderNotices(items, source) {
+      const sig = JSON.stringify([items, source || '']);
+      if (sig === notices.sig) return;
+      notices.sig = sig;
+      if (isHttpUrl(source)) notices.more.href = source;
+      if (items.length === 0) { notices.section.hidden = true; return; }
+
+      notices.list.textContent = '';
+      items.forEach((post) => notices.list.appendChild(buildNoticeItem(post)));
+      notices.count = items.length;
+      const fresh = items.some(isFreshNotice);
+      notices.badge.hidden = !fresh;
+      notices.toggle.disabled = false;
+      notices.section.hidden = false;
+      if (notices.userToggled) updateNoticesLabel();
+      else setNoticesExpanded(fresh);
+    }
+
+    async function loadNotices() {
+      notices.section.hidden = false; // 한 줄 자리(불러오는 중…)를 먼저 확보
+      const cachedCfg = normalizeNoticesCfg(store.get(NOTICE_CFG_KEY, DEFAULT_NOTICES_CFG));
+      const cached = store.get(NOTICE_CACHE_KEY, null);
+      const hasCache = !!(cached && Array.isArray(cached.posts));
+      if (hasCache) renderNotices(buildNoticeItems(cachedCfg, cached.posts), cached.source);
+
+      const cfg = await loadNoticesConfig(cachedCfg);
+      store.set(NOTICE_CFG_KEY, cfg);
+      const wantRecent = cfg.mode === 'recent' || cfg.mode === 'both';
+
+      let posts = hasCache ? cached.posts : [];
+      let source = hasCache ? cached.source : '';
+      const cacheFresh = hasCache && Date.now() - cached.ts < NOTICE_TTL;
+      if (wantRecent && !cacheFresh) {
+        try {
+          const res = await fetch('/api/notices?limit=' + cfg.recentLimit);
+          if (res.ok) {
+            const d = await res.json();
+            posts = Array.isArray(d.posts) ? d.posts : [];
+            source = d.source || '';
+            store.set(NOTICE_CACHE_KEY, { ts: Date.now(), posts, source });
+          }
+        } catch (e) { console.error('[notices] 로드 실패:', e); }
+      }
+      renderNotices(buildNoticeItems(cfg, posts), source);
+    }
+
+    /* =============================================
+       시작 — 첫 화면 그리기 전에 동기로 끝나는 것부터
+       ============================================= */
+    loadNotices(); // 캐시 반영까지는 동기, 나머지는 비동기
+
+    const recent = readRecent();
+    renderRecentSection(recent);
+    markMostRecent(recent);
+
+    const initialQ = new URLSearchParams(location.search).get('q');
+    if (initialQ) {
+      input.value = initialQ;
+      applyFilter(false);
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+    requestAnimationFrame(setupScrollSpy);
+  })();
   </script>
 
 </body>
