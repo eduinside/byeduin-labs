@@ -11,6 +11,7 @@
 
 import { generateContent } from './_ai.js';
 import { toMatchQuery } from './_manual-text.js';
+import { checkOrigin, rateLimit, readJson, json } from './_guard.js';
 
 const TOP_K = 6;             // bm25 상위 조각 수
 const EXPAND = 3;            // 상위 몇 개에 이웃(앞뒤) 조각을 붙일지
@@ -19,31 +20,11 @@ const MAX_SUMMARY = 24000;   // 문서 요약 입력 상한
 const ANSWER_TIMELY_MODEL = 'google/gemini-2.5-flash';
 const ANSWER_GEMINI_MODEL = 'gemini-flash-latest';
 
-const HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
-const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: HEADERS });
 
-// ── 속도 제한 ─────────────────────────────────────────
-// 무료 Cache API에 분·일 단위 횟수를 적는다. 데이터센터별 근사치지만 스크립트 남용은 막는다.
-// IP는 해시 키로만 쓰고 따로 남기지 않는다.
-const LIMITS = [{ win: 60, max: 10 }, { win: 86400, max: 100 }];
-async function overLimit(request) {
-  const cache = globalThis.caches?.default;
-  if (!cache) return false;
-  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
-  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip)))]
-    .slice(0, 12).map(b => b.toString(16).padStart(2, '0')).join('');
-  const now = Math.floor(Date.now() / 1000);
-  let over = false;
-  for (const { win, max } of LIMITS) {
-    const key = new Request(`https://ratelimit.eduin.info/search/${win}/${Math.floor(now / win)}/${hash}`);
-    const n = Number(await (await cache.match(key))?.text() ?? 0);
-    if (n >= max) over = true;
-    else await cache.put(key, new Response(String(n + 1), { headers: { 'Cache-Control': `max-age=${win}` } }));
-  }
-  return over;
-}
-// 정본 도메인·로컬에서만 받는다(*.pages.dev로 돌아와 제한을 피하지 못하게)
-const ALLOWED_HOSTS = /^((www\.)?eduin\.info|localhost|127\.0\.0\.1)$/;
+// ── 출처 검사·속도 제한 ───────────────────────────────
+// _guard.js 공용 가드(호스트·Origin 검사 + Cache API 카운터). 한도는 _guard.js LIMITS.search
+// (IP당 분 10회·하루 100회 — 이전과 같음 + 사이트 전체 하루 상한).
+const MAX_BODY = 256 * 1024; // 대화 맥락(history)까지 포함한 요청 본문 상한
 
 // ── 검색 ─────────────────────────────────────────────
 async function retrieve(db, text, docIds) {
@@ -151,24 +132,26 @@ async function summarize({ docId, query, env, request }) {
 }
 
 export async function onRequestPost({ request, env }) {
-  if (!ALLOWED_HOSTS.test(new URL(request.url).hostname)) return json({ error: '허용되지 않은 주소입니다.' }, 403);
+  const denied = checkOrigin(request);
+  if (denied) return denied;
   if (!env.BYEDUIN_DB) return json({ error: '문서 저장소가 설정되지 않았습니다.' }, 500);
 
-  let body;
-  try { body = await request.json(); } catch { return json({ error: '잘못된 요청입니다.' }, 400); }
+  const body = await readJson(request, MAX_BODY);
+  if (body instanceof Response) return body;
   const query = String(body.query || '').trim().slice(0, 1000);
-  const { history, type = 'search', documentPath } = body;
+  const { type = 'search' } = body;
+  const history = Array.isArray(body.history) ? body.history.slice(-8) : [];
+  const documentPath = body.documentPath ? String(body.documentPath).slice(0, 100) : '';
   if (!query) return json({ error: '질문을 입력해 주세요.' }, 400);
 
-  if (await overLimit(request)) {
-    return json({ error: '질문이 너무 많아요. 잠시 후(또는 내일) 다시 이용해 주세요.', code: 'limited' }, 429);
-  }
+  const limited = await rateLimit(request, 'search');
+  if (limited) return limited;
 
   try {
     if (type === 'summarize' && documentPath) return await summarize({ docId: documentPath, query, env, request });
 
     const docIds = type === 'question' && documentPath ? [String(documentPath)]
-      : Array.isArray(body.docs) ? body.docs.map(String).slice(0, 20) : [];
+      : Array.isArray(body.docs) ? body.docs.slice(0, 20).map(d => String(d).slice(0, 100)) : [];
     const groups = await retrieve(env.BYEDUIN_DB, searchText(query, history), docIds);
     if (!groups.length) return json({ answer: NOT_FOUND, sources: [] });
 

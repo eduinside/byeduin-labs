@@ -6,6 +6,8 @@
 //
 // 공용 키 1개로 전 이용자의 조회를 대행하므로 카카오 일일 호출량(기본 300,000/일) 소진 리스크가 있다.
 // 이를 줄이기 위해 D1(book_cache)에 서지정보를 캐시하고, 429가 오면 명확히 안내한다.
+// 같은 출처에서만 받는다(_guard.js). 한도: LIMITS['book-lookup'](D1 캐시 미스만 셈).
+import { checkOrigin, rateLimit } from './_guard.js';
 
 const KAKAO_HOST = 'https://dapi.kakao.com/v3/search/book';
 
@@ -17,17 +19,21 @@ const BLOCK_RETRY_SEC = 600;
 
 export async function onRequest(ctx) {
   const { request, env } = ctx;
-  const headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
+  const headers = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 
   if (request.method !== 'GET') {
     return new Response(JSON.stringify({ error: 'Method Not Allowed' }), { status: 405, headers });
   }
 
+  const denied = checkOrigin(request);
+  if (denied) return denied;
+
   const kakaoKey = env.KAKAO_REST_API_KEY;
   if (!kakaoKey) {
+    console.error('[book-lookup] KAKAO_REST_API_KEY 없음');
     return new Response(
-      JSON.stringify({ error: '서버에 KAKAO_REST_API_KEY 환경변수가 설정되지 않았습니다.' }),
-      { status: 500, headers }
+      JSON.stringify({ error: '도서 조회 기능이 아직 준비되지 않았어요.' }),
+      { status: 503, headers }
     );
   }
 
@@ -46,6 +52,9 @@ export async function onRequest(ctx) {
     });
   }
 
+  const limited = await rateLimit(request, 'book-lookup');
+  if (limited) return limited;
+
   const api = KAKAO_HOST + '?target=isbn&query=' + encodeURIComponent(isbn);
 
   try {
@@ -59,7 +68,8 @@ export async function onRequest(ctx) {
       });
       if (res.status === 429) return blockedResponse(headers);
       if (!res.ok) {
-        return new Response(JSON.stringify({ error: `카카오 응답 ${res.status}` }), { status: 502, headers });
+        console.error('[book-lookup] 카카오 응답', res.status);
+        return new Response(JSON.stringify({ error: '도서 정보를 가져오지 못했어요. 잠시 후 다시 시도해 주세요.' }), { status: 502, headers });
       }
       data = await res.json();
     } finally {
@@ -92,8 +102,9 @@ export async function onRequest(ctx) {
       headers: { ...headers, 'X-Cache': 'MISS' },
     });
   } catch (err) {
+    console.error('[book-lookup] 카카오 연결 실패:', err && err.message);
     return new Response(
-      JSON.stringify({ error: (err && err.message) || '카카오 연결 실패' }),
+      JSON.stringify({ error: '도서 정보를 가져오지 못했어요. 잠시 후 다시 시도해 주세요.' }),
       { status: 502, headers }
     );
   }

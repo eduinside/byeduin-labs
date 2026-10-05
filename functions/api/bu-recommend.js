@@ -1,24 +1,37 @@
 // POST /api/bu-recommend
 // { q: string, episodes: [{id, title, titleKo, desc, descKo, level}] }
 // → { ids: string[] }
+// 같은 출처에서만 받는다(_guard.js). 한도: LIMITS['bu-recommend'] + AI 텍스트 한도.
+import { generateContent } from './_ai.js';
+import { guard, json, readJson, str, errorResponse } from './_guard.js';
+
+const Q_MAX = 200;          // 검색어 글자 수
+const EPISODES_MAX = 300;   // 에피소드 수
+const BODY_MAX = 1024 * 1024; // 클라이언트가 설명 전문을 함께 보내므로 넉넉히(1MB)
+
 export async function onRequest(ctx) {
   const { request, env } = ctx;
-  const cors = { 'Access-Control-Allow-Origin': '*' };
-  const json = (body, status = 200) =>
-    new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+  if (request.method !== 'POST') return json({ error: '허용되지 않은 방식입니다.' }, 405);
 
-  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-  if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+  const blocked = await guard(request, 'bu-recommend');
+  if (blocked) return blocked;
 
-  let body;
-  try { body = await request.json(); } catch { return json({ error: 'JSON 파싱 실패' }, 400); }
+  const body = await readJson(request, BODY_MAX);
+  if (body instanceof Response) return body;
 
-  const q = (body.q || '').trim();
-  const episodes = Array.isArray(body.episodes) ? body.episodes.slice(0, 300) : [];
+  const q = str(body.q, Q_MAX);
+  const episodes = (Array.isArray(body.episodes) ? body.episodes.slice(0, EPISODES_MAX) : [])
+    .filter(e => e && typeof e === 'object' && typeof e.id === 'string' && e.id)
+    .map(e => ({
+      id: e.id.slice(0, 40),
+      level: str(String(e.level ?? ''), 10),
+      title: str(e.title, 200),
+      titleKo: str(e.titleKo, 200),
+      desc: str(e.desc, 80),
+      descKo: str(e.descKo, 80),
+    }));
   if (!q) return json({ error: '검색어(q)가 필요합니다' }, 400);
   if (!episodes.length) return json({ error: '에피소드 목록이 비어 있습니다' }, 400);
-
-  const { generateContent } = await import('./_ai.js');
 
   const systemPrompt = [
     '너는 Blocks Universe(넘버블록스·알파블록스·컬러블록스·원더블록스) 에피소드 추천 전문가야.',
@@ -28,7 +41,7 @@ export async function onRequest(ctx) {
   ].join('\n');
 
   const epLines = episodes.map(e =>
-    `${e.id} | Lv${e.level || '?'} | ${e.titleKo || e.title} / ${e.title} | ${(e.descKo || e.desc || '').slice(0, 80)}`
+    `${e.id} | Lv${e.level || '?'} | ${e.titleKo || e.title} / ${e.title} | ${e.descKo || e.desc}`
   ).join('\n');
 
   const userMessage = `질의: "${q}"\n\n에피소드 목록:\n${epLines}`;
@@ -37,7 +50,8 @@ export async function onRequest(ctx) {
   try {
     text = await generateContent({ systemPrompt, userMessage, env, temperature: 0.3, request });
   } catch (e) {
-    return json({ error: e.message }, e.status || 502);
+    console.error('[bu-recommend]', e && e.message);
+    return errorResponse(e, 'AI 추천을 받지 못했어요. 잠시 후 다시 시도해 주세요.');
   }
 
   let ids;
@@ -46,7 +60,8 @@ export async function onRequest(ctx) {
     ids = JSON.parse(match ? match[0] : text);
     if (!Array.isArray(ids)) throw new Error('not array');
   } catch {
-    return json({ error: `LLM 응답 파싱 실패: ${text.slice(0, 120)}` }, 502);
+    console.error('[bu-recommend] 응답 파싱 실패:', text.slice(0, 120));
+    return json({ error: 'AI 응답을 읽지 못했어요. 다시 시도해 주세요.' }, 502);
   }
 
   const validSet = new Set(episodes.map(e => e.id));
