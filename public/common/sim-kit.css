@@ -1,0 +1,143 @@
+/* SimKit 공용 스타일 — sim-kit.js가 만드는 요소에만 적용(모두 sk- 접두사). docs/sim-kit.md
+   색은 hero-theme.css 변수(--primary, --border, --card-bg, --fg, --fg-muted)를 따른다.
+   앱 강조색을 쓰려면 앱 스타일에서 :root { --sk-accent: var(--fb-accent); } 처럼 덮어쓴다.
+   앱이 기존 클래스(.feedback-box.ok 등)를 함께 붙이면 그쪽 규칙이 더 구체적이라 앱 모양이 유지된다. */
+
+:root {
+  --sk-accent: var(--primary, #006fee);
+  --sk-accent-fg: #ffffff;
+  --sk-ring: rgba(0, 111, 238, 0.28);
+  --sk-ok-fg: #146c34;   --sk-ok-bg: rgba(23, 201, 100, 0.14);
+  --sk-no-fg: #b0103f;   --sk-no-bg: rgba(243, 18, 96, 0.10);
+  --sk-info-fg: #0b4fa8; --sk-info-bg: rgba(0, 111, 238, 0.10);
+  --sk-warn-fg: #8a4b00; --sk-warn-bg: rgba(245, 165, 36, 0.18);
+  --sk-toast-bg: rgba(17, 24, 28, 0.92); --sk-toast-fg: #ffffff;
+  --sk-toast-no-bg: rgba(176, 16, 63, 0.95);
+}
+[data-theme="dark"] {
+  --sk-ring: rgba(51, 142, 247, 0.4);
+  --sk-ok-fg: #5ee39a;   --sk-ok-bg: rgba(23, 201, 100, 0.16);
+  --sk-no-fg: #ff7aa2;   --sk-no-bg: rgba(243, 18, 96, 0.18);
+  --sk-info-fg: #7cb6ff; --sk-info-bg: rgba(0, 111, 238, 0.22);
+  --sk-warn-fg: #fbbf24; --sk-warn-bg: rgba(245, 165, 36, 0.18);
+  --sk-toast-bg: rgba(236, 237, 238, 0.95); --sk-toast-fg: #11181c;
+  --sk-toast-no-bg: rgba(255, 122, 162, 0.95);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --sk-ring: rgba(51, 142, 247, 0.4);
+    --sk-ok-fg: #5ee39a;   --sk-ok-bg: rgba(23, 201, 100, 0.16);
+    --sk-no-fg: #ff7aa2;   --sk-no-bg: rgba(243, 18, 96, 0.18);
+    --sk-info-fg: #7cb6ff; --sk-info-bg: rgba(0, 111, 238, 0.22);
+    --sk-warn-fg: #fbbf24; --sk-warn-bg: rgba(245, 165, 36, 0.18);
+    --sk-toast-bg: rgba(236, 237, 238, 0.95); --sk-toast-fg: #11181c;
+    --sk-toast-no-bg: rgba(255, 122, 162, 0.95);
+  }
+}
+
+/* ── 피드백 상자 (SimKit.feedback) ── */
+.sk-feedback {
+  margin: 10px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 600;
+  text-align: center;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.sk-feedback--ok   { color: var(--sk-ok-fg);   background: var(--sk-ok-bg); }
+.sk-feedback--no   { color: var(--sk-no-fg);   background: var(--sk-no-bg); }
+.sk-feedback--info { color: var(--sk-info-fg); background: var(--sk-info-bg); }
+.sk-feedback--warn { color: var(--sk-warn-fg); background: var(--sk-warn-bg); }
+
+/* ── 토스트 (VUI.toast가 없을 때의 대체) ── */
+.sk-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 9999;
+  max-width: min(90vw, 520px);
+  padding: 10px 18px;
+  border-radius: 20px;
+  background: var(--sk-toast-bg);
+  color: var(--sk-toast-fg);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+  word-break: keep-all;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.sk-toast.sk-show { opacity: 1; transform: translate(-50%, 0); }
+.sk-toast--no { background: var(--sk-toast-no-bg); color: #ffffff; }
+
+/* ── 별 (SimKit.stars.render) ── */
+.sk-stars { letter-spacing: 0.05em; white-space: nowrap; }
+
+/* ── 미션 번호 버튼 (SimKit.missions nav) ── */
+.sk-mnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.sk-mnav-btn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 2px solid var(--border, #e4e4e7);
+  background: var(--card-bg, #f4f4f5);
+  color: var(--fg-muted, #71717a);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.sk-mnav-btn:hover { border-color: var(--sk-accent); color: var(--fg, #11181c); }
+.sk-mnav-btn.done { background: var(--sk-accent); border-color: var(--sk-accent); color: var(--sk-accent-fg); }
+.sk-mnav-btn.active { border-color: var(--sk-accent); color: var(--sk-accent); box-shadow: 0 0 0 3px var(--sk-ring); }
+.sk-mnav-btn.done.active { color: var(--sk-accent-fg); }
+.sk-mnav-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* 이전/다음/건너뛰기 등 앱이 키트 모양을 쓰고 싶을 때 붙이는 버튼 */
+.sk-btn {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 2px solid var(--border, #e4e4e7);
+  background: var(--card-bg, #f4f4f5);
+  color: var(--fg, #11181c);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sk-btn--primary { background: var(--sk-accent); border-color: var(--sk-accent); color: var(--sk-accent-fg); }
+.sk-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.sk-mnav-btn:focus-visible,
+.sk-btn:focus-visible,
+.sk-feedback:focus-visible {
+  outline: 3px solid var(--sk-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-toast,
+  .sk-mnav-btn,
+  .sk-btn { transition: none; }
+  .sk-toast { transform: translate(-50%, 0); }
+}
