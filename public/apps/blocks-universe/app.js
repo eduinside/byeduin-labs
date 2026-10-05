@@ -238,7 +238,7 @@ function renderGrid() {
 /* ── 웰컴 섹션 ── */
 function renderWelcome() {
   if (document.getElementById('welcomeSection')) return;
-  const total = DATA ? DATA.episodes.length : 351;
+  const total = DATA ? DATA.episodes.length : 356;
   const seriesBtns = SERIES.map(s =>
     `<button class="wf-random-btn" style="--sc:${s.color}" onclick="randomPlay('${s.id}')">${s.emoji} ${s.ko}</button>`
   ).join('');

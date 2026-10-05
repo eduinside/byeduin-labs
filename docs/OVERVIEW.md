@@ -62,7 +62,7 @@ docs/                  ← 개발 문서
 ### 교육 · 학습지원 (`edu-learn`)
 | ID | 이름 | 설명 |
 |---|---|---|
-| `blocks-universe` | Blocks Universe | BBC 블록스 4개 시리즈 351편 · AI 검색 · 재생목록 |
+| `blocks-universe` | Blocks Universe | BBC 블록스 4개 시리즈 356편 · AI 검색 · 재생목록 |
 | `flash-deck` | 플래시덱 | 플래시카드 덱 제작 및 학습 |
 | `chalkboard` | 칠판 | 텍스트·선으로 자유 판서 |
 | `math-sheet` | 연산연습지 | 사칙연산 세로셈 학습지 생성·PDF 출력·공유 |
@@ -195,6 +195,11 @@ docs/                  ← 개발 문서
 ---
 
 ## 주요 변경 이력
+
+### 2026-10 — Blocks Universe 넘버블록스 시즌 9 추가
+
+- **「인피노티의 등장(The Rise of Infinaughty)」 5부작** 추가 → 넘버블록스 185편·시즌 1~9, 전체 356편. 한글 제목·설명 직접 작성, `official` 링크는 공식 페이지 미확인으로 비워 둠(UI에서 버튼 숨김)
+- `episodes.json`의 원본은 xlsx(`build-blocks-data.cjs`)이므로, xlsx로 재생성할 경우 이 5편을 원본에도 반영해야 함
 
 ### 2026-09 — 에듀서치 전면 교체: GitHub md → 교육청 원본 매뉴얼 적재
 GitHub(`byeduin-edu-docs`)에서 질문마다 md 30개를 받아 LLM을 두 번 부르던 구조를 없앴다(느리고 연동 불안정). 계획: `D:\Proj\dge-manual\docs\PLAN.md`.
