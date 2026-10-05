@@ -1,0 +1,18 @@
+# Cloudflare Pages 응답 헤더 (https://developers.cloudflare.com/pages/configuration/headers/)
+# 여러 규칙이 겹치면 헤더가 합쳐진다.
+
+# 전 페이지 최소 CSP. 인라인 스크립트 구조라 script-src는 걸지 않는다.
+# frame-ancestors는 노션 등에 앱을 임베드해 쓰는 경우를 막으므로 넣지 않는다.
+/*
+  Content-Security-Policy: object-src 'none'; base-uri 'self'
+
+# Astro 빌드 산출물은 파일명에 해시가 붙어 내용이 바뀌면 주소도 바뀐다.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# 자체 호스팅 라이브러리는 파일명에 버전을 넣는다(예: lucide-1.52.0.min.js). 바꿀 땐 새 파일명으로.
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/og-images/*
+  Cache-Control: public, max-age=604800

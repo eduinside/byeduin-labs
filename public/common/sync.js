@@ -41,6 +41,24 @@
 
   function isCode(s) { return CODE_RE.test(String(s || '').toUpperCase()); }
 
+  // 코드는 데이터 읽기·쓰기·삭제 열쇠라 화면(전자칠판·TV)에 그대로 띄우지 않는다.
+  // 헤더 버튼은 앞 2자리만, 패널은 '보기'를 눌렀을 때만 전체를 보여 준다.
+  function maskCode(code) { code = String(code || ''); return code.slice(0, 2) + '••••'; }
+  function codeBox(code, revealed, ghostCss) {
+    var shown = revealed ? code : maskCode(code);
+    return '<div style="display:flex;align-items:center;justify-content:center;gap:8px">' +
+      '<div style="font-size:20px;font-weight:800;letter-spacing:.18em;font-family:ui-monospace,monospace;color:var(--primary,#006fee)">' +
+      String(shown).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }) + '</div>' +
+      '<button class="vs-act" data-act="reveal" style="' + ghostCss + 'padding:5px 9px;font-size:12px;">' + (revealed ? '가리기' : '보기') + '</button>' +
+      '</div>';
+  }
+  function copyCode(code, toast) {
+    var fallback = function () { try { window.prompt('코드를 복사하세요', code); } catch (e) {} };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(function () { toast('코드 복사됨 ✓'); }, fallback);
+    } else fallback();
+  }
+
   function genCode() {
     var out = '';
     var rnd = (global.crypto && global.crypto.getRandomValues)
@@ -258,13 +276,13 @@
     function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
     function render() {
       var code = getCode();
-      btn.innerHTML = code ? '🔄 <span>' + code + '</span>' : '🔄 <span>동기화</span>';
+      btn.innerHTML = code ? '🔄 <span>' + esc(maskCode(code)) + '</span>' : '🔄 <span>동기화</span>';
       btn.classList.toggle('vs-on', !!code);
       if (code) {
         panel.innerHTML =
           '<div style="font-weight:800;font-size:12px;color:var(--primary,#006fee)">기기 간 동기화 켜짐</div>' +
           '<div style="line-height:1.5">이 코드를 다른 기기에 입력하면 ' + esc(cfg.appName || '설정') + '이 이어집니다.</div>' +
-          '<div style="font-size:20px;font-weight:800;letter-spacing:.18em;text-align:center;font-family:ui-monospace,monospace;color:var(--primary,#006fee)">' + esc(code) + '</div>' +
+          codeBox(code, revealed, btnCss(1)) +
           '<button class="vs-act" data-act="copy" style="' + btnCss() + '">코드 복사</button>' +
           '<button class="vs-act" data-act="off" style="' + btnCss(1) + '">연결 해제(이 기기 로컬만)</button>';
       } else {
@@ -281,8 +299,9 @@
       return 'padding:9px;border-radius:9px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;border:1px solid var(--border,#e2e8f0);' +
         (ghost ? 'background:transparent;color:var(--fg,#11181c);' : 'background:var(--primary,#006fee);color:#fff;border-color:var(--primary,#006fee);');
     }
-    function open() { render(); panel.style.display = 'flex'; var i = panel.querySelector('.vs-code-in'); if (i) i.focus(); }
-    function close() { panel.style.display = 'none'; }
+    var revealed = false;   // 패널에서 '보기'를 눌렀을 때만 전체 코드 표시(닫으면 다시 가림)
+    function open() { revealed = false; render(); panel.style.display = 'flex'; var i = panel.querySelector('.vs-code-in'); if (i) i.focus(); }
+    function close() { panel.style.display = 'none'; revealed = false; }
     function toggle() { panel.style.display === 'flex' ? close() : open(); }
 
     function toast(msg) {
@@ -312,7 +331,8 @@
       var act = b.getAttribute('data-act');
       if (act === 'connect') connect(panel.querySelector('.vs-code-in').value);
       else if (act === 'new') newCode();
-      else if (act === 'copy') { navigator.clipboard && navigator.clipboard.writeText(getCode()).then(function () { toast('코드 복사됨 ✓'); }); }
+      else if (act === 'reveal') { e.stopPropagation(); revealed = !revealed; render(); }  // 재렌더로 버튼이 빠져도 패널이 닫히지 않게
+      else if (act === 'copy') { copyCode(getCode(), toast); }
       else if (act === 'off') { clearCode(); render(); toast('이 기기에서 동기화 해제'); }
     });
     panel.addEventListener('keydown', function (e) {
@@ -355,13 +375,13 @@
 
     function render() {
       var code = getCode(), app = esc(cfg.appName || '내용');
-      btn.innerHTML = code ? '🔄 <span>' + esc(code) + '</span>' : '🔄 <span>동기화</span>';
+      btn.innerHTML = code ? '🔄 <span>' + esc(maskCode(code)) + '</span>' : '🔄 <span>동기화</span>';
       btn.classList.toggle('vs-on', !!code);
       if (code) {
         panel.innerHTML =
           '<div style="font-weight:800;font-size:12px;color:var(--primary,#006fee)">기기 간 동기화 켜짐</div>' +
           '<div style="line-height:1.5">이 코드를 다른 기기에 입력하면 ' + app + '을(를) 이어서 쓸 수 있어요.</div>' +
-          '<div style="font-size:20px;font-weight:800;letter-spacing:.18em;text-align:center;font-family:ui-monospace,monospace;color:var(--primary,#006fee)">' + esc(code) + '</div>' +
+          codeBox(code, revealed, bcss(1)) +
           '<button class="vs-act" data-act="copy" style="' + bcss() + '">코드 복사</button>' +
           '<button class="vs-act" data-act="off" style="' + bcss(1) + '">연결 해제(이 기기만)</button>';
       } else {
@@ -373,8 +393,9 @@
           '<button class="vs-act" data-act="new" style="' + bcss(1) + '">새 코드 발급</button>';
       }
     }
-    function open() { render(); panel.style.display = 'flex'; var i = panel.querySelector('.vs-code-in'); if (i) i.focus(); }
-    function close() { panel.style.display = 'none'; }
+    var revealed = false;   // 패널에서 '보기'를 눌렀을 때만 전체 코드 표시(닫으면 다시 가림)
+    function open() { revealed = false; render(); panel.style.display = 'flex'; var i = panel.querySelector('.vs-code-in'); if (i) i.focus(); }
+    function close() { panel.style.display = 'none'; revealed = false; }
     function toast(msg) { var t = document.createElement('div'); t.textContent = msg; t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--fg,#11181c);color:var(--bg,#fff);padding:9px 16px;border-radius:9px;font-size:13px;z-index:9999;'; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 1800); }
 
     panel.addEventListener('click', function (e) {
@@ -382,7 +403,8 @@
       var act = b.getAttribute('data-act');
       if (act === 'connect') { var v = (panel.querySelector('.vs-code-in').value || '').toUpperCase(); if (!isCode(v)) { toast('6자리 코드를 입력하세요.'); return; } setCode(v); render(); notify(); toast('동기화 연결됨 ✓'); }
       else if (act === 'new') { setCode(genCode()); render(); notify(); toast('새 코드 발급됨 ✓'); }
-      else if (act === 'copy') { navigator.clipboard && navigator.clipboard.writeText(getCode()).then(function () { toast('코드 복사됨 ✓'); }); }
+      else if (act === 'reveal') { e.stopPropagation(); revealed = !revealed; render(); }  // 재렌더로 버튼이 빠져도 패널이 닫히지 않게
+      else if (act === 'copy') { copyCode(getCode(), toast); }
       else if (act === 'off') { clearCode(); render(); notify(); toast('이 기기에서 동기화 해제'); }
     });
     panel.addEventListener('keydown', function (e) { if (e.key === 'Enter') { var b = panel.querySelector('[data-act="connect"]'); if (b) b.click(); } });

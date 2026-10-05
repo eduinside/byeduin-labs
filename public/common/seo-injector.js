@@ -101,7 +101,7 @@
     if (_lucideLoading) return;
     _lucideLoading = true;
     var s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js';
+    s.src = '/vendor/lucide-1.52.0.min.js';
     s.onload = function () {
       _lucideLoading = false;
       _lucideCallbacks.forEach(function (fn) { try { fn(); } catch (e) {} });
