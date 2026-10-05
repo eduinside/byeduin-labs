@@ -352,7 +352,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     #qr-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/qr/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"QR Master","description":"QR 코드 생성, 카메라/이미지 스캔, 단축주소 올인원. 빠르고 간편한 QR 도구.","url":"https://eduin.info/apps/qr/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -442,18 +441,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <button class="btn-copy-scan" onclick="copyScanResult()">복사</button>
           <a id="scanResultLink" class="btn-open-link" href="#" target="_blank" rel="noopener">↗ 이동</a>
         </div>
-        <!-- 이어서 스캔 유도 (단일 모드) -->
-        <button id="btnStartMulti" onclick="startMultiMode()" class="hero-btn hero-btn-ghost w-full mt-1" style="font-size:0.85rem;display:none;">
-          📷+ 이어서 스캔하기
-        </button>
-        <!-- 멀티 모드: 설명 입력 -->
-        <div id="multiInputArea" style="display:none">
-          <input type="text" id="multiDescInput" class="hero-input mt-1" placeholder="설명 추가 (선택)">
-          <div class="scan-actions mt-1">
-            <button onclick="addAndContinue()" class="hero-btn" style="flex:1;font-size:0.8rem;">📷+ 추가 후 계속</button>
-            <button onclick="addAndFinish()" class="hero-btn hero-btn-ghost" style="flex:1;font-size:0.8rem;">✓ 완료</button>
-          </div>
-        </div>
       </div>
 
       <!-- 멀티 스캔 누적 목록 -->
@@ -504,17 +491,29 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   let lastScannedCodes = new Set();
   let scanResultCloseTimer = null;
 
-  // ── 멀티스캔 상태 ──
+  // ── 스캔 목록 상태 ──
   let multiScans = [];
-  let isMultiMode = false;
-  let currentScanText = '';
 
   const QR_TAB_KEY = 'qr-last-tab';
+
+  // 스캔한 내용은 외부 데이터 — http(s) 절대 주소일 때만 링크로 연다(javascript: 등 차단)
+  function httpUrl(s) {
+    try {
+      const u = new URL(String(s).trim());
+      return (u.protocol === 'http:' || u.protocol === 'https:') ? u.href : '';
+    } catch { return ''; }
+  }
+  function openScanned(text) {
+    const u = httpUrl(text);
+    if (!u) { showToast('웹 주소(http/https)만 열 수 있어요.'); return; }
+    window.open(u, '_blank', 'noopener');
+  }
 
   document.addEventListener('DOMContentLoaded', () => {
     loadHistory();
     document.addEventListener('paste', handlePasteEvent);
-    const savedTab = localStorage.getItem(QR_TAB_KEY);
+    let savedTab = null;
+    try { savedTab = localStorage.getItem(QR_TAB_KEY); } catch {}
     if (savedTab === 'scan' || savedTab === 'generate') switchTab(savedTab);
   });
 
@@ -529,7 +528,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     } else {
       stopCamera();
     }
-    localStorage.setItem(QR_TAB_KEY, tab);
+    try { localStorage.setItem(QR_TAB_KEY, tab); } catch {}
   }
 
   // ── 토스트 ──
@@ -677,30 +676,40 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     return results;
   }
 
-  function scanFrame() {
+  // 카메라 스캔 비용 줄이기: 긴 변 최대 800px로 줄여서, 약 150ms마다(초당 6~7회)만 인식한다.
+  // (예전: 매 프레임 전체 해상도로 5회 인식 → 발열·배터리 소모)
+  const CAM_SCAN_MAX = 800;
+  const CAM_SCAN_INTERVAL = 150;
+  let lastCamScanAt = 0;
+
+  function scanFrame(now) {
     if (!isCameraRunning || !videoElement) return;
+    scannerAnimationId = requestAnimationFrame(scanFrame);
+
+    const t = typeof now === 'number' ? now : performance.now();
+    if (t - lastCamScanAt < CAM_SCAN_INTERVAL) return;
+    lastCamScanAt = t;
+
+    const vw = videoElement.videoWidth, vh = videoElement.videoHeight;
+    if (!(vw > 0 && vh > 0)) return;
 
     if (!canvasContext) {
       const canvas = document.createElement('canvas');
-      canvas.width = videoElement.videoWidth;
-      canvas.height = videoElement.videoHeight;
-      canvasContext = canvas.getContext('2d');
+      canvasContext = canvas.getContext('2d', { willReadFrequently: true });
     }
+    const scale = Math.min(1, CAM_SCAN_MAX / Math.max(vw, vh));
+    const dw = Math.max(1, Math.round(vw * scale));
+    const dh = Math.max(1, Math.round(vh * scale));
+    const cvs = canvasContext.canvas;
+    if (cvs.width !== dw || cvs.height !== dh) { cvs.width = dw; cvs.height = dh; }
+    canvasContext.drawImage(videoElement, 0, 0, dw, dh);
 
-    if (videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
-      canvasContext.canvas.width = videoElement.videoWidth;
-      canvasContext.canvas.height = videoElement.videoHeight;
-      canvasContext.drawImage(videoElement, 0, 0);
+    const imageData = canvasContext.getImageData(0, 0, dw, dh);
+    const results = scanMultipleQRs(imageData);
 
-      const imageData = canvasContext.getImageData(0, 0, canvasContext.canvas.width, canvasContext.canvas.height);
-      const results = scanMultipleQRs(imageData);
-
-      if (results && results.length > 0) {
-        onScanSuccess(results, 'camera');
-      }
+    if (results && results.length > 0) {
+      onScanSuccess(results, 'camera');
     }
-
-    scannerAnimationId = requestAnimationFrame(scanFrame);
   }
 
   function handleFileUpload(input) {
@@ -815,26 +824,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       // 생성하기 탭: 텍스트를 입력 필드에 추가
       document.getElementById('urlInput').value = text;
     } else {
-      // 스캔하기 탭: URL이면 멀티스캔 목록에 추가
-      try {
-        new URL(text);
-        if (!multiScans.some(item => item.url === text)) {
-          multiScans.push({ url: text, desc: '', tool: 'clipboard', scannedAt: new Date().toISOString() });
-          addToHistory(text, 'clipboard');
-          fetchPageTitle(text);
-          renderMultiList();
-          document.getElementById('scanResultText').textContent = text;
-          const link = document.getElementById('scanResultLink');
-          link.href = text;
-          link.classList.add('show');
-          document.getElementById('scanResultArea').classList.add('show');
-          autoCloseScanResult();
-          showToast('✓ 링크가 추가되었습니다.');
-        } else {
-          showToast('이미 추가된 링크입니다.');
-        }
-      } catch {
-        // URL이 아니면 무시
+      // 스캔하기 탭: 웹 주소(http/https)면 스캔 목록에 추가, 아니면 무시
+      const webUrl = httpUrl(text);
+      if (!webUrl) return;
+      if (!multiScans.some(item => item.url === text)) {
+        multiScans.push({ url: text, desc: '', tool: 'clipboard', scannedAt: new Date().toISOString() });
+        addToHistory(text, 'clipboard');
+        fetchPageTitle(text);
+        renderMultiList();
+        document.getElementById('scanResultText').textContent = text;
+        const link = document.getElementById('scanResultLink');
+        link.href = webUrl;
+        link.classList.add('show');
+        document.getElementById('scanResultArea').classList.add('show');
+        autoCloseScanResult();
+        showToast('✓ 링크가 추가되었습니다.');
+      } else {
+        showToast('이미 추가된 링크입니다.');
       }
     }
   }
@@ -887,26 +893,27 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       addedCount++;
       lastAddedCode = code;
 
-      // URL이면 히스토리에 추가 + 백그라운드 제목 fetch
+      // URL이면 히스토리에 추가, 웹 주소면 백그라운드 제목 fetch
       try {
         new URL(code);
         addToHistory(code, tool);
-        fetchPageTitle(code);
+        if (httpUrl(code)) fetchPageTitle(code);
       } catch {
         // URL이 아닌 데이터는 히스토리에 추가 안 함
       }
     });
 
-    // 스캔 성공 상자 업데이트 (마지막 감지된 QR)
+    // 스캔 성공 상자 업데이트 (마지막 감지된 QR) — 내용은 textContent, 링크는 http(s)만
     if (lastAddedCode) {
       document.getElementById('scanResultText').textContent = lastAddedCode;
 
       const link = document.getElementById('scanResultLink');
-      try {
-        new URL(lastAddedCode);
-        link.href = lastAddedCode;
+      const webUrl = httpUrl(lastAddedCode);
+      if (webUrl) {
+        link.href = webUrl;
         link.classList.add('show');
-      } catch {
+      } else {
+        link.removeAttribute('href');
         link.classList.remove('show');
       }
 
@@ -968,43 +975,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
   }
 
-  // ── 멀티스캔 함수 ──
-  function startMultiMode() {
-    isMultiMode = true;
-    document.getElementById('btnStartMulti').style.display = 'none';
-    document.getElementById('multiDescInput').value = '';
-    document.getElementById('multiInputArea').style.display = 'block';
-  }
-
-  function addAndContinue() {
-    if (!currentScanText || !currentScanText.trim()) {
-      showToast('빈 링크는 추가할 수 없습니다.');
-      return;
-    }
-    const desc = document.getElementById('multiDescInput').value.trim();
-    multiScans.push({ url: currentScanText, desc, scannedAt: new Date().toISOString() });
-    document.getElementById('multiInputArea').style.display = 'none';
-    document.getElementById('scanResultArea').classList.remove('show');
-    renderMultiList();
-    showToast('✓ 추가되었습니다. 다음 QR을 스캔해주세요.');
-    setTimeout(() => startCamera(), 200);
-  }
-
-  function addAndFinish() {
-    if (!currentScanText || !currentScanText.trim()) {
-      showToast('빈 링크는 추가할 수 없습니다.');
-      return;
-    }
-    const desc = document.getElementById('multiDescInput').value.trim();
-    multiScans.push({ url: currentScanText, desc, scannedAt: new Date().toISOString() });
-    isMultiMode = false;
-    document.getElementById('multiInputArea').style.display = 'none';
-    document.getElementById('scanResultArea').classList.remove('show');
-    document.getElementById('btnStartMulti').style.display = 'none';
-    renderMultiList();
-    showToast('✓ ' + multiScans.length + '개 항목 수집됨');
-  }
-
+  // ── 스캔 목록 ──
   function renderMultiList() {
     const listArea = document.getElementById('multiListArea');
     const ul = document.getElementById('multiScanList');
@@ -1020,25 +991,30 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       'generate': '✏️'
     };
 
-    // 역순으로 (최근 항목이 맨 위)
+    // 역순으로 (최근 항목이 맨 위). 스캔 내용은 textContent로만 넣는다.
     for (let idx = multiScans.length - 1; idx >= 0; idx--) {
       const item = multiScans[idx];
       const display = item.url.length > 44 ? item.url.slice(0, 44) + '...' : item.url;
-      const icon = toolIcons[item.tool] || '📷';
       const li = document.createElement('li');
       li.className = 'history-item';
       li.style.cursor = 'pointer';
-      li.onclick = (e) => {
-        if (e.target.classList.contains('history-del')) return;
-        window.open(item.url, '_blank');
-      };
-      li.innerHTML = `
-        <div class="history-icon">${icon}</div>
-        <div class="history-text">
-          <div class="main">${display}</div>
-        </div>
-        <button class="history-del" onclick="event.stopPropagation();deleteMultiScan(${idx})">✕</button>
-      `;
+      li.addEventListener('click', () => openScanned(item.url));
+
+      const icon = document.createElement('div');
+      icon.className = 'history-icon';
+      icon.textContent = toolIcons[item.tool] || '📷';
+      const textWrap = document.createElement('div');
+      textWrap.className = 'history-text';
+      const main = document.createElement('div');
+      main.className = 'main';
+      main.textContent = display;
+      textWrap.appendChild(main);
+      const del = document.createElement('button');
+      del.className = 'history-del';
+      del.textContent = '✕';
+      del.addEventListener('click', (e) => { e.stopPropagation(); deleteMultiScan(idx); });
+
+      li.append(icon, textWrap, del);
       ul.appendChild(li);
     }
   }
@@ -1079,7 +1055,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     multiScans.forEach((item, idx) => {
       const title = pageTitleCache[item.url];
       const linkText = item.desc || title || (item.url.length > 40 ? item.url.slice(0, 40) + '...' : item.url);
-      md += `${idx + 1}. [${linkText}](${item.url})\n`;
+      const webUrl = httpUrl(item.url);
+      md += webUrl ? `${idx + 1}. [${linkText}](<${webUrl}>)\n` : `${idx + 1}. ${item.url}\n`;
     });
 
     const payload = JSON.stringify({ data: { content: md, filename: `qr-scan-${today}.md` }, permission: 'clone' });
@@ -1089,16 +1066,26 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   }
 
   /* ---- 히스토리 ---- */
+  function readHistory() {
+    try {
+      const h = JSON.parse(localStorage.getItem('qr_history') || '[]');
+      return Array.isArray(h) ? h.filter(i => i && typeof i.text === 'string') : [];
+    } catch { return []; }
+  }
+  function writeHistory(h) {
+    try { localStorage.setItem('qr_history', JSON.stringify(h)); } catch {}
+  }
+
   function addToHistory(text, tool) {
-    let h = JSON.parse(localStorage.getItem('qr_history') || '[]');
+    let h = readHistory();
     h = h.filter(i => i.text !== text);
     h.unshift({ text, tool, date: new Date().toLocaleDateString() });
     if (h.length > 30) h.pop();
-    localStorage.setItem('qr_history', JSON.stringify(h));
+    writeHistory(h);
     renderHistory(h);
   }
 
-  function loadHistory() { renderHistory(JSON.parse(localStorage.getItem('qr_history') || '[]')); }
+  function loadHistory() { renderHistory(readHistory()); }
 
   function renderHistory(h) {
     const getToolInfo = (tool) => {
@@ -1108,7 +1095,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         'clipboard': { icon: '📋', label: '붙여넣기' },
         'generate': { icon: '✏️', label: '생성하기' }
       };
-      return toolMap[tool] || { icon: '❓', label: tool };
+      return toolMap[tool] || { icon: '❓', label: String(tool || '') };
     };
 
     const list = document.getElementById('historyList');
@@ -1123,33 +1110,45 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       li.style.cursor = 'pointer';
       // tool에 따라 다른 동작
       if (item.tool === 'generate') {
-        li.onclick = () => { switchTab('generate'); generateQR(item.text); };
+        li.addEventListener('click', () => { switchTab('generate'); generateQR(item.text); });
       } else {
-        // camera, file, clipboard: 새 창에서 열기
-        li.onclick = () => { window.open(item.text, '_blank'); };
+        // camera, file, clipboard: 웹 주소(http/https)만 새 창에서 열기
+        li.addEventListener('click', () => openScanned(item.text));
       }
       const toolInfo = getToolInfo(item.tool);
-      li.innerHTML = `
-        <div class="history-icon">${toolInfo.icon}</div>
-        <div class="history-text">
-          <div class="main">${item.text}</div>
-          <div class="sub">${toolInfo.label} · ${item.date}</div>
-        </div>
-        <button class="history-del" onclick="event.stopPropagation();deleteHistoryItem('${item.text.replace(/'/g,"\\'")}')">✕</button>
-      `;
+
+      // 스캔 내용은 외부 데이터 — innerHTML 대신 textContent
+      const icon = document.createElement('div');
+      icon.className = 'history-icon';
+      icon.textContent = toolInfo.icon;
+      const textWrap = document.createElement('div');
+      textWrap.className = 'history-text';
+      const main = document.createElement('div');
+      main.className = 'main';
+      main.textContent = item.text;
+      const sub = document.createElement('div');
+      sub.className = 'sub';
+      sub.textContent = `${toolInfo.label} · ${item.date || ''}`;
+      textWrap.append(main, sub);
+      const del = document.createElement('button');
+      del.className = 'history-del';
+      del.textContent = '✕';
+      del.addEventListener('click', (e) => { e.stopPropagation(); deleteHistoryItem(item.text); });
+
+      li.append(icon, textWrap, del);
       list.appendChild(li);
     });
   }
 
   function deleteHistoryItem(text) {
-    let h = JSON.parse(localStorage.getItem('qr_history') || '[]').filter(i => i.text !== text);
-    localStorage.setItem('qr_history', JSON.stringify(h));
+    const h = readHistory().filter(i => i.text !== text);
+    writeHistory(h);
     renderHistory(h);
   }
 
   function clearHistory() {
     if (confirm('기록을 모두 삭제하시겠습니까?')) {
-      localStorage.removeItem('qr_history');
+      try { localStorage.removeItem('qr_history'); } catch {}
       renderHistory([]);
     }
   }

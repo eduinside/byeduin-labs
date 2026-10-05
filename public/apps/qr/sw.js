@@ -1,11 +1,11 @@
-const CACHE = 'qr-master-v4';
+const CACHE = 'qr-master-v5';  // 2026-10 보안 수정(스캔 결과 렌더링) 배포 — 이름을 올려야 기존 사용자 캐시가 교체됨
 
 const ASSETS = [
   '/apps/qr/',
-  '/apps/qr/index.html',
   '/apps/qr/manifest.json',
   '/apps/qr/icons/qr-icon.svg',
   '/common/hero-theme.css',
+  '/common/safe.js',
   '/common/app-shell.css',
   '/common/theme.js',
   '/common/init.js',

@@ -281,8 +281,28 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       color: var(--fg-muted);
       font-size: 13px;
     }
+
+    /* 토스트 */
+    #fd-toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: calc(100vw - 32px);
+      background: var(--fg, #11181c);
+      color: var(--bg, #fff);
+      padding: 0.55rem 1.25rem;
+      border-radius: 2rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-align: center;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    #fd-toast.show { opacity: 1; }
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/allowance-calculator/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"기타소득 세금 계산기","description":"기타소득 수당의 세전 원금과 세후 금액을 자동으로 역산/계산합니다. 8.8% 세율 및 125,000원 과세최저한 완벽 적용.","url":"https://eduin.info/apps/allowance-calculator/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -372,7 +392,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   </main>
 
   <!-- 공통 토스트 용 -->
-  <div id="fd-toast"></div>
+  <div id="fd-toast" role="status" aria-live="polite"></div>
 
   <script is:inline="">
     // 상태 변수
@@ -422,7 +442,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     // 입력 처리
     function handleInput() {
       // 숫자 외 문자 제거
-      let val = amountInput.value.replace(/[^0-9]/g, '');
+      let val = amountInput.value.replace(/[^0-9]/g, '').slice(0, 11);   // 최대 999억 원(정밀도 보호)
       if (val === '') {
         amountInput.value = '';
         resetCalculations();
@@ -457,6 +477,40 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }
     }
 
+    // 정방향 계산: 세전 → 세금·실수령액 (125,000원 이하 면세, 각 단계 10원 미만 절사)
+    function computeFromPreTax(preTax) {
+      if (preTax <= 125000) {
+        return { preTax, taxIncome: 0, taxLocal: 0, tax: 0, postTax: preTax, isTaxExempt: true };
+      }
+      // 소득세 10원 미만 절사
+      const taxIncome = Math.floor((preTax * 0.08) / 10) * 10;
+      // 지방소득세 10원 미만 절사
+      const taxLocal = Math.floor((taxIncome * 0.1) / 10) * 10;
+      const tax = taxIncome + taxLocal;
+      // 최종 실수령액 10원 미만 절사
+      const postTax = Math.floor((preTax - tax) / 10) * 10;
+      return { preTax, taxIncome, taxLocal, tax, postTax, isTaxExempt: false };
+    }
+
+    // 역산: 세후(실수령액) → 세전. 추정값 주변 후보를 정방향 계산으로 하나씩 확인해
+    // 세후가 정확히 같아지는 세전(10원 단위 우선, 그중 가장 작은 값)을 고른다.
+    // 정확히 맞는 세전이 없으면(예: 세후가 10원 단위가 아님) 가장 가까운 값을 고르고 exact=false.
+    function findPreTaxForPostTax(target) {
+      if (target <= 125000) return Object.assign(computeFromPreTax(target), { exact: true });
+      const est = Math.floor(target / 0.912);
+      let best = null, bestDiff = Infinity;
+      for (let x = Math.max(125001, est - 60); x <= est + 60; x++) {
+        const r = computeFromPreTax(x);
+        const d = Math.abs(r.postTax - target);
+        if (d === 0) {
+          if (!best || bestDiff !== 0 || (x % 10 === 0 && best.preTax % 10 !== 0)) { best = r; bestDiff = 0; }
+        } else if (d < bestDiff) {
+          best = r; bestDiff = d;
+        }
+      }
+      return Object.assign(best, { exact: bestDiff === 0 });
+    }
+
     // 계산 및 판별 핵심 로직
     function calculate(num) {
       if (!num || num <= 0) {
@@ -486,62 +540,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       let taxLocal = 0;
       let isTaxExempt = false;
 
-      // 2. 세전 기준 계산
+      // 2. 세전 기준 계산 (정방향 — 검증된 계산식 그대로)
+      let r;
+      let inexact = false;
       if (modeToUse === 'preTax') {
-        preTax = num;
-        if (preTax <= 125000) {
-          isTaxExempt = true;
-          tax = 0;
-          postTax = preTax;
-        } else {
-          isTaxExempt = false;
-          // 소득세 10원 미만 절사
-          taxIncome = Math.floor((preTax * 0.08) / 10) * 10;
-          // 지방소득세 10원 미만 절사
-          taxLocal = Math.floor((taxIncome * 0.1) / 10) * 10;
-          tax = taxIncome + taxLocal;
-          // 최종 실수령액 10원 미만 절사
-          postTax = Math.floor((preTax - tax) / 10) * 10;
-        }
-      } 
-      // 3. 세후 기준 계산 (역산)
-      else {
-        postTax = num;
-        // 세전 125,000원 이하는 비과세이므로 세전 = 세후 동일
-        if (postTax <= 125000) {
-          isTaxExempt = true;
-          preTax = postTax;
-          tax = 0;
-        } else {
-          isTaxExempt = false;
-          // 역산 수식: X = Y / 0.912 를 구한 뒤, 원천징수 원단위 절사 규칙에 맞게 보정
-          let estimatedPreTax = Math.round(postTax / 0.912);
-          
-          // 역산된 세전 금액으로 다시 세금을 정방향 계산하여 세후가 일치하는지 미세 검증
-          let tempTaxIncome = Math.floor((estimatedPreTax * 0.08) / 10) * 10;
-          let tempTaxLocal = Math.floor((tempTaxIncome * 0.1) / 10) * 10;
-          let tempTax = tempTaxIncome + tempTaxLocal;
-          let tempPost = Math.floor((estimatedPreTax - tempTax) / 10) * 10;
-
-          // 오차 보정 (+1/-1원 등)
-          if (tempPost !== postTax) {
-            const diff = postTax - tempPost;
-            estimatedPreTax += Math.round(diff / 0.912);
-            
-            // 보정 후 다시 계산
-            tempTaxIncome = Math.floor((estimatedPreTax * 0.08) / 10) * 10;
-            tempTaxLocal = Math.floor((tempTaxIncome * 0.1) / 10) * 10;
-            tempTax = tempTaxIncome + tempTaxLocal;
-            tempPost = Math.floor((estimatedPreTax - tempTax) / 10) * 10;
-          }
-
-          preTax = Math.floor(estimatedPreTax / 10) * 10; // 세전 금액도 10원 단위로 공제/절사 처리
-          taxIncome = tempTaxIncome;
-          taxLocal = tempTaxLocal;
-          tax = tempTax;
-          postTax = Math.floor((preTax - tax) / 10) * 10;
-        }
+        r = computeFromPreTax(num);
       }
+      // 3. 세후 기준 계산 (역산) — 정방향 계산으로 세후가 정확히 같아지는 세전을 찾는다
+      else {
+        r = findPreTaxForPostTax(num);
+        inexact = !r.exact;
+      }
+      ({ preTax, tax, postTax, taxIncome, taxLocal, isTaxExempt } = r);
 
       // 상태 저장
       calculatedData = {
@@ -551,7 +561,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         taxIncome,
         taxLocal,
         isTaxExempt,
-        judgedAs: judgedAs || modeToUse
+        judgedAs: judgedAs || modeToUse,
+        inexact,
+        requestedPost: modeToUse === 'postTax' ? num : null
       };
 
       // UI 업데이트
@@ -603,6 +615,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       } else {
         infoBox.className = 'info-box';
         infoBox.innerHTML = '💡 <b>기타소득 과세최저한</b>: 세전 수당이 125,000원을 초과하여 8.8%의 원천징수 세금(기타소득세 8% + 지방소득세 0.8%)이 공제되었습니다.';
+      }
+      // 역산으로 정확히 만들 수 없는 세후 금액(실수령액은 항상 10원 단위)이면 안내
+      if (calculatedData.inexact) {
+        infoBox.innerHTML += '<br>⚠️ 입력한 세후 금액이 정확히 나오는 세전 금액이 없어 가장 가까운 실수령액(' +
+          formatNumber(calculatedData.postTax) + '원)으로 계산했어요.';
       }
     }
 
@@ -661,12 +678,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         filtered.pop();
       }
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+      if (!setHistory(filtered)) return;
       renderHistory();
       showToast('계산 내역이 저장되었습니다.');
     }
 
-    // 최근 내역 렌더링
+    // 최근 내역 렌더링 (클릭은 addEventListener — 인라인 onclick 사용 안 함)
     function renderHistory() {
       const history = getHistory();
       if (history.length === 0) {
@@ -678,25 +695,28 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       history.forEach(item => {
         const div = document.createElement('div');
         div.className = 'history-item';
-        div.setAttribute('onclick', `loadHistoryItem(${item.preTax}, '${item.mode}')`);
-        
-        // 자동판별 모드로 저장했어도 다시 로드할 때 판별할 수 있게 로드
+        div.addEventListener('click', () => loadHistoryItem(item));
+
         div.innerHTML = `
           <div class="history-info">
             <span class="history-main-text">세전: ${formatNumber(item.preTax)}원 ➜ 실수령: ${formatNumber(item.postTax)}원</span>
-            <span class="history-sub-text">세금: ${formatNumber(item.tax)}원 (${item.date})</span>
+            <span class="history-sub-text">세금: ${formatNumber(item.tax)}원 (${escText(item.date)})</span>
           </div>
-          <button class="delete-btn" onclick="deleteHistoryItem(event, ${item.id})">삭제</button>
+          <button class="delete-btn">삭제</button>
         `;
+        div.querySelector('.delete-btn').addEventListener('click', (e) => deleteHistoryItem(e, item.id));
         historyList.appendChild(div);
       });
     }
 
-    // 히스토리 항목 로드
-    function loadHistoryItem(preTaxAmount, mode) {
-      setMode(mode);
-      amountInput.value = formatNumber(preTaxAmount);
-      calculate(preTaxAmount);
+    // 히스토리 항목 로드 — 저장할 때 입력한 금액·모드 그대로 다시 계산해야 같은 결과가 나온다
+    // (예전: 세전 금액을 저장된 모드로 다시 넣어 세후·자동 모드에서 다른 계산이 나옴)
+    function loadHistoryItem(item) {
+      const useInput = item.amount > 0 && ['auto', 'preTax', 'postTax'].includes(item.mode);
+      const amount = useInput ? item.amount : item.preTax;
+      setMode(useInput ? item.mode : 'preTax');
+      amountInput.value = formatNumber(amount);
+      calculate(amount);
       showToast('이전 계산 내역을 불러왔습니다.');
     }
 
@@ -705,7 +725,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       e.stopPropagation(); // 부모 클릭(로드) 이벤트 전파 방지
       const history = getHistory();
       const filtered = history.filter(item => item.id !== id);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+      setHistory(filtered);
       renderHistory();
       showToast('내역을 삭제했습니다.');
     }
@@ -713,33 +733,76 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     // 히스토리 전체 삭제
     function clearAllHistory() {
       if (confirm('모든 계산 내역을 삭제하시겠습니까?')) {
-        localStorage.removeItem(STORAGE_KEY);
+        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
         renderHistory();
         showToast('모든 내역이 삭제되었습니다.');
       }
     }
 
-    // 히스토리 가져오기 헬퍼
-    function getHistory() {
-      const data = localStorage.getItem(STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
+    // 금액 검증: 정수, 1원 ~ 999억 원
+    const MAX_AMOUNT = 99999999999;
+    function toAmount(v) {
+      const n = window.VSafe ? VSafe.int(v, 0, MAX_AMOUNT, 0) : Math.min(MAX_AMOUNT, Math.max(0, Math.trunc(Number(v)) || 0));
+      return n > 0 ? n : 0;
+    }
+    function escText(s) {
+      if (window.VSafe) return VSafe.esc(s);
+      return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
 
-    // vives-share 공유 기능 연동
+    // 히스토리 가져오기 헬퍼 — 값이 깨져 있어도 앱이 멈추지 않게
+    function getHistory() {
+      let data = [];
+      try { data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch (e) { data = []; }
+      if (!Array.isArray(data)) return [];
+      return data.filter(i => i && typeof i === 'object').map(i => ({
+        id: Number.isFinite(Number(i.id)) ? Number(i.id) : 0,
+        amount: toAmount(i.amount),
+        mode: ['auto', 'preTax', 'postTax'].includes(i.mode) ? i.mode : 'preTax',
+        preTax: toAmount(i.preTax),
+        tax: toAmount(i.tax),
+        postTax: toAmount(i.postTax),
+        date: typeof i.date === 'string' ? i.date.slice(0, 40) : '',
+      }));
+    }
+    function setHistory(list) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+        return true;
+      } catch (e) {
+        showToast('저장 공간이 부족해 내역을 저장하지 못했어요.');
+        return false;
+      }
+    }
+
+    // vives-share 공유 기능 연동 — 해시의 금액·모드는 외부 값이므로 정수·범위·허용 모드만 통과
     function loadSharedHash() {
       if (!window.location.hash) return;
       try {
         const hash = window.location.hash.substring(1);
         const decoded = JSON.parse(decodeURIComponent(atob(hash)));
-        if (decoded && decoded.amount) {
-          setMode(decoded.mode || 'auto');
-          amountInput.value = formatNumber(decoded.amount);
-          calculate(decoded.amount);
+        const amount = decoded ? toAmount(decoded.amount) : 0;
+        if (amount > 0) {
+          const mode = ['auto', 'preTax', 'postTax'].includes(decoded.mode) ? decoded.mode : 'auto';
+          setMode(mode);
+          amountInput.value = formatNumber(amount);
+          calculate(amount);
           showToast('공유된 계산 내역을 로드했습니다.');
         }
       } catch (err) {
         console.error('Failed to parse shared hash:', err);
       }
+    }
+
+    // 토스트 (예전: showToast가 정의돼 있지 않아 저장·삭제 때마다 오류)
+    let _toastTimer;
+    function showToast(msg) {
+      const el = document.getElementById('fd-toast');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
     }
 
     // 공유를 위한 해시 생성 오버라이드

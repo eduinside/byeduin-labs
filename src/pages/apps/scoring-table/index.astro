@@ -11,7 +11,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   bodyPrint={true}
 >
   <Fragment slot="head">
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js" is:inline=""></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" is:inline=""></script>
   <style is:global="">
     * { box-sizing: border-box; }
     body {
@@ -243,7 +243,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       .settings-row { gap:12px; }
     }
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/scoring-table/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"채점표","description":"온라인 채점 양식을 만들고 링크 하나로 공유하세요. 공동 채점, 실시간 결과 수합, xlsx 다운로드까지 한 번에.","url":"https://eduin.info/apps/scoring-table/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -348,7 +347,49 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 const clamp = (v, a, b) => Math.min(b, Math.max(a, +v || 0));
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
 function today() { return new Date().toISOString().slice(0, 10); }
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s) {
+  if (window.VSafe) return VSafe.esc(s);
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+// 공유 링크·저장본에서 온 값 검증용
+function sInt(v, min, max, def) {
+  if (window.VSafe) return VSafe.int(v, min, max, def);
+  const n = Math.trunc(Number(v));
+  return isFinite(n) ? Math.min(max, Math.max(min, n)) : def;
+}
+function sStr(v, max) { return (typeof v === 'string' || typeof v === 'number') ? String(v).slice(0, max) : ''; }
+// 영역: [이름, 만점] 배열 또는 {name, max} 객체 모두 받는다
+function normAreas(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.slice(0, 12).map((a, i) => {
+    const name = Array.isArray(a) ? a[0] : (a && a.name);
+    const max  = Array.isArray(a) ? a[1] : (a && a.max);
+    return { name: sStr(name, 40) || `영역${i + 1}`, max: sInt(max, 1, 200, 20) };
+  });
+}
+// 행: [이름, 점수배열] 배열 또는 {name, scores} 객체. nullable=false면 빈 점수를 0으로
+function normRows(arr, areas, nullable) {
+  if (!Array.isArray(arr)) return [];
+  return arr.slice(0, 300).map(r => {
+    const name   = Array.isArray(r) ? r[0] : (r && typeof r === 'object' ? r.name : r);
+    const scores = Array.isArray(r) ? r[1] : (r && r.scores);
+    const src = Array.isArray(scores) ? scores : [];
+    return {
+      name: sStr(name, 40),
+      scores: areas.map((a, i) => {
+        const v = src[i];
+        if (v == null || v === '') return nullable ? null : 0;
+        return sInt(v, 0, a.max, 0);
+      }),
+    };
+  });
+}
+// 동점은 같은 석차(1, 1, 3 …). vals는 이미 내림차순 정렬된 값 배열
+function tieRanks(vals) {
+  const ranks = [];
+  vals.forEach((v, i) => { ranks.push(i > 0 && v === vals[i - 1] ? ranks[i - 1] : i + 1); });
+  return ranks;
+}
 function rowTotal(row) { return (row.scores || []).reduce((s, v) => s + (v ?? 0), 0); }
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -384,7 +425,7 @@ function buildShareURL(data, permission) {
   const payload = JSON.stringify({ data, permission });
   const encoded = btoa(encodeURIComponent(payload))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  return `${location.origin}/scoring-table/#share=${encoded}`;
+  return `${location.origin}/apps/scoring-table/#share=${encoded}`;
 }
 
 function decodeSharePayload(encoded) {
@@ -419,7 +460,7 @@ async function doShare(data, permission) {
     try {
       await navigator.clipboard.writeText(longURL);
       showToast('링크가 복사되었습니다 (단축 미적용)');
-    } catch { showToast('공유에 실패했습니다.'); }
+    } catch { prompt('링크를 복사하세요', longURL); }
   }
 }
 
@@ -517,7 +558,24 @@ function mkStepAward(field, delta) {
   document.getElementById(`mk-${field}-val`).textContent = mk.awardRange[field];
 }
 function mkSetField(field, raw) {
-  const val = +raw;
+  const lim = { count: [1, 300], ratio: [0, 100], areaCount: [1, 12] }[field];
+  const cur = field === 'count' ? mk.rows.length : field === 'areaCount' ? mk.areas.length : mk.ratio;
+  // 칸을 비우거나 숫자가 아니면 바꾸지 않는다(예전: 빈칸 → 0명 → 전원 삭제 후 저장)
+  if (!lim || String(raw).trim() === '' || !isFinite(+raw)) {
+    renderMkSettings();
+    return;
+  }
+  const val = clamp(Math.round(+raw), lim[0], lim[1]);
+  // 줄이면서 입력된 점수가 사라지면 먼저 확인
+  if (field === 'count' && val < mk.rows.length) {
+    const lost = mk.rows.slice(val).filter(r => r.scores.some(s => s != null)).length;
+    if (lost && !confirm(`점수가 입력된 참가자 ${lost}명이 표에서 빠집니다. 계속할까요?`)) { renderMkSettings(); return; }
+  }
+  if (field === 'areaCount' && val < mk.areas.length) {
+    const lost = mk.rows.some(r => r.scores.slice(val).some(s => s != null));
+    if (lost && !confirm('줄어드는 영역에 입력된 점수가 지워집니다. 계속할까요?')) { renderMkSettings(); return; }
+  }
+  if (val === cur && field !== 'ratio') { renderMkSettings(); return; }
   if (field === 'count') {
     mk.count = val;
     while (mk.rows.length < val) mk.rows.push({ name: `참가자${mk.rows.length + 1}`, scores: mk.areas.map(() => null) });
@@ -735,6 +793,8 @@ function mkCycleSort() {
 }
 
 function mkRandom() {
+  const hasScore = mk.rows.some(r => r.scores.some(s => s != null));
+  if (hasScore && !confirm('지금 입력된 점수를 모두 무작위 점수로 바꿀까요?\n(되돌릴 수 없어요)')) return;
   generateScores(mk.rows, mk.areas, mk.ratio, mk.awardRange);
   renderMkTable();
   mkSaveLocal();
@@ -884,18 +944,22 @@ async function scLoadFromInput() {
 }
 
 function scApplyForm(data) {
-  sc.title  = data.title || '';
-  sc.areas  = (data.areas || []).map(([name, max]) => ({ name, max }));
-  sc.ratio  = data.ratio ?? 20;
-  if (Array.isArray(data.award)) sc.awardRange = { enabled: !!data.award[0], min: data.award[1] ?? 80, max: data.award[2] ?? 100 };
-  sc.rows   = (data.names || []).map(name => ({ name, scores: sc.areas.map(() => null) }));
+  // 공유 양식은 외부 데이터 — 디코드 직후 형식·범위를 맞춘다
+  data = (data && typeof data === 'object') ? data : {};
+  const areas = normAreas(data.areas);
+  if (!areas.length) { showToast('양식에 채점 영역이 없어요.'); return; }
+  sc.title  = sStr(data.title, 100);
+  sc.areas  = areas;
+  sc.ratio  = sInt(data.ratio, 0, 100, 20);
+  if (Array.isArray(data.award)) sc.awardRange = { enabled: !!data.award[0], min: sInt(data.award[1], 0, 100, 80), max: sInt(data.award[2], 0, 100, 100) };
+  sc.rows   = (Array.isArray(data.names) ? data.names.slice(0, 300) : []).map(name => ({ name: sStr(name, 40), scores: sc.areas.map(() => null) }));
   // 기존 초안 복구
   const draft = scLoadDraft();
-  if (draft && draft.scorerName &&
-      JSON.stringify(draft.areas) === JSON.stringify(sc.areas) &&
-      JSON.stringify(draft.rows.map(r => r.name)) === JSON.stringify(sc.rows.map(r => r.name))) {
-    sc.scorer = draft.scorerName;
-    sc.rows   = draft.rows;
+  if (draft && draft.scorerName && Array.isArray(draft.rows) &&
+      JSON.stringify(normAreas(draft.areas)) === JSON.stringify(sc.areas) &&
+      JSON.stringify(draft.rows.map(r => r && r.name)) === JSON.stringify(sc.rows.map(r => r.name))) {
+    sc.scorer = sStr(draft.scorerName, 40);
+    sc.rows   = normRows(draft.rows, sc.areas, true);
     document.getElementById('sc-scorer').value = sc.scorer;
     showToast('이전 채점 내용을 복구했습니다');
   }
@@ -907,15 +971,19 @@ function scLoadDraft() {
   try { return JSON.parse(localStorage.getItem(SC_KEY)); } catch { return null; }
 }
 function scSaveDraft(notify) {
-  localStorage.setItem(SC_KEY, JSON.stringify({
-    scorerName: sc.scorer, title: sc.title, ratio: sc.ratio,
-    awardRange: sc.awardRange, areas: sc.areas, rows: sc.rows,
-  }));
-  if (notify === true) showToast('채점 내용을 임시저장했습니다 💾');
+  try {
+    localStorage.setItem(SC_KEY, JSON.stringify({
+      scorerName: sc.scorer, title: sc.title, ratio: sc.ratio,
+      awardRange: sc.awardRange, areas: sc.areas, rows: sc.rows,
+    }));
+    if (notify === true) showToast('채점 내용을 임시저장했습니다 💾');
+  } catch {
+    if (notify === true) showToast('저장 공간이 부족해 임시저장하지 못했어요.');
+  }
 }
 function scClearAll() {
   if (!confirm('채점 내용을 초기화할까요?')) return;
-  localStorage.removeItem(SC_KEY);
+  try { localStorage.removeItem(SC_KEY); } catch {}
   sc.loaded = false; sc.rows = []; sc.scorer = '';
   document.getElementById('sc-content-wrap').style.display = 'none';
   document.getElementById('sc-setup-card').style.display = '';
@@ -988,6 +1056,8 @@ function renderScTable() {
 
 function scAutoFill() {
   if (!sc.rows.length) return;
+  const hasScore = sc.rows.some(r => r.scores.some(s => s != null));
+  if (hasScore && !confirm('지금 입력한 점수를 모두 자동배점 점수로 바꿀까요?\n(되돌릴 수 없어요)')) return;
   generateScores(sc.rows, sc.areas, sc.ratio, sc.awardRange);
   renderScTable();
   scSaveDraft();
@@ -1109,7 +1179,8 @@ function clLoadLocal() {
   try {
     const d = JSON.parse(localStorage.getItem(CL_KEY));
     if (!d || !Array.isArray(d.results) || !d.results.length) return false;
-    cl.results = d.results;
+    // 예전에 결과 링크에서 그대로 저장된 값일 수 있어 다시 검증
+    cl.results = d.results.slice(0, 100).map(normResult);
     cl.aggregateBy = d.aggregateBy || 'avg';
     cl.sortMode = d.sortMode || (d.sortAsc ? 'asc' : 'desc'); // 구버전 호환
     return true;
@@ -1127,16 +1198,31 @@ function clClearAll() {
   showToast('초기화되었습니다.');
 }
 
+// 결과 링크·저장본 → 검증된 결과 항목 (점수는 영역 만점 범위의 정수)
+function normResult(data) {
+  data = (data && typeof data === 'object') ? data : {};
+  const areas = normAreas(data.areas);
+  const entry = {
+    scorer: sStr(typeof data.scorer === 'string' ? data.scorer.trim() : data.scorer, 40) || '알 수 없음',
+    ratio:  sInt(data.ratio, 0, 100, 20),
+    areas,
+    rows:   normRows(data.rows, areas, false),
+  };
+  if (data._ov && typeof data._ov === 'object') {
+    entry._ov = {};
+    Object.keys(data._ov).slice(0, 600).forEach(k => {
+      const v = data._ov[k];
+      if (v != null) entry._ov[sStr(k, 60)] = sInt(v, 0, 100000, 0);
+    });
+  }
+  return entry;
+}
+
 function clAddResult(data, silent) {
-  const scorer = data.scorer || '알 수 없음';
+  const entry = normResult(data);
+  const scorer = entry.scorer;
   // 동일 채점자 덮어쓰기
   const idx = cl.results.findIndex(r => r.scorer === scorer);
-  const entry = {
-    scorer,
-    ratio:  data.ratio ?? 20,
-    areas:  (data.areas || []).map(([name, max]) => ({ name, max })),
-    rows:   (data.rows || []).map(([name, scores]) => ({ name, scores: scores.map(Number) })),
-  };
   if (idx >= 0) cl.results[idx] = entry; else cl.results.push(entry);
   if (!silent) {
     renderClChips();
@@ -1146,51 +1232,68 @@ function clAddResult(data, silent) {
   }
 }
 
-function clRemoveResult(scorer) {
-  cl.results = cl.results.filter(r => r.scorer !== scorer);
+function clRemoveResult(idx) {
+  if (!cl.results[idx]) return;
+  cl.results.splice(idx, 1);
   renderClChips();
   renderClTable();
   clSaveLocal();
 }
 
+// 채점자 이름은 외부 데이터 — 인라인 onclick 대신 data-idx + 이벤트 위임
 function renderClChips() {
   const el = document.getElementById('cl-chip-list');
-  el.innerHTML = cl.results.map(r =>
+  el.innerHTML = cl.results.map((r, i) =>
     `<span class="chip">${esc(r.scorer)}
-      <button class="chip-del" onclick="clRemoveResult('${esc(r.scorer)}')" title="제거">×</button>
+      <button class="chip-del" data-idx="${i}" title="제거">×</button>
     </span>`
   ).join('');
 }
+document.getElementById('cl-chip-list').addEventListener('click', (e) => {
+  const btn = e.target.closest('.chip-del[data-idx]');
+  if (btn) clRemoveResult(+btn.dataset.idx);
+});
 
 // 종합 집계 계산
 function clAggregate() {
   if (!cl.results.length) return { names:[], scorerList:[], aggRows:[], ratio:20 };
   const ratio = cl.results[0].ratio;
   const scorerList = cl.results.map(r => r.scorer);
-  // 전체 참가자명 합집합 (순서 보존)
-  const nameSet = new Map();
-  cl.results.forEach(r => r.rows.forEach(row => {
-    if (!nameSet.has(row.name)) nameSet.set(row.name, nameSet.size);
-  }));
-  const names = [...nameSet.keys()];
-
-  // 각 참가자 × 채점자 총점 map
-  const scoreMap = new Map(); // name → { scorer: total }
+  // 동명이인 구분: 한 채점표 안에서 같은 이름의 k번째 사람을 같은 참가자로 본다.
+  // 키는 첫 번째는 이름 그대로(예전 저장본 호환), 두 번째부터 이름+구분자+번호. 화면에는 "이름 (2)".
+  const SEP = '\u0001';
+  const rowKeys = r => {
+    const seen = {};
+    return r.rows.map(row => {
+      const k = seen[row.name] = (seen[row.name] || 0) + 1;
+      return k === 1 ? row.name : row.name + SEP + k;
+    });
+  };
+  // 전체 참가자 합집합 (순서 보존)
+  const nameSet = new Map();   // key → 표시 이름
+  const scoreMap = new Map();  // key → { scorer: total }
   cl.results.forEach(r => {
-    r.rows.forEach(row => {
-      if (!scoreMap.has(row.name)) scoreMap.set(row.name, {});
-      const ov = r._ov && r._ov[row.name];
-      scoreMap.get(row.name)[r.scorer] = ov != null ? ov : row.scores.reduce((s, v) => s + (v ?? 0), 0);
+    const keys = rowKeys(r);
+    r.rows.forEach((row, i) => {
+      const key = keys[i];
+      if (!nameSet.has(key)) {
+        const n = key.split(SEP)[1];
+        nameSet.set(key, n ? `${row.name} (${n})` : row.name);
+      }
+      if (!scoreMap.has(key)) scoreMap.set(key, {});
+      const ov = r._ov && r._ov[key];
+      scoreMap.get(key)[r.scorer] = ov != null ? ov : row.scores.reduce((s, v) => s + (v ?? 0), 0);
     });
   });
+  const names = [...nameSet.values()];
 
-  const aggRows = names.map(name => {
-    const byScorer = scoreMap.get(name) || {};
+  const aggRows = [...nameSet.entries()].map(([key, name]) => {
+    const byScorer = scoreMap.get(key) || {};
     const vals = scorerList.map(s => byScorer[s] != null ? byScorer[s] : null);
     const filled = vals.filter(v => v != null);
     const sum = filled.reduce((s, v) => s + v, 0);
     const avg = filled.length ? sum / filled.length : 0;
-    return { name, vals, sum, avg };
+    return { key, name, vals, sum, avg };
   });
 
   return { names, scorerList, aggRows, ratio };
@@ -1206,16 +1309,19 @@ function renderClTable() {
 
   // 집계 기준에 따라 정렬
   const getSortVal = r => cl.aggregateBy === 'sum' ? r.sum : r.avg;
+  // 석차 비교값: 화면에 보이는 값(평균은 소수 첫째 자리) 기준으로 동점 판단
+  const rankVal = r => cl.aggregateBy === 'sum' ? r.sum : Math.round(r.avg * 10) / 10;
   const sorted = [...aggRows].sort((a, b) =>
     cl.sortMode === 'name' ? a.name.localeCompare(b.name, 'ko')
     : cl.sortMode === 'asc' ? getSortVal(a) - getSortVal(b)
     : getSortVal(b) - getSortVal(a));
 
-  // 석차 계산
+  // 석차 계산 (동점은 같은 석차)
   const rankSorted = [...aggRows].sort((a, b) => getSortVal(b) - getSortVal(a));
+  const ranks = tieRanks(rankSorted.map(rankVal));
   const rankMap = new Map();
-  rankSorted.forEach((r, i) => rankMap.set(r.name, i + 1));
-  const awardNames = new Set(rankSorted.slice(0, awardN).map(r => r.name));
+  rankSorted.forEach((r, i) => rankMap.set(r.key, ranks[i]));
+  const awardNames = new Set(rankSorted.slice(0, awardN).map(r => r.key));
 
   const thead = `<thead><tr>
     <th class="rank-td">순위</th>
@@ -1227,15 +1333,15 @@ function renderClTable() {
   </tr></thead>`;
 
   const tbody = `<tbody id="cl-tbody">${sorted.map(row => {
-    const isAward = awardNames.has(row.name);
-    return `<tr data-name="${esc(row.name)}" class="${isAward ? 'award-row' : ''}">
-      <td class="rank-td">${rankMap.get(row.name) ?? ''}</td>
+    const isAward = awardNames.has(row.key);
+    return `<tr data-name="${esc(row.key)}" class="${isAward ? 'award-row' : ''}">
+      <td class="rank-td">${rankMap.get(row.key) ?? ''}</td>
       <td class="name-td">${esc(row.name)}</td>
       ${row.vals.map((v, si) => `<td class="score-td cl-score-cell"
-        contenteditable="true" data-name="${esc(row.name)}" data-si="${si}"
+        contenteditable="true" data-name="${esc(row.key)}" data-si="${si}"
         oninput="clOnScoreEdit(this)" onblur="clOnScoreBlur(this)">${v != null ? v : '-'}</td>`).join('')}
-      <td class="total-td" id="cl-sum-${esc(row.name)}">${row.sum}</td>
-      <td id="cl-avg-${esc(row.name)}">${row.avg.toFixed(1)}</td>
+      <td class="total-td">${row.sum}</td>
+      <td>${row.avg.toFixed(1)}</td>
       <td class="award-td">${isAward ? '🏅' : ''}</td>
     </tr>`;
   }).join('')}</tbody>`;
@@ -1360,8 +1466,9 @@ function clUpdateAllRanksAwards() {
   });
   const sorted = [...rowData].sort((a, b) => b.val - a.val);
   const awardN = Math.round(trs.length * ratio / 100);
+  const ranks = tieRanks(sorted.map(d => d.val));   // 동점은 같은 석차
   sorted.forEach(({ tr }, i) => {
-    const rank = i + 1;
+    const rank = ranks[i];
     const isAward = i < awardN;
     tr.querySelector('.rank-td').textContent = rank;
     tr.querySelector('.award-td').textContent = isAward ? '🏅' : '';
@@ -1375,30 +1482,37 @@ function clExportXlsx() {
   const wb = XLSX.utils.book_new();
   const { scorerList, aggRows, ratio } = clAggregate();
   const getSortVal = r => cl.aggregateBy === 'sum' ? r.sum : r.avg;
+  // 석차 비교값: 화면에 보이는 값(평균은 소수 첫째 자리) 기준으로 동점 판단
+  const rankVal = r => cl.aggregateBy === 'sum' ? r.sum : Math.round(r.avg * 10) / 10;
   const sorted = [...aggRows].sort((a, b) => getSortVal(b) - getSortVal(a));
   const awardN = Math.round(aggRows.length * ratio / 100);
-  const awardNames = new Set(sorted.slice(0, awardN).map(r => r.name));
-  const rankMap = new Map(sorted.map((r, i) => [r.name, i + 1]));
+  const awardNames = new Set(sorted.slice(0, awardN).map(r => r.key));
+  const ranks = tieRanks(sorted.map(rankVal));
+  const rankMap = new Map(sorted.map((r, i) => [r.key, ranks[i]]));
 
   // 시트1: 종합
   const header1 = ['순위', '이름', ...scorerList, '합계', '평균', '시상'];
   const data1   = sorted.map(r => [
-    rankMap.get(r.name), r.name,
+    rankMap.get(r.key), r.name,
     ...r.vals.map(v => v != null ? v : ''),
-    r.sum, r.avg.toFixed(1), awardNames.has(r.name) ? '★' : ''
+    r.sum, r.avg.toFixed(1), awardNames.has(r.key) ? '★' : ''
   ]);
   const ws1 = XLSX.utils.aoa_to_sheet([header1, ...data1]);
   ws1['!cols'] = [{ wch:5 }, { wch:14 }, ...scorerList.map(() => ({ wch:10 })), { wch:8 }, { wch:8 }, { wch:5 }];
   XLSX.utils.book_append_sheet(wb, ws1, '종합 결과');
 
-  // 시트2~: 채점자별
+  // 시트2~: 채점자별 (시트 이름에 못 쓰는 글자 치환, 31자 제한·중복 방지)
+  const usedSheets = new Set(['종합 결과']);
   cl.results.forEach(r => {
     const h = ['이름', ...r.areas.map(a => `${a.name}(${a.max}점)`), '총점'];
     const d = [...r.rows].sort((a, b) => rowTotal(b) - rowTotal(a))
       .map(row => [row.name, ...row.scores.map(s => s ?? ''), rowTotal(row)]);
     const ws = XLSX.utils.aoa_to_sheet([h, ...d]);
     ws['!cols'] = [{ wch:14 }, ...r.areas.map(() => ({ wch:10 })), { wch:8 }];
-    XLSX.utils.book_append_sheet(wb, ws, r.scorer.slice(0, 31));
+    let sheet = (r.scorer.replace(/[:\\\/?*\[\]]/g, '_').slice(0, 28) || '채점자');
+    for (let n = 2; usedSheets.has(sheet); n++) sheet = sheet.slice(0, 28) + '_' + n;
+    usedSheets.add(sheet);
+    XLSX.utils.book_append_sheet(wb, ws, sheet);
   });
 
   XLSX.writeFile(wb, `채점표_수합_${today()}.xlsx`);
@@ -1412,12 +1526,14 @@ function clExportXlsx() {
 function scInitRestore() {
   const d = scLoadDraft();
   if (d && Array.isArray(d.areas) && d.areas.length && Array.isArray(d.rows) && d.rows.length) {
-    sc.title = d.title || '';
-    sc.scorer = d.scorerName || '';
-    sc.ratio = d.ratio ?? 20;
-    sc.awardRange = d.awardRange || sc.awardRange;
-    sc.areas = d.areas;
-    sc.rows = d.rows;
+    // 초안은 예전에 공유 양식에서 온 값이라 다시 검증
+    sc.title = sStr(d.title, 100);
+    sc.scorer = sStr(d.scorerName, 40);
+    sc.ratio = sInt(d.ratio, 0, 100, 20);
+    const ar = d.awardRange;
+    if (ar && typeof ar === 'object') sc.awardRange = { enabled: !!ar.enabled, min: sInt(ar.min, 0, 100, 80), max: sInt(ar.max, 0, 100, 100) };
+    sc.areas = normAreas(d.areas);
+    sc.rows = normRows(d.rows, sc.areas, true);
     sc.loaded = true;
     renderScTable();
     return true;

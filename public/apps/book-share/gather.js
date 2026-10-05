@@ -35,6 +35,35 @@ function decodeShareData(encoded) {
   return null;
 }
 
+/* ── 공유 데이터 검증: 디코드 직후 형식을 맞춘다(수량·가격은 숫자로 강제) ── */
+function toInt(v, min, max, def) {
+  if (window.VSafe) return VSafe.int(v, min, max, def);
+  const n = Math.trunc(Number(v));
+  return isFinite(n) ? Math.min(max, Math.max(min, n)) : def;
+}
+function cleanStr(v, max) {
+  return (typeof v === 'string' || typeof v === 'number') ? String(v).slice(0, max) : '';
+}
+function sanitizeBook(b) {
+  const book = {
+    isbn13: cleanStr(b.isbn13, 20).replace(/[^0-9Xx]/g, ''),
+    title: cleanStr(b.title, 300) || '(제목 없음)',
+    author: cleanStr(b.author, 200),
+    publisher: cleanStr(b.publisher, 200),
+    priceStandard: toInt(b.priceStandard, 0, 10000000, 0),
+    qty: toInt(b.qty, 0, 99999, 1),
+  };
+  if (b.error) book.error = true;
+  if (Array.isArray(b._sources)) {
+    book._sources = b._sources.filter(x => typeof x === 'string').slice(0, 200).map(x => x.slice(0, 500));
+  }
+  return book;
+}
+function sanitizeBooks(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.slice(0, 1000).filter(b => b && typeof b === 'object').map(sanitizeBook);
+}
+
 /* ── 링크 파싱 ── */
 function parseLinks(text) {
   const lines = text.split(/[\n\r]+/).filter(l => l.trim());
@@ -84,12 +113,9 @@ async function resolveAndDecodeLink(link) {
   // 공유 링크 형태 (#share=...)
   if (link.includes('#share=')) {
     const encoded = link.split('#share=')[1];
-    const data = decodeShareData(encoded);
-    if (data && Array.isArray(data)) {
-      // 공유 링크의 경우 source는 전체 링크
-      return data.map(b => ({ ...b, _source: link }));
-    }
-    return [];
+    const data = sanitizeBooks(decodeShareData(encoded));
+    // 공유 링크의 경우 source는 전체 링크
+    return data.map(b => ({ ...b, _source: link }));
   }
 
   // 단축URL 형태
@@ -100,11 +126,9 @@ async function resolveAndDecodeLink(link) {
       // 최종 URL에서 공유 데이터 추출
       if (resolvedURL.includes('#share=')) {
         const encoded = resolvedURL.split('#share=')[1];
-        const data = decodeShareData(encoded);
-        if (data && Array.isArray(data)) {
-          // 단축코드를 source로 저장
-          return data.map(b => ({ ...b, _source: shortCode }));
-        }
+        const data = sanitizeBooks(decodeShareData(encoded));
+        // 단축코드를 source로 저장
+        return data.map(b => ({ ...b, _source: shortCode }));
       }
     } catch (e) {
       console.error('링크 처리 오류:', link, e);
@@ -163,7 +187,7 @@ async function startGather() {
     if (booksByISBN.has(key)) {
       // 같은 ISBN 도서가 있으면 수량 합산 및 출처 추가
       const existing = booksByISBN.get(key);
-      existing.qty = (existing.qty || 1) + (book.qty || 1);
+      existing.qty = Math.min(99999, existing.qty + book.qty);
       // 출처 추가 (중복 제거)
       if (book._source && !existing._sources.includes(book._source)) {
         existing._sources.push(book._source);
@@ -183,7 +207,13 @@ async function startGather() {
   pw.classList.remove('visible');
 
   if (uniqueBooks.length > 0) {
-    list = uniqueBooks;
+    // 이 기기에 저장된 목록(도서 정보 나눔과 같은 저장소)을 바꾸기 전에 확인
+    if (list.length > 0 && !confirm(`수집한 ${uniqueBooks.length}권으로 목록을 바꿀까요?
+지금 이 기기에 저장된 목록(${list.length}권)은 지워져요.`)) {
+      showToast('기존 목록을 그대로 두었어요.');
+      return;
+    }
+    list = uniqueBooks.map(b => { const { _source, ...rest } = b; return rest; });
     saveList();
     renderTable();
     document.getElementById('tableSection').style.display = '';
@@ -262,7 +292,11 @@ function deleteRow(idx) {
 
 /* ── localStorage 저장 ── */
 function saveList() {
-  localStorage.setItem(LS_ITEMS, JSON.stringify(list));
+  try {
+    localStorage.setItem(LS_ITEMS, JSON.stringify(list));
+  } catch {
+    showToast('브라우저 저장 공간이 부족해 목록을 저장하지 못했어요.');
+  }
 }
 
 /* ── 엑셀 내보내기 (index.html에서 복사) ── */
@@ -307,7 +341,8 @@ function exportExcel() {
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 function escHtml(str) {
-  return String(str)
+  if (window.VSafe) return VSafe.esc(str);
+  return String(str == null ? '' : str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -339,7 +374,7 @@ async function shareList() {
     .replace(/\//g, '_')
     .replace(/=/g, '');
 
-  const longUrl = `${window.location.origin}/book-share/#share=${encoded}`;
+  const longUrl = `${window.location.origin}/apps/book-share/#share=${encoded}`;
 
   // 단축 URL 생성
   try {
@@ -360,7 +395,7 @@ async function shareList() {
       await navigator.clipboard.writeText(longUrl);
       showToast('공유 링크가 복사되었습니다 (단축 미적용)');
     } catch {
-      showToast('공유에 실패했습니다.');
+      prompt('링크를 복사하세요', longUrl);
     }
   }
 }
@@ -369,7 +404,7 @@ async function shareList() {
 function confirmReset() {
   if (confirm('정말로 모든 데이터를 삭제하시겠습니까?')) {
     list = [];
-    localStorage.removeItem(LS_ITEMS);
+    try { localStorage.removeItem(LS_ITEMS); } catch {}
     renderTable();
     document.getElementById('tableSection').style.display = 'none';
     document.getElementById('linkInput').value = '';
@@ -380,9 +415,6 @@ function confirmReset() {
 /* ── 초기화 ── */
 (function init() {
   // localStorage에서 저장된 데이터 복원
-  const saved = localStorage.getItem(LS_ITEMS);
-  if (saved) {
-    try { list = JSON.parse(saved); } catch { list = []; }
-  }
+  try { list = sanitizeBooks(JSON.parse(localStorage.getItem(LS_ITEMS) || '[]')); } catch { list = []; }
   renderTable();
 })();

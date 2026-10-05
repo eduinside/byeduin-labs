@@ -255,7 +255,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }
     }
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/math-sheet/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"연산연습지","description":"덧셈·뺄셈·곱셈·나눗셈 세로셈 문제지를 조건별로 만들어 A4로 인쇄하고, 링크·QR로 공유하세요. 받아올림/내림·나머지·자릿수 유형 설정, 정답지 토글 지원.","url":"https://eduin.info/apps/math-sheet/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -465,7 +464,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   const countInput = $('countInput'), titleInput = $('titleInput'), addLimitChk = $('addLimitChk');
   const sheetEl = $('sheet'), noticeEl = $('notice'), settingsRow = $('settingsRow'), emptyEl = $('emptyState');
 
-  function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+  function esc(s) { return window.VSafe ? VSafe.esc(s) : String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+  function toInt(v, min, max, def) {
+    if (window.VSafe) return VSafe.int(v, min, max, def);
+    const n = Math.trunc(Number(v));
+    return isFinite(n) ? Math.min(max, Math.max(min, n)) : def;
+  }
   function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
   function rd() { return 1 + Math.floor(Math.random() * 9); }
@@ -484,6 +488,22 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       case 'x000': return rd() * 1000;
       case 'xyzq': return rd() * 1000 + rd() * 100 + rd() * 10 + rd();
       default:     return rd();
+    }
+  }
+  // n이 genType(t)로 나올 수 있는 수인지 (각 자리 0 없음 규칙 포함)
+  function matchesType(n, t) {
+    const s = String(n), noZero = !s.includes('0');
+    switch (t) {
+      case 'x':    return n >= 1 && n <= 9;
+      case 'ten':  return n === 10;
+      case 'x0':   return n >= 10 && n <= 90 && n % 10 === 0;
+      case '1y':   return n >= 11 && n <= 19;
+      case 'xy':   return s.length === 2 && noZero;
+      case 'x00':  return n >= 100 && n <= 900 && n % 100 === 0;
+      case 'xyz':  return s.length === 3 && noZero;
+      case 'x000': return n >= 1000 && n <= 9000 && n % 1000 === 0;
+      case 'xyzq': return s.length === 4 && noZero;
+      default:     return false;
     }
   }
   function anyCarryAdd(a, b) { while (a > 0 || b > 0) { if ((a % 10) + (b % 10) >= 10) return true; a = (a / 10) | 0; b = (b / 10) | 0; } return false; }
@@ -515,6 +535,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }
       if (op === 'div') {
         if (opt.rem === 'exact') {
+          // 나누어떨어짐: 피제수 A도 고른 유형(몇십·몇백·십몇 등)을 지키는 B의 배수 중에서 고른다
+          // (예전: 자릿수만 맞춰 '몇십 ÷ 한 자리'에 84÷7이 나옴)
           const b = genType(bType);
           if (b < 2) continue;
           const L = TYPE_LEN[aType];
@@ -522,7 +544,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           const qLow = Math.max(2, Math.ceil(low / b));
           const qHigh = Math.floor(high / b);
           if (qHigh < qLow) continue;
-          const q = qLow + Math.floor(Math.random() * (qHigh - qLow + 1));
+          const qs = [];
+          for (let q = qLow; q <= qHigh; q++) if (matchesType(b * q, aType)) qs.push(q);
+          if (!qs.length) continue;
+          const q = pick(qs);
           const a = b * q;
           return { a, b, op, res: q, q, r: 0 };
         } else {
@@ -695,8 +720,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   };
 
   // ── 저장 / 불러오기 (localStorage, md-editor 스타일) ──
-  function loadSets() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { return []; } }
-  function saveSets(s) { localStorage.setItem(LS_KEY, JSON.stringify(s)); }
+  function loadSets() {
+    try { const v = JSON.parse(localStorage.getItem(LS_KEY)); return Array.isArray(v) ? v.filter(x => x && typeof x === 'object') : []; } catch { return []; }
+  }
+  function saveSets(s) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(s)); return true; }
+    catch { showToast('브라우저 저장 공간이 부족해 저장하지 못했어요.'); return false; }
+  }
 
   window.saveSet = function () {
     closeSaveMenu();
@@ -705,31 +735,45 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const d = new Date();
     const stamp = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
     sets.unshift({ id: Date.now(), title: currentConfig.title, config: currentConfig, problems: currentProblems, savedAt: stamp });
-    saveSets(sets.slice(0, 40));
-    showToast('이 브라우저(로컬)에 저장됐어요 ✓');
+    if (saveSets(sets.slice(0, 40))) showToast('이 브라우저(로컬)에 저장됐어요 ✓');
   };
   window.openLoadModal = function () {
     const sets = loadSets(), list = $('docList');
     list.innerHTML = sets.length ? sets.map(s => `
       <li class="ms-doc-item">
-        <div class="ms-doc-main" onclick="loadSet(${s.id})"><div class="ms-doc-name">${esc(s.title)}</div><div class="ms-doc-meta">${s.problems.length}문항 · ${s.savedAt}</div></div>
-        <button class="ms-tb-btn danger" style="min-height:32px;padding:5px 11px" onclick="deleteSet(${s.id}, event)">삭제</button>
+        <div class="ms-doc-main" data-act="load-local" data-id="${esc(s.id)}"><div class="ms-doc-name">${esc(s.title)}</div><div class="ms-doc-meta">${Array.isArray(s.problems) ? s.problems.length : 0}문항 · ${esc(s.savedAt || '')}</div></div>
+        <button class="ms-tb-btn danger" style="min-height:32px;padding:5px 11px" data-act="del-local" data-id="${esc(s.id)}">삭제</button>
       </li>`).join('') : '<div class="ms-doc-empty">저장된 세트가 없어요.<br>문제를 만든 뒤 <b>저장 → 브라우저에 저장</b>을 눌러 보세요.</div>';
     renderServerSets();   // 코드 연결 시에만 서버 목록 표시(미연결이면 로컬만)
     $('loadModal').classList.add('show');
   };
   window.closeLoad = function () { $('loadModal').classList.remove('show'); };
   function applySet(item) {
-    currentConfig = item.config; currentProblems = item.problems;
+    // 저장본(특히 동기화 서버본)도 공유 링크처럼 검증해서 쓴다
+    const probs = sanitizeProblems(item.problems);
+    if (!probs.length) { showToast('세트를 불러올 수 없어요.'); return; }
+    currentConfig = sanitizeConfig(item.config, probs.length); currentProblems = probs;
     setConfig(item.config); renderSheet(); applyAns(ansShown);
     hideNotice(); closeLoad(); markFresh();
     sheetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   window.loadSet = function (id) {
-    const item = loadSets().find(s => s.id === id);
+    const item = loadSets().find(s => String(s.id) === String(id));
     if (item) applySet(item);
   };
-  window.deleteSet = function (id, ev) { ev.stopPropagation(); saveSets(loadSets().filter(s => s.id !== id)); openLoadModal(); };
+  window.deleteSet = function (id, ev) { if (ev) ev.stopPropagation(); saveSets(loadSets().filter(s => String(s.id) !== String(id))); openLoadModal(); };
+
+  // 목록 클릭: data-* + 이벤트 위임 (id·제목을 인라인 onclick에 넣지 않음)
+  // (.ms-modal이 클릭 전파를 막으므로 리스너는 그 안쪽 상자에 건다)
+  $('loadModal').querySelector('.ms-modal').addEventListener('click', (e) => {
+    const el = e.target.closest('[data-act]');
+    if (!el) return;
+    const id = el.dataset.id, act = el.dataset.act;
+    if (act === 'load-local') loadSet(id);
+    else if (act === 'del-local') deleteSet(id);
+    else if (act === 'load-server') loadServerSet(id);
+    else if (act === 'del-server') deleteServerSet(id);
+  });
 
   // ── 코드(서버) 저장/열기 — VivesSync set 모드 라이브러리 ──
   const mathLib = window.VivesSync ? VivesSync.docStore({ apiUrl: '/api/math-sheet' }) : null;
@@ -759,8 +803,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     list.innerHTML = serverSets.length ? serverSets.map(s => {
       const v = s.value || {};
       return `<li class="ms-doc-item">
-        <div class="ms-doc-main" onclick="loadServerSet('${esc(s.id)}')"><div class="ms-doc-name">${esc(v.title || '제목 없음')}</div><div class="ms-doc-meta">${(v.problems ? v.problems.length : 0)}문항 · ${esc(v.savedAt || '')}</div></div>
-        <button class="ms-tb-btn danger" style="min-height:32px;padding:5px 11px" onclick="deleteServerSet('${esc(s.id)}', event)">삭제</button>
+        <div class="ms-doc-main" data-act="load-server" data-id="${esc(s.id)}"><div class="ms-doc-name">${esc(v.title || '제목 없음')}</div><div class="ms-doc-meta">${(Array.isArray(v.problems) ? v.problems.length : 0)}문항 · ${esc(v.savedAt || '')}</div></div>
+        <button class="ms-tb-btn danger" style="min-height:32px;padding:5px 11px" data-act="del-server" data-id="${esc(s.id)}">삭제</button>
       </li>`;
     }).join('') : '<div class="ms-doc-empty">이 코드로 저장한 세트가 없어요.<br><b>저장 → 코드로 저장</b>을 눌러 보세요.</div>';
   }
@@ -770,7 +814,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     else showToast('세트를 불러올 수 없어요.');
   };
   window.deleteServerSet = async function (id, ev) {
-    ev.stopPropagation();
+    if (ev) ev.stopPropagation();
     const code = VivesSync.getCode(); if (!code) return;
     await mathLib.remove(code, id); renderServerSets();
   };
@@ -786,21 +830,30 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   document.addEventListener('click', e => { if (!e.target.closest('.ms-dd-wrap')) closeSaveMenu(); });
 
   // ── 출력 / 공유 ──
+  // 같은 학습지(같은 공유 주소)는 단축 링크를 한 번만 만들고 재사용 — 인쇄할 때마다 기다리지 않게
+  const shortCache = new Map();   // longURL → shortURL (성공한 것만)
+  async function getShortURL(longURL) {
+    if (shortCache.has(longURL)) return shortCache.get(longURL);
+    try {
+      const res = await fetch('/api/shorten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: longURL }) });
+      if (res.ok) {
+        const d = await res.json();
+        if (d && d.shortURL) { shortCache.set(longURL, d.shortURL); return d.shortURL; }
+      }
+    } catch { /* 단축 실패 → 호출부에서 원본 링크 사용 */ }
+    return null;
+  }
   async function renderSheetQR() {
     const box = $('sheetQR'); if (!box) return;
     const longURL = buildShareURL();
-    let url = longURL;
-    try {
-      const res = await fetch('/api/shorten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: longURL }) });
-      if (res.ok) { const d = await res.json(); if (d.shortURL) url = d.shortURL; }
-    } catch { /* 단축 실패 시 원본 URL로 QR */ }
+    const url = (await getShortURL(longURL)) || longURL;   // 단축 실패 시 원본 URL로 QR
     box.innerHTML = '';
     if (typeof QRCode !== 'undefined') { try { new QRCode(box, { text: url, width: 58, height: 58, correctLevel: QRCode.CorrectLevel.M }); } catch {} }
   }
   window.printSheet = async function () {
     closeSaveMenu();
     if (!currentProblems.length) { showToast('먼저 문제를 생성하세요.'); return; }
-    await renderSheetQR();   // 우상단 단축 링크 QR 준비 (출력할 때마다 생성)
+    await renderSheetQR();   // 우상단 단축 링크 QR 준비 (같은 학습지면 만들어 둔 링크 재사용)
     const prevTitle = document.title;
     document.title = (currentConfig.title || '연산연습지').trim();   // PDF 저장 기본 파일명 = 학습지 제목
     const restore = () => { document.title = prevTitle; window.removeEventListener('afterprint', restore); };
@@ -829,11 +882,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     $('shareResult').hidden = true; status.hidden = false; status.textContent = '⏳ 단축 링크 만드는 중…';
     $('shareModal').classList.add('show');
     const longURL = buildShareURL();
-    let url = longURL, ok = false;
-    try {
-      const res = await fetch('/api/shorten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: longURL }) });
-      if (res.ok) { const data = await res.json(); if (data.shortURL) { url = data.shortURL; ok = true; } }
-    } catch { /* 단축 실패 → 원본 링크 폴백 */ }
+    const short = await getShortURL(longURL);
+    const url = short || longURL, ok = !!short;   // 단축 실패 → 원본 링크 폴백
     if (!$('shareModal').classList.contains('show')) return;   // 도중에 닫혔으면 중단
     $('shareLink').value = url; renderQR(url);
     status.hidden = ok;
@@ -851,13 +901,37 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   function b64uDecode(str) { try { const raw = str.replace(/-/g, '+').replace(/_/g, '/'); const pad = (4 - raw.length % 4) % 4; return JSON.parse(decodeURIComponent(atob(raw + '='.repeat(pad)))); } catch { return null; } }
 
   // ── 뷰어 모드 ──
+  // 공유 링크의 문제 배열 → 정수 검증 + 문제 수 상한(60) 후 답을 다시 계산
   function decodeProblems(arr) {
-    return arr.map(x => {
-      const a = x[0], b = x[1], op = OPS[x[2]] || 'add';
+    if (!Array.isArray(arr)) return [];
+    return sanitizeProblems(arr.slice(0, 60).map(x => Array.isArray(x) ? { a: x[0], b: x[1], op: OPS[x[2]] } : null));
+  }
+  function sanitizeProblems(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr.slice(0, 60).filter(x => x && typeof x === 'object').map(x => {
+      const op = OPS.includes(x.op) ? x.op : 'add';
+      const a = toInt(x.a, 0, 99999, 0);
+      const b = toInt(x.b, op === 'div' ? 1 : 0, 99999, 1);
       let res, q = null, r = null;
       if (op === 'add') res = a + b; else if (op === 'sub') res = a - b; else if (op === 'mul') res = a * b; else { q = (a / b) | 0; r = a % b; res = q; }
       return { a, b, op, res, q, r };
     });
+  }
+  function sanitizeConfig(c, n) {
+    c = (c && typeof c === 'object') ? c : {};
+    const oneOf = (v, list, def) => list.includes(v) ? v : def;
+    const types = Object.keys(TYPE_LEN);
+    return {
+      title: typeof c.title === 'string' && c.title.trim() ? c.title.slice(0, 80) : '세로셈 연습',
+      cols: oneOf(toInt(c.cols, 3, 5, 4), [3, 4, 5], 4),
+      count: toInt(c.count, 4, 60, n || 12),
+      op: oneOf(c.op, [...OPS, 'mix'], 'mix'),
+      carry: oneOf(c.carry, ['yes', 'no', 'mix'], 'mix'),
+      rem: oneOf(c.rem, ['exact', 'remain', 'mix'], 'mix'),
+      aTypes: [oneOf(Array.isArray(c.aTypes) ? c.aTypes[0] : null, types, 'xy')],
+      bTypes: [oneOf(Array.isArray(c.bTypes) ? c.bTypes[0] : null, types, 'x')],
+      addLimit: !!c.addLimit, showAns: !!c.showAns,
+    };
   }
   window.toggleAns = function () {
     const on = !sheetEl.classList.contains('show-ans');
@@ -889,12 +963,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     if (!data || !Array.isArray(data.p)) { history.replaceState(null, '', location.pathname); showToast('공유 링크를 읽을 수 없습니다.'); return false; }
     // 성공 시 해시 유지 → 새로고침해도 공유된 학습지 화면이 그대로 유지됨 ('새 문제' 누르면 해제)
     currentProblems = decodeProblems(data.p);
-    const g = data.cfg;
-    currentConfig = {
-      title: data.t || '세로셈 연습', cols: data.c || 4, count: g ? g.n : currentProblems.length,
+    if (!currentProblems.length) { history.replaceState(null, '', location.pathname); showToast('공유 링크를 읽을 수 없습니다.'); return false; }
+    const g = (data.cfg && typeof data.cfg === 'object') ? data.cfg : null;
+    currentConfig = sanitizeConfig({
+      title: data.t, cols: data.c, count: g ? g.n : currentProblems.length,
       op: g ? g.o : 'mix', carry: g ? g.cy : 'mix', rem: g ? g.rm : 'mix',
       aTypes: g ? [g.a] : ['xy'], bTypes: g ? [g.b] : ['x'], addLimit: g ? !!g.al : false, showAns: false,
-    };
+    }, currentProblems.length);
     viewerMode = true;
     $('panel').hidden = true;
     $('viewerBar').hidden = false;

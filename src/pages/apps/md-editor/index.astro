@@ -11,8 +11,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   bodyWidth="wide"
 >
   <Fragment slot="head">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" is:inline=""></script>
-  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js" is:inline=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js" is:inline=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" is:inline=""></script>
+  <script src="/vendor/lucide-1.52.0.min.js" is:inline=""></script>
   <style is:global="">
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
 
@@ -512,7 +513,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       .toolbar-btn span { display: inline; }
     }
   </style>
-  <link rel="canonical" href="https://eduin.info/apps/md-editor/">
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"MD Editor","description":"JSON, CSV, XML, HTML을 마크다운으로 자동 변환. 중첩 테이블 정리, 실시간 미리보기, 파일 공유까지.","url":"https://eduin.info/apps/md-editor/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
@@ -537,7 +537,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <button class="toolbar-btn view-only-hide" onclick="newDocument()"><i data-lucide="file-plus-2"></i>새 문서</button>
     <button class="toolbar-btn view-only-hide" onclick="toggleOpenMenu(event)"><i data-lucide="folder-open"></i>열기 ▾</button>
     <input type="file" id="fileInput" accept=".md,.txt,.markdown" style="display:none" onchange="handleFileLoad(this)">
-    <input type="file" id="htmlFileInput" accept=".html,.htm" style="display:none" onchange="handleHtmlLoad(this)">
     <input type="file" id="multiFileInput" accept=".json,.csv,.xml,.html,.htm" style="display:none" onchange="handleMultiLoad(this)">
     <input type="file" id="docFileInput" accept=".hwp,.hwpx,.hwpml,.pdf,.docx,.pptx,.xlsx,.doc,.xls" style="display:none" onchange="handleDocLoad(this)">
     <button class="toolbar-btn view-only-hide" id="saveBtn" onclick="toggleSaveMenu(event)"><i data-lucide="save"></i>저장 ▾</button>
@@ -712,7 +711,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 <div id="md-toast"></div>
 
 <script is:inline="">
-  marked.setOptions({ breaks: true, gfm: true });
+  if (window.marked) marked.setOptions({ breaks: true, gfm: true });
 
   let mdContent = '';
   let currentFilename = 'untitled.md';
@@ -722,7 +721,69 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   let _saveMenuOpen = false;
   let _viewMenuOpen = false;
   let _openMenuOpen = false;
-  let hwpConversionTimer = null;
+  let isDirty = false;   // 마지막 저장·불러오기 이후 고친 내용이 있는지(이탈 경고용)
+
+  // ── localStorage 쓰기: 용량 초과 등 실패를 알린다 ──
+  function lsSet(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch (e) {
+      showToast('브라우저 저장 공간이 꽉 찼어요. 안 쓰는 문서를 지우거나 파일로 저장해 주세요.', 6000);
+      return false;
+    }
+  }
+
+  // ── 자동 임시 저장(이 기기) ──
+  const LS_DRAFT_KEY = 'md-editor-draft';
+  let _draftTimer = null;
+  function saveDraftNow() {
+    clearTimeout(_draftTimer);
+    _draftTimer = null;
+    if (isViewOnly) return;
+    try {
+      if (mdContent.trim()) {
+        localStorage.setItem(LS_DRAFT_KEY, JSON.stringify({ content: mdContent, filename: currentFilename, savedAt: Date.now() }));
+      } else {
+        localStorage.removeItem(LS_DRAFT_KEY);
+      }
+    } catch (e) { /* 용량 초과 시 임시 저장만 건너뜀(이탈 경고는 그대로 동작) */ }
+  }
+  function scheduleDraftSave() {
+    if (isViewOnly) return;
+    clearTimeout(_draftTimer);
+    _draftTimer = setTimeout(saveDraftNow, 800);
+  }
+  function clearDraft() {
+    clearTimeout(_draftTimer);
+    _draftTimer = null;
+    try { localStorage.removeItem(LS_DRAFT_KEY); } catch (e) {}
+  }
+  function restoreDraft() {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(LS_DRAFT_KEY) || 'null'); } catch (e) { d = null; }
+    if (!d || typeof d.content !== 'string' || !d.content.trim()) return false;
+    mdContent = d.content;
+    currentFilename = (typeof d.filename === 'string' && d.filename.trim()) ? d.filename.slice(0, 120) : 'untitled.md';
+    document.getElementById('filenameInput').value = currentFilename;
+    document.getElementById('editor').value = mdContent;
+    renderPreview();
+    showToast('쓰던 글을 다시 불러왔어요');
+    return true;
+  }
+  window.addEventListener('beforeunload', (e) => {
+    if (_draftTimer) saveDraftNow();
+    if (isDirty && !isViewOnly && mdContent.trim()) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  // 현재 문서를 덮어쓰기 전에 확인
+  function confirmReplaceDoc() {
+    if (!mdContent.trim()) return true;
+    return confirm('지금 쓰던 문서를 새 내용으로 바꿀까요?\n(저장하지 않은 내용은 사라져요)');
+  }
 
   // ── 모바일 탭 ──
   function switchMobileTab(tab) {
@@ -739,6 +800,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     currentFilename = 'untitled.md';
     document.getElementById('filenameInput').value = currentFilename;
     document.getElementById('editor').value = '';
+    isDirty = false;
+    clearDraft();
     renderPreview();
     updateSaveButtonState();
     showToast('새 문서를 만들었습니다');
@@ -748,8 +811,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   function onEditorInput(el) {
     if (isViewOnly) return;
     mdContent = el.value;
+    isDirty = true;
+    scheduleDraftSave();
     updateSaveButtonState();
     renderPreview();
+  }
+
+  // 파일·저장본을 불러온 직후: 깨끗한 상태로 보고 임시 저장도 갱신
+  function markLoaded() {
+    isDirty = false;
+    scheduleDraftSave();
   }
 
   // ── 저장 버튼 상태 업데이트 ──
@@ -766,9 +837,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   // marked가 단일 물결표(~)를 (범위 표기인데도) 취소선으로 오인하는 문제 방지.
   // 단일 ~만 보호 문자로 치환해 파싱 후 복원(~~…~~ 이중 물결표 취소선은 유지).
   const TILDE_SENTINEL = '@@TILDE_RANGE@@';
+  // 공유 링크·불러온 파일의 HTML이 그대로 실행되지 않도록 DOMPurify로 정제한다.
+  // marked/DOMPurify를 못 불러오면(학교망 차단 등) 이스케이프한 원문을 그대로 보여 준다.
   function renderMarkdown(text) {
-    const src = String(text == null ? '' : text).replace(/(?<!~)~(?!~)/g, TILDE_SENTINEL);
-    return marked.parse(src).split(TILDE_SENTINEL).join('~');
+    const raw = String(text == null ? '' : text);
+    if (!window.marked || !window.DOMPurify) {
+      return '<pre style="white-space:pre-wrap;word-break:break-word;">' + esc(raw) + '</pre>';
+    }
+    const src = raw.replace(/(?<!~)~(?!~)/g, TILDE_SENTINEL);
+    const html = marked.parse(src).split(TILDE_SENTINEL).join('~');
+    return DOMPurify.sanitize(html, { FORBID_TAGS: ['style', 'form'] });
   }
 
   // 변환된 마크다운 표의 머리글 행이 통째로 비어 있을 때(변환 과정에서 제목 줄이 본문으로 밀린 경우)
@@ -843,6 +921,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   function handleFileLoad(input) {
     const file = input.files[0];
     if (!file) return;
+    if (!confirmReplaceDoc()) { input.value = ''; return; }
     currentFilename = file.name;
     document.getElementById('filenameInput').value = file.name;
     const reader = new FileReader();
@@ -850,6 +929,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       mdContent = normalizeTableHeaders(e.target.result);
       document.getElementById('editor').value = mdContent;
       renderPreview();
+      markLoaded();
       showToast('✓ 파일이 로드되었습니다.');
     };
     reader.onerror = () => {
@@ -858,78 +938,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     };
     reader.readAsText(file, 'UTF-8');
     input.value = '';
-  }
-
-  // ── HWP 파일 열기 ──
-  // ── HTML 파일 열기 ──
-  function openHtmlFileInput() {
-    _closeOpenMenu();
-    document.getElementById('htmlFileInput').click();
-  }
-
-  function handleHtmlLoad(input) {
-    const file = input.files[0];
-    if (!file) return;
-
-    // 파일 크기 검증 (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('파일 크기가 5MB를 초과합니다.');
-      input.value = '';
-      return;
-    }
-
-    // 3초 후 변환 완료 안 되면 토스트 표시
-    if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
-    hwpConversionTimer = setTimeout(() => {
-      showToast('파일 변환이 되지 않았습니다.');
-    }, 3000);
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const htmlContent = e.target.result;
-      convertHtmlToMd(htmlContent, file.name);
-    };
-    reader.readAsText(file, 'UTF-8');
-    input.value = '';
-  }
-
-  async function convertHtmlToMd(htmlContent, filename) {
-    try {
-      // 3초 타임아웃 설정
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 3000)
-      );
-
-      const response = await Promise.race([
-        fetch('/api/html-to-md', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ htmlContent, filename })
-        }),
-        timeoutPromise
-      ]);
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        showToast('파일 변환이 되지 않았습니다.');
-        if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
-        return;
-      }
-
-      // 성공: mdContent 업데이트
-      mdContent = normalizeTableHeaders(result.markdown);
-      currentFilename = filename.replace(/\.(html|htm)$/i, '.md');
-      document.getElementById('filenameInput').value = currentFilename;
-      document.getElementById('editor').value = mdContent;
-      renderPreview();
-
-      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
-      showToast('✓ HTML 파일이 마크다운으로 변환되었습니다.');
-    } catch (err) {
-      showToast('파일 변환이 되지 않았습니다.');
-      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
-    }
   }
 
   // ── 모든 드롭다운 닫기 헬퍼 ──
@@ -962,6 +970,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   async function handleDocLoad(input) {
     const file = input.files[0];
     if (!file) return;
+    if (!confirmReplaceDoc()) { input.value = ''; return; }
 
     const sizeMB = (file.size / 1024 / 1024).toFixed(1);
     if (file.size > 50 * 1024 * 1024) {
@@ -1001,6 +1010,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       document.getElementById('filenameInput').value = currentFilename;
       editor.value = mdContent;
       renderPreview();
+      markLoaded();
       hideToast();
       const pages = data.meta?.page_count ? ` (${data.meta.page_count}페이지)` : '';
       showToast(`✅ 변환 완료${pages}`);
@@ -1068,6 +1078,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   function handleMultiLoad(input) {
     const file = input.files[0];
     if (!file) return;
+    if (!confirmReplaceDoc()) { input.value = ''; return; }
     const ext = file.name.split('.').pop().toLowerCase();
     const reader = new FileReader();
     reader.onerror = () => { showToast('파일을 읽을 수 없습니다.'); input.value = ''; };
@@ -1095,6 +1106,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       document.getElementById('filenameInput').value = currentFilename;
       document.getElementById('editor').value = mdContent;
       renderPreview();
+      markLoaded();
       showToast(toast);
     };
     reader.readAsText(file, 'UTF-8');
@@ -1113,7 +1125,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   }
 
   function esc(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    if (window.VSafe) return VSafe.esc(s);
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
 
   function jsonToHtmlTable(data) {
@@ -1385,7 +1398,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   }
 
   // ── 브라우저 저장 / 불러오기 ──
-  const LS_DOC_KEY = 'md-editor-local-doc';
   const LS_ALL_DOCS_KEY = 'md-editor-all-docs';
 
   function saveToLocalStorage() {
@@ -1399,6 +1411,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     try {
       const raw = localStorage.getItem(LS_ALL_DOCS_KEY);
       if (raw) allDocs = JSON.parse(raw);
+      if (!Array.isArray(allDocs)) allDocs = [];
     } catch { allDocs = []; }
 
     // 같은 이름 파일 있는지 확인
@@ -1424,89 +1437,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     };
 
     allDocs.push(newDoc);
-    localStorage.setItem(LS_ALL_DOCS_KEY, JSON.stringify(allDocs));
+    if (!lsSet(LS_ALL_DOCS_KEY, JSON.stringify(allDocs))) return;
 
     currentFilename = filename;
     document.getElementById('filenameInput').value = filename;
+    isDirty = false;
 
     showToast(`"${filename}"으로 저장되었습니다 ✓`);
-  }
-
-  function loadFromLocalStorage() {
-    _closeOpenMenu();
-    const raw = localStorage.getItem(LS_DOC_KEY);
-    if (!raw) { showToast('저장된 문서가 없습니다'); return; }
-    try {
-      const doc = JSON.parse(raw);
-      if (mdContent.trim() && !confirm('현재 문서를 버릴까요? (저장하지 않은 내용이 사라집니다)')) return;
-      mdContent = doc.content || '';
-      currentFilename = doc.filename || 'untitled.md';
-      document.getElementById('filenameInput').value = currentFilename;
-      document.getElementById('editor').value = mdContent;
-      renderPreview();
-      updateSaveButtonState();
-      showToast(`"${currentFilename}" 불러왔습니다`);
-    } catch { showToast('저장된 문서를 불러오지 못했습니다'); }
-  }
-
-  // ── URL 변환 ──
-  function openUrlModal() {
-    _closeOpenMenu();
-    const url = prompt('변환할 웹페이지 URL을 입력하세요:\n(예: https://example.com)');
-    if (!url || url.trim() === '') return;
-
-    // URL 유효성 검증 (간단한 검증)
-    if (!url.includes('://')) {
-      showToast('유효한 URL을 입력하세요.');
-      return;
-    }
-
-    // 3초 후 변환 완료 안 되면 토스트 표시
-    if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
-    hwpConversionTimer = setTimeout(() => {
-      showToast('파일 변환이 되지 않았습니다.');
-    }, 3000);
-
-    convertUrlToMd(url);
-  }
-
-  async function convertUrlToMd(url) {
-    try {
-      // 3초 타임아웃 설정
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 3000)
-      );
-
-      const response = await Promise.race([
-        fetch('/api/url-to-md', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url })
-        }),
-        timeoutPromise
-      ]);
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        showToast('파일 변환이 되지 않았습니다.');
-        if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
-        return;
-      }
-
-      // 성공: mdContent 업데이트
-      mdContent = result.markdown;
-      currentFilename = result.filename || 'untitled.md';
-      document.getElementById('filenameInput').value = currentFilename;
-      document.getElementById('editor').value = mdContent;
-      renderPreview();
-
-      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
-      showToast('✓ URL이 마크다운으로 변환되었습니다.');
-    } catch (err) {
-      showToast('파일 변환이 되지 않았습니다.');
-      if (hwpConversionTimer) clearTimeout(hwpConversionTimer);
-    }
   }
 
   function openLoadModal() {
@@ -1516,6 +1453,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     try {
       const raw = localStorage.getItem(LS_ALL_DOCS_KEY);
       if (raw) allDocs = JSON.parse(raw);
+      if (!Array.isArray(allDocs)) allDocs = [];
     } catch { allDocs = []; }
 
     const docsList = document.getElementById('docsList');
@@ -1523,11 +1461,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       .sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt))
       .map(doc => `
         <li style="padding:0.75rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-          <div style="flex:1; cursor:pointer;" onclick="loadDocById('${doc.id}')">
-            <div style="font-weight:500;">${doc.filename}</div>
-            <div style="font-size:0.85rem; color:var(--fg-muted);">${new Date(doc.savedAt).toLocaleString('ko-KR')}</div>
+          <div style="flex:1; cursor:pointer;" data-act="load-local" data-id="${esc(doc.id)}">
+            <div style="font-weight:500;">${esc(doc.filename)}</div>
+            <div style="font-size:0.85rem; color:var(--fg-muted);">${esc(new Date(doc.savedAt).toLocaleString('ko-KR'))}</div>
           </div>
-          <button onclick="deleteDocById('${doc.id}')" style="padding:0.25rem 0.5rem; font-size:0.85rem; background:none; border:1px solid var(--border); cursor:pointer; border-radius:0.25rem;">삭제</button>
+          <button data-act="del-local" data-id="${esc(doc.id)}" style="padding:0.25rem 0.5rem; font-size:0.85rem; background:none; border:1px solid var(--border); cursor:pointer; border-radius:0.25rem;">삭제</button>
         </li>
       `).join('') : '<li style="padding:0.75rem 0; color:var(--fg-muted); font-size:0.85rem;">이 기기에 저장된 파일이 없어요.</li>';
 
@@ -1549,6 +1487,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     try {
       const raw = localStorage.getItem(LS_ALL_DOCS_KEY);
       if (raw) allDocs = JSON.parse(raw);
+      if (!Array.isArray(allDocs)) allDocs = [];
     } catch { allDocs = []; }
 
     const doc = allDocs.find(d => d.id === id);
@@ -1561,11 +1500,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
   function applyMdDoc(doc) {
     if (mdContent.trim() && !confirm('현재 문서를 버릴까요?')) return;
-    mdContent = doc.content || '';
-    currentFilename = doc.filename || 'untitled.md';
+    mdContent = typeof doc.content === 'string' ? doc.content : '';
+    currentFilename = (typeof doc.filename === 'string' && doc.filename) ? doc.filename : 'untitled.md';
     document.getElementById('filenameInput').value = currentFilename;
     document.getElementById('editor').value = mdContent;
     renderPreview();
+    markLoaded();
     updateSaveButtonState();
     closeLoadModal();
     showToast(`"${currentFilename}"을(를) 불러왔습니다`);
@@ -1578,10 +1518,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     try {
       const raw = localStorage.getItem(LS_ALL_DOCS_KEY);
       if (raw) allDocs = JSON.parse(raw);
+      if (!Array.isArray(allDocs)) allDocs = [];
     } catch { allDocs = []; }
 
     allDocs = allDocs.filter(d => d.id !== id);
-    localStorage.setItem(LS_ALL_DOCS_KEY, JSON.stringify(allDocs));
+    lsSet(LS_ALL_DOCS_KEY, JSON.stringify(allDocs));
 
     openLoadModal(); // 모달 새로고침
   }
@@ -1600,6 +1541,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const id = Date.now().toString();
     const ok = await mdLib.save(code, id, { id, content: mdContent, filename, savedAt: new Date().toISOString() });
     if (!hadCode && mdCodeBtn) mdCodeBtn.refresh();   // 자동 발급 코드를 상단 버튼에 반영
+    if (ok) isDirty = false;
     showToast(ok ? `코드 ${code}에 저장됐어요 ☁️ 우상단 버튼의 코드를 다른 기기에 입력하면 열려요` : '서버 저장 실패');
   }
 
@@ -1614,11 +1556,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const v = s.value || {};
       const when = v.savedAt ? new Date(v.savedAt).toLocaleString('ko-KR') : '';
       return `<li style="padding:0.75rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-        <div style="flex:1; cursor:pointer;" onclick="loadServerDoc('${s.id}')">
-          <div style="font-weight:500;">${(v.filename || '제목 없음')}</div>
-          <div style="font-size:0.85rem; color:var(--fg-muted);">${when}</div>
+        <div style="flex:1; cursor:pointer;" data-act="load-server" data-id="${esc(s.id)}">
+          <div style="font-weight:500;">${esc(v.filename || '제목 없음')}</div>
+          <div style="font-size:0.85rem; color:var(--fg-muted);">${esc(when)}</div>
         </div>
-        <button onclick="deleteServerDoc('${s.id}')" style="padding:0.25rem 0.5rem; font-size:0.85rem; background:none; border:1px solid var(--border); cursor:pointer; border-radius:0.25rem;">삭제</button>
+        <button data-act="del-server" data-id="${esc(s.id)}" style="padding:0.25rem 0.5rem; font-size:0.85rem; background:none; border:1px solid var(--border); cursor:pointer; border-radius:0.25rem;">삭제</button>
       </li>`;
     }).join('') : '<li style="padding:0.6rem 0; color:var(--fg-muted); font-size:0.85rem;">이 코드로 저장한 문서가 없어요. <b>저장 → 코드로 저장</b></li>';
   }
@@ -1637,6 +1579,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   };
   window.saveDocToServer = saveDocToServer;
 
+  // 목록 클릭은 data-* + 이벤트 위임(문서 이름·id를 인라인 onclick에 넣지 않음)
+  document.getElementById('loadModal').addEventListener('click', (e) => {
+    const el = e.target.closest('[data-act]');
+    if (!el) return;
+    const id = el.dataset.id;
+    const act = el.dataset.act;
+    if (act === 'load-local') loadDocById(id);
+    else if (act === 'del-local') deleteDocById(id);
+    else if (act === 'load-server') window.loadServerDoc(id);
+    else if (act === 'del-server') window.deleteServerDoc(id);
+  });
+
   // 우상단 통합 '동기화' 버튼으로 코드 관리. 연결/해제 시 열기 모달이 떠 있으면 서버 목록 갱신.
   const mdCodeBtn = window.VivesSync ? VivesSync.mountCodeButton({
     appName: '문서',
@@ -1654,6 +1608,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     a.download = fname;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    isDirty = false;
   }
 
   // ── HTML 저장 ──
@@ -1666,7 +1621,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${filename}</title>
+  <title>${esc(filename)}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem; line-height: 1.75; color: #333; }
     h1 { border-bottom: 2px solid #e4e4e7; padding-bottom: 0.3em; }
@@ -1692,6 +1647,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     a.download = fname;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    isDirty = false;
   }
 
   // ── 공유 인코딩/디코딩 ──
@@ -1700,18 +1656,28 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       data: { content: mdContent, filename: currentFilename },
       permission,
     });
-    if (payload.length > 8000) return { url: null, tooLarge: true };
+    // 한글은 인코딩 뒤 길이가 몇 배로 늘어나므로, 실제 링크 길이로 상한을 건다.
     const encoded = btoa(encodeURIComponent(payload))
       .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-    return { url: `${location.origin}/apps/md-editor/#share=${encoded}`, tooLarge: false };
+    const url = `${location.origin}/apps/md-editor/#share=${encoded}`;
+    if (url.length > SHARE_URL_MAX) return { url: null, tooLarge: true };
+    return { url, tooLarge: false };
   }
+  const SHARE_URL_MAX = 8000;
 
   function decodeSharePayload(encoded) {
     try {
       const raw = encoded.replace(/-/g, '+').replace(/_/g, '/');
       const pad = (4 - raw.length % 4) % 4;
       const p = JSON.parse(decodeURIComponent(atob(raw + '='.repeat(pad))));
-      if (p && p.data && typeof p.data.content === 'string') return p;
+      if (p && p.data && typeof p.data.content === 'string') {
+        // 받은 값은 필요한 필드만, 형식을 맞춰서 쓴다
+        const fn = typeof p.data.filename === 'string' ? p.data.filename.trim().slice(0, 120) : '';
+        return {
+          data: { content: p.data.content, filename: fn || 'shared.md' },
+          permission: p.permission === 'view' ? 'view' : 'clone',
+        };
+      }
     } catch {}
     return null;
   }
@@ -1742,7 +1708,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     _closeShareMenu();
     const result = buildShareURL(permission);
     if (result.tooLarge) {
-      showToast('내용이 너무 많습니다. 파일로 저장 후 직접 전달해주세요.');
+      showToast('글이 길어서 링크로 공유할 수 없어요. 파일로 저장해서 전달해 주세요.', 5000);
       return;
     }
     const longURL = result.url;
@@ -1759,7 +1725,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       try {
         await navigator.clipboard.writeText(longURL);
         showToast('링크가 복사되었습니다 (단축 미적용)');
-      } catch { showToast('공유에 실패했습니다.'); }
+      } catch { prompt('링크를 복사하세요', longURL); }
     }
   }
 
@@ -1775,6 +1741,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   // ── 복제 (편집 가능으로 전환) ──
   function cloneContent() {
     isViewOnly = false;
+    isDirty = true;   // 가져온 글은 아직 어디에도 저장되지 않음
     document.body.classList.remove('is-view-only');
     document.getElementById('editor').removeAttribute('readonly');
     closeCloneModal();
@@ -1834,6 +1801,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         return;
       }
       showToast('공유 링크를 읽을 수 없습니다.');
+    } else {
+      restoreDraft();   // 공유 링크가 아닐 때만 이 기기의 임시 저장본을 복원
     }
     updateSaveButtonState();
 
