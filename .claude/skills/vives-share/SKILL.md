@@ -17,6 +17,18 @@ description: >
 This skill codifies the sharing pattern used in book-share and chalkboard.
 Follow these steps when adding share to a new app or extending an existing one.
 
+> **2026-10 update — use the shared helpers.** Every AppLayout page loads
+> `/common/ui.js` (`window.VUI`, docs: `docs/common-ui.md`). Use
+> `VUI.share.encode(obj)` / `VUI.share.decode(str, validate)` instead of a
+> hand-written `btoa(encodeURIComponent())` (UTF-8 base64url, ~1/3 the length
+> for Korean; `decode` still reads the legacy formats), and
+> `VUI.share.link(url, {show})` instead of hand-written shorten + clipboard code
+> (falls back to a link/QR dialog when copying fails). Always validate decoded
+> data field by field (`VSafe.num/int/safeUrl`) before using it, and never put
+> it into `innerHTML` or inline `onclick`. Simulation apps can use
+> `SimKit.share` (`docs/sim-kit.md`). The step-by-step code below shows the
+> underlying pattern; prefer the helpers in new code.
+
 ## Step 1: Gather requirements
 
 Before writing code, clarify:
