@@ -52,8 +52,10 @@ for (const r of rows) {
   });
 }
 
+// season 0 = 특집 → 각 시리즈 정규 시즌 뒤에 배치
+const seasonKey = (e) => e.season === 0 ? 999 : e.season;
 episodes.sort((a, b) =>
-  a.series.localeCompare(b.series) || a.season - b.season || a.ep - b.ep);
+  a.series.localeCompare(b.series) || seasonKey(a) - seasonKey(b) || a.ep - b.ep);
 
 const meta = {};
 for (const ep of episodes) {

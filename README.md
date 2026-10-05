@@ -34,7 +34,7 @@
 #### 📖 학습지원
 | 앱 | 경로 | 설명 |
 |---|---|---|
-| **Blocks Universe** | `/apps/blocks-universe/` | 블록스 4개 시리즈 356편 에피소드 탐색 · AI 검색 · 순차재생 |
+| **Blocks Universe** | `/apps/blocks-universe/` | 블록스 4개 시리즈 372편 에피소드 탐색 · AI 검색 · 순차재생 |
 | **Flash Deck** | `/apps/flash-deck/` | 플래시카드 덱 제작 및 학습 |
 | **Chalkboard** | `/apps/chalkboard/` | 칠판 위에 텍스트와 선으로 생각을 자유롭게 펼쳐보세요 (코드 동기화) |
 | **Read Tree** | `/apps/read-tree/` | ORT(옥스포드 리딩 트리) 읽기 진도를 코드 하나로 기록·관리 (로그인·개인정보 없음) |

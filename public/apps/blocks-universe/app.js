@@ -22,12 +22,16 @@ let recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); // id 배열,
 let playlist = JSON.parse(localStorage.getItem(PL_KEY) || '{"title":"","ids":[]}');
 let modalEp = null;
 let modalLang = 'ko';
+let navIds = [];   // 모달 이전/다음 탐색 대상 (열 때의 필터 결과)
 let dragSrc = null;
 
 const $ = (id) => document.getElementById(id);
 const thumb = (ep, q) => `https://img.youtube.com/vi/${ep.yt}/${q || 'hqdefault'}.jpg`;
 const seriesOf = (ep) => SERIES.find(s => s.id === ep.series);
 const dispTitle = (ep) => ep.ytKo ? (ep.titleKo || ep.title) : ep.title;
+// season 0 = 특집 (정규 시즌 외). state.season: 0=전체, -1=특집, n=시즌 n
+const seLabel = (ep) => ep.season ? `S${ep.season} · E${ep.ep}` : '특집';
+const seasonMatch = (ep) => !state.season || (state.season === -1 ? ep.season === 0 : ep.season === state.season);
 const playVid = (ep) => ep.ytKo || ep.yt;   // 재생용 영상 ID (한글판 우선)
 
 /* ── 영상 길이 (YouTube Data API, localStorage 캐시) ── */
@@ -137,6 +141,9 @@ function renderToolbar() {
   for (let i = 1; i <= m.seasons; i++) {
     mk(`시즌 ${i}`, state.season === i && !state.theme, () => { state.season = i; state.theme = false; state.aiIds = null; renderToolbar(); renderGrid(); });
   }
+  if (DATA.episodes.some(e => e.series === state.series && e.season === 0)) {
+    mk('⭐ 특집', state.season === -1 && !state.theme, () => { state.season = -1; state.theme = false; state.aiIds = null; renderToolbar(); renderGrid(); });
+  }
   if (state.series === 'numberblocks') {
     mk('✖️ 구구단', state.theme, () => { state.theme = !state.theme; state.season = 0; state.aiIds = null; renderToolbar(); renderGrid(); }, 'theme-chip');
   }
@@ -167,13 +174,19 @@ function filtered() {
     if (ep.series !== state.series) return false;
     if (state.aiIds && !state.aiIds.has(ep.id)) return false;
     if (state.theme && ep.theme !== 'TimesTables') return false;
-    if (!state.theme && state.season && ep.season !== state.season) return false;
+    if (!state.theme && !seasonMatch(ep)) return false;
     if (state.level && ep.level !== state.level) return false;
     if (state.favOnly && !favs.has(ep.id)) return false;
     if (state.recentOnly && !recent.includes(ep.id)) return false;
     if (q && !state.aiIds && ![ep.title, ep.titleKo, ep.desc, ep.descKo].join('\n').toLowerCase().includes(q)) return false;
     return true;
   });
+}
+
+// 그리드에 보이는 순서 그대로 (최근시청은 최근순 정렬)
+function visibleList() {
+  const list = filtered();
+  return state.recentOnly ? list.slice().sort((a, b) => recent.indexOf(a.id) - recent.indexOf(b.id)) : list;
 }
 
 function renderGrid() {
@@ -201,8 +214,7 @@ function renderGrid() {
     banner?.remove();
   }
 
-  let list = filtered();
-  if (state.recentOnly) list = list.slice().sort((a, b) => recent.indexOf(a.id) - recent.indexOf(b.id));
+  const list = visibleList();
   const s = SERIES.find(x => x.id === state.series);
   $('resultInfo').textContent = `${s.ko} · ${list.length}편`;
   const grid = $('epGrid');
@@ -217,7 +229,7 @@ function renderGrid() {
     card.innerHTML = `
       <div class="ep-thumb">
         <img src="${thumb(ep, 'mqdefault')}" alt="" loading="lazy">
-        <span class="ep-se">S${ep.season} · E${ep.ep}</span>
+        <span class="ep-se">${seLabel(ep)}</span>
         ${ep.ytKo ? '<span class="ep-ko-badge">한글판</span>' : ''}
         <button class="ep-fav ${favs.has(ep.id) ? 'on' : ''}" title="즐겨찾기">${favs.has(ep.id) ? '★' : '☆'}</button>
       </div>
@@ -238,7 +250,7 @@ function renderGrid() {
 /* ── 웰컴 섹션 ── */
 function renderWelcome() {
   if (document.getElementById('welcomeSection')) return;
-  const total = DATA ? DATA.episodes.length : 356;
+  const total = DATA ? DATA.episodes.length : 372;
   const seriesBtns = SERIES.map(s =>
     `<button class="wf-random-btn" style="--sc:${s.color}" onclick="randomPlay('${s.id}')">${s.emoji} ${s.ko}</button>`
   ).join('');
@@ -301,7 +313,7 @@ async function aiRecommend() {
   const base = DATA.episodes.filter(ep => {
     if (ep.series !== state.series) return false;
     if (state.theme && ep.theme !== 'TimesTables') return false;
-    if (!state.theme && state.season && ep.season !== state.season) return false;
+    if (!state.theme && !seasonMatch(ep)) return false;
     if (state.level && ep.level !== state.level) return false;
     return true;
   });
@@ -347,11 +359,14 @@ function toggleFav(id) {
 function openEpisode(id, updateHash = true) {
   const ep = byId.get(id);
   if (!ep) return;
+  // 이전/다음 탐색 목록: 모달을 처음 열 때의 필터 결과로 고정 (최근시청 갱신으로 순서가 바뀌지 않게)
+  if (!modalEp) navIds = visibleList().map(e => e.id);
   modalEp = ep;
   modalLang = ep.ytKo ? 'ko' : 'en'; // 한글 영상 있을 때만 한글 기본값
   // 최근시청 기록
   recent = [id, ...recent.filter(x => x !== id)].slice(0, RECENT_MAX);
   localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+  renderModalNav();
   renderModal();
   $('epModal').hidden = false;
   document.body.style.overflow = 'hidden';
@@ -363,7 +378,23 @@ function closeModal() {
   $('modalVideoWrap').innerHTML = '';
   document.body.style.overflow = '';
   modalEp = null;
+  navIds = [];
   history.replaceState(null, '', location.pathname);
+}
+
+/* 현재 필터 안에서 이전/다음 영상 */
+function renderModalNav() {
+  const i = modalEp ? navIds.indexOf(modalEp.id) : -1;
+  $('modalNav').hidden = i < 0 || navIds.length < 2;
+  if (i < 0) return;
+  $('modalNavPos').textContent = `${i + 1} / ${navIds.length}`;
+  $('modalPrev').disabled = i === 0;
+  $('modalNext').disabled = i === navIds.length - 1;
+}
+function stepModal(dir) {
+  if (!modalEp) return;
+  const id = navIds[navIds.indexOf(modalEp.id) + dir];
+  if (id) openEpisode(id);
 }
 
 function renderModal(skipVideo = false) {
@@ -385,7 +416,7 @@ function renderModal(skipVideo = false) {
   const isAiDesc = !!ep.descKo && !ep.ytKo;
   $('modalTags').innerHTML = `
     <span class="mtag series-tag" style="background:${s.color}">${s.emoji} ${s.name}</span>
-    <span class="mtag">시즌 ${ep.season} · ${ep.ep}화</span>
+    <span class="mtag">${ep.season ? `시즌 ${ep.season} · ${ep.ep}화` : '⭐ 특집'}</span>
     ${ep.level ? `<span class="mtag" style="color:${LEVEL_COLORS[ep.level]}">Lv${ep.level}</span>` : ''}
     ${ep.theme === 'TimesTables' ? '<span class="mtag">✖️ 구구단</span>' : ''}
     ${showLangToggle ? `
@@ -782,6 +813,8 @@ function bind() {
   $('aiSearchBtn').onclick = () => aiRecommend();
   $('epModal').onclick = (e) => { if (e.target === $('epModal')) closeModal(); };
   $('modalCloseBtn').onclick = closeModal;
+  $('modalPrev').onclick = () => stepModal(-1);
+  $('modalNext').onclick = () => stepModal(1);
   $('plFab').onclick = openPlDrawer;
   $('plCloseBtn').onclick = closePlDrawer;
   $('plPlayBtn').onclick = () => startSequentialPlay('재생목록');
@@ -805,6 +838,11 @@ function bind() {
   window.addEventListener('scroll', updateStuck, { passive: true });
   updateStuck();
   document.addEventListener('keydown', (e) => {
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !$('epModal').hidden && $('playerOverlay').hidden
+        && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) {
+      stepModal(e.key === 'ArrowLeft' ? -1 : 1);
+      return;
+    }
     if (e.key !== 'Escape') return;
     if (!$('playerOverlay').hidden) closePlayer();
     else if (!$('epModal').hidden) closeModal();
