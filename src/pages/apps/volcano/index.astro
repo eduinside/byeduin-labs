@@ -13,6 +13,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <link href="https://fonts.googleapis.com/css2?family=Jua&amp;family=Gowun+Dodum&amp;display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js" crossorigin="anonymous" defer is:inline=""></script>
+  <script is:inline src="/common/sim-kit.js"></script>
   <style is:global="">
 :root{
   --lava:#ff5a36;
@@ -97,7 +98,7 @@ h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
   display:flex;gap:8px;width:max-content;max-width:calc(100% - 20px)
 }
 .cam-btn{
-  font-family:'Jua';font-size:15px;color:#fff;cursor:pointer;
+  font-family:'Jua';font-size:15px;color:#fff;cursor:pointer;min-height:44px;
   background:rgba(20,14,10,.72);backdrop-filter:blur(6px);
   border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:10px 16px;
   transition:background .15s,transform .12s;white-space:nowrap;
@@ -115,12 +116,27 @@ h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
 }
 .map-loading.hide{opacity:0}
 .map-loading .spin{font-size:40px;animation:spin 1.6s linear infinite}
+/* 7초 뒤 JS가 .gone을 붙여 숨긴다(키프레임으로 숨기면 '움직임 줄이기' 설정에서 바로 사라짐) */
 .hint-chip{
   position:absolute;top:60px;right:14px;z-index:5;
   background:rgba(255,255,255,.92);color:var(--rock);
-  font-size:12.5px;border-radius:99px;padding:7px 13px;
-  animation:fadeOutLater 7s ease forwards
+  font-size:14px;border-radius:99px;padding:7px 13px;
+  transition:opacity .6s ease, visibility .6s;
 }
+.hint-chip.gone{opacity:0;visibility:hidden}
+/* 지도 사진(타일)을 계속 못 불러올 때 안내 — 퀴즈는 그대로 할 수 있다 */
+.map-notice{
+  position:absolute;inset:0;z-index:7;display:flex;align-items:center;justify-content:center;
+  padding:20px;background:rgba(12,20,32,.82);
+}
+.map-notice-card{
+  max-width:420px;text-align:center;color:#ffe9cc;background:rgba(20,14,10,.9);
+  border:2px solid var(--magma);border-radius:18px;padding:18px 18px 16px;
+}
+.map-notice-card p{font-size:15px;line-height:1.7;margin:8px 0 14px}
+.map-notice-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.map-notice-btns .btn{font-size:16px;padding:10px 18px;min-height:44px}
+.map-notice-btns .btn-ghost{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.4)}
 
 /* ===== 사이드바 ===== */
 .side{
@@ -138,7 +154,7 @@ h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
 }
 .side-head .flag{font-size:14px;opacity:.85;position:relative;z-index:1}
 .side-head h2{font-size:27px;margin:3px 0 2px;position:relative;z-index:1}
-.side-head .height{font-size:13px;opacity:.8;position:relative;z-index:1}
+.side-head .height{font-size:14px;opacity:.8;position:relative;z-index:1}
 .side-body{padding:18px 20px 26px;flex:1}
 .progress-zone{margin-bottom:16px}
 .progress-track{height:12px;background:#eadfce;border-radius:99px;overflow:hidden}
@@ -147,7 +163,7 @@ h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
   background:linear-gradient(90deg,var(--magma),var(--lava));
   transition:width .5s cubic-bezier(.6,0,.3,1.4)
 }
-.progress-label{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ash);margin-top:5px}
+.progress-label{display:flex;justify-content:space-between;font-size:14px;color:var(--ash);margin-top:5px}
 
 .observe-box{
   background:#fff7e8;border:2px solid var(--magma);border-radius:16px;
@@ -157,12 +173,12 @@ h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
 .observe-box p{font-size:15px;line-height:1.7}
 .tip-box{
   background:#eef4fb;border:2px solid #9cc0e8;border-radius:16px;
-  padding:12px 15px;margin-bottom:14px;font-size:13.5px;line-height:1.65;color:#2c5685
+  padding:12px 15px;margin-bottom:14px;font-size:14.5px;line-height:1.65;color:#2c5685
 }
 .tip-box b{color:#1f4f8c}
 .earth-link{
-  display:block;text-align:center;font-size:13px;color:var(--ash);
-  text-decoration:underline;margin-top:14px
+  display:block;text-align:center;font-size:14px;color:var(--ash);
+  text-decoration:underline;margin-top:10px;padding:10px 4px
 }
 
 .quiz-zone{margin-top:6px}
@@ -207,18 +223,20 @@ h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
 .sort-col.vol h3{color:var(--lava-deep)}
 .sort-col.non h3{color:var(--leaf-deep)}
 .sort-col ul{list-style:none}
-.sort-col li{
-  background:rgba(255,255,255,.78);border-radius:9px;padding:6px 8px;margin-bottom:5px;
-  font-size:12.5px;cursor:pointer;transition:transform .1s
+.sort-col li{margin-bottom:5px}
+.sort-col li button{
+  display:block;width:100%;text-align:left;font-family:inherit;color:var(--rock);
+  background:rgba(255,255,255,.78);border:none;border-radius:9px;padding:8px 8px;min-height:40px;
+  font-size:14px;cursor:pointer;transition:transform .1s
 }
-.sort-col li:hover{transform:translateX(2px)}
-.revisit-hint{font-size:12px;color:var(--ash);margin-bottom:14px}
+.sort-col li button:hover{transform:translateX(2px)}
+.revisit-hint{font-size:14px;color:var(--ash);margin-bottom:14px}
 .summary-box{
   background:var(--rock);color:#f5ead8;border-radius:18px;
   padding:16px 18px;text-align:left;margin-bottom:18px
 }
 .summary-box h3{color:var(--magma);font-size:16px;margin-bottom:8px}
-.summary-box p{font-size:13.5px;line-height:1.8}
+.summary-box p{font-size:14.5px;line-height:1.8}
 .summary-box b{color:#ffcf8a}
 
 @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
@@ -236,7 +254,7 @@ h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
   .quiz-btns{flex-direction:row}
   .quiz-btn{flex:1;font-size:15.5px}
   .intro h1{font-size:28px}
-  .cam-btn{font-size:13.5px;padding:9px 12px}
+  .cam-btn{font-size:14px;padding:9px 12px}
   .viewer-title{font-size:16px;padding:8px 13px}
   .cam-bar{flex-wrap:wrap;justify-content:center}
 }
@@ -307,7 +325,7 @@ const MOUNTAINS = [
    lat:36.2562, lng:117.1014, zoom:11.6,
    observe:"마지막 산이에요! 지금까지 본 화산들과 비교해 보세요. 분화구나 용암의 흔적이 보이나요?",
    tip:"지금까지 본 화산 3가지 특징(분화구·완만한 모양·용암 흔적)을 떠올리며 살펴보세요.",
-   explain:"태산은 <b>화산이 아니에요</b>. 설악산처럼 단단한 <b>화강암</b>으로 이루어진 바위산이에요. 분화구도, 용암이 흐른 흔적도 없답니다." }
+   explain:"태산은 <b>화산이 아니에요</b>. <b>편마암과 화강암</b> 같은 아주 오래된 단단한 암석이 땅속에서 밀려 올라온 뒤, 오랜 세월 깎여서 만들어진 바위산이에요. 분화구도, 용암이 흐른 흔적도 없답니다." }
 ];
 
 /* ============ 상태 ============ */
@@ -318,15 +336,14 @@ let orbiting = false;
 let mapFailed = false;
 let isRevisitMode = false;
 const app = document.getElementById('app');
+// 지도에 걸린 타이머·rAF는 한곳에 모아 화면을 다시 그릴 때 한 번에 정리(SimKit.timers)
+const mapTimers = SimKit.timers();
+let tileErrors = 0, tileOk = 0, mapNoticeShown = false;
 
 // 결과 화면에서는 idx가 MOUNTAINS.length라 현재 산이 없다
 function curMountain(){ return MOUNTAINS[idx] || null; }
-// 받침 유무로 은/는 고르기
-function eunNeun(word){
-  const code = String(word).charCodeAt(String(word).length - 1) - 0xAC00;
-  if(code < 0 || code > 11171) return '은(는)';
-  return (code % 28 === 0) ? '는' : '은';
-}
+// 받침 유무로 은/는 고르기(한글로 끝나지 않으면 '은(는)')
+function eunNeun(word){ return SimKit.josa.pick(word, '은/는'); }
 
 function earthUrl(m){
   return `https://earth.google.com/web/@${m.lat},${m.lng},1500a,30000d,35y,0h,60t,0r`;
@@ -342,7 +359,7 @@ function mapFallback(msg){
       <div style="font-size:46px;margin-bottom:10px">🛰️</div>
       <p style="font-size:15px;line-height:1.7;margin-bottom:16px">
         이 기기/환경에서는 내장 3D 지도를 열 수 없어요.<br>
-        <span style="opacity:.7;font-size:12px">(${msg})</span><br>
+        <span style="opacity:.75;font-size:13px">(${msg})</span><br>
         대신 구글 어스로 탐험을 계속할 수 있어요!
       </p>
       <button class="btn btn-primary" style="font-size:16px;padding:12px 26px"
@@ -351,7 +368,46 @@ function mapFallback(msg){
   mapFailed = true;
 }
 
+/* 지도 사진(타일)을 계속 못 불러오면: 안내를 띄우고 퀴즈는 그대로 하게 한다 */
+function showMapNotice(){
+  if(mapNoticeShown || mapFailed) return;
+  const zone = document.querySelector('.map-zone');
+  if(!zone) return;
+  mapNoticeShown = true;
+  document.getElementById('mapLoading')?.classList.add('hide');
+  const box = document.createElement('div');
+  box.className = 'map-notice';
+  box.id = 'mapNotice';
+  box.setAttribute('role', 'status');
+  box.innerHTML = `
+    <div class="map-notice-card">
+      <div style="font-size:40px" aria-hidden="true">🛰️</div>
+      <p><b>지도 사진을 불러오지 못하고 있어요.</b><br>인터넷이 느리거나 학교에서 막혀 있을 수 있어요.<br>설명을 읽고 퀴즈는 그대로 풀 수 있어요!</p>
+      <div class="map-notice-btns">
+        <button type="button" class="btn btn-primary" data-act="retry">🔄 다시 불러오기</button>
+        <button type="button" class="btn btn-ghost" data-act="earth">🌍 구글 어스로 보기</button>
+        <button type="button" class="btn btn-ghost" data-act="close">닫기</button>
+      </div>
+    </div>`;
+  box.addEventListener('click', e => {
+    const b = e.target.closest('[data-act]');
+    if(!b) return;
+    const act = b.getAttribute('data-act');
+    if(act === 'earth'){ window.open(earthUrl(curMountain() || MOUNTAINS[0]), '_blank', 'noopener'); return; }
+    box.remove();
+    if(act === 'retry'){
+      mapNoticeShown = false;
+      document.getElementById('mapLoading')?.classList.remove('hide');
+      buildMap();
+    }
+  });
+  zone.appendChild(box);
+}
+
 function buildMap(){
+  mapTimers.reset();
+  orbiting = false;
+  tileErrors = 0; tileOk = 0;
   if(map){
     try{ map.remove(); }catch(e){}
     map = null;
@@ -399,8 +455,15 @@ function buildMap(){
       // 로드가 늦어도 1번 산이 아니라 지금 보고 있는 산으로(결과 화면이면 세계 전체)
       const m = curMountain();
       if(m) flyToMountain(m); else map.easeTo({zoom:2.2, pitch:0, duration:1500});
+      // 한참 지나도 사진 타일이 하나도 안 왔으면 안내
+      mapTimers.timeout(() => { if(tileOk === 0) showMapNotice(); }, 15000);
     });
-    map.on('error', e => console.warn('map tile error', e?.error?.message||e));
+    map.on('sourcedata', e => { if(e && e.tile && e.tile.state === 'loaded') tileOk++; });
+    map.on('error', e => {
+      console.warn('map tile error', e?.error?.message||e);
+      tileErrors++;
+      if(tileErrors >= 6 && tileOk === 0) showMapNotice();
+    });
     ['mousedown','touchstart','wheel'].forEach(ev => map.on(ev, stopOrbit));
   }catch(err){
     console.error('지도 초기화 실패:', err);
@@ -420,29 +483,32 @@ function toggleOrbit(){
   if(mapFailed||!map)return;
   orbiting = !orbiting;
   document.getElementById('orbitBtn')?.classList.toggle('active', orbiting);
+  document.getElementById('orbitBtn')?.setAttribute('aria-pressed', String(orbiting));
   if(orbiting){
     if(map.getPitch() < 30) map.easeTo({pitch:65, duration:800});
     orbitFrame();
   }
 }
 function orbitFrame(){
-  if(!orbiting) return;
+  if(!orbiting || !map) return;
   map.setBearing(map.getBearing() + 0.12);
-  requestAnimationFrame(orbitFrame);
+  mapTimers.raf(orbitFrame);
 }
 function stopOrbit(){
   if(!orbiting) return;
   orbiting = false;
   document.getElementById('orbitBtn')?.classList.remove('active');
+  document.getElementById('orbitBtn')?.setAttribute('aria-pressed', 'false');
 }
 
 /* ============ 화면 ============ */
 function renderIntro(){
+  mapTimers.reset();
   document.body.classList.remove('exploring');
   app.innerHTML = `
   <div class="wrap">
     <div class="intro">
-      <div class="volcano-art">🌋</div>
+      <div class="volcano-art" aria-hidden="true">🌋</div>
       <h1>화산 탐험대</h1>
       <div class="lesson-tag">화산과 화산이 아닌 산은 무엇이 다를까요?</div>
       <p class="sub">화산은 직접 가 보기 어려워요.<br>이 앱 안에서 바로 <b>3D 지도</b>를 움직이며<br>세계의 산 11개를 탐험해 봐요!</p>
@@ -465,12 +531,12 @@ function renderExplore(){
   <div class="explore">
     <div class="map-zone">
       <div class="viewer-title" id="viewerTitle"></div>
-      <div class="hint-chip">🖐️ 지도를 끌어서 직접 둘러보세요!</div>
+      <div class="hint-chip" id="hintChip">🖐️ 지도를 끌어서 직접 둘러보세요!</div>
       <div id="map"></div>
       <div class="map-loading" id="mapLoading"><div class="spin">🌍</div>3D 지형을 불러오는 중...</div>
       <div class="cam-bar">
         <button class="cam-btn return-btn" onclick="flyToMountain(curMountain())" title="현재 산으로 돌아가기">🏠 돌아가기</button>
-        <button class="cam-btn" id="orbitBtn" onclick="toggleOrbit()">🔄 한 바퀴</button>
+        <button class="cam-btn" id="orbitBtn" onclick="toggleOrbit()" aria-pressed="false">🔄 한 바퀴</button>
         <button class="cam-btn" onclick="camTop()">⬇️ 위에서 분화구 찾기</button>
         <button class="cam-btn" onclick="camTilt()">⛰️ 3D 보기</button>
       </div>
@@ -480,8 +546,10 @@ function renderExplore(){
       <div class="side-body" id="sideBody"></div>
     </aside>
   </div>`;
+  mapNoticeShown = false;
   buildMap();
   renderPanel();
+  mapTimers.timeout(() => document.getElementById('hintChip')?.classList.add('gone'), 7000);
 }
 
 function renderPanel(){
@@ -537,7 +605,7 @@ function answer(guess){
   answers[idx] = {correct};
   document.getElementById('quiz').innerHTML = `
   <div class="reveal">
-    <div class="reveal-banner ${correct?'correct':'wrong'}">
+    <div class="reveal-banner ${correct?'correct':'wrong'}" id="revealBanner" tabindex="-1">
       ${correct ? '🎉 딩동댕! 정답이에요!' : '🤔 아쉬워요! 지도를 다시 살펴봐요'}
     </div>
     <div class="answer-chip ${m.isVolcano?'is-volcano':'not-volcano'}">
@@ -551,13 +619,20 @@ function answer(guess){
       </button>
     </div>
   </div>`;
+  // 누른 버튼이 사라졌으니 결과 문구로 초점을 옮긴다(키보드·화면 읽기)
+  document.getElementById('revealBanner')?.focus({preventScroll:true});
+}
+function focusSideHead(){
+  const h = document.querySelector('#sideHead h2');
+  if(h){ h.tabIndex = -1; h.focus({preventScroll:true}); }
 }
 
 function next(){
   idx++;
-  if(idx >= MOUNTAINS.length){ renderResult(); return; }
+  if(idx >= MOUNTAINS.length){ renderResult(); focusSideHead(); return; }
   renderPanel();
   flyToMountain(MOUNTAINS[idx]);
+  focusSideHead();
 }
 
 function renderResult(){
@@ -569,7 +644,7 @@ function renderResult(){
   const score = answers.filter(a=>a&&a.correct).length;
   const vol = MOUNTAINS.map((m,i)=>({m,i})).filter(x=>x.m.isVolcano);
   const non = MOUNTAINS.map((m,i)=>({m,i})).filter(x=>!x.m.isVolcano);
-  const li = x => `<li onclick="revisit(${x.i})">${x.m.emoji} ${x.m.name}</li>`;
+  const li = x => `<li><button type="button" onclick="revisit(${x.i})">${x.m.emoji} ${x.m.name}</button></li>`;
   document.getElementById('sideHead').innerHTML = `
     <div class="flag">세계 화산 탐험</div>
     <h2>🏆 탐험 완료!</h2>
@@ -598,10 +673,12 @@ function revisit(i){
   idx = i;
   renderPanel();
   flyToMountain(MOUNTAINS[i]);
+  focusSideHead();
 }
 
 function backToResult() {
   renderResult();
+  focusSideHead();
 }
 
 function start(){

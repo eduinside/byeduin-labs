@@ -3,12 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Club Badge — eduin VIVES</title>
+<title>수의 클럽 배지 (Club Badge) — eduin VIVES</title>
 <script src="/common/init.js"></script>
 <script src="clubs-data.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Dongle:wght@300;400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/common/hero-theme.css">
 <link rel="stylesheet" href="/common/app-shell.css">
+<link rel="stylesheet" href="/common/sim-kit.css">
+<script src="/common/ui.js"></script>
+<script src="/common/sim-kit.js"></script>
 <script src="/common/theme.js"></script>
 <script src="/common/app-shell.js" defer></script>
 <style>
@@ -48,6 +51,7 @@
     font-size: 60px; margin: 10px 0 2px; color: var(--dark);
     letter-spacing: 1px; text-shadow: 4px 4px 0 var(--blue); line-height: 1;
   }
+  .intro h1 .h1-en { display: block; font-size: 34px; letter-spacing: 0; text-shadow: none; color: #666; margin-top: 4px; }
   .intro .sub { font-size: 28px; color: #666; margin-bottom: 20px; line-height: 1.3; font-weight: 700; }
   .lesson-tag {
     display: inline-block; background: var(--dark); color: var(--sky);
@@ -150,7 +154,7 @@
   .club-detail-head h3 { font-size: 40px; line-height: 1; }
   .club-detail-head p { font-size: 22px; color: #888; line-height: 1.1; }
   .club-detail .desc-ko { font-size: 27px; line-height: 1.3; margin-bottom: 6px; word-break: keep-all; }
-  .club-detail .desc-en { font-size: 20px; color: #999; line-height: 1.3; margin-bottom: 12px; }
+  .club-detail .desc-en { font-size: 22px; color: #999; line-height: 1.3; margin-bottom: 12px; }
   .examples-label { font-size: 24px; font-weight: 900; color: #555; margin-bottom: 6px; }
   .examples-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 150px; overflow-y: auto; }
   .num-chip {
@@ -202,17 +206,17 @@
   /* 클럽 목록(사이드바) */
   .club-list { display: flex; flex-direction: column; gap: 8px; }
   .club-row {
-    display: flex; align-items: center; gap: 10px; padding: 6px 12px;
+    display: flex; align-items: center; gap: 10px; padding: 6px 12px; min-height: 48px;
     border: 3px solid var(--dark); border-radius: 14px; cursor: pointer;
     box-shadow: 3px 3px 0 var(--dark); transition: transform .1s, box-shadow .1s;
-    color: white;
+    color: white; width: 100%; text-align: left; font-family: inherit;
   }
   .club-row:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--dark); }
   .club-row.sel { outline: 3px solid var(--yellow); outline-offset: -1px; }
   .club-row .ic { width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
   .club-row .names { flex: 1; min-width: 0; }
   .club-row .ko { font-size: 25px; line-height: 1; font-weight: 900; text-shadow: 1px 1px 0 rgba(0,0,0,.25); }
-  .club-row .en { font-size: 17px; line-height: 1.1; opacity: .85; }
+  .club-row .en { font-size: 20px; line-height: 1.1; opacity: .9; }
 
   /* 숫자 탐색: 넘패드 */
   .num-display-box {
@@ -288,16 +292,7 @@
   @keyframes popIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
   @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
-  /* ===== 토스트 ===== */
-  #cbToast {
-    position: fixed; bottom: 1.5rem; left: 50%;
-    transform: translateX(-50%) translateY(1rem);
-    background: var(--dark); color: white; padding: 4px 22px;
-    border-radius: 999px; font-family: 'Dongle', sans-serif; font-size: 25px; line-height: 1.3;
-    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
-    z-index: 9000; white-space: nowrap;
-  }
-  #cbToast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .kbd-tip { font-size: 21px; line-height: 1.25; color: #555; margin-top: 6px; }
 
   /* ===== 태블릿·모바일 ===== */
   @media (max-width: 900px) {
@@ -322,34 +317,32 @@
 </style>
   <meta property="og:image" content="https://eduin.info/og-default.png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Club Badge — 수의 클럽 탐색 | eduin VIVES">
+  <meta name="twitter:title" content="수의 클럽 배지 (Club Badge) | eduin VIVES">
   <meta name="twitter:description" content="1~100까지 수의 넘버블록스 클럽(배수 그룹)을 탐색하고 퀴즈로 연습하세요.">
   <meta name="twitter:image" content="https://eduin.info/og-default.png">
   <link rel="canonical" href="https://eduin.info/apps/blocks-universe/clubs.html">
   <meta property="og:url" content="https://eduin.info/apps/blocks-universe/clubs.html">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Club Badge","description":"1~100까지 수의 넘버블록스 클럽(배수 그룹)을 탐색하고 퀴즈로 연습하세요.","url":"https://eduin.info/apps/blocks-universe/clubs.html","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"수의 클럽 배지 (Club Badge)","description":"1~100까지 수의 넘버블록스 클럽(배수 그룹)을 탐색하고 퀴즈로 연습하세요.","url":"https://eduin.info/apps/blocks-universe/clubs.html","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   <script src="/common/seo-injector.js" defer></script>
 </head>
 <body data-shell="immersive">
 
 <!-- 플로팅 크롬(홈·공유)은 app-shell.js가 주입 — 음소거 버튼은 크롬으로 끌어올려짐 -->
 <div class="app-actions">
-  <button class="overlay-btn" id="muteBtn" onclick="toggleMute()" title="소리 켜기/끄기" aria-label="소리 켜기/끄기" aria-pressed="false"></button>
+  <button class="overlay-btn" id="muteBtn" title="소리 켜기/끄기" aria-label="소리 켜기/끄기" aria-pressed="false"></button>
 </div>
-
-<div id="cbToast"></div>
 
 <!-- ===== 인트로 ===== -->
 <div class="wrap">
   <div class="intro">
-    <div class="hero-art">🏅</div>
-    <h1>Club Badge</h1>
+    <div class="hero-art" aria-hidden="true">🏅</div>
+    <h1>수의 클럽 배지 <span class="h1-en">(Club Badge)</span></h1>
     <p class="sub">넘버블록스 클럽 멤버십 탐색기</p>
     <div class="lesson-tag">숫자마다 어떤 클럽에 속해 있을까요?</div>
     <div class="mission-card">
       <h3>🧭 탐험 방법</h3>
       <ol>
-        <li><b>클럽 소개</b>에서 짝수 클럽, 세제곱 클럽 같은 16개 클럽을 구경해요.</li>
+        <li><b>클럽 소개</b>에서 짝수 탑 클럽, 큐브 클럽 같은 16개 클럽을 구경해요.</li>
         <li><b>숫자 탐색</b>에서 아무 숫자나 입력하면 그 수가 속한 <b>클럽 배지</b>가 무대에 나타나요!</li>
         <li>준비가 되면 <b>퀴즈 10문제</b>로 클럽 찾기 실력을 확인해요!</li>
       </ol>
@@ -368,13 +361,13 @@
   <aside class="side">
     <div class="side-head">
       <div class="flag">넘버블럭스 · 수의 성질</div>
-      <h2>🏅 Club Badge</h2>
+      <h2>🏅 수의 클럽 배지</h2>
     </div>
     <div class="side-body">
-      <div class="mode-pills">
-        <button class="mode-pill active" id="pill-info" onclick="setMode('info')">📖 클럽</button>
-        <button class="mode-pill" id="pill-explorer" onclick="setMode('explorer')">🔢 탐색</button>
-        <button class="mode-pill" id="pill-quiz" onclick="setMode('quiz')">🎯 퀴즈</button>
+      <div class="mode-pills" role="group" aria-label="모드 고르기">
+        <button class="mode-pill active" id="pill-info" onclick="setMode('info')" aria-pressed="true">📖 클럽</button>
+        <button class="mode-pill" id="pill-explorer" onclick="setMode('explorer')" aria-pressed="false">🔢 탐색</button>
+        <button class="mode-pill" id="pill-quiz" onclick="setMode('quiz')" aria-pressed="false">🎯 퀴즈</button>
       </div>
       <div id="sideContent"></div>
     </div>
@@ -382,58 +375,17 @@
 </div>
 
 <script>
-/* ──────────────────────── 효과음 (Web Audio) + 음소거 ──────────────────────── */
-var SND_KEY = 'clubs.muted';
-var muted = false; try { muted = localStorage.getItem(SND_KEY) === '1'; } catch (e) {}
-var actx = null;
-function ac() {
-  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
-  if (actx && actx.state === 'suspended') actx.resume();
-  return actx;
-}
-function tone(freq, dur, type, gain, delay) {
-  var c = ac(); if (!c || muted) return;
-  var t = c.currentTime + (delay || 0);
-  var o = c.createOscillator(), g = c.createGain();
-  o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(gain || 0.14, t + 0.012);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g); g.connect(c.destination);
-  o.start(t); o.stop(t + dur + 0.03);
-}
-function sfx(type) {
-  if (muted) return;
-  switch (type) {
-    case 'move':  tone(540, 0.08, 'triangle', 0.10); break;
-    case 'done':  tone(523, 0.12, 'sine', 0.14, 0); tone(659, 0.12, 'sine', 0.14, 0.09); tone(784, 0.18, 'sine', 0.14, 0.18); break;
-    case 'star':  tone(988, 0.08, 'triangle', 0.13, 0); tone(1319, 0.13, 'triangle', 0.13, 0.07); break;
-    case 'stamp': [523, 659, 784, 1047].forEach(function (f, i) { tone(f, 0.15, 'square', 0.10, i * 0.11); }); break;
-    case 'wrong': tone(233, 0.18, 'sine', 0.13, 0); tone(185, 0.22, 'sine', 0.13, 0.13); break;
-  }
-}
+/* ──────────────────────── 효과음 + 음소거 ────────────────────────
+   예전과 같은 소리를 SimKit.sound로 낸다. 음소거 키 'clubs.muted'는 그대로. */
+SimKit.sound.useKey('clubs.muted');
+function sfx(type) { SimKit.sound.play(type); }
 var MUTE_ICON_ON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
 var MUTE_ICON_OFF = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>';
-function syncMuteBtn() {
-  var b = document.getElementById('muteBtn');
-  if (b) { b.innerHTML = muted ? MUTE_ICON_OFF : MUTE_ICON_ON; b.setAttribute('aria-pressed', String(muted)); }
-}
-function toggleMute() {
-  muted = !muted;
-  try { localStorage.setItem(SND_KEY, muted ? '1' : '0'); } catch (e) {}
-  syncMuteBtn();
-  if (!muted) sfx('move');
-}
+SimKit.sound.bindButton('#muteBtn', { render: function (el, m) { el.innerHTML = m ? MUTE_ICON_OFF : MUTE_ICON_ON; } });
 
 /* ──────────────────────── 토스트 ──────────────────────── */
-let cbToastTimer;
-function cbToast(msg) {
-  const el = document.getElementById('cbToast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(cbToastTimer);
-  cbToastTimer = setTimeout(() => el.classList.remove('show'), 2500);
-}
+// 공용 토스트(VUI) — 테마 색 토큰을 써서 다크 설정에서도 글씨가 보인다
+function cbToast(msg) { SimKit.toast(msg); }
 
 /* ──────────────────────── 클럽 아이콘 SVG ──────────────────────── */
 let iconCallCount = 0;
@@ -478,8 +430,8 @@ function getClubReason(club, n) {
   if (club.id === 'football-club') return `${n} ÷ 11 = ${n/11} (나누어떨어짐)`;
   if (club.id === 'falling-apart') return `${n} ÷ 13 = ${n/13} (나누어떨어짐)`;
   if (club.id === 'square-club') {
-    const sqrt = Math.sqrt(n);
-    return `√${n} = ${sqrt} (완전제곱수)`;
+    const s = Math.round(Math.sqrt(n));
+    return `${s}×${s} = ${n} (같은 수를 두 번 곱한 수)`;
   }
   if (club.id === 'step-squad') {
     for (let k = 1; k * (k+1) / 2 <= n; k++) {
@@ -487,8 +439,8 @@ function getClubReason(club, n) {
     }
   }
   if (club.id === 'cube-club') {
-    const cbrt = Math.round(Math.cbrt(n));
-    return `∛${n} = ${cbrt} (완전세제곱수)`;
+    const c = Math.round(Math.cbrt(n));
+    return `${c}×${c}×${c} = ${n} (같은 수를 세 번 곱한 수)`;
   }
   if (club.id === 'squares-holes') {
     // 판정식(4의 배수, 8 이상)과 같은 규칙: 테두리 한 칸짜리 정사각형 = (n/4+1)×(n/4+1) − (n/4−1)×(n/4−1)
@@ -545,7 +497,10 @@ function badgeGridHtml(n, matches) {
 /* ──────────────────────── 모드 전환 ──────────────────────── */
 function setMode(m) {
   mode = m;
-  ['info','explorer','quiz'].forEach(x => document.getElementById('pill-'+x).classList.toggle('active', x===m));
+  ['info','explorer','quiz'].forEach(x => {
+    document.getElementById('pill-'+x).classList.toggle('active', x===m);
+    document.getElementById('pill-'+x).setAttribute('aria-pressed', String(x===m));
+  });
   if (m === 'info') renderInfo();
   else if (m === 'explorer') renderExplorer();
   else startQuiz();
@@ -560,14 +515,16 @@ function renderInfo() {
       <h3>🔍 관찰 포인트</h3>
       <p>클럽을 누르면 무대에 <b>클럽 카드</b>가 나타나요. 어떤 수들이 멤버인지 살펴보세요!</p>
     </div>
-    <div class="club-list" id="clubList"></div>`;
+    <div class="club-list" id="clubList" role="group" aria-label="클럽 목록"></div>`;
   const list = document.getElementById('clubList');
   CLUBS.forEach(club => {
-    const row = document.createElement('div');
+    const row = document.createElement('button');
+    row.type = 'button';
     row.className = 'club-row' + (club.id === selClubId ? ' sel' : '');
+    row.setAttribute('aria-pressed', String(club.id === selClubId));
     row.style.background = club.color;
     row.innerHTML = `
-      <div class="ic">${getClubIcon(club.id, club.textColor)}</div>
+      <div class="ic" aria-hidden="true">${getClubIcon(club.id, club.textColor)}</div>
       <div class="names">
         <div class="ko">${club.nameKo}</div>
         <div class="en">${club.nameEn}</div>
@@ -587,9 +544,9 @@ function renderInfo() {
 }
 function showClubDetail(club) {
   selClubId = club.id;
-  document.querySelectorAll('.club-row').forEach(r => r.classList.remove('sel'));
+  document.querySelectorAll('.club-row').forEach(r => { r.classList.remove('sel'); r.setAttribute('aria-pressed', 'false'); });
   const rows = document.querySelectorAll('.club-row');
-  CLUBS.forEach((c, i) => { if (c.id === club.id && rows[i]) rows[i].classList.add('sel'); });
+  CLUBS.forEach((c, i) => { if (c.id === club.id && rows[i]) { rows[i].classList.add('sel'); rows[i].setAttribute('aria-pressed', 'true'); } });
   sfx('move');
   renderClubStage(club);
 }
@@ -620,8 +577,8 @@ function renderExplorer() {
       <h3>🔍 이렇게 해요</h3>
       <p>궁금한 수를 입력하고 <b>확인</b>을 누르면, 무대에 그 수의 <b>클럽 배지</b>가 모두 나타나요!</p>
     </div>
-    <div class="num-display-box"><div class="num-display-val" id="explorerDisplay">${explorerVal === '' ? '—' : explorerVal}</div></div>
-    <div class="numpad">
+    <div class="num-display-box"><div class="num-display-val" id="explorerDisplay" role="status" aria-live="polite" aria-label="입력한 수">${explorerVal === '' ? '—' : explorerVal}</div></div>
+    <div class="numpad" role="group" aria-label="숫자 누르개">
       <button class="np-btn" onclick="npInput('7')">7</button>
       <button class="np-btn" onclick="npInput('8')">8</button>
       <button class="np-btn" onclick="npInput('9')">9</button>
@@ -632,11 +589,12 @@ function renderExplorer() {
       <button class="np-btn" onclick="npInput('2')">2</button>
       <button class="np-btn" onclick="npInput('3')">3</button>
       <button class="np-btn np-zero" onclick="npInput('0')">0</button>
-      <button class="np-btn np-del" onclick="npBackspace()">⌫</button>
-      <button class="np-btn np-clear" onclick="npClear()">C</button>
+      <button class="np-btn np-del" onclick="npBackspace()" aria-label="한 글자 지우기">⌫</button>
+      <button class="np-btn np-clear" onclick="npClear()" aria-label="모두 지우기">C</button>
     </div>
     <div class="check-row"><button class="btn btn-primary" onclick="checkClubs()">🔍 확인</button></div>
-    <div class="tip-box" style="margin-top:14px;">💡 <b>탐험 팁</b> · 36처럼 여러 클럽에 속하는 <b>인기쟁이 수</b>도 있고, 어디에도 못 들어가는 수도 있어요!</div>`;
+    <div class="tip-box" style="margin-top:14px;">💡 <b>탐험 팁</b> · 36처럼 여러 클럽에 속하는 <b>인기쟁이 수</b>도 있고, 어디에도 못 들어가는 수도 있어요!
+      <div class="kbd-tip">⌨️ 키보드로 숫자를 치고 <b>Enter</b>로 확인할 수 있어요.</div></div>`;
   renderExplorerStage(null);
 }
 function renderExplorerStage(n) {
@@ -716,8 +674,8 @@ function nextQuizQuestion() {
       <div class="progress-label"><span>퀴즈 진행 중</span><span>${quizIdx + 1} / ${QUIZ_TOTAL}</span></div>
     </div>
     <div class="quiz-q">무대의 <b style="color:var(--orange);">${qzCurrentN}</b>${josaIGa(qzCurrentN)} 멤버인 클럽을 고르세요!</div>
-    <div class="quiz-choices" id="quizChoices"></div>
-    <div id="quizReveal"></div>`;
+    <div class="quiz-choices" id="quizChoices" role="group" aria-label="클럽 고르기"></div>
+    <div id="quizReveal" aria-live="polite"></div>`;
 
   const choicesEl = document.getElementById('quizChoices');
   choices.forEach(club => {
@@ -725,7 +683,8 @@ function nextQuizQuestion() {
     btn.className = 'choice-btn';
     btn.dataset.clubId = club.id;
     btn.style.background = club.color + '22';
-    btn.innerHTML = `<div class="choice-emoji">${getClubIcon(club.id, club.textColor)}</div><span>${club.nameKo}</span>`;
+    btn.type = 'button';
+    btn.innerHTML = `<div class="choice-emoji" aria-hidden="true">${getClubIcon(club.id, club.textColor)}</div><span>${club.nameKo}</span>`;
     btn.addEventListener('click', () => selectChoice(club, btn));
     choicesEl.appendChild(btn);
   });
@@ -758,11 +717,14 @@ function selectChoice(club, btnEl) {
       </div>
       <div class="explain"><b>${qzCurrentN}</b>${josaEunNeun(qzCurrentN)} <b>${qzCorrectClub.nameKo}</b>의 멤버예요. ${reason}<br>무대에서 ${qzCurrentN}의 배지를 모두 확인해 보세요!</div>
       <div class="next-zone">
-        <button class="btn btn-primary" onclick="afterQuestion()">
+        <button class="btn btn-primary" id="quizNextBtn" onclick="afterQuestion()">
           ${quizIdx === QUIZ_TOTAL - 1 ? '결과 보기 🏁' : '다음 문제! ➡️'}
         </button>
       </div>
     </div>`;
+  // 고른 버튼이 잠겼으니 다음 버튼으로 초점을 옮긴다
+  const nb = document.getElementById('quizNextBtn');
+  if (nb) nb.focus({ preventScroll: true });
 }
 function afterQuestion() {
   quizIdx++;
@@ -783,7 +745,7 @@ function renderResult() {
       <div class="score">${QUIZ_TOTAL}개 중 ${quizScore}개 맞혔어요</div>
       <div class="summary-box">
         <h3>📚 오늘의 배움 정리</h3>
-        <p>수마다 <b>나누어떨어짐(배수)</b>, <b>제곱수·삼각수</b>, <b>소수</b> 같은 성질이 있어요.
+        <p>수마다 <b>나누어떨어짐(배수)</b>, <b>같은 수를 두 번 곱한 수</b>, <b>계단 수(삼각수)</b>, <b>소수</b> 같은 성질이 있어요.
         같은 성질을 가진 수들이 하나의 <b>클럽</b>이 되고, 한 수가 여러 클럽에 속하기도 해요!</p>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px;">
@@ -801,8 +763,19 @@ function startExplore() {
   sfx('done');
 }
 
-/* ──────────────────────── 초기화 ──────────────────────── */
-syncMuteBtn();
+/* ──────────────────────── 키보드: 숫자 탐색 ──────────────────────── */
+document.addEventListener('keydown', e => {
+  if (mode !== 'explorer' || !document.body.classList.contains('exploring')) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+  // 숫자를 치면 [확인] 버튼으로 초점을 옮겨 Enter 한 번으로 확인
+  const focusCheck = () => { const b = document.querySelector('.check-row .btn'); if (b) b.focus({ preventScroll: true }); };
+  if (/^[0-9]$/.test(e.key)) { e.preventDefault(); npInput(e.key); focusCheck(); }
+  else if (e.key === 'Backspace') { e.preventDefault(); npBackspace(); focusCheck(); }
+  else if (e.key === 'Escape' || e.key === 'Delete') { npClear(); }
+  else if (e.key === 'Enter' && !(t && t.tagName === 'BUTTON')) { e.preventDefault(); checkClubs(); }
+});
 </script>
 </body>
 </html>

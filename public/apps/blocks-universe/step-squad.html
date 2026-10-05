@@ -3,11 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Step Squad — eduin VIVES</title>
+<title>계단 수 만들기 (Step Squad) — eduin VIVES</title>
 <script src="/common/init.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Dongle:wght@300;400;700&family=Fredoka+One&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/common/hero-theme.css">
 <link rel="stylesheet" href="/common/app-shell.css">
+<link rel="stylesheet" href="/common/sim-kit.css">
+<script src="/common/ui.js"></script>
+<script src="/common/sim-kit.js"></script>
 <script src="/common/theme.js"></script>
 <script src="/common/app-shell.js" defer></script>
 <style>
@@ -49,6 +52,7 @@
     font-size: 64px; margin: 10px 0 2px; color: var(--dark);
     letter-spacing: 2px; text-shadow: 4px 4px 0 var(--orange); line-height: 1;
   }
+  .intro h1 .h1-en { display: block; font-size: 34px; letter-spacing: 0; text-shadow: none; color: #666; margin-top: 4px; }
   .intro .sub { font-size: 28px; color: #666; margin-bottom: 20px; line-height: 1.3; font-weight: 700; }
   .lesson-tag {
     display: inline-block; background: var(--dark); color: var(--yellow);
@@ -199,7 +203,9 @@
     cursor: pointer; transition: transform .1s;
   }
   input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); }
-  .range-labels { display: flex; justify-content: space-between; font-size: 19px; color: #999; margin-top: 4px; }
+  .range-labels { display: flex; justify-content: space-between; font-size: 21px; color: #777; margin-top: 4px; }
+  .best-badge { display: inline-block; background: #FFF3C4; border: 2px solid var(--orange); border-radius: 999px; padding: 0 12px; font-size: 22px; line-height: 1.4; color: #8A4B00; }
+  .best-new { color: #C0392B; font-weight: 700; }
 
   /* 진행/퀴즈 (volcano 계승) */
   .progress-zone { margin-bottom: 14px; }
@@ -252,16 +258,7 @@
   @keyframes popIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
   @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
-  /* ===== 토스트 ===== */
-  #ssToast {
-    position: fixed; bottom: 1.5rem; left: 50%;
-    transform: translateX(-50%) translateY(1rem);
-    background: var(--dark); color: white; padding: 4px 22px;
-    border-radius: 999px; font-family: 'Dongle', sans-serif; font-size: 25px; line-height: 1.3;
-    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
-    z-index: 9000; white-space: nowrap;
-  }
-  #ssToast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 
   /* ===== 태블릿·모바일: 무대 위 / 패널 아래 ===== */
   @media (max-width: 900px) {
@@ -282,28 +279,26 @@
 </style>
   <meta property="og:image" content="https://eduin.info/og-default.png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Step Squad — 계단수 블록 시각화 | eduin VIVES">
+  <meta name="twitter:title" content="계단 수 만들기 (Step Squad) | eduin VIVES">
   <meta name="twitter:description" content="넘버블록스 스타일로 계단수 개념을 블록으로 시각화하고 퀴즈로 학습하세요.">
   <meta name="twitter:image" content="https://eduin.info/og-default.png">
   <link rel="canonical" href="https://eduin.info/apps/blocks-universe/step-squad.html">
   <meta property="og:url" content="https://eduin.info/apps/blocks-universe/step-squad.html">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Step Squad","description":"넘버블록스 스타일로 계단수 개념을 블록으로 시각화하고 퀴즈로 학습하세요.","url":"https://eduin.info/apps/blocks-universe/step-squad.html","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"계단 수 만들기 (Step Squad)","description":"넘버블록스 스타일로 계단수 개념을 블록으로 시각화하고 퀴즈로 학습하세요.","url":"https://eduin.info/apps/blocks-universe/step-squad.html","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   <script src="/common/seo-injector.js" defer></script>
 </head>
 <body data-shell="immersive">
 
 <!-- 플로팅 크롬(홈·공유)은 app-shell.js가 주입 — 음소거 버튼은 크롬으로 끌어올려짐 -->
 <div class="app-actions">
-  <button class="overlay-btn" id="muteBtn" onclick="toggleMute()" title="소리 켜기/끄기" aria-label="소리 켜기/끄기" aria-pressed="false"></button>
+  <button class="overlay-btn" id="muteBtn" title="소리 켜기/끄기" aria-label="소리 켜기/끄기" aria-pressed="false"></button>
 </div>
-
-<div id="ssToast"></div>
 
 <!-- ===== 인트로 ===== -->
 <div class="wrap">
   <div class="intro">
-    <div class="hero-art">🪜</div>
-    <h1>Step Squad</h1>
+    <div class="hero-art" aria-hidden="true">🪜</div>
+    <h1>계단 수 만들기 <span class="h1-en">(Step Squad)</span></h1>
     <p class="sub">넘버블럭스 계단 군대 탐험기</p>
     <div class="lesson-tag">계단 모양으로 쌓을 수 있는 수는 무엇이 다를까요?</div>
     <div class="intro-stair" id="introStair" aria-hidden="true"></div>
@@ -329,12 +324,12 @@
   <aside class="side">
     <div class="side-head">
       <div class="flag">넘버블럭스 · 삼각수</div>
-      <h2>🪜 Step Squad</h2>
+      <h2>🪜 계단 수 만들기</h2>
     </div>
     <div class="side-body">
-      <div class="mode-pills">
-        <button class="mode-pill active" id="pill-build" onclick="setMode('build')">🔢 계단 만들기</button>
-        <button class="mode-pill" id="pill-quiz" onclick="setMode('quiz')">🎯 퀴즈</button>
+      <div class="mode-pills" role="group" aria-label="모드 고르기">
+        <button class="mode-pill active" id="pill-build" onclick="setMode('build')" aria-pressed="true">🔢 계단 만들기</button>
+        <button class="mode-pill" id="pill-quiz" onclick="setMode('quiz')" aria-pressed="false">🎯 퀴즈</button>
       </div>
       <div id="sideContent"></div>
     </div>
@@ -342,48 +337,13 @@
 </div>
 
 <script>
-/* ──────────────────────── 효과음 (Web Audio) + 음소거 ──────────────────────── */
-var SND_KEY = 'stepsquad.muted';
-var muted = false; try { muted = localStorage.getItem(SND_KEY) === '1'; } catch (e) {}
-var actx = null;
-function ac() {
-  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
-  if (actx && actx.state === 'suspended') actx.resume();
-  return actx;
-}
-function tone(freq, dur, type, gain, delay) {
-  var c = ac(); if (!c || muted) return;
-  var t = c.currentTime + (delay || 0);
-  var o = c.createOscillator(), g = c.createGain();
-  o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(gain || 0.14, t + 0.012);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g); g.connect(c.destination);
-  o.start(t); o.stop(t + dur + 0.03);
-}
-function sfx(type) {
-  if (muted) return;
-  switch (type) {
-    case 'move':  tone(540, 0.08, 'triangle', 0.10); break;
-    case 'done':  tone(523, 0.12, 'sine', 0.14, 0); tone(659, 0.12, 'sine', 0.14, 0.09); tone(784, 0.18, 'sine', 0.14, 0.18); break;
-    case 'star':  tone(988, 0.08, 'triangle', 0.13, 0); tone(1319, 0.13, 'triangle', 0.13, 0.07); break;
-    case 'stamp': [523, 659, 784, 1047].forEach(function (f, i) { tone(f, 0.15, 'square', 0.10, i * 0.11); }); break;
-    case 'wrong': tone(233, 0.18, 'sine', 0.13, 0); tone(185, 0.22, 'sine', 0.13, 0.13); break;
-  }
-}
+/* ──────────────────────── 효과음 + 음소거 ────────────────────────
+   예전과 같은 소리를 SimKit.sound로 낸다. 음소거 키 'stepsquad.muted'는 그대로. */
+SimKit.sound.useKey('stepsquad.muted');
+function sfx(type) { SimKit.sound.play(type); }
 var MUTE_ICON_ON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
 var MUTE_ICON_OFF = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>';
-function syncMuteBtn() {
-  var b = document.getElementById('muteBtn');
-  if (b) { b.innerHTML = muted ? MUTE_ICON_OFF : MUTE_ICON_ON; b.setAttribute('aria-pressed', String(muted)); }
-}
-function toggleMute() {
-  muted = !muted;
-  try { localStorage.setItem(SND_KEY, muted ? '1' : '0'); } catch (e) {}
-  syncMuteBtn();
-  if (!muted) sfx('move');
-}
+SimKit.sound.bindButton('#muteBtn', { render: function (el, m) { el.innerHTML = m ? MUTE_ICON_OFF : MUTE_ICON_ON; } });
 var _bSnd = 0;
 function buildSnd() {
   var t = (window.performance && performance.now) ? performance.now() : Date.now();
@@ -404,13 +364,32 @@ const BLOCK_COLORS = ['#FF4757','#FF8C00','#FFD93D','#2ED573','#1E90FF','#A855F7
 function blockColor(i) { return BLOCK_COLORS[(i-1) % BLOCK_COLORS.length]; }
 
 /* ──────────────────────── 토스트 ──────────────────────── */
-let toastTimer;
-function ssToast(msg) {
-  const el = document.getElementById('ssToast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+function ssToast(msg) { SimKit.toast(msg); }
+
+/* ──────────────────────── 최고 기록(모드별) ────────────────────────
+   { best: { quiz: 0~10 }, plays: { quiz: 횟수 } } — 이 기기에만 저장 */
+const scoreStore = SimKit.store('stepsquad.scores', {
+  defaults: { best: {}, plays: {} },
+  validate: function (raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const out = { best: {}, plays: {} };
+    ['quiz'].forEach(function (m) {
+      if (raw.best && raw.best[m] != null) out.best[m] = SimKit.clean.int(raw.best[m], 0, 10, 0);
+      if (raw.plays && raw.plays[m] != null) out.plays[m] = SimKit.clean.int(raw.plays[m], 0, 100000, 0);
+    });
+    return out;
+  }
+});
+function bestOf(m) { const s = scoreStore.load(); return s.best[m] != null ? s.best[m] : null; }
+// 점수를 기록하고 새 최고 기록이면 true
+function recordScore(m, score) {
+  const s = scoreStore.load();
+  const prev = s.best[m];
+  const isNew = prev == null || score > prev;
+  if (isNew) s.best[m] = score;
+  s.plays[m] = (s.plays[m] || 0) + 1;
+  scoreStore.save(s);
+  return { isNew: isNew && prev != null, prev: prev, best: s.best[m], first: prev == null };
 }
 
 /* ──────────────────────── 상태 ──────────────────────── */
@@ -555,13 +534,13 @@ function renderBuildSide() {
       <p>계단은 <b>1, 2, 3, …</b> 한 칸씩 커지는 줄로 만들어져요. 합계가 <b>1, 3, 6, 10, 15…</b> 로 변하는 걸 찾아보세요!</p>
     </div>
     <div class="slider-card">
-      <label>계단 높이 (1 ~ 20단)</label>
+      <label for="numInput">계단 높이 (1 ~ 20단)</label>
       <div class="slider-row">
         <input type="number" id="numInput" class="num-input" min="1" max="20" value="${buildK}"
           oninput="onNumInput(false)" onchange="onNumInput(true)">
         <div style="flex:1;display:flex;flex-direction:column;min-width:120px;">
-          <input type="range" id="numSlider" min="1" max="20" value="${buildK}" oninput="onSlider()" style="width:100%;">
-          <div class="range-labels"><span>1단</span><span>10단</span><span>20단</span></div>
+          <input type="range" id="numSlider" min="1" max="20" value="${buildK}" oninput="onSlider()" style="width:100%;" aria-label="계단 높이 슬라이더">
+          <div class="range-labels" aria-hidden="true"><span>1단</span><span>10단</span><span>20단</span></div>
         </div>
       </div>
     </div>
@@ -629,7 +608,7 @@ function nextQuestion() {
   sideContent().innerHTML = `
     <div class="progress-zone">
       <div class="progress-track"><div class="progress-fill" style="width:${quizIdx / QUIZ_TOTAL * 100}%"></div></div>
-      <div class="progress-label"><span>퀴즈 진행 중</span><span>${quizIdx + 1} / ${QUIZ_TOTAL}</span></div>
+      <div class="progress-label"><span>퀴즈 진행 중${bestOf('quiz') != null ? ` · 최고 기록 ${bestOf('quiz')}개` : ''}</span><span>${quizIdx + 1} / ${QUIZ_TOTAL}</span></div>
     </div>
     <div class="observe-box">
       <h3>🔍 관찰 포인트</h3>
@@ -663,7 +642,7 @@ function answerQuiz(userSaysYes) {
   const zone = sideContent().querySelector('.quiz-zone');
   zone.innerHTML = `
     <div class="reveal">
-      <div class="reveal-banner ${correct ? 'correct' : 'wrong'}">
+      <div class="reveal-banner ${correct ? 'correct' : 'wrong'}" id="revealBanner" tabindex="-1">
         ${correct ? '🎉 딩동댕! 정답이에요!' : '🤔 아쉬워요! 무대를 다시 봐요'}
       </div>
       <div class="explain">${explainHtml}</div>
@@ -673,6 +652,9 @@ function answerQuiz(userSaysYes) {
         </button>
       </div>
     </div>`;
+  // 누른 버튼이 사라졌으니 결과 문구로 초점을 옮긴다(키보드·화면 읽기)
+  const rb = document.getElementById('revealBanner');
+  if (rb) rb.focus({ preventScroll: true });
 }
 function afterQuestion() {
   quizIdx++;
@@ -691,10 +673,14 @@ function renderResult() {
   viewerTitle().innerHTML = '🏆 탐험 완료!';
   stageHint().style.display = 'none';
   if (quizScore >= 8) sfx('stamp');
+  const rec = recordScore('quiz', quizScore);
   sideContent().innerHTML = `
     <div class="result">
-      <h2>🏆 퀴즈 완료!</h2>
+      <h2 id="resultTitle" tabindex="-1">🏆 퀴즈 완료!</h2>
       <div class="score">${QUIZ_TOTAL}개 중 ${quizScore}개 맞혔어요</div>
+      <p style="font-size:24px;line-height:1.3;margin:-6px 0 14px;">
+        ${rec.isNew ? `<span class="best-new">🎉 새 최고 기록!</span> (전에는 ${rec.prev}개)` : `<span class="best-badge">🏅 최고 기록 ${rec.best}개</span>`}
+      </p>
       <div class="summary-box">
         <h3>📚 오늘의 배움 정리</h3>
         <p>계단 군대 수는 <b>1 + 2 + 3 + … + k</b>로 만들 수 있는 수예요.
@@ -707,6 +693,8 @@ function renderResult() {
       </div>
     </div>`;
   document.querySelector('.side').scrollTo({ top: 0 });
+  const rt = document.getElementById('resultTitle');
+  if (rt) rt.focus({ preventScroll: true });
 }
 
 /* ──────────────────────── 모드/시작 ──────────────────────── */
@@ -714,6 +702,8 @@ function setMode(m) {
   mode = m;
   document.getElementById('pill-build').classList.toggle('active', m === 'build');
   document.getElementById('pill-quiz').classList.toggle('active', m === 'quiz');
+  document.getElementById('pill-build').setAttribute('aria-pressed', String(m === 'build'));
+  document.getElementById('pill-quiz').setAttribute('aria-pressed', String(m === 'quiz'));
   if (m === 'build') { renderBuildSide(); renderBuildStage(); }
   else startQuiz();
 }
@@ -738,7 +728,6 @@ function startExplore() {
     host.appendChild(c);
   }
 })();
-syncMuteBtn();
 </script>
 </body>
 </html>

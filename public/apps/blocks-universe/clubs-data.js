@@ -22,7 +22,7 @@ function isTriangular(n) {
   return false;
 }
 
-// 큰 정사각형(a×a) 한가운데에 작은 정사각형(b×b) 구멍을 뚫은 모양: n = a² - b² (a ≥ b + 2, b ≥ 1)
+// 큰 정사각형(a×a) 한가운데에 작은 정사각형(b×b) 구멍을 뚫은 모양: n = a×a − b×b (a ≥ b + 2, b ≥ 1)
 // 구멍이 가운데 오려면 테두리 두께가 사방 같아야 하므로 a, b가 둘 다 홀수이거나 둘 다 짝수
 // → n은 4의 배수여야 함 (n ≥ 8). descKo/descEn도 이 규칙과 맞춰 둘 것
 function isSquareWithHole(n) {
@@ -171,7 +171,7 @@ const CLUBS = [
     nameKo: '정사각형 클럽',
     nameEn: 'Square Club',
     shortKo: '정사각형 클럽',
-    descKo: '구성원들은 스스로를 멋지고 강한 정사각형이라 생각하며 자랑스러워해요. 너비와 높이가 같으며 모두 4개의 모서리를 가지고 있어요.',
+    descKo: '구성원들은 스스로를 멋지고 강한 정사각형이라 생각하며 자랑스러워해요. 너비와 높이가 같으며 모두 4개의 모서리를 가지고 있어요. 같은 수를 두 번 곱한 수예요(예: 3×3 = 9).',
     descEn: 'Members are very proud to be super strong squares! They are the same number of blocks wide as they are tall, and they all have 4 corners.',
     check: isPerfectSquare,
     examples: (max) => {
@@ -205,7 +205,7 @@ const CLUBS = [
     nameKo: '큐브 클럽',
     nameEn: 'Cube Club',
     shortKo: '큐브 클럽',
-    descKo: '구성원으로는 1과 8이 있어요. 큐브는 6개의 정사각형 면을 가진 3D 도형이에요!',
+    descKo: '같은 수를 세 번 곱한 수예요(1×1×1 = 1, 2×2×2 = 8, 3×3×3 = 27, 4×4×4 = 64). 큐브는 6개의 정사각형 면을 가진 3D 도형이에요!',
     descEn: 'Members include One and Eight. Cubes are 3D shapes with 6 square faces.',
     check: isPerfectCube,
     examples: (max) => {
