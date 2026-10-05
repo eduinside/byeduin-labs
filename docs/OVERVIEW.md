@@ -12,7 +12,7 @@
 src/
 ├── pages/
 │   ├── index.astro        ← 홈 (카테고리 트리 사이드바)
-│   └── apps/<id>/index.astro ← 앱 페이지 (36개)
+│   └── apps/<id>/index.astro ← 앱 페이지 (공개 34개 + `_<id>/` 비공개 5개는 빌드 제외)
 └── layouts/AppLayout.astro ← 공통 헤드(SEO 메타·공통 CSS/JS)와 <body data-shell> 래퍼
 
 public/                    ← 빌드 시 dist/로 그대로 복사 (경로 유지)
@@ -86,6 +86,7 @@ docs/                  ← 개발 문서
 |---|---|---|
 | `md-editor` | 마크다운 편집기 | 마크다운 열기·편집·미리보기·공유 |
 | `qr` | QR | QR 생성·스캔·단축주소 (PWA 지원) |
+| `spell-checker` | AI 맞춤법 검사 | AI가 한국어 맞춤법·문법을 교정하고 이유 설명. GAS·외부 앱에서 API로도 호출 가능 |
 
 ### 크롬 확장 (`util-chrome`)
 | ID | 이름 | 설명 |
@@ -108,7 +109,8 @@ docs/                  ← 개발 문서
 | `yt-thumb` | 유튜브 썸네일 | 유튜브 썸네일 추출기 |
 | `grid-maker` | 그리드 메이커 | 이미지 그리드 분할 저장 |
 | `signage-maker` | 사이니지 메이커 (비공개) | 사이니지용 세로 이미지 AI 생성기 |
-| `tts-reader` | 로컬 TTS 리더 | 브라우저 내장 음성으로 텍스트를 읽어주는 완전 로컬 TTS, MP3 다운로드 지원 |
+| `tts-reader` | 로컬 TTS 리더 | 브라우저 내장 음성으로 텍스트를 읽어주는 TTS(입력 글은 서버로 보내지 않음, 온라인 음성은 브라우저 회사 서버 경유 가능), MP3 다운로드 지원 |
+| `padlet-bulk-uploader` | 패들렛 일괄 업로더 | 붙여넣은 텍스트를 내 패들렛 보드에 한 번에 업로드(실패·취소분만 재시도) |
 
 ### 노션 도구 (`util-notion`)
 | ID | 이름 | 설명 |
@@ -178,7 +180,9 @@ docs/                  ← 개발 문서
 >
 > **주의(2026-07-04)**: `madang-img`는 폴더 이름 자체를 `[board]`처럼 대괄호로 만들면 Cloudflare Pages Functions 빌드가 깨져 배포 전체가 정적 사이트로 떨어진 적이 있다(`/api/*` 전체 404). 다중 세그먼트 동적 라우트는 반드시 `[[path]].js` 형태의 **단일 파일 catch-all**로 작성할 것 — 디렉터리 자체를 `[param]`으로 만들지 말 것.
 >
-> **AI 호출 빈도 제한 (Rate Limiting)**: `functions/api/_ai.js` 모듈을 통하는 모든 AI API 호출은 `CF-Connecting-IP` 헤더를 바탕으로 한 엣지 메모리 sharded rate limiting 시스템의 감시를 받습니다. 무차별적인 자동화 공격 및 비용 과다 방지를 위해 **텍스트 생성 분당 30회 / 이미지 생성 분당 5회**의 한도를 엄격히 초과할 시 `429 Too Many Requests` 에러를 반환합니다.
+> **출처 검사·요청 상한 (`functions/api/_guard.js`)**: AI·외부 프록시·동기화 쓰기 엔드포인트는 공용 가드를 거친다. ① 요청 호스트·Origin(없으면 Referer)이 `eduin.info`·`*.byeduin-labs.pages.dev`(미리보기)·localhost일 때만 처리(CORS `*` 없음), ② Cache API 카운터로 IP당 분·일 한도 + 사이트 전체 일 상한(값은 `_guard.js`의 `LIMITS`, colo별 근사치), ③ 본문 크기 상한 읽기, ④ 외부 원문 오류는 로그에만. 학교는 공인 IP 하나를 함께 쓰므로 IP당 한도는 넉넉히 두고 비용은 사이트 일 상한으로 막는다. 외부 `fetch`에는 모두 `AbortSignal.timeout`.
+>
+> **비공개 앱 API**: `madang*`·`signage*`는 `functions/api/_closed.js`로 410을 돌려준다(코드는 보존, `APP_CLOSED` 플래그).
 
 ---
 
@@ -196,6 +200,14 @@ docs/                  ← 개발 문서
 ---
 
 ## 주요 변경 이력
+
+### 2026-10 — 전체 점검 후속 조치 (`docs/audit-2026-10.md`)
+- **숨김 앱 5개 비공개**: bubble-chat·madang·signage-maker·embed·shortcut 페이지 폴더를 `src/pages/apps/_<id>/`로 옮겨 빌드에서 제외(주소로도 404), 사이트맵·404 추천 제외, 관련 API 410. `hidden: true`는 이제 "비공개"를 뜻한다.
+- **공통**: `astro.config`에 `site` 설정(canonical·og:url localhost 문제), 앱별 중복 canonical 제거, 동기화 코드 화면 가림(`AB••••`, 패널에서 '보기'), 공용 `public/common/safe.js`(VSafe.esc·safeUrl·num·int), lucide 자체 호스팅(`public/vendor/`), 로고 축소본, `public/_headers`(캐시·최소 CSP).
+- **보안**: 공유 링크·QR·AI 답변이 HTML로 들어가던 경로 차단(md-editor·search는 DOMPurify, 인라인 onclick → data-* 위임, 공유 데이터 디코드 직후 형식 검증). 서버 공용 가드(위 API 절).
+- **앱 버그**: 시뮬레이션 미션 진행 불가(chance-lab·moon-phase-v2·eco-web·food-bike·circuit-lab·shape-move·solar-system 등), 공유 URL `/apps/` 누락(book-share·signage·scoring-table·flash-deck·chalkboard), yt-thumb 빈 ZIP, flash-deck 공유 버튼, timer 알람 막힘, file-tools 목표 용량 탐색, 수당 계산기 역산 등 — 상세는 커밋 이력.
+- **도구**: `npm run smoke`(빌드 결과 전 페이지 스크립트 오류 검사), `.github/workflows/ci.yml`(빌드 + 스모크), `scripts/cleanup-sync.mjs`·`cleanup-madang.mjs`(정리 스크립트, 기본 미리 보기), `migrations/0014`(중복 인덱스 삭제, 미적용).
+- **교사 검토 목록**: `docs/dictation-review-2026-10.md`(받아쓰기 발음·규칙 태그 의심 101건).
 
 ### 2026-10 — 옥토넛 어디서 보지 추가 (학습지원)
 
