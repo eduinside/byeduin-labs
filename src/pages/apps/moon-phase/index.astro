@@ -8,6 +8,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   bodyShell="immersive"
 >
   <Fragment slot="head">
+    <script is:inline src="/common/sim-kit.js"></script>
     <style is:global="">
         :root {
             --bg-base: #030509;
@@ -193,7 +194,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         }
         
         .sky-sim-label {
-            font-size: 0.8rem;
+            font-size: 0.875rem;
             color: #4cc9f0;
             margin-bottom: 8px; /* 마진 축소 */
             font-weight: 600;
@@ -201,7 +202,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
         /* 시뮬레이션 설명 텍스트 마진 조정 */
         #skySimDesc {
-            font-size: 0.85rem; 
+            font-size: 0.875rem; 
             color: #bdc3c7; 
             margin-top: 6px; /* 마진 축소 */
             line-height: 1.3;
@@ -214,8 +215,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             padding: 3px 10px;
             border-radius: 5px;
             font-weight: 600;
-            font-size: 0.85rem;
+            font-size: 0.875rem;
             margin-bottom: 0;
+            text-align: right;
         }
 
         /* Controls */
@@ -237,10 +239,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             width: 100%;
         }
 
+        input[type="date"]:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+        .visually-hidden-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
         input[type="date"] {
             background-color: #2b3040;
             border: 1px solid #3f4455;
             color: white;
+            min-height: 44px;
+            box-sizing: border-box;
+            font-size: 15px;
+            min-width: 0;
             padding: 12px;
             border-radius: 10px;
             flex-grow: 1;
@@ -253,6 +261,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             background-color: var(--accent-color);
             color: #05070a;
             border: none;
+            min-height: 44px;
+            font-family: inherit;
+            font-size: 15px;
             padding: 12px 24px;
             border-radius: 10px;
             font-weight: 700;
@@ -269,23 +280,40 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
         .btn:active { transform: translateY(0); }
 
+        /* 슬라이더: 보이는 막대는 6px, 누르는 영역은 32px */
         input[type="range"] {
             -webkit-appearance: none;
+            appearance: none;
             width: 100%;
-            height: 6px;
-            background: #2b3040;
-            border-radius: 3px;
+            height: 32px;
+            background: transparent;
+            margin: 0;
             outline: none;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-runnable-track { height: 6px; background: #2b3040; border-radius: 3px; }
+        input[type="range"]::-moz-range-track { height: 6px; background: #2b3040; border-radius: 3px; }
+        input[type="range"]:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 4px; border-radius: 6px; }
+        input[type="range"]::-moz-range-thumb {
+            width: 26px; height: 26px; background: var(--accent-color); border-radius: 50%;
+            border: 3px solid #15192b; box-sizing: border-box;
         }
 
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 22px; height: 22px;
+            margin-top: -10px;
+            width: 26px; height: 26px;
             background: var(--accent-color);
             border-radius: 50%;
             cursor: pointer;
             border: 3px solid #15192b;
             box-shadow: 0 0 10px rgba(76, 201, 240, 0.5);
+        }
+
+        @media (max-width: 520px) {
+            .btn-row { flex-wrap: wrap; }
+            .btn-row input[type="date"] { flex-basis: 100%; }
+            .btn-row .btn { flex: 1; }
         }
 
         @media (max-width: 1100px) {
@@ -314,10 +342,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                 <div class="guide-section obs-direction-box">
                     <div class="guide-header">
                         <div class="guide-title">📍 관측 방향</div>
-                        <div id="observationDirection" class="direction-tag">남쪽 하늘 (자정)</div>
+                        <div id="observationDirection" class="direction-tag">초저녁 동쪽 → 자정 남쪽</div>
                     </div>
                     <div id="observationSky" class="guide-content">
-                        해 질 녘 동쪽에서 떠올라 자정 무렵 남쪽 하늘에서 가장 높게 보이며, 새벽에 서쪽으로 집니다.
+                        초저녁(해 질 무렵) 동쪽에서 떠서 자정에 남쪽 하늘에서 가장 높게 보이며, 해 뜰 무렵 서쪽으로 집니다.
                     </div>
                 </div>
 
@@ -338,7 +366,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                     <!-- 2. 아래 영역 축소된 시뮬레이션 컨테이너 -->
                     <div class="sky-sim-container">
                         <div class="sky-sim-label" id="skySimLabel">시뮬레이션 중인 날짜의 초저녁 하늘 모습</div>
-                        <canvas id="skySimCanvas" width="320" height="120"></canvas>
+                        <canvas id="skySimCanvas" width="320" height="120" role="img" aria-label="초저녁 하늘의 달 위치"></canvas>
                         <div id="skySimDesc">
                             보름달은 초저녁에 동쪽 하늘에서 막 떠오릅니다.
                         </div>
@@ -348,7 +376,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
             <div class="card info-card" style="padding: 20px; min-height: auto;">
                 <div class="guide-title">💡 알아두기</div>
-                <div class="guide-content" style="font-size: 0.85rem; margin-top: 10px; line-height: 1.4;">
+                <div class="guide-content" style="font-size: 0.875rem; margin-top: 10px; line-height: 1.5;">
                     달의 모양은 태양-지구-달의 기하학적 위치에 따라 결정됩니다. 본 시뮬레이션은 북반구 관측 시점을 기준으로 하며, 재생 속도는 세밀한 관찰을 위해 실제보다 매우 느리게 설정되어 있습니다.
                 </div>
             </div>
@@ -358,22 +386,24 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         <div class="visual-section">
             <div class="card main-display">
                 <div class="moon-canvas-container">
-                    <canvas id="moonCanvas" width="340" height="340"></canvas>
+                    <canvas id="moonCanvas" width="340" height="340" role="img" aria-label="지구에서 본 달 모양"></canvas>
                 </div>
                 <div class="controls">
                     <div class="btn-row">
+                        <label for="dateInput" class="visually-hidden-label">관찰할 날짜</label>
                         <input type="date" id="dateInput">
-                        <button class="btn" id="todayBtn">오늘</button>
-                        <button class="btn btn-secondary" id="playBtn">▶ 재생</button>
+                        <button type="button" class="btn" id="todayBtn">오늘</button>
+                        <button type="button" class="btn btn-secondary" id="playBtn" aria-pressed="false">▶ 재생</button>
                     </div>
+                    <label for="phaseSlider" class="visually-hidden-label">월령(음력 날짜) 조절</label>
                     <input type="range" id="phaseSlider" min="0" max="29.53" step="0.01">
                 </div>
             </div>
 
             <div class="card orbit-display">
                 <!-- 4. '천체 위치 시뮬레이션' 텍스트를 시뮬레이션(Canvas) 아래로 이동 -->
-                <canvas id="orbitCanvas" width="550" height="220"></canvas>
-                <div class="orbit-label">천체 위치 시뮬레이션 (위에서 본 모습)</div>
+                <canvas id="orbitCanvas" width="550" height="220" role="img" aria-label="북쪽(위)에서 내려다본 태양·지구·달의 위치. 태양은 오른쪽, 달은 지구 둘레를 시계 반대 방향으로 돌아요."></canvas>
+                <div class="orbit-label">천체 위치 시뮬레이션 (북쪽 위에서 본 모습 · 달은 시계 반대 방향으로 공전)</div>
             </div>
         </div>
     </div>
@@ -398,7 +428,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         const playBtn = document.getElementById('playBtn');
 
         let isPlaying = false;
-        let animationId = null;
+        // 재생 rAF는 SimKit 타이머 스코프로: 멈추면 걸어 둔 프레임을 한 번에 해제
+        const playTimers = window.SimKit ? SimKit.timers() : null;
         let moonSurfacePattern = null;
         let currentSimDate = new Date();
 
@@ -503,7 +534,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         function togglePlayback() {
             isPlaying = !isPlaying;
             if (isPlaying) {
-                playBtn.innerHTML = "|| 정지";
+                playBtn.textContent = "⏸ 정지";
+                playBtn.setAttribute('aria-pressed', 'true');
                 animate();
             } else {
                 stopPlayback();
@@ -512,8 +544,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
         function stopPlayback() {
             isPlaying = false;
-            playBtn.innerHTML = "▶ 재생";
-            if (animationId) cancelAnimationFrame(animationId);
+            playBtn.textContent = "▶ 재생";
+            playBtn.setAttribute('aria-pressed', 'false');
+            if (playTimers) playTimers.reset();
         }
 
         function animate() {
@@ -521,7 +554,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             currentSimDate.setTime(currentSimDate.getTime() + (0.44 * 60 * 60 * 1000));
             syncDateInput(currentSimDate);
             calculateFromDate(currentSimDate);
-            animationId = requestAnimationFrame(animate);
+            if (playTimers) playTimers.raf(animate);
+            else requestAnimationFrame(animate);
         }
 
         function update(age, syncSlider = true) {
@@ -530,6 +564,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             
             const info = getMoonInfo(age);
             phaseNameEl.textContent = info.name;
+            moonCanvas.setAttribute('aria-label', `지구에서 본 달 모양: ${info.name}`);
+            phaseSlider.setAttribute('aria-valuetext', `월령 ${age.toFixed(1)}일, ${info.name}`);
+            skySimCanvas.setAttribute('aria-label', `초저녁 하늘: ${info.skySim}`);
             moonAgeInfoEl.textContent = `월령 ${age.toFixed(1)}일 (음력 ${Math.floor(age)+1}일경)`;
             obsDirectionEl.textContent = info.dir;
             obsSkyEl.textContent = info.sky;
@@ -572,28 +609,30 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                 points: ["달의 오른쪽 반이 밝게 보입니다.", "해질 무렵 남쪽 하늘 높은 곳에서 가장 잘 보입니다."],
                 skySim: "초저녁에 남쪽 하늘 높은 곳에 위치합니다."
             };
+            // 볼록한 달은 앞뒤 달(상현달: 저녁 남쪽 / 보름달: 초저녁 동쪽)의 사이
             if (p < 0.47) return {
-                name: "차가는 달", dir: "밤 남동쪽 하늘",
-                sky: "오후에 떠올라 밤새도록 밝게 빛나며 새벽에 집니다.",
-                points: ["보름달이 되기 직전의 배부른 모양입니다.", "달의 바다 지형이 입체적으로 보이기 시작합니다."],
+                name: "차오르는 볼록한 달", dir: "저녁 남동쪽 하늘",
+                sky: "낮에 동쪽에서 떠서 저녁에 남동쪽 하늘에 보이고, 자정이 지나 서쪽으로 집니다.",
+                points: ["보름달이 되기 직전의 배부른 모양으로, 오른쪽이 더 많이 밝습니다.", "달의 바다 지형이 입체적으로 보이기 시작합니다."],
                 skySim: "초저녁에 남동쪽 하늘에서 높이 떠 있습니다."
             };
             if (p < 0.53) return {
-                name: "보름달 (Full Moon)", dir: "밤새도록 (남쪽)",
-                sky: "해 질 때 동쪽에서 떠서, 자정에 남쪽, 해 뜰 때 서쪽으로 집니다.",
+                name: "보름달 (Full Moon)", dir: "초저녁 동쪽 → 자정 남쪽",
+                sky: "초저녁(해 질 무렵) 동쪽에서 떠서 자정에 남쪽 하늘에서 가장 높게 보이고, 해 뜰 무렵 서쪽으로 집니다.",
                 points: ["달의 전면이 밝게 빛나 밤새도록 세상을 비춥니다.", "달의 전체적인 지형을 감상하기 가장 좋은 시기입니다."],
                 skySim: "초저녁에 동쪽 지평선에서 막 떠오릅니다."
             };
+            // 기우는 볼록한 달은 보름달(자정 남쪽)과 하현달(새벽 남쪽) 사이
             if (p < 0.72) return {
-                name: "이지러지는 달", dir: "심야 남서쪽 하늘",
-                sky: "저녁 늦게 떠올라 새벽 내내 남쪽과 서쪽 하늘을 비춥니다.",
+                name: "기우는 볼록한 달", dir: "새벽 남서쪽 하늘",
+                sky: "밤늦게 동쪽에서 떠서 새벽(해 뜰 무렵)에 남서쪽 하늘에 보이고, 아침에 서쪽으로 집니다.",
                 points: ["보름달의 오른쪽 부분부터 조금씩 어두워지는 모양입니다.", "새벽 일찍 관측하기 좋은 대상입니다."],
                 skySim: "초저녁에는 아직 지평선 아래에 있어 보이지 않습니다."
             };
             if (p < 0.78) return {
-                name: "하현달", dir: "새벽 남쪽 하늘",
-                sky: "자정 무렵 동쪽에서 떠서, 해 뜰 무렵 남쪽 하늘에서 보입니다.",
-                points: ["달의 왼쪽 반이 밝게 보입니다.", "이른 아침 서쪽 하늘에서도 달을 찾을 수 있습니다."],
+                name: "하현달", dir: "새벽(해 뜰 무렵) 남쪽 하늘",
+                sky: "자정 무렵 동쪽에서 떠서, 새벽 해 뜰 무렵 남쪽 하늘에서 보입니다.",
+                points: ["달의 왼쪽 반이 밝게 보입니다.", "해 뜰 무렵 남쪽 하늘에서 가장 잘 보이고, 해가 뜬 뒤에는 서쪽으로 기울어 갑니다."],
                 skySim: "초저녁에는 보이지 않으며 자정쯤 동쪽에서 뜹니다."
             };
             return {
