@@ -76,6 +76,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       justify-content: center;
       gap: 0.3rem;
       text-decoration: none;
+      min-height: 40px;
     }
     .toolbar-btn:hover { border-color: var(--primary); color: var(--primary); }
 
@@ -95,6 +96,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
     #btn-clone-content {
       display: none;
+      min-height: 40px;
       padding: 0.45rem 0.875rem;
       border-radius: 0.5rem;
       border: 1px solid var(--primary);
@@ -189,6 +191,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       cursor: pointer;
       font-family: inherit;
       text-align: left;
+      min-height: 40px;
     }
     .dropdown-opt:hover, .share-opt:hover { background: var(--bg); }
     .dropdown-opt svg, .dropdown-opt i,
@@ -230,6 +233,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
     .mobile-tab-btn {
       flex: 1;
+      min-height: 44px;
       padding: 0.75rem;
       font-size: 0.85rem;
       font-weight: 600;
@@ -384,7 +388,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       max-width: 380px;
       width: 90%;
     }
-    .md-modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .md-modal-title { font-size: 1.1rem; font-weight: 700; margin: 0 0 0.5rem; }
     .md-modal-desc { font-size: 0.85rem; color: var(--fg-muted); margin-bottom: 1.25rem; }
     .share-import-choices { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
     .share-import-choice {
@@ -405,6 +409,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .share-import-choice-desc { font-size: 0.75rem; color: var(--fg-muted); }
     .md-modal-cancel {
       width: 100%;
+      min-height: 44px;
       padding: 0.6rem;
       background: none;
       border: 1px solid var(--border);
@@ -416,26 +421,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
     .md-modal-cancel:hover { border-color: var(--fg-muted); }
 
-    /* ── 토스트 ── */
-    #md-toast {
-      position: fixed;
-      bottom: 2rem;
-      left: 50%;
-      transform: translateX(-50%) translateY(12px);
-      background: var(--fg);
-      color: var(--bg);
-      padding: 0.6rem 1.25rem;
-      border-radius: 2rem;
-      font-size: 0.85rem;
-      font-weight: 600;
-      opacity: 0;
-      transition: opacity 0.2s, transform 0.2s;
-      pointer-events: none;
-      z-index: 9999;
-      white-space: nowrap;
-    }
-    #md-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
     /* ── 로드 모달 리스트 ── */
     #docsList li {
       padding: 0.75rem;
@@ -445,17 +430,39 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       align-items: center;
     }
     #docsList li:last-child { border-bottom: none; }
-    #docsList li > div {
+    /* 문서 열기 = 버튼(키보드로도 열림) */
+    #docsList li button.doc-open, #serverDocsList li button.doc-open {
       flex: 1;
+      min-width: 0;
+      min-height: 44px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 0.2rem;
+      padding: 0.25rem 0.5rem 0.25rem 0;
+      border: none;
+      background: none;
+      color: var(--fg);
+      font: inherit;
+      text-align: left;
       cursor: pointer;
+      white-space: normal;
     }
-    #docsList li > div > div:first-child {
-      font-weight: 500;
-      margin-bottom: 0.2rem;
-    }
-    #docsList li > div > div:last-child {
+    #docsList li button.doc-open:hover .doc-name, #serverDocsList li button.doc-open:hover .doc-name { color: var(--primary); }
+    .doc-name { font-weight: 500; overflow-wrap: anywhere; }
+    .doc-meta { font-size: 0.85rem; color: var(--fg-muted); }
+    #docsList li button.doc-del, #serverDocsList li button.doc-del {
+      min-height: 40px;
+      min-width: 52px;
+      padding: 0.25rem 0.5rem;
       font-size: 0.85rem;
-      color: var(--fg-muted);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      color: var(--fg);
+      cursor: pointer;
+      font-family: inherit;
     }
     #docsList li button {
       padding: 0.25rem 0.5rem;
@@ -527,22 +534,22 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       </div>
   <span>MD <span>Editor</span></span>
 </h1>
-    <p class="app-desc">간편한 마크다운 문서 편집기 <button onclick="openHelpModal()" style="margin-left:0.5rem;padding:2px 8px;font-size:0.72rem;font-weight:700;border:1px solid var(--border);border-radius:10px;background:var(--card-bg);color:var(--fg-muted);cursor:pointer;font-family:inherit;">마크다운 더 알아보기</button></p>
+    <p class="app-desc">간편한 마크다운 문서 편집기 <button type="button" onclick="openHelpModal()" style="margin-left:0.5rem;min-height:36px;padding:4px 10px;font-size:0.72rem;font-weight:700;border:1px solid var(--border);border-radius:10px;background:var(--card-bg);color:var(--fg-muted);cursor:pointer;font-family:inherit;">마크다운 더 알아보기</button></p>
   </div>
 
   <!-- 툴바 -->
   <div class="md-toolbar">
-    <input type="text" id="filenameInput" class="hero-input" value="untitled.md" placeholder="파일명.md">
+    <input type="text" id="filenameInput" class="hero-input" value="untitled.md" placeholder="파일명.md" aria-label="파일 이름">
     <button class="toolbar-btn view-only-hide" onclick="newDocument()"><i data-lucide="file-plus-2"></i>새 문서</button>
-    <button class="toolbar-btn view-only-hide" onclick="toggleOpenMenu(event)"><i data-lucide="folder-open"></i>열기 ▾</button>
+    <button class="toolbar-btn view-only-hide" onclick="toggleOpenMenu(event)" aria-haspopup="true" aria-controls="open-dropdown"><i data-lucide="folder-open"></i>열기 ▾</button>
     <input type="file" id="fileInput" accept=".md,.txt,.markdown" style="display:none" onchange="handleFileLoad(this)">
     <input type="file" id="multiFileInput" accept=".json,.csv,.xml,.html,.htm" style="display:none" onchange="handleMultiLoad(this)">
     <input type="file" id="docFileInput" accept=".hwp,.hwpx,.hwpml,.pdf,.docx,.pptx,.xlsx,.doc,.xls" style="display:none" onchange="handleDocLoad(this)">
-    <button class="toolbar-btn view-only-hide" id="saveBtn" onclick="toggleSaveMenu(event)"><i data-lucide="save"></i>저장 ▾</button>
-    <button class="toolbar-btn view-only-hide" id="viewBtn" onclick="toggleViewMenu(event)"><i data-lucide="eye"></i>보기 ▾</button>
+    <button class="toolbar-btn view-only-hide" id="saveBtn" onclick="toggleSaveMenu(event)" aria-haspopup="true" aria-controls="save-dropdown"><i data-lucide="save"></i>저장 ▾</button>
+    <button class="toolbar-btn view-only-hide" id="viewBtn" onclick="toggleViewMenu(event)" aria-haspopup="true" aria-controls="view-dropdown"><i data-lucide="eye"></i>보기 ▾</button>
     <div id="view-badge"><i data-lucide="eye-off" style="width:12px;height:12px;"></i>보기 전용</div>
     <button id="btn-clone-content" onclick="cloneContent()"><i data-lucide="copy"></i>복제</button>
-    <button class="toolbar-btn view-only-hide" onclick="toggleShareMenu(event)">
+    <button class="toolbar-btn view-only-hide" onclick="toggleShareMenu(event)" aria-haspopup="true" aria-controls="share-dropdown">
       <i data-lucide="share-2"></i>
       공유 ▾
     </button>
@@ -558,7 +565,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <div class="md-split">
     <div class="md-pane mobile-active" id="paneEdit">
       <div class="pane-label">편집</div>
-      <textarea id="editor" placeholder="마크다운을 입력하세요...
+      <textarea id="editor" aria-label="마크다운 편집" placeholder="마크다운을 입력하세요...
 
 # 제목
 ## 소제목
@@ -642,9 +649,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 </div>
 
 <!-- 마크다운 도움말 모달 -->
-<div class="md-modal-overlay" id="help-modal" onclick="if(event.target===this)this.classList.remove('open')">
+<div class="md-modal-overlay" id="help-modal">
   <div class="md-modal" style="max-width:480px;max-height:80vh;overflow-y:auto;">
-    <div class="md-modal-title">📖 마크다운 더 알아보기</div>
+    <h2 class="md-modal-title">📖 마크다운 더 알아보기</h2>
     <div style="font-size:0.82rem;line-height:1.8;color:var(--fg);">
       <table style="width:100%;border-collapse:collapse;margin-bottom:0.75rem;">
         <thead><tr style="border-bottom:1px solid var(--border);">
@@ -669,14 +676,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       </table>
       <p style="font-size:0.72rem;color:var(--fg-muted);margin:0;">빈 줄로 단락을 구분합니다. 줄 끝에 공백 2개를 추가하면 줄바꿈이 됩니다.</p>
     </div>
-    <button class="md-modal-cancel" style="margin-top:1rem;" onclick="document.getElementById('help-modal').classList.remove('open')">닫기</button>
+    <button type="button" class="md-modal-cancel" style="margin-top:1rem;" data-vui-close>닫기</button>
   </div>
 </div>
 
 <!-- 복제 허용 모달 -->
 <div class="md-modal-overlay" id="clone-modal">
   <div class="md-modal">
-    <div class="md-modal-title">공유된 마크다운</div>
+    <h2 class="md-modal-title">공유된 마크다운</h2>
     <div class="md-modal-desc" id="clone-modal-desc">파일을 어떻게 열까요?</div>
     <div class="share-import-choices">
       <button class="share-import-choice" onclick="enterViewOnly()">
@@ -688,14 +695,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         <span class="share-import-choice-desc">편집 가능하게 불러옵니다.</span>
       </button>
     </div>
-    <button class="md-modal-cancel" onclick="closeCloneModal()">취소</button>
+    <button type="button" class="md-modal-cancel" onclick="closeCloneModal()">취소</button>
   </div>
 </div>
 
 <!-- 저장된 파일 로드 모달 -->
 <div id="loadModalBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000;" onclick="if(event.target === this) closeLoadModal()"></div>
 <div id="loadModal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:var(--bg); border:1px solid var(--border); border-radius:1rem; padding:2rem; z-index:1001; width:90%; max-width:400px; max-height:80vh; overflow-y:auto;">
-  <div style="font-weight:600; margin-bottom:0.5rem; font-size:1.1rem;">저장된 파일 열기</div>
+  <h2 style="font-weight:600; margin:0 0 0.5rem; font-size:1.1rem;">저장된 파일 열기</h2>
   <div style="font-size:0.78rem; color:var(--fg-muted); margin-bottom:0.4rem; line-height:1.5;">우상단 <b>🔄 동기화</b> 버튼으로 코드를 연결하면 다른 기기에 저장한 문서도 보여요.</div>
   <div style="font-size:0.72rem; font-weight:800; color:var(--fg-muted); margin:0.6rem 0 0.2rem;">📱 이 기기(로컬)</div>
   <ul id="docsList" style="list-style:none; padding:0; margin:0;"></ul>
@@ -703,11 +710,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <div style="font-size:0.72rem; font-weight:800; color:var(--fg-muted); margin:0.8rem 0 0.2rem;">☁️ 코드(<span id="mdCodeTag"></span>)</div>
     <ul id="serverDocsList" style="list-style:none; padding:0; margin:0;"></ul>
   </div>
-  <button onclick="closeLoadModal()" style="width:100%; margin-top:1rem; padding:0.5rem; border:1px solid var(--border); background:var(--card-bg); border-radius:0.5rem; cursor:pointer; font-family:inherit; font-weight:600; color:var(--fg);">닫기</button>
+  <button type="button" id="loadModalClose" onclick="closeLoadModal()" style="width:100%; min-height:44px; margin-top:1rem; padding:0.5rem; border:1px solid var(--border); background:var(--card-bg); border-radius:0.5rem; cursor:pointer; font-family:inherit; font-weight:600; color:var(--fg);">닫기</button>
 </div>
 
-<!-- 토스트 -->
-<div id="md-toast"></div>
+<!-- 토스트·링크 창은 공용 VUI (/common/ui.js) -->
 
 <script is:inline="">
   if (window.marked) marked.setOptions({ breaks: true, gfm: true });
@@ -728,7 +734,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       localStorage.setItem(key, value);
       return true;
     } catch (e) {
-      showToast('브라우저 저장 공간이 꽉 찼어요. 안 쓰는 문서를 지우거나 파일로 저장해 주세요.', 6000);
+      showToast('❌ 브라우저 저장 공간이 꽉 찼어요. 안 쓰는 문서를 지우거나 파일로 저장해 주세요.', 6000);
       return false;
     }
   }
@@ -988,19 +994,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       form.append('file', file);
       form.append('output_format', 'markdown');
 
-      const res = await fetch('/api/doc-parse', { method: 'POST', body: form });
-
       let data;
       try {
-        data = await res.json();
-      } catch {
-        throw new Error(`서버 응답 파싱 실패 (HTTP ${res.status})`);
+        // 변환은 최대 20초 + 업로드 시간 — 시간 제한을 넉넉히
+        data = await VUI.apiFetch('/api/doc-parse', { method: 'POST', body: form, timeout: 90000 });
+      } catch (err) {
+        // HTTP 오류는 상태별 안내(_docParseErrorMsg), 연결·시간 초과 등은 VUI의 한국어 문구
+        throw new Error(err.status ? _docParseErrorMsg(err.data || {}, err.status) : err.message);
       }
-
-      if (!res.ok) {
-        throw new Error(_docParseErrorMsg(data, res.status));
-      }
-      if (!data.markdown && data.markdown !== '') {
+      if (!data || (!data.markdown && data.markdown !== '')) {
         throw new Error('변환 결과가 없습니다 — 파일 내용을 확인해주세요.');
       }
 
@@ -1459,12 +1461,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     docsList.innerHTML = allDocs.length ? allDocs
       .sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt))
       .map(doc => `
-        <li style="padding:0.75rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-          <div style="flex:1; cursor:pointer;" data-act="load-local" data-id="${esc(doc.id)}">
-            <div style="font-weight:500;">${esc(doc.filename)}</div>
-            <div style="font-size:0.85rem; color:var(--fg-muted);">${esc(new Date(doc.savedAt).toLocaleString('ko-KR'))}</div>
-          </div>
-          <button data-act="del-local" data-id="${esc(doc.id)}" style="padding:0.25rem 0.5rem; font-size:0.85rem; background:none; border:1px solid var(--border); cursor:pointer; border-radius:0.25rem;">삭제</button>
+        <li style="padding:0.5rem 0.25rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+          <button type="button" class="doc-open" data-act="load-local" data-id="${esc(doc.id)}">
+            <span class="doc-name">${esc(doc.filename)}</span>
+            <span class="doc-meta">${esc(new Date(doc.savedAt).toLocaleString('ko-KR'))}</span>
+          </button>
+          <button type="button" class="doc-del" data-act="del-local" data-id="${esc(doc.id)}" aria-label="${esc(doc.filename)} 삭제">삭제</button>
         </li>
       `).join('') : '<li style="padding:0.75rem 0; color:var(--fg-muted); font-size:0.85rem;">이 기기에 저장된 파일이 없어요.</li>';
 
@@ -1473,12 +1475,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     document.getElementById('loadModalBackdrop').style.display = 'block';
     document.getElementById('loadModal').style.display = 'block';
     document.body.classList.add('modal-open');
+    loadM.open();   // 접근성(포커스 가두기·ESC·포커스 복귀). 이미 열려 있으면(삭제 후 다시 그리기) 그대로
   }
 
   function closeLoadModal() {
     document.getElementById('loadModalBackdrop').style.display = 'none';
     document.getElementById('loadModal').style.display = 'none';
     document.body.classList.remove('modal-open');
+    loadM.close();
+  }
+  // 열기 모달: 보이기·숨기기는 위 함수가 하고(배경이 따로 있는 구조), VUI는 접근성만. ESC → closeLoadModal
+  const loadM = VUI.modal.bind('#loadModal', { manual: true, label: '저장된 파일 열기', onClose: () => closeLoadModal() });
+  // 목록을 다시 그리면 누른 삭제 버튼이 사라지므로 포커스를 목록의 첫 버튼(없으면 닫기)으로
+  function focusLoadList(listId) {
+    const t = document.getElementById(listId).querySelector('button') || document.getElementById('loadModalClose');
+    if (t) t.focus();
   }
 
   function loadDocById(id) {
@@ -1524,6 +1535,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     lsSet(LS_ALL_DOCS_KEY, JSON.stringify(allDocs));
 
     openLoadModal(); // 모달 새로고침
+    focusLoadList('docsList');
   }
 
   // ── 코드(서버) 저장/열기 — VivesSync set 모드 라이브러리 ──
@@ -1541,7 +1553,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const ok = await mdLib.save(code, id, { id, content: mdContent, filename, savedAt: new Date().toISOString() });
     if (!hadCode && mdCodeBtn) mdCodeBtn.refresh();   // 자동 발급 코드를 상단 버튼에 반영
     if (ok) isDirty = false;
-    showToast(ok ? `코드 ${code}에 저장됐어요 ☁️ 우상단 버튼의 코드를 다른 기기에 입력하면 열려요` : '서버 저장 실패');
+    if (ok) showToast(`코드 ${code}에 저장됐어요 ☁️ 우상단 버튼의 코드를 다른 기기에 입력하면 열려요`);
+    else showToast('서버에 저장하지 못했어요. 연결을 확인하고 다시 해 주세요.', 'error');
   }
 
   async function renderMdServerDocs() {
@@ -1554,12 +1567,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     list.innerHTML = serverDocs.length ? serverDocs.map(s => {
       const v = s.value || {};
       const when = v.savedAt ? new Date(v.savedAt).toLocaleString('ko-KR') : '';
-      return `<li style="padding:0.75rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-        <div style="flex:1; cursor:pointer;" data-act="load-server" data-id="${esc(s.id)}">
-          <div style="font-weight:500;">${esc(v.filename || '제목 없음')}</div>
-          <div style="font-size:0.85rem; color:var(--fg-muted);">${esc(when)}</div>
-        </div>
-        <button data-act="del-server" data-id="${esc(s.id)}" style="padding:0.25rem 0.5rem; font-size:0.85rem; background:none; border:1px solid var(--border); cursor:pointer; border-radius:0.25rem;">삭제</button>
+      return `<li style="padding:0.5rem 0.25rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+        <button type="button" class="doc-open" data-act="load-server" data-id="${esc(s.id)}">
+          <span class="doc-name">${esc(v.filename || '제목 없음')}</span>
+          <span class="doc-meta">${esc(when)}</span>
+        </button>
+        <button type="button" class="doc-del" data-act="del-server" data-id="${esc(s.id)}" aria-label="${esc(v.filename || '제목 없음')} 삭제">삭제</button>
       </li>`;
     }).join('') : '<li style="padding:0.6rem 0; color:var(--fg-muted); font-size:0.85rem;">이 코드로 저장한 문서가 없어요. <b>저장 → 코드로 저장</b></li>';
   }
@@ -1573,8 +1586,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const code = VivesSync.getCode(); if (!code) return;
     // remove()는 실패해도 예외 없이 false를 반환한다 — 알리지 않으면 목록만 그대로라 사용자는 이유를 알 수 없다.
     const ok = await mdLib.remove(code, id);
-    showToast(ok ? '문서를 삭제했어요' : '삭제하지 못했어요. 연결을 확인하고 다시 시도해 주세요');
-    renderMdServerDocs();
+    showToast(ok ? '문서를 삭제했어요' : '삭제하지 못했어요. 연결을 확인하고 다시 시도해 주세요', ok ? undefined : 'error');
+    await renderMdServerDocs();
+    focusLoadList('serverDocsList');
   };
   window.saveDocToServer = saveDocToServer;
 
@@ -1593,7 +1607,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   // 우상단 통합 '동기화' 버튼으로 코드 관리. 연결/해제 시 열기 모달이 떠 있으면 서버 목록 갱신.
   const mdCodeBtn = window.VivesSync ? VivesSync.mountCodeButton({
     appName: '문서',
-    onChange: () => { if (document.getElementById('loadModal').style.display === 'block') renderMdServerDocs(); },
+    onChange: () => { if (loadM.isOpen()) renderMdServerDocs(); },
   }) : null;
 
   // ── Markdown 저장 ──
@@ -1651,34 +1665,28 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
   // ── 공유 인코딩/디코딩 ──
   function buildShareURL(permission) {
-    const payload = JSON.stringify({
+    // 새 인코딩: UTF-8 base64url(VUI.share.encode) — 한글이 옛 btoa(encodeURIComponent()) 방식보다 약 3배 짧다.
+    // 그래도 링크가 너무 길면 단축·메신저에서 잘리므로, 실제 링크 길이로 상한을 건다.
+    const encoded = VUI.share.encode({
       data: { content: mdContent, filename: currentFilename },
       permission,
     });
-    // 한글은 인코딩 뒤 길이가 몇 배로 늘어나므로, 실제 링크 길이로 상한을 건다.
-    const encoded = btoa(encodeURIComponent(payload))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
     const url = `${location.origin}/apps/md-editor/#share=${encoded}`;
     if (url.length > SHARE_URL_MAX) return { url: null, tooLarge: true };
     return { url, tooLarge: false };
   }
   const SHARE_URL_MAX = 8000;
 
+  // 새 형식·옛 형식(btoa(encodeURIComponent(json))) 모두 읽는다(VUI.share.decode)
   function decodeSharePayload(encoded) {
-    try {
-      const raw = encoded.replace(/-/g, '+').replace(/_/g, '/');
-      const pad = (4 - raw.length % 4) % 4;
-      const p = JSON.parse(decodeURIComponent(atob(raw + '='.repeat(pad))));
-      if (p && p.data && typeof p.data.content === 'string') {
-        // 받은 값은 필요한 필드만, 형식을 맞춰서 쓴다
-        const fn = typeof p.data.filename === 'string' ? p.data.filename.trim().slice(0, 120) : '';
-        return {
-          data: { content: p.data.content, filename: fn || 'shared.md' },
-          permission: p.permission === 'view' ? 'view' : 'clone',
-        };
-      }
-    } catch {}
-    return null;
+    const p = VUI.share.decode(encoded, o => o && o.data && typeof o.data.content === 'string');
+    if (!p) return null;
+    // 받은 값은 필요한 필드만, 형식을 맞춰서 쓴다
+    const fn = typeof p.data.filename === 'string' ? p.data.filename.trim().slice(0, 120) : '';
+    return {
+      data: { content: p.data.content, filename: fn || 'shared.md' },
+      permission: p.permission === 'view' ? 'view' : 'clone',
+    };
   }
 
   // ── 공유 드롭다운 ──
@@ -1710,22 +1718,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       showToast('글이 길어서 링크로 공유할 수 없어요. 파일로 저장해서 전달해 주세요.', 5000);
       return;
     }
-    const longURL = result.url;
-    try {
-      const res = await fetch('/api/shorten', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: longURL }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.shortURL) { console.error('[shorten] failed:', res.status, data); throw new Error((data && data.error) || 'shorten failed'); }
-      await navigator.clipboard.writeText(data.shortURL);
-      showToast('링크가 복사되었습니다 ✓');
-    } catch {
-      try {
-        await navigator.clipboard.writeText(longURL);
-        showToast('링크가 복사되었습니다 (단축 미적용)');
-      } catch { prompt('링크를 복사하세요', longURL); }
-    }
+    // 단축(실패하면 원래 링크) → 복사. 복사가 안 되면 링크 창(입력칸 + 복사 버튼)
+    await VUI.share.link(result.url, permission === 'view'
+      ? { title: '🔗 보기 전용 링크', desc: '링크를 연 사람은 이 문서를 읽기만 할 수 있어요.' }
+      : { title: '🔗 복제 허용 링크', desc: '링크를 연 사람은 이 문서를 자기 편집기로 가져갈 수 있어요.' });
   }
 
   // ── 보기 전용 진입 ──
@@ -1747,34 +1743,36 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     showToast('편집 가능 모드로 가져왔습니다');
   }
 
-  // ── 복제 모달 ──
+  // ── 복제 모달 (접근성: VUI.modal — ESC = 취소) ──
+  const cloneM = VUI.modal.bind('#clone-modal', { className: 'open', dialog: '.md-modal' });
   function openCloneModal(filename) {
     document.getElementById('clone-modal-desc').textContent = `"${filename}"을 어떻게 열까요?`;
-    document.getElementById('clone-modal').classList.add('open');
+    cloneM.open();
   }
 
   function closeCloneModal() {
-    document.getElementById('clone-modal').classList.remove('open');
+    cloneM.close();
   }
 
-  // ── 도움말 모달 ──
+  // ── 도움말 모달 (배경 클릭·ESC·닫기 버튼으로 닫힘) ──
+  const helpM = VUI.modal.bind('#help-modal', { className: 'open', dialog: '.md-modal', backdropClose: true });
   function openHelpModal() {
-    document.getElementById('help-modal').classList.add('open');
+    helpM.open();
   }
 
-  // ── 토스트 ──
-  let _toastTimer;
+  // ── 드롭다운 메뉴: ESC로 닫기 ──
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && (_shareMenuOpen || _saveMenuOpen || _viewMenuOpen || _openMenuOpen)) closeAllMenus();
+  });
+
+  // ── 토스트 (공용 VUI) ──
+  // duration: ms. 0이면 hideToast()를 부를 때까지 보이게(문서 변환 중 안내). '❌'로 시작하면 오류 토스트
   function showToast(msg, duration) {
-    const el = document.getElementById('md-toast');
-    el.textContent = msg;
-    el.classList.add('show');
-    clearTimeout(_toastTimer);
-    const ms = duration !== undefined ? duration : 2800;
-    if (ms > 0) _toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+    const type = /^❌/.test(String(msg)) ? 'error' : undefined;
+    VUI.toast(msg, { type, duration: duration === 0 ? 120000 : duration });
   }
   function hideToast() {
-    clearTimeout(_toastTimer);
-    document.getElementById('md-toast').classList.remove('show');
+    VUI.toast.hide();
   }
 
   // ── 초기화 (URL 해시 처리) ──
@@ -1799,7 +1797,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         }
         return;
       }
-      showToast('공유 링크를 읽을 수 없습니다.');
+      showToast('❌ 공유 링크를 읽을 수 없습니다.');
     } else {
       restoreDraft();   // 공유 링크가 아닐 때만 이 기기의 임시 저장본을 복원
     }

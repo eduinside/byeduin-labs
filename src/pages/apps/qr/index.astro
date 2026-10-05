@@ -144,8 +144,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       position: absolute;
       top: 8px;
       right: 8px;
-      width: 32px;
-      height: 32px;
+      width: 40px;
+      height: 40px;
       background: rgba(255,255,255,0.85);
       border: none;
       border-radius: 50%;
@@ -213,6 +213,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       font-size: 1.2rem;
       cursor: pointer;
       padding: 0;
+      min-width: 40px;
+      min-height: 40px;
+      margin: -10px -10px -10px 0;
+      border-radius: 50%;
+      font-family: inherit;
       color: var(--fg-muted);
       transition: color 0.2s;
     }
@@ -236,6 +241,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .scan-actions { display: flex; gap: 0.5rem; }
     .scan-actions a, .scan-actions button {
       font-size: 0.8rem;
+      min-height: 40px;
       padding: 0.4rem 0.875rem;
       border-radius: 0.5rem;
       border: none;
@@ -264,22 +270,57 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       margin-bottom: 0.75rem;
     }
     .history-header span { font-size: 0.85rem; font-weight: 700; }
-    .btn-clear { font-size: 0.75rem; color: var(--danger); background: none; border: none; cursor: pointer; font-family: inherit; }
+    .btn-clear { font-size: 0.75rem; color: var(--danger); background: none; border: none; cursor: pointer; font-family: inherit; min-height: 40px; padding: 0 8px; border-radius: 8px; }
+    .btn-title-all { font-size: 0.75rem; color: var(--primary); background: none; border: none; cursor: pointer; font-family: inherit; min-height: 40px; padding: 0 8px; border-radius: 8px; }
+    .history-header-actions { display: flex; align-items: center; gap: 2px; }
 
     #historyList { list-style: none; padding: 0; margin: 0; max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
 
     .history-item {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.25rem;
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 0.625rem;
-      padding: 0.625rem 0.75rem;
-      cursor: pointer;
+      padding: 0.25rem 0.25rem 0.25rem 0.375rem;
       transition: border-color 0.2s;
     }
     .history-item:hover { border-color: var(--primary); }
+    /* 항목 누르기(열기·복사·다시 생성) = 버튼 — 키보드로도 동작 */
+    .history-main {
+      flex: 1;
+      min-width: 0;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.375rem;
+      background: none;
+      border: none;
+      border-radius: 0.5rem;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .title-btn {
+      flex-shrink: 0;
+      min-height: 32px;
+      padding: 0 0.5rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: var(--primary);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      cursor: pointer;
+      position: relative;
+    }
+    .title-btn::after { content: ''; position: absolute; inset: -6px -2px; }   /* 누르는 영역 넓히기 */
+    .title-btn:disabled { opacity: 0.6; cursor: wait; }
+    .title-note { font-size: 0.7rem; color: var(--fg-muted); margin: 0.5rem 0 0; line-height: 1.5; }
 
     .history-icon {
       width: 28px; height: 28px;
@@ -293,8 +334,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     .history-text { flex: 1; min-width: 0; }
-    .history-text .main { font-size: 0.8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
-    .history-text .sub  { font-size: 0.7rem; color: var(--fg-muted); margin: 0; }
+    .history-text .main { display: block; font-size: 0.8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+    .history-text .sub  { display: block; font-size: 0.7rem; color: var(--fg-muted); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     .history-del {
       background: none;
@@ -305,8 +346,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       font-size: 1rem;
       line-height: 1;
       flex-shrink: 0;
-      min-width: 24px;
-      min-height: 24px;
+      min-width: 40px;
+      min-height: 40px;
+      border-radius: 50%;
+      font-family: inherit;
     }
     .history-del:hover { color: var(--danger); }
 
@@ -331,26 +374,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .w-full { width: 100%; }
     .hint { font-size: 0.72rem; color: var(--fg-muted); text-align: center; margin-top: 0.375rem; }
 
-    /* 토스트 */
-    #qr-toast {
-      position: fixed;
-      bottom: 2rem;
-      left: 50%;
-      transform: translateX(-50%) translateY(12px);
-      background: var(--fg);
-      color: var(--bg);
-      padding: 0.5rem 1.25rem;
-      border-radius: 2rem;
-      font-size: 0.85rem;
-      font-weight: 600;
-      opacity: 0;
-      transition: opacity 0.2s, transform 0.2s;
-      pointer-events: none;
-      z-index: 9999;
-      white-space: nowrap;
-    }
-    #qr-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
   </style>
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"QR Master","description":"QR 코드 생성, 카메라/이미지 스캔, 단축주소 올인원. 빠르고 간편한 QR 도구.","url":"https://eduin.info/apps/qr/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
@@ -372,17 +395,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   </div>
 
   <div class="qr-card">
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('generate')" id="tabBtnGenerate">생성하기</button>
-    <button class="tab-btn" onclick="switchTab('scan')" id="tabBtnScan">스캔하기</button>
+  <div class="tabs" role="tablist" aria-label="QR 기능">
+    <button type="button" class="tab-btn active" role="tab" aria-selected="true" aria-controls="generateTab" onclick="switchTab('generate')" id="tabBtnGenerate">생성하기</button>
+    <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="scanTab" tabindex="-1" onclick="switchTab('scan')" id="tabBtnScan">스캔하기</button>
   </div>
 
   <div class="card-body">
 
   <div class="tab-panels-wrap">
     <!-- 생성 탭 -->
-    <div id="generateTab" class="tab-panel active">
-      <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--fg-muted);margin-bottom:0.4rem;">
+    <div id="generateTab" class="tab-panel active" role="tabpanel" aria-labelledby="tabBtnGenerate">
+      <label for="urlInput" style="display:block;font-size:0.8rem;font-weight:600;color:var(--fg-muted);margin-bottom:0.4rem;">
         변환할 주소 (URL) 또는 텍스트
       </label>
       <input type="text" id="urlInput" class="hero-input" placeholder="https://example.com" onkeypress="if(event.key==='Enter')generateQR()">
@@ -401,23 +424,24 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     </div>
 
     <!-- 스캔 탭 -->
-    <div id="scanTab" class="tab-panel">
+    <div id="scanTab" class="tab-panel" role="tabpanel" aria-labelledby="tabBtnScan">
       <div class="scan-grid">
-        <button class="scan-opt" onclick="startCamera()">
+        <button type="button" class="scan-opt" onclick="startCamera()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M23 7l-7-5-7 5M23 7v10l-7 5-7-5V7"></path><path d="M16 12l-7-5-7 5"></path>
           </svg>
           카메라
         </button>
-        <label class="scan-opt" for="qrInputFile">
+        <!-- 숨긴 파일 입력은 키보드로 닿지 않으므로 버튼이 대신 연다 -->
+        <button type="button" class="scan-opt" onclick="document.getElementById('qrInputFile').click()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="9" cy="9" r="2"></circle>
             <path d="M21 15l-5-5L5 21"></path>
           </svg>
           파일
-          <input type="file" id="qrInputFile" accept="image/*" class="hidden" style="display:none" onchange="handleFileUpload(this)">
-        </label>
-        <button class="scan-opt" onclick="handleClipboardPaste()">
+        </button>
+        <input type="file" id="qrInputFile" accept="image/*" class="hidden" style="display:none" tabindex="-1" aria-hidden="true" onchange="handleFileUpload(this)">
+        <button type="button" class="scan-opt" onclick="handleClipboardPaste()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
           </svg>
@@ -428,17 +452,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
       <div id="cameraArea">
         <div id="reader"></div>
-        <button class="camera-close" onclick="stopCamera()">✕</button>
+        <button type="button" class="camera-close" onclick="stopCamera()" aria-label="카메라 끄기" title="카메라 끄기">✕</button>
       </div>
 
       <div id="scanResultArea">
         <div class="scan-result-header">
           <span>✓ 스캔 성공!</span>
-          <button class="btn-close-scan" onclick="closeScanResult()">✕</button>
+          <button type="button" class="btn-close-scan" onclick="closeScanResult()" aria-label="스캔 결과 닫기" title="닫기">✕</button>
         </div>
         <div id="scanResultText"></div>
         <div class="scan-actions">
-          <button class="btn-copy-scan" onclick="copyScanResult()">복사</button>
+          <button type="button" class="btn-copy-scan" onclick="copyScanResult()">복사</button>
           <a id="scanResultLink" class="btn-open-link" href="#" target="_blank" rel="noopener">↗ 이동</a>
         </div>
       </div>
@@ -446,10 +470,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <!-- 멀티 스캔 누적 목록 -->
       <div id="multiListArea">
         <div class="history-header">
-          <span id="multiListCount"></span>
-          <button onclick="clearMultiScans()" class="btn-clear">지우기</button>
+          <span id="multiListCount" role="status" aria-live="polite"></span>
+          <div class="history-header-actions">
+            <button type="button" id="btnTitleAll" onclick="fetchAllTitles()" class="btn-title-all" hidden>제목 모두 가져오기</button>
+            <button type="button" onclick="clearMultiScans()" class="btn-clear">지우기</button>
+          </div>
         </div>
         <ul id="multiScanList" style="list-style:none;padding:0;margin:0;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:0.5rem;"></ul>
+        <p class="title-note" id="titleNote" hidden>ℹ️ ‘제목 가져오기’를 누르면 웹페이지 제목을 읽으려고 그 주소를 eduin 서버로 보내요. 누르지 않으면 주소는 이 기기에만 있어요.</p>
         <button onclick="exportMultiMd()" class="hero-btn w-full mt-2" style="font-size:0.9rem;">
           📄 링크 정리 (MD Editor로)
         </button>
@@ -462,7 +490,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <div class="history-section">
       <div class="history-header">
         <span>히스토리</span>
-        <button class="btn-clear" onclick="clearHistory()">지우기</button>
+        <button type="button" class="btn-clear" onclick="clearHistory()">지우기</button>
       </div>
       <ul id="historyList"></ul>
     </div>
@@ -471,8 +499,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
 </div>
 
-<!-- 토스트 -->
-<div id="qr-toast"></div>
+<!-- 토스트·링크 창은 공용 VUI (/common/ui.js) -->
 
 
 <script is:inline="">
@@ -508,6 +535,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     if (!u) { showToast('웹 주소(http/https)만 열 수 있어요.'); return; }
     window.open(u, '_blank', 'noopener');
   }
+  // 목록 항목 누르기: 웹 주소는 새 창으로 열고, 그 밖의 글자는 복사
+  function activateScanned(text) {
+    if (httpUrl(text)) openScanned(text);
+    else VUI.copy(text, '복사했어요 ✓').then(ok => { if (!ok) showToast('복사하지 못했어요. 글자를 직접 선택해 복사해 주세요.', 'error'); });
+  }
 
   document.addEventListener('DOMContentLoaded', () => {
     loadHistory();
@@ -521,7 +553,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   function switchTab(tab) {
     ['generate', 'scan'].forEach(k => {
       document.getElementById(k === 'generate' ? 'generateTab' : 'scanTab').classList.toggle('active', k === tab);
-      document.getElementById(k === 'generate' ? 'tabBtnGenerate' : 'tabBtnScan').classList.toggle('active', k === tab);
+      const b = document.getElementById(k === 'generate' ? 'tabBtnGenerate' : 'tabBtnScan');
+      b.classList.toggle('active', k === tab);
+      b.setAttribute('aria-selected', k === tab ? 'true' : 'false');
+      b.tabIndex = k === tab ? 0 : -1;
     });
     if (tab === 'scan') {
       setTimeout(() => startCamera(), 100);
@@ -531,15 +566,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     try { localStorage.setItem(QR_TAB_KEY, tab); } catch {}
   }
 
-  // ── 토스트 ──
-  let _toastTimer;
-  function showToast(msg) {
-    const el = document.getElementById('qr-toast');
-    el.textContent = msg;
-    el.classList.add('show');
-    clearTimeout(_toastTimer);
-    _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
-  }
+  // 탭 키보드: ←/→로 탭 이동
+  document.querySelector('.tabs').addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const next = document.getElementById('tabBtnGenerate').classList.contains('active') ? 'scan' : 'generate';
+    switchTab(next);
+    document.getElementById(next === 'generate' ? 'tabBtnGenerate' : 'tabBtnScan').focus();
+  });
+
+  // ── 토스트 (공용 VUI) ──
+  function showToast(msg, type) { VUI.toast(msg, type); }
 
   /* ---- 생성 ---- */
   function generateQR(text) {
@@ -552,8 +589,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     document.getElementById('genResultArea').classList.add('show');
     if (!text) document.getElementById('urlInput').value = val;
     addToHistory(val, 'generate');
-    const isUrl = (() => { try { new URL(val); return true; } catch { return false; } })();
-    document.getElementById('btnShortenUrl').style.display = isUrl ? '' : 'none';
+    // 단축은 웹 주소(http/https)만 된다
+    document.getElementById('btnShortenUrl').style.display = httpUrl(val) ? '' : 'none';
   }
 
   function downloadQR() {
@@ -597,7 +634,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       showToast('카메라가 시작되었습니다.');
       startScanLoop();
     } catch (err) {
-      showToast('카메라를 시작할 수 없습니다. 권한을 확인해주세요.');
+      showToast('카메라를 시작할 수 없습니다. 권한을 확인해주세요.', 'error');
       document.getElementById('cameraArea').style.display = 'none';
     }
   }
@@ -830,8 +867,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (!multiScans.some(item => item.url === text)) {
         multiScans.push({ url: text, desc: '', tool: 'clipboard', scannedAt: new Date().toISOString() });
         addToHistory(text, 'clipboard');
-        fetchPageTitle(text);
-        renderMultiList();
+        renderMultiList();   // 제목은 자동으로 가져오지 않음(사용자가 '제목 가져오기'를 누를 때만 서버로 보냄)
         document.getElementById('scanResultText').textContent = text;
         const link = document.getElementById('scanResultLink');
         link.href = webUrl;
@@ -893,11 +929,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       addedCount++;
       lastAddedCode = code;
 
-      // URL이면 히스토리에 추가, 웹 주소면 백그라운드 제목 fetch
+      // URL이면 히스토리에 추가. 제목은 자동으로 가져오지 않는다(주소를 서버로 보내므로 '제목 가져오기'를 누를 때만)
       try {
         new URL(code);
         addToHistory(code, tool);
-        if (httpUrl(code)) fetchPageTitle(code);
       } catch {
         // URL이 아닌 데이터는 히스토리에 추가 안 함
       }
@@ -930,9 +965,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
   function copyScanResult() {
     const text = document.getElementById('scanResultText').textContent;
-    navigator.clipboard.writeText(text)
-      .then(() => showToast('복사되었습니다 ✓'))
-      .catch(() => showToast('복사 실패'));
+    VUI.copy(text, '복사했어요 ✓').then(ok => {
+      if (!ok) showToast('복사하지 못했어요. 글자를 직접 선택해 복사해 주세요.', 'error');
+    });
   }
 
   function closeScanResult() {
@@ -955,20 +990,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     btn.disabled = true;
     btn.textContent = '처리 중...';
     try {
-      const res = await fetch('/api/shorten', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: text }),
+      // 단축(실패하면 원래 주소) → 복사. 복사가 안 되면 링크·QR 창
+      const short = await VUI.share.shorten(text);
+      const ok = short !== text;
+      await VUI.share.copyOrShow(short, {
+        title: ok ? '🔗 단축 URL' : '🔗 원래 주소',
+        copiedMessage: ok ? '단축 URL을 복사했어요 ✓ ' + short : '단축하지 못해서 원래 주소를 복사했어요.',
+        note: ok ? '' : '단축하지 못해서 원래 주소를 보여 드려요.',
       });
-      const data = await res.json();
-      if (!res.ok || !data.shortURL) { console.error('[shorten] failed:', res.status, data); throw new Error((data && data.error) || 'shorten failed'); }
-      await navigator.clipboard.writeText(data.shortURL);
-      showToast('단축 URL 복사됨 ✓ ' + data.shortURL);
-    } catch {
-      try {
-        await navigator.clipboard.writeText(text);
-        showToast('단축 실패 — 원본 URL 복사됨');
-      } catch { showToast('복사에 실패했습니다.'); }
     } finally {
       btn.disabled = false;
       btn.textContent = '🔗 단축 URL 생성';
@@ -983,6 +1012,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     listArea.style.display = 'block';
     document.getElementById('multiListCount').textContent = multiScans.length + '개 항목';
     ul.innerHTML = '';
+    const webItems = multiScans.filter(it => httpUrl(it.url));
+    document.getElementById('titleNote').hidden = !webItems.length;
+    document.getElementById('btnTitleAll').hidden = !webItems.some(it => !(it.url in pageTitleCache));
 
     const toolIcons = {
       'camera': '📷',
@@ -995,26 +1027,62 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     for (let idx = multiScans.length - 1; idx >= 0; idx--) {
       const item = multiScans[idx];
       const display = item.url.length > 44 ? item.url.slice(0, 44) + '...' : item.url;
+      const isWeb = !!httpUrl(item.url);
       const li = document.createElement('li');
       li.className = 'history-item';
-      li.style.cursor = 'pointer';
-      li.addEventListener('click', () => openScanned(item.url));
 
-      const icon = document.createElement('div');
+      const mainBtn = document.createElement('button');
+      mainBtn.type = 'button';
+      mainBtn.className = 'history-main';
+      mainBtn.title = isWeb ? '새 창에서 열기' : '복사하기';
+      mainBtn.addEventListener('click', () => activateScanned(item.url));
+      const icon = document.createElement('span');
       icon.className = 'history-icon';
+      icon.setAttribute('aria-hidden', 'true');
       icon.textContent = toolIcons[item.tool] || '📷';
-      const textWrap = document.createElement('div');
+      const textWrap = document.createElement('span');
       textWrap.className = 'history-text';
-      const main = document.createElement('div');
+      const main = document.createElement('span');
       main.className = 'main';
       main.textContent = display;
       textWrap.appendChild(main);
+      // 가져온 제목(외부 데이터 — textContent)
+      const title = pageTitleCache[item.url];
+      if (title) {
+        const sub = document.createElement('span');
+        sub.className = 'sub';
+        sub.textContent = title;
+        textWrap.appendChild(sub);
+      }
+      mainBtn.append(icon, textWrap);
+      li.appendChild(mainBtn);
+
+      // 제목 가져오기: 사용자가 누를 때만 주소를 서버로 보낸다
+      if (isWeb && !(item.url in pageTitleCache)) {
+        const tBtn = document.createElement('button');
+        tBtn.type = 'button';
+        tBtn.className = 'title-btn';
+        tBtn.textContent = '제목 가져오기';
+        tBtn.setAttribute('aria-label', '제목 가져오기: ' + display);
+        tBtn.addEventListener('click', async () => {
+          tBtn.disabled = true;
+          tBtn.textContent = '가져오는 중…';
+          const t = await fetchPageTitle(item.url);
+          if (t === undefined) { tBtn.disabled = false; tBtn.textContent = '제목 가져오기'; return; }
+          if (!t) showToast('이 주소에서 제목을 찾지 못했어요.');
+          renderMultiList();
+        });
+        li.appendChild(tBtn);
+      }
+
       const del = document.createElement('button');
+      del.type = 'button';
       del.className = 'history-del';
       del.textContent = '✕';
-      del.addEventListener('click', (e) => { e.stopPropagation(); deleteMultiScan(idx); });
-
-      li.append(icon, textWrap, del);
+      del.title = '목록에서 지우기';
+      del.setAttribute('aria-label', '목록에서 지우기: ' + display);
+      del.addEventListener('click', () => deleteMultiScan(idx));
+      li.appendChild(del);
       ul.appendChild(li);
     }
   }
@@ -1022,6 +1090,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   function deleteMultiScan(idx) {
     multiScans.splice(idx, 1);
     renderMultiList();
+    // 누른 버튼이 사라졌으니 목록의 첫 버튼(없으면 스캔 탭 버튼)으로 포커스
+    const next = document.querySelector('#multiScanList button') || document.getElementById('tabBtnScan');
+    if (next) next.focus();
   }
 
   function clearMultiScans() {
@@ -1032,20 +1103,39 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     renderMultiList();
   }
 
-  // ── 페이지 제목 캐시 (URL → title|null) ──
-  const pageTitleCache = {};
+  // ── 페이지 제목 (URL → title|null) ──
+  // 사용자가 '제목 가져오기'를 눌렀을 때만 서버(/api/get-page-title)로 주소를 보낸다(개인정보 — 점검 8.3).
+  // 반환: 제목 문자열 / null(제목 없음) / undefined(요청 실패 — 캐시하지 않아 다시 시도 가능)
+  const pageTitleCache = Object.create(null);
 
   async function fetchPageTitle(url) {
     if (url in pageTitleCache) return pageTitleCache[url];
     try {
-      const res = await fetch('/api/get-page-title', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
-      });
-      pageTitleCache[url] = (await res.json()).title || null;
-    } catch { pageTitleCache[url] = null; }
-    return pageTitleCache[url];
+      const d = await VUI.apiFetch('/api/get-page-title', { json: { url }, timeout: 15000 });
+      pageTitleCache[url] = (d && typeof d.title === 'string' && d.title.trim()) ? d.title.trim().slice(0, 200) : null;
+      return pageTitleCache[url];
+    } catch (err) {
+      showToast(err.message || '제목을 가져오지 못했어요.', 'error');
+      return undefined;
+    }
+  }
+
+  // 목록의 웹 주소 제목을 한꺼번에(차례로) 가져오기
+  async function fetchAllTitles() {
+    const btn = document.getElementById('btnTitleAll');
+    const urls = [...new Set(multiScans.map(it => it.url))].filter(u => httpUrl(u) && !(u in pageTitleCache));
+    if (!urls.length) return;
+    btn.disabled = true;
+    btn.textContent = '가져오는 중…';
+    let fail = 0;
+    for (const u of urls) {
+      const t = await fetchPageTitle(u);
+      if (t === undefined) { fail++; break; }   // 한도·연결 오류면 멈춤(토스트는 fetchPageTitle이 띄움)
+    }
+    btn.disabled = false;
+    btn.textContent = '제목 모두 가져오기';
+    renderMultiList();
+    if (!fail) showToast('제목을 가져왔어요 ✓');
   }
 
   function exportMultiMd() {
@@ -1059,9 +1149,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       md += webUrl ? `${idx + 1}. [${linkText}](<${webUrl}>)\n` : `${idx + 1}. ${item.url}\n`;
     });
 
-    const payload = JSON.stringify({ data: { content: md, filename: `qr-scan-${today}.md` }, permission: 'clone' });
-    const encoded = btoa(encodeURIComponent(payload))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    // md-editor 공유 형식({data, permission}) — UTF-8 base64url(VUI.share.encode)
+    const encoded = VUI.share.encode({ data: { content: md, filename: `qr-scan-${today}.md` }, permission: 'clone' });
     location.href = `/apps/md-editor/#share=${encoded}`;
   }
 
@@ -1107,35 +1196,44 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     h.forEach(item => {
       const li = document.createElement('li');
       li.className = 'history-item';
-      li.style.cursor = 'pointer';
+      const mainBtn = document.createElement('button');
+      mainBtn.type = 'button';
+      mainBtn.className = 'history-main';
       // tool에 따라 다른 동작
       if (item.tool === 'generate') {
-        li.addEventListener('click', () => { switchTab('generate'); generateQR(item.text); });
+        mainBtn.title = 'QR 다시 만들기';
+        mainBtn.addEventListener('click', () => { switchTab('generate'); generateQR(item.text); });
       } else {
-        // camera, file, clipboard: 웹 주소(http/https)만 새 창에서 열기
-        li.addEventListener('click', () => openScanned(item.text));
+        // camera, file, clipboard: 웹 주소(http/https)는 새 창, 그 밖은 복사
+        mainBtn.title = httpUrl(item.text) ? '새 창에서 열기' : '복사하기';
+        mainBtn.addEventListener('click', () => activateScanned(item.text));
       }
       const toolInfo = getToolInfo(item.tool);
 
       // 스캔 내용은 외부 데이터 — innerHTML 대신 textContent
-      const icon = document.createElement('div');
+      const icon = document.createElement('span');
       icon.className = 'history-icon';
+      icon.setAttribute('aria-hidden', 'true');
       icon.textContent = toolInfo.icon;
-      const textWrap = document.createElement('div');
+      const textWrap = document.createElement('span');
       textWrap.className = 'history-text';
-      const main = document.createElement('div');
+      const main = document.createElement('span');
       main.className = 'main';
       main.textContent = item.text;
-      const sub = document.createElement('div');
+      const sub = document.createElement('span');
       sub.className = 'sub';
       sub.textContent = `${toolInfo.label} · ${item.date || ''}`;
       textWrap.append(main, sub);
+      mainBtn.append(icon, textWrap);
       const del = document.createElement('button');
+      del.type = 'button';
       del.className = 'history-del';
       del.textContent = '✕';
-      del.addEventListener('click', (e) => { e.stopPropagation(); deleteHistoryItem(item.text); });
+      del.title = '기록 지우기';
+      del.setAttribute('aria-label', '기록 지우기: ' + item.text.slice(0, 60));
+      del.addEventListener('click', () => deleteHistoryItem(item.text));
 
-      li.append(icon, textWrap, del);
+      li.append(mainBtn, del);
       list.appendChild(li);
     });
   }
@@ -1144,6 +1242,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const h = readHistory().filter(i => i.text !== text);
     writeHistory(h);
     renderHistory(h);
+    const next = document.querySelector('#historyList button');
+    if (next) next.focus();
   }
 
   function clearHistory() {

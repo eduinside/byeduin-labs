@@ -36,7 +36,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       padding:.6rem 1.1rem; font-size:.85rem; font-weight:600;
       background:none; border:none; border-bottom:2px solid transparent;
       color:var(--fg-muted); cursor:pointer; font-family:inherit;
-      transition:color 0.15s, border-color 0.15s;
+      transition:color 0.15s, border-color 0.15s; min-height:44px;
     }
     .tab-btn.active { color:var(--primary); border-bottom-color:var(--primary); }
     .tab-btn:hover  { color:var(--fg); }
@@ -60,14 +60,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     /* ── Stepper ── */
     .stepper { display:inline-flex; align-items:center; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
     .stp-btn {
-      width:30px; height:32px; background:var(--card-bg); border:none;
+      width:40px; height:40px; background:var(--card-bg); border:none;
       cursor:pointer; font-size:17px; color:var(--fg-muted); font-family:inherit;
       display:flex; align-items:center; justify-content:center; flex-shrink:0;
       transition:background .12s, color .12s; line-height:1;
     }
     .stp-btn:hover { background:rgba(0,111,238,0.08); color:var(--primary); }
     .stp-inp {
-      width:52px; height:32px; border:none;
+      width:52px; height:40px; border:none;
       border-left:1px solid var(--border); border-right:1px solid var(--border);
       text-align:center; font-size:13px; font-weight:700;
       background:var(--bg); color:var(--fg); font-family:inherit; outline:none;
@@ -98,7 +98,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       display:inline-flex; align-items:center; justify-content:center; gap:6px;
       padding:9px 16px; border-radius:9px; border:none;
       font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
-      transition:all .15s; min-height:38px; white-space:nowrap;
+      transition:all .15s; min-height:40px; white-space:nowrap;
     }
     .st-btn:disabled { opacity:.4; cursor:not-allowed; }
     .st-btn-primary { background:var(--primary); color:#fff; }
@@ -108,7 +108,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .st-btn-ghost.on { border-color:var(--primary); color:var(--primary); background:rgba(0,111,238,.08); }
     .st-btn-danger { background:rgba(243,18,96,.1); color:var(--danger); border:1px solid rgba(243,18,96,.2); }
     .st-btn-danger:hover { background:rgba(243,18,96,.18); }
-    .st-btn-sm { padding:5px 11px; font-size:12px; min-height:30px; border-radius:7px; }
+    .st-btn-sm { padding:5px 11px; font-size:12px; min-height:40px; border-radius:7px; }
     .act-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 
     /* ── Input ── */
@@ -168,7 +168,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       color:var(--primary); border-radius:99px; padding:4px 10px;
       font-size:12px; font-weight:600;
     }
-    .chip-del { background:none; border:none; cursor:pointer; color:var(--primary); font-size:15px; line-height:1; padding:0; opacity:.55; }
+    .chip { padding-right:2px; }
+    .chip-del {
+      background:none; border:none; cursor:pointer; color:var(--primary); font-size:16px; line-height:1;
+      padding:0; opacity:.6; min-width:32px; min-height:32px; border-radius:99px; font-family:inherit;
+      display:inline-flex; align-items:center; justify-content:center; position:relative;
+    }
+    .chip-del::after { content:''; position:absolute; inset:-6px; }   /* 누르는 영역 44px */
     .chip-del:hover { opacity:1; }
 
     /* ── Signature ── */
@@ -185,7 +191,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .detail-toggle {
       display:flex; align-items:center; gap:8px;
       font-size:12px; font-weight:600; color:var(--fg-muted);
-      cursor:pointer; padding:8px 0; background:none; border:none;
+      cursor:pointer; padding:8px 0; min-height:44px; background:none; border:none;
       font-family:inherit; user-select:none;
     }
     .detail-toggle svg { transition:transform .2s; }
@@ -202,17 +208,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       color:var(--primary); border-radius:99px; padding:3px 10px;
       font-size:11px; font-weight:700;
     }
-
-    /* ── Toast ── */
-    #st-toast {
-      position:fixed; bottom:2rem; left:50%;
-      transform:translateX(-50%) translateY(1rem);
-      background:var(--fg); color:var(--bg);
-      padding:10px 18px; border-radius:10px;
-      font-size:13px; font-weight:600; opacity:0; pointer-events:none;
-      transition:opacity .2s, transform .2s; z-index:9999; white-space:nowrap;
-    }
-    #st-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
     /* ── Print ── */
     @media print {
@@ -261,16 +256,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <p class="app-desc">대회·발표 채점 양식 배포, 공동 채점, 결과 수합 — 서버 없이 링크 하나로</p>
   </header>
 
-  <div class="tabs no-print">
-    <button class="tab-btn active" data-tab="make" onclick="switchTab('make')">📋 표 만들기</button>
-    <button class="tab-btn" data-tab="score" onclick="switchTab('score')">✏️ 채점하기</button>
-    <button class="tab-btn" data-tab="collect" onclick="switchTab('collect')">📊 수합하기</button>
+  <div class="tabs no-print" role="tablist" aria-label="채점표 단계">
+    <button type="button" class="tab-btn active" id="tab-make" role="tab" aria-selected="true" aria-controls="panel-make" data-tab="make" onclick="switchTab('make')">📋 표 만들기</button>
+    <button type="button" class="tab-btn" id="tab-score" role="tab" aria-selected="false" aria-controls="panel-score" tabindex="-1" data-tab="score" onclick="switchTab('score')">✏️ 채점하기</button>
+    <button type="button" class="tab-btn" id="tab-collect" role="tab" aria-selected="false" aria-controls="panel-collect" tabindex="-1" data-tab="collect" onclick="switchTab('collect')">📊 수합하기</button>
   </div>
 
   <!-- ═══════════════════════════════════════
        탭 1: 표 만들기
   ═══════════════════════════════════════ -->
-  <section class="panel active" id="panel-make">
+  <section class="panel active" id="panel-make" role="tabpanel" aria-labelledby="tab-make">
     <div class="st-card settings-card no-print" id="mk-settings-card">
       <!-- renderMkSettings() 로 채움 -->
     </div>
@@ -282,7 +277,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <!-- ═══════════════════════════════════════
        탭 2: 채점하기
   ═══════════════════════════════════════ -->
-  <section class="panel" id="panel-score">
+  <section class="panel" id="panel-score" role="tabpanel" aria-labelledby="tab-score">
     <div class="st-card no-print" id="sc-setup-card">
       <div class="st-sec">채점 정보</div>
       <div class="settings-row" style="align-items:flex-start">
@@ -315,18 +310,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <!-- ═══════════════════════════════════════
        탭 3: 수합하기
   ═══════════════════════════════════════ -->
-  <section class="panel" id="panel-collect">
+  <section class="panel" id="panel-collect" role="tabpanel" aria-labelledby="tab-collect">
     <div class="st-card no-print" id="cl-input-card">
       <div class="st-sec">채점 결과 링크 수집</div>
       <div style="display:flex;gap:8px;align-items:flex-start">
-        <textarea id="cl-url-input" class="st-input" style="flex:1;min-height:96px;resize:vertical;line-height:1.6" placeholder="채점자들이 보낸 결과 링크를 붙여넣으세요.
+        <textarea id="cl-url-input" class="st-input" aria-label="채점 결과 링크(여러 개 가능)" style="flex:1;min-height:96px;resize:vertical;line-height:1.6" placeholder="채점자들이 보낸 결과 링크를 붙여넣으세요.
 줄바꿈·쉼표로 여러 개 입력 가능.
 
 예) https://go.eduin.info/Ab3xZ"></textarea>
         <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
           <button class="st-btn st-btn-primary" id="cl-merge-btn" onclick="clMergeFromInput()">🧩 합치기</button>
           <button class="st-btn st-btn-danger st-btn-sm" onclick="clClearAll()">초기화</button>
-          <span id="cl-merge-status" style="font-size:12px;color:var(--fg-muted);text-align:center"></span>
+          <span id="cl-merge-status" role="status" aria-live="polite" style="font-size:12px;color:var(--fg-muted);text-align:center"></span>
         </div>
       </div>
       <div class="chip-list" id="cl-chip-list" style="margin-top:10px"></div>
@@ -338,7 +333,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   </section>
 </div>
 
-<div id="st-toast"></div>
+<!-- 토스트·공유 창은 공용 VUI (public/common/ui.js) -->
 
 <script is:inline="">
 // ════════════════════════════════════════════════════════
@@ -399,69 +394,63 @@ function shuffle(arr) {
   return arr;
 }
 
-let _toastTimer;
-function showToast(msg) {
-  const el = document.getElementById('st-toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
-}
+function showToast(msg, type) { VUI.toast(msg, type); }
 
 // ════════════════════════════════════════════════════════
 //  탭 전환
 // ════════════════════════════════════════════════════════
 let currentTab = 'make';
 function switchTab(id) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const on = b.dataset.tab === id;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+    b.tabIndex = on ? 0 : -1;
+  });
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + id));
   currentTab = id;
 }
+// 탭 키보드: ←/→/Home/End로 탭 이동
+document.querySelector('.tabs').addEventListener('keydown', (e) => {
+  const tabs = [...document.querySelectorAll('.tab-btn')];
+  const i = tabs.indexOf(document.activeElement);
+  if (i < 0) return;
+  let n = -1;
+  if (e.key === 'ArrowRight') n = (i + 1) % tabs.length;
+  else if (e.key === 'ArrowLeft') n = (i - 1 + tabs.length) % tabs.length;
+  else if (e.key === 'Home') n = 0;
+  else if (e.key === 'End') n = tabs.length - 1;
+  if (n < 0) return;
+  e.preventDefault();
+  switchTab(tabs[n].dataset.tab);
+  tabs[n].focus();
+});
 
 // ════════════════════════════════════════════════════════
 //  공유 URL 인코딩/디코딩 (vives-share 패턴)
 // ════════════════════════════════════════════════════════
+// 새 링크: VUI.share.encode(UTF-8 base64url — 한글이 옛 방식보다 약 3배 짧음)
 function buildShareURL(data, permission) {
-  const payload = JSON.stringify({ data, permission });
-  const encoded = btoa(encodeURIComponent(payload))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  return `${location.origin}/apps/scoring-table/#share=${encoded}`;
+  return `${location.origin}/apps/scoring-table/#share=${VUI.share.encode({ data, permission })}`;
 }
 
+// 새 형식 + 옛 형식(btoa(encodeURIComponent(payload)), 더 옛날 btoa(payload)) 모두 읽음
 function decodeSharePayload(encoded) {
-  const attempts = [
-    // 현재 인코딩: btoa(encodeURIComponent(payload)) + base64url
-    () => JSON.parse(decodeURIComponent(atob(padB64(encoded.replace(/-/g,'+').replace(/_/g,'/'))))),
-    // 구버전 호환: btoa(payload) + base64url (encodeURIComponent 없음)
-    () => JSON.parse(atob(padB64(encoded.replace(/-/g,'+').replace(/_/g,'/'))))
-  ];
-  for (const fn of attempts) {
-    try {
-      const p = fn();
-      if (p && p.data && p.permission) return p;
-    } catch {}
-  }
-  return null;
+  return VUI.share.decode(encoded, p => p && typeof p === 'object' && p.data && p.permission);
 }
-function padB64(s) { return s + '='.repeat((4 - s.length % 4) % 4); }
 
+// 단축 → 복사. 복사가 안 되면 링크 창(입력칸 + 복사 버튼)
 async function doShare(data, permission) {
   const longURL = buildShareURL(data, permission);
-  try {
-    const res = await fetch('/api/shorten', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: longURL }),
-    });
-    const j = await res.json();
-    if (!res.ok || !j.shortURL) { console.error('[shorten] failed:', res.status, j); throw new Error((j && j.error) || 'shorten failed'); }
-    await navigator.clipboard.writeText(j.shortURL);
-    showToast('링크가 복사되었습니다 ✓');
-  } catch {
-    try {
-      await navigator.clipboard.writeText(longURL);
-      showToast('링크가 복사되었습니다 (단축 미적용)');
-    } catch { prompt('링크를 복사하세요', longURL); }
-  }
+  await VUI.share.link(longURL, permission === 'form'
+    ? { title: '🔗 채점 양식 공유', desc: '채점자에게 이 링크를 보내 주세요. 열면 채점하기 탭에 양식이 들어가요.' }
+    : { title: '🔗 채점 결과 공유', desc: '수합하는 분에게 이 링크를 보내 주세요.' });
+}
+
+// 단축 주소 → 원래 주소(#share=…). 실패하면 Error(한국어 message)
+async function resolveShortURL(url) {
+  const j = await VUI.apiFetch('/api/resolve-short-url', { json: { shortURL: url } });
+  return (j && typeof j.resolvedURL === 'string') ? j.resolvedURL : '';
 }
 
 // ════════════════════════════════════════════════════════
@@ -641,28 +630,28 @@ function renderMkSettings() {
       <div class="sf">
         <span class="sf-label">참가 인원</span>
         <div class="stepper">
-          <button class="stp-btn" onclick="mkStep('count',-1)">−</button>
-          <input class="stp-inp" id="mk-count-inp" type="number" min="1" max="300" value="${mk.count}"
+          <button type="button" class="stp-btn" onclick="mkStep('count',-1)" aria-label="참가 인원 줄이기">−</button>
+          <input class="stp-inp" id="mk-count-inp" aria-label="참가 인원" type="number" min="1" max="300" value="${mk.count}"
             onchange="mkSetField('count',this.value)" style="width:56px">
-          <button class="stp-btn" onclick="mkStep('count',1)">+</button>
+          <button type="button" class="stp-btn" onclick="mkStep('count',1)" aria-label="참가 인원 늘리기">+</button>
         </div>
       </div>
       <div class="sf">
         <span class="sf-label">시상 비율 (<span id="mk-ratio-val">${mk.ratio}</span>%)</span>
         <div class="stepper">
-          <button class="stp-btn" onclick="mkStep('ratio',-1)">−</button>
-          <input class="stp-inp" id="mk-ratio-inp" type="number" min="0" max="100" step="5" value="${mk.ratio}"
+          <button type="button" class="stp-btn" onclick="mkStep('ratio',-1)" aria-label="시상 비율 줄이기">−</button>
+          <input class="stp-inp" id="mk-ratio-inp" aria-label="시상 비율(%)" type="number" min="0" max="100" step="5" value="${mk.ratio}"
             onchange="mkSetField('ratio',this.value)">
-          <button class="stp-btn" onclick="mkStep('ratio',1)">+</button>
+          <button type="button" class="stp-btn" onclick="mkStep('ratio',1)" aria-label="시상 비율 늘리기">+</button>
         </div>
       </div>
       <div class="sf">
         <span class="sf-label">영역 수</span>
         <div class="stepper">
-          <button class="stp-btn" onclick="mkStep('areaCount',-1)">−</button>
-          <input class="stp-inp" id="mk-acount-inp" type="number" min="1" max="12" value="${mk.areaCount}"
+          <button type="button" class="stp-btn" onclick="mkStep('areaCount',-1)" aria-label="영역 수 줄이기">−</button>
+          <input class="stp-inp" id="mk-acount-inp" aria-label="영역 수" type="number" min="1" max="12" value="${mk.areaCount}"
             onchange="mkSetField('areaCount',this.value)">
-          <button class="stp-btn" onclick="mkStep('areaCount',1)">+</button>
+          <button type="button" class="stp-btn" onclick="mkStep('areaCount',1)" aria-label="영역 수 늘리기">+</button>
         </div>
       </div>
     </div>
@@ -672,14 +661,14 @@ function renderMkSettings() {
       ${mk.areas.map((a, i) => `
         <div class="area-row">
           <span class="area-idx">영역 ${i + 1}</span>
-          <input class="st-input" type="text" value="${esc(a.name)}" placeholder="영역 이름"
+          <input class="st-input" type="text" value="${esc(a.name)}" placeholder="영역 이름" aria-label="영역 ${i + 1} 이름"
             style="width:130px" oninput="mkOnAreaName(${i},this.value)">
           <span style="font-size:12px;font-weight:600;color:var(--fg-muted)">만점</span>
           <div class="stepper">
-            <button class="stp-btn" onclick="mkAreaMaxStep(${i},-1)">−</button>
-            <input class="stp-inp" id="mk-amax-inp-${i}" type="number" min="1" max="200" value="${a.max}"
+            <button type="button" class="stp-btn" onclick="mkAreaMaxStep(${i},-1)" aria-label="영역 ${i + 1} 만점 줄이기">−</button>
+            <input class="stp-inp" id="mk-amax-inp-${i}" aria-label="영역 ${i + 1} 만점" type="number" min="1" max="200" value="${a.max}"
               onchange="mkOnAreaMax(${i},this)" style="width:56px">
-            <button class="stp-btn" onclick="mkAreaMaxStep(${i},1)">+</button>
+            <button type="button" class="stp-btn" onclick="mkAreaMaxStep(${i},1)" aria-label="영역 ${i + 1} 만점 늘리기">+</button>
           </div>
         </div>
       `).join('')}
@@ -694,18 +683,18 @@ function renderMkSettings() {
       <div class="award-range-row ${mk.awardRange.enabled ? '' : 'disabled'}" id="mk-award-fields">
         <span style="font-size:12px;font-weight:600;color:var(--fg-muted)">최저</span>
         <div class="stepper">
-          <button class="stp-btn" onclick="mkStepAward('min',-1)">−</button>
-          <input class="stp-inp" id="mk-min-inp" type="number" min="0" max="100" step="5" value="${mk.awardRange.min}"
+          <button type="button" class="stp-btn" onclick="mkStepAward('min',-1)" aria-label="시상 최저 비율 줄이기">−</button>
+          <input class="stp-inp" id="mk-min-inp" aria-label="시상 최저 비율(%)" type="number" min="0" max="100" step="5" value="${mk.awardRange.min}"
             onchange="mk.awardRange.min=clamp(this.value,0,100);this.value=mk.awardRange.min;document.getElementById('mk-min-val').textContent=mk.awardRange.min">
-          <button class="stp-btn" onclick="mkStepAward('min',1)">+</button>
+          <button type="button" class="stp-btn" onclick="mkStepAward('min',1)" aria-label="시상 최저 비율 늘리기">+</button>
         </div>
         <span id="mk-min-val" style="font-size:12px;color:var(--fg-muted)">${mk.awardRange.min}%</span>
         <span style="font-size:12px;font-weight:600;color:var(--fg-muted)">최고</span>
         <div class="stepper">
-          <button class="stp-btn" onclick="mkStepAward('max',-1)">−</button>
-          <input class="stp-inp" id="mk-max-inp" type="number" min="0" max="100" step="5" value="${mk.awardRange.max}"
+          <button type="button" class="stp-btn" onclick="mkStepAward('max',-1)" aria-label="시상 최고 비율 줄이기">−</button>
+          <input class="stp-inp" id="mk-max-inp" aria-label="시상 최고 비율(%)" type="number" min="0" max="100" step="5" value="${mk.awardRange.max}"
             onchange="mk.awardRange.max=clamp(this.value,0,100);this.value=mk.awardRange.max;document.getElementById('mk-max-val').textContent=mk.awardRange.max">
-          <button class="stp-btn" onclick="mkStepAward('max',1)">+</button>
+          <button type="button" class="stp-btn" onclick="mkStepAward('max',1)" aria-label="시상 최고 비율 늘리기">+</button>
         </div>
         <span id="mk-max-val" style="font-size:12px;color:var(--fg-muted)">${mk.awardRange.max}%</span>
       </div>
@@ -748,12 +737,12 @@ function renderMkTable() {
     const isAward = awardSet.has(row);
     return `<tr data-ridx="${rIdx}" class="${isAward ? 'award-row' : ''}">
       <td class="rank-td">${rankMap.get(row) ?? ''}</td>
-      <td class="name-td" contenteditable="true" data-ridx="${rIdx}" data-field="name"
+      <td class="name-td" contenteditable="true" role="textbox" aria-label="참가자 이름" data-ridx="${rIdx}" data-field="name"
         oninput="mkOnNameEdit(${rIdx},this.textContent)"
         onblur="mkNameBlur(${rIdx},this)">${esc(row.name)}</td>
       ${areas.map((a, ai) => {
         const v = row.scores[ai];
-        return `<td class="score-td" contenteditable="true"
+        return `<td class="score-td" contenteditable="true" role="textbox" inputmode="numeric" aria-label="${esc(a.name)} 점수(만점 ${a.max})"
           data-ridx="${rIdx}" data-ai="${ai}" data-max="${a.max}"
           oninput="mkOnScoreEdit(this)"
           onblur="mkScoreBlur(this)">${v != null ? v : ''}</td>`;
@@ -915,7 +904,7 @@ async function scLoadFromInput() {
   // 직접 공유 링크
   if (url.includes('#share=')) {
     const payload = decodeSharePayload(url.split('#share=')[1]);
-    if (!payload || payload.permission !== 'form') { showToast('양식 링크를 읽을 수 없습니다.'); return; }
+    if (!payload || payload.permission !== 'form') { showToast('양식 링크를 읽을 수 없습니다.', 'error'); return; }
     scApplyForm(payload.data);
     return;
   }
@@ -923,20 +912,16 @@ async function scLoadFromInput() {
   // 단축 URL → 서버에서 원본 URL 조회
   if (/^https?:\/\//.test(url)) {
     showToast('링크를 불러오는 중…');
-    try {
-      const res = await fetch('/api/resolve-short-url', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shortURL: url }),
-      });
-      const j = await res.json();
-      if (res.ok && j.resolvedURL && j.resolvedURL.includes('#share=')) {
-        const payload = decodeSharePayload(j.resolvedURL.split('#share=')[1]);
-        if (!payload || payload.permission !== 'form') { showToast('양식 링크를 읽을 수 없습니다.'); return; }
-        scApplyForm(payload.data);
-        return;
-      }
-    } catch {}
-    showToast('링크를 불러올 수 없습니다.');
+    let resolved = '';
+    try { resolved = await resolveShortURL(url); }
+    catch (err) { showToast(err.message || '링크를 불러올 수 없습니다.', 'error'); return; }
+    if (resolved.includes('#share=')) {
+      const payload = decodeSharePayload(resolved.split('#share=')[1]);
+      if (!payload || payload.permission !== 'form') { showToast('양식 링크를 읽을 수 없습니다.', 'error'); return; }
+      scApplyForm(payload.data);
+      return;
+    }
+    showToast('링크를 불러올 수 없습니다.', 'error');
     return;
   }
 
@@ -1021,7 +1006,7 @@ function renderScTable() {
         <td style="padding:3px 6px">
           <input class="score-num" type="number" min="0" max="${a.max}"
             value="${row.scores[ai] != null ? row.scores[ai] : ''}"
-            placeholder="0" data-ri="${ri}" data-ai="${ai}"
+            placeholder="0" data-ri="${ri}" data-ai="${ai}" aria-label="${esc(row.name)} ${esc(a.name)} 점수(만점 ${a.max})"
             oninput="scOnInput(this)" onblur="scOnBlur(this)">
         </td>
       `).join('')}
@@ -1126,15 +1111,9 @@ async function clResolveLine(line) {
   }
   if (/^https?:\/\//.test(line)) {
     try {
-      const res = await fetch('/api/resolve-short-url', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shortURL: line }),
-      });
-      const j = await res.json();
-      if (res.ok && j.resolvedURL && j.resolvedURL.includes('#share=')) {
-        return decodeSharePayload(j.resolvedURL.split('#share=')[1]);
-      }
-    } catch {}
+      const resolved = await resolveShortURL(line);
+      if (resolved.includes('#share=')) return decodeSharePayload(resolved.split('#share=')[1]);
+    } catch { /* 한 줄 실패는 '실패 n건'으로 묶어서 알림 */ }
   }
   return null;
 }
@@ -1163,7 +1142,7 @@ async function clMergeFromInput() {
     document.getElementById('cl-url-input').value = '';
     showToast(`✓ ${ok}명 수합 완료${fail ? ` (실패 ${fail}건)` : ''}`);
   } else {
-    showToast('읽을 수 있는 결과 링크가 없습니다.');
+    showToast('읽을 수 있는 결과 링크가 없습니다.', 'error');
   }
 }
 
@@ -1245,7 +1224,7 @@ function renderClChips() {
   const el = document.getElementById('cl-chip-list');
   el.innerHTML = cl.results.map((r, i) =>
     `<span class="chip">${esc(r.scorer)}
-      <button class="chip-del" data-idx="${i}" title="제거">×</button>
+      <button type="button" class="chip-del" data-idx="${i}" title="제거" aria-label="${esc(r.scorer)} 결과 제거">×</button>
     </span>`
   ).join('');
 }
@@ -1338,7 +1317,7 @@ function renderClTable() {
       <td class="rank-td">${rankMap.get(row.key) ?? ''}</td>
       <td class="name-td">${esc(row.name)}</td>
       ${row.vals.map((v, si) => `<td class="score-td cl-score-cell"
-        contenteditable="true" data-name="${esc(row.key)}" data-si="${si}"
+        contenteditable="true" role="textbox" inputmode="numeric" aria-label="${esc(row.name)} 점수" data-name="${esc(row.key)}" data-si="${si}"
         oninput="clOnScoreEdit(this)" onblur="clOnScoreBlur(this)">${v != null ? v : '-'}</td>`).join('')}
       <td class="total-td">${row.sum}</td>
       <td>${row.avg.toFixed(1)}</td>
@@ -1366,7 +1345,7 @@ function renderClTable() {
 
     <!-- 채점자별 상세 -->
     <div class="detail-section" id="cl-detail-section">
-      <button class="detail-toggle no-print" id="cl-detail-toggle" onclick="clToggleDetail()">
+      <button type="button" class="detail-toggle no-print" id="cl-detail-toggle" aria-expanded="false" aria-controls="cl-detail-body" onclick="clToggleDetail()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         채점자별 상세
       </button>
@@ -1405,6 +1384,7 @@ function clToggleDetail() {
   if (!toggle || !body) return;
   const open = body.classList.toggle('open');
   toggle.classList.toggle('open', open);
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 
 function clSetAggregate(mode) { cl.aggregateBy = mode; renderClTable(); clSaveLocal(); }

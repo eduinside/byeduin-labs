@@ -4,35 +4,11 @@
 let list = [];
 const LS_ITEMS = 'bookwishlist_items';
 
-/* ── 공유 데이터 디코딩 (index.html에서 복사) ── */
+/* ── 공유 데이터 디코딩 ──
+   VUI.share.decode: 새 형식(UTF-8 base64url) → 옛 형식 btoa(encodeURIComponent()) → btoa(json).
+   표준 base64·%2B 같은 URL 인코딩도 받아 준다(예전 링크 그대로). */
 function decodeShareData(encoded) {
-  // 1. base64url 방식 (현재 인코딩)
-  try {
-    const raw = encoded.replace(/-/g, '+').replace(/_/g, '/');
-    const pad = (4 - raw.length % 4) % 4;
-    const payload = decodeURIComponent(atob(raw + '='.repeat(pad)));
-    const data = JSON.parse(payload);
-    if (Array.isArray(data)) return data;
-  } catch {}
-
-  // 2. 표준 base64 방식 (구버전 링크 호환)
-  try {
-    const payload = decodeURIComponent(atob(encoded));
-    const data = JSON.parse(payload);
-    if (Array.isArray(data)) return data;
-  } catch {}
-
-  // 3. URL이 브라우저에서 %2B 등으로 인코딩된 경우 먼저 디코딩
-  try {
-    const decoded = decodeURIComponent(encoded);
-    const raw = decoded.replace(/-/g, '+').replace(/_/g, '/');
-    const pad = (4 - raw.length % 4) % 4;
-    const payload = decodeURIComponent(atob(raw + '='.repeat(pad)));
-    const data = JSON.parse(payload);
-    if (Array.isArray(data)) return data;
-  } catch {}
-
-  return null;
+  return VUI.share.decode(encoded, d => Array.isArray(d));
 }
 
 /* ── 공유 데이터 검증: 디코드 직후 형식을 맞춘다(수량·가격은 숫자로 강제) ── */
@@ -80,25 +56,10 @@ function parseLinks(text) {
   return [...new Set(links)]; // 중복 제거
 }
 
-/* ── Short.io API를 통한 URL 역추적 ── */
+/* ── Short.io API를 통한 URL 역추적 (실패하면 한국어 message의 Error) ── */
 async function resolveShortURL(shortURL) {
-  try {
-    const res = await fetch('/api/resolve-short-url', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shortURL }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'URL 추적 실패');
-    }
-
-    const data = await res.json();
-    return data.resolvedURL;
-  } catch (e) {
-    throw new Error('링크 추적 오류: ' + e.message);
-  }
+  const data = await VUI.apiFetch('/api/resolve-short-url', { json: { shortURL } });
+  return (data && typeof data.resolvedURL === 'string') ? data.resolvedURL : '';
 }
 
 /* ── 링크 처리 및 책 정보 추출 ── */
@@ -179,8 +140,6 @@ async function startGather() {
 
   // 중복 도서 수량 합산 및 출처 추적 (ISBN 기준)
   const booksByISBN = new Map();
-  console.log('collectedBooks count:', collectedBooks.length);
-  console.log('First book _source:', collectedBooks[0]?._source);
 
   for (const book of collectedBooks) {
     const key = book.isbn13;
@@ -200,7 +159,6 @@ async function startGather() {
     }
   }
   const uniqueBooks = Array.from(booksByISBN.values());
-  console.log('uniqueBooks _sources:', uniqueBooks.map(b => ({ title: b.title.substring(0, 20), _sources: b._sources })));
 
   // 결과 표시
   gatherBtn.disabled = false;
@@ -219,7 +177,7 @@ async function startGather() {
     document.getElementById('tableSection').style.display = '';
     showToast(`✓ ${uniqueBooks.length}권 수집 완료${errors ? ` (실패 ${errors}건)` : ''}`);
   } else {
-    showToast('수집된 책이 없습니다.');
+    showToast('수집된 책이 없습니다.', 'error');
   }
 }
 
@@ -258,8 +216,8 @@ function renderTable() {
       <td>${escHtml(b.author || '')}</td>
       <td>${escHtml(b.publisher)}</td>
       <td class="price">${b.priceStandard ? b.priceStandard.toLocaleString() + '원' : '–'}</td>
-      <td class="qty">${b.error ? '' : `<input class="qty-input" type="number" min="0" max="999" value="${b.qty}" data-idx="${idx}" onchange="updateQty(this)">`}</td>
-      <td class="del"><button class="del-btn" title="삭제" onclick="deleteRow(${idx})">✕</button></td>
+      <td class="qty">${b.error ? '' : `<input class="qty-input" type="number" min="0" max="999" value="${b.qty}" data-idx="${idx}" aria-label="${escHtml(b.title)} 주문수량" onchange="updateQty(this)">`}</td>
+      <td class="del"><button type="button" class="del-btn" title="삭제" aria-label="${escHtml(b.title)} 삭제" onclick="deleteRow(${idx})">✕</button></td>
     </tr>`;
   }).join('');
 
@@ -288,6 +246,10 @@ function deleteRow(idx) {
   list.splice(idx, 1);
   saveList();
   renderTable();
+  // 누른 버튼이 사라졌으니 같은 자리(없으면 위)의 삭제 버튼으로 포커스
+  const btns = document.querySelectorAll('#tableBody .del-btn');
+  const next = btns[Math.min(idx, btns.length - 1)] || document.getElementById('linkInput');
+  if (next) next.focus();
 }
 
 /* ── localStorage 저장 ── */
@@ -295,7 +257,7 @@ function saveList() {
   try {
     localStorage.setItem(LS_ITEMS, JSON.stringify(list));
   } catch {
-    showToast('브라우저 저장 공간이 부족해 목록을 저장하지 못했어요.');
+    showToast('브라우저 저장 공간이 부족해 목록을 저장하지 못했어요.', 'error');
   }
 }
 
@@ -349,14 +311,8 @@ function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-let toastTimer;
-function showToast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
-}
+// 공용 토스트(/common/ui.js)
+function showToast(msg, type) { VUI.toast(msg, type); }
 
 function goHome() {
   window.location.href = './';
@@ -367,36 +323,19 @@ async function shareList() {
   const validList = list.filter(b => !b.error);
   if (validList.length === 0) { showToast('공유할 책이 없습니다.'); return; }
 
-  // Base64url 인코딩
-  const json = JSON.stringify(validList);
-  const encoded = btoa(encodeURIComponent(json))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
+  // UTF-8 base64url(VUI.share.encode) — 받는 쪽(book-share)은 옛 형식도 읽는다
+  const longUrl = `${window.location.origin}/apps/book-share/#share=${VUI.share.encode(validList)}`;
 
-  const longUrl = `${window.location.origin}/apps/book-share/#share=${encoded}`;
-
-  // 단축 URL 생성
+  // 단축(실패하면 원래 링크) → 복사. 복사가 안 되면 링크 창(입력칸 + 복사 버튼)
+  const btn = document.getElementById('shareBtn');
+  if (btn) btn.disabled = true;
   try {
-    const res = await fetch('/api/shorten', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: longUrl }),
+    await VUI.share.link(longUrl, {
+      title: '🔗 수집한 목록 공유',
+      desc: `링크를 연 사람은 이 목록(${validList.length}권)을 도서 정보 나눔에서 볼 수 있어요.`,
     });
-    const data = await res.json();
-    if (!res.ok || !data.shortURL) { console.error('[shorten] failed:', res.status, data); throw new Error((data && data.error) || 'shorten failed'); }
-
-    // 단축 URL을 클립보드에 복사
-    await navigator.clipboard.writeText(data.shortURL);
-    showToast('단축 링크가 복사되었습니다.');
-  } catch {
-    // 폴백: 긴 URL 복사
-    try {
-      await navigator.clipboard.writeText(longUrl);
-      showToast('공유 링크가 복사되었습니다 (단축 미적용)');
-    } catch {
-      prompt('링크를 복사하세요', longUrl);
-    }
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 

@@ -230,26 +230,39 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 14px;
+      gap: 6px;
+      padding: 4px 6px 4px 4px;
       border: 1px solid var(--border);
       background: var(--card-bg);
       border-radius: 8px;
       font-size: 13px;
-      cursor: pointer;
       transition: all 0.15s;
     }
-    
+
     .history-item:hover {
       border-color: var(--primary);
       transform: translateY(-1px);
     }
-    
+
+    /* 내역 불러오기 = 버튼(키보드로도 누를 수 있게) */
     .history-info {
+      flex: 1;
+      min-width: 0;
+      min-height: 44px;
       display: flex;
       flex-direction: column;
+      justify-content: center;
       gap: 2px;
+      padding: 6px 10px;
+      border: 0;
+      background: none;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      border-radius: 6px;
     }
-    
+
     .history-main-text {
       font-weight: 600;
       font-family: 'JetBrains Mono', monospace;
@@ -266,9 +279,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       color: var(--danger);
       cursor: pointer;
       font-size: 12px;
-      padding: 4px 8px;
-      border-radius: 4px;
+      min-height: 40px;
+      min-width: 44px;
+      padding: 4px 10px;
+      border-radius: 6px;
       transition: background 0.12s;
+      font-family: inherit;
     }
     
     .delete-btn:hover {
@@ -282,26 +298,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       font-size: 13px;
     }
 
-    /* 토스트 */
-    #fd-toast {
-      position: fixed;
-      bottom: 2rem;
-      left: 50%;
-      transform: translateX(-50%);
-      max-width: calc(100vw - 32px);
-      background: var(--fg, #11181c);
-      color: var(--bg, #fff);
-      padding: 0.55rem 1.25rem;
-      border-radius: 2rem;
-      font-size: 0.85rem;
-      font-weight: 600;
-      text-align: center;
-      z-index: 9999;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-    #fd-toast.show { opacity: 1; }
+    .calc-actions { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+    .calc-actions .hero-btn { flex: 1 1 180px; min-height: 44px; }
+    .hero-btn.ghost-btn { background: var(--card-bg); color: var(--primary); border: 1px solid var(--primary); }
   </style>
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"기타소득 세금 계산기","description":"기타소득 수당의 세전 원금과 세후 금액을 자동으로 역산/계산합니다. 8.8% 세율 및 125,000원 과세최저한 완벽 적용.","url":"https://eduin.info/apps/allowance-calculator/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
@@ -329,15 +328,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       
       <!-- 금액 입력 -->
       <div class="input-group">
-        <input type="text" id="amountInput" class="hero-input large-input" placeholder="0" autocomplete="off" inputmode="numeric">
-        <span class="input-unit">원</span>
+        <input type="text" id="amountInput" class="hero-input large-input" placeholder="0" autocomplete="off" inputmode="numeric" aria-label="금액(원)">
+        <span class="input-unit" aria-hidden="true">원</span>
       </div>
 
       <!-- 모드 세그먼트 컨트롤 -->
-      <div class="segment-control">
-        <button id="btnAuto" class="segment-btn active" onclick="setMode('auto')">자동 판별</button>
-        <button id="btnPreTax" class="segment-btn" onclick="setMode('preTax')">세전 기준</button>
-        <button id="btnPostTax" class="segment-btn" onclick="setMode('postTax')">세후 기준</button>
+      <div class="segment-control" role="group" aria-label="계산 기준">
+        <button type="button" id="btnAuto" class="segment-btn active" aria-pressed="true" onclick="setMode('auto')">자동 판별</button>
+        <button type="button" id="btnPreTax" class="segment-btn" aria-pressed="false" onclick="setMode('preTax')">세전 기준</button>
+        <button type="button" id="btnPostTax" class="segment-btn" aria-pressed="false" onclick="setMode('postTax')">세후 기준</button>
       </div>
 
       <!-- 상태 표시 바 -->
@@ -371,10 +370,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         💡 <b>기타소득 과세최저한</b>: 세전 금액이 125,000원 이하인 경우 세금이 부과되지 않으므로 세전과 세후 금액이 동일합니다.
       </div>
       
-      <!-- 저장 버튼 -->
-      <button class="hero-btn" style="width: 100%; margin-top: 20px;" onclick="saveCurrentCalculation()">
-        💾 계산 내역 저장하기
-      </button>
+      <!-- 저장 · 링크 공유 -->
+      <div class="calc-actions">
+        <button type="button" class="hero-btn" onclick="saveCurrentCalculation()">
+          💾 계산 내역 저장하기
+        </button>
+        <button type="button" class="hero-btn ghost-btn" onclick="shareCalculation()">
+          🔗 이 계산 링크로 공유
+        </button>
+      </div>
 
     </div>
 
@@ -382,7 +386,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <div class="fd-card" style="padding: 20px;">
       <div class="history-header">
         <h3 class="fd-label" style="font-size: 14px; margin: 0;">📋 최근 계산 내역</h3>
-        <button id="clearAllBtn" class="delete-btn" style="color: var(--fg-muted);" onclick="clearAllHistory()">전체 삭제</button>
+        <button type="button" id="clearAllBtn" class="delete-btn" style="color: var(--fg-muted);" onclick="clearAllHistory()">전체 삭제</button>
       </div>
       <div id="historyList" class="history-list">
         <!-- 최근 내역 동적 삽입 -->
@@ -391,8 +395,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
   </main>
 
-  <!-- 공통 토스트 용 -->
-  <div id="fd-toast" role="status" aria-live="polite"></div>
+  <!-- 토스트는 공용 VUI.toast (public/common/ui.js) -->
 
   <script is:inline="">
     // 상태 변수
@@ -430,7 +433,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     // 초기화
     window.addEventListener('DOMContentLoaded', () => {
       // 콤마 및 입력 감지 바인딩
-      amountInput.addEventListener('input', handleInput);
+      amountInput.addEventListener('input', () => { clearShareHash(); handleInput(); });
       
       // 로컬스토리지 불러오기
       renderHistory();
@@ -460,15 +463,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     }
 
-    // 모드 변경
-    function setMode(mode) {
+    // 모드 변경 (keepHash: 공유 링크를 읽는 중이면 주소의 #share=를 지우지 않음)
+    function setMode(mode, keepHash) {
       currentMode = mode;
-      
+      if (!keepHash) clearShareHash();
+
       // 세그먼트 버튼 활성화 처리
-      [btnAuto, btnPreTax, btnPostTax].forEach(btn => btn.classList.remove('active'));
-      if (mode === 'auto') btnAuto.classList.add('active');
-      else if (mode === 'preTax') btnPreTax.classList.add('active');
-      else if (mode === 'postTax') btnPostTax.classList.add('active');
+      const active = { auto: btnAuto, preTax: btnPreTax, postTax: btnPostTax }[mode];
+      [btnAuto, btnPreTax, btnPostTax].forEach(btn => {
+        btn.classList.toggle('active', btn === active);
+        btn.setAttribute('aria-pressed', btn === active ? 'true' : 'false');
+      });
 
       // 입력된 값이 있다면 재계산
       const rawVal = amountInput.value.replace(/[^0-9]/g, '');
@@ -695,15 +700,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       history.forEach(item => {
         const div = document.createElement('div');
         div.className = 'history-item';
-        div.addEventListener('click', () => loadHistoryItem(item));
 
         div.innerHTML = `
-          <div class="history-info">
+          <button type="button" class="history-info" title="이 계산 다시 불러오기">
             <span class="history-main-text">세전: ${formatNumber(item.preTax)}원 ➜ 실수령: ${formatNumber(item.postTax)}원</span>
             <span class="history-sub-text">세금: ${formatNumber(item.tax)}원 (${escText(item.date)})</span>
-          </div>
-          <button class="delete-btn">삭제</button>
+          </button>
+          <button type="button" class="delete-btn" aria-label="세전 ${formatNumber(item.preTax)}원 내역 삭제">삭제</button>
         `;
+        div.querySelector('.history-info').addEventListener('click', () => loadHistoryItem(item));
         div.querySelector('.delete-btn').addEventListener('click', (e) => deleteHistoryItem(e, item.id));
         historyList.appendChild(div);
       });
@@ -727,6 +732,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const filtered = history.filter(item => item.id !== id);
       setHistory(filtered);
       renderHistory();
+      // 누른 삭제 버튼이 사라졌으니 포커스를 목록 첫 항목(없으면 금액 입력칸)으로
+      const next = historyList.querySelector('button') || amountInput;
+      next.focus();
       showToast('내역을 삭제했습니다.');
     }
 
@@ -770,51 +778,58 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
         return true;
       } catch (e) {
-        showToast('저장 공간이 부족해 내역을 저장하지 못했어요.');
+        showToast('저장 공간이 부족해 내역을 저장하지 못했어요.', 'error');
         return false;
       }
     }
 
-    // vives-share 공유 기능 연동 — 해시의 금액·모드는 외부 값이므로 정수·범위·허용 모드만 통과
+    // 공유 링크 읽기 — #share=<VUI.share.encode({amount, mode})>.
+    // 예전 형식(#<btoa(encodeURIComponent(json))>)도 VUI.share.decode가 읽는다.
+    // 해시의 금액·모드는 외부 값이므로 정수·범위·허용 모드만 통과
     function loadSharedHash() {
-      if (!window.location.hash) return;
-      try {
-        const hash = window.location.hash.substring(1);
-        const decoded = JSON.parse(decodeURIComponent(atob(hash)));
-        const amount = decoded ? toAmount(decoded.amount) : 0;
-        if (amount > 0) {
-          const mode = ['auto', 'preTax', 'postTax'].includes(decoded.mode) ? decoded.mode : 'auto';
-          setMode(mode);
-          amountInput.value = formatNumber(amount);
-          calculate(amount);
-          showToast('공유된 계산 내역을 로드했습니다.');
-        }
-      } catch (err) {
-        console.error('Failed to parse shared hash:', err);
+      if (!window.location.hash || window.location.hash.length < 2) return;
+      const decoded = VUI.share.decode(window.location.hash, o => o && typeof o === 'object' && toAmount(o.amount) > 0);
+      if (!decoded) {
+        showToast('공유 링크를 읽을 수 없어요.', 'error');
+        return;
       }
+      const amount = toAmount(decoded.amount);
+      const mode = ['auto', 'preTax', 'postTax'].includes(decoded.mode) ? decoded.mode : 'auto';
+      setMode(mode, true);
+      amountInput.value = formatNumber(amount);
+      calculate(amount);
+      showToast('공유받은 계산을 불러왔어요.');
     }
 
-    // 토스트 (예전: showToast가 정의돼 있지 않아 저장·삭제 때마다 오류)
-    let _toastTimer;
-    function showToast(msg) {
-      const el = document.getElementById('fd-toast');
-      if (!el) return;
-      el.textContent = msg;
-      el.classList.add('show');
-      clearTimeout(_toastTimer);
-      _toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+    // 금액·기준을 바꾸면 주소의 공유 해시는 더 이상 화면과 같지 않으므로 지운다
+    function clearShareHash() {
+      if (window.location.hash) history.replaceState(null, '', location.pathname + location.search);
     }
 
-    // 공유를 위한 해시 생성 오버라이드
-    window.buildSharePayload = function() {
+    // 토스트 (공용 VUI)
+    function showToast(msg, type) { VUI.toast(msg, type); }
+
+    // 공유할 내용: 입력한 금액 + 계산 기준만 (결과는 받는 쪽에서 다시 계산)
+    function buildSharePayload() {
       const rawVal = amountInput.value.replace(/[^0-9]/g, '');
       if (rawVal === '' || calculatedData.preTax === 0) return null;
-      
-      return {
-        amount: parseInt(rawVal, 10),
-        mode: currentMode
-      };
-    };
+      return { amount: toAmount(rawVal), mode: currentMode };
+    }
+
+    // 🔗 이 계산 링크로 공유 — 링크가 짧아 단축 없이 복사(안 되면 링크·QR 창)
+    function shareCalculation() {
+      const payload = buildSharePayload();
+      if (!payload || !payload.amount) {
+        showToast('먼저 올바른 금액을 입력해 주세요.');
+        return;
+      }
+      const hash = '#share=' + VUI.share.encode(payload);
+      history.replaceState(null, '', location.pathname + location.search + hash);   // 상단 공유 버튼도 같은 링크를 쓰게
+      VUI.share.copyOrShow(location.origin + location.pathname + hash, {
+        title: '🔗 계산 공유',
+        desc: '링크를 연 사람도 같은 금액·기준으로 계산한 결과를 볼 수 있어요.',
+      });
+    }
   </script>
 
 

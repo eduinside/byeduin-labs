@@ -78,9 +78,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     .new-chat-btn-icon {
-      width: 36px;
-      height: 36px;
-      min-width: 36px;
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
       border-radius: 8px;
       border: 1.5px solid var(--primary);
       background: rgba(0, 111, 238, 0.1);
@@ -519,23 +519,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       align-items: center;
       height: 58px;
     }
-    .cat-chip {
-      padding: 4px 10px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      background: none;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      color: var(--fg-muted);
-      font-family: inherit;
-      transition: all 0.12s;
-    }
-    .cat-chip.selected {
-      background: rgba(0,111,238,0.12);
-      border-color: var(--primary);
-      color: var(--primary);
-    }
 
     .chat-messages {
       flex: 1;
@@ -889,8 +872,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       cursor: pointer;
       color: var(--fg-muted);
       padding: 0;
-      width: 28px;
-      height: 28px;
+      width: 40px;
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1032,6 +1015,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .md-body a { color: var(--primary); }
     .md-body hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
 
+    /* 터치 기기: 누르는 영역 44px 이상(마우스 환경은 촘촘한 사이드바 그대로) */
+    @media (pointer: coarse) {
+      .sidebar-tab, .conv-item, .tree-cat-header, .tree-file, .recent-doc-item,
+      .chat-action-btn, .doc-action-btn, .welcome-chip, .selection-popup-btn,
+      .question-btn-cancel, .question-btn-submit, .question-modal-close { min-height: 44px; }
+      .conv-item { display: flex; align-items: center; }
+      .tree-file { align-items: center; }
+      .sidebar-label-btn { min-height: 40px; padding: 2px 10px; }
+      .source-chip { display: inline-flex; align-items: center; min-height: 40px; }
+      .sidebar-toggle-btn { min-width: 44px; min-height: 44px; }
+    }
+
     /* 애니메이션 */
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes pulse {
@@ -1103,7 +1098,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <!-- 자체 사이드바 구현 보유 → 셸 sidebar CSS(.app-aside 등) 미매칭, 레이아웃 그대로. 크롬도 기존 마크업 유지(주입 자동 스킵) -->
   <!-- 좌상단: 삼선 + 홈 -->
   <div class="top-overlay-left">
-    <button id="sidebarToggleBtn" class="sidebar-toggle-btn" onclick="toggleSidebar()" title="사이드바">☰</button>
+    <button type="button" id="sidebarToggleBtn" class="sidebar-toggle-btn" onclick="toggleSidebar()" title="사이드바" aria-label="사이드바 열기·닫기" aria-expanded="false">☰</button>
     <a href="/" class="overlay-btn" title="홈">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -1115,7 +1110,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
   <!-- 우상단: 테마 + 공유 -->
   <div class="top-overlay">
-    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드">💻</button>
+    <button type="button" id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드" aria-label="보기 모드 바꾸기">💻</button>
     <button class="overlay-btn" onclick="shareCurrentPage()" title="공유">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
@@ -1135,7 +1130,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <!-- 사이드바 헤더: 에듀서치 + 새 대화 버튼 -->
       <div class="sidebar-header">
         <div class="sidebar-brand">🔎 에듀서치</div>
-        <button class="new-chat-btn-icon" onclick="newChat()" title="새 대화">
+        <button type="button" class="new-chat-btn-icon" onclick="newChat()" title="새 대화" aria-label="새 대화">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -1144,23 +1139,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       </div>
 
       <!-- 탭 버튼 -->
-      <div class="sidebar-tabs">
-        <button class="sidebar-tab active" data-tab="conversations" onclick="switchTab('conversations')">💬 대화</button>
-        <button class="sidebar-tab" data-tab="documents" onclick="switchTab('documents')">📁 문서</button>
+      <div class="sidebar-tabs" role="tablist" aria-label="사이드바">
+        <button type="button" class="sidebar-tab active" id="tabBtnConv" role="tab" aria-selected="true" aria-controls="conversations-tab" data-tab="conversations" onclick="switchTab('conversations')">💬 대화</button>
+        <button type="button" class="sidebar-tab" id="tabBtnDocs" role="tab" aria-selected="false" aria-controls="documents-tab" tabindex="-1" data-tab="documents" onclick="switchTab('documents')">📁 문서</button>
       </div>
 
       <div class="sidebar-scrollable">
         <!-- 대화 목록 탭 -->
-        <div id="conversations-tab" class="sidebar-tab-content active">
+        <div id="conversations-tab" class="sidebar-tab-content active" role="tabpanel" aria-labelledby="tabBtnConv">
           <div class="sidebar-section-label">
             <span>대화 목록</span>
-            <button class="sidebar-label-btn" onclick="clearHistory()">지우기</button>
+            <button type="button" class="sidebar-label-btn" onclick="clearHistory()" aria-label="대화 목록 지우기">지우기</button>
           </div>
           <div id="convList"></div>
         </div>
 
         <!-- 문서 목록 탭 -->
-        <div id="documents-tab" class="sidebar-tab-content">
+        <div id="documents-tab" class="sidebar-tab-content" role="tabpanel" aria-labelledby="tabBtnDocs">
           <div class="sidebar-section-label">
             <span>문서 목록</span>
             <button class="sidebar-label-btn refresh" onclick="refreshAll(this)" title="문서 목록 새로고침">↻ 새로고침</button>
@@ -1186,7 +1181,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             <span style="font-size: 11px; color: var(--fg-muted); margin-top: 8px; display: block;">⚠️ AI는 실수를 할 수 있습니다. 중요한 판단은 원본 문서로 확인하세요.</span>
           </p>
           <div class="welcome-input-box">
-            <input type="text" id="welcomeInput" class="welcome-input" placeholder="무엇이 궁금하신가요?" onkeydown="if(event.key==='Enter')startFromWelcome()">
+            <input type="text" id="welcomeInput" class="welcome-input" aria-label="질문" placeholder="무엇이 궁금하신가요?" onkeydown="if(event.key==='Enter')startFromWelcome()">
             <button class="welcome-submit" onclick="startFromWelcome()">검색</button>
           </div>
           <div class="welcome-chips">
@@ -1213,10 +1208,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <span id="chatTitleText" style="font-weight: 700; font-size: 13px; color: var(--fg-muted);">새 대화</span>
         </div>
         <!-- 메시지 영역 -->
-        <div class="chat-messages" id="chatArea"></div>
+        <div class="chat-messages" id="chatArea" role="log" aria-live="polite" aria-label="대화"></div>
         <!-- 입력창 -->
         <div class="chat-input-bar">
-          <input type="text" id="searchInput" placeholder="질문을 입력하세요" onkeydown="if(event.key==='Enter')doSearch()">
+          <input type="text" id="searchInput" aria-label="질문" placeholder="질문을 입력하세요" onkeydown="if(event.key==='Enter')doSearch()">
           <button class="chat-send-btn" id="searchBtn" onclick="doSearch()">검색</button>
         </div>
       </div>
@@ -1252,10 +1247,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         <div class="question-modal-content">
           <div class="question-modal-header">
             <h2 id="questionModalTitle">이 문서에 대해 질문</h2>
-            <button class="question-modal-close" onclick="closeQuestionModal()">✕</button>
+            <button type="button" class="question-modal-close" onclick="closeQuestionModal()" aria-label="닫기">✕</button>
           </div>
           <div class="question-modal-body">
-            <input type="text" id="questionInput" class="question-input" placeholder="무엇이 궁금하신가요?" onkeydown="if(event.key==='Enter') submitQuestion()">
+            <input type="text" id="questionInput" class="question-input" aria-labelledby="questionModalTitle" placeholder="무엇이 궁금하신가요?" onkeydown="if(event.key==='Enter') submitQuestion()">
           </div>
           <div class="question-modal-footer">
             <button class="question-btn-cancel" onclick="closeQuestionModal()">취소</button>
@@ -1298,7 +1293,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     ───────────────────────────────────────── */
     function toggleSidebar() {
       const sidebar = document.querySelector('.app-sidebar');
-      sidebar.classList.toggle('sidebar-open');
+      const open = sidebar.classList.toggle('sidebar-open');
+      document.getElementById('sidebarToggleBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
     }
 
     /* ─────────────────────────────────────────
@@ -1307,11 +1303,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     function switchTab(tabName) {
       // 탭 버튼 상태 업데이트
       document.querySelectorAll('.sidebar-tab').forEach(tab => {
-        if (tab.dataset.tab === tabName) {
-          tab.classList.add('active');
-        } else {
-          tab.classList.remove('active');
-        }
+        const on = tab.dataset.tab === tabName;
+        tab.classList.toggle('active', on);
+        tab.setAttribute('aria-selected', on ? 'true' : 'false');
+        tab.tabIndex = on ? 0 : -1;
       });
 
       // 콘텐츠 표시/숨김
@@ -1328,6 +1323,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
        문서 질문 모달
     ───────────────────────────────────────── */
     let pendingQuestionData = null;
+    // 접근성(포커스 가두기·ESC·포커스 복귀)은 VUI.modal. ESC로 닫히면 대기 중인 질문도 버린다
+    const questionM = VUI.modal.bind('#questionModal', {
+      className: 'active',
+      dialog: '.question-modal-content',
+      initialFocus: '#questionInput',
+      onClose: () => { pendingQuestionData = null; },
+    });
 
     function showQuestionModal(type = 'question', docPath = '', docContent = '', selection = '') {
       pendingQuestionData = { type, docPath, docContent, selection };
@@ -1349,13 +1351,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }
 
       input.value = '';
-      modal.classList.add('active');
-      input.focus();
+      questionM.open();
     }
 
     function closeQuestionModal() {
-      const modal = document.getElementById('questionModal');
-      modal.classList.remove('active');
+      questionM.close();
       pendingQuestionData = null;
     }
 
@@ -1468,11 +1468,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       document.getElementById('chatArea').innerHTML = '';
       document.getElementById('searchInput').value = '';
       activeMessages = [];  // 대화 맥락 초기화
-      document.querySelectorAll('.conv-item').forEach(i => i.classList.remove('active'));
-      selectedCats.clear();
-      document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('selected'));
-      const allChip = document.querySelector('.cat-chip[data-cat=""]');
-      if (allChip) allChip.classList.add('selected');
+      document.querySelectorAll('.conv-item').forEach(i => { i.classList.remove('active'); i.removeAttribute('aria-current'); });
       showView('welcome');
       setTimeout(() => document.getElementById('welcomeInput')?.focus(), 50);
     }
@@ -1482,9 +1478,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     ───────────────────────────────────────── */
     async function loadDocs(force = false) {
       try {
-        const res = await fetch(force ? `${MANUAL_API}?_=${Date.now()}` : MANUAL_API);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        manualDocs = (await res.json()).docs || [];
+        const d = await VUI.apiFetch(force ? `${MANUAL_API}?_=${Date.now()}` : MANUAL_API);
+        manualDocs = (d && Array.isArray(d.docs)) ? d.docs : [];
         renderTree();
         renderRecentDocs();
         return true;
@@ -1509,8 +1504,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         const date = new Date(d.updatedAt);
         const dateStr = `${date.getFullYear()}.${String(date.getMonth()+1).padStart(2,'0')}.${String(date.getDate()).padStart(2,'0')}`;
         return `
-          <div class="recent-doc-item" data-path="${escHtml(d.id)}" onclick="openFile(this)">
-            <span class="recent-doc-icon">${catIcon(d.category)}</span>
+          <div class="recent-doc-item" role="button" tabindex="0" data-path="${escHtml(d.id)}" onclick="openFile(this)">
+            <span class="recent-doc-icon" aria-hidden="true">${catIcon(d.category)}</span>
             <div class="recent-doc-info">
               <div class="recent-doc-name">${escHtml(d.title)}</div>
               <div class="recent-doc-meta">${escHtml(d.dept || d.category)} · ${dateStr} 등록</div>
@@ -1523,7 +1518,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (btn) { btn.disabled = true; btn.dataset.orig = btn.textContent; btn.textContent = '새로고침 중…'; }
       try {
         const ok = await loadDocs(true);
-        showToast(ok ? '문서를 새로고침했습니다' : '새로고침 실패 — 기존 목록을 유지합니다');
+        showToast(ok ? '문서를 새로고침했습니다' : '새로고침하지 못했어요. 기존 목록을 그대로 둘게요.', ok ? undefined : 'error');
       } finally {
         if (btn) { btn.disabled = false; btn.textContent = btn.dataset.orig || '↻ 새로고침'; }
       }
@@ -1551,15 +1546,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
       panel.innerHTML = names.map(cat => `
         <div class="tree-category">
-          <div class="tree-cat-header" data-cat="${escHtml(cat)}" onclick="toggleCatTree(this)">
-            <span class="arrow">▶</span>
+          <div class="tree-cat-header" role="button" tabindex="0" aria-expanded="false" data-cat="${escHtml(cat)}" onclick="toggleCatTree(this)">
+            <span class="arrow" aria-hidden="true">▶</span>
             <span>${catIcon(cat)} ${escHtml(cat)}</span>
             <span style="margin-left:auto;font-size:10px;opacity:.4">${cats[cat].length}</span>
           </div>
           <div class="tree-files">
             ${cats[cat].map(d => `
-              <div class="tree-file" data-path="${escHtml(d.id)}" onclick="openFile(this)" title="${escHtml(d.title)}">
-                <span style="font-size:11px;flex-shrink:0;margin-top:1px">📄</span>
+              <div class="tree-file" role="button" tabindex="0" data-path="${escHtml(d.id)}" onclick="openFile(this)" title="${escHtml(d.title)}">
+                <span style="font-size:11px;flex-shrink:0;margin-top:1px" aria-hidden="true">📄</span>
                 <span style="flex:1;overflow-wrap:anywhere">${escHtml(d.title)}</span>
               </div>
             `).join('')}
@@ -1571,6 +1566,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       panel.querySelectorAll('.tree-cat-header').forEach(h => {
         if (open.has(h.dataset.cat)) {
           h.classList.add('open');
+          h.setAttribute('aria-expanded', 'true');
           if (h.nextElementSibling) h.nextElementSibling.classList.add('open');
         }
       });
@@ -1581,7 +1577,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     function toggleCatTree(header) {
-      header.classList.toggle('open');
+      header.setAttribute('aria-expanded', header.classList.toggle('open') ? 'true' : 'false');
       const files = header.nextElementSibling;
       if (files) files.classList.toggle('open');
       const open = getOpenCats() || new Set([...document.querySelectorAll('.tree-cat-header')].map(h => h.dataset.cat));
@@ -1612,9 +1608,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         </div>`;
 
       try {
-        const res = await fetch(`${MANUAL_API}?doc=${encodeURIComponent(id)}`);
-        if (!res.ok) throw new Error();
-        const { doc, chunks } = await res.json();
+        const d = await VUI.apiFetch(`${MANUAL_API}?doc=${encodeURIComponent(id)}`);
+        const doc = d && d.doc, chunks = (d && Array.isArray(d.chunks)) ? d.chunks : null;
+        if (!doc || !chunks) throw new Error('문서를 불러오지 못했습니다.');
         if (currentPath !== id) return;  // 그사이 다른 문서를 열었음
         document.getElementById('docTitleText').textContent = doc.title;
 
@@ -1634,8 +1630,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         openBtn.textContent = doc.fileType === 'pdf' ? '📑 원문 PDF' : '⬇️ 원문 내려받기';
         openBtn.onclick = () => window.open(`${MANUAL_API}?file=${encodeURIComponent(id)}`, '_blank');
         scrollToPage(page);
-      } catch {
-        document.getElementById('docContent').innerHTML = '<p style="color:var(--fg-muted)">문서를 불러오지 못했습니다.</p>';
+      } catch (err) {
+        if (currentPath !== id) return;
+        const p = document.createElement('p');
+        p.style.color = 'var(--fg-muted)';
+        p.textContent = '문서를 불러오지 못했습니다. ' + ((err && err.code) ? err.message : '');
+        const box = document.getElementById('docContent');
+        box.innerHTML = '';
+        box.appendChild(p);
       }
     }
 
@@ -1658,36 +1660,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     });
 
     /* ─────────────────────────────────────────
-       카테고리 필터
+       키보드: role="button" 목록 항목(문서·대화·출처 칩)을 Enter/Space로 누르기
     ───────────────────────────────────────── */
-    let selectedCats = new Set();
-
-    function buildCatFilter(catNames) {
-      const filter = document.getElementById('catFilter');
-      if (!filter) return;  // 현재 레이아웃엔 카테고리 필터 UI(#catFilter)가 없음 → null 참조 예외 방지
-      catNames.forEach(name => {
-        const btn = document.createElement('button');
-        btn.className = 'cat-chip';
-        btn.dataset.cat = name;
-        btn.textContent = catIcon(name) + ' ' + name;
-        btn.onclick = () => toggleCat(btn);
-        filter.appendChild(btn);
-      });
-    }
-
-    function toggleCat(btn) {
-      const cat = btn.dataset.cat;
-      if (cat === '') {
-        selectedCats.clear();
-        document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('selected'));
-        btn.classList.add('selected');
-      } else {
-        document.querySelector('.cat-chip[data-cat=""]').classList.remove('selected');
-        if (selectedCats.has(cat)) { selectedCats.delete(cat); btn.classList.remove('selected'); }
-        else { selectedCats.add(cat); btn.classList.add('selected'); }
-        if (selectedCats.size === 0) document.querySelector('.cat-chip[data-cat=""]').classList.add('selected');
-      }
-    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const t = e.target;
+      if (!t || t.tagName === 'BUTTON' || t.getAttribute('role') !== 'button') return;
+      e.preventDefault();
+      t.click();
+    });
 
     /* ─────────────────────────────────────────
        검색 (RAG)
@@ -1700,7 +1681,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const query = input.value.trim();
       if (!query) return;
 
-      console.log('🔍 [search] Starting search:', { query: query.substring(0, 50) });
       showView('chat');
       updateChatTitle(query);  // 대화 제목 업데이트
       isSearching = true;
@@ -1712,28 +1692,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       input.value = '';
 
       try {
-        console.log('📤 [search] Sending request to API');
-        const startTime = performance.now();
-
-        const res = await fetch('/api/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          // history: 직전까지의 대화 맥락(최근 8턴)을 함께 전달
-          body: JSON.stringify({ query, history: activeMessages.slice(-8) }),
-          signal: searchTimeoutSignal(),
+        // history: 직전까지의 대화 맥락(최근 8턴)을 함께 전달. AI 답변은 오래 걸릴 수 있어 90초까지 기다린다
+        const data = await VUI.apiFetch('/api/search', {
+          json: { query, history: activeMessages.slice(-8) },
+          timeout: SEARCH_TIMEOUT,
         });
-
-        const elapsed = (performance.now() - startTime).toFixed(0);
-        console.log('📊 [search] Response received:', { status: res.status, ok: res.ok, elapsed: elapsed + 'ms' });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          console.error('❌ [search] Server error:', { status: res.status, errData });
-          throw new Error(errData.error || `요청 실패 (HTTP ${res.status})`);
-        }
-
-        const data = await res.json();
-        console.log('✅ [search] Response parsed successfully:', { answerLength: data.answer?.length, sources: data.sources?.length, allProvided: data.allProvided });
+        if (!data || typeof data.answer !== 'string') throw new Error('답변을 받지 못했어요. 잠시 후 다시 시도해 주세요.');
 
         thinkingEl.remove();
         appendAiMsg(query, data.answer, data.sources || [], data.allProvided);
@@ -1741,9 +1705,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         activeMessages.push({ role: 'user', content: query });
         activeMessages.push({ role: 'ai', content: data.answer });
         saveHistory(query, data.answer, data.sources || []);
-        console.log('🎉 [search] Search completed successfully');
       } catch (err) {
-        console.error('❌ [search] Error occurred:', { name: err.name, message: err.message, stack: err.stack });
+        console.error('[search]', err && err.code, err && err.message);
         thinkingEl.remove();
         const errorMsg = `⚠️ ${fetchErrorMessage(err)}`;
         appendAiMsg(query, errorMsg, []);
@@ -1767,7 +1730,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const area = document.getElementById('chatArea');
       const el = document.createElement('div');
       el.className = 'chat-thinking';
-      el.innerHTML = `<div class="thinking-dot"></div><div class="thinking-dot"></div><div class="thinking-dot"></div><span>검색 중...</span>`;
+      el.innerHTML = `<div class="thinking-dot" aria-hidden="true"></div><div class="thinking-dot" aria-hidden="true"></div><div class="thinking-dot" aria-hidden="true"></div><span>검색 중...</span>`;
       area.appendChild(el);
       el.scrollIntoView({ behavior: 'smooth', block: 'end' });
       return el;
@@ -1797,8 +1760,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           ${sourceHtml}
         </div>
         <div class="chat-actions">
-          <button class="chat-action-btn" data-act="copy">복사</button>
-          <button class="chat-action-btn" data-act="share">MD Editor로 공유</button>
+          <button type="button" class="chat-action-btn" data-act="copy" aria-label="답변 복사">복사</button>
+          <button type="button" class="chat-action-btn" data-act="share">MD Editor로 공유</button>
         </div>`;
 
       el.querySelector('[data-act="copy"]').addEventListener('click', (e) => copyAnswer(e.currentTarget, answer));
@@ -1817,7 +1780,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     function sourceChip(s) {
       if (typeof s === 'string') return `<span class="source-chip" style="opacity:.6" title="이전 문서 저장소 — 더 이상 열 수 없음">${escHtml(sourceLabel(s))}</span>`;
       const page = window.VSafe ? VSafe.int(s.page, 1, 100000, 0) : (parseInt(s.page, 10) || 0);
-      return `<span class="source-chip" style="cursor: pointer;" title="${escHtml(s.path || '')}" data-doc="${escHtml(s.doc == null ? '' : s.doc)}" data-page="${page}">${escHtml(sourceLabel(s))}</span>`;
+      return `<span class="source-chip" role="button" tabindex="0" style="cursor: pointer;" title="${escHtml(s.path || '')}" data-doc="${escHtml(s.doc == null ? '' : s.doc)}" data-page="${page}">${escHtml(sourceLabel(s))}</span>`;
     }
     // 출처 칩 클릭: 이벤트 위임
     document.getElementById('chatArea').addEventListener('click', (e) => {
@@ -1830,11 +1793,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
        액션
     ───────────────────────────────────────── */
     function copyAnswer(btn, answer) {
-      navigator.clipboard.writeText(answer).then(() => {
+      VUI.copy(answer, '답변을 복사했어요 ✓').then(ok => {
+        if (!ok) { showToast('복사하지 못했어요. 답변을 직접 선택해 복사해 주세요.', 'error'); return; }
         const orig = btn.textContent;
         btn.textContent = '복사됨!';
         setTimeout(() => btn.textContent = orig, 1500);
-      }).catch(() => showToast('복사하지 못했어요. 답변을 직접 선택해 복사해 주세요.'));
+      });
     }
 
     function shareAnswer(query, answer, sources) {
@@ -1848,8 +1812,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (new Blob([content]).size > 7500) {
         safeContent = content.slice(0, 7000) + '\n\n*(내용이 잘렸습니다.)*';
       }
-      const payload = JSON.stringify({ data: { content: safeContent, filename }, permission: 'clone' });
-      const encoded = btoa(encodeURIComponent(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      // md-editor 공유 형식({data, permission}) — UTF-8 base64url(VUI.share.encode, md-editor는 옛 형식도 읽음)
+      const encoded = VUI.share.encode({ data: { content: safeContent, filename }, permission: 'clone' });
       window.open(`/apps/md-editor/#share=${encoded}`, '_blank');
     }
 
@@ -1863,7 +1827,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       try {
         localStorage.setItem(LS_HISTORY, JSON.stringify(list));
       } catch {
-        showToast('저장 공간이 부족해 대화 기록을 저장하지 못했어요');
+        showToast('저장 공간이 부족해 대화 기록을 저장하지 못했어요', 'error');
       }
       renderConvList();
     }
@@ -1883,7 +1847,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         return;
       }
       container.innerHTML = list.map(item =>
-        `<div class="conv-item" data-id="${escHtml(item.id)}">${escHtml(item.query)}</div>`
+        `<div class="conv-item" role="button" tabindex="0" data-id="${escHtml(item.id)}">${escHtml(item.query)}</div>`
       ).join('');
     }
     // 대화 목록 클릭: 이벤트 위임(기록 id를 인라인 onclick에 넣지 않음)
@@ -1899,7 +1863,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (!item) return;
 
       document.querySelectorAll('.conv-item').forEach(i => {
-        i.classList.toggle('active', i.dataset.id === id);
+        const on = i.dataset.id === id;
+        i.classList.toggle('active', on);
+        if (on) i.setAttribute('aria-current', 'true'); else i.removeAttribute('aria-current');
       });
 
       document.getElementById('chatArea').innerHTML = '';
@@ -1915,7 +1881,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     function clearHistory() {
       if (!confirm('대화 이력을 모두 지울까요?')) return;
-      localStorage.removeItem(LS_HISTORY);
+      try { localStorage.removeItem(LS_HISTORY); } catch {}
       renderConvList();
       newChat();
     }
@@ -1924,8 +1890,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
        공유
     ───────────────────────────────────────── */
     function shareCurrentPage() {
-      const url = window.location.href;
-      navigator.clipboard.writeText(url).then(() => showToast('링크를 복사했습니다')).catch(() => prompt('링크를 복사하세요', url));
+      // 복사가 안 되면 링크·QR 창(공용 VUI)
+      VUI.share.copyOrShow(window.location.href, { title: '🔗 에듀서치 공유' });
     }
 
     /* ─────────────────────────────────────────
@@ -1954,8 +1920,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     async function sendDocumentRequest(type, docPath, thinkingEl, question = null) {
       try {
-        console.log(`📤 [doc-request] Sending ${type} request for:`, docPath);
-
         const payload = {
           type: type,  // 'summarize' or 'question'
           documentPath: docPath,
@@ -1963,24 +1927,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           history: activeMessages.slice(-8)
         };
 
-        const startTime = performance.now();
-        const res = await fetch('/api/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: searchTimeoutSignal(),
-        });
-
-        const elapsed = (performance.now() - startTime).toFixed(0);
-        console.log(`📊 [doc-request] Response received:`, { status: res.status, elapsed: elapsed + 'ms' });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(`HTTP ${res.status}: ${errData.error || '요청 실패'}`);
-        }
-
-        const data = await res.json();
-        console.log('✅ [doc-request] Request completed successfully');
+        const data = await VUI.apiFetch('/api/search', { json: payload, timeout: SEARCH_TIMEOUT });
+        if (!data || typeof data.answer !== 'string') throw new Error('답변을 받지 못했어요. 잠시 후 다시 시도해 주세요.');
 
         thinkingEl.remove();
         const label = type === 'summarize' ? `📄 [요약] ${docTitle(docPath)}` : `❓ [질문] ${docTitle(docPath)}`;
@@ -1990,7 +1938,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         activeMessages.push({ role: 'ai', content: data.answer });
         saveHistory(label, data.answer, data.sources || []);
       } catch (err) {
-        console.error('❌ [doc-request] Error:', err.message);
+        console.error('[doc-request]', err && err.code, err && err.message);
         thinkingEl.remove();
         appendAiMsg('문서 요청', `오류 발생: ${fetchErrorMessage(err)}`, []);
       }
@@ -2046,22 +1994,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     // /api/search 호출 제한 시간(AI 답변은 길게 걸릴 수 있어 넉넉히 90초)
-    function searchTimeoutSignal() {
-      return (window.AbortSignal && typeof AbortSignal.timeout === 'function') ? AbortSignal.timeout(90000) : undefined;
-    }
+    const SEARCH_TIMEOUT = 90000;
+    // VUI.apiFetch 오류는 이미 한국어 문구(err.message). 시간 초과만 더 친절하게
     function fetchErrorMessage(err) {
-      if (err && (err.name === 'TimeoutError' || err.name === 'AbortError')) return '응답이 너무 오래 걸려요. 잠시 후 다시 시도해 주세요.';
-      if (err && err.name === 'TypeError') return '인터넷 연결을 확인해 주세요.';
+      if (err && err.code === 'timeout') return '응답이 너무 오래 걸려요. 잠시 후 다시 시도해 주세요.';
       return (err && err.message) || '요청에 실패했어요.';
     }
 
-    function showToast(msg) {
-      const t = document.createElement('div');
-      t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 16px;border-radius:8px;font-size:13px;z-index:9999;pointer-events:none';
-      t.textContent = msg;
-      document.body.appendChild(t);
-      setTimeout(() => t.remove(), 2000);
-    }
+    function showToast(msg, type) { VUI.toast(msg, type); }
 
     /* ─────────────────────────────────────────
        초기화
