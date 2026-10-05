@@ -418,20 +418,44 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       'setInterval(()=>postMessage("tick"),1000);'
     ], { type: 'application/javascript' })));
 
-    let alarms = JSON.parse(localStorage.getItem('alarms') || '[]');
-    let logs   = JSON.parse(localStorage.getItem('alarm_logs') || '[]');
+    // 저장값이 깨져 있어도 앱이 멈추지 않도록 안전하게 읽기
+    function loadList(key) {
+      try {
+        const v = JSON.parse(localStorage.getItem(key) || '[]');
+        return Array.isArray(v) ? v : [];
+      } catch (e) { return []; }
+    }
+    function saveList(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { console.warn('[timer] 저장 실패:', e); }
+    }
+    const LOG_MAX = 200;    // 실행 기록은 최근 200건만 보관
+    const RING_MAX_MS = 60 * 1000;   // 알람은 최대 60초 울린 뒤 저절로 멈춤
+    let alarms = loadList('alarms');
+    let logs   = loadList('alarm_logs');
     let audioCtx, isAlarmPlaying = false, currentTab = 'all', wakeLock = null;
+    let ringToken = 0, ringTimer = null, ringingMinuteKey = null;
     const lastFired = {};   // id → 'date H:M' — 같은 분 중복 발동 방지 (런타임 전용, 저장 안 함)
     const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    const refreshIcons = () => { try { window.lucide?.createIcons(); } catch (e) {} };   // 아이콘 CDN이 막혀도 시계·알람은 계속 동작
 
-    lucide.createIcons();
+    refreshIcons();
+    window.addEventListener('load', refreshIcons);   // 아이콘 스크립트가 늦게(defer) 오더라도 다시 그림
 
     if (window.Notification && Notification.permission !== 'granted') Notification.requestPermission();
 
     async function requestWakeLock() {
-      try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+      try {
+        if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+        if (wakeLock && !wakeLock.released) return;
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+      } catch {}
     }
     requestWakeLock();
+    // 탭을 다녀오면 브라우저가 화면 꺼짐 방지를 풀어 버리므로 다시 요청
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') requestWakeLock();
+    });
 
     worker.onmessage = () => {
       const now = new Date();
@@ -454,56 +478,72 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     function checkAlarms(now) {
-      if (isAlarmPlaying) return;
       const h = now.getHours(), m = now.getMinutes(), d = now.getDay();
       const minuteKey = `${now.toDateString()} ${h}:${m}`;   // 초 0을 놓쳐도(틱 지연·스로틀링) 그 분에 한 번은 발동
+      // 같은 분에 울리는 중이면 기다림(같은 시각 다중 알람 중첩 방지).
+      // 앞 알람을 끄지 않았더라도 다른 시각의 알람은 앞 알람을 멈추고 새로 울림 — 수업 종이 막히지 않게.
+      if (isAlarmPlaying && ringingMinuteKey === minuteKey) return;
       for (const a of alarms) {
-        if (a.enabled === false) continue;
+        if (a.enabled === false || typeof a.time !== 'string' || !Array.isArray(a.days)) continue;
         const [ah, am] = a.time.split(':').map(Number);
         if (ah === h && am === m && a.days.includes(d) && lastFired[a.id] !== minuteKey) {
           lastFired[a.id] = minuteKey;
-          triggerAlarm(a);
+          if (isAlarmPlaying) stopAlarm();
+          triggerAlarm(a, false, minuteKey);
           break;   // 같은 시각 다중 알람은 하나만 — 오버레이·소리 중첩 방지
         }
       }
     }
 
-    function triggerAlarm(alarm, isTest = false) {
+    function triggerAlarm(alarm, isTest = false, minuteKey = null) {
+      if (isAlarmPlaying) stopAlarm();
       isAlarmPlaying = true;
+      ringingMinuteKey = isTest ? null : minuteKey;   // 테스트 알람은 실제 알람이 오면 바로 양보
       document.getElementById('active-alarm-time').textContent = alarm.time;
       document.getElementById('active-alarm-name').textContent = alarm.name;
       document.getElementById('alarm-overlay').classList.add('show');
       if (!isTest) {
         logs.unshift({ name: alarm.name, time: alarm.time, date: new Date().toLocaleString() });
-        localStorage.setItem('alarm_logs', JSON.stringify(logs));
+        if (logs.length > LOG_MAX) logs.length = LOG_MAX;
+        saveList('alarm_logs', logs);
       }
       playAlarmSound();
+      clearTimeout(ringTimer);
+      ringTimer = setTimeout(stopAlarm, RING_MAX_MS);   // 아무도 끄지 않아도 60초 뒤 저절로 멈춤
       if (window.Notification && Notification.permission === 'granted') {
-        const n = new Notification('VIVES Timer', { body: `${alarm.name} (${alarm.time})` });
-        n.onclick = () => { window.focus(); stopAlarm(); };
+        try {
+          const n = new Notification('VIVES Timer', { body: `${alarm.name} (${alarm.time})` });
+          n.onclick = () => { window.focus(); stopAlarm(); };
+        } catch (e) {}
       }
     }
 
     function stopAlarm() {
       isAlarmPlaying = false;
+      ringingMinuteKey = null;
+      ringToken++;
+      clearTimeout(ringTimer); ringTimer = null;
       document.getElementById('alarm-overlay').classList.remove('show');
-      if (audioCtx) audioCtx.close();
+      if (audioCtx) { try { audioCtx.close(); } catch (e) {} audioCtx = null; }
     }
 
     function playAlarmSound() {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      let ctx;
+      try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+      audioCtx = ctx;
+      const token = ++ringToken;   // 이 알람의 소리만 이어 가도록 표시 (이전 알람 소리 루프와 겹치지 않음)
       const note = (f, t, d) => {
-        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        const o = ctx.createOscillator(), g = ctx.createGain();
         o.type = 'sine'; o.frequency.setValueAtTime(f, t);
         g.gain.setValueAtTime(0, t);
         g.gain.linearRampToValueAtTime(0.2, t + 0.1);
         g.gain.exponentialRampToValueAtTime(0.001, t + d);
-        o.connect(g); g.connect(audioCtx.destination);
+        o.connect(g); g.connect(ctx.destination);
         o.start(t); o.stop(t + d);
       };
       const seq = () => {
-        if (!isAlarmPlaying) return;
-        const t = audioCtx.currentTime;
+        if (!isAlarmPlaying || token !== ringToken || ctx.state === 'closed') return;
+        const t = ctx.currentTime;
         note(523.25, t, 2); note(659.25, t + 0.5, 2); note(783.99, t + 1.0, 2);
         setTimeout(seq, 3000);
       };
@@ -511,7 +551,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     function testAlarm() {
-      if (Notification.permission !== 'granted') Notification.requestPermission();
+      if (window.Notification && Notification.permission !== 'granted') Notification.requestPermission();
       triggerAlarm({ name: '테스트 알람', time: 'TEST' }, true);   // 테스트는 실행 기록에 남기지 않음
     }
 
@@ -551,14 +591,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       } else {
         alarms.push({ id: Date.now(), name, time, days, enabled: true });
       }
-      localStorage.setItem('alarms', JSON.stringify(alarms));
+      saveList('alarms', alarms);
       renderAlarms();
       closeModal('alarmModal');
     }
 
     function deleteAlarm(id) {
       alarms = alarms.filter(a => a.id !== id);
-      localStorage.setItem('alarms', JSON.stringify(alarms));
+      saveList('alarms', alarms);
       renderAlarms();
     }
 
@@ -566,7 +606,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const a = alarms.find(x => x.id === id);
       if (!a) return;
       a.enabled = a.enabled === false;   // 꺼져 있으면(false) 켜고, 그 외(true·미설정)는 끔
-      localStorage.setItem('alarms', JSON.stringify(alarms));
+      saveList('alarms', alarms);
       renderAlarms();
     }
 
@@ -576,7 +616,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const filtered = currentTab === 'all' ? alarms : alarms.filter(a => a.days.includes(currentTab));
       if (!filtered.length) {
         list.innerHTML = `<div class="empty-state"><i data-lucide="calendar-x"></i><p>설정된 알람이 없습니다.</p></div>`;
-        lucide.createIcons(); return;
+        refreshIcons(); return;
       }
       const dayNames = ['일','월','화','수','목','금','토'];
       filtered.sort((a,b) => a.time.localeCompare(b.time)).forEach(alarm => {
@@ -597,7 +637,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           </div>`;
         list.appendChild(div);
       });
-      lucide.createIcons();
+      refreshIcons();
     }
 
     function exportAlarms() {
@@ -615,9 +655,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           const data = JSON.parse(ev.target.result);
           if (!data || !Array.isArray(data.alarms)) throw new Error('형식 오류');
           alarms = data.alarms;
-          logs = Array.isArray(data.logs) ? data.logs : [];
-          localStorage.setItem('alarms', JSON.stringify(alarms));
-          localStorage.setItem('alarm_logs', JSON.stringify(logs));   // 복구한 기록도 저장 — 새로고침해도 유지
+          logs = Array.isArray(data.logs) ? data.logs.slice(0, LOG_MAX) : [];
+          saveList('alarms', alarms);
+          saveList('alarm_logs', logs);   // 복구한 기록도 저장 — 새로고침해도 유지
           renderAlarms();
           alert('불러오기 완료!');
         } catch (err) {
@@ -638,7 +678,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <div class="log-date">${esc(l.date)}</div>
         </div>`).join('');
     }
-    function clearLogs() { logs = []; localStorage.setItem('alarm_logs', '[]'); renderLogs(); }
+    function clearLogs() { logs = []; saveList('alarm_logs', logs); renderLogs(); }
     function openModal(id)  { document.getElementById(id).classList.add('open'); if (id === 'logModal') renderLogs(); }
     function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
@@ -699,8 +739,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       keys: ['alarms', 'alarm_logs'],
       appName: '알람',
       onApplied: function () {
-        try { alarms = JSON.parse(localStorage.getItem('alarms') || '[]'); } catch (e) {}
-        try { logs = JSON.parse(localStorage.getItem('alarm_logs') || '[]'); } catch (e) {}
+        alarms = loadList('alarms');
+        logs = loadList('alarm_logs');
         renderAlarms();
       },
     });

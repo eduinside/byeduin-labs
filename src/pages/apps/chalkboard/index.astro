@@ -336,7 +336,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     @media (max-width: 600px) {
       #btn-save, #btn-share { display: none !important; }
       #btn-more { display: flex; }
-      #btn-type, #btn-add-text, #btn-draw { font-size: 0; padding: 0 8px; }
+      #btn-type, #btn-add-text, #btn-draw, #btn-undo { font-size: 0; padding: 0 8px; }
       #btn-more { padding: 0 10px; }
     }
 
@@ -344,6 +344,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .is-view-only #btn-type,
     .is-view-only #btn-add-text,
     .is-view-only #btn-draw,
+    .is-view-only #btn-undo,
     .is-view-only #btn-save,
     .is-view-only #btn-share,
     .is-view-only #btn-more,
@@ -439,6 +440,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <line x1="5" y1="19" x2="19" y2="5"></line>
         </svg>
         선
+      </button>
+      <button id="btn-undo" class="tb-btn" onclick="undoLast()" title="되돌리기 (Ctrl+Z)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+        </svg>
+        되돌리기
       </button>
       <button id="btn-save" class="tb-btn" onclick="toggleSaveMenu(event)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -600,8 +607,20 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     /* ── Data helpers ── */
-    const getData = () => JSON.parse(localStorage.getItem(SK) || '{"boards":[]}');
-    const saveData = d => localStorage.setItem(SK, JSON.stringify(d));
+    const getData = () => {
+      try {
+        const d = JSON.parse(localStorage.getItem(SK) || '{"boards":[]}');
+        if (d && Array.isArray(d.boards)) return d;
+      } catch (e) { console.warn('[chalkboard] 저장 데이터를 읽지 못했어요:', e); }
+      return { boards: [] };
+    };
+    const saveData = d => {
+      try { localStorage.setItem(SK, JSON.stringify(d)); }
+      catch (e) {
+        console.warn('[chalkboard] 저장 실패:', e);
+        if (typeof showToast === 'function') showToast('저장 공간이 부족해 저장하지 못했어요');
+      }
+    };
     const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     function getBoard() {
       if (viewOnlyBoard) return viewOnlyBoard;
@@ -660,6 +679,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     function undoLast() {
+      if (viewOnlyBoard) return;
       if (!undoStack.length) { showToast('더 이상 되돌릴 수 없습니다'); return; }
       const snapshot = undoStack.pop();
       const board = getBoard();
@@ -1136,6 +1156,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     function deleteEl(id) {
+      if (viewOnlyBoard) return;
       const board = getBoard();
       pushHistory();
       board.elements = board.elements.filter(e => e.id !== id);
@@ -1170,17 +1191,28 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const sel = window.getSelection();
       sel.removeAllRanges(); sel.addRange(range);
 
+      // 이전 편집에서 남은 핸들러가 있으면 정리
+      if (div._editCleanup) div._editCleanup();
       const endFn = () => endEdit(id);
-      div.addEventListener('blur', endFn, { once: true });
-      div.addEventListener('keydown', e => {
+      // 편집이 끝날 때까지 모든 키 입력을 살핌 (한글 조합 중 Enter는 무시)
+      const keyFn = e => {
+        if (e.isComposing || e.keyCode === 229) return;
         if (e.key === 'Escape') { e.preventDefault(); endEdit(id); }
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); endEdit(id); }
-      }, { once: true });
+        else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); endEdit(id); }
+      };
+      div.addEventListener('blur', endFn);
+      div.addEventListener('keydown', keyFn);
+      div._editCleanup = () => {
+        div.removeEventListener('blur', endFn);
+        div.removeEventListener('keydown', keyFn);
+        div._editCleanup = null;
+      };
     }
 
     function endEdit(id) {
       const div = document.querySelector(`.cb-el[data-id="${id}"]`);
       if (!div || div.contentEditable !== 'true') return;
+      if (div._editCleanup) div._editCleanup();
       div.contentEditable = 'false';
       div.style.cursor = '';
       const board = getBoard();
@@ -1445,7 +1477,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const payload = JSON.stringify({ elements: board.elements, type: board.type, name: board.name, permission });
       const encoded = btoa(encodeURIComponent(payload))
         .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-      return `${location.origin}/chalkboard/#share=${encoded}`;
+      return `${location.origin}/apps/chalkboard/#share=${encoded}`;
     }
 
     let shareMenuOpen = false;
@@ -1484,21 +1516,26 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       btn.disabled = true;
       const longURL = buildShareURL(permission);
       if (!longURL) { btn.disabled = false; return; }
+      let url = longURL;
+      let shortened = false;
       try {
         const res = await fetch('/api/shorten', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url: longURL }),
         });
-        const data = await res.json();
-        if (!res.ok || !data.shortURL) { console.error('[shorten] failed:', res.status, data); throw new Error((data && data.error) || 'shorten failed'); }
-        await navigator.clipboard.writeText(data.shortURL);
-        showToast('링크가 복사되었습니다 ✓');
+        const data = await res.json().catch(() => null);
+        if (res.ok && data && data.shortURL) { url = data.shortURL; shortened = true; }
+        else console.error('[shorten] failed:', res.status, data);
+      } catch (err) {
+        console.error('[shorten] failed:', err);
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast(shortened ? '링크가 복사되었습니다 ✓' : '링크가 복사되었습니다 (단축 미적용)');
       } catch {
-        try {
-          await navigator.clipboard.writeText(longURL);
-          showToast('링크가 복사되었습니다 (단축 미적용)');
-        } catch { showToast('공유에 실패했습니다.'); }
+        // 클립보드를 쓸 수 없는 환경: 링크를 직접 보여 주어 손으로 복사할 수 있게 함
+        window.prompt('자동 복사가 안 돼요. 아래 링크를 길게 누르거나 Ctrl+C로 복사해 주세요.', url);
       } finally { btn.disabled = false; }
     }
 
@@ -1587,6 +1624,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         if (mode !== 'select') { mode = 'select'; cancelDraw(); updateTbState(); }
         else deselectAll();
       }
+      // 보기 전용 보드에서는 삭제·되돌리기·복사·붙여넣기를 막음
+      if (viewOnlyBoard) return;
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
         deleteEl(selectedId);
       }
