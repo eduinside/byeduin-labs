@@ -5,6 +5,10 @@
  * Also replaces leading emoji in h1.app-title with the matching Lucide icon.
  *
  * Usage: <script src="/common/seo-injector.js" defer></script>
+ *
+ * Astro 앱(AppLayout.astro)은 이 작업을 빌드 때 끝내므로 이 스크립트를 싣지 않는다
+ * (src/components/app-meta.ts). 지금은 public/apps/** 의 독립 HTML 페이지용이다.
+ * 빌드 때 헤더가 그려진 페이지(.app-header[data-static-header])에서는 아무것도 하지 않는다.
  */
 (function () {
   'use strict';
@@ -234,6 +238,7 @@
   /* ── entry point (defer-compatible) ─────────────── */
 
   function run() {
+    if (document.querySelector('[data-static-header]')) return; // 빌드 때 처리됨
     try {
       fetchAppsData(function (data) {
         try { inject(data); } catch (e) { /* silent */ }
