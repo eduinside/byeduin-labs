@@ -177,7 +177,9 @@
     msg = msg == null ? '' : String(msg);
     var V = root.VUI;
     if (!opts.local && V && typeof V.toast === 'function') {
-      try { V.toast(msg, opts); return; } catch (e) { /* 아래 기본 토스트로 */ }
+      // 앱들이 쓰는 'no' 유형은 VUI의 'error'(붉은색·role=alert)로 넘긴다
+      var vopts = opts.type === 'no' ? Object.assign({}, opts, { type: 'error' }) : opts;
+      try { V.toast(msg, vopts); return; } catch (e) { /* 아래 기본 토스트로 */ }
     }
     if (!hasDoc || !document.body) return;
     if (!toastEl || !toastEl.isConnected) {
