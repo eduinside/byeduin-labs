@@ -12,7 +12,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const DIST = path.resolve('dist');
+const DIST = path.resolve(process.env.SMOKE_DIST || 'dist'); // 여러 빌드를 따로 검사할 때 SMOKE_DIST=<폴더>
 const PORT = Number(process.env.SMOKE_PORT || 4399);
 const CHANNEL = process.env.SMOKE_CHANNEL || 'msedge';
 const WAIT_MS = Number(process.env.SMOKE_WAIT || 1500);
