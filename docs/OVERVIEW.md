@@ -12,7 +12,7 @@
 src/
 ├── pages/
 │   ├── index.astro        ← 홈 (카테고리 트리 사이드바)
-│   └── apps/<id>/index.astro ← 앱 페이지 (공개 34개 + `_<id>/` 비공개 5개는 빌드 제외)
+│   └── apps/<id>/index.astro ← 앱 페이지 (공개 35개 + `_<id>/` 비공개 5개는 빌드 제외)
 └── layouts/AppLayout.astro ← 공통 헤드(SEO 메타·공통 CSS/JS)와 <body data-shell> 래퍼
 
 public/                    ← 빌드 시 dist/로 그대로 복사 (경로 유지)
@@ -201,6 +201,17 @@ docs/                  ← 개발 문서
 ---
 
 ## 주요 변경 이력
+
+### 2026-10 — 3단계: 공용 모듈·홈 개편·접근성, 자리 배치 신규
+- **공용 모듈**: `public/common/ui.js`(`window.VUI` — 토스트·모달 접근성·공유 인코딩/단축/링크·QR 대화상자·apiFetch·조사·저장, 문서 `docs/common-ui.md`), `public/common/sim-kit.{js,css}`(`window.SimKit` — 미션 컨트롤러·피드백·저장·공유·타이머·효과음, 문서 `docs/sim-kit.md`). 시뮬레이션 12개 앱과 일반 앱 전부 이관.
+- **레이아웃**: 앱 헤더·JSON-LD·SEO 메타를 빌드 시 출력(`src/components/app-meta.ts`), `seo-injector.js`는 독립 HTML 3종에서만 동작.
+- **홈**: 카드 빌드 시 출력, 검색창(초성·`?q=`·`/` 단축키), 공지 접기, 모바일 카테고리 칩, 영문 앱 제목 한국어 우선.
+- **접근성**: 모달 포커스·ESC, 키보드 조작, 라벨·aria-live, 터치 44px, 글자 14px, `prefers-reduced-motion` 전역 규칙(`data-motion="keep"` 예외).
+- **chalkboard**: Pointer Events로 터치·펜 입력.
+- **동기화**: 코드 연결 시 덮어쓰기 확인, set 모드 삭제 표식(`'__del__'`).
+- **받아쓰기 데이터** 216건 정정(`docs/dictation-review-2026-10.md`).
+- **자리 배치(`seating`) 신규** — 업무경감. 학급 목록 → 전체화면 보드, 조건 랜덤 배치, Pointer Events, 인쇄(이름 크게·표시 숨김), localStorage만 사용. 계획 `docs/seating-plan.md`.
+- 배포: Actions 워크플로 삭제, Cloudflare Git 연동 빌드만 사용.
 
 ### 2026-10 — 전체 점검 후속 조치 (`docs/audit-2026-10.md`)
 - **숨김 앱 5개 비공개**: bubble-chat·madang·signage-maker·embed·shortcut 페이지 폴더를 `src/pages/apps/_<id>/`로 옮겨 빌드에서 제외(주소로도 404), 사이트맵·404 추천 제외, 관련 API 410. `hidden: true`는 이제 "비공개"를 뜻한다.
