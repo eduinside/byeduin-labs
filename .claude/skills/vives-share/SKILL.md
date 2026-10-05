@@ -6,7 +6,7 @@ description: >
   or when the user mentions "공유 기능", "share link", "URL 공유", or wants
   users to share app state via a link. Covers the full pattern:
   base64url encoding of state into the URL hash (#share=...), short.io URL
-  shortening via the existing /.netlify/functions/shorten proxy, permission
+  shortening via the existing /api/shorten proxy, permission
   levels (보기 전용 / 복제 허용) embedded in the payload, and recipient-side
   decoding with view-only mode or a modal — all consistent with the patterns
   already used in book-share and chalkboard.
@@ -55,7 +55,7 @@ function buildShareURL(permission) {
 
 ## Step 3: 단축 URL + 클립보드 복사 (발신 측)
 
-`/.netlify/functions/shorten`은 이미 배포된 프록시다. **재구현하지 않는다.**
+`/api/shorten`은 이미 배포된 프록시다. **재구현하지 않는다.**
 
 ```js
 async function doShare(permission) {
@@ -65,7 +65,7 @@ async function doShare(permission) {
   const btn = document.getElementById('btn-share');
   btn.disabled = true;
   try {
-    const res = await fetch('/.netlify/functions/shorten', {
+    const res = await fetch('/api/shorten', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: longURL }),
@@ -286,7 +286,7 @@ function cloneAndOpen() {
 - [ ] 모든 mutation 함수에 `if (viewOnlyData) return;` 가드 추가
 - [ ] 보기 전용 상태에서 공유 버튼 및 편집 컨트롤 비활성화
 - [ ] `navigator.clipboard` 실패 시 fallback (로컬 http에서 미지원)
-- [ ] `/.netlify/functions/shorten` 실패 시 원본 URL 복사로 fallback
+- [ ] `/api/shorten` 실패 시 원본 URL 복사로 fallback
 - [ ] 화면 이동(홈으로 돌아가기 등) 시 `viewOnlyData` 초기화 + CSS 클래스 제거
 - [ ] undo 스택이 있다면 보기 전용 진입/이탈 시 초기화
 
