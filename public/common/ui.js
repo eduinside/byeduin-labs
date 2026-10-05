@@ -310,7 +310,12 @@
     rec.open = true;
     stack.push(rec);
     listen(true);
-    setTimeout(function () { if (rec.open) focusInitial(rec); }, 0);
+    // 보이기 전환(visibility transition 등)이 끝나기 전이면 포커스가 안 들어가므로 몇 번 다시 시도
+    [0, 60, 250].forEach(function (ms) {
+      setTimeout(function () {
+        if (rec.open && !rec.el.contains(doc.activeElement)) focusInitial(rec);
+      }, ms);
+    });
     return handle(el);
   }
   function close(el, reason) {
@@ -326,7 +331,26 @@
     var p = rec.prevFocus;
     rec.prevFocus = null;
     if (rec.o.restoreFocus !== false && p && hadFocus && doc.contains(p) && typeof p.focus === 'function') {
-      try { p.focus({ preventScroll: true }); } catch (e) { try { p.focus(); } catch (e2) {} }
+      var refocus = function () {
+        if (!doc.contains(p)) return;
+        try { p.focus({ preventScroll: true }); } catch (e) { try { p.focus(); } catch (e2) {} }
+      };
+      // Enter·Space 키 처리 중에 닫혔다면 키를 뗀 뒤에 포커스를 돌려준다.
+      // 바로 돌려주면 같은 키 입력이 원래 버튼을 눌러 모달이 다시 열린다.
+      var ev = global.event;
+      if (ev && ev.type === 'keydown' && (ev.key === 'Enter' || ev.key === ' ')) {
+        var done = false;
+        var once = function () {
+          if (done) return;
+          done = true;
+          doc.removeEventListener('keyup', once, true);
+          setTimeout(refocus, 0);
+        };
+        doc.addEventListener('keyup', once, true);
+        setTimeout(once, 600);
+      } else {
+        refocus();
+      }
     }
     if (reason && typeof rec.o.onClose === 'function') { try { rec.o.onClose(reason); } catch (e) { if (global.console) console.error(e); } }
     return true;
