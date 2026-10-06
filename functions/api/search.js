@@ -9,7 +9,7 @@
  * 응답: { answer, sources: [{ n, doc, title, page, path }] }
  */
 
-import { generateContent } from './_ai.js';
+import { generateContent, DEFAULT_TIMELY_MODEL } from './_ai.js';
 import { toMatchQuery } from './_manual-text.js';
 import { checkOrigin, rateLimit, readJson, json } from './_guard.js';
 
@@ -17,7 +17,9 @@ const TOP_K = 6;             // bm25 상위 조각 수
 const EXPAND = 3;            // 상위 몇 개에 이웃(앞뒤) 조각을 붙일지
 const MAX_CONTEXT = 16000;   // 답변 컨텍스트 글자 상한
 const MAX_SUMMARY = 24000;   // 문서 요약 입력 상한
-const ANSWER_TIMELY_MODEL = 'google/gemini-2.5-flash';
+const ANSWER_TIMELY_MODEL = DEFAULT_TIMELY_MODEL;   // byeduin 기본 모델(_ai.js)
+// 긴 답변은 luna 기준 30초를 넘기도 해서(실측 4천 자 33초) 기본 30초 대신 75초. 화면은 90초까지 기다린다.
+const ANSWER_TIMEOUT_MS = 75000;
 const ANSWER_GEMINI_MODEL = 'gemini-flash-latest';
 
 
@@ -110,7 +112,7 @@ ${context}
 ${query}`;
   return generateContent({
     systemPrompt: SYSTEM, userMessage: prompt, env, temperature: 0.2,
-    timelyModel: ANSWER_TIMELY_MODEL, geminiModel: ANSWER_GEMINI_MODEL, request,
+    timelyModel: ANSWER_TIMELY_MODEL, geminiModel: ANSWER_GEMINI_MODEL, timeoutMs: ANSWER_TIMEOUT_MS, request,
   });
 }
 
@@ -126,7 +128,7 @@ async function summarize({ docId, query, env, request }) {
   const text = await generateContent({
     systemPrompt: SYSTEM,
     userMessage: `다음은 「${doc.title}」의 본문입니다. 교직원이 업무에 바로 쓸 수 있게 핵심을 장별로 요약하십시오(10~15줄, 마크다운).${extra}\n\n${body}`,
-    env, temperature: 0.3, timelyModel: ANSWER_TIMELY_MODEL, geminiModel: ANSWER_GEMINI_MODEL, request,
+    env, temperature: 0.3, timelyModel: ANSWER_TIMELY_MODEL, geminiModel: ANSWER_GEMINI_MODEL, timeoutMs: ANSWER_TIMEOUT_MS, request,
   });
   return json({ answer: text, sources: [{ n: 1, doc: doc.id, title: doc.title, page: null, pageLabel: '', path: '' }] });
 }

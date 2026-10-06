@@ -94,3 +94,21 @@ Timely 쪽 요청 제한은 **크레딧 잔액에 따라 동적으로 낮아진�
 3. 모델은 기본값(`flash-lite`)을 우선 쓰고, 답변 품질이 중요한 경로만 `timelyModel`/`geminiModel` 오버라이드로 승격한다(예: `search.js`의 2단계 라우터 패턴).
 4. 새 실패 케이스를 발견하면(예: 새로운 상태코드, Timely 응답 스키마 변경) `callTimely()` 한 곳만 고치면 전체 앱에 반영된다는 걸 기억하고, 개별 앱 파일에 예외 처리를 중복 작성하지 않는다.
 5. 이미지 생성이 필요하면 §7을 먼저 읽을 것 — 크기 파라미터의 실제 한계와 폴백 모델명이 언제든 바뀔 수 있다는 점을 전제로 설계.
+
+---
+
+## 8. 기본 모델: `openai/gpt-5.6-luna` (2026-10-06 운영자 결정)
+
+- `_ai.js`의 `DEFAULT_TIMELY_MODEL = 'openai/gpt-5.6-luna'`가 byeduin 전체 Timely 텍스트 기본값이다. 호출부에서 `timelyModel`을 넘기지 않으면 이 모델을 쓴다(search·dictation-ai도 기본값으로 바꿈). 직접 Gemini 폴백 모델(`geminiModel`)은 호출부별 그대로.
+- 모델 목록에서 확인한 이름: `openai/gpt-5.6-luna`(그 밖에 `-terra`, `-sol`, `:batch` 변형). `GET /api/v2/chat/bridge/info/models`.
+- 실측(2026-10-06, Timely 경유):
+  | 요청 | 결과 |
+  |---|---|
+  | 짧은 답 | 약 1~1.5초 |
+  | `temperature` 0.2·0.8 | 정상(거부하지 않음) |
+  | `response_format: {type:'json_object'}` | 정상, JSON만 반환 |
+  | 이미지 입력(`image_url` data URL) | 정상 — 인쇄형 시정표 10행 정확 인식, 약 5~6초 |
+  | 긴 답(약 4,300자) | **약 33초** → 기본 30초 타임아웃을 넘는다 |
+- 그래서 `generateContent`에 `timeoutMs`를 두었고 search(긴 답변)는 75초를 쓴다(화면은 90초까지 기다림).
+- 이미지 입력: `generateContent({ …, images: ['data:image/jpeg;base64,…'], json: true })`. Timely에는 `[{type:'text'},{type:'image_url'}]`, 직접 Gemini에는 `inline_data`로 보낸다. 이미지가 없으면 예전과 같은 문자열 메시지.
+- 이미지 입력 엔드포인트는 본문이 커서 CPU 10ms 예산을 고려해 클라이언트에서 줄여 보낸다(`timer-vision`: 긴 변 1280px·JPEG 0.75, 본문 상한 900KB).

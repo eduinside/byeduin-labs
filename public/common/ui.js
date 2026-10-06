@@ -51,6 +51,7 @@
     '.vui-toast-act:focus-visible{outline:2px solid currentColor;outline-offset:2px}',
     '.vui-btn-danger{background:var(--danger,#f31260);border-color:var(--danger,#f31260);color:#fff}',
     '.vui-field{display:flex;flex-direction:column;gap:6px}',
+    '.vui-field[hidden],.vui-btn[hidden],.vui-dialog p[hidden]{display:none}',
     '.vui-field .vui-input{font-size:16px}',
     '.vui-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}',
     '.vui-sr{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;',

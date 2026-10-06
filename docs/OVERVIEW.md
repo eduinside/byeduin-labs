@@ -206,6 +206,17 @@ docs/                  ← 개발 문서
 
 ## 주요 변경 이력
 
+### 2026-10 — 스마트 타이머 개편 + AI 기본 모델 `openai/gpt-5.6-luna` (`docs/timer-plan.md`)
+- **AI 기본 모델**: `_ai.js` `DEFAULT_TIMELY_MODEL = 'openai/gpt-5.6-luna'`(byeduin 전체 Timely 텍스트 기본). `generateContent`에 `images`(사진 입력)·`json`·`timeoutMs` 추가. search는 긴 답변용 75초. 실측·주의점은 `docs/timely-ai-pattern.md` 8장.
+- **스마트 타이머**(`src/pages/apps/timer`): 탭 4개(카운트다운·시정·알람·음악).
+  - 카운트다운(전체화면, 막대/원, 마지막 10초, 새로고침해도 이어짐), 자주 쓰는 타이머(최대 20).
+  - 시정 만들기·여러 개 저장·사용하기(종은 시정에서 실시간 계산), 초등·중학교 기본 틀, 수업 시간 일괄 변경, 공유 링크.
+  - **AI 시정 인식** `POST /api/timer-vision`(사진 → 편집 표, 저장 전 확인, 사진 저장 안 함, 한도 `timer-vision`).
+  - 쉬는 시간 음악(`public/apps/timer/music.json` 59곡 — 도담도담 포켓스쿨 채널 29곡 추천 표시, 내 음악 30곡, 다음 수업 30초 전 소리 줄이고 종에 멈춤).
+  - 화면 켜 두기(자동/항상/끔), **가림 화면 타이머**(정한 시간 동안 검은 창, 시간이 지나면 걷힘, 두 번 누르기·Esc는 확인).
+  - 동기화 키 확장(시정·자주 쓰는 타이머·내 음악·설정), 파일 백업 v2(v1 읽기 유지).
+- 공용: `VUI.confirm` 창에서 숨긴 입력칸이 보이던 문제 수정(`[hidden]` 규칙).
+
 ### 2026-10 — UI 다듬기: lucide 아이콘·버튼 체계·시뮬레이션 공통 규약 v2 (`docs/ui-polish-plan.md`)
 - 근거: UI·사용성 검토 보고서 `docs/ui-review-2026-10.md`(공개 39개 앱 + 홈, 375×740·844×390·1280×720 실측 + 코드 대조).
 - **아이콘**: UI 기호는 모두 lucide 선 아이콘. 빌드 때 쓰인 이름만 모은 스프라이트 `public/common/icons.svg`(`scripts/build-icons.mjs`, `npm run build`에 포함). `<Icon name>`(src/components/Icon.astro)·`VUI.icon()`·`[data-icon]`. 홈의 lucide 런타임(446KB) 제거. 학습 내용 이모지는 유지.

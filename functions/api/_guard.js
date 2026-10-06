@@ -42,6 +42,7 @@ export const LIMITS = {
   'spell-check':       { perMin: 60,  perDay: 1000,  siteDay: 3000 },
   'dictation-ai':      { perMin: 60,  perDay: 600,   siteDay: 2000 },
   'idea-lab':          { perMin: 300, perDay: 3000,  siteDay: 8000 },  // 한 반 30명 × 질문 5회 안팎
+  'timer-vision':      { perMin: 6,   perDay: 60,    siteDay: 400 },   // 시정표 사진 인식(이미지 입력 — 교사만, 가끔)
 
   // 외부 유료·쿼터 API 프록시
   'doc-parse':         { perMin: 10,  perDay: 100,   siteDay: 300 },   // Corepin(서버 키, 최대 50MB)
