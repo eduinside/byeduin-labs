@@ -1,9 +1,29 @@
 # SimKit — 시뮬레이션 앱 공용 키트
 
 - 파일: `public/common/sim-kit.js`, `public/common/sim-kit.css`
-- 전역: `window.SimKit` (v1.0.0, ES2017, 의존성 없음)
+- 전역: `window.SimKit` (v2.0.0, ES2017, 의존성 없음 — 아이콘은 `/common/icons.svg`)
 - 배경: 전체 점검 보고서 [audit-2026-10.md](audit-2026-10.md) 8.1 "공통 원인과 조치"
 - 상태: 모듈 완성. 앱 이관은 다음 단계(이 문서의 이관 안내를 따라 앱별로 진행)
+
+## 0. 공통 규약 v2 (2026-10-06, sim-kit 2.0.0)
+
+UI 검토([ui-review-2026-10.md](ui-review-2026-10.md)) 뒤 시뮬레이션 앱 전체의 **화면 규약**을 한 번에 맞췄다. 1.x는 내부 동작(미션 이동·타이머·저장·공유)만 통일했고, v2는 모양·말·배치를 통일한다. 자세한 결정 배경은 [ui-polish-plan.md](ui-polish-plan.md) 3장.
+
+| # | 규약 | 키트가 주는 것 |
+|---|---|---|
+| 1 | 밝은 화면 고정. 우주·밤하늘 같은 무대 그림만 내용상 어둡게 | `<AppLayout theme="light">` (`data-theme-lock`, 화면 모드 버튼 숨김) |
+| 2 | 토스트는 화면 위쪽 | `<AppLayout toast="top">` (독립 HTML은 `<body data-toast="top">`) |
+| 3 | 조작 버튼은 `.sk-btn`, 조작판마다 primary 하나 | `.sk-btn`, `--primary`, `--danger`, `--sm`, `--block`, 줄 `.sk-actions` |
+| 4 | 표준 용어·아이콘 | `SimKit.LABELS` — 확인하기(circle-check) / 결과 보기 / 다음 미션(arrow-right) / 다시 하기(rotate-ccw) / 처음부터(refresh-ccw, 확인 창 필수) / 자유 탐험으로(arrow-left) / 건너뛰기(skip-forward) / 재생·멈춤(play·pause) / 미션 도전(trophy) / 결과 보기(award). 방향어("오른쪽에서") 대신 "조작판에서" |
+| 5 | 미션 중에는 "자유 탐험으로"가 항상 보인다 | `mc.stop()` + 앱의 자유 탐험 화면 |
+| 6 | 결과 문구가 가려지면 보이게 스크롤 | `SimKit.feedback().show()` 기본 동작(`reveal:false`로 끔), 직접 쓰는 상자는 `SimKit.reveal(el)` |
+| 7 | 인트로·결과 화면은 낮은 화면에서도 잘리지 않게 | `.sk-screen` (100dvh, 넘치면 안에서 스크롤) |
+| 8 | 무대 위 떠 있는 요소 자리를 비워 둔다 | `--sk-stage-top`(60px) / `--sk-stage-bottom`(64px) |
+| 9 | 움직임은 경과 시간 기준, 움직임 줄이기 존중 | `SimKit.loop((dt, t) => …)` → `start/stop/running`, 탭 숨김 시 멈춤. `SimKit.motion.reduced()` |
+| 10 | 360px에서 그림 글자 11px 이상 | (앱별 viewBox·글자 보정) |
+| 11 | UI 기호는 lucide 아이콘, 학습 대상 이모지는 유지 | `SimKit.icon(name)` (= `VUI.icon`) |
+
+새 시뮬레이션은 위 11개를 체크리스트로 쓴다. 확인 크기: 360×740, 844×390, 1280×720.
 
 ## 1. 왜 만들었나
 

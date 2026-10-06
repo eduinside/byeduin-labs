@@ -11,6 +11,10 @@ interface Props {
   bodyFocus?: boolean;
   icons?: boolean;
   sync?: boolean;
+  /** 화면 모드 고정(시뮬레이션은 'light'). 저장된 선택을 무시하고 화면 모드 버튼을 숨긴다. */
+  theme?: 'light' | 'dark';
+  /** 공용 토스트를 화면 위쪽에(아래에 고정 조작줄이 있는 앱) */
+  toast?: 'top' | 'bottom';
 }
 
 const {
@@ -19,7 +23,9 @@ const {
   bodyPrint,
   bodyFocus,
   icons = false,
-  sync = false
+  sync = false,
+  theme,
+  toast
 } = Astro.props;
 
 // apps.json에서 현재 앱(/apps/<id>/)을 찾아 SEO 기본값·헤더·JSON-LD를 빌드 때 만든다.
@@ -45,7 +51,7 @@ const ld = app && !hasLd ? jsonLd(app, app.seo?.description || description, cano
 ---
 
 <!DOCTYPE html>
-<html lang="ko-KR">
+<html lang="ko-KR" data-theme-lock={theme} data-theme={theme}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -92,7 +98,7 @@ const ld = app && !hasLd ? jsonLd(app, app.seo?.description || description, cano
 
   <Fragment set:html={headHtml} />
 </head>
-<body data-shell={bodyShell} data-width={bodyWidth} data-print={bodyPrint ? "" : undefined} data-focus={bodyFocus ? "" : undefined}>
+<body data-shell={bodyShell} data-width={bodyWidth} data-print={bodyPrint ? "" : undefined} data-focus={bodyFocus ? "" : undefined} data-toast={toast === "top" ? "top" : undefined}>
   <Fragment set:html={bodyHtml} />
 </body>
 </html>

@@ -264,6 +264,21 @@ body::before {
 `hero-theme.css`의 `.hero-btn` / `.hero-btn-ghost`는 16px 기준의 더 큰 버전.  
 앱 내부 UI에는 `fd-btn` 계열, 공유·테마 오버레이에는 `overlay-btn` 사용.
 
+#### 공용 버튼 체계 (2026-10, `hero-theme.css`) — 새로 만들거나 고치는 화면은 이것을 쓴다
+
+| 역할 | 클래스 | 규칙 |
+|---|---|---|
+| 주 동작 | `.hero-btn` | 화면(또는 카드)당 **하나** |
+| 보조 | `.hero-btn .hero-btn-ghost` | |
+| 위험(지우기·초기화) | `.hero-btn .hero-btn-danger` | 테두리 빨강. 확인 창의 최종 버튼은 `.hero-btn-danger-solid`. **확인 창(`VUI.confirm`) 또는 되돌리기 토스트 필수** |
+| 작게 | `.hero-btn-sm` | 36px, 터치 기기 44px |
+| 아이콘만 | `.hero-btn-icon` | 정사각, `aria-label` 필수 |
+
+- 이동·다운로드·녹음 같은 동작에 빨강(danger)을 쓰지 않는다. `primary`와 `danger`를 한 버튼에 같이 붙이지 않는다.
+- 앱 고유 버튼 클래스를 유지해도 되지만 역할 구분(주/보조/위험)과 44px 터치 영역은 지킨다.
+- 버튼의 기호는 이모지 대신 lucide 아이콘(11장)을 글자 앞에 둔다.
+- 시뮬레이션 앱은 `.sk-btn` 계열(docs/sim-kit.md "공통 규약 v2").
+
 ### 5-5. 입력 필드
 
 ```css
@@ -473,6 +488,21 @@ function showToast(msg) {
 ## 11. Lucide 아이콘 & 소프트 컬러 블롭 (Blob) 규격
 
 앱들을 시각적으로 직관적이면서도 통일감 있게 구분하기 위해, 랜딩 페이지 및 각종 유틸리티 메뉴에서는 단색 이모지 대신 **Lucide 아이콘 + 카테고리별 소프트 컬러 배경 블롭(둥근 사각형)** 방식을 준수합니다.
+
+### 아이콘 쓰는 법 (2026-10 — 앱 안 UI 전체)
+
+- **UI 요소의 기호는 모두 lucide 선 아이콘**: 버튼·탭·배지·제목 앞 기호·상태 표시·토스트/안내 문구 앞 기호. 학습 내용 자체인 이모지(음식·동물·행성·캐릭터·국기 등)는 그대로 둔다.
+- 공용 스프라이트 `/common/icons.svg` 하나를 쓴다. `scripts/build-icons.mjs`가 소스에서 쓰인 이름만 모아 빌드 때 만든다(`npm run build`에 포함, 단독 `npm run icons`). lucide 런타임 스크립트는 쓰지 않는다.
+  - Astro: `import Icon from '…/components/Icon.astro'` → `<Icon name="printer" />`
+  - 스크립트: `VUI.icon('printer')` (시뮬레이션은 `SimKit.icon`도 같음)
+  - 정적 HTML: `<span data-icon="printer"></span>`
+  - 이름을 계산해서 쓰면 파일에 `// @icons check x` 주석(자동 수집용). `node scripts/build-icons.mjs --check`가 없는 이름을 잡는다.
+- 크기는 글자 크기(1em, 버튼 안 1.15em), 색은 글자색, 선 두께 2. 뜻을 전하는 아이콘만 있는 버튼은 `aria-label`.
+- 자주 쓰는 대응: 저장 save · 복사 copy · 링크 link · 인쇄 printer · 내려받기 download · 불러오기 upload · 지우기 trash-2 · 고치기 pencil · 추가 plus · 닫기 x · 성공 circle-check · 실패 circle-x · 주의 triangle-alert · 안내 info · 힌트 lightbulb · 무작위 dices · 미션 trophy · 소리 volume-2 / volume-x · 재생 play / pause · 다시 rotate-ccw · 처음부터 refresh-ccw · 이전/다음 arrow-left / arrow-right · 화면 모드 monitor / sun / moon · 동기화 refresh-cw.
+
+### 제목 표기
+
+화면 제목은 한국어. 영문 이름이 있던 앱은 작은 부제로 병기: `<h1 class="app-title">플래시 카드 <span class="app-title-en">Flash Deck</span></h1>`. 제목 앞 이모지는 쓰지 않는다(헤더 블롭 아이콘이 있음).
 
 ### 아이콘 컨테이너 규격
 - **크기**: `width: 44px; height: 44px`

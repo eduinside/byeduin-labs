@@ -237,3 +237,42 @@ VUI.storage.remove('key');
 - `mountDocSync` 코드 연결: 이 기기와 코드(서버) 양쪽에 서로 다른 내용이 있으면 `confirm()` 두 번으로 묻습니다 — ① 코드 내용으로 바꿀까요? ② (아니면) 이 기기 내용을 코드에 올릴까요? 둘 다 취소면 연결하지 않습니다. 서버에 닿지 못하면 연결하지 않습니다.
 - `createSet` 삭제 표식: `del()`이 서버 행을 지우지 않고 `value='__del__'`로 덮어씁니다(서버 변경 없음, 항목 단위 LWW). 다른 기기가 지워진 항목을 되살리지 않습니다. 끄려면 `createSet({ …, tombstones: false })`. 표식 행도 코드당 항목 수 상한(`maxItems`, 기본 500)에 포함됩니다 — Read Tree(책 354권)는 여유가 있습니다.
 - 동기화 토스트는 `VUI.toast`를 씁니다(없으면 같은 색 토큰의 임시 토스트).
+
+---
+
+## 9. 되돌리기 토스트·토스트 위치 (2026-10)
+
+```js
+// 지운 뒤 되돌리기 — 확인 창 대신 쓰기 좋다(되돌릴 수 있는 삭제)
+const removed = items.splice(i, 1)[0];
+render();
+VUI.toast('알람을 지웠어요', { action: { label: '되돌리기', onClick: () => { items.splice(i, 0, removed); render(); } } });
+```
+
+- 버튼이 있는 토스트는 6초 이상 보이고 눌러도 된다(`pointer-events`).
+- 위치: 기본은 화면 아래 가운데. 아래에 고정 바가 있는 앱은
+  - `<AppLayout toast="top">` → `<body data-toast="top">`(화면 위, 상단 버튼 줄 아래), 또는
+  - CSS `:root { --vui-toast-bottom: 96px; }`로 바 높이만큼 올린다.
+
+## 10. 확인·입력 창 `VUI.confirm` / `VUI.prompt` / `VUI.alert`
+
+브라우저 기본 `confirm()`·`prompt()`·`alert()` 대신 쓴다(전자칠판에서 앱 디자인과 맞고, 포커스·ESC가 공용 모달 규칙을 따름). 모두 Promise.
+
+```js
+if (!(await VUI.confirm('기록을 모두 지울까요? 되돌릴 수 없어요.', { title: '처음부터', ok: '지우기', danger: true }))) return;
+const topic = await VUI.prompt('어떤 주제로 만들까요?', { title: 'AI로 만들기', placeholder: '예) 동물 이름', ok: '만들기' });
+if (topic == null) return;          // 취소
+await VUI.alert('이 기기에서는 녹음을 지원하지 않아요.');
+```
+
+| 옵션 | 뜻 |
+|---|---|
+| `title` | 제목(기본 "확인"/"입력") |
+| `ok` / `cancel` | 버튼 글자(기본 "확인"/"취소") |
+| `danger` | 확인 버튼을 빨강으로, 처음 포커스는 "취소" |
+| `value` / `placeholder` / `maxLength` | prompt 입력칸 |
+
+## 11. 아이콘 `VUI.icon(name, opts)`
+
+lucide 스프라이트(`/common/icons.svg`)의 아이콘 SVG 문자열. `opts`: `{ cls, size, label }`(label을 주면 `role="img"`, 없으면 `aria-hidden`).
+`[data-icon="x"]` 요소는 로드 때 자동으로 채워진다(`VUI.icons.render(root)`로 다시). 규칙은 docs/design-system.md 11장.

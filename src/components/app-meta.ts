@@ -171,7 +171,10 @@ export function renderAppHeader(html: string, app: AppEntry): string {
 
   // 1) 배지
   const badge = findElement(inner, (_t, c) => c.includes('app-badge'));
-  const badgeHtml = badge ? outer(inner, badge) : app.badge ? `<div class="app-badge">◆ ${esc(app.badge)}</div>` : '';
+  // 배지 앞 기호(◆·이모지·아이콘)는 CSS(.app-badge::before)가 통일해서 그린다 — 마크업의 것은 뗀다
+  const badgeHtml = badge
+    ? outer(inner, badge).replace(/(<[^>]*class="[^"]*app-badge[^"]*"[^>]*>)\s*(?:◆|<svg[\s\S]*?<\/svg>)?\s*/, '$1')
+    : app.badge ? `<div class="app-badge">${esc(app.badge)}</div>` : '';
 
   // 2) 제목: 앞쪽 이모지 제거, 첫 span 유지
   const h1 = findElement(inner, (t, c) => t === 'h1' && c.includes('app-title'));

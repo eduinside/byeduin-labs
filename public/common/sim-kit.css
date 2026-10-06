@@ -78,7 +78,10 @@
 .sk-toast--no { background: var(--sk-toast-no-bg); color: #ffffff; }
 
 /* ── 별 (SimKit.stars.render) ── */
-.sk-stars { letter-spacing: 0.05em; white-space: nowrap; }
+.sk-stars { letter-spacing: 0.05em; white-space: nowrap; display: inline-flex; gap: 0.15em; align-items: center; }
+.sk-stars .ic { width: 1.1em; height: 1.1em; }
+.sk-stars .ic.on { fill: #f5a524; stroke: #d97706; }
+.sk-stars .ic.off { stroke: #d4d4d8; }
 
 /* ── 미션 번호 버튼 (SimKit.missions nav) ── */
 .sk-mnav {
@@ -112,8 +115,16 @@
 .sk-mnav-btn.done.active { color: var(--sk-accent-fg); }
 .sk-mnav-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-/* 이전/다음/건너뛰기 등 앱이 키트 모양을 쓰고 싶을 때 붙이는 버튼 */
+/* ── 규약 v2: 시뮬레이션 버튼 ──
+   모든 시뮬레이션의 조작 버튼(확인하기·다음 미션·다시 하기·처음부터·재생/멈춤·자유 탐험으로·모드 탭 제외)은 .sk-btn을 쓴다.
+   .sk-btn            보조(기본)          .sk-btn--primary  주 동작(조작판마다 하나: 보통 '확인하기')
+   .sk-btn--danger    처음부터·지우기      .sk-btn--sm       좁은 줄(36px, 터치 기기에서는 44px)
+   .sk-btn--block     줄 전체 폭           아이콘은 SimKit.icon('name') — 글자 앞에 */
 .sk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-height: 44px;
   padding: 0 16px;
   border-radius: 12px;
@@ -123,10 +134,54 @@
   font: inherit;
   font-size: 15px;
   font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  word-break: keep-all;
   cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
 }
+.sk-btn:hover { border-color: var(--sk-accent); }
 .sk-btn--primary { background: var(--sk-accent); border-color: var(--sk-accent); color: var(--sk-accent-fg); }
+.sk-btn--primary:hover { filter: brightness(0.95); }
+.sk-btn--danger { background: transparent; border-color: color-mix(in srgb, var(--danger, #f31260) 55%, transparent); color: var(--sk-no-fg); }
+.sk-btn--danger:hover { border-color: var(--danger, #f31260); background: var(--sk-no-bg); }
+.sk-btn--sm { min-height: 36px; padding: 0 12px; font-size: 14px; border-radius: 10px; }
+.sk-btn--block { display: flex; width: 100%; }
+.sk-btn.active, .sk-btn[aria-pressed="true"] { border-color: var(--sk-accent); color: var(--sk-accent); box-shadow: 0 0 0 3px var(--sk-ring); }
+.sk-btn--primary.active, .sk-btn--primary[aria-pressed="true"] { color: var(--sk-accent-fg); }
+.sk-btn .ic { width: 1.15em; height: 1.15em; }
 .sk-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+@media (pointer: coarse) { .sk-btn--sm { min-height: 44px; } }
+
+/* 버튼 줄: 감싸서 좁은 폭에서도 잘리지 않게 */
+.sk-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sk-actions > .sk-btn { flex: 1 1 auto; }
+
+/* ── 규약 v2: 인트로·결과 화면 ──
+   몰입형(overflow:hidden) 화면에서 낮은 화면(폰 가로 844×390)이면 내용이 잘리던 문제.
+   화면 상자에 .sk-screen을 붙이면 높이는 화면에 맞추고 넘치면 안에서 스크롤, 짧으면 가운데 정렬. */
+.sk-screen {
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: max(64px, env(safe-area-inset-top, 0px)) 16px max(24px, env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+}
+.sk-screen > :first-child { margin-top: auto; }
+.sk-screen > :last-child { margin-bottom: auto; }
+
+/* ── 규약 v2: 무대 위 떠 있는 요소의 자리 ──
+   무대(그림 영역) 위에 이름표·도구줄을 띄우는 앱은 이 높이만큼 그림을 비워 둔다(viewBox 여백·padding). */
+:root {
+  --sk-stage-top: 60px;      /* 상단 공용 버튼(홈·공유) 줄 */
+  --sk-stage-bottom: 64px;   /* 하단 도구줄 */
+}
 
 .sk-mnav-btn:focus-visible,
 .sk-btn:focus-visible,
