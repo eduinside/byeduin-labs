@@ -154,16 +154,21 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
     }
 
     .site-header, main { position: relative; z-index: 1; }
+    /* 헤더 안의 우상단 버튼(좁은 화면에서 fixed)이 스크롤한 본문 카드 위에 오도록 */
+    .site-header { z-index: 2; }
 
     .site-header {
       padding: 2rem 1.5rem 1rem;
       max-width: 1280px;
       margin: 0 auto;
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 1rem;
+      gap: 1rem 0.75rem;
     }
+
+    .site-brand { flex: 0 0 auto; }
 
     .logo-group {
       display: flex;
@@ -209,18 +214,21 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
     }
     .modal-box:focus { outline: none; }
 
-    /* ── 검색 + (모바일) 카테고리 칩 ── */
-    .home-toolbar {
-      display: flex;
-      flex-direction: column;
-      gap: 0.625rem;
-      margin-bottom: 1rem;
-    }
-
+    /* ── 검색(헤더 오른쪽, 좁은 화면은 로고 아래 전체 폭) + (모바일) 카테고리 칩 ── */
     .app-search {
       position: relative;
-      max-width: 560px;
-      margin: 0;
+      flex: 1 1 260px; /* 줄바꿈은 260px 기준으로 판단하고, 남는 폭은 420px까지 채움 */
+      max-width: 420px;
+      margin: 0 0 0 auto;
+    }
+
+    @media (min-width: 768px) {
+      .site-header > .top-overlay { position: static; flex: 0 0 auto; }
+    }
+
+    @media (max-width: 767.98px) {
+      .site-header { padding-bottom: 0.75rem; }
+      .app-search { flex: 1 1 100%; max-width: none; }
     }
 
     .app-search-icon {
@@ -464,9 +472,9 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
         padding: 0 1.5rem 0.25rem;
         scroll-padding: 0 1.5rem;
         -webkit-overflow-scrolling: touch;
+        margin-bottom: 1rem;
       }
       .cat-chips::-webkit-scrollbar { display: none; }
-      .app-search { max-width: none; }
     }
 
     /* 카테고리 섹션 */
@@ -894,44 +902,55 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
 <body>
 
   <header class="site-header">
-    <div>
+    <div class="site-brand">
       <div class="logo-group">
         <img src="/logo-64.png" alt="" width="32" height="32" />
         <h1 class="logo-title">eduin <span>VIVES</span><span class="visually-hidden"> — 교육 미니앱 모음</span></h1>
       </div>
       <div class="logo-sub" style="margin-left:44px;">바이브 코딩으로 만든 작은 앱 모음</div>
     </div>
+
+    <form class="app-search" id="appSearchForm" role="search" action="/" method="get">
+      <label for="appSearch" class="visually-hidden">앱 이름·설명으로 찾기</label>
+      <span class="app-search-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      </span>
+      <input
+        id="appSearch"
+        name="q"
+        type="search"
+        placeholder="앱 이름·설명으로 찾기"
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        enterkeyhint="search"
+        aria-describedby="appSearchHint"
+        aria-controls="appContent"
+      />
+      <kbd class="app-search-kbd" aria-hidden="true">/</kbd>
+      <span id="appSearchHint" class="visually-hidden">/ 키를 누르면 검색창으로 이동하고, Esc 키로 검색어를 지워요.</span>
+    </form>
+
+    <!-- 테마 토글 + 공유: 넓은 화면은 헤더 줄 맨 오른쪽, 768px 미만은 우상단에 떠 있음(hero-theme.css 기본) -->
+    <div class="top-overlay">
+      <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드" aria-label="보기 모드">💻</button>
+      <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유" aria-label="공유">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+          <polyline points="16 6 12 2 8 6"/>
+          <line x1="12" x2="12" y1="2" y2="15"/>
+        </svg>
+        <span>공유</span>
+      </button>
+    </div>
   </header>
 
   <main id="main">
-    <div class="home-toolbar">
-      <form class="app-search" id="appSearchForm" role="search" action="/" method="get">
-        <label for="appSearch" class="visually-hidden">앱 이름·설명으로 찾기</label>
-        <span class="app-search-icon" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        </span>
-        <input
-          id="appSearch"
-          name="q"
-          type="search"
-          placeholder="앱 이름·설명으로 찾기"
-          autocomplete="off"
-          autocapitalize="off"
-          spellcheck="false"
-          enterkeyhint="search"
-          aria-describedby="appSearchHint"
-          aria-controls="appContent"
-        />
-        <kbd class="app-search-kbd" aria-hidden="true">/</kbd>
-        <span id="appSearchHint" class="visually-hidden">/ 키를 누르면 검색창으로 이동하고, Esc 키로 검색어를 지워요.</span>
-      </form>
-
-      <nav class="cat-chips" aria-label="카테고리 바로가기">
-        {chipBlocks.map((b) => (
-          <a class="cat-chip" href={`#section-${b.id}`} data-nav-id={b.id}>{b.label}</a>
-        ))}
-      </nav>
-    </div>
+    <nav class="cat-chips" aria-label="카테고리 바로가기">
+      {chipBlocks.map((b) => (
+        <a class="cat-chip" href={`#section-${b.id}`} data-nav-id={b.id}>{b.label}</a>
+      ))}
+    </nav>
 
     <p id="searchStatus" class="visually-hidden" role="status" aria-live="polite"></p>
 
@@ -1052,19 +1071,6 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
         <button type="button" class="modal-btn-ghost" id="modalClose">닫기</button>
       </div>
     </div>
-  </div>
-
-  <!-- 우상단 테마 토글 + 공유 -->
-  <div class="top-overlay">
-    <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드" aria-label="보기 모드">💻</button>
-    <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유" aria-label="공유">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-        <polyline points="16 6 12 2 8 6"/>
-        <line x1="12" x2="12" y1="2" y2="15"/>
-      </svg>
-      <span>공유</span>
-    </button>
   </div>
 
   <script type="application/json" id="homeData" set:html={homeJson}></script>

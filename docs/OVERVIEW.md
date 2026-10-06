@@ -202,6 +202,9 @@ docs/                  ← 개발 문서
 
 ## 주요 변경 이력
 
+### 2026-10 — 개선·신규 앱 묶음 (`docs/new-apps-2026-10.md`)
+- **홈 검색창 헤더 이동**: 768px 이상은 로고 · 검색창 · 테마/공유 버튼을 한 줄(테마/공유는 헤더 안 정적 배치), 768px 미만은 로고 아래 전체 폭 검색창 + 우상단 떠 있는 버튼(종전과 같음). 계획 `docs/home-search-header-plan.md`.
+
 ### 2026-10 — 3단계: 공용 모듈·홈 개편·접근성, 자리 배치 신규
 - **공용 모듈**: `public/common/ui.js`(`window.VUI` — 토스트·모달 접근성·공유 인코딩/단축/링크·QR 대화상자·apiFetch·조사·저장, 문서 `docs/common-ui.md`), `public/common/sim-kit.{js,css}`(`window.SimKit` — 미션 컨트롤러·피드백·저장·공유·타이머·효과음, 문서 `docs/sim-kit.md`). 시뮬레이션 12개 앱과 일반 앱 전부 이관.
 - **레이아웃**: 앱 헤더·JSON-LD·SEO 메타를 빌드 시 출력(`src/components/app-meta.ts`), `seo-injector.js`는 독립 HTML 3종에서만 동작.
