@@ -1,10 +1,10 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<AppLayout 
+<AppLayout
   sync
-  icons
-  title="Chalkboard — eduin VIVES"
+  title="칠판 (Chalkboard) — eduin VIVES"
   description="분필 느낌의 디지털 칠판으로 아이디어를 자유롭게 기록. 수업 판서, 브레인스토밍에 최적화."
   image="https://eduin.info/og-images/chalkboard.png"
   bodyShell="gallery"
@@ -18,6 +18,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif;
       min-height: 100vh;
+      min-height: 100dvh;
     }
 
     body::before {
@@ -66,8 +67,25 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       white-space: nowrap; background: transparent;
     }
     .tb-btn.on { opacity: 1 !important; }
+    .tb-btn .ic { width: 15px; height: 15px; flex-shrink: 0; }
+    .tb-btn .tb-caret { width: 11px; height: 11px; opacity: 0.6; }
 
     .tb-sep { flex: 1; }
+
+    /* 자동 저장 표시(내보내기 메뉴와 별개) */
+    .tb-status {
+      font-size: 12px; font-weight: 600; white-space: nowrap;
+      opacity: 0.55; transition: opacity 0.3s;
+      display: inline-flex; align-items: center; gap: 4px; padding: 0 4px;
+    }
+    .tb-status .ic { width: 13px; height: 13px; }
+    .tb-status.flash { opacity: 0.95; }
+    .is-view-only .tb-status { display: none; }
+    /* 칠판·화이트보드 전환 버튼의 현재 상태 색 점 */
+    .type-dot {
+      width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0;
+      border: 1px solid rgba(127,127,127,0.6);
+    }
 
     #tb-name {
       background: transparent;
@@ -86,12 +104,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     body.board-white #tb-name:hover { border-color: rgba(0,0,0,0.3); }
     body.board-white #tb-name:focus { border-color: rgba(0,0,0,0.45); background: rgba(0,0,0,0.04); }
 
-    /* 저장 버튼 */
-    .btn-autosave { display: inline-flex; align-items: center; transition: opacity 0.2s; }
-    .btn-autosave::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #4ade80; display: inline-block; flex-shrink: 0; transition: box-shadow 0.3s; }
-    .btn-autosave.flash::before { box-shadow: 0 0 0 3px rgba(74,222,128,0.4); }
-
-    /* 저장 드롭다운 */
+    /* 내보내기 드롭다운 */
     #save-dropdown {
       position: fixed;
       display: none;
@@ -137,12 +150,35 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     #cb-canvas.mode-line { cursor: crosshair; }
     #cb-canvas.mode-select { cursor: default; }
 
+    /* 보드 내용(선·글자)을 담는 면. '화면에 맞추기' 때 transform으로 줄여 보여 줌(저장 좌표는 그대로) */
+    #cb-stage {
+      position: absolute; left: 0; top: 0;
+      width: 100%; height: 100%;
+      transform-origin: 0 0;
+    }
+
     /* SVG overlay for lines */
     #cb-svg {
-      position: absolute; inset: 0;
+      position: absolute; left: 0; top: 0;
       width: 100%; height: 100%;
       z-index: 1; overflow: visible;
     }
+
+    /* 빈 보드 사용법 안내 */
+    #cb-empty-hint {
+      position: absolute; inset: 0; z-index: 0;
+      display: none; align-items: center; justify-content: center;
+      padding: 24px; pointer-events: none; text-align: center;
+    }
+    #cb-empty-hint.show { display: flex; }
+    #cb-empty-hint ul {
+      margin: 0; padding: 0; list-style: none;
+      display: flex; flex-direction: column; gap: 10px;
+      font-size: 15px; font-weight: 600; line-height: 1.5;
+      opacity: 0.55; word-break: keep-all;
+    }
+    #cb-empty-hint li { display: flex; align-items: center; justify-content: center; gap: 8px; }
+    #cb-empty-hint .ic { width: 18px; height: 18px; flex-shrink: 0; }
 
     /* ── Text elements ── */
     .cb-el {
@@ -180,6 +216,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       transition: background 0.15s; flex-shrink: 0;
     }
     .ctx-btn:hover { background: rgba(255,255,255,0.2); }
+    .ctx-btn .ic { width: 17px; height: 17px; }
+    .ctx-dot { width: 16px; height: 16px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 1px rgba(127,127,127,0.5); }
     .ctx-btn.ctx-del { color: #ff7070; }
     .ctx-btn.ctx-del:hover { background: rgba(255,80,80,0.2); }
     .ctx-swatch { border: 2px solid transparent; }
@@ -316,6 +354,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       color: var(--fg); outline: none; font-family: inherit; margin-bottom: 12px;
     }
     .modal-input:focus { border-color: var(--primary); }
+    @media (max-width: 600px) { .modal-input { font-size: 16px; } }
     .modal-type-row { display: flex; gap: 8px; margin-bottom: 16px; }
     .type-btn {
       flex: 1; padding: 10px; min-height: 44px; border-radius: 10px;
@@ -325,6 +364,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       transition: all 0.15s;
     }
     .type-btn.sel { border-color: var(--primary); background: rgba(0,111,238,0.08); color: var(--primary); }
+    .type-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
     .modal-actions { display: flex; gap: 8px; }
     .btn-cancel {
       flex: 1; padding: 10px; min-height: 44px; border-radius: 8px;
@@ -332,6 +372,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       color: var(--fg-muted); cursor: pointer; font-size: 14px;
       font-weight: 600; font-family: inherit;
     }
+    .btn-cancel, .btn-confirm { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
     .btn-confirm {
       flex: 2; padding: 10px; min-height: 44px; border-radius: 8px;
       border: none; background: var(--primary); color: #fff;
@@ -348,19 +389,40 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
     #more-dropdown.open { display: flex; }
     .more-sep { height: 1px; background: currentColor; opacity: 0.12; margin: 3px 4px; }
+    .more-note { font-size: 12px; opacity: 0.6; padding: 6px 12px 4px; display: flex; align-items: center; gap: 6px; }
+    .more-note .ic { width: 13px; height: 13px; }
+    #more-type { display: none; }
+    /* 중간 폭: 텍스트·선·되돌리기·맞추기는 아이콘만(칠판/화이트보드 상태 글자는 유지) */
+    @media (max-width: 900px) {
+      #btn-add-text .tb-label, #btn-draw .tb-label, #btn-undo .tb-label, #btn-fit .tb-label { display: none; }
+      #btn-add-text, #btn-draw, #btn-undo, #btn-fit { padding: 0 8px; justify-content: center; }
+      #autosave-status { display: none; }
+      #tb-name { flex: 1 1 auto; min-width: 0; width: 100%; }
+    }
     @media (max-width: 600px) {
       #btn-save, #btn-share { display: none !important; }
       #btn-more { display: flex; }
-      #btn-type, #btn-add-text, #btn-draw, #btn-undo { font-size: 0; padding: 0 8px; justify-content: center; }
+      /* 좁은 화면: 칠판/화이트보드 전환은 더보기 메뉴로(글자로 상태·동작을 보여 줌) */
+      #btn-type { display: none !important; }
+      #more-type { display: flex; }
       #btn-more { padding: 0 10px; justify-content: center; }
       /* 좁은 화면: 툴바가 가로로 넘치지 않게 이름 칸이 남는 폭만 씀 */
       #cb-tb { padding: 0 8px; gap: 4px; }
-      #tb-name { flex: 1 1 auto; min-width: 0; width: 100%; }
+      #tb-name { flex: 1 1 auto; min-width: 0; width: 100%; font-size: 16px; }
       .tb-sep { display: none; }
-      .is-view-only #btn-type, .is-view-only #btn-add-text, .is-view-only #btn-draw,
+      .is-view-only #btn-add-text, .is-view-only #btn-draw,
       .is-view-only #btn-undo, .is-view-only #btn-more { display: none !important; }
       #btn-view-badge { padding: 0 8px; flex-shrink: 0; }
       #btn-clone { padding: 0 10px; flex-shrink: 0; }
+    }
+    /* 터치 기기: 누르는 영역 44px */
+    @media (pointer: coarse) {
+      #cb-tb { height: 56px; }
+      .tb-btn, #btn-back { height: 44px; min-width: 44px; }
+      #btn-back { width: 44px; }
+      .ctx-btn { width: 44px; height: 44px; }
+      .ctx-swatch { width: 44px !important; height: 44px !important; }
+      .board-del { width: 44px; height: 44px; }
     }
 
     /* ── View-only mode ── */
@@ -399,21 +461,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <div id="view-home" class="cb-view active">
     <div class="cb-home-wrap">
       <div class="app-header">
-        <div class="app-badge">◆ 학습지원</div>
-        <h1 class="app-title">
-  <div class="card-emoji sub-edu-learn" style="margin-bottom: 0; transform: scale(1.0);">
-        <i data-lucide="pencil-line"></i>
-      </div>
-  <span>Chalkboard</span>
-</h1>
+        <div class="app-badge">학습지원</div>
+        <h1 class="app-title">칠판 <span class="app-title-en">Chalkboard</span></h1>
         <p class="app-desc">칠판 &amp; 화이트보드 메모 앱</p>
       </div>
       <div class="home-top">
         <div class="cb-section-title">내 보드</div>
         <button class="btn-new" onclick="openNewModal()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
+          <Icon name="plus" />
           새 보드
         </button>
       </div>
@@ -425,114 +480,115 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <div id="view-board">
     <div id="cb-tb">
       <!-- 왼쪽: 닫기 + 보드 이름 -->
-      <button id="btn-back" onclick="goHome()" title="목록으로" aria-label="보드 목록으로">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 6L6 18M6 6l12 12"></path>
-        </svg>
+      <button id="btn-back" onclick="goHome()" aria-label="보드 목록으로">
+        <Icon name="x" size={18} />
       </button>
       <input id="tb-name" type="text" spellcheck="false" autocomplete="off" aria-label="보드 이름" onchange="renameCurrent(this.value)">
       <div class="tb-sep"></div>
+      <span id="autosave-status" class="tb-status"><Icon name="check" />자동 저장됨</span>
       <!-- 오른쪽: 기능 버튼들 -->
-      <button id="btn-type" class="tb-btn" onclick="switchBoardType()" title="칠판 / 화이트보드 전환" aria-label="칠판·화이트보드 전환">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line>
-        </svg>
+      <button id="btn-type" class="tb-btn" onclick="switchBoardType()" aria-label="지금 칠판 — 눌러서 화이트보드로 바꾸기">
+        <span class="type-dot" id="type-dot" aria-hidden="true"></span>
         <span id="type-label">칠판</span>
       </button>
-      <button id="btn-add-text" class="tb-btn" onclick="activateTextMode()" title="텍스트 추가: 보드를 누른 곳에 글자를 넣어요" aria-label="텍스트 추가" aria-pressed="false">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" x2="15" y1="20" y2="20"></line><line x1="12" x2="12" y1="4" y2="20"></line>
-        </svg>
-        텍스트
+      <button id="btn-add-text" class="tb-btn" onclick="activateTextMode()" aria-label="텍스트 추가" aria-pressed="false">
+        <Icon name="type" />
+        <span class="tb-label">텍스트</span>
       </button>
-      <button id="btn-draw" class="tb-btn" onclick="activateDrawMode()" title="선 긋기: 보드에서 끌어서 선을 그어요" aria-label="선 긋기" aria-pressed="false">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="5" y1="19" x2="19" y2="5"></line>
-        </svg>
-        선
+      <button id="btn-draw" class="tb-btn" onclick="activateDrawMode()" aria-label="선 긋기" aria-pressed="false">
+        <Icon name="slash" />
+        <span class="tb-label">선</span>
       </button>
-      <button id="btn-undo" class="tb-btn" onclick="undoLast()" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
-        </svg>
-        되돌리기
+      <button id="btn-undo" class="tb-btn" onclick="undoLast()" aria-label="되돌리기 (Ctrl+Z)">
+        <Icon name="undo-2" />
+        <span class="tb-label">되돌리기</span>
+      </button>
+      <button id="btn-fit" class="tb-btn" onclick="toggleFit()" aria-label="화면에 맞추기: 보드의 모든 내용이 보이게 줄여 보기" aria-pressed="false">
+        <Icon name="scan" />
+        <span class="tb-label">화면에 맞추기</span>
       </button>
       <button id="btn-save" class="tb-btn" onclick="toggleSaveMenu(event)" aria-haspopup="true" aria-expanded="false" aria-controls="save-dropdown">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line>
-        </svg>
-        저장
-        <span class="btn-autosave" id="btn-autosave"></span>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <Icon name="download" />
+        내보내기
+        <Icon name="chevron-down" class="tb-caret" />
       </button>
-      <span id="btn-view-badge">👁 보기 전용</span>
+      <span id="btn-view-badge"><Icon name="eye" /> 보기 전용</span>
       <button id="btn-clone" class="tb-btn" onclick="cloneSharedBoard()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-        </svg>
+        <Icon name="copy" />
         복제하기
       </button>
-      <button id="btn-more" class="tb-btn" onclick="toggleMoreMenu(event)" title="더보기" aria-label="더보기" aria-haspopup="true" aria-expanded="false" aria-controls="more-dropdown">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="19" cy="12" r="2"></circle></svg>
+      <button id="btn-more" class="tb-btn" onclick="toggleMoreMenu(event)" aria-label="더보기" aria-haspopup="true" aria-expanded="false" aria-controls="more-dropdown">
+        <Icon name="ellipsis" size={18} />
       </button>
-      <button id="btn-share" class="tb-btn" onclick="toggleShareMenu(event)" title="공유" aria-haspopup="true" aria-expanded="false" aria-controls="share-dropdown">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle>
-          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-        </svg>
+      <button id="btn-share" class="tb-btn" onclick="toggleShareMenu(event)" aria-haspopup="true" aria-expanded="false" aria-controls="share-dropdown">
+        <Icon name="share-2" />
         공유
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <Icon name="chevron-down" class="tb-caret" />
       </button>
     </div>
 
   <!-- 공유 드롭다운 -->
   <div id="share-dropdown">
     <button class="save-opt" onclick="doShare('view')">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      <Icon name="eye" />
       보기 전용
     </button>
     <button class="save-opt" onclick="doShare('clone')">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <Icon name="copy" />
       복제 허용
     </button>
   </div>
 
   <!-- 더보기 드롭다운 (모바일) -->
   <div id="more-dropdown">
+    <button class="save-opt" id="more-type" onclick="closeMoreMenu(); switchBoardType()">
+      <span class="type-dot" id="more-type-dot" aria-hidden="true"></span>
+      <span id="more-type-label">화이트보드로 바꾸기</span>
+    </button>
     <button class="save-opt" onclick="closeMoreMenu(); doSaveTxt()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" x2="8" y1="13" y2="13"></line><line x1="16" x2="8" y1="17" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-      TXT (텍스트만)
+      <Icon name="file-text" />
+      내보내기 - 글자만 (TXT)
     </button>
     <button class="save-opt" onclick="closeMoreMenu(); doSaveJpg()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-      JPG (화면 이미지)
+      <Icon name="image" />
+      내보내기 - 그림 (JPG)
     </button>
     <div class="more-sep"></div>
     <button class="save-opt" onclick="closeMoreMenu(); doShare('view')">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      <Icon name="eye" />
       공유 - 보기 전용
     </button>
     <button class="save-opt" onclick="closeMoreMenu(); doShare('clone')">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+      <Icon name="copy" />
       공유 - 복제 허용
     </button>
+    <div class="more-note"><Icon name="check" />보드는 자동 저장돼요</div>
   </div>
 
-  <!-- 저장 드롭다운 -->
+  <!-- 내보내기 드롭다운 -->
   <div id="save-dropdown">
     <button class="save-opt" onclick="doSaveTxt()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" x2="8" y1="13" y2="13"></line><line x1="16" x2="8" y1="17" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-      TXT (텍스트만)
+      <Icon name="file-text" />
+      글자만 (TXT)
     </button>
     <button class="save-opt" onclick="doSaveJpg()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-      JPG (화면 이미지)
+      <Icon name="image" />
+      그림 (JPG)
     </button>
   </div>
 
-    <div id="cb-canvas" aria-label="보드: 텍스트는 두 번 누르거나 길게 눌러 고치고, 끌어서 옮겨요">
-      <svg id="cb-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="cb-canvas" aria-label="보드: 글자는 두 번 누르거나 길게 눌러 고치고, 끌어서 옮겨요">
+      <div id="cb-empty-hint" aria-hidden="true">
+        <ul>
+          <li><Icon name="type" />‘텍스트’를 누른 뒤 보드를 누르면 글자가 생겨요</li>
+          <li><Icon name="slash" />‘선’을 누른 뒤 보드에서 끌면 선이 그어져요</li>
+          <li><Icon name="pencil" />글자를 두 번 누르거나 길게 누르면 고칠 수 있어요</li>
+          <li><Icon name="palette" />한 번 누르면 크기·색·지우기 메뉴가 나와요</li>
+        </ul>
+      </div>
+      <div id="cb-stage">
+        <svg id="cb-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
     </div>
   </div>
 
@@ -548,9 +604,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <div class="modal-box">
       <h2 class="modal-title">공유된 칠판</h2>
       <p id="modal-share-name" class="modal-share-name"></p>
-      <p style="font-size:13px;color:var(--fg-muted);margin-bottom:1.2rem;text-align:center">이 칠판을 어떻게 열겠습니까?</p>
+      <p style="font-size:13px;color:var(--fg-muted);margin-bottom:1.2rem;text-align:center">이 칠판을 어떻게 열까요? 보기 전용은 저장되지 않고, 복제하면 내 보드 목록에 저장돼요.</p>
       <div class="modal-actions">
-        <button class="btn-cancel" onclick="enterViewOnly()">👁 보기 전용</button>
+        <button class="btn-cancel" onclick="enterViewOnly()"><Icon name="eye" /> 보기 전용</button>
         <button class="btn-confirm" onclick="cloneAndOpen()">복제하기</button>
       </div>
     </div>
@@ -562,8 +618,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <h2 class="modal-title">새 보드 만들기</h2>
       <input type="text" id="new-board-name" class="modal-input" placeholder="보드 이름 (선택)" aria-label="보드 이름 (선택)" maxlength="30">
       <div class="modal-type-row">
-        <button class="type-btn sel" id="opt-chalk" aria-pressed="true" onclick="selectNewType('chalkboard')">🟩 칠판</button>
-        <button class="type-btn" id="opt-white" aria-pressed="false" onclick="selectNewType('whiteboard')">⬜ 화이트보드</button>
+        <button class="type-btn sel" id="opt-chalk" aria-pressed="true" onclick="selectNewType('chalkboard')"><span class="type-dot" style="background:#1a3323" aria-hidden="true"></span>칠판</button>
+        <button class="type-btn" id="opt-white" aria-pressed="false" onclick="selectNewType('whiteboard')"><span class="type-dot" style="background:#f7f7f4" aria-hidden="true"></span>화이트보드</button>
       </div>
       <div class="modal-actions">
         <button class="btn-cancel" onclick="closeNewModal()">취소</button>
@@ -592,6 +648,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         ctxShadow: '0 4px 20px rgba(0,0,0,0.55)',
         tempStroke: 'rgba(255,255,255,0.45)',
         selBorder: 'rgba(255,255,255,0.35)',
+        selGlow: 'rgba(255,255,255,0.3)',
         saveDdBg: 'rgba(12,26,18,0.96)',
         saveDdColor: 'rgba(255,255,255,0.85)', saveDdHover: 'rgba(255,255,255,0.1)',
       },
@@ -607,6 +664,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         ctxShadow: '0 4px 20px rgba(0,0,0,0.12)',
         tempStroke: 'rgba(0,0,0,0.35)',
         selBorder: 'rgba(0,0,0,0.25)',
+        selGlow: 'rgba(0,111,238,0.35)',   // 화이트보드: 흰 빛은 안 보여 파란 빛으로
       },
     };
 
@@ -641,13 +699,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const i = d.boards.findIndex(x => x.id === b.id);
       if (i >= 0) d.boards[i] = b; else d.boards.push(b);
       saveData(d);
-      // 자동저장 펄스 효과
-      const dot = document.getElementById('btn-autosave');
-      if (dot) {
-        dot.classList.add('flash');
-        clearTimeout(dot._flashTimer);
-        dot._flashTimer = setTimeout(() => dot.classList.remove('flash'), 600);
+      // '자동 저장됨' 표시를 잠깐 진하게
+      const st = document.getElementById('autosave-status');
+      if (st) {
+        st.classList.add('flash');
+        clearTimeout(st._flashTimer);
+        st._flashTimer = setTimeout(() => st.classList.remove('flash'), 900);
       }
+      updateEmptyHint();
     }
     function fmtDate(ts) {
       if (!ts) return '';
@@ -684,7 +743,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     function undoLast() {
       if (viewOnlyBoard) return;
-      if (!undoStack.length) { showToast('더 이상 되돌릴 수 없습니다'); return; }
+      if (!undoStack.length) { showToast('더 이상 되돌릴 수 없어요'); return; }
       const snapshot = undoStack.pop();
       const board = getBoard();
       if (!board) return;
@@ -693,7 +752,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       saveBoard(board);
       deselectAll();
       renderAll();
-      showToast('취소했습니다');
+      showToast('되돌렸어요');
     }
 
     /* ── Views ── */
@@ -715,7 +774,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const d = getData();
       const el = document.getElementById('board-list');
       if (!d.boards.length) {
-        el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div><div class="empty-text">보드가 없습니다. 새 보드를 만들어 보세요.</div></div>';
+        el.innerHTML = '<div class="empty-state"><div class="empty-icon">' + VUI.icon('pencil-line') + '</div><div class="empty-text">아직 보드가 없어요. 위의 ‘새 보드’를 눌러 만들어 보세요.</div></div>';
         return;
       }
       el.innerHTML = d.boards.slice().reverse().map(b => {
@@ -735,11 +794,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
               <button type="button" class="board-open" onclick="openBoard('${esc(b.id)}')">${esc(b.name)}</button>
               <div class="board-meta">${typeLabel} · ${fmtDate(b.lastEdited)} · 요소 ${(b.elements||[]).filter(e=>e.type).length}개</div>
             </div>
-            <button class="board-del" onclick="deleteBoard(event,'${esc(b.id)}')" title="삭제" aria-label="${esc(b.name)} 삭제">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-              </svg>
-            </button>
+            <button class="board-del" onclick="deleteBoard(event,'${esc(b.id)}')" aria-label="${esc(b.name)} 삭제">${VUI.icon('trash-2')}</button>
           </div>
         </div>`;
       }).join('');
@@ -768,11 +823,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       closeNewModal();
       openBoard(board.id);
     }
-    function deleteBoard(e, id) {
+    async function deleteBoard(e, id) {
       e.stopPropagation();
-      if (!confirm('이 보드를 삭제하시겠습니까?')) return;
+      const target = getData().boards.find(b => b.id === id);
+      const ok = await VUI.confirm(
+        target ? `‘${target.name}’ 보드를 지울까요? 지운 보드는 되살릴 수 없어요.` : '이 보드를 지울까요?',
+        { title: '보드 삭제', ok: '삭제', danger: true });
+      if (!ok) return;
       const d = getData(); d.boards = d.boards.filter(b => b.id !== id); saveData(d);
       renderHome();
+      showToast('보드를 지웠어요');
     }
 
     /* ── Open board ── */
@@ -788,9 +848,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       document.body.classList.toggle('is-view-only', !!viewOnlyBoard);
       applyBoardStyle(board);
       document.getElementById('tb-name').value = board.name;
+      resetView();
       renderAll();
       updateTbState();
       hideCtx();
+      updateEmptyHint();
+      // 큰 화면(전자칠판)에서 만든 보드가 이 화면을 넘치면 처음부터 모두 보이게 줄여 보여 줌
+      if (contentOverflows()) fitView(true);
     }
 
     function goHome() {
@@ -799,6 +863,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       undoStack = [];
       cancelDraw();
       mode = 'select';
+      resetView();
       showView('home');
       renderHome();
     }
@@ -815,9 +880,19 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         b.style.borderColor = s.border;
       });
       document.getElementById('tb-name').style.color = s.nameColor;
+      document.getElementById('autosave-status').style.color = s.btnColor;
+      document.getElementById('btn-view-badge').style.color = s.btnColor;
       document.getElementById('btn-back').style.color = s.btnColor;
       document.getElementById('btn-back').style.borderColor = s.border;
-      document.getElementById('type-label').textContent = board.type === 'chalkboard' ? '칠판' : '화이트보드';
+      // 지금 상태(칠판/화이트보드)는 버튼 글자·색 점으로, 누르면 바뀌는 것은 aria-label·더보기 메뉴 글자로
+      const isChalk = board.type === 'chalkboard';
+      const other = isChalk ? '화이트보드' : '칠판';
+      document.getElementById('type-label').textContent = isChalk ? '칠판' : '화이트보드';
+      document.getElementById('btn-type').setAttribute('aria-label', `지금 ${isChalk ? '칠판' : '화이트보드'} — 눌러서 ${other}로 바꾸기`);
+      document.getElementById('type-dot').style.background = s.bg;
+      document.getElementById('more-type-label').textContent = `${other}로 바꾸기`;
+      document.getElementById('more-type-dot').style.background = BS[isChalk ? 'whiteboard' : 'chalkboard'].bg;
+      document.getElementById('cb-empty-hint').style.color = s.nameColor;
       document.body.classList.toggle('board-white', board.type === 'whiteboard');
     }
 
@@ -863,7 +938,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (selectedId === el.id) {
         const glow = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         ['x1','y1','x2','y2'].forEach(a => glow.setAttribute(a, el[a]));
-        glow.setAttribute('stroke', 'rgba(255,255,255,0.3)');
+        const gb = getBoard();
+        glow.setAttribute('stroke', (gb && BS[gb.type] ? BS[gb.type] : BS.chalkboard).selGlow);
         glow.setAttribute('stroke-width', '9');
         glow.setAttribute('stroke-linecap', 'round');
         g.appendChild(glow);
@@ -873,7 +949,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const hit = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       ['x1','y1','x2','y2'].forEach(a => hit.setAttribute(a, el[a]));
       hit.setAttribute('stroke', 'transparent');
-      hit.setAttribute('stroke-width', '22');
+      hit.setAttribute('stroke-width', String(22 / view.s));   // 줄여 볼 때도 누르기 쉬운 폭 유지
       hit.setAttribute('stroke-linecap', 'round');
       hit.style.cursor = selectedId === el.id ? 'grab' : 'pointer';
 
@@ -899,7 +975,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     function buildTextEl(el) {
-      const canvas = document.getElementById('cb-canvas');
+      const stage = document.getElementById('cb-stage');
       const div = document.createElement('div');
       div.className = 'cb-el' + (selectedId === el.id ? ' selected' : '');
       div.dataset.id = el.id;
@@ -921,7 +997,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         if (div.isContentEditable || viewOnlyBoard) return;
         if (e.key === 'Enter' || e.key === 'F2') { e.preventDefault(); selectEl(el.id, 'text'); startEdit(el.id); }
       });
-      canvas.appendChild(div);
+      stage.appendChild(div);
     }
 
     /* ── Selection ── */
@@ -981,29 +1057,28 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }
 
       if (type === 'text') {
-        main.appendChild(mkBtn('A⁻', '글자 작게', '', () => changeSize(id, -1)));
-        main.appendChild(mkBtn('A⁺', '글자 크게', '', () => changeSize(id, 1)));
+        main.appendChild(mkBtn(VUI.icon('a-arrow-down'), '글자 작게', '', () => changeSize(id, -1)));
+        main.appendChild(mkBtn(VUI.icon('a-arrow-up'), '글자 크게', '', () => changeSize(id, 1)));
       }
 
       // Color button — dot colored with current element color
-      const colBtn = mkBtn('●', '색상', '', () => toggleColorRow(id, type));
+      const colBtn = mkBtn('<span class="ctx-dot" aria-hidden="true"></span>', '색상', '', () => toggleColorRow(id, type));
       colBtn.setAttribute('aria-expanded', 'false');
       colBtn.style.color = el.color;
-      colBtn.style.fontSize = '18px';
       main.appendChild(colBtn);
 
       if (type === 'text') {
         main.appendChild(mkBtn(
-          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+          VUI.icon('pencil'),
           '편집', '', () => startEdit(id)));
       }
 
       main.appendChild(mkBtn(
-        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
-        '삭제', 'ctx-del', () => deleteEl(id)));
+        VUI.icon('trash-2'),
+        '삭제', 'ctx-del', () => deleteEl(id, true)));
 
-      positionCtx(id, type);
       ctx.style.display = 'flex';
+      positionCtx(id, type);   // 보이게 한 뒤 크기를 재서 화면 안에 둠
     }
 
     function toggleColorRow(id, type) {
@@ -1034,6 +1109,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       });
 
       colRow.style.display = 'flex';
+      positionCtx(id, type);   // 색 줄이 생기며 커진 메뉴가 화면 밖으로 나가지 않게
     }
 
     function positionCtx(id, type) {
@@ -1050,12 +1126,19 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         const board = getBoard();
         const el = board.elements.find(e => e.id === id);
         if (!el) return;
+        // 보드 좌표 → 화면 좌표('화면에 맞추기'로 줄였을 때도 맞게)
         const cr = document.getElementById('cb-canvas').getBoundingClientRect();
-        x = cr.left + (el.x1 + el.x2) / 2 - 40;
-        y = cr.top + Math.min(el.y1, el.y2) - 56;
-        if (y < 60) y = cr.top + Math.max(el.y1, el.y2) + 12;
+        const sx = v => cr.left + view.tx + v * view.s;
+        const sy = v => cr.top + view.ty + v * view.s;
+        x = (sx(el.x1) + sx(el.x2)) / 2 - 40;
+        y = sy(Math.min(el.y1, el.y2)) - 56;
+        if (y < 60) y = sy(Math.max(el.y1, el.y2)) + 12;
       }
-      x = Math.max(8, Math.min(x, window.innerWidth - 220));
+      // 메뉴 실제 크기로 화면(가로·세로) 안에 가둠
+      const w = ctx.offsetWidth || 220, h = ctx.offsetHeight || 56;
+      const vw = window.innerWidth, vh = window.innerHeight;
+      x = Math.max(8, Math.min(x, vw - w - 8));
+      y = Math.max(8, Math.min(y, vh - h - 8));
       ctx.style.left = x + 'px';
       ctx.style.top = y + 'px';
     }
@@ -1109,7 +1192,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       });
     }
 
-    function deleteEl(id) {
+    // notify: 메뉴·Delete 키로 지웠을 때 '되돌리기' 버튼이 있는 알림을 띄움
+    function deleteEl(id, notify) {
       if (viewOnlyBoard) return;
       const board = getBoard();
       pushHistory();
@@ -1117,13 +1201,24 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       board.lastEdited = Date.now();
       saveBoard(board);
       renderAll(); deselectAll();
+      if (notify) VUI.toast('지웠어요', { duration: 6000, action: { label: '되돌리기', onClick: undoLast } });
     }
 
     /* ── Text editing ── */
+    // 새 글자 크기: 화면 크기에 비례(전자칠판 80px, 휴대폰 32px 정도). 줄여 보는 중이면 보이는 크기 기준
+    function defaultTextSize() {
+      const r = document.getElementById('cb-canvas').getBoundingClientRect();
+      const target = Math.max(SIZES[0], Math.min(80, Math.min(r.width, r.height) * 0.08)) / view.s;
+      let size = SIZES[0];
+      SIZES.forEach(v => { if (v <= target) size = v; });
+      return size;
+    }
     function addText(x, y) {
       if (viewOnlyBoard) return;
       const board = getBoard();
-      const el = { id: uid(), type: 'text', x, y, text: '텍스트', color: getPalette(board.type)[0], size: 80 };
+      const size = defaultTextSize();
+      // 누른 곳이 글자 첫머리 가운데쯤 오게
+      const el = { id: uid(), type: 'text', x: Math.round(x - size * 0.75), y: Math.round(y - size * 0.4), text: '텍스트', color: getPalette(board.type)[0], size };
       pushHistory();
       board.elements.push(el);
       board.lastEdited = Date.now();
@@ -1173,7 +1268,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const el = board.elements.find(e => e.id === id);
       if (!el) return;
       const txt = div.innerText.trim();
-      if (!txt) { deleteEl(id); return; }
+      if (!txt) { deleteEl(id); return; }   // 글자를 모두 지우면 요소도 지움(알림 없음)
       pushHistory();
       el.text = txt;
       board.lastEdited = Date.now();
@@ -1182,14 +1277,22 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     /* ── Toolbar modes ── */
+    // 버튼 설명(예전 title)을 터치 기기에서도 보이게: 모드를 처음 켤 때 한 번 알려 줌
+    const modeHintShown = {};
+    function modeHint(m, msg) {
+      if (modeHintShown[m]) return;
+      modeHintShown[m] = true;
+      showToast(msg);
+    }
     function activateTextMode() {
       mode = mode === 'add-text' ? 'select' : 'add-text';
       if (mode !== 'add-text') cancelDraw();
+      else modeHint('add-text', '보드에서 글자를 넣을 곳을 누르세요');
       updateTbState();
     }
     function activateDrawMode() {
       mode = mode === 'draw-line' ? 'select' : 'draw-line';
-      if (mode === 'draw-line') deselectAll();
+      if (mode === 'draw-line') { deselectAll(); modeHint('draw-line', '보드에서 끌어서 선을 그으세요'); }
       else cancelDraw();
       updateTbState();
     }
@@ -1207,6 +1310,121 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const activeColor = board && board.type === 'whiteboard' ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.15)';
       document.getElementById('btn-add-text').style.background = mode === 'add-text' ? activeColor : '';
       document.getElementById('btn-draw').style.background = mode === 'draw-line' ? activeColor : '';
+      const fitBtn = document.getElementById('btn-fit');
+      fitBtn.style.background = view.fitted ? activeColor : '';
+      fitBtn.setAttribute('aria-pressed', String(view.fitted));
+    }
+
+    /* ── 화면에 맞추기 ──
+       요소는 절대 px 좌표로 저장되어 있어(형식 유지), 큰 화면에서 만든 보드를 작은 화면에서 열면 잘림.
+       저장 좌표는 그대로 두고 #cb-stage에 transform(translate+scale)만 걸어 모두 보이게 줄여 보여 줌.
+       포인터 좌표는 toBoard()로 보드 좌표로 바꿔 쓰므로 줄인 상태에서도 쓰기·옮기기·편집이 그대로 됨. */
+    const view = { s: 1, tx: 0, ty: 0, fitted: false };
+    const FIT_PAD = 16;
+
+    function toBoard(clientX, clientY) {
+      const r = canvas.getBoundingClientRect();
+      return { x: (clientX - r.left - view.tx) / view.s, y: (clientY - r.top - view.ty) / view.s };
+    }
+
+    // 모든 요소를 감싸는 사각형(보드 좌표). 글자는 실제 그려진 크기로 잼
+    function contentBBox() {
+      const board = getBoard();
+      if (!board || !board.elements.length) return null;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      const add = (ax, ay, bx, by) => { x0 = Math.min(x0, ax); y0 = Math.min(y0, ay); x1 = Math.max(x1, bx); y1 = Math.max(y1, by); };
+      board.elements.forEach(el => {
+        if (el.type === 'line') {
+          add(Math.min(el.x1, el.x2) - 4, Math.min(el.y1, el.y2) - 4, Math.max(el.x1, el.x2) + 4, Math.max(el.y1, el.y2) + 4);
+        } else if (el.type === 'text') {
+          const div = canvas.querySelector(`.cb-el[data-id="${el.id}"]`);
+          const w = div ? div.offsetWidth : el.size * 4, h = div ? div.offsetHeight : el.size * 1.3;
+          add(el.x, el.y, el.x + w, el.y + h);
+        }
+      });
+      return isFinite(x0) ? { x0, y0, x1, y1 } : null;
+    }
+
+    function contentOverflows() {
+      const b = contentBBox();
+      if (!b) return false;
+      const W = canvas.clientWidth, H = canvas.clientHeight;
+      return b.x0 < 0 || b.y0 < 0 || b.x1 > W || b.y1 > H;
+    }
+
+    function applyView() {
+      const stage = document.getElementById('cb-stage');
+      const svg = document.getElementById('cb-svg');
+      const W = canvas.clientWidth, H = canvas.clientHeight;
+      if (!view.fitted) {
+        stage.style.transform = '';
+        stage.style.width = ''; stage.style.height = '';
+        svg.style.left = ''; svg.style.top = ''; svg.style.width = ''; svg.style.height = '';
+        svg.removeAttribute('viewBox');
+      } else {
+        stage.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.s})`;
+        // 선 SVG는 보이는 영역 전체(보드 좌표)를 덮게 → 줄인 상태에서도 어디서나 선을 긋고 고를 수 있음
+        const vx = -view.tx / view.s, vy = -view.ty / view.s, vw = W / view.s, vh = H / view.s;
+        svg.style.left = vx + 'px'; svg.style.top = vy + 'px';
+        svg.style.width = vw + 'px'; svg.style.height = vh + 'px';
+        svg.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
+      }
+      updateTbState();
+      renderLines();   // 선을 누르는 폭을 배율에 맞춤
+    }
+
+    function resetView() {
+      view.s = 1; view.tx = 0; view.ty = 0; view.fitted = false;
+      applyView();
+    }
+
+    // quiet: 보드를 열 때 자동으로 맞출 때는 알림만 짧게
+    function fitView(quiet) {
+      if (!getBoard()) return;
+      hideCtx();
+      const W = canvas.clientWidth, H = canvas.clientHeight;
+      const stage = document.getElementById('cb-stage');
+      // 글자 줄바꿈 폭(= 면의 폭)을 먼저 정함: 화면 폭과 요소 시작점 중 큰 쪽(작은 화면에서 글자가 한 글자씩 꺾이지 않게)
+      const board = getBoard();
+      let wrapW = W;
+      board.elements.forEach(el => {
+        if (el.type === 'text') wrapW = Math.max(wrapW, el.x + 320);
+        else if (el.type === 'line') wrapW = Math.max(wrapW, el.x1, el.x2);
+      });
+      view.fitted = true;
+      stage.style.width = Math.ceil(wrapW) + 'px';
+      const b = contentBBox();
+      if (!b) { resetView(); return; }
+      const bw = Math.max(1, b.x1 - b.x0), bh = Math.max(1, b.y1 - b.y0);
+      const s = Math.min(1, (W - FIT_PAD * 2) / bw, (H - FIT_PAD * 2) / bh);
+      view.s = Math.max(0.05, s);
+      // 내용이 화면보다 작으면 원래 자리 그대로, 크면 가운데에
+      view.tx = bw * view.s <= W - FIT_PAD * 2 && b.x0 >= 0 && b.x1 <= W ? 0 : (W - bw * view.s) / 2 - b.x0 * view.s;
+      view.ty = bh * view.s <= H - FIT_PAD * 2 && b.y0 >= 0 && b.y1 <= H ? 0 : (H - bh * view.s) / 2 - b.y0 * view.s;
+      stage.style.height = Math.ceil(Math.max(H / view.s, b.y1)) + 'px';
+      applyView();
+      if (quiet) showToast(`큰 보드라 화면에 맞춰 ${Math.round(view.s * 100)}%로 보여요`);
+    }
+
+    function toggleFit() {
+      if (!getBoard()) return;
+      if (view.fitted) { resetView(); renderAll(); return; }
+      if (!contentOverflows()) { showToast('모든 내용이 이미 화면에 보여요'); return; }
+      fitView(false);
+    }
+
+    // 맞춘 상태에서 창 크기가 바뀌면(화면 회전 등) 다시 맞춤
+    let _fitResizeTimer = null;
+    window.addEventListener('resize', () => {
+      if (!view.fitted) return;
+      clearTimeout(_fitResizeTimer);
+      _fitResizeTimer = setTimeout(() => { if (view.fitted && getBoard()) fitView(false); }, 200);
+    });
+
+    function updateEmptyHint() {
+      const board = getBoard();
+      const show = !!board && !viewOnlyBoard && !board.elements.length;
+      document.getElementById('cb-empty-hint').classList.toggle('show', show);
     }
 
     /* ── Pointer 입력 (마우스·터치·펜 공통) ──
@@ -1248,10 +1466,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (ed) ed.blur();
       const board = getBoard();
       if (!board) return;
-      const r = canvas.getBoundingClientRect();
+      const bp = toBoard(e.clientX, e.clientY);   // 보드 좌표(화면에 맞춰 줄인 상태 포함)
       const g = {
         pointerId: e.pointerId, ptype: e.pointerType || 'mouse',
-        sx: e.clientX, sy: e.clientY, px: e.clientX - r.left, py: e.clientY - r.top,
+        sx: e.clientX, sy: e.clientY, px: bp.x, py: bp.y,
         moved: false, longPress: false, timer: null,
       };
       const div = textId ? canvas.querySelector(`.cb-el[data-id="${textId}"]`) : null;
@@ -1297,6 +1515,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const g = gesture;
       if (!g || e.pointerId !== g.pointerId) return;
       const dx = e.clientX - g.sx, dy = e.clientY - g.sy;
+      const bdx = dx / view.s, bdy = dy / view.s;   // 끈 거리(보드 좌표)
       if (!g.moved && !g.longPress && (Math.abs(dx) > moveSlop(g) || Math.abs(dy) > moveSlop(g))) {
         g.moved = true;
         clearTimeout(g.timer);
@@ -1304,17 +1523,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         if (g.kind === 'text' && g.draggable) g.div.classList.add('dragging');
       }
       if (g.kind === 'draw' && tempLine) {
-        const r = canvas.getBoundingClientRect();
-        tempLine.setAttribute('x2', e.clientX - r.left);
-        tempLine.setAttribute('y2', e.clientY - r.top);
+        const p = toBoard(e.clientX, e.clientY);
+        tempLine.setAttribute('x2', p.x);
+        tempLine.setAttribute('y2', p.y);
       } else if (g.moved && g.draggable && g.kind === 'text') {
-        g.div.style.left = (g.ox + dx) + 'px';
-        g.div.style.top = (g.oy + dy) + 'px';
+        g.div.style.left = (g.ox + bdx) + 'px';
+        g.div.style.top = (g.oy + bdy) + 'px';
       } else if (g.moved && g.draggable && g.kind === 'line') {
         const lg = document.querySelector(`#cb-svg .cb-line-g[data-id="${g.id}"]`);
         if (lg) lg.querySelectorAll('line').forEach(l => {
-          l.setAttribute('x1', g.o.x1 + dx); l.setAttribute('y1', g.o.y1 + dy);
-          l.setAttribute('x2', g.o.x2 + dx); l.setAttribute('y2', g.o.y2 + dy);
+          l.setAttribute('x1', g.o.x1 + bdx); l.setAttribute('y1', g.o.y1 + bdy);
+          l.setAttribute('x2', g.o.x2 + bdx); l.setAttribute('y2', g.o.y2 + bdy);
         });
       }
     });
@@ -1332,14 +1551,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       endGesture(g);
       const board = getBoard();
       if (!board) return;
-      const dx = e.clientX - g.sx, dy = e.clientY - g.sy;
+      const dx = (e.clientX - g.sx) / view.s, dy = (e.clientY - g.sy) / view.s;   // 보드 좌표
       if (g.kind === 'draw') {
+        // 끝점은 보이는 영역 안으로(보드 좌표)
         const r = canvas.getBoundingClientRect();
-        const x2 = Math.max(0, Math.min(e.clientX - r.left, r.width));
-        const y2 = Math.max(0, Math.min(e.clientY - r.top, r.height));
+        const p = toBoard(Math.max(r.left, Math.min(e.clientX, r.right)), Math.max(r.top, Math.min(e.clientY, r.bottom)));
+        const x2 = Math.round(p.x), y2 = Math.round(p.y);
         if (tempLine) { tempLine.remove(); tempLine = null; }
-        if (Math.hypot(x2 - g.px, y2 - g.py) < 8) return;
-        const el = { id: uid(), type: 'line', x1: g.px, y1: g.py, x2, y2, color: getPalette(board.type)[0] };
+        if (Math.hypot(x2 - g.px, y2 - g.py) * view.s < 8) return;
+        const el = { id: uid(), type: 'line', x1: Math.round(g.px), y1: Math.round(g.py), x2, y2, color: getPalette(board.type)[0] };
         pushHistory();
         board.elements.push(el);
         board.lastEdited = Date.now();
@@ -1350,7 +1570,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (g.kind === 'bg') {
         if (g.moved) return;
         if (mode === 'add-text') {
-          addText(g.px - 60, g.py - 30);   // pointerup 안에서 focus → 터치 기기에서도 화상 키보드가 뜸
+          addText(g.px, g.py);   // pointerup 안에서 focus → 터치 기기에서도 화상 키보드가 뜸
           mode = 'select'; updateTbState();
         } else if (mode === 'select') {
           deselectAll();
@@ -1361,8 +1581,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         const el = board.elements.find(x => x.id === g.id);
         if (el) {
           pushHistory();
-          if (g.kind === 'text') { el.x = g.ox + dx; el.y = g.oy + dy; }
-          else { el.x1 = g.o.x1 + dx; el.y1 = g.o.y1 + dy; el.x2 = g.o.x2 + dx; el.y2 = g.o.y2 + dy; }
+          const rx = Math.round(dx), ry = Math.round(dy);
+          if (g.kind === 'text') { el.x = g.ox + rx; el.y = g.oy + ry; g.div.style.left = el.x + 'px'; g.div.style.top = el.y + 'px'; }
+          else { el.x1 = g.o.x1 + rx; el.y1 = g.o.y1 + ry; el.x2 = g.o.x2 + rx; el.y2 = g.o.y2 + ry; }
           board.lastEdited = Date.now();
           saveBoard(board);
         }
@@ -1438,6 +1659,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         b.onmouseenter = () => b.style.background = s.saveDdHover;
         b.onmouseleave = () => b.style.background = 'transparent';
       });
+      dd.style.color = s.saveDdColor;   // '자동 저장돼요' 안내 글자색
       loadQR();
       const btn = document.getElementById('btn-more');
       const r = btn.getBoundingClientRect();
@@ -1516,7 +1738,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       history.replaceState(null, '', location.pathname);
       showView('home'); renderHome();
       openBoard(board.id);
-      showToast('복제했습니다');
+      showToast('복제했어요. 내 보드 목록에 저장돼요');
     }
 
     function cloneSharedBoard() {
@@ -1532,7 +1754,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       undoStack = [];
       document.body.classList.remove('is-view-only');
       openBoard(board.id);
-      showToast('복제했습니다');
+      showToast('복제했어요. 내 보드 목록에 저장돼요');
     }
 
     /* ── Toast (공용 VUI) ── */
@@ -1606,7 +1828,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         await Promise.race([loadQR(), new Promise(r => setTimeout(r, 1500))]);
         // 단축 → 복사. 복사가 안 되면 링크·QR 창을 보여 줌
         await VUI.share.link(longURL, {
-          title: '🔗 칠판 공유',
+          title: '칠판 공유',
           desc: permission === 'view' ? '받는 사람은 보기만 할 수 있어요.' : '받는 사람이 자기 보드로 복제할 수 있어요.',
         });
       } finally { btn.disabled = false; }
@@ -1624,19 +1846,55 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     }
 
+    // 화면의 .cb-el처럼(white-space: pre-wrap, word-break: break-word) 주어진 폭에서 줄을 나눔.
+    // 띄어쓰기 뒤와 한글·한자 등(아스키가 아닌 글자) 사이에서 끊고, 끊을 곳이 없으면 글자 단위로 끊음
+    function wrapCanvasText(ctx, text, maxW) {
+      const out = [];
+      String(text || '').split('\n').forEach(para => {
+        let line = '';
+        let brk = -1;   // line 안에서 끊어도 되는 위치(그 앞까지가 한 줄)
+        for (const ch of Array.from(para)) {
+          const test = line + ch;
+          if (line && ch !== ' ' && ctx.measureText(test).width > maxW + 0.5) {
+            const cut = brk > 0 ? brk : line.length;
+            out.push(line.slice(0, cut).replace(/ +$/, ''));
+            line = line.slice(cut) + ch;
+            brk = -1;
+          } else {
+            line = test;
+          }
+          if (ch === ' ' || ch.charCodeAt(0) > 0x7f) brk = line.length;
+        }
+        out.push(line);
+      });
+      return out;
+    }
+
     function doSaveJpg() {
       closeSaveMenu();
       const board = getBoard(); if (!board) return;
       const s = BS[board.type];
-      const canvasEl = document.getElementById('cb-canvas');
-      const W = canvasEl.offsetWidth, H = canvasEl.offsetHeight;
+      // 내보낼 범위: 모든 요소를 감싸는 사각형 + 지금 보이는 영역(보드 좌표). 화면 밖 요소도 잘리지 않게
+      const W = canvas.clientWidth, H = canvas.clientHeight;
+      const vx = -view.tx / view.s, vy = -view.ty / view.s;
+      let x0 = vx, y0 = vy, x1 = vx + W / view.s, y1 = vy + H / view.s;
+      const b = contentBBox();
+      if (b) {
+        x0 = Math.min(x0, b.x0 - FIT_PAD); y0 = Math.min(y0, b.y0 - FIT_PAD);
+        x1 = Math.max(x1, b.x1 + FIT_PAD); y1 = Math.max(y1, b.y1 + FIT_PAD);
+      }
+      const RW = Math.ceil(x1 - x0), RH = Math.ceil(y1 - y0);
+      // 기기 캔버스 한도(iOS 약 1,670만 화소, 한 변 8192px) 안으로 줄임
+      const k = Math.min(1, 8192 / RW, 8192 / RH, Math.sqrt(16000000 / (RW * RH)));
       const c = document.createElement('canvas');
-      c.width = W; c.height = H;
+      c.width = Math.max(1, Math.floor(RW * k)); c.height = Math.max(1, Math.floor(RH * k));
       const ctx = c.getContext('2d');
+      ctx.scale(k, k);
+      ctx.translate(-x0, -y0);
 
       // Background
       ctx.fillStyle = s.bg;
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(x0, y0, RW, RH);
 
       // Lines (drawn before text so text appears on top)
       board.elements.filter(e => e.type === 'line').forEach(el => {
@@ -1649,14 +1907,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         ctx.stroke();
       });
 
-      // Text
+      // Text — 화면에 그려진 글자 상자의 폭으로 줄을 나눠 화면과 같게
       board.elements.filter(e => e.type === 'text').forEach(el => {
-        ctx.font = `700 ${el.size}px -apple-system, BlinkMacSystemFont, Pretendard, sans-serif`;
+        const div = canvas.querySelector(`.cb-el[data-id="${el.id}"]`);
+        const family = div ? getComputedStyle(div).fontFamily : '-apple-system, BlinkMacSystemFont, Pretendard, sans-serif';
+        ctx.font = `700 ${el.size}px ${family}`;
         ctx.fillStyle = el.color;
         ctx.textBaseline = 'top';
-        // el.x/y is the top-left of the div; +6/+4 is the div's padding
-        (el.text || '').split('\n').forEach((line, i) => {
-          ctx.fillText(line, el.x + 6, el.y + 4 + i * el.size * 1.2);
+        // .cb-el: 테두리 2px + 안쪽 여백 4px 6px, 줄 높이 1.2
+        const maxW = div ? div.clientWidth - 12 : Infinity;
+        const lh = el.size * 1.2;
+        wrapCanvasText(ctx, el.text, maxW).forEach((line, i) => {
+          ctx.fillText(line, el.x + 8, el.y + 6 + i * lh + (lh - el.size) / 2);
         });
       });
 
@@ -1701,7 +1963,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       // 보기 전용 보드에서는 삭제·되돌리기·복사·붙여넣기를 막음
       if (viewOnlyBoard) return;
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
-        deleteEl(selectedId);
+        deleteEl(selectedId, true);
       }
       if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
@@ -1711,7 +1973,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         e.preventDefault();
         const board = getBoard();
         const el = board.elements.find(e2 => e2.id === selectedId);
-        if (el) { clipboard = JSON.parse(JSON.stringify(el)); showToast('복사했습니다'); }
+        if (el) { clipboard = JSON.parse(JSON.stringify(el)); showToast('복사했어요'); }
       }
       if ((e.key === 'v' || e.key === 'V') && (e.ctrlKey || e.metaKey) && clipboard) {
         e.preventDefault();
@@ -1726,7 +1988,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         saveBoard(board);
         if (el.type === 'text') buildTextEl(el); else buildLineEl(el);
         selectEl(el.id, el.type);
-        showToast('붙여넣었습니다');
+        showToast('붙여넣었어요');
       }
     });
 
@@ -1773,14 +2035,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             if (shared.permission === 'view') {
               viewOnlyBoard = boardData;
               openBoard('__view_only__');
-              showToast('보기 전용으로 열립니다');
+              showToast('보기 전용으로 열었어요. 고친 내용은 저장되지 않아요');
             } else {
               openShareModal(boardData);
             }
             return;
           }
         } catch {}
-        showToast('공유 링크를 읽을 수 없습니다.');
+        showToast('공유 링크를 읽을 수 없어요', 'error');
       }
       showView('home');
       renderHome();

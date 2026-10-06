@@ -1,11 +1,14 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
 <AppLayout
   title="태양과 그림자 — eduin VIVES"
   description="시각과 날짜를 바꾸며 태양 고도, 그림자 길이, 기온, 낮의 길이가 어떻게 달라지는지 관찰해요. 자전축 기울기를 바꿔 계절이 생기는 까닭까지. 초등 과학 6학년 계절의 변화."
   image="https://eduin.info/og-images/sun-shadow.png"
   bodyShell="immersive"
+  theme="light"
+  toast="top"
 >
   <Fragment slot="head">
     <link rel="stylesheet" href="/common/sim-kit.css">
@@ -42,31 +45,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   --ss-no: #c2410c;
   --sk-accent: var(--ss-primary);
 }
-[data-theme="dark"] {
-  --ss-primary: #fb923c;
-  --ss-primary-h: #fdba74;
-  --ss-primary-soft: rgba(251,146,60,0.14);
-  --ss-bg: #120e0a;
-  --ss-panel: #17120d;
-  --ss-border: #2e251b;
-  --ss-text: #f3ebe1;
-  --ss-muted: #b3a491;
-  --ss-btn: #221a12;
-  --ss-btn-h: #2c2218;
-  --ss-sky-day: #3b6d99;
-  --ss-sky-day2: #6f9cc4;
-  --ss-sky-night: #0b1024;
-  --ss-sky-night2: #19213f;
-  --ss-ground: #3e5a2b;
-  --ss-ground-edge: #5b7f40;
-  --ss-path: rgba(251,191,36,0.6);
-  --ss-shadow: rgba(0,0,0,0.6);
-  --ss-stick: #fdba74;
-  --ss-string: #f87171;
-  --ss-ok: #4ade80;
-  --ss-no: #fdba74;
-  --sk-accent-fg: #120e0a;
-}
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -79,30 +57,19 @@ button, input { font-family: inherit; }
 .screen.active { display: flex; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
-.ss-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 48px; padding: 0 16px;
-  border-radius: 14px; border: 1px solid var(--ss-border); background: var(--ss-btn); color: var(--ss-text);
-  font-size: 15px; font-weight: 800; cursor: pointer; touch-action: manipulation; transition: background .15s, transform .08s;
-}
-.ss-btn:hover { background: var(--ss-btn-h); }
-.ss-btn:active { transform: scale(.96); }
-.ss-btn:disabled { opacity: .45; cursor: not-allowed; }
-.ss-btn.primary { background: var(--ss-primary); border-color: var(--ss-primary); color: #fff; }
-[data-theme="dark"] .ss-btn.primary { color: #120e0a; }
-.ss-btn.big { min-height: 60px; padding: 0 36px; font-size: 19px; border-radius: 99px; }
-.ss-btn.sm { min-height: 44px; padding: 0 12px; font-size: 14px; border-radius: 12px; }
-.ss-btn[aria-pressed="true"] { border-color: var(--ss-primary); background: var(--ss-primary-soft); color: var(--ss-primary); }
+/* 버튼은 공용 .sk-btn(규약 v2). 시작 버튼만 크게 */
+.sk-btn.big { min-height: 60px; padding: 0 36px; font-size: 19px; border-radius: 99px; }
+.mode-tab .ic { width: 1.1em; height: 1.1em; vertical-align: -0.15em; margin-right: 3px; }
+.intro-cards b .ic, .panel-head h2 .ic, .group-title .ic, .summary h3 .ic { width: 1.1em; height: 1.1em; vertical-align: -0.15em; margin-right: 4px; }
 
 /* ══════════ 인트로·결과 ══════════ */
+/* 높이·스크롤·가운데 정렬은 공용 .sk-screen */
 .intro-screen, .result-screen {
-  flex-direction: column; align-items: center; height: 100vh; height: 100dvh; padding: 64px 20px 28px; text-align: center; overflow-y: auto;
+  text-align: center;
   animation: fadeUp .45s ease;
   background: radial-gradient(circle at 75% 20%, rgba(245,158,11,.20) 0, transparent 40%), radial-gradient(circle at 20% 80%, rgba(156,194,122,.18) 0, transparent 40%), var(--ss-bg);
 }
-.intro-screen > :first-child, .result-screen > :first-child { margin-top: auto; }
-.intro-screen > :last-child, .result-screen > :last-child { margin-bottom: auto; }
 .intro-tag { display: inline-block; background: var(--ss-primary); color: #fff; font-size: 14px; font-weight: 800; padding: 6px 14px; border-radius: 99px; margin-bottom: 14px; }
-[data-theme="dark"] .intro-tag { color: #120e0a; }
 .intro-art { font-size: 84px; line-height: 1; margin-bottom: 6px; }
 .intro-screen h1, .result-screen h1 { font-size: 34px; font-weight: 900; margin-bottom: 6px; }
 .intro-sub { font-size: 16px; color: var(--ss-muted); line-height: 1.7; margin-bottom: 18px; }
@@ -162,10 +129,10 @@ table.rec th { background: var(--ss-btn); font-weight: 800; }
 .opts.two .opt { text-align: center; }
 .opt.right { border-color: var(--ss-ok); background: rgba(22,163,74,.12); }
 .opt.wrong { border-color: var(--ss-no); background: rgba(234,88,12,.10); }
-.m-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-.m-actions .ss-btn { flex: 1; }
+.m-actions { margin-top: 12px; }
 .m-actions [hidden] { display: none; }
-#mFeedback { margin-top: 10px; font-size: 15.5px; }
+.m-top { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+#mFeedback { margin: 0 0 10px; font-size: 15.5px; }
 #mFeedback:empty { display: none; }
 .sk-mnav { gap: 6px; flex-wrap: wrap; }
 
@@ -194,17 +161,17 @@ table.rec th { background: var(--ss-btn); font-weight: 800; }
   </Fragment>
 
 <!-- ============ 인트로 ============ -->
-<div id="screenIntro" class="screen intro-screen active">
+<div id="screenIntro" class="screen intro-screen sk-screen active">
   <div class="intro-tag">과학 6학년 · 계절의 변화</div>
   <div class="intro-art" aria-hidden="true">☀️</div>
   <h1>태양과 그림자</h1>
   <p class="intro-sub">시각과 날짜를 바꾸며 태양 고도, 그림자 길이, 기온,<br>낮의 길이가 어떻게 달라지는지 관찰해요.</p>
   <div class="intro-cards">
-    <div><b>☀ 하루 관찰</b>태양 고도 측정기로 하루 동안 고도·그림자·기온을 재요.</div>
-    <div><b>🗓 계절 비교</b>계절마다 남중 고도와 낮의 길이가 어떻게 바뀔까요?</div>
-    <div><b>🌍 계절의 원인</b>자전축이 기울지 않았다면 어떻게 될까요?</div>
+    <div><b><Icon name="sun" />하루 관찰</b>태양 고도 측정기로 하루 동안 고도·그림자·기온을 재요.</div>
+    <div><b><Icon name="calendar" />계절 비교</b>계절마다 남중 고도와 낮의 길이가 어떻게 바뀔까요?</div>
+    <div><b><Icon name="earth" />계절의 원인</b>자전축이 기울지 않았다면 어떻게 될까요?</div>
   </div>
-  <button type="button" class="ss-btn primary big" id="btnStart">시작하기</button>
+  <button type="button" class="sk-btn sk-btn--primary big" id="btnStart">시작하기</button>
 </div>
 
 <!-- ============ 본 화면 ============ -->
@@ -214,14 +181,14 @@ table.rec th { background: var(--ss-btn); font-weight: 800; }
 
     <aside class="panel" aria-label="조작판">
       <div class="panel-head">
-        <h2>☀️ 태양과 그림자</h2>
+        <h2><Icon name="sun" />태양과 그림자</h2>
         <div class="chips" id="places" role="group" aria-label="장소"></div>
       </div>
       <div class="mode-tabs" role="group" aria-label="모드">
-        <button type="button" class="mode-tab active" data-mode="day" aria-pressed="true">☀ 하루</button>
-        <button type="button" class="mode-tab" data-mode="season" aria-pressed="false">🗓 계절</button>
-        <button type="button" class="mode-tab" data-mode="orbit" aria-pressed="false">🌍 원인</button>
-        <button type="button" class="mode-tab" data-mode="mission" aria-pressed="false">🏆 미션</button>
+        <button type="button" class="mode-tab active" data-mode="day" aria-pressed="true"><Icon name="sun" />하루</button>
+        <button type="button" class="mode-tab" data-mode="season" aria-pressed="false"><Icon name="calendar" />계절</button>
+        <button type="button" class="mode-tab" data-mode="orbit" aria-pressed="false"><Icon name="earth" />원인</button>
+        <button type="button" class="mode-tab" data-mode="mission" aria-pressed="false"><Icon name="trophy" />미션</button>
       </div>
       <div class="panel-body">
         <!-- 하루 관찰 -->
@@ -232,7 +199,7 @@ table.rec th { background: var(--ss-btn); font-weight: 800; }
           </div>
           <div class="group">
             <div class="group-title">시각 <span class="big-val" id="dTime" style="margin-left:6px"></span><span class="sp"></span>
-              <button type="button" class="ss-btn sm" id="dPlay" aria-pressed="false">▶ 재생</button>
+              <button type="button" class="sk-btn sk-btn--sm" id="dPlay" aria-pressed="false"><Icon name="play" />재생</button>
             </div>
             <div class="slider-row">
               <button type="button" class="sq" id="dMinus" aria-label="10분 전">−10분</button>
@@ -244,11 +211,11 @@ table.rec th { background: var(--ss-btn); font-weight: 800; }
           <div class="readouts" id="dReadouts"></div>
           <div class="group" style="margin-top:12px">
             <div class="group-title">측정 기록<span class="sp"></span>
-              <button type="button" class="ss-btn sm primary" id="dRecord">📏 측정하기</button>
+              <button type="button" class="sk-btn sk-btn--sm sk-btn--primary" id="dRecord"><Icon name="ruler" />측정하기</button>
             </div>
             <div class="row">
-              <button type="button" class="ss-btn sm" id="dAuto">9:30~15:30 매시 측정</button>
-              <button type="button" class="ss-btn sm" id="dClear">기록 지우기</button>
+              <button type="button" class="sk-btn sk-btn--sm" id="dAuto"><Icon name="list-checks" />9:30~15:30 매시 측정</button>
+              <button type="button" class="sk-btn sk-btn--sm sk-btn--danger" id="dClear"><Icon name="trash-2" />기록 지우기</button>
             </div>
             <div id="dTable"></div>
             <div class="chips" id="dGraphTabs" style="margin-top:8px"></div>
@@ -279,7 +246,7 @@ table.rec th { background: var(--ss-btn); font-weight: 800; }
             <div class="graph-box" id="sGraph"></div>
           </div>
           <div class="group">
-            <div class="group-title">🔦 빛 실험<span class="sp"></span><button type="button" class="ss-btn sm" id="sLight" aria-pressed="false">실험 보기</button></div>
+            <div class="group-title"><Icon name="flashlight" />빛 실험<span class="sp"></span><button type="button" class="sk-btn sk-btn--sm" id="sLight" aria-pressed="false">실험 보기</button></div>
             <p class="hint-text">전등을 기울이면 같은 양의 빛이 더 넓은 곳에 퍼져요. 한 칸이 받는 빛이 줄어 덜 따뜻해요.</p>
             <div class="slider-row" id="sLightRow" hidden style="margin-top:6px">
               <span class="hint-text" style="font-weight:800">각도</span>
@@ -302,8 +269,8 @@ table.rec th { background: var(--ss-btn); font-weight: 800; }
           <div class="group">
             <div class="group-title">자전축 기울기</div>
             <div class="row" id="oTilt">
-              <button type="button" class="ss-btn sm" data-tilt="23.5" aria-pressed="true">지금 지구 (23.5°)</button>
-              <button type="button" class="ss-btn sm" data-tilt="0" aria-pressed="false">기울지 않았다면 (0°)</button>
+              <button type="button" class="sk-btn sk-btn--sm" data-tilt="23.5" aria-pressed="true">지금 지구 (23.5°)</button>
+              <button type="button" class="sk-btn sk-btn--sm" data-tilt="0" aria-pressed="false">기울지 않았다면 (0°)</button>
             </div>
           </div>
           <div class="readouts" id="oReadouts"></div>
@@ -316,16 +283,20 @@ table.rec th { background: var(--ss-btn); font-weight: 800; }
 
         <!-- 미션 -->
         <div class="pane" id="paneMission" hidden>
+          <div class="m-top">
+            <button type="button" class="sk-btn sk-btn--sm" id="mExit"><Icon name="arrow-left" />자유 탐험으로</button>
+          </div>
           <div class="sk-mnav" id="missionNav" aria-label="미션 번호"></div>
           <h3 class="m-title" id="mTitle"></h3>
           <p class="m-q" id="mQ"></p>
+          <!-- 규약 v2: 결과 문구는 조작 위에 -->
+          <div id="mFeedback"></div>
           <div id="mControls"></div>
           <div id="mAnswer"></div>
-          <div id="mFeedback"></div>
-          <div class="m-actions">
-            <button type="button" class="ss-btn primary" id="mCheck">이때!</button>
-            <button type="button" class="ss-btn primary" id="mNextMission" hidden>다음 미션 →</button>
-            <button type="button" class="ss-btn" id="mResult" hidden>🏆 결과 보기</button>
+          <div class="m-actions sk-actions">
+            <button type="button" class="sk-btn sk-btn--primary" id="mCheck"><Icon name="circle-check" />확인하기</button>
+            <button type="button" class="sk-btn sk-btn--primary" id="mNextMission" hidden><Icon name="arrow-right" />다음 미션</button>
+            <button type="button" class="sk-btn" id="mResult" hidden><Icon name="award" />결과 보기</button>
           </div>
         </div>
       </div>
@@ -334,13 +305,13 @@ table.rec th { background: var(--ss-btn); font-weight: 800; }
 </div>
 
 <!-- ============ 결과 ============ -->
-<div id="screenResult" class="screen result-screen">
-  <div style="font-size:64px" aria-hidden="true">🏆</div>
+<div id="screenResult" class="screen result-screen sk-screen">
+  <div style="font-size:64px;line-height:1;color:#f59e0b"><Icon name="trophy" /></div>
   <h1>미션 결과</h1>
   <p class="intro-sub" id="resultSub"></p>
   <div class="result-grid" id="resultGrid" role="list"></div>
   <div class="summary">
-    <h3>📖 배움 정리</h3>
+    <h3><Icon name="book-open" />배움 정리</h3>
     <ul>
       <li>태양 고도가 높을수록 그림자는 짧아지고, 기온은 조금 늦게(오후 2~3시) 가장 높아요.</li>
       <li>여름에는 남중 고도가 높고 낮이 길어요. 겨울에는 남중 고도가 낮고 낮이 짧아요.</li>
@@ -348,8 +319,8 @@ table.rec th { background: var(--ss-btn); font-weight: 800; }
     </ul>
   </div>
   <div class="result-btns">
-    <button type="button" class="ss-btn primary" id="btnRetry">다시 도전</button>
-    <button type="button" class="ss-btn" id="btnToDay">관찰로 돌아가기</button>
+    <button type="button" class="sk-btn sk-btn--primary" id="btnRetry"><Icon name="rotate-ccw" />다시 하기</button>
+    <button type="button" class="sk-btn" id="btnToDay"><Icon name="arrow-left" />자유 탐험으로</button>
   </div>
 </div>
 

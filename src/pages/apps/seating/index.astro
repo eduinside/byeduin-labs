@@ -1,5 +1,6 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 
 // 툴바 아이콘(lucide 경로, 빌드 때 인라인)
 const I = {
@@ -122,11 +123,11 @@ const I = {
     }
     .sc-thumb { background: var(--sc-paper); border-bottom: 1px solid var(--border); padding: 10px 14px; }
     .sc-thumb svg { display: block; width: 100%; height: auto; }
-    .sc-info { padding: 12px 48px 13px 14px; }
+    .sc-info { padding: 12px 52px 13px 14px; }
     .sc-name { font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .sc-meta { font-size: 12px; color: var(--fg-muted); margin-top: 4px; line-height: 1.5; }
     .sc-cmenu {
-      position: absolute; right: 8px; bottom: 12px; width: 34px; height: 34px; border-radius: 8px;
+      position: absolute; right: 4px; bottom: 6px; width: 44px; height: 44px; border-radius: 8px;
       border: 1px solid transparent; background: transparent; color: var(--fg-muted); cursor: pointer;
       display: flex; align-items: center; justify-content: center;
     }
@@ -375,7 +376,7 @@ const I = {
     .sc-modal.open { display: flex; }
     .sc-mbox {
       background: var(--dialog-bg); color: var(--dialog-fg); border: 1px solid var(--dialog-border);
-      border-radius: 16px; width: min(520px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 20px;
+      border-radius: 16px; width: min(520px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow: auto; padding: 20px;
       box-shadow: 0 20px 50px rgba(0,0,0,.25);
     }
     .sc-mbox h2 { margin: 0 0 6px; font-size: 17px; }
@@ -389,14 +390,16 @@ const I = {
     .mfoot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
     .mfoot .left { margin-right: auto; }
 
-    /* ───────── 반응형 ───────── */
-    @media (max-width: 1520px) {
+    /* ───────── 반응형 ─────────
+       1366·1536 노트북에서도 "비교 기준·이동 비교·인쇄" 글자가 보이도록: 배열 설정을 먼저 접고(1440px 이하),
+       글자는 1100px 이하에서만 숨긴다 */
+    @media (max-width: 1100px) {
       .tb-btn .lbl-wide { display: none; }
       .tb-btn.has-wide { width: 36px; padding: 0; justify-content: center; }
       .grp .lbl.opt { display: none; }
     }
-    @media (max-width: 1240px) {
-      /* 좁은 화면: 배열 설정은 ⚙ 버튼으로 접어 두고, 펼치면 툴바 아래 줄에 */
+    @media (max-width: 1440px) {
+      /* 좁은 화면: 배열 설정은 설정 버튼으로 접어 두고, 펼치면 툴바 아래 줄에 */
       #sb-settings-btn { display: inline-flex; }
       .tb-settings { display: none; }
       #view-board.show-settings .tb-settings { display: flex; flex-wrap: wrap; gap: 8px 14px; order: 99; width: 100%; padding: 6px 0 2px; }
@@ -412,6 +415,39 @@ const I = {
       #st-hint { display: none; }
     }
     .sc-pop .only-narrow { display: none; }
+
+    /* 아이콘(lucide 스프라이트) */
+    .sc-btn .ic, .tb-btn .ic, .sc-pop button .ic { width: 15px; height: 15px; flex-shrink: 0; }
+    .seat .pin .ic { width: 11px; height: 11px; display: block; }
+    .legend .ic { width: 12px; height: 12px; }
+    #st-viol { display: inline-flex; align-items: center; gap: 4px; }
+    .pairrow .x { display: inline-grid; place-items: center; }
+    /* 성별 단추: 색 점만이 아니라 글자(남·여·?)도 */
+    .gbtn { width: auto; min-width: 26px; height: 22px; border-radius: 6px; font-weight: 700; font-size: 11px; line-height: 1; font-family: inherit; color: var(--fg-muted); padding: 0 4px; }
+    .gbtn.m, .gbtn.f { color: #fff; }
+
+    /* 터치 기기: 누르는 곳 44px 이상(같은 계열 picker와 맞춤) */
+    @media (pointer: coarse) {
+      .sc-btn, .sc-btn.sm, .tb-btn { height: 44px; min-height: 44px; }
+      .tb-btn.icon, .tb-btn.has-wide, .tb-btn.has-sm { min-width: 44px; }
+      .seg button { height: 40px; }
+      .stepper button { width: 40px; height: 40px; }
+      .tag { height: 40px; min-width: 40px; }
+      .gbtn { height: 40px; min-width: 40px; font-size: 13px; }
+      .srow .grip { width: 32px; height: 44px; }
+      .pairrow .x { width: 44px; height: 44px; }
+      .dr-tabs button { height: 44px; }
+      .sc-pop button { min-height: 44px; }
+      .sc-cmenu { width: 44px; height: 44px; }
+      .sc-inp, .sc-sel { height: 44px; }
+    }
+    /* iOS는 16px 미만 입력칸에서 화면을 확대한다 */
+    @media (max-width: 768px), (pointer: coarse) {
+      .sc-inp, .sc-sel, #sb-name, .sc-mbox textarea, .sc-mbox .sc-inp { font-size: 16px; }
+    }
+    /* 보드 아래 상태줄과 공용 토스트가 겹치지 않게 */
+    body.in-board { --vui-toast-bottom: 64px; }
+
     @media (max-width: 560px) {
       #sb-baseline, #sb-compare, #sb-print, #sb-full, #sb-status .legend { display: none !important; }
       .sc-pop .only-narrow { display: flex; }
@@ -456,16 +492,16 @@ const I = {
   <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입합니다 -->
   <main class="app-main" id="view-list">
     <div class="app-header">
-      <div class="app-badge">◆ 업무경감</div>
-      <h1 class="app-title">🪑 자리 배치</h1>
+      <div class="app-badge">업무경감</div>
+      <h1 class="app-title">자리 배치 <span class="app-title-en">Seating Chart</span></h1>
       <p class="app-desc">명단으로 교실 자리표를 만들고, 조건을 지켜 랜덤으로 배치하고, A4 한 장으로 인쇄해요.</p>
     </div>
     <div class="sl-top">
       <h2 class="sl-title">내 학급</h2>
-      <button type="button" class="sc-btn" id="sl-import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.upload}></svg>JSON 불러오기</button>
+      <button type="button" class="sc-btn" id="sl-import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.upload}></svg>파일 불러오기</button>
       <button type="button" class="sc-btn primary" id="sl-new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.plus}></svg>새 학급</button>
     </div>
-    <p class="sl-note">명단은 이 기기의 브라우저에만 저장돼요. 다른 기기로 옮길 땐 학급 메뉴의 <b>JSON 내보내기</b>를 쓰세요.</p>
+    <p class="sl-note">명단은 이 기기의 브라우저에만 저장돼요. 다른 기기로 옮길 땐 학급 메뉴의 <b>파일로 저장</b>을 쓰세요.</p>
     <div id="sl-grid" class="sl-grid" aria-live="polite"></div>
     <input type="file" id="sl-file" accept="application/json,.json" hidden>
   </main>
@@ -485,10 +521,10 @@ const I = {
           <div class="seg" id="seg-desk"><button type="button" data-v="1">1인</button><button type="button" data-v="2">2인</button></div>
         </div>
         <div class="grp" role="group" aria-label="분단 수"><span class="lbl" aria-hidden="true">분단</span>
-          <div class="stepper"><button type="button" id="cols-dec" aria-label="분단 줄이기">−</button><output id="cols-val" aria-live="polite">3</output><button type="button" id="cols-inc" aria-label="분단 늘리기">+</button></div>
+          <div class="stepper"><button type="button" id="cols-dec" aria-label="분단 줄이기"><Icon name="minus" /></button><output id="cols-val" aria-live="polite">3</output><button type="button" id="cols-inc" aria-label="분단 늘리기"><Icon name="plus" /></button></div>
         </div>
         <div class="grp" role="group" aria-label="줄 수"><span class="lbl" aria-hidden="true">줄</span>
-          <div class="stepper"><button type="button" id="rows-dec" aria-label="줄 줄이기">−</button><output id="rows-val" aria-live="polite">6</output><button type="button" id="rows-inc" aria-label="줄 늘리기">+</button></div>
+          <div class="stepper"><button type="button" id="rows-dec" aria-label="줄 줄이기"><Icon name="minus" /></button><output id="rows-val" aria-live="polite">6</output><button type="button" id="rows-inc" aria-label="줄 늘리기"><Icon name="plus" /></button></div>
         </div>
         <div class="grp" role="group" aria-label="시점"><span class="lbl opt" aria-hidden="true">시점</span>
           <div class="seg" id="seg-view"><button type="button" data-v="teacher">교사</button><button type="button" data-v="student">학생</button></div>
@@ -496,11 +532,11 @@ const I = {
         <div class="tb-sep"></div>
       </div>
       <div class="tb-grow"></div>
-      <button type="button" class="tb-btn primary has-sm" id="sb-random" title="랜덤 배치"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.dice}></svg><span class="lbl-sm">랜덤 배치</span></button>
+      <button type="button" class="tb-btn primary has-sm" id="sb-random" title="랜덤 배치" aria-label="랜덤 배치"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.dice}></svg><span class="lbl-sm">랜덤 배치</span></button>
       <button type="button" class="tb-btn icon" id="sb-undo" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기" aria-keyshortcuts="Control+Z"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.undo}></svg></button>
-      <button type="button" class="tb-btn has-wide has-sm" id="sb-baseline" title="지금 배치를 비교 기준으로 저장"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.bookmark}></svg><span class="lbl-wide lbl-sm">기준 저장</span></button>
-      <button type="button" class="tb-btn has-wide has-sm" id="sb-compare" title="기준과 비교해 이동 화살표 보기" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.compare}></svg><span class="lbl-wide lbl-sm">이동 비교</span></button>
-      <button type="button" class="tb-btn has-wide has-sm" id="sb-print" title="A4 가로 한 장 인쇄"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.printer}></svg><span class="lbl-wide lbl-sm">인쇄</span></button>
+      <button type="button" class="tb-btn has-wide has-sm" id="sb-baseline" title="지금 배치를 비교 기준으로 정하기" aria-label="비교 기준 정하기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.bookmark}></svg><span class="lbl-wide lbl-sm">기준 정하기</span></button>
+      <button type="button" class="tb-btn has-wide has-sm" id="sb-compare" title="기준과 비교해 이동 화살표 보기" aria-label="이동 비교" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.compare}></svg><span class="lbl-wide lbl-sm">이동 비교</span></button>
+      <button type="button" class="tb-btn has-wide has-sm" id="sb-print" title="A4 가로 한 장 인쇄" aria-label="인쇄"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.printer}></svg><span class="lbl-wide lbl-sm">인쇄</span></button>
       <button type="button" class="tb-btn icon" id="sb-full" title="전체화면" aria-label="전체화면" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.max}></svg></button>
       <button type="button" class="tb-btn icon" id="sb-drawer-btn" title="명단·제약·저장 서랍" aria-label="서랍 열기" aria-expanded="true" aria-controls="sb-drawer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={I.panel}></svg></button>
       <button type="button" class="tb-btn icon" id="sb-more-btn" title="더보기" aria-label="더보기" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" set:html={I.more}></svg></button>
@@ -514,7 +550,7 @@ const I = {
           <h2>아직 명단이 없어요</h2>
           <p>한 줄에 한 명씩 이름을 넣어 주세요.<br>먼저 둘러보려면 가상의 예시 명단을 넣어 보세요.</p>
           <div class="row">
-            <button type="button" class="sc-btn primary" data-act="edit-roster">📝 명단 입력</button>
+            <button type="button" class="sc-btn primary" data-act="edit-roster"><Icon name="notebook-pen" />명단 입력</button>
             <button type="button" class="sc-btn" data-act="sample">예시 명단 넣기</button>
           </div>
         </div>
@@ -536,7 +572,7 @@ const I = {
       <div id="st-counts"></div>
       <div id="st-viol" class="good"></div>
       <div id="st-prev" class="muted"></div>
-      <div class="legend" aria-hidden="true"><span class="gdot m"></span>남<span class="gdot f" style="margin-left:8px"></span>여<span class="ff">앞</span>앞줄 우선 <span style="margin-left:6px">📌</span>고정</div>
+      <div class="legend" aria-hidden="true"><span class="gdot m"></span>남<span class="gdot f" style="margin-left:8px"></span>여<span class="ff">앞</span>앞줄 우선 <span style="margin-left:6px;display:inline-flex"><Icon name="pin" /></span>고정</div>
       <div id="st-hint"></div>
     </div>
     <p id="sb-kbd-help" class="visually-hidden">방향키로 자리를 옮겨 다니고, Enter나 스페이스로 자리를 고른 뒤 다른 자리에서 다시 누르면 서로 바뀝니다. Delete는 자리 비우기, 메뉴 키나 Shift+F10은 자리 메뉴입니다.</p>
@@ -547,39 +583,39 @@ const I = {
   <!-- 자리 메뉴 / 더보기 / 카드 메뉴 -->
   <div id="sb-menu" class="sc-pop" role="menu" hidden></div>
   <div id="sb-more" class="sc-pop" role="menu" aria-label="더보기" hidden>
-    <button type="button" role="menuitem" data-act="present">🖥 발표 모드 (이름 크게)</button>
-    <button type="button" role="menuitem" class="only-narrow" data-act="baseline">기준 저장</button>
-    <button type="button" role="menuitem" class="only-narrow" data-act="compare">↔ 이동 비교 켜기/끄기</button>
-    <button type="button" role="menuitem" class="only-narrow" data-act="print">🖨 인쇄</button>
-    <button type="button" role="menuitem" data-act="restore">↩ 기준으로 되돌리기</button>
+    <button type="button" role="menuitem" data-act="present"><Icon name="presentation" />발표 모드 (이름 크게)</button>
+    <button type="button" role="menuitem" class="only-narrow" data-act="baseline"><Icon name="bookmark" />비교 기준 정하기</button>
+    <button type="button" role="menuitem" class="only-narrow" data-act="compare"><Icon name="arrow-left-right" />이동 비교 켜기/끄기</button>
+    <button type="button" role="menuitem" class="only-narrow" data-act="print"><Icon name="printer" />인쇄</button>
+    <button type="button" role="menuitem" data-act="restore"><Icon name="undo-2" />비교 기준 배치로 되돌리기</button>
     <div class="pdiv"></div>
     <button type="button" role="menuitem" data-act="fill">빈자리 채우기</button>
     <button type="button" role="menuitem" data-act="clearfill">비우고 번호순 채우기</button>
-    <button type="button" role="menuitem" data-act="edit-roster">📝 명부 일괄 편집</button>
-    <button type="button" role="menuitem" data-act="snap-save">＋ 현재 배치 저장</button>
-    <button type="button" role="menuitem" data-act="export">JSON 내보내기</button>
+    <button type="button" role="menuitem" data-act="edit-roster"><Icon name="notebook-pen" />명단 한꺼번에 편집</button>
+    <button type="button" role="menuitem" data-act="snap-save"><Icon name="plus" />지금 배치 저장</button>
+    <button type="button" role="menuitem" data-act="export"><Icon name="download" />파일로 저장</button>
     <div class="pdiv"></div>
-    <button type="button" role="menuitem" class="danger" data-act="clear">전체 비우기</button>
+    <button type="button" role="menuitem" class="danger" data-act="clear"><Icon name="trash-2" />전체 비우기</button>
   </div>
   <div id="sl-menu" class="sc-pop" role="menu" aria-label="학급 메뉴" hidden>
     <button type="button" role="menuitem" data-cact="open">열기</button>
     <button type="button" role="menuitem" data-cact="rename">이름 바꾸기</button>
     <button type="button" role="menuitem" data-cact="dup">복제</button>
-    <button type="button" role="menuitem" data-cact="export">JSON 내보내기</button>
+    <button type="button" role="menuitem" data-cact="export">파일로 저장</button>
     <div class="pdiv"></div>
     <button type="button" role="menuitem" class="danger" data-cact="delete">삭제</button>
   </div>
 
-  <!-- 명부 일괄 편집 -->
+  <!-- 명단 한꺼번에 편집 -->
   <div id="m-roster" class="sc-modal">
     <div class="sc-mbox">
-      <h2>명부 일괄 편집</h2>
+      <h2>명단 한꺼번에 편집</h2>
       <p class="mdesc">한 줄에 한 명. 이름 뒤에 <b>남</b>/<b>여</b>(또는 M/F)를 적으면 성별까지 저장돼요. 이름이 같으면 앞줄 우선·고정 설정이 유지돼요.</p>
       <textarea id="roster-text" spellcheck="false" aria-label="명단 (한 줄에 한 명)" placeholder="김민준 남&#10;이서연 여&#10;…"></textarea>
       <div class="mfoot">
         <button type="button" class="sc-btn left" id="roster-sample">예시 명단 넣기</button>
         <button type="button" class="sc-btn" data-vui-close>취소</button>
-        <button type="button" class="sc-btn primary" id="roster-apply">명부 적용</button>
+        <button type="button" class="sc-btn primary" id="roster-apply">명단 적용</button>
       </div>
     </div>
   </div>

@@ -6,6 +6,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   description="세계의 산 11곳(화산 7곳, 화산이 아닌 산 4곳)을 3D 위성지도로 직접 탐험해요. 백두산·한라산·후지산 등을 관찰하고 화산인지 맞혀 보세요."
   image="https://eduin.info/og-images/volcano.png"
   bodyShell="immersive"
+  theme="light"
+  toast="top"
 >
   <Fragment slot="head">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,6 +15,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <link href="https://fonts.googleapis.com/css2?family=Jua&amp;family=Gowun+Dodum&amp;display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js" crossorigin="anonymous" defer is:inline=""></script>
+  <link rel="stylesheet" href="/common/sim-kit.css">
   <script is:inline src="/common/sim-kit.js"></script>
   <style is:global="">
 :root{
@@ -45,7 +48,8 @@ h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
 
 /* ===== 인트로 ===== */
 .wrap{max-width:560px;margin:0 auto;padding:20px 16px 60px}
-.intro{text-align:center;padding-top:56px;animation:fadeUp .6s ease both}
+.intro{text-align:center;animation:fadeUp .6s ease both}
+.sk-screen .wrap{width:100%;padding:0 0 24px}
 .intro .volcano-art{font-size:84px;line-height:1;animation:bounce 2.4s ease-in-out infinite}
 .intro h1{font-size:34px;margin:14px 0 6px;color:var(--lava-deep)}
 .intro .sub{font-size:16px;color:var(--ash);margin-bottom:22px;line-height:1.7}
@@ -61,20 +65,11 @@ h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
 .mission-card li{margin:8px 0 8px 20px;line-height:1.6;font-size:15px}
 .mission-card b{color:var(--lava-deep)}
 
-/* ===== 버튼 ===== */
-.btn{
-  font-family:'Jua',sans-serif;font-size:19px;border:none;cursor:pointer;
-  border-radius:99px;padding:15px 36px;transition:transform .15s;
-  -webkit-tap-highlight-color:transparent
-}
-.btn:active{transform:scale(.96)}
-.btn-primary{
-  background:linear-gradient(135deg,var(--lava) 0%,var(--lava-deep) 100%);
-  color:#fff;box-shadow:0 6px 0 #a32a0e
-}
-.btn-primary:active{box-shadow:0 2px 0 #a32a0e;transform:translateY(4px)}
+/* ===== 버튼: 규약 v2 .sk-btn (sim-kit.css). 앱 강조색만 용암색으로 ===== */
+:root{ --sk-accent:#c2410c; --sk-ring:rgba(194,65,12,.28); }
+.sk-btn{font-family:'Jua',sans-serif;font-weight:400}
 
-/* ===== 탐험 레이아웃: 지도(좌) + 사이드바(우) ===== */
+/* ===== 탐험 레이아웃: 지도 + 조작판(넓은 화면에서는 옆, 좁은 화면에서는 아래) ===== */
 .explore{
   display:grid;grid-template-columns:1fr var(--side-w);
   width:100vw;height:100vh;height:100dvh;
@@ -82,32 +77,30 @@ h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
 }
 .map-zone{position:relative;background:#0c1420;min-width:0}
 #map{width:100%;height:100%}
+/* 위 이름표·안내 칩: 셸 버튼 줄(--sk-stage-top) 아래 왼쪽에 위아래로 쌓는다(좁은 화면에서 서로 겹치지 않게).
+   오른쪽은 지도 확대·축소 버튼 자리(약 50px)를 비워 둔다 */
+.map-top{
+  position:absolute;top:var(--sk-stage-top);left:14px;right:64px;z-index:5;
+  display:flex;flex-direction:column;align-items:flex-start;gap:6px;pointer-events:none
+}
 .viewer-title{
-  position:absolute;top:56px;left:14px;z-index:5;
   background:rgba(20,14,10,.72);backdrop-filter:blur(6px);
-  color:#fff;border-radius:14px;padding:9px 16px;
+  color:#fff;border-radius:14px;padding:9px 16px;max-width:100%;
   font-family:'Jua';font-size:19px;display:flex;align-items:center;gap:9px;
   border:1px solid rgba(255,255,255,.25)
 }
 .viewer-title .num{
-  background:var(--lava);width:26px;height:26px;border-radius:50%;
+  background:var(--lava);width:26px;height:26px;border-radius:50%;flex:none;
   display:inline-flex;align-items:center;justify-content:center;font-size:14px
 }
+/* 지도 확대·축소·방향 버튼: 오른쪽 위, 셸의 홈·공유 버튼 줄 아래 */
+.map-zone .maplibregl-ctrl-top-right{top:var(--sk-stage-top)}
 .cam-bar{
-  position:absolute;bottom:44px;left:50%;transform:translateX(-50%);z-index:5;
+  position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:5;
   display:flex;gap:8px;width:max-content;max-width:calc(100% - 20px)
 }
-.cam-btn{
-  font-family:'Jua';font-size:15px;color:#fff;cursor:pointer;min-height:44px;
-  background:rgba(20,14,10,.72);backdrop-filter:blur(6px);
-  border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:10px 16px;
-  transition:background .15s,transform .12s;white-space:nowrap;
-  -webkit-tap-highlight-color:transparent
-}
-.cam-btn:active{transform:scale(.94)}
-.cam-btn.active{background:var(--lava);border-color:var(--lava)}
-.cam-btn.return-btn{background:rgba(43,36,32,.85);border-color:rgba(255,179,71,.6)}
-.cam-btn.return-btn:hover{background:rgba(70,55,45,.9);border-color:var(--magma)}
+.cam-bar .sk-btn{background:rgba(255,255,255,.94);box-shadow:0 2px 10px rgba(0,0,0,.3);white-space:nowrap}
+.cam-bar .sk-btn.active{background:var(--sk-accent);color:var(--sk-accent-fg)}
 .map-loading{
   position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:10px;
@@ -115,12 +108,12 @@ h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
   transition:opacity .5s;pointer-events:none
 }
 .map-loading.hide{opacity:0}
-.map-loading .spin{font-size:40px;animation:spin 1.6s linear infinite}
+.map-loading .spin{font-size:40px;line-height:1;animation:spin 1.6s linear infinite}
 /* 7초 뒤 JS가 .gone을 붙여 숨긴다(키프레임으로 숨기면 '움직임 줄이기' 설정에서 바로 사라짐) */
 .hint-chip{
-  position:absolute;top:60px;right:14px;z-index:5;
   background:rgba(255,255,255,.92);color:var(--rock);
-  font-size:14px;border-radius:99px;padding:7px 13px;
+  font-size:14px;border-radius:99px;padding:7px 13px;max-width:100%;
+  display:inline-flex;align-items:center;gap:6px;
   transition:opacity .6s ease, visibility .6s;
 }
 .hint-chip.gone{opacity:0;visibility:hidden}
@@ -133,10 +126,10 @@ h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
   max-width:420px;text-align:center;color:#ffe9cc;background:rgba(20,14,10,.9);
   border:2px solid var(--magma);border-radius:18px;padding:18px 18px 16px;
 }
+.map-notice-card .big-ic{font-size:40px;line-height:1}
 .map-notice-card p{font-size:15px;line-height:1.7;margin:8px 0 14px}
-.map-notice-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
-.map-notice-btns .btn{font-size:16px;padding:10px 18px;min-height:44px}
-.map-notice-btns .btn-ghost{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.4)}
+.map-notice-btns{justify-content:center}
+.map-notice-btns > .sk-btn{flex:0 1 auto}
 
 /* ===== 사이드바 ===== */
 .side{
@@ -209,7 +202,10 @@ h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
 .explain{font-size:14.5px;line-height:1.75;background:#f7f2e9;border-radius:14px;padding:13px 15px}
 .explain b{color:var(--lava-deep)}
 .next-zone{text-align:center;margin-top:16px}
-.next-zone .btn{font-size:17px;padding:13px 30px}
+.reveal-banner .ic{vertical-align:-0.15em}
+.observe-box h3 .ic,.tip-box .ic{flex:none}
+.earth-link .ic{vertical-align:-0.15em}
+.summary-box h3{display:flex;align-items:center;gap:6px}
 
 /* ===== 결과 (사이드바 안) ===== */
 .result{text-align:center;animation:fadeUp .5s ease both}
@@ -244,6 +240,10 @@ h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
 @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeOutLater{0%,70%{opacity:1}100%{opacity:0;visibility:hidden}}
+@media (prefers-reduced-motion: reduce){
+  .intro,.explore,.reveal,.result{animation:none}
+  .progress-fill{transition:none}
+}
 
 /* ===== 태블릿·모바일: 지도 위 / 패널 아래 ===== */
 @media (max-width:900px){
@@ -254,8 +254,8 @@ h1,h2,h3{font-family:'Jua',sans-serif;font-weight:400}
   .quiz-btns{flex-direction:row}
   .quiz-btn{flex:1;font-size:15.5px}
   .intro h1{font-size:28px}
-  .cam-btn{font-size:14px;padding:9px 12px}
   .viewer-title{font-size:16px;padding:8px 13px}
+  .map-top{left:10px}
   .cam-bar{flex-wrap:wrap;justify-content:center}
 }
 </style>
@@ -274,7 +274,7 @@ const MOUNTAINS = [
  { name:"백두산", country:"한반도", height:"2,744m", emoji:"🏔️", isVolcano:true,
    lat:41.9931, lng:128.0768, zoom:11.6,
    observe:"산꼭대기를 위에서 내려다보세요. 가운데가 움푹 파여 있고, 그 안에 커다란 호수가 보이나요?",
-   tip:"⬇️ <b>위에서 분화구 찾기</b> 버튼을 누르면 호수가 잘 보여요.",
+   tip:"<b>위에서 보기</b> 버튼을 누르면 호수가 잘 보여요.",
    explain:"백두산은 <b>화산</b>이에요! 산꼭대기의 큰 호수 <b>천지</b>는 화산이 분출한 뒤 분화구에 물이 고여 만들어진 거예요. 지금도 활동 가능성이 있는 화산이랍니다." },
  { name:"킬라우에아 산", country:"미국 하와이", height:"1,247m", emoji:"🌋", isVolcano:true,
    lat:19.4069, lng:-155.2834, zoom:11.6,
@@ -284,22 +284,22 @@ const MOUNTAINS = [
  { name:"설악산", country:"대한민국", height:"1,708m", emoji:"⛰️", isVolcano:false,
    lat:38.1191, lng:128.4654, zoom:11.8,
    observe:"산꼭대기와 능선을 살펴보세요. 뾰족뾰족한 바위 능선이 이어지죠? 분화구처럼 움푹 파인 곳이 있나요?",
-   tip:"🔄 <b>한 바퀴</b> 버튼으로 빙 돌면서 울퉁불퉁한 능선을 관찰해 보세요.",
+   tip:"<b>한 바퀴</b> 버튼으로 빙 돌면서 울퉁불퉁한 능선을 관찰해 보세요.",
    explain:"설악산은 <b>화산이 아니에요</b>. 단단한 <b>화강암</b>이 땅속에서 솟아오른 뒤 오랜 시간 깎여서 만들어진 산이에요. 분화구가 없고 꼭대기가 뾰족해요." },
  { name:"에베레스트 산", country:"네팔·중국", height:"8,849m", emoji:"🗻", isVolcano:false,
    lat:27.9881, lng:86.9250, zoom:10.8,
    observe:"세계에서 가장 높은 산이에요! 날카로운 봉우리와 빙하가 보이나요? 분화구는 보이나요?",
-   tip:"🔄 <b>한 바퀴</b> 돌면서 봉우리가 얼마나 뾰족한지 살펴보세요.",
+   tip:"<b>한 바퀴</b> 버튼으로 돌면서 봉우리가 얼마나 뾰족한지 살펴보세요.",
    explain:"에베레스트는 <b>화산이 아니에요</b>. 두 개의 커다란 땅덩어리(대륙)가 <b>서로 부딪치면서 땅이 밀려 올라가</b> 만들어진 산이에요. 그래서 분화구가 없답니다." },
  { name:"지리산", country:"대한민국", height:"1,915m", emoji:"🌄", isVolcano:false,
    lat:35.3370, lng:127.7306, zoom:11.0,
    observe:"산세가 부드럽고 웅장하죠? 천천히 둘러보며 분화구나 검은 용암 지형이 있는지 찾아보세요.",
-   tip:"⬇️ 위에서도 보고 ⛰️ 옆에서도 보면서 백두산과 비교해 보세요.",
+   tip:"<b>위에서 보기</b>와 <b>3D 보기</b>를 번갈아 누르며 백두산과 비교해 보세요.",
    explain:"지리산도 <b>화산이 아니에요</b>. 오랜 세월 비바람에 깎여 부드러운 모양이 되었지만, 분화구도 없고 화산 활동으로 만들어진 산이 아니랍니다." },
  { name:"킬로토아", country:"에콰도르", height:"3,914m", emoji:"🌊", isVolcano:true,
    lat:-0.8583, lng:-78.9003, zoom:12.6,
    observe:"위에서 내려다보면 정말 신기한 모양이에요! 동그란 테두리 안에 무엇이 들어 있나요?",
-   tip:"⬇️ <b>위에서 분화구 찾기</b>를 꼭 눌러 보세요. 깜짝 놀랄 거예요!",
+   tip:"<b>위에서 보기</b>를 꼭 눌러 보세요. 깜짝 놀랄 거예요!",
    explain:"킬로토아는 <b>화산</b>이에요! 약 800년 전 큰 폭발로 산꼭대기가 무너져 거대한 <b>분화구(칼데라)</b>가 생겼고, 그 안에 에메랄드빛 호수가 만들어졌어요." },
  { name:"한라산", country:"대한민국 제주도", height:"1,947m", emoji:"🍊", isVolcano:true,
    lat:33.3617, lng:126.5292, zoom:10.8,
@@ -314,12 +314,12 @@ const MOUNTAINS = [
  { name:"후지 산", country:"일본", height:"3,776m", emoji:"🎌", isVolcano:true,
    lat:35.3606, lng:138.7274, zoom:11.2,
    observe:"산의 전체 모양이 아주 예쁜 세모(원뿔) 모양이에요. 꼭대기를 위에서 내려다보세요. 무엇이 보이나요?",
-   tip:"🔄 한 바퀴 돌면 어느 방향에서 봐도 똑같은 세모 모양이에요. 왜 그럴까요?",
+   tip:"<b>한 바퀴</b> 돌면 어느 방향에서 봐도 똑같은 세모 모양이에요. 왜 그럴까요?",
    explain:"후지산은 <b>화산</b>이에요! 용암과 화산재가 여러 번 번갈아 쌓이면서 아름다운 <b>원뿔 모양</b>이 되었어요. 꼭대기에는 분화구가 뚜렷하게 남아 있답니다." },
  { name:"세인트헬렌스 산", country:"미국", height:"2,549m", emoji:"💥", isVolcano:true,
    lat:46.1914, lng:-122.1956, zoom:11.4,
    observe:"산의 한쪽이 뻥 뚫린 것처럼 보여요! 어쩌다 이런 모양이 되었을까요?",
-   tip:"🔄 한 바퀴 돌면서 무너진 쪽과 멀쩡한 쪽을 비교해 보세요.",
+   tip:"<b>한 바퀴</b> 돌면서 무너진 쪽과 멀쩡한 쪽을 비교해 보세요.",
    explain:"세인트헬렌스는 <b>화산</b>이에요! <b>1980년 큰 폭발</b>로 산꼭대기와 한쪽 면이 통째로 날아가 버렸어요. 화산 폭발이 얼마나 강력한지 보여 주는 산이랍니다." },
  { name:"태산", country:"중국", height:"1,545m", emoji:"🪨", isVolcano:false,
    lat:36.2562, lng:117.1014, zoom:11.6,
@@ -339,6 +339,29 @@ const app = document.getElementById('app');
 // 지도에 걸린 타이머·rAF는 한곳에 모아 화면을 다시 그릴 때 한 번에 정리(SimKit.timers)
 const mapTimers = SimKit.timers();
 let tileErrors = 0, tileOk = 0, mapNoticeShown = false;
+const icon = (name, opts) => SimKit.icon(name, opts);
+// 움직임 줄이기 설정이면 지도 이동 애니메이션 없이 바로 옮긴다(maplibre의 essential:true가 이 설정을 무시하지 않게)
+const reducedMotion = () => SimKit.motion.reduced();
+const dur = ms => reducedMotion() ? 0 : ms;
+// 한 바퀴 돌기: 프레임 수가 아니라 경과 시간 기준(초당 7.2°, 예전 60Hz에서 프레임당 0.12°와 같은 빠르기)
+const ORBIT_DEG_PER_SEC = 7.2;
+const orbitLoop = SimKit.loop(dt => {
+  if(!orbiting || !map){ orbitLoop.stop(); return; }
+  map.setBearing(map.getBearing() + ORBIT_DEG_PER_SEC * dt);
+});
+// 위 이름표·아래 카메라 버튼 줄에 산이 가려지지 않게 지도 가운데를 보이는 칸 안으로
+function camPadding(){
+  const zone = document.querySelector('.map-zone');
+  const top = document.querySelector('.map-top');
+  const bar = document.querySelector('.cam-bar');
+  if(!zone) return { top:0, bottom:0, left:0, right:0 };
+  const z = zone.getBoundingClientRect();
+  let pt = top ? Math.max(0, top.getBoundingClientRect().bottom - z.top) : 0;
+  let pb = bar ? Math.max(0, z.bottom - bar.getBoundingClientRect().top) : 0;
+  // 지도 높이의 절반 넘게 비우지 않는다(낮은 화면)
+  const cap = z.height * 0.25;
+  return { top: Math.min(pt, cap), bottom: Math.min(pb, cap), left: 0, right: 0 };
+}
 
 // 결과 화면에서는 idx가 MOUNTAINS.length라 현재 산이 없다
 function curMountain(){ return MOUNTAINS[idx] || null; }
@@ -356,14 +379,14 @@ function mapFallback(msg){
   zone.innerHTML = `
     <div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
                 text-align:center;color:#ffd9a8;padding:20px">
-      <div style="font-size:46px;margin-bottom:10px">🛰️</div>
+      <div style="font-size:46px;line-height:1;margin-bottom:10px">${icon('satellite')}</div>
       <p style="font-size:15px;line-height:1.7;margin-bottom:16px">
         이 기기/환경에서는 내장 3D 지도를 열 수 없어요.<br>
         <span style="opacity:.75;font-size:13px">(${msg})</span><br>
         대신 구글 어스로 탐험을 계속할 수 있어요!
       </p>
-      <button class="btn btn-primary" style="font-size:16px;padding:12px 26px"
-        onclick="window.open(earthUrl(curMountain() || MOUNTAINS[0]),'_blank')">🌍 구글 어스로 이 산 보기</button>
+      <button class="sk-btn sk-btn--primary"
+        onclick="window.open(earthUrl(curMountain() || MOUNTAINS[0]),'_blank','noopener')">${icon('globe')} 구글 어스로 이 산 보기</button>
     </div>`;
   mapFailed = true;
 }
@@ -381,12 +404,12 @@ function showMapNotice(){
   box.setAttribute('role', 'status');
   box.innerHTML = `
     <div class="map-notice-card">
-      <div style="font-size:40px" aria-hidden="true">🛰️</div>
+      <div class="big-ic" aria-hidden="true">${icon('satellite')}</div>
       <p><b>지도 사진을 불러오지 못하고 있어요.</b><br>인터넷이 느리거나 학교에서 막혀 있을 수 있어요.<br>설명을 읽고 퀴즈는 그대로 풀 수 있어요!</p>
-      <div class="map-notice-btns">
-        <button type="button" class="btn btn-primary" data-act="retry">🔄 다시 불러오기</button>
-        <button type="button" class="btn btn-ghost" data-act="earth">🌍 구글 어스로 보기</button>
-        <button type="button" class="btn btn-ghost" data-act="close">닫기</button>
+      <div class="sk-actions map-notice-btns">
+        <button type="button" class="sk-btn sk-btn--primary" data-act="retry">${icon('rotate-ccw')} 다시 불러오기</button>
+        <button type="button" class="sk-btn" data-act="earth">${icon('globe')} 구글 어스로 보기</button>
+        <button type="button" class="sk-btn" data-act="close">${icon('x')} 닫기</button>
       </div>
     </div>`;
   box.addEventListener('click', e => {
@@ -407,6 +430,7 @@ function showMapNotice(){
 function buildMap(){
   mapTimers.reset();
   orbiting = false;
+  orbitLoop.stop();
   tileErrors = 0; tileOk = 0;
   if(map){
     try{ map.remove(); }catch(e){}
@@ -447,14 +471,15 @@ function buildMap(){
         ]
       }
     });
-    map.addControl(new maplibregl.NavigationControl({visualizePitch:true}), 'bottom-left');
+    // 오른쪽 위(셸 버튼 줄 아래, CSS) — 아래쪽 카메라 버튼 줄이 두 줄이 되어도 겹치지 않게
+    map.addControl(new maplibregl.NavigationControl({visualizePitch:true}), 'top-right');
     map.on('load', ()=>{
       map.setTerrain({source:'dem', exaggeration:1.4});
       try{ map.setSky({ 'sky-color':'#79b3e6','horizon-color':'#fdebd0','fog-color':'#e8ddca','sky-horizon-blend':.6 }); }catch(e){}
       document.getElementById('mapLoading')?.classList.add('hide');
       // 로드가 늦어도 1번 산이 아니라 지금 보고 있는 산으로(결과 화면이면 세계 전체)
       const m = curMountain();
-      if(m) flyToMountain(m); else map.easeTo({zoom:2.2, pitch:0, duration:1500});
+      if(m) flyToMountain(m); else map.easeTo({zoom:2.2, pitch:0, duration:dur(1500)});
       // 한참 지나도 사진 타일이 하나도 안 왔으면 안내
       mapTimers.timeout(() => { if(tileOk === 0) showMapNotice(); }, 15000);
     });
@@ -473,30 +498,29 @@ function buildMap(){
 
 function flyToMountain(m){
   if(mapFailed || !map) return;
-  if(!m){ stopOrbit(); map.easeTo({zoom:2.2, pitch:0, bearing:0, duration:1500}); return; }
+  if(!m){ stopOrbit(); map.easeTo({zoom:2.2, pitch:0, bearing:0, duration:dur(1500)}); return; }
   stopOrbit();
-  map.flyTo({ center:[m.lng, m.lat], zoom:m.zoom, pitch:65, bearing:20, duration:4500, essential:true });
+  const cam = { center:[m.lng, m.lat], zoom:m.zoom, pitch:65, bearing:20, padding:camPadding() };
+  if(reducedMotion()) map.jumpTo(cam);
+  else map.flyTo(Object.assign(cam, { duration:4500 }));
 }
-function camTilt(){ if(mapFailed||!map)return; stopOrbit(); const m = curMountain(); map.easeTo({pitch:65, zoom:m ? m.zoom : map.getZoom(), duration:1200}); }
-function camTop(){ if(mapFailed||!map)return; stopOrbit(); const m = curMountain(); map.easeTo({pitch:0, bearing:0, zoom:m ? m.zoom+0.4 : 2.2, duration:1200}); }
+function camTilt(){ if(mapFailed||!map)return; stopOrbit(); const m = curMountain(); map.easeTo({pitch:65, zoom:m ? m.zoom : map.getZoom(), duration:dur(1200)}); }
+function camTop(){ if(mapFailed||!map)return; stopOrbit(); const m = curMountain(); map.easeTo({pitch:0, bearing:0, zoom:m ? m.zoom+0.4 : 2.2, duration:dur(1200)}); }
+// 한 바퀴는 학생이 눌러서 켜는 관찰 기능이라 움직임 줄이기 설정에서도 켤 수 있다(누르면 멈춤)
 function toggleOrbit(){
   if(mapFailed||!map)return;
   orbiting = !orbiting;
   document.getElementById('orbitBtn')?.classList.toggle('active', orbiting);
   document.getElementById('orbitBtn')?.setAttribute('aria-pressed', String(orbiting));
   if(orbiting){
-    if(map.getPitch() < 30) map.easeTo({pitch:65, duration:800});
-    orbitFrame();
-  }
-}
-function orbitFrame(){
-  if(!orbiting || !map) return;
-  map.setBearing(map.getBearing() + 0.12);
-  mapTimers.raf(orbitFrame);
+    if(map.getPitch() < 30) map.easeTo({pitch:65, duration:dur(800)});
+    orbitLoop.start();
+  } else orbitLoop.stop();
 }
 function stopOrbit(){
   if(!orbiting) return;
   orbiting = false;
+  orbitLoop.stop();
   document.getElementById('orbitBtn')?.classList.remove('active');
   document.getElementById('orbitBtn')?.setAttribute('aria-pressed', 'false');
 }
@@ -504,23 +528,25 @@ function stopOrbit(){
 /* ============ 화면 ============ */
 function renderIntro(){
   mapTimers.reset();
+  orbiting = false;
+  orbitLoop.stop();
   document.body.classList.remove('exploring');
   app.innerHTML = `
-  <div class="wrap">
-    <div class="intro">
+  <div class="sk-screen">
+    <div class="wrap intro">
       <div class="volcano-art" aria-hidden="true">🌋</div>
       <h1>화산 탐험대</h1>
       <div class="lesson-tag">화산과 화산이 아닌 산은 무엇이 다를까요?</div>
       <p class="sub">화산은 직접 가 보기 어려워요.<br>이 앱 안에서 바로 <b>3D 지도</b>를 움직이며<br>세계의 산 11개를 탐험해 봐요!</p>
       <div class="mission-card">
-        <h3>🧭 탐험 방법</h3>
+        <h3>${icon('compass')} 탐험 방법</h3>
         <ol>
-          <li>지도를 <b>마우스/손가락으로 끌면</b> 움직여요. <b>오른쪽 버튼 드래그</b>(또는 두 손가락)로 돌리고 기울일 수 있어요.</li>
-          <li><b>🔄 한 바퀴</b>, <b>⬇️ 위에서 보기</b> 버튼으로 산을 구석구석 관찰해요.</li>
-          <li>오른쪽 안내를 읽고, <b>화산인지 아닌지</b> 맞혀 봐요!</li>
+          <li>지도를 <b>마우스나 손가락으로 끌면</b> 움직여요. <b>마우스 오른쪽 버튼으로 끌거나 두 손가락</b>으로 돌리고 기울일 수 있어요.</li>
+          <li><b>한 바퀴</b>, <b>위에서 보기</b> 버튼으로 산을 구석구석 관찰해요.</li>
+          <li>조작판의 안내를 읽고, <b>화산인지 아닌지</b> 맞혀 봐요!</li>
         </ol>
       </div>
-      <button class="btn btn-primary" onclick="start()">탐험 시작! 🚀</button>
+      <button class="sk-btn sk-btn--primary" onclick="start()">${icon('rocket')} 탐험 시작</button>
     </div>
   </div>`;
 }
@@ -530,15 +556,17 @@ function renderExplore(){
   app.innerHTML = `
   <div class="explore">
     <div class="map-zone">
-      <div class="viewer-title" id="viewerTitle"></div>
-      <div class="hint-chip" id="hintChip">🖐️ 지도를 끌어서 직접 둘러보세요!</div>
       <div id="map"></div>
-      <div class="map-loading" id="mapLoading"><div class="spin">🌍</div>3D 지형을 불러오는 중...</div>
-      <div class="cam-bar">
-        <button class="cam-btn return-btn" onclick="flyToMountain(curMountain())" title="현재 산으로 돌아가기">🏠 돌아가기</button>
-        <button class="cam-btn" id="orbitBtn" onclick="toggleOrbit()" aria-pressed="false">🔄 한 바퀴</button>
-        <button class="cam-btn" onclick="camTop()">⬇️ 위에서 분화구 찾기</button>
-        <button class="cam-btn" onclick="camTilt()">⛰️ 3D 보기</button>
+      <div class="map-top">
+        <div class="viewer-title" id="viewerTitle"></div>
+        <div class="hint-chip" id="hintChip">${icon('hand')} 지도를 끌어서 직접 둘러보세요!</div>
+      </div>
+      <div class="map-loading" id="mapLoading"><div class="spin">${icon('globe')}</div>3D 지형을 불러오는 중...</div>
+      <div class="cam-bar sk-actions" role="group" aria-label="지도 보는 방법">
+        <button class="sk-btn sk-btn--sm" onclick="flyToMountain(curMountain())" title="현재 산으로 돌아가기">${icon('locate-fixed')} 돌아가기</button>
+        <button class="sk-btn sk-btn--sm" id="orbitBtn" onclick="toggleOrbit()" aria-pressed="false">${icon('rotate-cw')} 한 바퀴</button>
+        <button class="sk-btn sk-btn--sm" onclick="camTop()">${icon('circle-arrow-down')} 위에서 보기</button>
+        <button class="sk-btn sk-btn--sm" onclick="camTilt()">${icon('mountain')} 3D 보기</button>
       </div>
     </div>
     <aside class="side">
@@ -563,10 +591,10 @@ function renderPanel(){
 
   let actionHtml = `
     <div class="observe-box">
-      <h3>🔍 관찰 포인트</h3>
+      <h3>${icon('search')} 관찰 포인트</h3>
       <p>${m.observe}</p>
     </div>
-    <div class="tip-box">💡 <b>탐험 팁</b> · ${m.tip}</div>`;
+    <div class="tip-box">${icon('lightbulb')} <b>탐험 팁</b> · ${m.tip}</div>`;
 
   if (isRevisitMode) {
     actionHtml += `
@@ -576,8 +604,8 @@ function renderPanel(){
           <span class="label">${m.name}${eunNeun(m.name)} ${m.isVolcano?'화산이에요!':'화산이 아니에요!'}</span>
         </div>
         <div class="explain" style="margin-bottom:16px;">${m.explain}</div>
-        <a class="earth-link" href="${earthUrl(m)}" target="_blank" rel="noopener" style="margin-bottom:14px; display:block;">더 실감나게 보고 싶다면? 구글 어스로 열기 ↗</a>
-        <button class="btn btn-primary" onclick="backToResult()" style="width:100%;">🏆 결과 화면으로 돌아가기</button>
+        <a class="earth-link" href="${earthUrl(m)}" target="_blank" rel="noopener" style="margin-bottom:14px; display:block;">더 실감나게 보고 싶다면? 구글 어스로 열기 ${icon('external-link')}</a>
+        <button class="sk-btn sk-btn--primary sk-btn--block" onclick="backToResult()">${icon('award')} 결과 화면으로 돌아가기</button>
       </div>`;
   } else {
     actionHtml = `
@@ -592,7 +620,7 @@ function renderPanel(){
           <button class="quiz-btn no" onclick="answer(false)">⛰️ 화산이 아니에요!</button>
         </div>
       </div>
-      <a class="earth-link" href="${earthUrl(m)}" target="_blank" rel="noopener">더 실감나게 보고 싶다면? 구글 어스로 열기 ↗</a>`;
+      <a class="earth-link" href="${earthUrl(m)}" target="_blank" rel="noopener">더 실감나게 보고 싶다면? 구글 어스로 열기 ${icon('external-link')}</a>`;
   }
 
   document.getElementById('sideBody').innerHTML = actionHtml;
@@ -606,7 +634,8 @@ function answer(guess){
   document.getElementById('quiz').innerHTML = `
   <div class="reveal">
     <div class="reveal-banner ${correct?'correct':'wrong'}" id="revealBanner" tabindex="-1">
-      ${correct ? '🎉 딩동댕! 정답이에요!' : '🤔 아쉬워요! 지도를 다시 살펴봐요'}
+      ${correct ? icon('party-popper') + ' 딩동댕! 정답이에요!'
+                 : icon('circle-alert') + ' 아쉬워요! 정답은 <b>' + (m.isVolcano ? '화산' : '화산이 아닌 산') + '</b>이에요'}
     </div>
     <div class="answer-chip ${m.isVolcano?'is-volcano':'not-volcano'}">
       <span class="icon">${m.isVolcano?'🌋':'⛰️'}</span>
@@ -614,13 +643,16 @@ function answer(guess){
     </div>
     <div class="explain">${m.explain}</div>
     <div class="next-zone">
-      <button class="btn btn-primary" onclick="next()">
-        ${idx === MOUNTAINS.length-1 ? '탐험 결과 보기 🏁' : '다음 산으로 출발! ✈️'}
+      <button class="sk-btn sk-btn--primary" onclick="next()">
+        ${idx === MOUNTAINS.length-1 ? icon('award') + ' 탐험 ' + SimKit.LABELS.result : '다음 산으로 ' + icon('arrow-right')}
       </button>
     </div>
   </div>`;
   // 누른 버튼이 사라졌으니 결과 문구로 초점을 옮긴다(키보드·화면 읽기)
-  document.getElementById('revealBanner')?.focus({preventScroll:true});
+  const banner = document.getElementById('revealBanner');
+  banner?.focus({preventScroll:true});
+  // 폰(지도가 위에 붙은 배치)에서 결과 문구가 가려져 있으면 보이는 곳으로(규약 v2)
+  if(banner) SimKit.reveal(banner);
 }
 function focusSideHead(){
   const h = document.querySelector('#sideHead h2');
@@ -638,16 +670,16 @@ function next(){
 function renderResult(){
   isRevisitMode = false;
   stopOrbit();
-  if(map && !mapFailed){ map.easeTo({zoom:2.2, pitch:0, duration:3000}); }
+  if(map && !mapFailed){ map.easeTo({zoom:2.2, pitch:0, duration:dur(3000)}); }
   const vt = document.getElementById('viewerTitle');
-  if(vt) vt.innerHTML = `🏆 탐험 완료!`;
+  if(vt) vt.innerHTML = `${icon('award')} 탐험 완료!`;
   const score = answers.filter(a=>a&&a.correct).length;
   const vol = MOUNTAINS.map((m,i)=>({m,i})).filter(x=>x.m.isVolcano);
   const non = MOUNTAINS.map((m,i)=>({m,i})).filter(x=>!x.m.isVolcano);
   const li = x => `<li><button type="button" onclick="revisit(${x.i})">${x.m.emoji} ${x.m.name}</button></li>`;
   document.getElementById('sideHead').innerHTML = `
     <div class="flag">세계 화산 탐험</div>
-    <h2>🏆 탐험 완료!</h2>
+    <h2>${icon('award')} 탐험 완료!</h2>
     <div class="height">${MOUNTAINS.length}개 산을 모두 방문했어요</div>`;
   document.getElementById('sideBody').innerHTML = `
   <div class="result">
@@ -658,12 +690,12 @@ function renderResult(){
     </div>
     <p class="revisit-hint">산 이름을 누르면 3D 지도로 다시 가 볼 수 있어요</p>
     <div class="summary-box">
-      <h3>📚 오늘의 배움 정리</h3>
+      <h3>${icon('book-open')} 오늘의 배움 정리</h3>
       <p>화산은 <b>마그마가 분출하여 만들어진 산</b>이에요.
       그래서 산꼭대기에 <b>분화구</b>가 있고, 분화구에 물이 고여 <b>호수</b>가 되기도 해요(백두산 천지, 한라산 백록담).
       화산이 아닌 산은 분화구가 없고, 땅이 솟아오르거나 깎여서 만들어졌어요.</p>
     </div>
-    <button class="btn btn-primary" style="font-size:17px" onclick="start()">다시 탐험하기 🔄</button>
+    <button class="sk-btn sk-btn--danger" onclick="restartAll()">${icon('refresh-ccw')} ${SimKit.LABELS.reset} 다시 탐험</button>
   </div>`;
   document.querySelector('.side')?.scrollTo({top:0});
 }
@@ -681,6 +713,13 @@ function backToResult() {
   focusSideHead();
 }
 
+// 맞힌 기록을 지우고 1번 산부터(확인 창 필수 — 규약 v2)
+function restartAll(){
+  const ask = window.VUI && VUI.confirm
+    ? VUI.confirm('맞힌 기록을 지우고 1번 산부터 다시 탐험할까요?', { ok: SimKit.LABELS.reset, danger: true })
+    : Promise.resolve(true);
+  ask.then(ok => { if(ok) start(); });
+}
 function start(){
   isRevisitMode = false;
   idx=0;

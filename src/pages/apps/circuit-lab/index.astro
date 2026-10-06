@@ -1,37 +1,36 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<AppLayout 
+<AppLayout
   title="전기회로 공작소 — eduin VIVES"
   description="전지·전구·스위치를 이어 불을 켜고 직렬·병렬 밝기 비교"
   image="https://eduin.info/og-images/circuit-lab.png"
   bodyShell="immersive"
+  theme="light"
+  toast="top"
 >
   <Fragment slot="head">
     <link rel="stylesheet" href="/common/sim-kit.css">
     <script is:inline src="/common/sim-kit.js"></script>
     <style is:global="">
-/* ── circuit-lab 전용 스타일 (immersive 전체화면) ── */
+/* ── circuit-lab 전용 스타일 (immersive 전체화면, 밝은 화면 고정) ── */
 :root {
-  --cc-board-bg: #1e272c;
-  --cc-grid-dot: #37474f;
-  --cc-wire: #e67e22;
-  --cc-wire-glow: rgba(230,126,34,0.3);
+  --cc-board-bg: #eceff1;
+  --cc-grid-dot: #b0bec5;
+  --cc-wire: #d35400;
+  --cc-wire-glow: rgba(211,84,0,0.15);
   --cc-wire-on: #f1c40f;
   --cc-wire-on-glow: rgba(241,196,15,0.4);
   --cc-danger: #e74c3c;
   --cc-danger-glow: rgba(231,76,60,0.4);
   --cc-accent: #f1c40f;
+  --cc-accent-ink: #1a1a1a;
   --cc-sidebar-w: 320px;
+  --cc-badge-h: 40px;
   --sk-accent: #e0a800;
-  --sk-accent-fg: #000;
+  --sk-accent-fg: #1a1a1a;
   --sk-ring: rgba(241,196,15,0.45);
-}
-[data-theme="light"] {
-  --cc-board-bg: #eceff1;
-  --cc-grid-dot: #b0bec5;
-  --cc-wire: #d35400;
-  --cc-wire-glow: rgba(211,84,0,0.15);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -49,21 +48,16 @@ body {
 /* 화면 전환 때 제목으로 옮긴 초점(화면 읽기용)은 테두리를 그리지 않음 */
 .screen [tabindex="-1"]:focus { outline: none; }
 
-/* ── 인트로 스크린 ── */
+/* ── 인트로 스크린 (.sk-screen: 높이는 화면에 맞추고 넘치면 안에서 스크롤) ── */
 .intro-screen {
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 24px;
   text-align: center;
   background:
-    radial-gradient(circle at 10% 20%, rgba(241,196,15,0.06) 0, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(230,126,34,0.05) 0, transparent 35%),
+    radial-gradient(circle at 10% 20%, rgba(241,196,15,0.10) 0, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(230,126,34,0.08) 0, transparent 35%),
     var(--cc-board-bg);
 }
 .intro-emoji {
-  font-size: 80px; margin-bottom: 12px;
+  font-size: 80px; margin-bottom: 12px; line-height: 1;
   animation: float 2.5s ease-in-out infinite;
 }
 @keyframes float {
@@ -74,15 +68,16 @@ body {
 .intro-sub { font-size: 15px; color: var(--fg-muted); line-height: 1.7; margin-bottom: 24px; }
 .intro-card {
   background: var(--card-bg);
-  border: 2px dashed var(--cc-accent);
+  border: 2px dashed var(--sk-accent);
   border-radius: 16px;
   padding: 20px 24px;
   max-width: 440px; width: 100%;
   margin-bottom: 24px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.05);
 }
-.intro-card h3 { font-size: 17px; font-weight: 700; color: var(--cc-accent); margin-bottom: 8px; }
-.intro-card p { font-size: 14px; line-height: 1.7; color: var(--fg-muted); }
+.intro-card h3 { font-size: 17px; font-weight: 700; color: #8a5a00; margin-bottom: 8px; }
+.intro-card p { font-size: 15px; line-height: 1.7; color: var(--fg-muted); }
+.big-btn { min-height: 52px; padding: 0 28px; font-size: 16px; }
 
 /* ── 메인 레이아웃 ── */
 .explore-screen {
@@ -101,63 +96,64 @@ body {
   overflow: hidden;
   display: flex; flex-direction: column;
 }
+/* 상단 이름표 줄: 공용 버튼 줄(--sk-stage-top) 바로 아래 */
 .canvas-header {
-  position: absolute; top: 56px; left: 16px; right: 16px; z-index: 10;
-  display: flex; justify-content: space-between; align-items: center;
+  position: absolute; top: calc(var(--sk-stage-top) - 4px); left: 12px; right: 12px; z-index: 10;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;
   pointer-events: none;
 }
 .canvas-title-badge {
-  background: rgba(38,50,56,0.85); backdrop-filter: blur(6px);
-  color: #fff; border-radius: 14px; padding: 8px 16px;
+  background: rgba(38,50,56,0.88); backdrop-filter: blur(6px);
+  color: #fff; border-radius: 14px; padding: 6px 14px; min-height: 36px;
   font-size: 14px; font-weight: 700; border: 1px solid rgba(255,255,255,0.2);
   display: flex; align-items: center; gap: 8px;
 }
 .canvas-title-badge .num {
-  background: var(--cc-accent); color: #000; width: 22px; height: 22px; border-radius: 50%;
-  display: inline-flex; align-items: center; justify-content: center; font-size: 11px;
+  background: var(--cc-accent); color: var(--cc-accent-ink); width: 24px; height: 24px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 13px;
 }
 
 .canvas-toolbar {
-  position: absolute; bottom: 16px; left: 16px; right: 16px; z-index: 10;
+  position: absolute; bottom: 10px; left: 12px; right: 12px; z-index: 10;
   display: flex; gap: 8px; flex-wrap: wrap;
 }
 /* 회로 칸(키보드로 고를 수 있음) */
 .seg { outline: none; }
 .seg:focus-visible .seg-focus { stroke: var(--sk-accent); stroke-opacity: 1; }
 .seg-focus { stroke: transparent; stroke-width: 3; fill: none; stroke-dasharray: 3 3; }
-.tool-btn {
-  background: rgba(255,255,255,0.9); border: 1px solid var(--border);
-  color: #000; padding: 8px 14px; min-height: 40px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 700;
-  cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  pointer-events: auto; transition: all 0.15s;
+/* 도구 버튼: .sk-btn 위에 무대용 그림자만 더함. 고른 도구는 노란 바탕 */
+.tool-btn { box-shadow: 0 4px 12px rgba(0,0,0,0.08); pointer-events: auto; background: #fff; }
+.tool-btn[aria-pressed="true"] {
+  background: var(--cc-accent); border-color: #c99700; color: var(--cc-accent-ink); box-shadow: 0 0 0 3px var(--sk-ring);
 }
-.tool-btn:hover { background: var(--border); }
-.tool-btn.active {
-  background: var(--cc-accent); color: #000; border-color: var(--cc-accent);
-}
+.tool-btn.sk-btn--danger { background: #fff; }
 
-/* 캔버스 뷰포트 */
+/* 캔버스 뷰포트: 위 이름표 줄·아래 도구줄 자리를 비우고 그 사이에 회로판을 그린다 */
 .canvas-viewport {
   flex: 1; position: relative; width: 100%; height: 100%;
 }
 .canvas-svg {
-  position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1;
+  position: absolute; left: 0; right: 0; width: 100%;
+  top: calc(var(--sk-stage-top) + var(--cc-badge-h));
+  /* svg는 대체 요소라 top·bottom만으로는 늘어나지 않으므로 높이를 직접 준다 */
+  height: calc(100% - var(--sk-stage-top) - var(--cc-badge-h) - var(--sk-stage-bottom));
+  z-index: 1;
 }
 
-/* 합선 경고 오버레이 */
+/* 합선 경고: 이름표 줄 안에서(회로판을 가리지 않게) */
 .short-circuit-banner {
-  position: absolute; top: 110px; left: 50%; transform: translateX(-50%);
-  background: var(--cc-danger); color: #fff; padding: 10px 20px; border-radius: 20px;
-  font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 8px;
-  z-index: 10; animation: blink 1s infinite alternate;
+  background: var(--cc-danger); color: #fff; padding: 6px 14px; min-height: 36px; border-radius: 18px;
+  font-size: 14px; font-weight: 800; display: inline-flex; align-items: center; gap: 6px;
+  animation: blink 1s infinite alternate;
   box-shadow: 0 4px 16px var(--cc-danger-glow);
 }
+.short-circuit-banner[hidden] { display: none; }
 @keyframes blink {
-  0% { opacity: 0.7; }
+  0% { opacity: 0.75; }
   100% { opacity: 1; }
 }
 
-/* ── 우측 사이드바 ── */
+/* ── 조작판(사이드바) ── */
 .sidebar {
   background: var(--card-bg); border-left: 2px solid var(--border);
   overflow-y: auto; display: flex; flex-direction: column;
@@ -165,14 +161,14 @@ body {
 }
 .side-head {
   background: linear-gradient(135deg, var(--cc-accent) 0%, #e67e22 100%);
-  color: #000; padding: 16px 20px 14px; position: relative; overflow: hidden; flex-shrink: 0;
+  color: var(--cc-accent-ink); padding: 16px 20px 14px; position: relative; overflow: hidden; flex-shrink: 0;
 }
 .side-head::after {
   content: ''; position: absolute; inset: 0;
   background: radial-gradient(circle at 80% -20%, rgba(255,255,255,0.2) 0, transparent 55%);
 }
-.side-head h2 { font-size: 20px; font-weight: 700; position: relative; z-index: 1; }
-.side-head .side-sub { font-size: 12px; opacity: 0.8; position: relative; z-index: 1; margin-top: 2px; }
+.side-head h2 { font-size: 20px; font-weight: 700; position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; }
+.side-head .side-sub { font-size: 13px; opacity: 0.85; position: relative; z-index: 1; margin-top: 2px; }
 
 .side-body { padding: 14px 16px 20px; flex: 1; display: flex; flex-direction: column; }
 
@@ -186,34 +182,37 @@ body {
   min-height: 52px; justify-content: center;
 }
 .mode-tab.active {
-  border-color: var(--cc-accent); background: rgba(241,196,15,0.1); color: var(--fg);
+  border-color: var(--sk-accent); background: rgba(241,196,15,0.14); color: var(--fg);
 }
-.mode-tab .em { font-size: 16px; }
+.mode-tab .em { font-size: 16px; display: inline-flex; }
 
 /* 미션 카드 */
 .mission-card {
   border: 1px solid var(--border); border-radius: 14px; background: var(--bg-sec);
   padding: 12px 14px; margin-bottom: 14px;
 }
-.mission-title { font-size: 12px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.08em; margin-bottom: 8px; }
-.mission-desc { font-size: 14px; line-height: 1.6; font-weight: 600; }
+.mission-title { font-size: 13px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.04em; margin-bottom: 8px; }
+.mission-desc { font-size: 15px; line-height: 1.6; font-weight: 600; }
 
 .mission-nav { display: flex; gap: 8px; margin-top: 10px; justify-content: center; }
 /* 번호 버튼은 SimKit(.sk-mnav-btn, 44px)이 그린다 */
+.mission-exit { margin-top: 10px; }
 
 /* 피드백 박스 */
 .feedback-box {
-  padding: 10px; border-radius: 10px; font-size: 14px; line-height: 1.5; text-align: center; margin: 10px 0;
+  padding: 10px; border-radius: 10px; font-size: 15px; line-height: 1.5; text-align: center; margin: 10px 0;
 }
-.feedback-box.ok { background: rgba(46,204,113,0.1); color: #27ae60; }
-.feedback-box.no { background: rgba(231,76,60,0.1); color: var(--cc-danger); }
+.feedback-box.ok { background: rgba(46,204,113,0.12); color: #1e7e46; }
+.feedback-box.no { background: rgba(231,76,60,0.1); color: #b03a2e; }
+.feedback-box .ic { vertical-align: -0.18em; }
 
 /* 예측 영역 */
 .prediction-box {
   background: var(--bg-sec); border-radius: 12px; padding: 12px; margin-bottom: 14px;
   border: 1px solid var(--border);
 }
-.prediction-title { font-size: 14px; font-weight: 800; margin-bottom: 8px; color: var(--fg-muted); }
+.prediction-title { font-size: 15px; font-weight: 800; margin-bottom: 8px; color: var(--fg); }
+.prediction-title .ic { vertical-align: -0.18em; }
 .prediction-btns { display: flex; gap: 6px; }
 .pred-btn {
   flex: 1; padding: 8px; min-height: 44px; border-radius: 8px; border: 1px solid var(--border);
@@ -221,90 +220,59 @@ body {
   transition: all 0.15s; color: var(--fg-muted);
 }
 .pred-btn.active {
-  background: var(--cc-accent); color: #000; border-color: var(--cc-accent);
+  background: var(--cc-accent); color: var(--cc-accent-ink); border-color: #c99700;
 }
 
 /* 부품 팔레트 */
 .palette-section {
   flex: 1; display: flex; flex-direction: column; min-height: 0;
 }
-.palette-title { font-size: 12px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.08em; margin-bottom: 8px; }
+.palette-title { font-size: 13px; font-weight: 700; color: var(--fg-muted); margin-bottom: 8px; }
 .palette-grid {
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
 }
 .palette-item {
-  padding: 10px 8px; min-height: 44px; border-radius: 10px; border: 1px solid var(--border);
+  padding: 10px 6px; min-height: 44px; border-radius: 10px; border: 1px solid var(--border);
   background: var(--bg-sec); color: var(--fg); text-align: center; cursor: pointer; font-family: inherit;
   font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;
 }
 .palette-item.active { background: rgba(241,196,15,0.18); border-color: var(--cc-accent); box-shadow: 0 0 0 2px var(--cc-accent) inset; }
-.help-text { font-size: 14px; color: var(--fg-muted); margin-top: 10px; line-height: 1.55; }
+.help-text { font-size: 14px; color: var(--fg-muted); margin-top: 10px; line-height: 1.6; }
+.help-text ul { margin: 4px 0 0 18px; }
+.help-text .ic { vertical-align: -0.18em; }
 
 /* 액션 패널 */
-.action-panel { margin-top: auto; padding-top: 14px; flex-shrink: 0; }
-.action-btn {
-  width: 100%; padding: 12px; border-radius: 12px; border: none;
-  background: var(--cc-accent); color: #000; font-size: 14px; font-weight: 700;
-  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  transition: background 0.15s;
-}
-.action-btn:hover:not(:disabled) { background: #d35400; color: #fff; }
-.action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.action-btn.secondary {
-  background: var(--bg-sec); color: var(--fg); border: 1px solid var(--border); margin-top: 6px;
-}
+.action-panel { margin-bottom: 14px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; }
 
 /* ── 결과 화면 ── */
 .result-screen {
-  flex-direction: column;
-  align-items: center; justify-content: center;
-  min-height: 100vh; padding: 24px; text-align: center;
+  text-align: center;
   background:
-    radial-gradient(circle at 30% 30%, rgba(241,196,15,0.06) 0, transparent 40%),
-    radial-gradient(circle at 70% 70%, rgba(230,126,34,0.05) 0, transparent 35%),
+    radial-gradient(circle at 30% 30%, rgba(241,196,15,0.10) 0, transparent 40%),
+    radial-gradient(circle at 70% 70%, rgba(230,126,34,0.08) 0, transparent 35%),
     var(--cc-board-bg);
 }
-.result-stars { font-size: 40px; margin: 12px 0; }
+.result-icon { font-size: 72px; color: #c99700; line-height: 1; }
+.result-stars { font-size: 40px; margin: 12px 0; color: #e0a800; }
 .result-summary {
   background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px;
-  padding: 20px; font-size: 14px; line-height: 1.8; margin: 16px 0; text-align: left;
+  padding: 20px; font-size: 15px; line-height: 1.8; margin: 16px 0; text-align: left;
   max-width: 440px; width: 100%; box-shadow: 0 4px 16px rgba(0,0,0,0.03);
 }
-.result-summary strong { color: var(--cc-accent); }
+.result-summary strong { color: #8a5a00; }
+.result-summary .ic { color: #1e7e46; vertical-align: -0.18em; }
+.result-actions { justify-content: center; max-width: 440px; width: 100%; }
 
 /* ── 모바일 반응형: 회로판(위) + 조작판(아래) 세로 배치 ── */
 @media (max-width: 800px) {
   body { overflow: auto; }
   .explore-layout { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
-  .canvas-zone { position: sticky; top: 0; z-index: 40; height: 52vh; min-height: 320px; flex-shrink: 0; }
-  .canvas-toolbar { left: 8px; right: 8px; bottom: 8px; gap: 6px; }
-  .tool-btn { padding: 6px 10px; font-size: 13px; }
-  .short-circuit-banner { top: 100px; font-size: 13px; padding: 8px 14px; width: max-content; max-width: calc(100% - 24px); }
+  .canvas-zone { position: sticky; top: 0; z-index: 40; height: 52vh; min-height: 340px; flex-shrink: 0; }
+  .canvas-toolbar { left: 8px; right: 8px; bottom: 8px; gap: 6px; flex-wrap: nowrap; }
+  .canvas-toolbar .sk-btn { flex: 1 1 0; padding: 0 6px; font-size: 13px; gap: 4px; min-width: 0; }
+  .canvas-svg { height: calc(100% - var(--sk-stage-top) - var(--cc-badge-h) - 56px); }
+  .short-circuit-banner { font-size: 13px; padding: 6px 12px; }
   .sidebar { border-left: none; border-top: 2px solid var(--border); height: auto; }
-}
-
-/* ── 버튼 공통 스타일 ── */
-.fb-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 12px 28px; border-radius: 12px; font-size: 15px; font-weight: 700;
-  border: none; cursor: pointer; transition: all 0.2s ease;
-  font-family: inherit; text-decoration: none; outline: none;
-  min-height: 48px;
-}
-.fb-btn-primary {
-  background: linear-gradient(135deg, var(--cc-accent) 0%, #d35400 100%);
-  color: #000; box-shadow: 0 4px 12px rgba(241,196,15,0.25);
-}
-.fb-btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(241,196,15,0.35);
-}
-.fb-btn-primary:active:not(:disabled) {
-  transform: translateY(1px);
-}
-.fb-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
   </style>
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"전기회로 공작소","description":"전지·전구·스위치를 이어 불을 켜고 직렬·병렬 밝기 비교","url":"https://eduin.info/apps/circuit-lab/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
@@ -313,7 +281,7 @@ body {
 
 
 <!-- ============ 인트로 스크린 ============ -->
-<div id="screenIntro" class="screen active intro-screen">
+<div id="screenIntro" class="screen active intro-screen sk-screen">
   <div class="intro-emoji" aria-hidden="true">💡</div>
   <h1>전기회로 공작소</h1>
   <p class="intro-sub">닫힌 회로 만들기 · 직렬 병렬 전구 밝기 비교</p>
@@ -323,45 +291,44 @@ body {
     <p>전지, 전구, 스위치를 올바르게 연결하여 회로를 완성해 보세요. 전구를 직렬로 연결할 때와 병렬로 연결할 때 밝기가 어떻게 다른지 직접 눈으로 관찰해 봐요!</p>
   </div>
 
-  <button type="button" class="fb-btn fb-btn-primary" id="btnStart">실험실 들어가기</button>
+  <button type="button" class="sk-btn sk-btn--primary big-btn" id="btnStart"><Icon name="play" />실험실 들어가기</button>
 </div>
 
 <!-- ============ 메인 실험실 스크린 ============ -->
 <div id="screenExplore" class="screen explore-screen">
   <div class="explore-layout">
-    <!-- 좌측 회로판 -->
+    <!-- 회로판 -->
     <div class="canvas-zone" id="canvasZone">
       <div class="canvas-header">
         <div class="canvas-title-badge">
-          <span class="num" id="canvasBadgeNum">1</span>
-          <span id="canvasBadgeLabel">회로 만들기</span>
+          <span class="num" id="canvasBadgeNum"><Icon name="wrench" /></span>
+          <span id="canvasBadgeLabel">자유 탐험</span>
         </div>
-      </div>
-
-      <!-- 합선 위험 배너 -->
-      <div class="short-circuit-banner" id="shortCircuitBanner" role="alert" style="display:none;">
-        ⚠️ 합선 발생! 전지가 뜨거워지고 있어요! (회로 수정 필요)
+        <!-- 합선 위험 배너(회로판을 가리지 않게 이름표 줄에) -->
+        <div class="short-circuit-banner" id="shortCircuitBanner" role="alert" hidden>
+          <Icon name="triangle-alert" />합선! 회로를 고쳐요
+        </div>
       </div>
 
       <div class="canvas-viewport" id="canvasViewport">
         <!-- SVG 회로 배선판 -->
-        <svg class="canvas-svg" id="canvasSvg" viewBox="0 50 525 340" preserveAspectRatio="xMidYMid meet" role="group" aria-label="회로판: 칸을 눌러 부품·전선을 놓아요. 키보드는 Tab으로 칸을 고르고 Enter로 놓아요."></svg>
+        <svg class="canvas-svg" id="canvasSvg" viewBox="15 72 495 296" preserveAspectRatio="xMidYMid meet" role="group" aria-label="회로판: 칸을 눌러 부품·전선을 놓아요. 키보드는 Tab으로 칸을 고르고 Enter로 놓아요."></svg>
         <div class="visually-hidden" id="circuitStatus" role="status" aria-live="polite"></div>
       </div>
 
-      <!-- 하단 툴바 -->
+      <!-- 하단 도구줄 -->
       <div class="canvas-toolbar" role="group" aria-label="도구">
-        <button type="button" class="tool-btn active" id="btnToolSelect" data-tool="select">🖐️ 선택/조작</button>
-        <button type="button" class="tool-btn" id="btnToolWire" data-tool="wire">🔌 전선 배선</button>
-        <button type="button" class="tool-btn" id="btnToolEraser" data-tool="eraser">✂️ 지우개</button>
-        <button type="button" class="tool-btn" id="btnClearCanvas" style="background:#c0392b; color:#fff;">🔄 회로 초기화</button>
+        <button type="button" class="sk-btn sk-btn--sm tool-btn" id="btnToolSelect" data-tool="select" aria-pressed="true"><Icon name="hand" />선택</button>
+        <button type="button" class="sk-btn sk-btn--sm tool-btn" id="btnToolWire" data-tool="wire" aria-pressed="false"><Icon name="cable" />전선</button>
+        <button type="button" class="sk-btn sk-btn--sm tool-btn" id="btnToolEraser" data-tool="eraser" aria-pressed="false"><Icon name="eraser" />지우개</button>
+        <button type="button" class="sk-btn sk-btn--sm sk-btn--danger tool-btn" id="btnClearCanvas"><Icon name="trash-2" />비우기</button>
       </div>
     </div>
 
-    <!-- 우측 제어 사이드바 -->
+    <!-- 조작판 -->
     <div class="sidebar" id="sidebar">
       <div class="side-head">
-        <h2>💡 전기회로 공작소</h2>
+        <h2><Icon name="zap" />전기회로 공작소</h2>
         <div class="side-sub">초등 과학 6학년 「전기의 이용」</div>
       </div>
 
@@ -369,53 +336,60 @@ body {
         <!-- 모드 탭 -->
         <div class="mode-tabs" id="modeTabs" role="group" aria-label="모드 고르기">
           <button type="button" class="mode-tab active" data-mode="1">
-            <span class="em" aria-hidden="true">🛠️</span>자유 실험
+            <span class="em" aria-hidden="true"><Icon name="wrench" /></span>자유 탐험
           </button>
           <button type="button" class="mode-tab" data-mode="2">
-            <span class="em" aria-hidden="true">🏆</span>도전 미션
+            <span class="em" aria-hidden="true"><Icon name="trophy" /></span>미션 도전
           </button>
         </div>
 
-        <!-- 미션 카드 (모드 2 전용) -->
+        <!-- 미션 카드 (모드 2 전용): 문제 → 번호 → 자유 탐험으로 -->
         <div class="mission-card" id="missionCard" style="display:none;">
-          <h3 class="mission-title">실험실 미션</h3>
+          <h3 class="mission-title" id="missionTitle">실험실 미션</h3>
           <div class="mission-desc" id="missionDesc">전지 1개와 전구 1개를 전선으로 연결하여 불을 켜 보세요.</div>
           <div class="mission-nav" id="missionNav"></div>
+          <div class="sk-actions mission-exit">
+            <button type="button" class="sk-btn sk-btn--sm" id="btnExitMission"><Icon name="arrow-left" />자유 탐험으로</button>
+          </div>
         </div>
 
         <!-- 예측 입력 박스 (특정 예측 미션에서 활성화) -->
         <div class="prediction-box" id="predictionBox" style="display:none;">
           <div class="prediction-title" id="predTitle">결과 예측하기</div>
           <div class="prediction-btns" id="predBtns" role="group" aria-labelledby="predTitle">
-            <button type="button" class="pred-btn" data-val="on">켜질 것이다</button>
-            <button type="button" class="pred-btn" data-val="off">꺼질 것이다</button>
+            <button type="button" class="pred-btn" data-val="on">계속 켜져 있어요</button>
+            <button type="button" class="pred-btn" data-val="off">꺼져요</button>
           </div>
         </div>
 
         <!-- 피드백 알림 박스 -->
         <div class="feedback-box" id="feedbackBox" role="status" aria-live="polite" style="display:none;"></div>
 
+        <!-- 확인·다음 미션 (문제·문구 바로 아래, 부품 고르기보다 위) -->
+        <div class="action-panel" id="actionPanel">
+          <button type="button" class="sk-btn sk-btn--primary sk-btn--block" id="btnVerify"><Icon name="circle-check" /><span id="btnVerifyLabel">결과 보기</span></button>
+          <button type="button" class="sk-btn sk-btn--block" id="btnNextMission" style="display:none;"><Icon name="arrow-right" />다음 미션</button>
+          <button type="button" class="sk-btn sk-btn--block" id="btnNextScreen" style="display:none;"><Icon name="award" />결과 보기</button>
+        </div>
+
         <!-- 부품 팔레트 (부품 선택하여 격자에 배치) -->
         <div class="palette-section" id="paletteSection">
-          <div class="palette-title" id="paletteTitle">부품 선택 (부품 선택 후 격자 칸 탭하여 배치)</div>
+          <div class="palette-title" id="paletteTitle">부품 고르기 — 고른 뒤 회로판의 점선 칸을 눌러요</div>
           <div class="palette-grid" role="group" aria-labelledby="paletteTitle">
             <button type="button" class="palette-item" data-comp="battery">🔋 전지</button>
             <button type="button" class="palette-item" data-comp="bulb">💡 전구</button>
             <button type="button" class="palette-item" data-comp="switch">🎚️ 스위치</button>
           </div>
-          
-          <div class="help-text">
-            💡 <strong>도움말:</strong><br>
-            - <strong>부품 배치:</strong> 부품을 선택하고 격자의 회색 회로 꼬마선을 탭하세요.<br>
-            - <strong>전선 잇기:</strong> 전선 툴을 켜고 부품의 끝점(노드)을 다른 노드로 이어주세요.<br>
-            - <strong>조작 모드:</strong> 스위치를 누르면 열고 닫을 수 있고, 전지를 누르면 (+)극과 (-)극 방향이 바뀝니다.
-          </div>
-        </div>
 
-        <!-- 하단 액션 패널 -->
-        <div class="action-panel">
-          <button type="button" class="action-btn" id="btnVerify">🏆 정답 검사하기</button>
-          <button type="button" class="action-btn secondary" id="btnNextScreen" style="display:none;">탐험 완료 →</button>
+          <div class="help-text">
+            <strong><Icon name="lightbulb" /> 이렇게 해요</strong>
+            <ul>
+              <li><strong>부품 놓기:</strong> 부품을 고르고 회로판의 점선 칸을 눌러요.</li>
+              <li><strong>전선 놓기:</strong> 도구줄의 [전선]을 고르고 점선 칸을 눌러요.</li>
+              <li><strong>지우기:</strong> [지우개]를 고르고 지울 칸을 눌러요.</li>
+              <li><strong>스위치 열고 닫기·전지 방향 바꾸기:</strong> [선택]을 고르고 스위치나 전지를 눌러요. 부품을 고른 상태에서 누르면 그 칸이 새 부품으로 바뀌어요.</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
@@ -423,14 +397,14 @@ body {
 </div>
 
 <!-- ============ 결과 화면 ============ -->
-<div id="screenResult" class="screen result-screen">
-  <div style="font-size:72px;" aria-hidden="true">🏆</div>
+<div id="screenResult" class="screen result-screen sk-screen">
+  <div class="result-icon" aria-hidden="true"><Icon name="trophy" /></div>
   <h2 style="margin:8px 0; font-size:28px;">회로 공작소 마스터!</h2>
   <div class="result-stars" id="resultStars"></div>
   <div class="result-summary" id="resultSummary"></div>
-  <div class="result-actions">
-    <button type="button" class="fb-btn fb-btn-primary" id="btnRetry">다시 시작</button>
-    <button type="button" class="fb-btn fb-btn-primary" style="background:var(--bg-sec); color:var(--fg); border:1px solid var(--border);" id="btnBackToHub">자유 실험으로</button>
+  <div class="sk-actions result-actions">
+    <button type="button" class="sk-btn sk-btn--primary" id="btnBackToHub"><Icon name="arrow-left" />자유 탐험으로</button>
+    <button type="button" class="sk-btn sk-btn--danger" id="btnRetry"><Icon name="refresh-ccw" />처음부터</button>
   </div>
 </div>
 
@@ -468,21 +442,21 @@ const MISSIONS = [
     }
   },
   {
-    id: 'm2', title: '스위치 배선',
-    desc: '스위치 1개를 중간에 추가해 회로를 완성하세요. 스위치를 닫으면 전구가 켜지고, 스위치를 열면(탭) 전구가 꺼지는지 확인하세요.',
+    id: 'm2', title: '스위치로 켜고 끄기',
+    desc: '스위치 1개를 회로 중간에 넣어 보세요. 스위치를 <strong>닫으면 전구가 켜지고, 열면 꺼져야</strong> 해요. ([선택] 도구로 스위치를 누르면 열고 닫혀요.)',
     verify: (state) => {
-      // 스위치가 존재하고 불이 켜진 상태
+      // 스위치가 있고, 지금 불이 켜져 있고, 그 스위치를 열면 전구가 모두 꺼져야 한다(스위치가 회로 안에서 전구를 조절)
       let hasSwitch = false;
       state.segments.forEach(s => {
         if (s.type === 'switch') hasSwitch = true;
       });
-      return hasSwitch && state.litBulbs.size >= 1 && !state.hasShortCircuit;
+      return hasSwitch && state.litBulbs.size >= 1 && !state.hasShortCircuit && switchControlsBulb();
     }
   },
   {
     id: 'm3', title: '전구 2개 직렬 연결',
-    desc: '전구 2개를 나란히 <strong>직렬연결</strong>(한 줄로 연결)해 보세요. 1개일 때보다 밝기가 더 <strong>어두워짐</strong>을 관찰하세요.<br><br>💡 예측: 전구 하나를 떼어내면(지우개) 다른 전구는 어떻게 될까요?',
-    predQ: '💡 예측: 전구 하나를 떼어내면 다른 전구는 어떻게 될까요?',
+    desc: '전구 2개를 <strong>한 줄로 이어(직렬)</strong> 연결해 보세요. 전구 1개일 때보다 밝기가 더 <strong>어두워지는지</strong> 관찰해요.',
+    predQ: '예측: 전구 하나를 떼어 내면(지우개) 다른 전구는 어떻게 될까요?',
     verify: (state) => {
       // 전구 2개 직렬 확인 (M=1, N=2, 단일 루프)
       const selected = $('.pred-btn.active')?.dataset.val;
@@ -497,8 +471,8 @@ const MISSIONS = [
   },
   {
     id: 'm4', title: '전구 2개 병렬 연결',
-    desc: '전구 2개를 갈라진 길에 각각 <strong>병렬연결</strong>해 보세요. 전구의 밝기가 1개일 때와 같이 유지됨을 확인하세요.<br><br>💡 예측: 전구 한 개를 떼어내도 나머지 전구는 계속 켜질까요?',
-    predQ: '💡 예측: 전구 한 개를 떼어내도 나머지 전구는 계속 켜질까요?',
+    desc: '전구 2개를 <strong>두 갈래 길에 하나씩 나누어(병렬)</strong> 연결해 보세요. 전구의 밝기가 1개일 때와 같은지 확인해요.',
+    predQ: '예측: 전구 한 개를 떼어 내면(지우개) 나머지 전구는 어떻게 될까요?',
     verify: (state) => {
       const selected = $('.pred-btn.active')?.dataset.val;
       if (selected !== 'on') return false;
@@ -512,7 +486,7 @@ const MISSIONS = [
   },
   {
     id: 'm5', title: '전지 직렬 연결',
-    desc: '전지 2개를 같은 방향으로 연결(전지 직렬)하여 전구 1개에 연결하세요. 불이 더 <strong>밝아짐</strong>을 관찰하세요.',
+    desc: '전지 2개를 같은 방향으로 한 줄로 이어(전지 직렬) 전구 1개에 연결하세요. 불이 더 <strong>밝아지는지</strong> 관찰해요.',
     verify: (state) => {
       let batCount = 0;
       state.segments.forEach(s => {
@@ -523,7 +497,7 @@ const MISSIONS = [
   },
   {
     id: 'm6', title: '전기 안전과 합선',
-    desc: '전구 없이 전지의 두 극을 바로 연결하여 <strong>합선 회로</strong>를 고의로 만들었다가, 전구를 통과하도록 정상 회로로 다시 안전하게 고쳐 불을 켜 보세요.',
+    desc: '회로판에 전구 없이 전지의 두 극을 바로 이은 <strong>합선 회로</strong>가 놓여 있어요. 위험한 회로예요! 전선을 고쳐 전기가 <strong>전구를 거쳐 가는</strong> 안전한 회로로 바꾸고 불을 켜 보세요.',
     verify: (state) => {
       // 합선이 없고 불이 켜진 상태
       return state.litBulbs.size >= 1 && !state.hasShortCircuit;
@@ -560,7 +534,8 @@ const MISSION_IDS = MISSIONS.map(m => m.id);
 /* ── 유틸 ── */
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
-const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const L = SimKit.LABELS;
+// 아이콘 이름을 계산해 쓰는 곳이 있으므로 목록을 적어 둔다: @icons wrench trophy circle-check party-popper circle-x lightbulb check
 
 function segmentsObj() {
   const obj = {};
@@ -645,15 +620,19 @@ function switchMode(modeNum) {
   paletteSection.style.display = 'flex';
   $('#predictionBox').style.display = 'none';
 
+  $('#btnNextMission').style.display = 'none';
   if (state.mode === 1) {
-    canvasBadgeNum.textContent = '🛠️';
-    canvasBadgeLabel.textContent = '자유 실험';
+    canvasBadgeNum.innerHTML = SimKit.icon('wrench');
+    canvasBadgeLabel.textContent = '자유 탐험';
+    $('#btnVerifyLabel').textContent = L.checkFree;
   } else if (state.mode === 2) {
-    canvasBadgeNum.textContent = '🏆';
-    canvasBadgeLabel.textContent = '도전 미션';
+    canvasBadgeNum.innerHTML = SimKit.icon('trophy');
+    canvasBadgeLabel.textContent = L.missionStart;
+    $('#btnVerifyLabel').textContent = L.check;
     missionCard.style.display = 'block';
     mc.start(state.missionIdx); // 번호 그리기 → onEnter(setupMissionUI)
   }
+  updateVerifyButtonText();
 
   selectTool('select');
   solveCircuit();
@@ -665,14 +644,17 @@ function switchMode(modeNum) {
 function setupMissionUI() {
   const m = MISSIONS[state.missionIdx];
 
+  $('#missionTitle').textContent = `미션 ${state.missionIdx + 1}. ${m.title}`;
   $('#missionDesc').innerHTML = m.desc;
+  $('#btnNextMission').style.display = 'none';
+  $('#canvasBadgeLabel').textContent = `미션 ${state.missionIdx + 1}`;
 
   // 특정 미션 예측 박스 표시
   const predBox = $('#predictionBox');
   predBox.style.display = 'none';
   if (m.predQ) {
     predBox.style.display = 'block';
-    $('#predTitle').textContent = m.predQ;
+    $('#predTitle').innerHTML = SimKit.icon('lightbulb') + ' ' + m.predQ;
     // 예측 선택 버튼 리셋
     $$('.pred-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
   }
@@ -692,8 +674,9 @@ function setupMissionUI() {
 }
 
 function updateVerifyButtonText() {
+  // 결과 화면 버튼은 미션 모드에서 모두 끝냈을 때만(자유 탐험의 [결과 보기]와 헷갈리지 않게)
   const allMissionsDone = MISSION_IDS.every(id => state.missionsCompleted[id] === true);
-  $('#btnNextScreen').style.display = allMissionsDone ? 'block' : 'none';
+  $('#btnNextScreen').style.display = allMissionsDone && state.mode === 2 ? '' : 'none';
 }
 
 /* ══════════════════════════════════════
@@ -863,10 +846,7 @@ function drawSegmentLine(svg, key, pos1, pos2) {
     line.setAttribute('y1', ly);
     line.setAttribute('x2', lx2);
     line.setAttribute('y2', ly);
-    line.setAttribute('stroke', 'rgba(255,255,255,0.06)');
-    if (document.documentElement.dataset.theme === 'light') {
-      line.setAttribute('stroke', 'rgba(0,0,0,0.05)');
-    }
+    line.setAttribute('stroke', 'rgba(0,0,0,0.09)');
     line.setAttribute('stroke-width', '14'); // 클릭 타깃 두껍게
     line.setAttribute('stroke-dasharray', '4 4');
     group.appendChild(line);
@@ -905,7 +885,7 @@ function drawSegmentLine(svg, key, pos1, pos2) {
       flow.setAttribute('stroke-width', '4');
       flow.setAttribute('stroke-dasharray', '6 12');
       // 움직임 줄이기 설정이면 흐름 점선을 멈춘 채로 보여 준다(전선 색으로 통전 표시는 그대로)
-      if (!reduceMotion) flow.innerHTML = `<animate attributeName="stroke-dashoffset" values="36;0" dur="1.2s" repeatCount="indefinite" />`;
+      if (!SimKit.motion.reduced()) flow.innerHTML = `<animate attributeName="stroke-dashoffset" values="36;0" dur="1.2s" repeatCount="indefinite" />`;
       group.appendChild(flow);
     }
 
@@ -964,9 +944,9 @@ function drawSegmentLine(svg, key, pos1, pos2) {
     // 극 표시 기호 (+, -)
     const labelNeg = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     labelNeg.setAttribute('x', midX - 11);
-    labelNeg.setAttribute('y', midY + 4);
+    labelNeg.setAttribute('y', midY + 5);
     labelNeg.setAttribute('fill', '#fff');
-    labelNeg.setAttribute('font-size', '12px');
+    labelNeg.setAttribute('font-size', '16px');
     labelNeg.setAttribute('font-weight', 'bold');
     labelNeg.setAttribute('text-anchor', 'middle');
     labelNeg.textContent = '-';
@@ -974,9 +954,9 @@ function drawSegmentLine(svg, key, pos1, pos2) {
 
     const labelPos = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     labelPos.setAttribute('x', midX + 11);
-    labelPos.setAttribute('y', midY + 4);
+    labelPos.setAttribute('y', midY + 5);
     labelPos.setAttribute('fill', '#fff');
-    labelPos.setAttribute('font-size', '12px');
+    labelPos.setAttribute('font-size', '16px');
     labelPos.setAttribute('font-weight', 'bold');
     labelPos.setAttribute('text-anchor', 'middle');
     labelPos.textContent = '+';
@@ -1151,7 +1131,8 @@ function handleSegmentClick(key) {
 /* ══════════════════════════════════════
    회로 해석 알고리즘 (그래프 위상 및 닫힌 루프 판정)
    ══════════════════════════════════════ */
-function solveCircuit() {
+function solveCircuit(opts) {
+  const dry = !!(opts && opts.dry); // dry: 계산만(그리기·알림 없음) — 미션 2 스위치 검사용
   state.litBulbs.clear();
   state.hasShortCircuit = false;
   state.circuitType = 'unknown';
@@ -1233,7 +1214,7 @@ function solveCircuit() {
   if (circuit.batteryOverload) state.hasShortCircuit = true; // 전지끼리 맞물려 큰 전류가 흐르는 경우
 
   // 합선 위험 배너 토글
-  $('#shortCircuitBanner').style.display = state.hasShortCircuit ? 'block' : 'none';
+  if (!dry) $('#shortCircuitBanner').hidden = !state.hasShortCircuit;
 
   // 5. 전력을 공급받는 활성 전기 노드(activeElectricNodes) 및 격자 원 노드(activeRawNodes) 탐색
   if (state.litBulbs.size > 0 && !state.hasShortCircuit) {
@@ -1312,8 +1293,24 @@ function solveCircuit() {
   }
 
   // 캔버스 다시 그리기
+  if (dry) return;
   drawBoard();
   announceCircuit();
+}
+
+/* 미션 2: 닫힌 스위치 가운데 하나라도 열었을 때 전구가 모두 꺼지면 '스위치가 전구를 조절한다'.
+   잠깐 열어 계산만 해 보고 원래대로 되돌린다. */
+function switchControlsBulb() {
+  let ok = false;
+  state.segments.forEach(seg => {
+    if (ok || seg.type !== 'switch' || seg.switchOpen) return;
+    seg.switchOpen = true;
+    solveCircuit({ dry: true });
+    if (state.litBulbs.size === 0 && !state.hasShortCircuit) ok = true;
+    seg.switchOpen = false;
+  });
+  solveCircuit({ dry: true });
+  return ok;
 }
 
 /* 회로 상태가 바뀌면 화면 읽기 프로그램에 한 번 알림 */
@@ -1419,18 +1416,20 @@ function hideFeedback() { fb.hide(); }
 
 function verifyCurrentMission() {
   const m = MISSIONS[state.missionIdx];
+  const ok = SimKit.icon('party-popper') + ' ';
+  const no = SimKit.icon('circle-x') + ' ';
   if (state.mode === 1) {
     // 자유 탐험 평가
     if (state.hasShortCircuit) {
-      showFeedback('❌ 합선 위험! 전선이 전구 없이 직접 연결되었습니다. 전선 위치를 변경하세요.', 'no');
+      showFeedback(no + '합선 위험! 전구를 거치지 않고 전지의 두 극이 바로 이어졌어요. 전선 위치를 바꿔 보세요.', 'no');
     } else if (state.litBulbs.size > 0) {
       const typeStr = state.circuitType === 'series_bulb' ? '전구 직렬연결' :
                       state.circuitType === 'parallel_bulb' ? '전구 병렬연결' :
                       state.circuitType === 'series_battery' ? '전지 직렬연결' :
                       state.circuitType === 'base' ? '기본 회로(전지 1개·전구 1개)' : '여러 부품이 섞인 회로';
-      showFeedback(`🎉 닫힌 회로 완성! 현재 <strong>${typeStr}</strong> 상태입니다. 전구 밝기는 <strong>${state.bulbBrightness === 3 ? '밝음 🌟' : state.bulbBrightness === 1 ? '어두움 💡' : '보통'}</strong>입니다.`, 'ok');
+      showFeedback(`${ok}닫힌 회로 완성! 지금은 <strong>${typeStr}</strong> 상태예요. 전구 밝기는 <strong>${state.bulbBrightness === 3 ? '밝음' : state.bulbBrightness === 1 ? '어두움' : '보통'}</strong>이에요.`, 'ok');
     } else {
-      showFeedback('💡 전구에 불이 켜지지 않았어요. 전지의 (+)극 → 전구 → (-)극이 끊김 없이 이어지도록 다시 이어 보세요. 전지가 2개라면 (+)극 방향이 서로 같은지도 확인해요(전지를 누르면 방향이 바뀌어요).', 'no');
+      showFeedback(SimKit.icon('lightbulb') + ' 전구에 불이 켜지지 않았어요. 전지의 (+)극 → 전구 → (-)극이 끊김 없이 이어지도록 다시 이어 보세요. 전지가 2개라면 (+)극 방향이 서로 같은지도 확인해요(전지를 누르면 방향이 바뀌어요).', 'no');
     }
   } else if (state.mode === 2) {
     // 도전 미션 검증
@@ -1438,36 +1437,45 @@ function verifyCurrentMission() {
     if (isOk) {
       // 완료 기록·번호 갱신·저장은 컨트롤러가(onChange). setupMissionUI는 부르지 않음(미션 6 회로 되돌림 방지)
       const next = MISSIONS.findIndex((ms, i) => i !== state.missionIdx && !mc.isDone(i));
-      const tail = next === -1 ? ' 미션을 모두 마쳤어요! 아래 [탐험 완료] 버튼을 눌러 보세요.' : ` 위의 ${next + 1}번 버튼을 눌러 다음 미션에 도전해 보세요.`;
-      mc.complete({ message: '🎉 미션 성공! 회로를 올바르게 만들었어요.' + tail });
+      const tail = next === -1 ? ' 미션을 모두 마쳤어요! [결과 보기] 버튼을 눌러 보세요.' : ` [다음 미션] 버튼을 눌러 ${next + 1}번 미션에 도전해 보세요.`;
+      mc.complete({ message: ok + '미션 성공! 회로를 올바르게 만들었어요.' + tail });
+      nextMissionIdx = next;
+      $('#btnNextMission').style.display = next === -1 ? 'none' : '';
     } else {
       if (m.id === 'm1') {
-        mc.fail('❌ 아직 불이 들어오지 않았습니다. 전구 양쪽 단자에 전선의 두 극이 끊김 없이 연결되도록 전선을 배치하세요.');
+        mc.fail(no + '아직 불이 들어오지 않았어요. 전지의 두 극이 전구 양쪽 단자에 끊김 없이 이어지도록 전선을 놓아 보세요.');
       } else if (m.id === 'm2') {
-        mc.fail('❌ 스위치를 추가해 닫힌 회로를 만드세요. 스위치를 탭하여 흐름이 켜지는지 확인해야 합니다.');
+        let hasSwitch = false;
+        state.segments.forEach(s => { if (s.type === 'switch') hasSwitch = true; });
+        if (!hasSwitch) mc.fail(no + '스위치가 없어요. 부품에서 스위치를 골라 회로 중간에 넣어 보세요.');
+        else if (state.hasShortCircuit) mc.fail(no + '합선이 생겼어요. 전구를 거쳐 가도록 회로를 고쳐 보세요.');
+        else if (state.litBulbs.size === 0) mc.fail(no + '전구가 꺼져 있어요. [선택] 도구로 스위치를 눌러 닫고, 전구가 켜지는지 보세요.');
+        else mc.fail(no + '스위치를 열어도 전구가 꺼지지 않아요. 스위치가 전구로 가는 길 위에 있도록 다시 이어 보세요.');
       } else if (m.id === 'm3') {
-        mc.fail('❌ 전구 2개가 하나의 루프(직렬)로 이어져 있는지, 그리고 떼어냈을 때 둘 다 꺼질 것이라는 예측(꺼질 것이다)을 골랐는지 확인하세요.');
+        mc.fail(no + '전구 2개가 한 줄(직렬)로 이어져 둘 다 켜졌는지, 그리고 예측에서 [꺼져요]를 골랐는지 확인해 보세요.');
       } else if (m.id === 'm4') {
-        mc.fail('❌ 전구 2개가 갈래길(병렬)로 연결되어 각각 불이 들어오는지, 그리고 예측(켜질 것이다)을 선택했는지 다시 확인해 보세요.');
+        mc.fail(no + '전구 2개가 두 갈래 길(병렬)로 나뉘어 각각 켜졌는지, 그리고 예측에서 [계속 켜져 있어요]를 골랐는지 확인해 보세요.');
       } else if (m.id === 'm5') {
-        mc.fail('❌ 전지 2개를 한 줄(직렬)로 이어 전구 1개에 연결해 보세요. 두 전지의 (+)극이 같은 방향을 향해야 해요. 전지를 누르면 방향이 바뀌어요.');
+        mc.fail(no + '전지 2개를 한 줄(직렬)로 이어 전구 1개에 연결해 보세요. 두 전지의 (+)극이 같은 방향을 향해야 해요. 전지를 누르면 방향이 바뀌어요.');
       } else if (m.id === 'm6') {
-        mc.fail('❌ 합선 위험 경고등을 해제하고, 전구를 포함한 닫힌 회로를 다시 구성해 불을 켜 보세요.');
+        mc.fail(no + '아직 합선이 남아 있거나 전구가 꺼져 있어요. 전구를 거쳐 가는 닫힌 회로로 고쳐 불을 켜 보세요.');
       }
     }
   }
 }
+let nextMissionIdx = -1;
 
 function showResultScreen() {
   showScreen('screenResult');
   SimKit.stars.render('#resultStars', SimKit.stars.grade(mc.doneCount(), [1, 4, 6]));
+  const done = (id) => state.missionsCompleted[id] ? '완료 ' + SimKit.icon('check') : '아직';
   let summary = `<strong>회로 공작 완료 보고서</strong><br><br>`;
-  summary += `① 닫힌 회로 전구 켜기: ${state.missionsCompleted.m1 ? '완료 ✓' : '미완료'}<br>`;
-  summary += `② 스위치 배선 제어: ${state.missionsCompleted.m2 ? '완료 ✓' : '미완료'}<br>`;
-  summary += `③ 전구 직렬(어두워짐): ${state.missionsCompleted.m3 ? '완료 ✓' : '미완료'}<br>`;
-  summary += `④ 전구 병렬(밝기 유지): ${state.missionsCompleted.m4 ? '완료 ✓' : '미완료'}<br>`;
-  summary += `⑤ 전지 직렬(더 밝아짐): ${state.missionsCompleted.m5 ? '완료 ✓' : '미완료'}<br>`;
-  summary += `⑥ 합선 안전 조치 완료: ${state.missionsCompleted.m6 ? '완료 ✓' : '미완료'}<br><br>`;
+  summary += `① 닫힌 회로 전구 켜기: ${done('m1')}<br>`;
+  summary += `② 스위치로 켜고 끄기: ${done('m2')}<br>`;
+  summary += `③ 전구 직렬(어두워짐): ${done('m3')}<br>`;
+  summary += `④ 전구 병렬(밝기 유지): ${done('m4')}<br>`;
+  summary += `⑤ 전지 직렬(더 밝아짐): ${done('m5')}<br>`;
+  summary += `⑥ 합선 고치기: ${done('m6')}<br><br>`;
   summary += `전기가 전선을 따라 흐르려면 전지의 두 극이 <strong>끊김 없이 이어져야</strong> 해요. 또한 회로를 안전하게 연결하고 조작하는 힘을 배웠습니다!`;
 
   $('#resultSummary').innerHTML = summary;
@@ -1521,13 +1529,19 @@ function init() {
   });
 
   // 회로 초기화
-  $('#btnClearCanvas').addEventListener('click', () => {
-    if (confirm('회로판을 처음 상태로 완전히 비울까요?')) {
-      state.segments.clear();
+  $('#btnClearCanvas').addEventListener('click', async () => {
+    if (!state.segments.size) { SimKit.toast('회로판이 이미 비어 있어요.'); return; }
+    const ok = await VUI.confirm('회로판에 놓은 부품과 전선을 모두 지울까요?', { title: '회로판 비우기', ok: '비우기', danger: true });
+    if (!ok) return;
+    const backup = new Map([...state.segments].map(([k, v]) => [k, Object.assign({}, v)]));
+    state.segments.clear();
+    solveCircuit();
+    saveState();
+    VUI.toast('회로판을 비웠어요.', { action: { label: '되돌리기', onClick: () => {
+      state.segments = backup;
       solveCircuit();
       saveState();
-      SimKit.toast('회로판을 비웠어요.');
-    }
+    } } });
   });
 
   // 정답 검사
@@ -1536,8 +1550,17 @@ function init() {
   // 결과 화면 이동
   $('#btnNextScreen').addEventListener('click', showResultScreen);
 
+  // 미션 중에도 언제나 자유 탐험으로(진행 기록은 그대로)
+  $('#btnExitMission').addEventListener('click', () => switchMode(1));
+  // 성공 뒤 다음 미션으로(자동 이동 없음은 그대로)
+  $('#btnNextMission').addEventListener('click', () => {
+    if (nextMissionIdx >= 0) mc.go(nextMissionIdx);
+  });
+
   // 결과 화면 액션
-  $('#btnRetry').addEventListener('click', () => {
+  $('#btnRetry').addEventListener('click', async () => {
+    const ok = await VUI.confirm('미션 기록과 회로판을 모두 지우고 처음부터 할까요?', { title: L.reset, ok: L.reset, danger: true });
+    if (!ok) return;
     mc.reset(); // onChange → missionsCompleted 초기화·저장
     state.missionIdx = 0;
     state.segments.clear();

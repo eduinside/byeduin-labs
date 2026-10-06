@@ -21,6 +21,8 @@
   const VUI = window.VUI;
   const SK = window.SimKit;
   const toast = (m, t) => { if (VUI) VUI.toast(m, t); };
+  // lucide 스프라이트 아이콘 — @icons pin volume-2 volume-x
+  const ic = (n) => (VUI && VUI.icon ? VUI.icon(n) : "");
   const reduceMotion = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const isObj = (v) => v && typeof v === "object" && !Array.isArray(v);
 
@@ -374,7 +376,7 @@
     const r = new FileReader();
     r.onload = () => {
       let obj;
-      try { obj = JSON.parse(r.result); } catch (e) { toast("올바른 JSON 파일이 아니에요", "error"); return; }
+      try { obj = JSON.parse(r.result); } catch (e) { toast("뽑기·모둠에서 저장한 파일이 아니에요", "error"); return; }
       const c = sanitizeClass(isObj(obj) && isObj(obj.class) ? obj.class : obj);
       if (!c || !c.students.length) { toast("학생 명단이 없는 파일이에요", "error"); return; }
       c.id = uid(); c.created = c.updated = Date.now();
@@ -403,7 +405,7 @@
     if (!classes.length) { toast("이 기기의 자리 배치 앱에 학급이 없어요"); return; }
     $("ms-desc").textContent = target
       ? "고른 학급의 명단으로 지금 명단을 바꿔요. 이름이 같은 학생은 결석·기록이 유지돼요. (자리 배치 데이터는 바뀌지 않아요)"
-      : "이 기기의 자리 배치 앱에 저장된 학급이에요. 이름·성별·떨어뜨릴 쌍을 복사해 새 학급을 만들어요. (자리 배치 데이터는 바뀌지 않아요)";
+      : "이 기기의 자리 배치 앱에 저장된 학급이에요. 이름·성별·떨어뜨릴 짝을 복사해 새 학급을 만들어요. (자리 배치 데이터는 바뀌지 않아요)";
     classes.forEach((s) => {
       const b = el("button", "pk-btn src");
       b.type = "button";
@@ -437,7 +439,7 @@
     if (pairs.length || !seatTarget) cur.pairs = pairs.concat(seatTarget ? cur.pairs.filter(([a, b]) => !pairs.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) : []);
     cleanRefs();
     save();
-    toast(cur.students.length + "명을 가져왔어요" + (pairs.length ? " (떨어뜨릴 쌍 " + pairs.length + "개)" : ""));
+    toast(cur.students.length + "명을 가져왔어요" + (pairs.length ? " (떨어뜨릴 짝 " + pairs.length + "쌍)" : ""));
     if (!seatTarget) { cur = prevCur; openClass(c.id, { tab: "draw" }); }
     else renderClass();
   }
@@ -489,13 +491,13 @@
     if (!$("mp-b").value || $("mp-b").value === $("mp-a").value) { if (sorted[1]) $("mp-b").value = sorted[1].id; }
     const list = $("mp-list");
     list.textContent = "";
-    if (!cur.pairs.length) list.appendChild(el("p", "pk-hint", "아직 쌍이 없어요."));
+    if (!cur.pairs.length) list.appendChild(el("p", "pk-hint", "아직 떨어뜨릴 짝이 없어요."));
     cur.pairs.forEach(([a, b], i) => {
       const it = el("div", "it");
       it.appendChild(el("span", null, nameOf(a) + " ↔ " + nameOf(b)));
       const x = el("button", "pk-btn sm danger", "빼기");
       x.type = "button";
-      x.setAttribute("aria-label", nameOf(a) + "와 " + nameOf(b) + " 쌍 빼기");
+      x.setAttribute("aria-label", nameOf(a) + "와 " + nameOf(b) + " 떨어뜨릴 짝 빼기");
       x.addEventListener("click", () => { cur.pairs.splice(i, 1); save(); renderPairs(); });
       it.appendChild(x);
       list.appendChild(it);
@@ -509,7 +511,7 @@
   $("mp-add").addEventListener("click", () => {
     const a = +$("mp-a").value, b = +$("mp-b").value;
     if (!a || !b || a === b) { toast("서로 다른 두 학생을 골라 주세요"); return; }
-    if (cur.pairs.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) { toast("이미 있는 쌍이에요"); return; }
+    if (cur.pairs.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) { toast("이미 있는 짝이에요"); return; }
     cur.pairs.push([a, b]); save(); renderPairs();
   });
 
@@ -527,7 +529,10 @@
     inp.hidden = !withInput;
     inp.value = value || "";
     $("dlg-ok").textContent = ok || "확인";
-    $("dlg-ok").classList.toggle("danger", ok === "삭제");
+    // 지우기 확인은 빨간 바탕 버튼(파란 바탕에 빨간 글자가 겹치지 않게)
+    const dangerOk = ok === "삭제";
+    $("dlg-ok").classList.toggle("danger-solid", dangerOk);
+    $("dlg-ok").classList.toggle("primary", !dangerOk);
     return new Promise((res) => {
       dlgResolve = res;
       dlgModal.open({ initialFocus: withInput ? "#dlg-input" : "#dlg-ok" });
@@ -668,7 +673,7 @@
     v.textContent = "";
     if (cur.draw.effect === "wheel" && cur.students.length) { buildWheel(wheelSegments()); return; }
     const p = el("div", "pk-placeholder");
-    if (!cur.students.length) p.textContent = "먼저 📋 명단 탭에서 학생을 넣어 주세요.";
+    if (!cur.students.length) p.textContent = "먼저 명단 탭에서 학생을 넣어 주세요.";
     else if (!presentIds().length) p.textContent = "출석한 학생이 없어요.";
     else p.textContent = cur.draw.effect === "card" ? "뽑기를 누르면 카드를 나눠요. 카드를 골라 뒤집어 보세요!" : "뽑기를 눌러 보세요";
     v.appendChild(p);
@@ -1005,14 +1010,17 @@
     lastShown = lastDraw.shown && lastDraw.shown.cls === cur.id ? lastDraw.shown : null;
     lastDraw = null; cardState = null;
     save();
-    toast("방금 뽑기를 취소했어요. 다시 뽑을 수 있어요");
+    toast("방금 뽑기를 되돌렸어요. 다시 뽑을 수 있어요");
     renderDraw();
   });
   $("dr-reset").addEventListener("click", async () => {
     if (!(await confirmDlg("새 바퀴 시작", "이번 바퀴 기록을 지우고 모두 다시 뽑힐 수 있게 할까요?", "새 바퀴"))) return;
     cur.picked = []; lastDraw = null; save(); toast("새 바퀴를 시작했어요"); renderDraw();
   });
-  if (SK && SK.sound) { SK.sound.useKey("vives:picker-muted"); SK.sound.bindButton("#dr-sound"); }
+  if (SK && SK.sound) {
+    SK.sound.useKey("vives:picker-muted");
+    SK.sound.bindButton("#dr-sound", { render: (b, muted) => { b.innerHTML = ic(muted ? "volume-x" : "volume-2"); } });
+  }
   else $("dr-sound").hidden = true;
 
   /* ───── 순서 ───── */
@@ -1041,13 +1049,13 @@
     const o = cur.order;
     v.textContent = "";
     if (!o.list.length) {
-      v.appendChild(el("div", "pk-placeholder", cur.students.length ? "순서 섞기를 누르면 출석한 학생의 발표 순서를 정해요." : "먼저 📋 명단 탭에서 학생을 넣어 주세요."));
+      v.appendChild(el("div", "pk-placeholder", cur.students.length ? "순서 섞기를 누르면 출석한 학생의 발표 순서를 정해요." : "먼저 명단 탭에서 학생을 넣어 주세요."));
       return;
     }
     const box = el("div", "pk-order-now");
     const r = v.getBoundingClientRect();
     if (o.cur >= o.list.length) {
-      const nm = el("div", "nm", "모두 끝났어요 👏");
+      const nm = el("div", "nm", "모두 끝났어요!");
       nm.style.fontSize = Math.max(24, Math.min(r.height * 0.25, r.width / 9)) + "px";
       box.appendChild(nm);
     } else {
@@ -1192,7 +1200,7 @@
     $("gr-dec").disabled = v <= (g.mode === "count" ? 1 : 2);
     $("gr-inc").disabled = v >= 20;
     $("gr-gender").checked = g.gender; $("gr-prev").checked = g.avoidPrev; $("gr-lead").checked = g.lead;
-    $("gr-pairs").textContent = "떨어뜨릴 쌍 " + cur.pairs.length + "개";
+    $("gr-pairs").textContent = "떨어뜨릴 짝 " + cur.pairs.length + "쌍";
     $("gr-undo").disabled = !groupUndo.length;
     $("gr-keep").disabled = !g.cur;
     $("gr-print").disabled = !g.cur;
@@ -1208,7 +1216,7 @@
     st.textContent = "";
     if (!g.cur) {
       v.style.alignItems = "center";
-      v.appendChild(el("div", "pk-placeholder", cur.students.length ? "모둠 나누기를 누르면 출석한 학생으로 모둠을 만들어요." : "먼저 📋 명단 탭에서 학생을 넣어 주세요."));
+      v.appendChild(el("div", "pk-placeholder", cur.students.length ? "모둠 나누기를 누르면 출석한 학생으로 모둠을 만들어요." : "먼저 명단 탭에서 학생을 넣어 주세요."));
       $("gr-selbar").hidden = true;
       return;
     }
@@ -1233,7 +1241,7 @@
         const gd = el("span", "g" + (s && s.gender ? " " + s.gender : ""));
         m.append(gd, el("span", "nm", nameOf(id) + (ab.has(id) ? " (결석)" : "")));
         if (leaders.has(id)) m.appendChild(el("span", "tag lead", "모둠장"));
-        if (g.pins[id] === gi) m.appendChild(el("span", "tag pin", "📌"));
+        if (g.pins[id] === gi) { const pt = el("span", "tag pin"); pt.innerHTML = ic("pin"); pt.title = "이 모둠에 고정"; m.appendChild(pt); }
         if (bad.has(id)) m.classList.add("bad");
         if (selMem === id) m.classList.add("sel");
         m.setAttribute("aria-label", nameOf(id) + ", " + (gi + 1) + "모둠" + (leaders.has(id) ? ", 모둠장" : "") + (g.pins[id] === gi ? ", 고정" : "") + (selMem === id ? ", 선택됨" : ""));
@@ -1255,8 +1263,8 @@
     // 상태
     const sizes = g.cur.map((x) => x.length);
     st.appendChild(el("span", null, g.cur.length + "모둠 · " + Math.min(...sizes) + (Math.min(...sizes) !== Math.max(...sizes) ? "~" + Math.max(...sizes) : "") + "명씩"));
-    if (viol.length) st.appendChild(el("span", "pk-warnline", "떨어뜨릴 쌍이 같은 모둠: " + viol.map(([a, b]) => nameOf(a) + "·" + nameOf(b)).join(", ")));
-    else if (cur.pairs.length) st.appendChild(el("span", "pk-okline", "떨어뜨릴 쌍 모두 지킴"));
+    if (viol.length) st.appendChild(el("span", "pk-warnline", "떨어뜨릴 짝이 같은 모둠: " + viol.map(([a, b]) => nameOf(a) + "·" + nameOf(b)).join(", ")));
+    else if (cur.pairs.length) st.appendChild(el("span", "pk-okline", "떨어뜨릴 짝 모두 지킴"));
     const inGroups = new Set(g.cur.flat());
     const missing = presentIds().filter((id) => !inGroups.has(id));
     if (missing.length) st.appendChild(el("span", "pk-warnline", "모둠에 없는 출석 학생 " + missing.length + "명 — 다시 나누기를 누르세요"));
@@ -1339,7 +1347,7 @@
     if (!reduceMotion()) for (const m of $("groups-view").querySelectorAll(".pk-mem")) { m.style.animation = "pkPop .3s " + (randInt(250)) + "ms both cubic-bezier(.2,1.4,.4,1)"; }
     if (SK && SK.sound) SK.sound.play("star");
     const v = groupViolations();
-    announce(res.length + "모둠으로 나눴어요" + (v.length ? ". 떨어뜨릴 쌍 " + v.length + "개를 지키지 못했어요" : ""));
+    announce(res.length + "모둠으로 나눴어요" + (v.length ? ". 떨어뜨릴 짝 " + v.length + "쌍을 지키지 못했어요" : ""));
   });
   $("gr-undo").addEventListener("click", () => {
     const s = groupUndo.pop();
@@ -1454,7 +1462,7 @@
       ? "학생 " + s.length + "명" + (m || f ? " (남 " + m + " · 여 " + f + ")" : "") + " · 오늘 결석 " + ab.size + "명 — 이름을 누르면 오늘 결석으로 표시돼요(내일이면 자동으로 풀려요)."
       : "아직 학생이 없어요. 명단 편집을 눌러 이름을 넣거나 번호만으로 시작하세요.";
     $("ro-seating").hidden = !seatingClasses().length;
-    $("ro-pairs").textContent = "떨어뜨릴 쌍 " + cur.pairs.length + "개";
+    $("ro-pairs").textContent = "떨어뜨릴 짝 " + cur.pairs.length + "쌍";
     $("ro-clear-absent").disabled = !ab.size;
     const list = $("ro-list");
     list.textContent = "";

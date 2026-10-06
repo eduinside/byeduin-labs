@@ -1,7 +1,10 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<AppLayout 
+<AppLayout
+  theme="light"
+  toast="top"
   title="분수 막대 — eduin VIVES"
   description="초콜릿 막대와 피자를 직접 등분하고 칠해 보세요. 초등 수학 3학년 분수 개념과 크기 비교를 눈으로 익히는 무료 학습 시뮬레이션."
   image="https://eduin.info/og-images/fraction-bar.png"
@@ -41,19 +44,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   --fb-warn-fg: #d84315;
   --sk-accent: var(--fb-primary);
 }
-[data-theme="dark"] {
-  --fb-empty: #37474f;
-  --fb-panel: #1e272e;
-  --fb-panel-border: #37474f;
-  --fb-text: #eceff1;
-  --fb-text-muted: #90a4ae;
-  --fb-btn-bg: #263238;
-  --fb-btn-hover: #37474f;
-  --fb-btn-active: #455a64;
-  --fb-grid-bg: #121824;
-  --fb-ok-fg: #81c784;
-  --fb-warn-fg: #ffab91;
-}
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -62,6 +52,7 @@ body {
   background: var(--fb-grid-bg);
   color: var(--fb-text);
   min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
@@ -83,12 +74,8 @@ body {
 }
 
 /* ══════════ 인트로 ══════════ */
+/* 높이·스크롤·가운데 정렬은 .sk-screen(낮은 화면에서 시작 버튼이 잘리지 않게) */
 .intro-screen {
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 24px;
   text-align: center;
   animation: fadeUp 0.6s ease;
   background:
@@ -137,23 +124,8 @@ body {
   color: var(--fb-text-muted);
 }
 
-.fb-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  gap: 8px; border: none; border-radius: 99px;
-  padding: 14px 36px; font-size: 17px; font-weight: 700;
-  cursor: pointer; font-family: inherit;
-  transition: transform 0.15s, box-shadow 0.15s;
-}
-.fb-btn:active { transform: scale(0.96); }
-.fb-btn-primary {
-  background: linear-gradient(135deg, var(--fb-primary) 0%, var(--fb-primary-h) 100%);
-  color: #fff;
-  box-shadow: 0 6px 0 #5d4037;
-}
-.fb-btn-primary:active {
-  box-shadow: 0 2px 0 #5d4037;
-  transform: translateY(4px);
-}
+/* 인트로·결과 화면의 큰 버튼(.sk-btn에 크기만 더함) */
+.sk-btn.fb-big { min-height: 52px; padding: 0 32px; font-size: 17px; border-radius: 99px; }
 
 /* ══════════ 탐험 레이아웃 ══════════ */
 .explore-screen {
@@ -179,8 +151,11 @@ body {
   background-position: 0 0, 16px 16px;
   min-width: 0;
   overflow: hidden;
-  padding: 20px;
+  /* 위: 공용 버튼 줄·미션 표시가 그림을 가리지 않게(규약 v2 --sk-stage-top) */
+  padding: var(--sk-stage-top, 60px) 20px 20px;
 }
+/* 미션 중에는 미션 표시(top:56px)만큼 더 비움 */
+.canvas-zone.in-mission { padding-top: 104px; }
 
 /* 미션 인디케이터 */
 .mission-indicator {
@@ -200,7 +175,8 @@ body {
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 14px; font-weight: 700;
 }
-.mission-indicator .stars { color: var(--fb-star); font-size: 14px; }
+.mission-indicator .stars { color: var(--fb-star); font-size: 14px; display: inline-flex; gap: 1px; }
+.mission-indicator .stars .ic, .result-cell .stars .ic, .result-stars-row .ic { fill: currentColor; }
 
 /* ── 사이드바 ── */
 .sidebar {
@@ -293,6 +269,7 @@ body {
   color: var(--fb-text); transition: all 0.1s;
 }
 .step-btn:active { transform: scale(0.92); }
+.step-btn .ic { width: 20px; height: 20px; }
 .step-btn:disabled, .preset-chip:disabled, .action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .step-val { font-size: 18px; font-weight: 800; color: var(--fb-text); }
 
@@ -301,7 +278,7 @@ body {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
 }
 .preset-chip {
-  min-height: 40px; padding: 6px 2px; border-radius: 8px;
+  min-height: 44px; padding: 6px 2px; border-radius: 8px;
   border: 1px solid var(--fb-panel-border);
   background: var(--fb-panel); font-family: inherit;
   font-size: 14px; font-weight: 700;
@@ -328,7 +305,11 @@ body {
 .tts-btn {
   background: none; border: none; font-size: 18px; cursor: pointer; color: var(--fb-text-muted);
   min-width: 44px; min-height: 44px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
 }
+/* 미션 1·2(똑같이 나누었나요?)에서는 분모·등분 수를 숨김 — 똑같이 나누지 않은 막대에 분모를 보여 주지 않게 */
+.side-body.hide-frac .fraction-readout,
+.side-body.hide-frac .ctrl-group { display: none; }
 .tts-btn:hover { color: var(--fb-primary); }
 
 /* 비교 겹치기 버튼 */
@@ -405,31 +386,11 @@ body {
   transition: width 0.4s ease;
 }
 
-/* 액션 버튼 */
-.action-btns {
-  display: flex; gap: 6px; margin-top: 10px;
-}
-.action-btn {
-  flex: 1; padding: 10px 8px; border-radius: 10px;
-  border: 1px solid var(--fb-panel-border);
-  background: var(--fb-btn-bg);
-  font-size: 14px; font-weight: 700;
-  cursor: pointer; font-family: inherit;
-  color: var(--fb-text); min-height: 44px;
-  transition: all 0.15s;
-  display: flex; align-items: center; justify-content: center; gap: 4px;
-}
-.action-btn:hover { background: var(--fb-btn-hover); }
-.action-btn.primary {
-  background: var(--fb-primary); color: #fff; border-color: var(--fb-primary);
-}
-.action-btn.primary:hover { background: var(--fb-primary-h); }
+/* 액션 버튼 줄(.sk-actions) */
+.action-btns { margin-top: 10px; }
 
 /* ══════════ 결과 화면 ══════════ */
 .result-screen {
-  flex-direction: column;
-  align-items: center; justify-content: center;
-  min-height: 100vh; padding: 24px;
   text-align: center;
   animation: fadeUp 0.5s ease;
   background:
@@ -437,7 +398,7 @@ body {
     radial-gradient(circle at 70% 60%, rgba(141,110,99,0.08) 0, transparent 35%),
     var(--fb-grid-bg);
 }
-.result-trophy { font-size: 72px; margin-bottom: 8px; }
+.result-trophy { font-size: 72px; margin-bottom: 8px; color: var(--fb-star); line-height: 1; }
 .result-screen h1 { font-size: 28px; font-weight: 800; margin-bottom: 4px; }
 .result-screen .score-text { font-size: 18px; color: var(--fb-text-muted); margin-bottom: 16px; }
 .result-stars-row { font-size: 28px; margin-bottom: 20px; }
@@ -465,7 +426,7 @@ body {
   max-width: 440px; width: 100%;
   margin-bottom: 20px; text-align: left;
 }
-.result-summary-box h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--fb-primary); }
+.result-summary-box h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--fb-primary); display: flex; align-items: center; gap: 6px; }
 .result-summary-box p { font-size: 14px; line-height: 1.7; color: var(--fb-text-muted); }
 .result-summary-box strong { color: var(--fb-success); }
 
@@ -496,11 +457,11 @@ body {
   body { overflow: auto; }
   .explore-layout {
     display: flex; flex-direction: column;
-    height: auto; min-height: 100vh;
+    height: auto; min-height: 100vh; min-height: 100dvh;
   }
   .canvas-zone {
     position: sticky; top: 0; z-index: 40;
-    height: 48vh; min-height: 280px; flex-shrink: 0;
+    height: 48vh; height: 48dvh; min-height: 280px; flex-shrink: 0;
   }
   .sidebar { border-left: none; border-top: 2px solid var(--fb-panel-border); }
   .intro-screen h1 { font-size: 26px; }
@@ -513,7 +474,7 @@ body {
 
 
 <!-- ============ 인트로 ============ -->
-<div id="screenIntro" class="screen intro-screen active">
+<div id="screenIntro" class="screen intro-screen sk-screen active">
   <div class="intro-tag">수학 3학년 · 분수</div>
   <div class="intro-art" aria-hidden="true">🍫</div>
   <h1>분수 막대</h1>
@@ -524,7 +485,7 @@ body {
     <p>초콜릿과 피자를 똑같이 나누어 보면서,<br>분모가 커질수록 왜 크기가 작아지는지<br>눈으로 직접 겹쳐 확인해 봐요.</p>
   </div>
 
-  <button class="fb-btn fb-btn-primary" id="btnStart">시작하기</button>
+  <button type="button" class="sk-btn sk-btn--primary fb-big" id="btnStart"><Icon name="play" /> 시작하기</button>
 </div>
 
 <!-- ============ 탐험 / 미션 ============ -->
@@ -543,7 +504,7 @@ body {
     <!-- 사이드바 -->
     <div class="sidebar" id="sidebar">
       <div class="side-head">
-        <h2>🍫 분수 막대</h2>
+        <h2>분수 막대</h2>
         <div class="side-sub">초콜릿과 피자로 배우는 분수</div>
       </div>
       <div class="side-body" id="sideBody">
@@ -555,20 +516,20 @@ body {
 
         <!-- 비교 모드 & 대상 설정 -->
         <div class="compare-control" id="compareControl">
-          <button class="action-btn" id="btnCompareToggle" style="font-weight:700;">🆚 비교 모드 켜기</button>
-          <div class="target-select" id="targetSelect" style="display:none;" role="group" aria-label="바꿀 막대 고르기">
-            <button type="button" class="target-opt active a" data-target="a" aria-pressed="true">막대 A 설정</button>
-            <button type="button" class="target-opt b" data-target="b" aria-pressed="false">막대 B 설정</button>
+          <button type="button" class="sk-btn sk-btn--block" id="btnCompareToggle" aria-pressed="false"><Icon name="scale" /> <span class="lbl">두 분수 비교하기</span></button>
+          <div class="target-select" id="targetSelect" style="display:none;" role="group" aria-label="바꿀 분수 고르기">
+            <button type="button" class="target-opt active a" data-target="a" aria-pressed="true">A 바꾸기</button>
+            <button type="button" class="target-opt b" data-target="b" aria-pressed="false">B 바꾸기</button>
           </div>
         </div>
 
         <!-- 등분 조작 -->
         <div class="ctrl-group">
-          <div class="ctrl-group-title" id="stepTitle">등분 설정 (2~12)</div>
+          <div class="ctrl-group-title" id="stepTitle">몇 조각으로 똑같이 나눌까요? (2~12)</div>
           <div class="stepper" role="group" aria-labelledby="stepTitle">
-            <button type="button" class="step-btn" id="btnStepDown" aria-label="한 조각 적게 나누기">−</button>
+            <button type="button" class="step-btn" id="btnStepDown" aria-label="한 조각 적게 나누기"><Icon name="minus" /></button>
             <span class="step-val" id="stepVal" aria-live="polite">4</span>
-            <button type="button" class="step-btn" id="btnStepUp" aria-label="한 조각 더 나누기">+</button>
+            <button type="button" class="step-btn" id="btnStepUp" aria-label="한 조각 더 나누기"><Icon name="plus" /></button>
           </div>
           <div class="presets" id="presetContainer"></div>
         </div>
@@ -580,21 +541,24 @@ body {
             <span class="denom" id="fracDenom">4</span>
           </div>
           <span class="read-text" id="fractionReadText" aria-live="polite">4분의 1</span>
-          <button type="button" class="tts-btn" id="btnTts" title="분수 읽어주기" aria-label="분수 소리로 읽어주기">🔊</button>
+          <button type="button" class="tts-btn" id="btnTts" aria-label="분수 소리로 읽어주기"><Icon name="volume-2" /></button>
         </div>
 
         <!-- 겹쳐 보기 버튼 (비교 모드 활성 시 노출) -->
         <div class="compare-control" id="overlapControl" style="display:none; margin-top:8px;">
-          <button class="action-btn primary" id="btnOverlapToggle" style="font-size:14px; font-weight:700;">🥞 겹쳐 보기</button>
+          <button type="button" class="sk-btn sk-btn--block" id="btnOverlapToggle" aria-pressed="false"><Icon name="layers" /> <span class="lbl">겹쳐 보기</span></button>
         </div>
 
         <!-- 미션 알림 패널 -->
         <div id="missionArea"></div>
 
         <!-- 액션 버튼 -->
-        <div class="action-btns" id="actionBtns">
-          <button class="action-btn danger" id="btnReset">🔄 처음부터</button>
-          <button class="action-btn primary" id="btnMission">🏆 미션 도전</button>
+        <div class="action-btns sk-actions" id="actionBtns">
+          <!-- 자유 탐험: 그림 처음 모양으로 / 미션: 같은 미션 다시 하기 -->
+          <button type="button" class="sk-btn" id="btnReset"></button>
+          <button type="button" class="sk-btn sk-btn--primary" id="btnMission"></button>
+          <!-- 미션 중에는 항상 보임(미션 기록은 그대로) -->
+          <button type="button" class="sk-btn" id="btnExitMission" hidden><Icon name="arrow-left" /> 자유 탐험으로</button>
         </div>
       </div>
     </div>
@@ -602,20 +566,21 @@ body {
 </div>
 
 <!-- ============ 결과 ============ -->
-<div id="screenResult" class="screen result-screen">
-  <div class="result-trophy" aria-hidden="true">🏆</div>
+<div id="screenResult" class="screen result-screen sk-screen">
+  <div class="result-trophy" aria-hidden="true"><Icon name="trophy" /></div>
   <h1>미션 완료!</h1>
   <div class="score-text" id="resultScoreText"></div>
   <div class="result-stars-row" id="resultStarsRow" aria-hidden="true"></div>
   <div class="result-grid" id="resultGrid" role="list" aria-label="미션별 별"></div>
   <div class="result-summary-box">
-    <h3>📖 배움 정리</h3>
+    <h3><Icon name="book-open" /> 배움 정리</h3>
     <p>분수는 <strong>똑같이 나눈</strong> 것 중 몇 개인지를 나타내요.<br>단위분수는 <strong>분모가 클수록 한 조각의 크기가 더 작아져요!</strong></p>
   </div>
   <div class="result-btns">
-    <button class="fb-btn fb-btn-primary" id="btnRetry">다시 도전</button>
-    <button class="fb-btn fb-btn-primary" style="background:var(--fb-btn-bg); color:var(--fb-text); border:1px solid var(--fb-panel-border);" id="btnFreeplay">자유 탐험으로</button>
+    <button type="button" class="sk-btn sk-btn--primary fb-big" id="btnFreeplay"><Icon name="arrow-left" /> 자유 탐험으로</button>
+    <button type="button" class="sk-btn sk-btn--danger fb-big" id="btnRetry"><Icon name="refresh-ccw" /> 처음부터</button>
   </div>
+  <p style="font-size:13px;color:var(--fb-text-muted);margin-top:10px;">처음부터: 별 기록을 지우고 미션 1부터 다시 해요.</p>
 </div>
 
 <script is:inline="">
@@ -659,14 +624,19 @@ const MISSIONS = [
   { type: 'make', targetFrac: { denom: 8, num: 5 }, desc: '피자에 <strong>8분의 5</strong>를 만들어 보세요.' },
   { type: 'make', targetFrac: { denom: 6, num: 2 }, desc: '초콜릿 막대에 <strong>6분의 2</strong>를 만들어 보세요.' },
   // ③ 비교
-  { type: 'compare', a: { denom: 3, num: 1 }, b: { denom: 4, num: 1 }, desc: '1/3과 1/4 중 어느 분수가 더 클까요? 예측한 다음 겹쳐서 확인해 보세요.' },
-  { type: 'compare', a: { denom: 5, num: 2 }, b: { denom: 5, num: 3 }, desc: '2/5와 3/5 중 어느 분수가 더 클까요? 예측한 다음 겹쳐서 확인해 보세요.' },
-  { type: 'compare', a: { denom: 2, num: 1 }, b: { denom: 4, num: 2 }, desc: '1/2과 2/4 중 어느 분수가 더 클까요? 예측한 다음 겹쳐서 확인해 보세요.' },
+  { type: 'compare', a: { denom: 3, num: 1 }, b: { denom: 4, num: 1 }, desc: '3분의 1과 4분의 1 중 어느 분수가 더 클까요? 예측한 다음 겹쳐서 확인해 보세요.' },
+  { type: 'compare', a: { denom: 5, num: 2 }, b: { denom: 5, num: 3 }, desc: '5분의 2와 5분의 3 중 어느 분수가 더 클까요? 예측한 다음 겹쳐서 확인해 보세요.' },
+  { type: 'compare', a: { denom: 2, num: 1 }, b: { denom: 4, num: 2 }, desc: '2분의 1과 4분의 2 중 어느 분수가 더 클까요? 예측한 다음 겹쳐서 확인해 보세요.' },
 ];
 
 const MISSION_IDS = MISSIONS.map((_, i) => 'm' + (i + 1));
 
 const KOREAN_NUMS = ["영", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구", "십", "십일", "십이"];
+
+// 별 표시(아이콘). 화면 읽기용 이름은 따로 붙인다
+function starIcons(n) { return Array.from({ length: n }, () => SimKit.icon('star')).join(''); }
+// 교과서 표기 "5분의 2"(숫자)
+function fracText(denom, num) { return `${denom}분의 ${num}`; }
 
 /* ── 읽기 문자열 ── */
 function getKoreanFraction(denom, num) {
@@ -817,8 +787,9 @@ function renderBarSVG(svg) {
 
     // 가벨링
     const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    txt.setAttribute('x', startX - 10); txt.setAttribute('y', y + H / 2 + 5);
-    txt.setAttribute('text-anchor', 'end'); txt.setAttribute('font-size', '13');
+    txt.setAttribute('x', startX - 12); txt.setAttribute('y', y + H / 2 + 7);
+    // viewBox가 화면에 맞춰 줄어들어도(360px 폭 약 0.55배) 11px 이상으로 보이게
+    txt.setAttribute('text-anchor', 'end'); txt.setAttribute('font-size', '21');
     txt.setAttribute('font-weight', '700'); txt.setAttribute('fill', 'var(--fb-text)');
     txt.textContent = label;
     group.appendChild(txt);
@@ -907,8 +878,9 @@ function renderBarSVG(svg) {
       r.setAttribute('x', x); r.setAttribute('y', yB);
       r.setAttribute('width', dBw); r.setAttribute('height', H);
       r.setAttribute('rx', '4');
-      r.setAttribute('fill', filled ? 'var(--fb-accent-b)' : 'var(--fb-empty)');
-      r.setAttribute('stroke', 'var(--fb-cut)'); r.setAttribute('stroke-width', '1.5');
+      // 겹쳐 보기: B의 빈 조각은 투명하게(칸 선만) — 빈 조각이 A를 흐리게 덮지 않게
+      r.setAttribute('fill', filled ? 'var(--fb-accent-b)' : (state.overlap ? 'transparent' : 'var(--fb-empty)'));
+      r.setAttribute('stroke', state.overlap && !filled ? 'var(--fb-accent-b)' : 'var(--fb-cut)'); r.setAttribute('stroke-width', '1.5');
       if (state.overlap) {
         r.setAttribute('opacity', '0.7');
       }
@@ -945,9 +917,9 @@ function renderBarSVG(svg) {
       if (state.overlap) {
         bevel.setAttribute('opacity', '0.7');
       }
-      groupB.appendChild(bevel);
+      if (!(state.overlap && !filled)) groupB.appendChild(bevel);
 
-      if (dBw > 12) {
+      if (dBw > 12 && !(state.overlap && !filled)) {
         const cushion = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         cushion.setAttribute('x', x + 5);
         cushion.setAttribute('y', yB + 5);
@@ -994,8 +966,8 @@ function renderPizzaSVG(svg) {
     group.appendChild(c);
 
     const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    txt.setAttribute('x', cx); txt.setAttribute('y', cy - R - 12);
-    txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('font-size', '13');
+    txt.setAttribute('x', cx); txt.setAttribute('y', cy - R - 14);
+    txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('font-size', '21');
     txt.setAttribute('font-weight', '700'); txt.setAttribute('fill', 'var(--fb-text)');
     txt.textContent = label;
     group.appendChild(txt);
@@ -1033,8 +1005,10 @@ function renderPizzaSVG(svg) {
       path.setAttribute('d', d);
 
       const isFilled = filledArr.includes(i);
-      path.setAttribute('fill', isFilled ? color : 'var(--fb-empty)');
-      path.setAttribute('stroke', 'var(--fb-cut)');
+      // 겹쳐 보기에서 B의 빈 조각은 투명하게(아래 A가 흐려지지 않게)
+      const seeThrough = state.overlap && target === 'b' && !isFilled;
+      path.setAttribute('fill', isFilled ? color : (seeThrough ? 'transparent' : 'var(--fb-empty)'));
+      path.setAttribute('stroke', seeThrough ? 'var(--fb-accent-b)' : 'var(--fb-cut)');
       path.setAttribute('stroke-width', '1.5');
 
       if (state.overlap && target === 'b') {
@@ -1074,7 +1048,7 @@ function renderPizzaSVG(svg) {
       if (state.overlap && target === 'b') {
         crust.setAttribute('opacity', '0.7');
       }
-      grp.appendChild(crust);
+      if (!seeThrough) grp.appendChild(crust);
 
       // [피자 토핑 추가 (A: 페퍼로니, B: 블랙 올리브)]
       if (isFilled) {
@@ -1196,7 +1170,34 @@ function updateControls() {
 
   // 겹쳐 보기 제어 바 노출 여부
   $('#overlapControl').style.display = state.compare ? '' : 'none';
-  $('#btnOverlapToggle').textContent = state.overlap ? '🥞 원래대로' : '🥞 겹쳐 보기';
+  setOverlapLabel();
+}
+function setOverlapLabel() {
+  const b = $('#btnOverlapToggle');
+  b.querySelector('.lbl').textContent = state.overlap ? '원래대로' : '겹쳐 보기';
+  b.setAttribute('aria-pressed', String(state.overlap));
+}
+function setCompareLabel() {
+  const b = $('#btnCompareToggle');
+  b.querySelector('.lbl').textContent = state.compare ? '비교 끝내기' : '두 분수 비교하기';
+  b.setAttribute('aria-pressed', String(state.compare));
+}
+// 조작판 아래 버튼 줄: 자유 탐험 ↔ 미션
+function setActionButtons() {
+  const L = SimKit.LABELS;
+  const reset = $('#btnReset'), mission = $('#btnMission');
+  if (missionMode) {
+    reset.innerHTML = SimKit.icon('rotate-ccw') + ' ' + L.retry;
+    mission.innerHTML = SimKit.icon('skip-forward') + ' ' + L.skip;
+    mission.classList.remove('sk-btn--primary');
+    mission.onclick = () => mc.skip();
+  } else {
+    reset.innerHTML = SimKit.icon('rotate-ccw') + ' 처음 모양으로';
+    mission.innerHTML = SimKit.icon('trophy') + ' ' + L.missionStart;
+    mission.classList.add('sk-btn--primary');
+    mission.onclick = () => startMissions();
+  }
+  $('#btnExitMission').hidden = !missionMode;
 }
 
 function setDenominator(val) {
@@ -1253,13 +1254,18 @@ function setupMission(idx) {
   currentMission = idx;
   predictVal = '';
   state.overlap = false;
-  const m = MISSIONS[idx];
   const area = $('#missionArea');
+  const m = MISSIONS[idx];
 
   // 미션 표시기 노출
   $('#missionIndicator').style.display = '';
+  $('#canvasZone').classList.add('in-mission');
+  // 똑같이 나누었는지 묻는 미션에서는 분모·등분 수를 보여 주지 않는다
+  $('#sideBody').classList.toggle('hide-frac', m.type === 'equal');
+  $('#btnOverlapToggle').classList.toggle('sk-btn--primary', m.type === 'compare');
   $('#missionNum').textContent = idx + 1;
   updateMissionLabel();
+  setActionButtons();
 
   let html = `<div class="progress-bar" role="progressbar" aria-label="미션 진행" aria-valuemin="0" aria-valuemax="${MISSIONS.length}" aria-valuenow="${idx}"><div class="progress-fill" style="width:${(idx / MISSIONS.length) * 100}%"></div></div>`;
 
@@ -1314,16 +1320,16 @@ function setupMission(idx) {
     state.b = { denom: m.b.denom, filled: Array.from({length: m.b.num}, (_, i) => i) };
     state.overlap = false;
 
-    // 예측 칩 정의
-    const fracA = `${m.a.num}/${m.a.denom}`;
-    const fracB = `${m.b.num}/${m.b.denom}`;
+    // 예측 칩 정의 — 교과서 표기 "3분의 1" + 받침에 맞는 조사(이/가)
+    const fracA = SimKit.josa(fracText(m.a.denom, m.a.num), '이/가');
+    const fracB = SimKit.josa(fracText(m.b.denom, m.b.num), '이/가');
 
     html += `<div class="mission-panel">
       <h3>미션 ${idx + 1}: 분수 크기 비교</h3>
       <p>${m.desc}</p>
       <div class="predict-row" id="predictContainer" role="group" aria-label="예측 고르기">
-        <button type="button" class="predict-btn" data-val="A" aria-pressed="false">${fracA}이 더 커요</button>
-        <button type="button" class="predict-btn" data-val="B" aria-pressed="false">${fracB}이 더 커요</button>
+        <button type="button" class="predict-btn" data-val="A" aria-pressed="false">${fracA} 더 커요</button>
+        <button type="button" class="predict-btn" data-val="B" aria-pressed="false">${fracB} 더 커요</button>
         <button type="button" class="predict-btn" data-val="E" aria-pressed="false">서로 같아요</button>
       </div>
       <div id="missionFeedback"></div>
@@ -1343,9 +1349,7 @@ function setupMission(idx) {
     $('#btnOverlapToggle').disabled = true;
   }
 
-  // 건너뛰기 — onclick 하나만 쓴다(addEventListener와 섞으면 두 번 실행됨)
-  $('#btnMission').textContent = '⏭ 건너뛰기';
-  $('#btnMission').onclick = () => mc.skip();
+  // 건너뛰기 버튼은 setActionButtons()가 onclick 하나로 건다(addEventListener와 섞으면 두 번 실행됨)
 
   // 자동으로 넘어와 초점을 잃었으면 새 미션 제목으로
   const ae = document.activeElement;
@@ -1365,7 +1369,7 @@ function checkEqualMission(btn) {
 
   if (isCorrect) {
     btn.classList.add('correct');
-    mc.complete({ stars: starsByAttempts(), message: `🎉 정답입니다! ${m.tip}`, advance: 1800 });
+    mc.complete({ stars: starsByAttempts(), message: `정답이에요! ${m.tip}`, advance: 1800 });
   } else {
     btn.classList.add('wrong');
     mc.fail('다시 한번 생각해 볼까요?', { tone: 'warn' });
@@ -1389,7 +1393,7 @@ function checkMakeMission() {
   if (current.denom === m.targetFrac.denom && current.filled.length === m.targetFrac.num) {
     disableSidebarControls(true);
     const stars = starsByAttempts();
-    mc.complete({ stars, message: `🎉 완성했습니다! 아주 멋진 분수네요! ${'⭐'.repeat(stars)}`, advance: 1800 });
+    mc.complete({ stars, message: `완성했어요! ${fracText(m.targetFrac.denom, m.targetFrac.num)}를 잘 만들었어요. (별 ${stars}개)`, advance: 1800 });
   }
   // 만드는 중에는 따로 문구를 띄우지 않고 기다림
 }
@@ -1404,7 +1408,7 @@ function selectPrediction(btn) {
 
   // 예측했으므로 겹쳐보기 잠금해제
   $('#btnOverlapToggle').disabled = false;
-  showToast('아래 겹쳐 보기 버튼을 눌러 확인하세요!');
+  showToast('겹쳐 보기 버튼을 눌러 확인해 보세요!');
 }
 
 function checkCompareMission() {
@@ -1424,12 +1428,12 @@ function checkCompareMission() {
 
   if (correct) {
     if (predictBtn) predictBtn.classList.add('correct');
-    mc.complete({ stars: starsByAttempts(), message: '🎉 정답입니다! 두 막대를 겹쳐 크기를 눈으로 비교해 보세요.', advance: 3000 });
+    mc.complete({ stars: starsByAttempts(), message: '정답이에요! 두 막대를 겹쳐 크기를 눈으로 비교해 보세요.', advance: 3000 });
   } else {
     if (predictBtn) predictBtn.classList.add('wrong');
     if (correctBtn) correctBtn.classList.add('correct');
     // 비교 미션 오답은 별 1개로 완료하고 넘어간다(예전 동작)
-    mc.complete({ stars: 1, tone: 'warn', message: '아쉽습니다. 겹쳐 보니 크기 차이가 확실히 드러나지요?', advance: 3000 });
+    mc.complete({ stars: 1, tone: 'warn', message: '아쉬워요. 겹쳐 보니 크기 차이가 확실히 보이지요?', advance: 3000 });
   }
 }
 
@@ -1437,7 +1441,7 @@ function updateMissionLabel() {
   if (currentMission < 0) return;
   const stars = missionStars['m' + (currentMission + 1)] || 0;
   $('#missionLabel').textContent = `미션 ${currentMission + 1}/${MISSIONS.length}`;
-  $('#missionStarsDisp').textContent = stars > 0 ? '⭐'.repeat(stars) : '';
+  $('#missionStarsDisp').innerHTML = stars > 0 ? starIcons(stars) : '';
   $('#missionStarsDisp').setAttribute('aria-label', stars > 0 ? `별 ${stars}개` : '');
 }
 
@@ -1460,11 +1464,13 @@ function exitMissionMode() {
   state.target = 'a';
   $('#missionArea').innerHTML = '';
   $('#missionIndicator').style.display = 'none';
-  $('#btnMission').textContent = '🏆 미션 도전';
-  $('#btnMission').onclick = () => startMissions();
+  $('#canvasZone').classList.remove('in-mission');
+  $('#sideBody').classList.remove('hide-frac');
+  $('#btnOverlapToggle').classList.remove('sk-btn--primary');
+  setActionButtons();
   disableSidebarControls(false);
   $('#btnCompareToggle').style.display = '';
-  $('#btnCompareToggle').textContent = '🆚 비교 모드 켜기';
+  setCompareLabel();
   $('#targetSelect').style.display = 'none';
   renderSVG();
   updateControls();
@@ -1484,12 +1490,12 @@ function showResult() {
     const s = mc.starsOf(i);
     gridHtml += `<div class="result-cell" role="listitem" aria-label="미션 ${i + 1}: ${s > 0 ? '별 ' + s + '개' : '안 함'}">
       <div class="num" aria-hidden="true">${i + 1}</div>
-      <div class="stars" aria-hidden="true">${SimKit.stars.text(s, 3, '—')}</div>
+      <div class="stars" aria-hidden="true">${s > 0 ? starIcons(s) : '—'}</div>
     </div>`;
   }
 
   $('#resultScoreText').textContent = `${totalStars} / ${MISSIONS.length * 3} 점`;
-  $('#resultStarsRow').textContent = '⭐'.repeat(Math.min(totalStars, 24));
+  $('#resultStarsRow').innerHTML = starIcons(Math.min(totalStars, 24));
   $('#resultGrid').innerHTML = gridHtml;
 }
 
@@ -1536,7 +1542,7 @@ function init() {
   $('#btnCompareToggle').addEventListener('click', () => {
     state.compare = !state.compare;
     state.overlap = false;
-    $('#btnCompareToggle').textContent = state.compare ? '🆚 비교 모드 끄기' : '🆚 비교 모드 켜기';
+    setCompareLabel();
     $('#targetSelect').style.display = state.compare ? '' : 'none';
     if (!state.compare) {
       state.target = 'a';
@@ -1568,24 +1574,32 @@ function init() {
     }
   });
 
-  // 처음부터 리셋
+  // 미션: 같은 미션 다시 하기 / 자유 탐험: 막대를 처음 모양으로(되돌리기 가능)
   $('#btnReset').addEventListener('click', () => {
     if (missionMode) {
       mc.retry(); // 같은 미션 다시 준비(대기 중 자동 이동 취소)
     } else {
+      const before = JSON.parse(JSON.stringify({ a: state.a, b: state.b }));
       state.a = { denom: 4, filled: [0] };
       state.b = { denom: 6, filled: [0] };
       state.overlap = false;
       renderSVG();
       updateControls();
       saveState();
+      if (window.VUI && VUI.toast) VUI.toast('처음 모양으로 돌렸어요.', { action: { label: '되돌리기', onClick: () => {
+        state.a = before.a; state.b = before.b;
+        renderSVG(); updateControls(); saveState();
+      } } });
     }
   });
+
+  // 미션 중 언제든 자유 탐험으로(별 기록은 그대로)
+  $('#btnExitMission').addEventListener('click', () => exitMissionMode());
 
   // 겹쳐 보기 버튼
   $('#btnOverlapToggle').addEventListener('click', () => {
     state.overlap = !state.overlap;
-    $('#btnOverlapToggle').textContent = state.overlap ? '🥞 원래대로' : '🥞 겹쳐 보기';
+    setOverlapLabel();
     renderSVG();
 
     // 미션 3 비교 검증 — 겹치는 모습을 잠깐 보여 준 뒤 채점(미션을 옮기면 취소)
@@ -1602,11 +1616,15 @@ function init() {
     $('#btnTts').style.display = 'none';
   }
 
-  // 미션 버튼 — onclick 하나만(setupMission·exitMissionMode가 교체)
-  $('#btnMission').onclick = () => startMissions();
+  // 미션 버튼 — onclick 하나만(setActionButtons가 교체)
+  setActionButtons();
 
-  // 결과 제어
-  $('#btnRetry').addEventListener('click', () => {
+  // 결과 제어 — 처음부터: 별 기록을 지우므로 확인 창
+  $('#btnRetry').addEventListener('click', async () => {
+    const ok = window.VUI && VUI.confirm
+      ? await VUI.confirm('모든 미션의 별 기록을 지우고 미션 1부터 다시 할까요?', { title: '처음부터', ok: '처음부터', danger: true })
+      : true;
+    if (!ok) return;
     mc.reset(); // 별 기록 지우기(onChange → 저장)
     showScreen('screenExplore');
     exitMissionMode();
@@ -1625,7 +1643,7 @@ function init() {
   }), { title: '분수 막대 — 내 분수 만들기' });
 
   // 불러온 상태에 맞춰 비교 모드 표시
-  $('#btnCompareToggle').textContent = state.compare ? '🆚 비교 모드 끄기' : '🆚 비교 모드 켜기';
+  setCompareLabel();
   $('#targetSelect').style.display = state.compare ? '' : 'none';
   updateControls();
 }

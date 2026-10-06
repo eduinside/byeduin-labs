@@ -6,32 +6,37 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   description="여덟 행성을 공전시키고 크기와 거리를 실제 비율로 비교해 보세요. 행성 도감과 퀴즈까지, 초등 5~6학년 태양계와 별을 체험하는 무료 학습 시뮬레이션."
   image="https://eduin.info/og-images/solar-system.png"
   bodyShell="immersive"
+  theme="light"
+  toast="top"
 >
   <Fragment slot="head">
     <link rel="stylesheet" href="/common/sim-kit.css">
     <script is:inline src="/common/sim-kit.js"></script>
     <style is:global="">
+    /* 규약 v2: 조작판·글자는 밝은 화면. 우주 무대(여행·크기·거리)의 어두운 배경과 무대 글자만 그림 내용으로 어둡게 둔다 */
     :root{
       --ss-space-1:#05060f; --ss-space-2:#0b0f24; --ss-space-3:#141b3c;
-      --ss-fg:#e8ecff; --ss-fg-muted:#9aa3d4;
-      --ss-card:rgba(20,24,54,.72); --ss-border:rgba(140,150,220,.28);
-      --ss-accent:#ffd166; --ss-orbit:rgba(150,165,255,.28);
-      --ss-good:#5ee6a8; --ss-bad:#ff6b81;
-      --ss-focus:#7dd3fc;
+      --ss-stage-fg:#e8ecff; --ss-stage-muted:#b8c0ea; --ss-orbit:rgba(150,165,255,.32);
+      --ss-stage-accent:#ffd166;
+      --ss-fg:var(--fg,#11181c); --ss-fg-muted:var(--fg-muted,#71717a);
+      --ss-card:var(--bg,#fff); --ss-panel:rgba(255,255,255,.94); --ss-border:var(--border,#e4e4e7);
+      --ss-accent:#f5a524; --ss-accent-text:#9a5b00;
+      --ss-good:#17c964; --ss-bad:#f31260;
     }
     *{box-sizing:border-box}
     html,body{margin:0;padding:0;height:100%}
     body{
       font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Segoe UI',sans-serif;
-      color:var(--ss-fg); overflow:hidden;
+      color:var(--ss-fg); background:var(--bg-sec,#f4f4f5); overflow:hidden;
     }
     button, a { -webkit-tap-highlight-color:transparent; }
     button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
-      outline:2px solid var(--ss-focus); outline-offset:2px;
+      outline:3px solid var(--sk-accent); outline-offset:2px;
     }
 
+    /* 우주 배경은 무대 화면(여행·크기·거리)에서만 — body.ss-space */
     .ss-bg{
-      position:fixed; inset:0; z-index:0;
+      position:fixed; inset:0; z-index:0; display:none;
       background:
         radial-gradient(1.5px 1.5px at 10% 20%, #fff, transparent),
         radial-gradient(1px 1px at 25% 65%, #fff, transparent),
@@ -45,61 +50,55 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         linear-gradient(180deg, var(--ss-space-1), var(--ss-space-2));
       background-repeat:no-repeat;
     }
+    body.ss-space .ss-bg{ display:block; }
     #app{ position:fixed; inset:0; z-index:1; overflow:hidden; }
     .ss-scroll{ position:absolute; inset:0; overflow-y:auto; -webkit-overflow-scrolling:touch; }
 
     /* ===== 공용 ===== */
-    .ss-wrap{ max-width:560px; margin:0 auto; padding:88px 18px 40px; }
+    .ss-wrap{ max-width:560px; margin:0 auto; padding:var(--sk-stage-top) 16px 40px; }
+    .sk-screen .ss-wrap{ width:100%; max-width:560px; padding:0; }
     .ss-card{
       background:var(--ss-card); border:1px solid var(--ss-border); border-radius:20px;
-      padding:22px 20px; backdrop-filter:blur(10px);
+      padding:22px 20px; box-shadow:var(--shadow,0 4px 24px rgba(0,0,0,.08));
     }
-    .ss-btn{
-      font-family:inherit; font-size:16px; font-weight:700; border:none; cursor:pointer;
-      border-radius:999px; padding:13px 28px; transition:transform .12s, box-shadow .12s;
-      color:#1a1330; background:linear-gradient(135deg,var(--ss-accent),#ff9e5e);
-      box-shadow:0 6px 0 #b8781f; min-height:44px;
-    }
-    .ss-btn:active{ transform:translateY(3px); box-shadow:0 3px 0 #b8781f; }
-    .ss-btn-ghost{
-      background:rgba(255,255,255,.08); color:var(--ss-fg); box-shadow:none;
-      border:1px solid var(--ss-border);
-    }
-    .ss-btn-ghost:active{ transform:scale(.96); }
-    .ss-btn-sm{ font-size:14px; padding:10px 16px; min-height:44px; }
-    .ss-btn:disabled{ opacity:.4; cursor:not-allowed; box-shadow:none; transform:none; }
 
     .ss-topbar{
-      position:absolute; top:64px; left:12px; right:12px; z-index:5;
       display:flex; align-items:center; justify-content:space-between; gap:8px;
-      flex-wrap:wrap;
+      flex-wrap:wrap; margin:0 0 8px;
     }
-    @media (max-width:540px){ .ss-topbar{ top:52px; } }
     .ss-caption{
-      background:rgba(10,12,28,.75); border:1px solid var(--ss-border); border-radius:999px;
-      padding:7px 14px; font-size:14px; color:var(--ss-fg-muted); backdrop-filter:blur(6px);
+      background:var(--ss-panel); border:1px solid var(--ss-border); border-radius:999px;
+      padding:7px 14px; font-size:14px; color:var(--ss-fg-muted); line-height:1.4;
     }
+
+    /* ===== 무대 화면(여행·크기·거리): 위 이름표 줄·아래 도구줄이 그림을 가리지 않게 흐름 배치 ===== */
+    .stage-screen{
+      position:absolute; inset:0; display:flex; flex-direction:column;
+      padding-top:var(--sk-stage-top);
+    }
+    .stage-screen > .ss-topbar{ flex:none; margin:0 12px 6px; }
+    .stage-main{ flex:1 1 auto; min-height:0; position:relative; }
 
     /* ===== 인트로 ===== */
     .intro{ text-align:center; animation:fadeUp .5s ease both; }
     .intro .art{ font-size:70px; line-height:1; margin-bottom:10px; animation:float 3s ease-in-out infinite; }
     .intro h1{ font-size:30px; margin:0 0 8px; }
     .intro .tag{
-      display:inline-block; background:rgba(255,209,102,.14); color:var(--ss-accent);
-      border:1px solid rgba(255,209,102,.4); font-size:14px; padding:5px 14px;
+      display:inline-block; background:rgba(245,165,36,.14); color:var(--ss-accent-text);
+      border:1px solid rgba(245,165,36,.45); font-size:14px; padding:5px 14px;
       border-radius:999px; margin-bottom:16px;
     }
     .intro p.sub{ color:var(--ss-fg-muted); line-height:1.7; margin-bottom:22px; }
     .intro .ss-card{ text-align:left; margin-bottom:24px; }
-    .intro .ss-card h3{ margin:0 0 8px; font-size:16px; color:var(--ss-accent); }
+    .intro .ss-card h3{ margin:0 0 8px; font-size:16px; color:var(--ss-accent-text); display:flex; align-items:center; gap:6px; }
     .intro .ss-card ul{ margin:0; padding-left:20px; line-height:1.7; font-size:14.5px; }
 
     /* ===== 허브 ===== */
     .hub-head{ text-align:center; margin-bottom:18px; }
-    .hub-head h2{ margin:0 0 4px; font-size:22px; }
+    .hub-head h2{ margin:0 0 4px; font-size:22px; display:flex; align-items:center; justify-content:center; gap:8px; }
     .hub-head p{ margin:0; color:var(--ss-fg-muted); font-size:14.5px; }
     .hub-progress{
-      display:flex; align-items:center; justify-content:center; gap:8px;
+      display:flex; align-items:center; justify-content:center; gap:6px;
       font-size:14px; color:var(--ss-fg-muted); margin-bottom:20px;
     }
     .hub-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
@@ -108,76 +107,96 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       padding:18px 14px; text-align:center; cursor:pointer; transition:transform .12s, border-color .12s;
       color:inherit; font-family:inherit;
     }
-    .hub-tile:hover{ border-color:var(--ss-accent); }
+    .hub-tile:hover{ border-color:var(--sk-accent); }
     .hub-tile:active{ transform:scale(.97); }
-    .hub-tile .ico{ font-size:34px; margin-bottom:8px; }
-    .hub-tile .lbl{ font-size:14.5px; font-weight:700; margin-bottom:3px; }
+    .hub-tile .ico{ font-size:30px; margin-bottom:8px; color:var(--sk-accent); line-height:1; }
+    .hub-tile .ico .ic{ width:1em; height:1em; }
+    .hub-tile .lbl{ font-size:15px; font-weight:700; margin-bottom:3px; }
     .hub-tile .sub{ font-size:14px; color:var(--ss-fg-muted); line-height:1.5; }
-    .hub-mission-btn{ width:100%; margin-bottom:10px; }
+    .hub-actions{ display:flex; flex-direction:column; gap:10px; }
 
     /* ===== 여행 모드 ===== */
-    .travel-stage{ position:absolute; inset:0; touch-action:pan-x pan-y; }
-    .travel-stage svg{ width:100%; height:100%; display:block; }
+    .travel-stage{ touch-action:pan-x pan-y; }
+    .travel-stage svg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
     .travel-controls{
-      position:absolute; left:50%; transform:translateX(-50%); bottom:22px; z-index:5;
-      background:rgba(10,12,28,.78); border:1px solid var(--ss-border); border-radius:20px;
-      padding:12px 18px; display:flex; align-items:center; gap:12px; backdrop-filter:blur(8px);
-      max-width:calc(100% - 24px);
+      flex:none; align-self:center; margin:6px 12px calc(12px + env(safe-area-inset-bottom,0px));
+      background:var(--ss-panel); border:1px solid var(--ss-border); border-radius:16px;
+      padding:8px 14px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:center;
+      max-width:calc(100% - 24px); color:var(--ss-fg);
     }
-    .travel-controls input[type=range]{ width:110px; accent-color:var(--ss-accent); }
-    .icon-btn{
-      width:44px; height:44px; border-radius:50%; border:none; cursor:pointer;
-      background:rgba(255,255,255,.1); color:var(--ss-fg); font-size:17px;
-      display:flex; align-items:center; justify-content:center;
-    }
-    .icon-btn:active{ transform:scale(.92); }
+    .travel-controls label{ font-size:14px; color:var(--ss-fg-muted); }
+    .travel-controls input[type=range]{ width:110px; accent-color:var(--sk-accent); }
     .planet-token{ cursor:pointer; }
-    .planet-token:focus-visible circle, .planet-token:focus-visible ellipse{ outline:2px solid var(--ss-focus); }
+    .planet-token:focus-visible circle, .planet-token:focus-visible ellipse{ outline:2px solid var(--ss-stage-accent); }
+
+    /* 폰 가로(낮은 화면): 이름표 줄·조작줄을 옆으로 빼서 무대 높이를 확보 */
+    @media (max-height:500px) and (min-width:640px){
+      .stage-screen.travel{
+        display:grid; grid-template-columns:minmax(200px,250px) 1fr; grid-template-rows:auto 1fr auto;
+        padding-top:12px;
+      }
+      .stage-screen.travel > .ss-topbar{ grid-column:1; grid-row:1; flex-direction:column; align-items:stretch; margin:0 0 6px 12px; }
+      .stage-screen.travel > .travel-controls{ grid-column:1; grid-row:3; margin:6px 0 12px 12px; max-width:none; }
+      .stage-screen.travel > .stage-main{ grid-column:2; grid-row:1 / 4; margin-top:var(--sk-stage-top); }
+    }
 
     .info-sheet{
       position:absolute; left:0; right:0; bottom:0; z-index:8;
-      background:var(--ss-card); border-top:1px solid var(--ss-border); backdrop-filter:blur(12px);
-      border-radius:22px 22px 0 0; padding:18px 20px 22px; max-height:52%; overflow-y:auto;
-      transform:translateY(100%); transition:transform .28s cubic-bezier(.3,0,.2,1);
+      background:var(--ss-card); border-top:1px solid var(--ss-border); box-shadow:0 -8px 30px rgba(0,0,0,.25);
+      border-radius:22px 22px 0 0; padding:18px 20px 22px; max-height:60%; overflow-y:auto;
+      transform:translateY(100%); transition:transform .28s cubic-bezier(.3,0,.2,1), visibility .28s; visibility:hidden;
+      color:var(--ss-fg);
     }
-    .info-sheet.open{ transform:translateY(0); }
-    .info-sheet .row{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+    .info-sheet.open{ transform:translateY(0); visibility:visible; }
+    .info-sheet .row{ display:flex; align-items:center; gap:12px; margin-bottom:10px; padding-right:40px; }
     .info-sheet h3{ margin:0; font-size:19px; }
-    .info-sheet .facts{ display:flex; gap:14px; flex-wrap:wrap; font-size:14px; color:var(--ss-fg-muted); margin-bottom:10px; }
-    .info-sheet p.desc{ font-size:14px; line-height:1.65; margin:0 0 14px; }
-    .sheet-close{ position:absolute; top:6px; right:8px; background:none; border:none; color:var(--ss-fg-muted); font-size:18px; cursor:pointer; width:44px; height:44px; border-radius:50%; }
-    .star-btn{ background:none; border:none; font-size:20px; cursor:pointer; padding:0; min-width:44px; min-height:44px; border-radius:50%; }
+    .info-sheet .facts{ display:flex; gap:6px 14px; flex-wrap:wrap; font-size:14px; color:var(--ss-fg-muted); margin-bottom:10px; }
+    .info-sheet .facts b{ color:var(--ss-fg); }
+    .info-sheet p.desc{ font-size:14.5px; line-height:1.65; margin:0 0 14px; }
+    .sheet-close{ position:absolute; top:6px; right:8px; background:none; border:none; color:var(--ss-fg-muted); font-size:20px; cursor:pointer; width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+    .star-btn{ background:none; border:none; font-size:20px; cursor:pointer; padding:0; min-width:44px; min-height:44px; border-radius:50%; color:var(--ss-fg-muted); display:inline-flex; align-items:center; justify-content:center; }
+    .star-btn[aria-pressed="true"]{ color:var(--ss-accent); }
+    .star-btn[aria-pressed="true"] .ic, .fav-mark .ic{ fill:currentColor; }
+    .fav-mark{ color:var(--ss-accent); }
 
-    /* ===== 크기/거리 비교 공용 스크롤 스테이지 ===== */
-    .cmp-scroll{
-      position:absolute; inset:0; overflow-x:auto; overflow-y:hidden;
-      -webkit-overflow-scrolling:touch; padding-top:130px;
+    /* ===== 크기/거리 비교: 가로 스크롤 무대 ===== */
+    .cmp-hint{
+      flex:none; align-self:center; margin:0 12px 4px;
+      font-size:14px; color:var(--ss-fg-muted); text-align:center; max-width:calc(100% - 24px);
+      background:var(--ss-panel); border:1px solid var(--ss-border); border-radius:16px; padding:6px 14px;
+      display:flex; align-items:center; gap:6px; line-height:1.4;
     }
-    .cmp-track{ position:relative; height:calc(100% - 130px); min-height:260px; }
+    .cmp-scroll{
+      overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; padding-top:44px;
+    }
+    .cmp-scroll.dist{ padding-top:96px; overflow-y:auto; }
+    .cmp-track{ position:relative; height:100%; min-height:160px; }
     .cmp-label{
-      position:absolute; top:-28px; transform:translateX(-50%); font-size:14px;
-      color:var(--ss-fg-muted); white-space:nowrap; text-align:center;
+      position:absolute; top:-28px; transform:translateX(-50%); font-size:14px; font-weight:700;
+      color:var(--ss-stage-fg); white-space:nowrap; text-align:center;
     }
     .cmp-ratio{
-      position:absolute; top:calc(50% + 90px); transform:translateX(-50%); font-size:14px;
-      color:var(--ss-accent); white-space:nowrap; text-align:center; font-weight:700;
+      position:absolute; transform:translateX(-50%); font-size:14px;
+      color:var(--ss-stage-accent); white-space:nowrap; text-align:center; font-weight:700; line-height:1.25;
     }
+    .cmp-ratio small{ display:block; font-size:12px; font-weight:600; color:var(--ss-stage-muted); }
     .earth-ghost{ cursor:grab; touch-action:none; }
     .earth-ghost.dragging{ cursor:grabbing; }
-    .cmp-hint{
-      position:absolute; top:76px; left:50%; transform:translateX(-50%); z-index:4;
-      font-size:14px; color:var(--ss-fg-muted); text-align:center; max-width:90%;
+    .size-result{
+      position:fixed; left:50%; bottom:calc(var(--sk-stage-bottom) + 24px); transform:translateX(-50%); z-index:9;
+      width:max-content; max-width:min(86vw,420px); text-align:center; padding:12px 16px; font-size:15px; line-height:1.5;
     }
     .dist-chipbar{
-      position:absolute; left:0; right:0; bottom:0; z-index:6;
-      background:rgba(10,12,28,.82); border-top:1px solid var(--ss-border);
-      display:flex; gap:8px; padding:10px 12px; overflow-x:auto; backdrop-filter:blur(8px);
+      flex:none; z-index:6;
+      background:var(--ss-panel); border-top:1px solid var(--ss-border);
+      display:flex; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px)); overflow-x:auto;
     }
     .dist-chip{
-      flex:0 0 auto; background:rgba(255,255,255,.08); border:1px solid var(--ss-border);
+      flex:0 0 auto; background:var(--card-bg,#f4f4f5); border:1px solid var(--ss-border);
       color:var(--ss-fg); border-radius:999px; padding:8px 14px; font-size:14px; cursor:pointer;
-      min-height:44px; font-family:inherit;
+      min-height:44px; font-family:inherit; display:inline-flex; align-items:center; gap:4px;
     }
+    .dist-chip:hover{ border-color:var(--sk-accent); }
     .zoom-bar{ display:flex; gap:6px; }
 
     /* ===== 도감 ===== */
@@ -186,16 +205,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       background:var(--ss-card); border:1px solid var(--ss-border); border-radius:16px;
       padding:14px; text-align:center; cursor:pointer; color:inherit; font-family:inherit;
     }
+    .codex-card:hover{ border-color:var(--sk-accent); }
     .codex-card:active{ transform:scale(.97); }
-    .codex-card svg{ display:block; margin:0 auto 6px; }
-    .codex-card .lbl{ font-size:15px; font-weight:700; }
+    .codex-card > svg{ display:block; margin:0 auto 6px; }
+    .codex-card .lbl{ font-size:15px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:4px; }
     .codex-detail{ animation:fadeUp .3s ease both; }
     .codex-detail-hero{ text-align:center; margin-bottom:14px; }
     .codex-detail-facts{
       display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;
     }
     .fact-box{
-      background:rgba(255,255,255,.05); border:1px solid var(--ss-border); border-radius:12px;
+      background:var(--ss-card); border:1px solid var(--ss-border); border-radius:12px;
       padding:10px 12px; text-align:center;
     }
     .fact-box .k{ font-size:13px; color:var(--ss-fg-muted); }
@@ -206,65 +226,77 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .mission-q{ font-size:18px; font-weight:700; text-align:center; margin-bottom:18px; line-height:1.5; }
     .choice-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:18px; }
     .choice-btn{
-      font-family:inherit; font-size:15px; text-align:left; padding:14px 16px; border-radius:14px;
-      border:2px solid var(--ss-border); background:rgba(255,255,255,.04); color:var(--ss-fg);
+      font-family:inherit; font-size:15px; text-align:left; padding:12px 16px; border-radius:14px;
+      border:2px solid var(--ss-border); background:var(--ss-card); color:var(--ss-fg);
       cursor:pointer; display:flex; align-items:center; gap:10px; min-height:44px;
     }
-    .choice-btn.selected{ border-color:var(--ss-accent); background:rgba(255,209,102,.12); }
-    .choice-btn.correct{ border-color:var(--ss-good); background:rgba(94,230,168,.14); }
-    .choice-btn.wrong{ border-color:var(--ss-bad); background:rgba(255,107,129,.14); }
+    .choice-btn:disabled{ cursor:default; }
+    .choice-btn.selected{ border-color:var(--sk-accent); background:var(--sk-info-bg); }
+    .choice-btn.correct{ border-color:var(--ss-good); background:var(--sk-ok-bg); }
+    .choice-btn.wrong{ border-color:var(--ss-bad); background:var(--sk-no-bg); }
 
     .order-pool, .order-slots{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-bottom:14px; }
     .order-slot{
-      width:60px; height:60px; border-radius:14px; border:2px dashed var(--ss-border);
+      width:60px; height:60px; border-radius:14px; border:2px dashed #b4b4bb;
       display:flex; align-items:center; justify-content:center; position:relative;
-      background:rgba(255,255,255,.03); cursor:pointer; color:inherit; font:inherit; padding:0;
+      background:var(--ss-card); cursor:pointer; color:inherit; font:inherit; padding:0;
     }
     .order-slot .idx{ position:absolute; top:2px; left:5px; font-size:13px; color:var(--ss-fg-muted); }
-    .order-slot.filled{ border-style:solid; }
-    .order-slot.correct{ border-color:var(--ss-good); }
+    .order-slot.filled{ border-style:solid; border-color:var(--ss-border); }
+    .order-slot.correct{ border-color:var(--ss-good); border-style:solid; }
     .order-slot.wrong{ border-color:var(--ss-bad); border-style:solid; }
-    .order-slot.wrong::after{ content:'✗'; position:absolute; bottom:1px; right:5px; font-size:13px; color:var(--ss-bad); }
-    .order-slot.correct::after{ content:'✓'; position:absolute; bottom:1px; right:5px; font-size:13px; color:var(--ss-good); }
+    .order-slot.wrong::after{ content:'✗'; position:absolute; bottom:1px; right:5px; font-size:13px; color:var(--sk-no-fg); }
+    .order-slot.correct::after{ content:'✓'; position:absolute; bottom:1px; right:5px; font-size:13px; color:var(--sk-ok-fg); }
     .order-chip{
-      width:52px; height:52px; border-radius:12px; border:none; background:rgba(255,255,255,.06);
+      width:52px; height:52px; border-radius:12px; border:1px solid var(--ss-border); background:var(--ss-card);
       cursor:pointer; display:flex; align-items:center; justify-content:center;
     }
     .order-chip:disabled{ opacity:.25; cursor:default; }
 
     .feedback-box{
       border-radius:14px; padding:12px 14px; margin-bottom:14px; font-size:15px; line-height:1.6;
-      animation:popIn .3s ease both;
+      animation:popIn .3s ease both; color:var(--ss-fg);
     }
-    .feedback-box.ok{ background:rgba(94,230,168,.12); border:1px solid var(--ss-good); }
-    .feedback-box.no{ background:rgba(255,107,129,.12); border:1px solid var(--ss-bad); }
+    .feedback-box .fb-ic{ vertical-align:-0.2em; margin-right:2px; }
+    .feedback-box.ok{ background:var(--sk-ok-bg); border:1px solid var(--ss-good); }
+    .feedback-box.ok .fb-ic{ color:var(--sk-ok-fg); }
+    .feedback-box.no{ background:var(--sk-no-bg); border:1px solid var(--ss-bad); }
+    .feedback-box.no .fb-ic{ color:var(--sk-no-fg); }
+    .mission-actions{ justify-content:center; margin-top:10px; }
+    .mission-actions > .sk-btn{ flex:0 1 auto; }
 
     /* ===== 결과 ===== */
     .result-score{ text-align:center; font-size:16px; margin-bottom:16px; }
-    .result-score b{ color:var(--ss-accent); font-size:26px; }
+    .result-score b{ color:var(--ss-accent-text); font-size:26px; }
     .summary-box{
-      background:rgba(255,255,255,.05); border:1px solid var(--ss-border); border-radius:16px;
-      padding:16px 18px; margin-bottom:20px; font-size:14px; line-height:1.75;
+      background:var(--ss-card); border:1px solid var(--ss-border); border-radius:16px;
+      padding:16px 18px; margin-bottom:20px; font-size:14.5px; line-height:1.75;
     }
-    .summary-box b{ color:var(--ss-accent); }
-    .result-actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+    .summary-box b{ color:var(--ss-accent-text); }
+    .summary-box .sum-title{ display:flex; align-items:center; gap:6px; font-weight:800; }
+    .result-actions{ justify-content:center; }
+    .result-actions > .sk-btn{ flex:0 1 auto; }
 
     @keyframes fadeUp{ from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:none} }
     @keyframes float{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
     @keyframes popIn{ from{opacity:0; transform:scale(.9)} to{opacity:1; transform:scale(1)} }
-
-    @media (max-width:480px){
-      .hub-grid{ grid-template-columns:1fr; }
-      .codex-grid{ grid-template-columns:1fr 1fr; }
+    @media (prefers-reduced-motion: reduce){
+      .info-sheet{ transition:none; }
+      .intro, .codex-detail, .feedback-box{ animation:none; }
     }
+
     .planet-label {
       pointer-events: none;
       font-family: inherit;
-      transition: fill 0.15s, opacity 0.15s;
+      fill: var(--ss-stage-fg);
+      paint-order: stroke;
+      stroke: rgba(5,6,15,.85);
+      stroke-width: 3px;
+      stroke-linejoin: round;
+      transition: fill 0.15s;
     }
     .planet-token:hover .planet-label, .planet-token:focus-visible .planet-label {
-      fill: var(--ss-accent);
-      opacity: 1;
+      fill: var(--ss-stage-accent);
     }
   </style>
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"태양계 여행","description":"여덟 행성을 공전시키고 크기와 거리를 실제 비율로 비교해 보세요. 행성 도감과 퀴즈까지, 초등 5~6학년 태양계와 별을 체험하는 무료 학습 시뮬레이션.","url":"https://eduin.info/apps/solar-system/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
@@ -341,7 +373,14 @@ function announce(text){
   el.textContent = '';
   setTimeout(() => { el.textContent = text; }, 60);
 }
-const REDUCE_MOTION = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+// 움직임 줄이기 설정(바뀌면 바로 반영)
+const reducedMotion = () => SimKit.motion.reduced();
+const icon = (name, opts) => SimKit.icon(name, opts);
+const L = SimKit.LABELS;
+// 거리 표시: "지구 거리의 1.5배"(태양~지구 거리를 1로)
+function distRatioText(au){ return (au >= 10 ? Math.round(au) : round1(au)) + '배'; }
+// 지름 표시: "지구의 11.2배"(지구 지름을 1로)
+function diaText(p){ return p.id === 'earth' ? '기준(1배)' : `지구의 ${p.diameterEarth}배`; }
 
 const state = { screen:'intro', focusPlanet:null };
 // 공유 가능한 화면만 해시에 반영(허브/인트로/미션/결과는 "특정 뷰 공유"의 의미가 없어 제외)
@@ -478,7 +517,10 @@ function go(screen, focusPlanet){
   render();
   window.scrollTo(0,0);
 }
+const SPACE_SCREENS = ['travel','size','distance'];
 function render(){
+  // 우주 무대 화면만 어두운 배경(그림 내용). 나머지 화면은 밝은 화면
+  document.body.classList.toggle('ss-space', SPACE_SCREENS.includes(state.screen));
   switch(state.screen){
     case 'intro': return renderIntro();
     case 'hub': return renderHub();
@@ -496,20 +538,20 @@ function render(){
 /* ===== 인트로 ===== */
 function renderIntro(){
   app.innerHTML = `
-  <div class="ss-scroll"><div class="ss-wrap intro">
+  <div class="sk-screen"><div class="ss-wrap intro">
     <div class="art" aria-hidden="true">🪐</div>
     <h1>태양계 여행</h1>
     <div class="tag">태양계와 별 · 초등 과학 5~6학년</div>
     <p class="sub">태양계에는 여덟 행성이 있어요.<br>얼마나 크고, 얼마나 멀까요?<br>직접 여행하며 알아봐요!</p>
     <div class="ss-card">
-      <h3>🚀 여행 방법</h3>
+      <h3>${icon('rocket')} 여행 방법</h3>
       <ul>
         <li>행성을 <b>공전</b>시키며 태양계를 둘러봐요.</li>
         <li><b>크기</b>와 <b>거리</b>를 각각 실제 비율로 비교해요.</li>
         <li>행성 <b>도감</b>을 살펴보고, <b>미션</b>에 도전해요!</li>
       </ul>
     </div>
-    <button class="ss-btn" onclick="go('hub')">여행 시작! 🚀</button>
+    <button class="sk-btn sk-btn--primary" onclick="go('hub')">${icon('rocket')} 여행 시작</button>
   </div></div>`;
 }
 
@@ -523,76 +565,88 @@ function renderHub(){
   app.innerHTML = `
   <div class="ss-scroll"><div class="ss-wrap">
     <div class="hub-head">
-      <h2>🪐 태양계 허브</h2>
+      <h2>태양계 둘러보기</h2>
       <p>가고 싶은 곳을 골라 보세요</p>
     </div>
-    <div class="hub-progress">🏅 미션 진행 ${score} / ${MISSION_IDS.length}</div>
+    <div class="hub-progress">${icon('medal')} 미션 진행 ${score} / ${MISSION_IDS.length}</div>
     <div class="hub-grid">
       <button class="hub-tile" onclick="go('travel')">
-        <div class="ico">🛰️</div><div class="lbl">여행 모드</div>
+        <div class="ico">${icon('orbit')}</div><div class="lbl">여행 모드</div>
         <div class="sub">행성 공전 애니메이션</div>
       </button>
       <button class="hub-tile" onclick="go('size')">
-        <div class="ico">📏</div><div class="lbl">크기 비교</div>
+        <div class="ico">${icon('ruler')}</div><div class="lbl">크기 비교</div>
         <div class="sub">지름을 실제 비율로</div>
       </button>
       <button class="hub-tile" onclick="go('distance')">
-        <div class="ico">↔️</div><div class="lbl">거리 비교</div>
+        <div class="ico">${icon('move-horizontal')}</div><div class="lbl">거리 비교</div>
         <div class="sub">태양에서 얼마나 멀까</div>
       </button>
       <button class="hub-tile" onclick="go('codex')">
-        <div class="ico">📖</div><div class="lbl">행성 도감</div>
+        <div class="ico">${icon('book-open')}</div><div class="lbl">행성 도감</div>
         <div class="sub">행성별 특징 살펴보기</div>
       </button>
     </div>
-    <button class="ss-btn hub-mission-btn" onclick="startMissions()">🏆 미션 도전하기</button>
-    <button class="ss-btn ss-btn-ghost" style="width:100%" onclick="go('intro')">처음으로</button>
+    <div class="hub-actions">
+      <button class="sk-btn sk-btn--primary sk-btn--block" onclick="startMissions()">${icon('trophy')} ${L.missionStart}</button>
+      <button class="sk-btn sk-btn--block" onclick="go('intro')">${icon('house')} 첫 화면으로</button>
+    </div>
   </div></div>`;
 }
 
 /* ===== 여행 모드 ===== */
-let travelPlaying = !REDUCE_MOTION; // 움직임 줄이기 설정이면 멈춘 채로 시작(▶로 재생)
+let travelPlaying = !reducedMotion(); // 움직임 줄이기 설정이면 멈춘 채로 시작(재생 버튼으로 재생)
 let travelSpeed = 1;
 let travelAngle = PLANETS.map((p,i) => (i * 0.7)); // 시작 각도 분산
-let travelRAF = null;
 const ORBIT_BASE = 68, ORBIT_STEP = 36;
+const TRAVEL_VB = { x:20, y:20, w:760, h:760 }; // 해왕성 궤도(반지름 320)+행성+이름표까지
 
 function planetSpeed(i){
-  // 실제 케플러 비율 대신, "안쪽이 빠르다"는 정성적 순서만 단조 감소로 보장
-  return 0.018 / Math.pow(i+1, 0.6);
+  // 초당 각도(rad/s). 실제 케플러 비율 대신, "안쪽이 빠르다"는 정성적 순서만 단조 감소로 보장
+  // (예전: 프레임마다 0.018/(i+1)^0.6 → 60Hz 기준 초당 값으로 바꿔 120Hz에서도 같은 빠르기)
+  return 1.08 / Math.pow(i+1, 0.6);
 }
+// 프레임 수가 아니라 경과 시간(dt초) 기준. 탭이 숨겨지면 SimKit.loop가 알아서 멈춘다
+const travelLoop = SimKit.loop(dt => {
+  PLANETS.forEach((p,i) => { travelAngle[i] += planetSpeed(i)*travelSpeed*dt; });
+  drawTravelFrame();
+});
 
 function renderTravel(){
   const cx = 400, cy = 400;
   const orbits = PLANETS.map((p,i) => {
     const r = ORBIT_BASE + i*ORBIT_STEP;
-    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--ss-orbit)" stroke-width="1"/>`;
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--ss-orbit)" stroke-width="1.5"/>`;
   }).join('');
 
   app.innerHTML = `
-  <div class="travel-stage">
-    <svg id="travelSvg" viewBox="0 0 800 800" preserveAspectRatio="xMidYMid meet">
-      ${orbits}
-      <g id="sunHolder"></g>
-      <g id="planetHolder"></g>
-    </svg>
-  </div>
-  <div class="ss-topbar">
-    <button class="ss-btn ss-btn-ghost ss-btn-sm" onclick="go('hub')">◀ 허브로</button>
-    <span class="ss-caption">궤도 간격은 보기 편하게 압축했어요 · 실제 거리는 '거리 비교'에서</span>
-  </div>
-  <div class="travel-controls">
-    <button class="icon-btn" id="playBtn" onclick="toggleTravelPlay()" aria-label="${travelPlaying?'공전 멈추기':'공전 재생'}">${travelPlaying?'⏸':'▶'}</button>
-    <input type="range" id="speedRange" min="0.25" max="3" step="0.25" value="${travelSpeed}" aria-label="공전 빠르기" oninput="travelSpeed=parseFloat(this.value)">
-    <label for="speedRange" style="font-size:14px;color:var(--ss-fg-muted)">배속</label>
-  </div>
-  <div class="info-sheet" id="travelSheet"></div>`;
+  <div class="stage-screen travel">
+    <div class="ss-topbar">
+      <button class="sk-btn sk-btn--sm" onclick="go('hub')">${icon('arrow-left')} 허브로</button>
+      <span class="ss-caption">궤도 간격은 보기 편하게 줄였어요 · 실제 거리는 '거리 비교'에서</span>
+    </div>
+    <div class="stage-main travel-stage">
+      <svg id="travelSvg" viewBox="${TRAVEL_VB.x} ${TRAVEL_VB.y} ${TRAVEL_VB.w} ${TRAVEL_VB.h}" preserveAspectRatio="xMidYMid meet">
+        ${orbits}
+        <g id="sunHolder"></g>
+        <g id="planetHolder"></g>
+      </svg>
+    </div>
+    <div class="travel-controls">
+      <button class="sk-btn sk-btn--sm" id="playBtn" onclick="toggleTravelPlay()"></button>
+      <input type="range" id="speedRange" min="0.25" max="3" step="0.25" value="${travelSpeed}" aria-label="공전 빠르기" oninput="travelSpeed=parseFloat(this.value)">
+      <label for="speedRange">배속</label>
+    </div>
+    <div class="info-sheet" id="travelSheet" role="dialog" aria-label="행성 설명"></div>
+  </div>`;
 
   const sunHolder = document.getElementById('sunHolder');
   sunHolder.innerHTML = `<g transform="translate(${cx-40},${cy-40})">${sunSVG(40)}</g>`;
 
+  updatePlayBtn();
   drawTravelFrame();
-  if(travelPlaying) startTravelLoop();
+  fitTravelLabels();
+  syncTravelLoop();
 }
 function travelTokenSize(p){ return 10 + Math.min(p.diameterEarth, 6)*1.6; }
 // 행성 요소는 화면에 들어올 때 한 번만 만들고, 프레임마다 transform 속성만 바꾼다(P8)
@@ -607,7 +661,7 @@ function drawTravelFrame(){
                 onclick="openTravelInfo('${p.id}')"
                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openTravelInfo('${p.id}')}">
                 ${planetSVG(p, size)}
-                <text class="planet-label" x="${size}" y="${size*2 + 11}" text-anchor="middle" fill="var(--ss-fg-muted)" font-size="11px" font-weight="700" opacity="0.8">${p.name}</text>
+                <text class="planet-label" x="${size}" y="${size*2 + 11}" text-anchor="middle" font-size="11" font-weight="700">${p.name}</text>
               </g>`;
     }).join('');
   }
@@ -620,51 +674,80 @@ function drawTravelFrame(){
     tokens[i].setAttribute('transform', `translate(${(x-size).toFixed(2)},${(y-size).toFixed(2)})`);
   });
 }
+// 무대가 작아져도(360px 폰) 행성 이름이 화면에서 12px 이상이 되게 글자 크기를 viewBox 단위로 맞춘다
+function fitTravelLabels(){
+  const svg = document.getElementById('travelSvg');
+  if(!svg) return;
+  const rect = svg.getBoundingClientRect();
+  if(!rect.width || !rect.height) return;
+  const scale = Math.min(rect.width / TRAVEL_VB.w, rect.height / TRAVEL_VB.h);
+  const fs = Math.max(12, Math.min(34, 13 / scale));
+  svg.querySelectorAll('#planetHolder .planet-token').forEach((g, i) => {
+    const t = g.querySelector('.planet-label');
+    if(!t) return;
+    const size = travelTokenSize(PLANETS[i]);
+    t.setAttribute('font-size', fs.toFixed(1));
+    t.setAttribute('y', (size*2 + fs*0.95).toFixed(1));
+    t.style.strokeWidth = Math.max(2, fs*0.18).toFixed(1) + 'px';
+  });
+}
+window.addEventListener('resize', () => { if(state.screen === 'travel') fitTravelLabels(); });
 
-function startTravelLoop(){
-  cancelAnimationFrame(travelRAF);
-  function frame(){
-    if(!travelPlaying){ return; }
-    PLANETS.forEach((p,i) => { travelAngle[i] += planetSpeed(i)*travelSpeed; });
-    drawTravelFrame();
-    travelRAF = requestAnimationFrame(frame);
-  }
-  travelRAF = requestAnimationFrame(frame);
+function travelSheetOpen(){
+  const sheet = document.getElementById('travelSheet');
+  return !!(sheet && sheet.classList.contains('open'));
+}
+// 재생 중이고 설명 창이 닫혀 있을 때만 공전(설명 창을 열면 행성을 누르기 쉽게 잠시 멈춤)
+function syncTravelLoop(){
+  if(state.screen === 'travel' && travelPlaying && !travelSheetOpen()) travelLoop.start();
+  else travelLoop.stop();
+}
+// @icons play pause
+function updatePlayBtn(){
+  const pb = document.getElementById('playBtn');
+  if(!pb) return;
+  pb.innerHTML = travelPlaying ? `${icon('pause')} ${L.pause}` : `${icon('play')} ${L.play}`;
+  pb.setAttribute('aria-pressed', travelPlaying ? 'false' : 'true');
+  pb.setAttribute('aria-label', travelPlaying ? '공전 멈추기' : '공전 재생');
 }
 function toggleTravelPlay(){
   travelPlaying = !travelPlaying;
-  const pb = document.getElementById('playBtn');
-  pb.textContent = travelPlaying ? '⏸' : '▶';
-  pb.setAttribute('aria-label', travelPlaying ? '공전 멈추기' : '공전 재생');
-  if(travelPlaying) startTravelLoop();
+  updatePlayBtn();
+  syncTravelLoop();
 }
-function stopTravel(){ travelPlaying = false; cancelAnimationFrame(travelRAF); }
+function stopTravel(){ travelLoop.stop(); }
 function openTravelInfo(id){
   const p = PLANETS.find(x=>x.id===id);
   const sheet = document.getElementById('travelSheet');
   const fav = (store.favorites||[]).includes(id);
   sheet.innerHTML = `
-    <button class="sheet-close" onclick="closeTravelInfo()" aria-label="설명 닫기">✕</button>
+    <button class="sheet-close" onclick="closeTravelInfo()" aria-label="설명 닫기">${icon('x')}</button>
     <div class="row">${planetSVG(p, 26)}<h3>${p.name}</h3>
-      <button class="star-btn" onclick="toggleFavorite('${id}')" aria-label="즐겨찾기" aria-pressed="${fav}">${fav?'⭐':'☆'}</button></div>
+      <button class="star-btn" onclick="toggleFavorite('${id}')" aria-label="즐겨찾기" aria-pressed="${fav}">${icon('star')}</button></div>
     <div class="facts">
-      <span>하루 ${fmtDays(p.rotDays)}</span>
-      <span>1년 ${fmtDays(p.orbitDays)}</span>
-      <span>지구 대비 크기 ${p.diameterEarth}배</span>
+      <span>한 바퀴 자전 <b>${fmtDays(p.rotDays)}</b></span>
+      <span>1년(한 바퀴 공전) <b>${fmtDays(p.orbitDays)}</b></span>
+      <span>지름 <b>${diaText(p)}</b></span>
+      <span>태양까지 <b>지구 거리의 ${distRatioText(p.distanceAU)}</b></span>
     </div>
     <p class="desc">${p.fact}</p>
-    <button class="ss-btn ss-btn-sm" onclick="go('codexDetail','${id}')">도감에서 자세히 보기 →</button>`;
+    <button class="sk-btn sk-btn--sm" onclick="go('codexDetail','${id}')">${icon('book-open')} 도감에서 자세히 보기</button>`;
   const wasOpen = sheet.classList.contains('open');
   sheet.classList.add('open');
+  syncTravelLoop();
   if(!wasOpen){ const c = sheet.querySelector('.sheet-close'); if(c) c.focus({preventScroll:true}); }
   else { const sb = sheet.querySelector('.star-btn'); if(sb) sb.focus({preventScroll:true}); }
 }
-function closeTravelInfo(){ document.getElementById('travelSheet').classList.remove('open'); }
+function closeTravelInfo(){
+  const sheet = document.getElementById('travelSheet');
+  if(sheet) sheet.classList.remove('open');
+  syncTravelLoop(); // 닫으면 재생 중이던 공전을 이어서
+}
 function toggleFavorite(id){
   const favs = new Set(store.favorites||[]);
   if(favs.has(id)) favs.delete(id); else favs.add(id);
   store = saveStore({ favorites:[...favs] });
-  openTravelInfo(id);
+  if(state.screen === 'travel') openTravelInfo(id);
 }
 
 /* ===== 크기 비교 모드 ===== */
@@ -686,26 +769,28 @@ function renderSize(){
   const { laid, width } = sizeLayout();
   const earth = laid.find(x=>x.id==='earth');
   app.innerHTML = `
-  <div class="ss-topbar">
-    <button class="ss-btn ss-btn-ghost ss-btn-sm" onclick="go('hub')">◀ 허브로</button>
-    <span class="ss-caption">지름을 실제 비율로 나란히 · 거리는 무시했어요</span>
-  </div>
-  <div class="cmp-hint">🌍 지구를 끌어서 다른 행성 옆에 대 보거나, 아래 버튼을 눌러 보세요!</div>
-  <div class="cmp-scroll" id="sizeScroll" style="padding-bottom:70px">
-    <div class="cmp-track" id="sizeTrack" style="width:${width}px">
-      ${laid.map(it => `
-        <div class="cmp-label" style="left:${it.cx}px">${it.isSun?'☀️ 태양':it.name}</div>
-        <div data-body="${it.id}" style="position:absolute;left:${it.cx-it.r}px;top:calc(50% - ${it.r}px)">${it.isSun?sunSVG(it.r):planetSVG(it,it.r)}</div>
-      `).join('')}
-      <div class="earth-ghost" id="earthGhost" data-home="${earth.cx}"
-           style="position:absolute;left:${earth.cx-earth.r}px;top:calc(50% - ${earth.r}px);z-index:3">
-        ${planetSVG(earth, earth.r)}
-      </div>
-      <div id="sizeCompareLabel" aria-live="polite"></div>
+  <div class="stage-screen size">
+    <div class="ss-topbar">
+      <button class="sk-btn sk-btn--sm" onclick="go('hub')">${icon('arrow-left')} 허브로</button>
+      <span class="ss-caption">지름을 실제 비율로 나란히 · 거리는 무시했어요</span>
     </div>
-  </div>
-  <div class="dist-chipbar" role="group" aria-label="지구와 크기를 비교할 천체 고르기">
-    ${laid.filter(it => it.id !== 'earth').map(it => `<button class="dist-chip" onclick="compareEarthWith('${it.id}')">🌍↔ ${it.isSun?'☀️ 태양':it.name}</button>`).join('')}
+    <div class="cmp-hint">${icon('hand')} 지구를 끌어 다른 행성 옆에 놓거나, 아래 버튼을 눌러 보세요</div>
+    <div class="stage-main cmp-scroll" id="sizeScroll">
+      <div class="cmp-track" id="sizeTrack" style="width:${width}px">
+        ${laid.map(it => `
+          <div class="cmp-label" style="left:${it.cx}px">${it.isSun?'☀️ 태양':it.name}</div>
+          <div data-body="${it.id}" style="position:absolute;left:${it.cx-it.r}px;top:calc(50% - ${it.r}px)">${it.isSun?sunSVG(it.r):planetSVG(it,it.r)}</div>
+        `).join('')}
+        <div class="earth-ghost" id="earthGhost" data-home="${earth.cx}"
+             style="position:absolute;left:${earth.cx-earth.r}px;top:calc(50% - ${earth.r}px);z-index:3">
+          ${planetSVG(earth, earth.r)}
+        </div>
+      </div>
+    </div>
+    <div id="sizeCompareLabel" aria-live="polite"></div>
+    <div class="dist-chipbar" role="group" aria-label="지구와 크기를 비교할 천체 고르기">
+      ${laid.filter(it => it.id !== 'earth').map(it => `<button class="dist-chip" onclick="compareEarthWith('${it.id}')" aria-label="지구와 ${it.isSun?'태양':it.name} 크기 비교">지구 ${icon('arrow-left-right')} ${it.isSun?'☀️ 태양':it.name}</button>`).join('')}
+    </div>
   </div>`;
   setupEarthDrag(laid);
 }
@@ -713,11 +798,10 @@ function renderSize(){
 function showSizeCompare(near){
   const ratio = (near.diameterEarth/1);
   const label = near.isSun ? '태양' : near.name;
-  const cmp = ratio >= 1 ? `${label}${eunNeun(label)} 지구보다 약 <b>${round1(ratio)}배</b> 커요!`
-                          : `${label}${eunNeun(label)} 지구보다 <b>작아요</b> (지구의 ${round1(ratio)}배)`;
+  const cmp = ratio >= 1 ? `${label}${eunNeun(label)} 지름이 지구의 약 <b>${round1(ratio)}배</b>예요. 지구보다 커요!`
+                          : `${label}${eunNeun(label)} 지름이 지구의 <b>${round1(ratio)}배</b>예요. 지구보다 <b>작아요</b>.`;
   const box = document.getElementById('sizeCompareLabel');
-  if(box) box.innerHTML =
-    `<div class="ss-card" style="position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:9;max-width:80vw;text-align:center">${cmp}</div>`;
+  if(box) box.innerHTML = `<div class="ss-card size-result">${cmp}</div>`;
 }
 // 끌기 대신 버튼(키보드·터치): 지구를 고른 천체 옆에 놓고 결과를 보여 준다
 function compareEarthWith(id){
@@ -729,7 +813,7 @@ function compareEarthWith(id){
   ghost.style.left = (it.cx + it.r + 8) + 'px';
   showSizeCompare(it);
   const target = document.querySelector(`#sizeTrack [data-body="${id}"]`);
-  try{ (it.isSun ? ghost : (target || ghost)).scrollIntoView({behavior: REDUCE_MOTION ? 'auto' : 'smooth', inline:'center', block:'nearest'}); }catch(e){}
+  try{ (it.isSun ? ghost : (target || ghost)).scrollIntoView({behavior: reducedMotion() ? 'auto' : 'smooth', inline:'center', block:'nearest'}); }catch(e){}
 }
 let earthDragOff = null;
 function cleanupEarthDrag(){ if(earthDragOff){ earthDragOff(); earthDragOff = null; } }
@@ -798,31 +882,35 @@ function distLayout(){
 function renderDistance(){
   const laid = distLayout();
   const width = laid[laid.length-1].cx + 100;
+  // 안쪽 행성은 서로 가까워 글자가 겹치므로 세 줄로 엇갈려 놓는다(행성 순서 기준)
+  const row = i => (i - 1 + 3) % 3;
   app.innerHTML = `
-  <div class="ss-topbar">
-    <button class="ss-btn ss-btn-ghost ss-btn-sm" onclick="go('hub')">◀ 허브로</button>
-    <span class="ss-caption">태양에서 떨어진 거리를 실제 비율로 · 크기는 무시했어요</span>
-    <div class="zoom-bar">
-      <button class="icon-btn" onclick="zoomDist(0.6)" aria-label="멀리 보기(축소)">−</button>
-      <button class="icon-btn" onclick="zoomDist(1/0.6)" aria-label="가까이 보기(확대)">+</button>
+  <div class="stage-screen dist">
+    <div class="ss-topbar">
+      <button class="sk-btn sk-btn--sm" onclick="go('hub')">${icon('arrow-left')} 허브로</button>
+      <span class="ss-caption">태양에서 떨어진 거리를 실제 비율로 · 크기는 무시했어요</span>
+      <div class="zoom-bar">
+        <button class="sk-btn sk-btn--sm" onclick="zoomDist(0.6)" aria-label="멀리 보기(축소)">${icon('zoom-out')}</button>
+        <button class="sk-btn sk-btn--sm" onclick="zoomDist(1/0.6)" aria-label="가까이 보기(확대)">${icon('zoom-in')}</button>
+      </div>
     </div>
-  </div>
-  <div class="cmp-hint">↔️ 옆으로 길게 스크롤해서 얼마나 먼지 느껴 보세요</div>
-  <div class="cmp-scroll" id="distScroll" style="padding-bottom:70px">
-    <div class="cmp-track" style="width:${width}px;height:120px">
-      ${laid.map(it => `
-        <div id="dot-${it.id}" class="cmp-label" style="left:${it.cx}px">${it.isSun?'☀️':it.name}</div>
-        <div style="position:absolute;left:${it.cx-9}px;top:calc(50% - 9px)">
-          ${it.isSun
-            ? `<div style="width:18px;height:18px;border-radius:50%;background:radial-gradient(circle,${SUN.hi},${SUN.color})"></div>`
-            : `<div style="width:16px;height:16px;border-radius:50%;background:${it.color}"></div>`}
-        </div>
-        <div class="cmp-ratio" style="left:${it.cx}px">${it.isSun?'':(it.distanceAU>=10?Math.round(it.distanceAU):round1(it.distanceAU))+'배'}</div>
-      `).join('')}
+    <div class="cmp-hint">${icon('move-horizontal')} 옆으로 밀어 넘기며 얼마나 먼지 느껴 보세요</div>
+    <div class="stage-main cmp-scroll dist" id="distScroll">
+      <div class="cmp-track" style="width:${width}px;height:120px;min-height:0">
+        ${laid.map((it, i) => `
+          <div id="dot-${it.id}" class="cmp-label" style="left:${it.cx}px;top:${it.isSun ? -28 : -28 - row(i)*22}px">${it.isSun?'☀️ 태양':it.name}</div>
+          <div style="position:absolute;left:${it.cx-9}px;top:calc(50% - 9px)">
+            ${it.isSun
+              ? `<div style="width:18px;height:18px;border-radius:50%;background:radial-gradient(circle,${SUN.hi},${SUN.color})"></div>`
+              : `<div style="width:16px;height:16px;border-radius:50%;background:${it.color}"></div>`}
+          </div>
+          ${it.isSun ? '' : `<div class="cmp-ratio" style="left:${it.cx}px;top:${84 + row(i)*36}px">${it.id==='earth' ? '<small>기준</small>1배' : `<small>지구 거리의</small>${distRatioText(it.distanceAU)}`}</div>`}
+        `).join('')}
+      </div>
     </div>
-  </div>
-  <div class="dist-chipbar">
-    ${laid.map(it => `<button class="dist-chip" onclick="jumpToDist('${it.id}')">${it.isSun?'☀️ 태양':it.name}</button>`).join('')}
+    <div class="dist-chipbar" role="group" aria-label="천체로 이동">
+      ${laid.map(it => `<button class="dist-chip" onclick="jumpToDist('${it.id}')">${it.isSun?'☀️ 태양':it.name}</button>`).join('')}
+    </div>
   </div>`;
 }
 function zoomDist(f){
@@ -831,22 +919,21 @@ function zoomDist(f){
 }
 function jumpToDist(id){
   const el = document.getElementById('dot-'+id);
-  if(el) el.scrollIntoView({behavior: REDUCE_MOTION ? 'auto' : 'smooth', inline:'center', block:'nearest'});
+  if(el) el.scrollIntoView({behavior: reducedMotion() ? 'auto' : 'smooth', inline:'center', block:'nearest'});
 }
-
 /* ===== 도감 ===== */
 function renderCodex(){
   app.innerHTML = `
-  <div class="ss-scroll"><div class="ss-wrap" style="padding-top:80px">
-    <div class="ss-topbar" style="position:static;margin-bottom:6px">
-      <button class="ss-btn ss-btn-ghost ss-btn-sm" onclick="go('hub')">◀ 허브로</button>
+  <div class="ss-scroll"><div class="ss-wrap">
+    <div class="ss-topbar">
+      <button class="sk-btn sk-btn--sm" onclick="go('hub')">${icon('arrow-left')} 허브로</button>
     </div>
-    <div class="hub-head"><h2>📖 행성 도감</h2><p>탭해서 자세히 살펴보세요</p></div>
+    <div class="hub-head"><h2>${icon('book-open')} 행성 도감</h2><p>행성을 눌러 자세히 살펴보세요</p></div>
     <div class="codex-grid">
       ${PLANETS.map(p => `
         <button class="codex-card" onclick="go('codexDetail','${p.id}')" aria-label="${p.name}${(store.favorites||[]).includes(p.id)?' (즐겨찾기)':''}">
           ${planetSVG(p, 34)}
-          <div class="lbl">${p.name} ${(store.favorites||[]).includes(p.id)?'⭐':''}</div>
+          <div class="lbl">${p.name} ${(store.favorites||[]).includes(p.id)?`<span class="fav-mark">${icon('star')}</span>`:''}</div>
         </button>`).join('')}
     </div>
   </div></div>`;
@@ -855,18 +942,18 @@ function renderCodexDetail(id){
   const p = PLANETS.find(x=>x.id===id) || PLANETS[0];
   const fav = (store.favorites||[]).includes(p.id);
   app.innerHTML = `
-  <div class="ss-scroll"><div class="ss-wrap" style="padding-top:80px">
-    <div class="ss-topbar" style="position:static;margin-bottom:6px">
-      <button class="ss-btn ss-btn-ghost ss-btn-sm" onclick="go('codex')">◀ 도감으로</button>
-      <button class="star-btn" onclick="toggleFavoriteCodex('${p.id}')" aria-label="즐겨찾기" aria-pressed="${fav}">${fav?'⭐':'☆'}</button>
+  <div class="ss-scroll"><div class="ss-wrap">
+    <div class="ss-topbar">
+      <button class="sk-btn sk-btn--sm" onclick="go('codex')">${icon('arrow-left')} 도감으로</button>
+      <button class="star-btn" onclick="toggleFavoriteCodex('${p.id}')" aria-label="즐겨찾기" aria-pressed="${fav}">${icon('star')}</button>
     </div>
     <div class="codex-detail">
       <div class="codex-detail-hero">${planetSVG(p, 60)}<h2 style="margin:10px 0 0">${p.name}</h2></div>
       <div class="codex-detail-facts">
-        <div class="fact-box"><div class="k">지구 대비 크기</div><div class="v">${p.diameterEarth}배</div></div>
-        <div class="fact-box"><div class="k">태양까지 거리</div><div class="v">지구의 ${p.distanceAU===undefined?'-':round1(p.distanceAU)}배</div></div>
-        <div class="fact-box"><div class="k">하루 길이</div><div class="v">${fmtDays(p.rotDays)}</div></div>
-        <div class="fact-box"><div class="k">1년 길이</div><div class="v">${fmtDays(p.orbitDays)}</div></div>
+        <div class="fact-box"><div class="k">지름</div><div class="v">${diaText(p)}</div></div>
+        <div class="fact-box"><div class="k">태양까지 거리</div><div class="v">${p.id==='earth' ? '기준(1배)' : '지구 거리의 ' + distRatioText(p.distanceAU)}</div></div>
+        <div class="fact-box"><div class="k">한 바퀴 자전</div><div class="v">${fmtDays(p.rotDays)}</div></div>
+        <div class="fact-box"><div class="k">1년(한 바퀴 공전)</div><div class="v">${fmtDays(p.orbitDays)}</div></div>
       </div>
       <div class="ss-card"><p style="margin:0;line-height:1.7">${p.fact}</p></div>
     </div>
@@ -921,13 +1008,16 @@ function missionShell(inner){
   const ae = document.activeElement;
   const fk = ae && app.contains(ae) ? ae.getAttribute('data-fk') : null;
   app.innerHTML = `
-  <div class="ss-scroll"><div class="ss-wrap" style="padding-top:80px">
-    <div class="ss-topbar" style="position:static;margin-bottom:2px">
-      <button class="ss-btn ss-btn-ghost ss-btn-sm" onclick="go('hub')">◀ 허브로</button>
+  <div class="ss-scroll"><div class="ss-wrap">
+    <div class="ss-topbar">
+      <button class="sk-btn sk-btn--sm" onclick="go('hub')">${icon('arrow-left')} ${L.exit}</button>
     </div>
     <div class="mission-progress">미션 ${missionStep+1} / ${MISSION_IDS.length}</div>
     ${inner}
   </div></div>`;
+  // 결과 문구가 화면 밖이면 보이는 곳으로(규약 v2)
+  const fb = app.querySelector('.feedback-box');
+  if(fb) SimKit.reveal(fb);
   if(!fk) return;
   let t = app.querySelector(`[data-fk="${fk}"]:not(:disabled)`);
   if(!t && fk.indexOf('chip-') === 0) t = app.querySelector('.order-chip:not(:disabled)');
@@ -943,11 +1033,13 @@ function advanceAfter(ms){
 }
 // 틀렸을 때: 다시 풀기 + 다음 미션으로
 function retryRow(retryCall){
-  return `<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px">
-    <button class="ss-btn ss-btn-sm" data-fk="retry" onclick="${retryCall}">다시 풀기</button>
-    <button class="ss-btn ss-btn-ghost ss-btn-sm" data-fk="nextm" onclick="nextMission()">다음 미션 →</button>
+  return `<div class="sk-actions mission-actions">
+    <button class="sk-btn sk-btn--sm" data-fk="retry" onclick="${retryCall}">${icon('rotate-ccw')} ${L.retry}</button>
+    <button class="sk-btn sk-btn--sm" data-fk="nextm" onclick="nextMission()">${L.next} ${icon('arrow-right')}</button>
   </div>`;
 }
+const OK_IC = SimKit.icon('party-popper', { cls: 'fb-ic' });
+const NO_IC = SimKit.icon('circle-alert', { cls: 'fb-ic' });
 function nextMission(){
   mc.next();
 }
@@ -976,8 +1068,8 @@ function renderMissionOrder(){
     <div class="order-slots">${slotsHtml}</div>
     <div class="order-pool">${poolHtml}</div>
     ${missionDraft.orderFeedback || ''}
-    <div style="text-align:center">
-      <button class="ss-btn" id="orderSubmit" data-fk="submit" ${orderSlots.includes(null)?'disabled':''} onclick="checkOrder()">확인</button>
+    <div class="sk-actions mission-actions">
+      <button class="sk-btn sk-btn--primary" id="orderSubmit" data-fk="submit" ${orderSlots.includes(null)?'disabled':''} onclick="checkOrder()">${icon('circle-check')} ${L.check}</button>
     </div>`);
 }
 function placeOrderChip(id){
@@ -1001,8 +1093,8 @@ function checkOrder(){
   missionDraft.orderResult = result;
   const allCorrect = result.every(Boolean);
   missionDraft.orderFeedback = `<div class="feedback-box ${allCorrect?'ok':'no'}">
-    ${allCorrect ? '🎉 정확해요! 수성부터 해왕성까지, 태양에서 멀어질수록 순서가 커져요.'
-                 : '🤔 빨간 칸을 다시 살펴보세요. 틀린 칸을 눌러 빼고 다시 놓을 수 있어요.'}
+    ${allCorrect ? OK_IC+'정확해요! 수성부터 해왕성까지, 태양에서 멀어질수록 순서가 커져요.'
+                 : NO_IC+'빨간 칸을 다시 살펴보세요. 틀린 칸을 눌러 빼고 다시 놓을 수 있어요.'}
   </div>`;
   renderMissionOrder();
   announce(allCorrect ? '정확해요! 수성부터 해왕성까지 순서가 맞아요.' : '빨간 칸을 다시 살펴보세요. 틀린 칸을 눌러 빼고 다시 놓을 수 있어요.');
@@ -1031,15 +1123,15 @@ function renderMissionSizeA(){
       }).join('')}
     </div>
     ${answered ? `<div class="feedback-box ${missionDraft.sizeAResult?'ok':'no'}">
-      ${missionDraft.sizeAResult?'🎉 맞아요!':'🤔 아쉬워요.'} <b>목성</b>은 지구의 11.2배 크기로 태양계에서 가장 커요.
-      <div style="text-align:center;margin-top:10px"><button class="ss-btn ss-btn-sm" data-fk="nextq" onclick="missionDraft.sizePart='b';renderMissionSize();const q=app.querySelector('.mission-q');if(q){q.tabIndex=-1;q.focus({preventScroll:true});}">다음 질문 →</button></div>
+      ${missionDraft.sizeAResult?OK_IC+'맞아요!':NO_IC+'아쉬워요.'} <b>목성</b>은 지름이 지구의 11.2배로, 태양계에서 가장 큰 행성이에요.
+      <div class="sk-actions mission-actions"><button class="sk-btn sk-btn--sm sk-btn--primary" data-fk="nextq" onclick="missionDraft.sizePart='b';renderMissionSize();const q=app.querySelector('.mission-q');if(q){q.tabIndex=-1;q.focus({preventScroll:true});}">다음 질문 ${icon('arrow-right')}</button></div>
     </div>` : ''}`);
 }
 function answerSizeA(id, biggest){
   missionDraft.sizeASel = id;
   missionDraft.sizeAResult = (id === biggest);
   renderMissionSizeA();
-  announce((missionDraft.sizeAResult ? '맞아요! ' : '아쉬워요. ') + '목성은 지구의 11.2배 크기로 태양계에서 가장 커요.');
+  announce((missionDraft.sizeAResult ? '맞아요! ' : '아쉬워요. ') + '목성은 지름이 지구의 11.2배로, 태양계에서 가장 큰 행성이에요.');
 }
 function renderMissionSizeB(){
   const correctSet = new Set(PLANETS.filter(p=>p.diameterEarth<1).map(p=>p.id));
@@ -1055,10 +1147,10 @@ function renderMissionSizeB(){
       }).join('')}
     </div>
     ${answered ? `<div class="feedback-box ${missionDraft.sizeBResult?'ok':'no'}">
-        ${missionDraft.sizeBResult?'🎉 정확해요!':'🤔 다시 확인해 보세요.'} 지구보다 작은 행성은 <b>수성·금성·화성</b>이에요.
+        ${missionDraft.sizeBResult?OK_IC+'정확해요!':NO_IC+'다시 확인해 보세요.'} 지구보다 작은 행성은 <b>수성·금성·화성</b>이에요.
         ${missionDraft.sizeBResult ? '' : retryRow("missionDraft.sizeBResult=undefined;missionDraft.sizeBSel=[];renderMissionSizeB()")}
       </div>`
-      : `<div style="text-align:center"><button class="ss-btn" data-fk="submit" ${sel.size===0?'disabled':''} onclick="checkSizeB()">확인</button></div>`}`);
+      : `<div class="sk-actions mission-actions"><button class="sk-btn sk-btn--primary" data-fk="submit" ${sel.size===0?'disabled':''} onclick="checkSizeB()">${icon('circle-check')} ${L.check}</button></div>`}`);
 }
 function toggleSizeB(id){
   const sel = new Set(missionDraft.sizeBSel || []);
@@ -1091,10 +1183,10 @@ function renderMissionDistance(){
       }).join('')}
     </div>
     ${answered ? `<div class="feedback-box ${missionDraft.distResult?'ok':'no'}">
-        ${missionDraft.distResult?'🎉 정확해요!':'🤔 다시 확인해 보세요.'} 화성·목성·토성·천왕성·해왕성이 지구보다 멀어요.
+        ${missionDraft.distResult?OK_IC+'정확해요!':NO_IC+'다시 확인해 보세요.'} 화성·목성·토성·천왕성·해왕성이 지구보다 멀어요.
         ${missionDraft.distResult ? '' : retryRow("missionDraft.distResult=undefined;missionDraft.distSel=[];renderMissionDistance()")}
       </div>`
-      : `<div style="text-align:center"><button class="ss-btn" data-fk="submit" ${sel.size===0?'disabled':''} onclick="checkDist()">확인</button></div>`}`);
+      : `<div class="sk-actions mission-actions"><button class="sk-btn sk-btn--primary" data-fk="submit" ${sel.size===0?'disabled':''} onclick="checkDist()">${icon('circle-check')} ${L.check}</button></div>`}`);
 }
 function toggleDist(id){
   const sel = new Set(missionDraft.distSel || []);
@@ -1130,7 +1222,7 @@ function renderMissionConcept(){
       }).join('')}
     </div>
     ${answered ? `<div class="feedback-box ${missionDraft.conceptSel==='reflect'?'ok':'no'}">
-      ${missionDraft.conceptSel==='reflect'?'🎉 맞아요!':'🤔 아쉬워요.'} 행성은 스스로 빛을 내지 못하고, <b>태양빛을 반사</b>해서 빛나 보여요.
+      ${missionDraft.conceptSel==='reflect'?OK_IC+'맞아요!':NO_IC+'아쉬워요.'} 행성은 스스로 빛을 내지 못하고, <b>태양빛을 반사</b>해서 빛나 보여요.
       ${missionDraft.conceptSel==='reflect' ? '' : retryRow("missionDraft.conceptSel=undefined;renderMissionConcept()")}
     </div>` : ''}`);
 }
@@ -1152,17 +1244,17 @@ function shuffle(arr){
 function renderResult(){
   const score = missionScore();
   app.innerHTML = `
-  <div class="ss-scroll"><div class="ss-wrap" style="padding-top:90px">
-    <div class="hub-head"><h2>🏆 여행 완료!</h2></div>
+  <div class="sk-screen"><div class="ss-wrap">
+    <div class="hub-head"><h2>${icon('award')} 여행 완료!</h2></div>
     <div class="result-score">${MISSION_IDS.length}개 미션 중 <b>${score}</b>개 성공</div>
     <div class="summary-box">
-      📚 오늘의 배움 정리<br>
+      <span class="sum-title">${icon('book-open')} 오늘의 배움 정리</span>
       태양계엔 여덟 행성이 있어요. <b>크기와 거리는 함께 그릴 수 없을 만큼</b> 차이가 커요.
       행성은 스스로 빛나지 않고, <b>태양빛을 반사</b>해서 빛나 보여요.
     </div>
-    <div class="result-actions">
-      <button class="ss-btn" onclick="startMissions()">미션 다시 도전</button>
-      <button class="ss-btn ss-btn-ghost" onclick="go('hub')">허브로</button>
+    <div class="sk-actions result-actions">
+      <button class="sk-btn sk-btn--primary" onclick="startMissions()">${icon('rotate-ccw')} 미션 다시 도전</button>
+      <button class="sk-btn" onclick="go('hub')">${icon('arrow-left')} ${L.exit}</button>
     </div>
   </div></div>`;
 }

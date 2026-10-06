@@ -1,11 +1,11 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<AppLayout 
+<AppLayout
   sync
-  icons
-  title="Read Tree — eduin VIVES"
-  description="Oxford Reading Tree 읽기 진도를 코드 하나로 기록. 레벨별 Magic Chart로 읽은 책을 확인하고 뱃지를 모으세요. 로그인·개인정보 없이."
+  title="독서 나무 (Read Tree) — eduin VIVES"
+  description="Oxford Reading Tree 읽은 책을 레벨별 책장에서 눌러 기록하고 뱃지를 모아요. 코드 없이 이 기기에 저장하거나, 코드를 연결해 여러 기기에서 이어 쓸 수 있어요. 로그인·개인정보 없음."
   image="https://eduin.info/og-images/read-tree.png"
   bodyShell="column"
   bodyWidth="medium"
@@ -30,19 +30,26 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .code-chip b { font-family: 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 0.1em; }
     .link-btn { background: none; border: none; color: var(--fg-muted); font-size: 14px; cursor: pointer;
                 min-height: 44px; padding: 6px 8px; font-family: inherit; text-decoration: underline; }
+    .mode-note { font-size: 14px; color: var(--fg-muted); line-height: 1.55; margin: -4px 0 0; }
     .prog-label { font-size: 14px; color: var(--fg-muted); margin-bottom: 7px; line-height: 1.5; }
     .prog-label b { color: var(--fg); }
     .prog-label .count { font-weight: 800; color: var(--fg); }
     .bar { height: 9px; background: var(--bg-sec); border: 1px solid var(--border); border-radius: 99px; overflow: hidden; }
     .bar i { display: block; height: 100%; width: 0; border-radius: 99px; background: var(--lv, var(--primary)); transition: width .4s ease; }
     .badge-row { display: flex; flex-wrap: wrap; gap: 7px; }
-    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 10px;
+    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 10px; min-height: 36px;
              font-size: 14px; font-weight: 700; border: 1px solid var(--border); background: var(--card-bg); }
     .badge.on { border-color: transparent; color: #fff; }
     .badge.off { color: var(--fg-muted); opacity: .75; }
 
     /* ===== 책장 툴바 (레벨 칩 + 검색) — blocks-universe toolbar 패턴 ===== */
     .toolbar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+    /* 레벨 칩 줄: 옆으로 넘치면 끝을 흐리게 해 '더 있음'을 알린다(.more-left/.more-right는 스크립트가 붙임) */
+    .chips-wrap { position: relative; flex: 1; min-width: 0; }
+    .chips-wrap::before, .chips-wrap::after { content: ''; position: absolute; top: 0; bottom: 0; width: 32px; pointer-events: none; opacity: 0; transition: opacity .15s; z-index: 1; }
+    .chips-wrap::before { left: 0; background: linear-gradient(270deg, transparent, var(--bg)); }
+    .chips-wrap::after { right: 0; background: linear-gradient(90deg, transparent, var(--bg)); }
+    .chips-wrap.more-left::before, .chips-wrap.more-right::after { opacity: 1; }
     .level-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; cursor: grab; }
     .level-chips::-webkit-scrollbar { display: none; }
     .level-chips.dragging { cursor: grabbing; }
@@ -52,14 +59,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .lv-chip:active { transform: scale(.95); }
     .lv-chip.active { color: #fff; border-color: transparent; background: var(--lv); }
     .toolbar-row { display: flex; align-items: center; gap: 8px; }
-    .toolbar-row .level-chips { flex: 1; min-width: 0; }
+    .toolbar-row .level-chips { min-width: 0; }
     .icon-btn { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px;
                 border: 1px solid var(--border); background: var(--card-bg); border-radius: 10px; font-size: 17px; cursor: pointer; color: var(--fg); font-family: inherit; }
     .icon-btn:hover { border-color: var(--primary); color: var(--primary); }
     .reveal-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; background: var(--bg-sec);
                   border: 1px solid var(--border); border-radius: 99px; padding: 6px 14px; min-height: 44px; font: inherit; font-size: 14px; font-weight: 700; color: var(--fg); cursor: pointer; }
     .reveal-btn .reveal-meta { color: var(--fg-muted); font-weight: 600; }
-    .reveal-btn .caret { color: var(--fg-muted); transition: transform .15s; }
+    .reveal-btn .caret { color: var(--fg-muted); transition: transform .15s; display: inline-flex; }
     .reveal-btn[aria-expanded="true"] .caret { transform: rotate(180deg); }
     .search-box { display: flex; gap: 8px; align-items: center; }
     .search-box input { flex: 1; min-width: 0; padding: 11px 14px; border: 1px solid var(--border); border-radius: 11px;
@@ -84,7 +91,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                font-weight: 800; font-size: 16px; color: var(--fg-muted); background: var(--bg); transition: all .15s; }
     .book-cell.read .cell-sq { background: var(--lv); border-color: var(--lv); color: #fff; }
     .book-cell.read .cell-n { display: none; }
-    .book-cell.read .cell-sq::after { content: '✓'; font-size: 22px; }
+    .cell-ok { display: none; width: 26px; height: 26px; stroke-width: 2.6; }
+    .book-cell.read .cell-ok { display: block; }
     .cell-t { font-size: 14px; line-height: 1.3; color: var(--fg-muted); text-align: center;
               display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-height: 2.6em; word-break: break-word; }
     .book-cell.read .cell-t { color: var(--fg); }
@@ -100,13 +108,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .r-sub { font-size: 14px; color: var(--fg-muted); }
     .r-lvdot { display: inline-block; width: 8px; height: 8px; border-radius: 99px; margin-right: 5px; vertical-align: middle; background: var(--lv); }
     .r-check { flex: none; font-size: 14px; font-weight: 700; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--border);
-               color: var(--fg-muted); white-space: nowrap; }
+               color: var(--fg-muted); white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
     .result.read .r-check { background: var(--success); border-color: var(--success); color: #fff; }
     .result.read .r-title { color: var(--fg-muted); }
 
     .loading { text-align: center; color: var(--fg-muted); padding: 40px 0; font-size: 14px; }
   </style>
-  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"Read Tree","description":"Oxford Reading Tree 읽기 진도를 코드 하나로 기록. 레벨별 Magic Chart로 읽은 책을 확인하고 뱃지를 모으세요. 로그인·개인정보 없이.","url":"https://eduin.info/apps/read-tree/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"독서 나무 (Read Tree)","description":"Oxford Reading Tree 읽은 책을 레벨별 책장에서 눌러 기록하고 뱃지를 모아요. 코드 없이 이 기기에 저장하거나, 코드를 연결해 여러 기기에서 이어 쓸 수 있어요. 로그인·개인정보 없음.","url":"https://eduin.info/apps/read-tree/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
 
@@ -116,23 +124,19 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <!-- ===== 소개 (코드 연결 전) ===== -->
     <section id="introView">
       <header class="app-header">
-        <div class="app-badge">◆ 학습지원</div>
-        <h1 class="app-title">
-  <div class="card-emoji sub-edu-learn" style="margin-bottom: 0; transform: scale(1.0);">
-        <i data-lucide="book-open"></i>
-      </div>
-  <span>Read <span>Tree</span></span>
-</h1>
-        <p class="app-desc">Oxford Reading Tree 읽기 진도를 코드 하나로 기록하세요. 레벨별 Magic Chart로 읽은 책을 확인하고 뱃지를 모읍니다. 로그인·개인정보 없이.</p>
+        <div class="app-badge">학습지원</div>
+        <h1 class="app-title">독서 나무 <span class="app-title-en">Read Tree</span></h1>
+        <p class="app-desc">Oxford Reading Tree 읽은 책을 레벨별 책장에서 눌러 기록하고 뱃지를 모아요. 로그인·개인정보 없이 쓸 수 있어요.</p>
       </header>
       <div class="hero-card" style="padding:20px; max-width:440px; margin:0 auto; width:100%; display:flex; flex-direction:column; gap:12px;">
         <div style="font-weight:700; font-size:15px;">시작하기</div>
-        <p class="muted" style="line-height:1.65;">우상단 <b>🔄 동기화</b> 버튼에서 <b>코드를 입력</b>하거나 <b>새로 발급</b>하면 읽기 기록이 시작되고, 같은 코드를 입력하면 어느 기기에서든 이어집니다.</p>
-        <button type="button" class="hero-btn" id="introStartBtn">🔄 코드 연결 · 새 코드 발급</button>
+        <p class="muted" style="line-height:1.65;"><b>이 기기에서 바로 시작</b>하면 기록이 이 기기(브라우저)에만 저장돼요. <b>코드를 연결</b>하면 같은 코드를 넣은 다른 기기에서도 기록이 이어집니다. 나중에 코드를 연결해도 이 기기의 기록은 그대로 옮겨 가요.</p>
+        <button type="button" class="hero-btn" id="introLocalBtn"><Icon name="book-open" /> 이 기기에서 바로 시작</button>
+        <button type="button" class="hero-btn hero-btn-ghost" id="introStartBtn"><Icon name="refresh-cw" /> 코드 연결 · 새 코드 받기</button>
         <ul class="muted" style="margin:4px 0 0; padding-left:18px; line-height:1.8;">
-          <li>레벨별 책장에서 톡 눌러 읽음 체크</li>
+          <li>레벨별 책장에서 톡 눌러 읽음 표시</li>
           <li>읽은 권수·집중 레벨·뱃지 자동 집계</li>
-          <li>코드만 알면 다기기에서 같은 진도</li>
+          <li>코드를 연결하면 여러 기기에서 같은 기록</li>
         </ul>
       </div>
     </section>
@@ -140,40 +144,41 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <!-- ===== 앱 (코드 연결 후) ===== -->
     <section id="appView" hidden="">
       <header class="app-header">
-        <div class="app-badge">◆ 학습지원</div>
-        <h1 class="app-title">🌳 Read <span>Tree</span></h1>
-        <p class="app-desc">읽은 책을 레벨별 책장에서 톡 눌러 체크하세요. 기록은 이 기기에 저장되고, 우상단 <b>🔄 동기화</b> 버튼으로 코드를 연결하면 다른 기기에서도 이어집니다(로그인·개인정보 없음).</p>
+        <div class="app-badge">학습지원</div>
+        <h1 class="app-title">독서 나무 <span class="app-title-en">Read Tree</span></h1>
+        <p class="app-desc">읽은 책을 레벨별 책장에서 톡 눌러 표시하세요. 기록은 이 기기에 저장되고, 화면 오른쪽 위 <b><Icon name="refresh-cw" /> 동기화</b> 버튼으로 코드를 연결하면 다른 기기에서도 이어집니다(로그인·개인정보 없음).</p>
       </header>
 
       <!-- 요약: 코드 · 진행 · 뱃지 -->
       <div class="summary hero-card">
         <div class="summary-top">
           <button type="button" class="code-chip" id="codeChip" title="코드 복사" aria-label="동기화 코드 복사">코드 <b id="homeCode" aria-hidden="true">------</b></button>
-          <button type="button" class="link-btn" id="logoutBtn">로그아웃</button>
+          <button type="button" class="link-btn" id="logoutBtn">코드 연결 해제</button>
         </div>
+        <p class="mode-note" id="modeNote"></p>
         <div>
           <div class="prog-label" id="progLabel" aria-live="polite">읽은 책 <span class="count" id="readCount">0</span> / <span id="totalCount">0</span>권 · 집중 레벨 <b id="focusLevel">–</b> (<span id="focusProg">0/0</span>)</div>
           <div class="bar" role="progressbar" id="focusBarWrap" aria-label="집중 레벨 진행" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="focusBar"></i></div>
         </div>
-        <button type="button" class="reveal-btn" id="badgeToggle" aria-expanded="false" aria-controls="badgeRow">🏅 뱃지 <span class="reveal-meta" id="badgeCount"></span> <span class="caret" aria-hidden="true">▾</span></button>
+        <button type="button" class="reveal-btn" id="badgeToggle" aria-expanded="false" aria-controls="badgeRow"><Icon name="award" /> 뱃지 <span class="reveal-meta" id="badgeCount"></span> <span class="caret" aria-hidden="true"><Icon name="chevron-down" /></span></button>
         <div class="badge-row" id="badgeRow" hidden=""></div>
       </div>
 
       <!-- 책장 툴바: 레벨 칩 + 검색 -->
       <div class="toolbar">
         <div class="toolbar-row">
-          <nav class="level-chips" id="levelChips" aria-label="레벨 선택"></nav>
-          <button type="button" class="icon-btn" id="searchToggle" title="검색" aria-label="검색 열기" aria-expanded="false" aria-controls="searchBox">🔍</button>
+          <div class="chips-wrap" id="chipsWrap"><nav class="level-chips" id="levelChips" aria-label="레벨 선택"></nav></div>
+          <button type="button" class="icon-btn" id="searchToggle" title="검색" aria-label="검색 열기" aria-expanded="false" aria-controls="searchBox"><Icon name="search" /></button>
         </div>
         <div class="search-box" id="searchBox" role="search" hidden="">
           <input id="searchInput" type="search" placeholder="책 이름으로 검색 (예: Magic Key)" autocomplete="off" autocapitalize="off" aria-label="책 이름으로 검색">
-          <button type="button" class="icon-btn" id="searchClose" title="검색 닫기" aria-label="검색 닫기">✕</button>
+          <button type="button" class="icon-btn" id="searchClose" title="검색 닫기" aria-label="검색 닫기"><Icon name="x" /></button>
         </div>
       </div>
 
       <div class="result-info" id="resultInfo" role="status" aria-live="polite"></div>
       <div id="shelfBody"><div class="loading">불러오는 중…</div></div>
-      <div class="empty-state" id="emptyState" hidden="">검색 결과가 없어요 🤔</div>
+      <div class="empty-state" id="emptyState" hidden="">검색 결과가 없어요. 책 이름을 조금 다르게 넣어 보세요.</div>
     </section>
 
   </main>
@@ -198,6 +203,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       'TreeTops Time Chronicles'
     ];
     const MILESTONES = [10, 25, 50, 100];
+    // 코드 없이 '이 기기에서 바로 시작'을 고른 적이 있는지(기록 자체는 readtree:reads:_local)
+    const LOCAL_MODE_KEY = 'readtree:localMode';
+    // @icons check award lock star
     const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     const CODE_LEN = 6;
 
@@ -313,12 +321,20 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     /* ───────── 요약 (코드 · 진행 · 뱃지) ───────── */
     // 코드는 데이터 열쇠라 화면(전자칠판)에 그대로 띄우지 않는다 — 앞 2자리만(sync.js 버튼과 같은 방식)
-    function maskedCode() { const c = Store.getCode(); return c ? c.slice(0, 2) + '••••' : '동기화 꺼짐'; }
+    function maskedCode() { const c = Store.getCode(); return c ? c.slice(0, 2) + '••••' : '연결 안 함'; }
     function renderSummary() {
       const code = Store.getCode();
       const hc = $('#homeCode'); if (hc) hc.textContent = maskedCode();
       const lo = $('#logoutBtn'); if (lo) lo.hidden = !code;   // 연결됐을 때만 해제 버튼
-      const chip = $('#codeChip'); if (chip) chip.title = code ? '코드 복사' : '우상단 동기화 버튼으로 코드 연결';
+      const chip = $('#codeChip');
+      if (chip) {
+        chip.title = code ? '코드 복사' : '눌러서 코드 연결';
+        chip.setAttribute('aria-label', code ? '동기화 코드 복사' : '코드 연결하기');
+      }
+      const mn = $('#modeNote');
+      if (mn) mn.textContent = code
+        ? '코드에 연결됨 — 같은 코드를 넣은 다른 기기에서도 기록이 이어져요.'
+        : '이 기기에만 저장 중 — 코드를 연결하면 다른 기기에서도 이어 쓸 수 있어요.';
       $('#readCount').textContent = readCount();
       $('#totalCount').textContent = BOOKS.length;
       const focus = LEVELS.find(l => levelRead(l) < levelTotal(l)) || LEVELS[LEVELS.length - 1];
@@ -340,7 +356,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       LEVELS.forEach(l => {
         const done = levelTotal(l) > 0 && levelRead(l) === levelTotal(l);
         if (done) earned++;
-        const b = el('span', 'badge ' + (done ? 'on' : 'off'), (done ? '🏅' : '🔒') + ' Lv ' + l);
+        const b = el('span', 'badge ' + (done ? 'on' : 'off'), VUI.icon(done ? 'award' : 'lock') + ' Lv ' + l);
         b.title = done ? 'Lv ' + l + ' 모두 읽음' : 'Lv ' + l + ' 아직';
         if (done) b.style.background = LEVEL_COLORS[l];
         row.appendChild(b);
@@ -348,7 +364,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       MILESTONES.forEach(m => {
         const done = total >= m;
         if (done) earned++;
-        const b = el('span', 'badge ' + (done ? 'on' : 'off'), (done ? '⭐' : '☆') + ' ' + m + '권');
+        const b = el('span', 'badge ' + (done ? 'on' : 'off'), VUI.icon('star') + ' ' + m + '권');
+        b.title = done ? m + '권 읽음' : m + '권 아직';
         if (done) b.style.background = 'var(--primary)';
         row.appendChild(b);
       });
@@ -375,6 +392,19 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         });
         wrap.appendChild(t);
       });
+      // 고른 칩이 화면 밖에 있으면 보이게, 넘침 표시 갱신
+      const act = wrap.querySelector('.lv-chip.active');
+      // (scrollIntoView는 페이지가 세로로도 움직일 수 있어 가로 위치만 직접 맞춘다)
+      if (act && (act.offsetLeft < wrap.scrollLeft || act.offsetLeft + act.offsetWidth > wrap.scrollLeft + wrap.clientWidth)) {
+        wrap.scrollLeft = Math.max(0, act.offsetLeft - 8);
+      }
+      updateChipFade();
+    }
+    function updateChipFade() {
+      const nav = $('#levelChips'), w = $('#chipsWrap');
+      if (!nav || !w) return;
+      w.classList.toggle('more-left', nav.scrollLeft > 2);
+      w.classList.toggle('more-right', nav.scrollWidth - nav.clientWidth - nav.scrollLeft > 2);
     }
 
     /* ───────── 메인 렌더 (검색 모드 / 레벨 모드) ───────── */
@@ -410,9 +440,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           cell.dataset.id = b.id;
           cell.style.setProperty('--lv', LEVEL_COLORS[b.level]);
           cell.setAttribute('aria-pressed', String(read));
-          cell.setAttribute('aria-label', (i + 1) + '. ' + b.title + ' — 읽음 표시');
+          cell.dataset.label = (i + 1) + '. ' + b.title;
+          cell.setAttribute('aria-label', cellLabel(cell.dataset.label, read));
           cell.title = b.title;
-          cell.innerHTML = '<span class="cell-sq"><span class="cell-n">' + (i + 1) + '</span></span>' +
+          cell.innerHTML = '<span class="cell-sq"><span class="cell-n">' + (i + 1) + '</span>' + VUI.icon('check', 'cell-ok') + '</span>' +
                            '<span class="cell-t">' + esc(b.title) + '</span>';
           cell.addEventListener('click', () => toggleRead(b.id));
           grid.appendChild(cell);
@@ -421,6 +452,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         body.appendChild(card);
       });
     }
+
+    // 화면 읽기 프로그램용 이름: 지금 상태까지 함께 읽어 준다
+    function cellLabel(base, read) { return base + (read ? ' — 읽음' : ' — 아직 안 읽음'); }
+    function checkHtml(read) { return read ? VUI.icon('check') + ' 읽음' : '읽었어요'; }
 
     function renderResults() {
       const q = curQuery();
@@ -440,7 +475,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         r.innerHTML =
           '<span class="r-main"><span class="r-title">' + esc(b.title) + '</span>' +
           '<span class="r-sub"><span class="r-lvdot"></span>Lv ' + esc(b.level) + ' · ' + esc(b.series) + '</span></span>' +
-          '<span class="r-check">' + (read ? '읽음 ✓' : '읽었어요') + '</span>';
+          '<span class="r-check">' + checkHtml(read) + '</span>';
         r.addEventListener('click', () => toggleRead(b.id));
         list.appendChild(r);
       });
@@ -448,7 +483,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     /* ───────── 읽음 토글 (모든 표시 위치 동기화) ───────── */
-    function toggleRead(id) {
+    function toggleRead(id, opts) {
+      opts = opts || {};
       if (!BOOKS.some(b => b.id === id)) return;
       const now = Store.toggle(id);
       // 서버 저장을 화면 갱신보다 먼저 — 렌더 중 오류가 나도 저장은 빠지지 않게
@@ -459,7 +495,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         node.classList.toggle('read', now);
         if (node.hasAttribute('aria-pressed')) node.setAttribute('aria-pressed', String(now));
         const chk = node.querySelector('.r-check');
-        if (chk) chk.textContent = now ? '읽음 ✓' : '읽었어요';
+        if (chk) chk.innerHTML = checkHtml(now);
+        if (node.dataset.label) node.setAttribute('aria-label', cellLabel(node.dataset.label, now));
       });
       if (book) {
         const card = document.querySelector('.series-card[data-key="' + cssEsc(book.level + '|' + book.series) + '"]');
@@ -473,10 +510,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           $('#resultInfo').textContent = 'Lv ' + activeLevel + ' · 읽음 ' + levelRead(activeLevel) + '/' + levelTotal(activeLevel) + '권';
       }
       renderSummary();
+      // 한 번 눌러 바로 지워지므로 되돌리기를 준다(실수로 누른 학생용)
+      if (!now && book && !opts.silent) {
+        VUI.toast('‘' + book.title + '’ 읽음 표시를 지웠어요.', { action: { label: '되돌리기', onClick: () => {
+          if (!Store.isRead(id)) toggleRead(id, { silent: true });
+        } } });
+      }
     }
 
     /* ───────── 진입 / 화면 전환 ───────── */
-    function enterApp() {   // 코드 연결됨 → 읽기 트리(저장 모드)
+    function enterApp() {   // 코드 연결됨 또는 '이 기기에서 바로 시작' → 읽기 트리(저장 모드)
       $('#introView').hidden = true;
       $('#appView').hidden = false;
       $('#badgeRow').hidden = true;
@@ -486,7 +529,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       renderSummary();
       render();
     }
-    function showIntro() {   // 코드 없음 → 소개 화면(저장 안 함)
+    function showIntro() {   // 코드 없음·이 기기 모드도 고르지 않음 → 소개 화면
       $('#appView').hidden = true;
       $('#introView').hidden = false;
     }
@@ -498,21 +541,42 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         Sync.pull(code).then((changed) => { if (changed) { renderSummary(); render(); } });
       } else {
         Store.clearCode();
-        showIntro();
+        // 이 기기 모드를 쓰던 사람은 이 기기 기록으로, 아니면 소개 화면으로
+        if (localModeOn()) enterApp(); else showIntro();
       }
+    }
+    function localModeOn() {
+      try {
+        if (localStorage.getItem(LOCAL_MODE_KEY) === '1') return true;
+        const raw = JSON.parse(localStorage.getItem('readtree:reads:_local') || '{}');
+        return !!(raw && typeof raw === 'object' && Object.keys(raw).length);
+      } catch { return false; }
     }
 
     /* ───────── 이벤트 ───────── */
     function wire() {
-      // '로그아웃' → 코드 해제 → 소개 화면으로. 코드 연결은 우상단 동기화 버튼.
+      // '코드 연결 해제' → 확인 → 이 기기에서만 연결을 끊는다(기록은 코드에 남음). 코드 연결은 오른쪽 위 동기화 버튼.
       const lo = $('#logoutBtn');
-      if (lo) lo.addEventListener('click', () => {
+      if (lo) lo.addEventListener('click', async () => {
+        const ok = await VUI.confirm(
+          '이 기기에서만 코드 연결을 끊어요.\n읽은 기록은 코드에 남아 있어서, 같은 코드를 다시 넣으면 그대로 이어집니다. 코드를 모르면 끊기 전에 동기화 버튼에서 코드를 적어 두세요.',
+          { title: '코드 연결 해제', ok: '연결 끊기', danger: true });
+        if (!ok) return;
         VivesSync.clearCode();
         if (codeBtn) codeBtn.refresh();
         applyCode(null);
+        VUI.toast('코드 연결을 끊었어요. 같은 코드를 넣으면 다시 이어집니다.');
       });
       const introBtn = $('#introStartBtn');
       if (introBtn) introBtn.addEventListener('click', (e) => { e.stopPropagation(); if (codeBtn && codeBtn.open) codeBtn.open(); });
+      const localBtn = $('#introLocalBtn');
+      if (localBtn) localBtn.addEventListener('click', () => {
+        try { localStorage.setItem(LOCAL_MODE_KEY, '1'); } catch {}
+        if (!Store.getCode()) Store._load();
+        enterApp();
+      });
+      $('#levelChips').addEventListener('scroll', updateChipFade, { passive: true });
+      window.addEventListener('resize', updateChipFade);
       $('#searchInput').addEventListener('input', render);
       $('#searchToggle').addEventListener('click', () => {
         $('#searchBox').hidden = false; $('#searchToggle').setAttribute('aria-expanded', 'true'); $('#searchInput').focus();
@@ -547,10 +611,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         const c = Store.getCode();
         if (!c) { if (codeBtn && codeBtn.open) codeBtn.open(); return; }
         // 복사 성공 여부는 공용 토스트가 알려 준다(실패하면 동기화 패널의 '보기'로 확인)
-        const ok = await VUI.copy(c, '코드를 복사했어요 ✓');
-        if (!ok) VUI.toast('자동 복사가 안 돼요. 우상단 동기화 버튼에서 코드를 확인해 주세요.', 'error');
+        const ok = await VUI.copy(c, '코드를 복사했어요');
+        if (!ok) VUI.toast('자동 복사가 안 돼요. 화면 오른쪽 위 동기화 버튼에서 코드를 확인해 주세요.', 'error');
         const hc = $('#homeCode'); if (!hc || !ok) return;
-        hc.textContent = '복사됨 ✓';
+        hc.textContent = '복사됨';
         clearTimeout(copyTimer);
         copyTimer = setTimeout(() => { hc.textContent = maskedCode(); }, 1200);
       });
@@ -576,10 +640,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }
       const code0 = VivesSync.getCode();
       if (code0) { Store.setCode(code0); enterApp(); }   // 코드 있으면 읽기 트리(서버 머지는 아래 동기화 버튼의 첫 onChange에서)
-      else showIntro();                                  // 없으면 소개 화면(저장 안 함)
+      else if (localModeOn()) { Store._load(); enterApp(); }   // 이 기기 모드(기록은 readtree:reads:_local)
+      else showIntro();                                  // 처음이면 소개 화면
       if (loadErr || !BOOKS.length) VUI.toast((loadErr && loadErr.message) || '책 목록을 불러오지 못했어요.', 'error');
 
-      // 우상단 통합 '동기화' 버튼: 연결 시 트리(저장 모드), 해제 시 소개 화면
+      // 오른쪽 위 통합 '동기화' 버튼: 연결 시 트리(코드 저장), 해제 시 이 기기 모드 또는 소개 화면
       if (window.VivesSync) codeBtn = VivesSync.mountCodeButton({
         appName: '읽기 기록',
         onChange: (code) => applyCode(code),

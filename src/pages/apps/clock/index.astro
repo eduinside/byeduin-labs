@@ -1,5 +1,6 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
 <AppLayout
   title="시계 보기 — eduin VIVES"
@@ -72,7 +73,7 @@ html { -webkit-text-size-adjust: 100%; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', 'Segoe UI', sans-serif;
   background: var(--ck-bg); color: var(--ck-text);
-  min-height: 100vh; overflow: hidden;
+  min-height: 100vh; min-height: 100dvh; overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 button { font-family: inherit; }
@@ -276,7 +277,7 @@ body.big .big-bar {
 /* ── 단위 시트 ── */
 .ck-modal { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; padding: 16px; }
 .ck-modal.open { display: flex; }
-.ck-mbox { background: var(--ck-panel); color: var(--ck-text); border-radius: 20px; padding: 22px; width: min(560px, 100%); max-height: calc(100vh - 32px); overflow: auto; border: 1px solid var(--ck-border); }
+.ck-mbox { background: var(--ck-panel); color: var(--ck-text); border-radius: 20px; padding: 22px; width: min(560px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--ck-border); }
 .ck-mbox h2 { font-size: 20px; font-weight: 900; margin-bottom: 6px; }
 .ck-mbox p { font-size: 14px; color: var(--ck-muted); line-height: 1.6; margin-bottom: 12px; }
 .ck-mbox .unit-grid { margin-bottom: 14px; }
@@ -311,7 +312,39 @@ body.big .big-bar {
   .q-banner { font-size: 17px; }
   body.big .clock-zone { height: 100dvh; }
 }
+/* ── 아이콘·글자 단추 ── */
+.ck-btn .ic { width: 1.1em; height: 1.1em; flex-shrink: 0; }
+.ck-btn[hidden], .say-btn[hidden] { display: none; }
+.say-btn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 99px;
+  border: 1px solid var(--ck-border); background: var(--ck-panel); color: var(--ck-text);
+  font-size: 15px; font-weight: 800; cursor: pointer; touch-action: manipulation;
+}
+.say-btn[aria-pressed="true"] { border-color: var(--ck-primary); background: var(--ck-primary-soft); color: var(--ck-primary); }
+.q-banner .say-btn { min-height: 40px; padding: 0 12px; font-size: 14px; }
+.panel-head h2 { display: flex; align-items: center; gap: 8px; }
+.mode-tab { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.hint-text .ic { vertical-align: -0.15em; color: var(--ck-star); }
+.daybar .labels span { display: inline-flex; align-items: center; gap: 3px; }
+.unit-chip { display: inline-flex; align-items: center; gap: 6px; }
+.clock-box .ccap { display: inline-flex; align-items: center; gap: 6px; }
+.opt { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.result-trophy { color: var(--ck-star); line-height: 1; }
+.result-trophy .ic { width: 64px; height: 64px; }
+.summary h3 { display: flex; align-items: center; gap: 6px; }
+.intro-screen h1 .app-title-en { display: block; font-size: 0.5em; font-weight: 700; color: var(--ck-muted); letter-spacing: 0; margin-top: 2px; }
+/* 지금 시각 따라가기 중 */
+#btnNow[aria-pressed="true"] { border-color: var(--ck-primary); background: var(--ck-primary-soft); color: var(--ck-primary); }
+
+/* 큰 시계: 공용 토스트를 아래 도구줄 위로 */
+body.big { --vui-toast-bottom: 96px; }
+
 @media (max-width: 560px) {
+  /* 큰 시계 도구줄: 좁은 폰에서는 3칸 두 줄로 정돈하고, 시계 영역 아래를 그만큼 비워 읽기 글자와 겹치지 않게 */
+  body.big .big-bar { display: grid; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 20px); }
+  body.big .big-bar .ck-btn { padding: 0 6px; }
+  body.big .clock-zone { padding-bottom: 136px; }
+  body.big { --vui-toast-bottom: 150px; }
   .unit-grid { grid-template-columns: repeat(3, 1fr); }
   .intro-screen h1 { font-size: 28px; }
   .readout .reading { font-size: 24px; }
@@ -329,7 +362,7 @@ body.big .big-bar {
     <line x1="60" y1="60" x2="84" y2="70" stroke="var(--ck-hour)" stroke-width="8" stroke-linecap="round"/>
     <circle cx="60" cy="60" r="5" fill="var(--ck-face-edge)"/>
   </svg>
-  <h1>시계 보기</h1>
+  <h1>시계 보기 <span class="app-title-en">Telling Time</span></h1>
   <p class="intro-sub">시침과 분침을 손가락으로 돌려 보며<br>몇 시 몇 분인지 읽어 봐요.</p>
 
   <div class="unit-pick" id="introUnits">
@@ -345,7 +378,7 @@ body.big .big-bar {
 <div id="screenMain" class="screen main-screen">
   <div class="main-layout">
     <div class="clock-zone" id="clockZone">
-      <div class="q-banner" id="qBanner" hidden><span id="qText"></span><button type="button" class="icon-btn tts" id="qTts" aria-label="문제 읽어 주기">🔊</button></div>
+      <div class="q-banner" id="qBanner" hidden><span id="qText"></span><button type="button" class="say-btn tts" id="qTts" aria-label="문제 읽어 주기"><Icon name="volume-2" />듣기</button></div>
       <div class="clocks" id="clocks">
         <div class="clock-box" id="boxA"><div class="ccap" id="capA" hidden></div><div id="clockA"></div></div>
         <div class="clock-box" id="boxB" hidden><div class="ccap" id="capB"></div><div id="clockB"></div></div>
@@ -354,24 +387,24 @@ body.big .big-bar {
         <span class="digital" id="digital">3:00</span>
         <span class="reading" id="reading" aria-live="polite">3시</span>
         <span class="before" id="before"></span>
-        <button type="button" class="icon-btn" id="btnSay" aria-label="시각 읽어 주기">🔊</button>
-        <button type="button" class="icon-btn" id="btnHide" aria-pressed="false" aria-label="읽는 글 가리기">🙈</button>
+        <button type="button" class="say-btn" id="btnSay" aria-label="시각 읽어 주기"><Icon name="volume-2" />읽어 주기</button>
+        <button type="button" class="say-btn" id="btnHide" aria-pressed="false" aria-label="읽는 글 가리기"><Icon name="eye-off" /><span>글 가리기</span></button>
       </div>
       <div class="daybar" id="daybar" hidden aria-hidden="true">
         <div class="track"><div class="mark" id="dayMark"></div></div>
-        <div class="labels"><span>밤 12시</span><span>🌅 오전</span><span>낮 12시</span><span>오후 🌙</span><span>밤 12시</span></div>
+        <div class="labels"><span>밤 12시</span><span><Icon name="sunrise" />오전</span><span>낮 12시</span><span>오후<Icon name="moon" /></span><span>밤 12시</span></div>
       </div>
     </div>
 
     <aside class="panel" aria-label="조작판">
       <div class="panel-head">
-        <h2>🕰️ 시계 보기</h2>
+        <h2><Icon name="clock" />시계 보기</h2>
         <button type="button" class="unit-chip" id="unitChip" aria-haspopup="dialog">5분 단위</button>
       </div>
       <div class="mode-tabs" role="group" aria-label="모드">
-        <button type="button" class="mode-tab active" data-mode="play" aria-pressed="true">🕹 놀이터</button>
-        <button type="button" class="mode-tab" data-mode="mission" aria-pressed="false">🏆 미션</button>
-        <button type="button" class="mode-tab" data-mode="big" aria-pressed="false">📺 큰 시계</button>
+        <button type="button" class="mode-tab active" data-mode="play" aria-pressed="true"><Icon name="gamepad-2" />놀이터</button>
+        <button type="button" class="mode-tab" data-mode="mission" aria-pressed="false"><Icon name="trophy" />미션</button>
+        <button type="button" class="mode-tab" data-mode="big" aria-pressed="false"><Icon name="monitor" />큰 시계</button>
       </div>
       <div class="panel-body">
         <!-- 놀이터 -->
@@ -380,10 +413,10 @@ body.big .big-bar {
             <div class="group-title">바늘 돌리기 — 바늘을 끌거나 버튼을 눌러요</div>
             <div class="step-grid" id="stepGrid"></div>
             <div class="ampm" id="ampm" hidden>
-              <button type="button" class="ck-btn sm" data-ampm="am">🌅 오전</button>
-              <button type="button" class="ck-btn sm" data-ampm="pm">🌙 오후</button>
+              <button type="button" class="ck-btn sm" data-ampm="am"><Icon name="sunrise" />오전</button>
+              <button type="button" class="ck-btn sm" data-ampm="pm"><Icon name="moon" />오후</button>
             </div>
-            <button type="button" class="ck-btn sm" id="btnNow" style="width:100%;margin-top:8px">⌚ 지금 시각</button>
+            <button type="button" class="ck-btn sm" id="btnNow" aria-pressed="false" style="width:100%;margin-top:8px"><Icon name="clock" /><span id="btnNowLbl">지금 시각 따라가기</span></button>
           </div>
           <div class="group">
             <div class="group-title">도움 표시</div>
@@ -395,7 +428,7 @@ body.big .big-bar {
               <button type="button" class="tog" data-show="second" aria-pressed="false">초침</button>
             </div>
           </div>
-          <p class="hint-text">💡 분침이 한 바퀴 돌면 시침은 숫자 한 칸을 가요. 시침이 두 숫자 사이에 있으면 <b>지나온 숫자</b>를 읽어요.</p>
+          <p class="hint-text"><Icon name="lightbulb" /> 분침이 한 바퀴 돌면 시침은 숫자 한 칸을 가요. 시침이 두 숫자 사이에 있으면 <b>지나온 숫자</b>를 읽어요.</p>
         </div>
 
         <!-- 미션 -->
@@ -407,10 +440,10 @@ body.big .big-bar {
           <div id="mAnswer"></div>
           <div id="mFeedback"></div>
           <div class="m-actions">
-            <button type="button" class="ck-btn primary" id="mCheck">확인</button>
-            <button type="button" class="ck-btn primary" id="mNextQ" hidden>다음 문제 →</button>
-            <button type="button" class="ck-btn primary" id="mNextMission" hidden>다음 미션 →</button>
-            <button type="button" class="ck-btn" id="mResult" hidden>🏆 결과 보기</button>
+            <button type="button" class="ck-btn primary" id="mCheck"><Icon name="circle-check" />확인하기</button>
+            <button type="button" class="ck-btn primary" id="mNextQ" hidden>다음 문제<Icon name="arrow-right" /></button>
+            <button type="button" class="ck-btn primary" id="mNextMission" hidden>다음 미션<Icon name="arrow-right" /></button>
+            <button type="button" class="ck-btn" id="mResult" hidden><Icon name="award" />결과 보기</button>
           </div>
         </div>
 
@@ -421,23 +454,22 @@ body.big .big-bar {
   </div>
 
   <div class="big-bar" id="bigBar" role="toolbar" aria-label="큰 시계 도구">
-    <button type="button" class="ck-btn sm" id="bigMinus">◀ <span id="bigMinusLbl">5분</span></button>
-    <button type="button" class="ck-btn sm" id="bigPlus"><span id="bigPlusLbl">5분</span> ▶</button>
-    <button type="button" class="ck-btn sm primary" id="bigRandom">🎲 무작위 시각</button>
-    <button type="button" class="ck-btn sm" id="bigReveal" aria-pressed="false">👁 정답 보기</button>
-    <button type="button" class="ck-btn sm" id="bigShare">🔗 링크</button>
-    <button type="button" class="ck-btn sm" id="bigExit">✕ 나가기</button>
+    <button type="button" class="ck-btn sm" id="bigMinus"><Icon name="chevron-left" /><span id="bigMinusLbl">5분</span></button>
+    <button type="button" class="ck-btn sm" id="bigPlus"><span id="bigPlusLbl">5분</span><Icon name="chevron-right" /></button>
+    <button type="button" class="ck-btn sm" id="bigExit"><Icon name="x" />나가기</button>
+    <button type="button" class="ck-btn sm primary" id="bigRandom"><Icon name="dices" />무작위 시각</button>
+    <button type="button" class="ck-btn sm" id="bigReveal" aria-pressed="false"><Icon name="eye" />정답 보기</button>
   </div>
 </div>
 
 <!-- ============ 결과 ============ -->
 <div id="screenResult" class="screen result-screen">
-  <div style="font-size:64px" aria-hidden="true">🏆</div>
+  <div class="result-trophy" aria-hidden="true"><Icon name="trophy" /></div>
   <h1>미션 결과</h1>
   <p class="result-sub" id="resultSub"></p>
   <div class="result-grid" id="resultGrid" role="list"></div>
   <div class="summary">
-    <h3>📖 배움 정리</h3>
+    <h3><Icon name="book-open" />배움 정리</h3>
     <ul>
       <li>짧은 바늘(시침)은 <b>몇 시</b>, 긴 바늘(분침)은 <b>몇 분</b>을 가리켜요.</li>
       <li>시침이 두 숫자 사이에 있으면 <b>지나온 숫자</b>를 읽어요.</li>
@@ -445,7 +477,7 @@ body.big .big-bar {
     </ul>
   </div>
   <div class="result-btns">
-    <button type="button" class="ck-btn primary" id="btnRetry">다시 도전</button>
+    <button type="button" class="ck-btn primary" id="btnRetry"><Icon name="rotate-ccw" />다시 도전</button>
     <button type="button" class="ck-btn" id="btnOtherUnit">다른 단위 도전</button>
     <button type="button" class="ck-btn" id="btnToPlay">놀이터로</button>
   </div>
@@ -459,8 +491,8 @@ body.big .big-bar {
     <div class="unit-grid" data-unit-grid></div>
     <p><b>학생에게 보낼 링크</b> — 이 단위로 고정된 링크예요. 링크로 연 화면에서는 단위를 바꿀 수 없어요.</p>
     <div class="mfoot">
-      <button type="button" class="ck-btn sm" id="btnLockLink">🔗 이 단위로 학생 링크 만들기</button>
-      <button type="button" class="ck-btn sm primary" data-vui-close>닫기</button>
+      <button type="button" class="ck-btn sm primary" id="btnLockLink"><Icon name="link" />이 단위로 학생 링크 만들기</button>
+      <button type="button" class="ck-btn sm" data-vui-close>닫기</button>
     </div>
   </div>
 </div>

@@ -1,10 +1,10 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<AppLayout 
-  icons
-  title="AI 맞춤법 검사 — eduin VIVES"
-  description="AI가 한국어 맞춤법·문법을 교정하고 수정 이유를 설명합니다. Google Apps Script에서 API로 호출해 스프레드시트 일괄 교정도 가능."
+<AppLayout
+  title="AI 맞춤법 검사 (Spell Checker) — eduin VIVES"
+  description="AI가 한국어 맞춤법·문법을 교정하고 수정 이유를 설명합니다. 구글 시트에서도 여러 칸을 한 번에 고칠 수 있습니다."
   image="https://eduin.info/og-images/spell-checker.png"
   bodyShell="column"
   bodyWidth="medium"
@@ -15,8 +15,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       content: '';
       position: fixed; inset: 0;
       background-image:
-        linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+        linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
       background-size: 40px 40px;
       pointer-events: none; z-index: 0;
     }
@@ -37,6 +37,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       font-family: inherit;
     }
     textarea:focus { border-color: var(--primary); }
+    /* iOS는 16px 미만 입력칸에서 화면을 확대하므로 휴대폰·태블릿에서는 16px */
+    @media (max-width: 720px), (pointer: coarse) { textarea { font-size: 16px; } }
 
     .input-footer {
       display: flex;
@@ -45,8 +47,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       margin-top: 8px;
     }
     .char-count { font-size: 13px; color: var(--fg-muted); }
-    .char-count.warn { color: #b45309; }
-    [data-theme="dark"] .char-count.warn { color: #f59e0b; }
+    .char-count.warn { color: color-mix(in srgb, var(--warning, #f5a524) 70%, var(--fg)); }
 
     .btn {
       min-height: 44px;
@@ -57,6 +58,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       cursor: pointer;
       transition: opacity .15s, border-color .15s, color .15s;
       font-family: inherit;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
     }
     .btn-primary { background: var(--primary); color: #fff; border: none; }
     .btn-primary:hover { opacity: .85; }
@@ -85,8 +87,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     .alert { display: none; margin-top: 14px; padding: 12px 14px; border-radius: 8px; font-size: 14px; }
     .alert.show { display: block; }
-    .alert-error { background: #fee2e2; color: #991b1b; }
-    [data-theme="dark"] .alert-error { background: #7f1d1d; color: #fca5a5; }
+    .alert-error {
+      background: color-mix(in srgb, var(--danger) 12%, transparent);
+      color: color-mix(in srgb, var(--danger) 70%, var(--fg));
+      border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+    }
+    .alert-error .ic { vertical-align: -0.15em; margin-right: 4px; }
 
     .result-panel { display: none; margin-top: 28px; animation: fadeIn .2s ease; }
     .result-panel.show { display: block; }
@@ -94,10 +100,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     .result-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
     .pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; }
-    .pill-ok  { background: #dcfce7; color: #166534; }
-    .pill-err { background: #fee2e2; color: #991b1b; }
-    [data-theme="dark"] .pill-ok  { background: #14532d; color: #86efac; }
-    [data-theme="dark"] .pill-err { background: #7f1d1d; color: #fca5a5; }
+    /* 색은 공용 토큰(--success/--danger)에 글자색을 섞어 밝게·어둡게 모두 읽히게 */
+    .pill-ok  { background: color-mix(in srgb, var(--success) 16%, transparent); color: color-mix(in srgb, var(--success) 55%, var(--fg)); }
+    .pill-err { background: color-mix(in srgb, var(--danger) 14%, transparent); color: color-mix(in srgb, var(--danger) 70%, var(--fg)); }
     .result-note { font-size: 13px; color: var(--fg-muted); }
 
     .corrected-box {
@@ -111,13 +116,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       word-break: break-word;
     }
     .corrected-box mark {
-      background: #fef08a; color: #713f12;
+      background: color-mix(in srgb, var(--warning, #f5a524) 30%, transparent); color: var(--fg);
       border-radius: 3px; padding: 0 2px;
-      text-decoration: underline wavy #ea580c;
+      text-decoration: underline wavy var(--warning, #f5a524);
     }
-    [data-theme="dark"] .corrected-box mark { background: #422006; color: #fde68a; }
 
-    .btn-row { margin-top: 8px; display: flex; gap: 8px; }
+    .btn-row { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; }
 
     .error-list { margin-top: 20px; }
     .error-list-title { font-size: 12px; font-weight: 700; color: var(--fg-muted); margin-bottom: 8px; letter-spacing: .03em; }
@@ -127,9 +131,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       border: 1px solid var(--border); background: var(--card-bg, var(--bg));
       margin-bottom: 6px; font-size: 13px;
     }
-    .err-before { color: #dc2626; text-decoration: line-through; font-weight: 500; }
-    .err-arrow  { color: var(--fg-muted); }
-    .err-after  { color: #16a34a; font-weight: 600; }
+    .err-before { color: color-mix(in srgb, var(--danger) 75%, var(--fg)); text-decoration: line-through; font-weight: 500; }
+    .err-arrow  { color: var(--fg-muted); align-self: center; display: inline-flex; }
+    .err-after  { color: color-mix(in srgb, var(--success) 55%, var(--fg)); font-weight: 600; }
     .err-reason { color: var(--fg-muted); font-size: 12px; flex: 1; min-width: 100px; }
 
     .gas-panel {
@@ -137,7 +141,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       border: 1.5px dashed var(--border); border-radius: 10px;
     }
     .gas-panel[hidden] { display: none; }
-    .gas-panel-title { font-size: 13px; font-weight: 600; color: var(--fg-muted); margin: 0 0 12px; }
+    .gas-panel-title { font-size: 13px; font-weight: 600; color: var(--fg-muted); margin: 0 0 6px; }
+    .gas-panel-desc { font-size: 13px; color: var(--fg-muted); line-height: 1.6; margin: 0 0 12px; }
     .gas-code {
       padding: 12px 14px;
       background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
@@ -146,20 +151,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       white-space: pre; overflow-x: auto;
     }
   </style>
-  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"AI 맞춤법 검사","description":"AI가 한국어 맞춤법·문법을 교정하고 수정 이유를 설명합니다. Google Apps Script에서 API로 호출해 스프레드시트 일괄 교정도 가능.","url":"https://eduin.info/apps/spell-checker/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"AI 맞춤법 검사 (Spell Checker)","description":"AI가 한국어 맞춤법·문법을 교정하고 수정 이유를 설명합니다. 구글 시트에서도 여러 칸을 한 번에 고칠 수 있습니다.","url":"https://eduin.info/apps/spell-checker/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
 
   <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입합니다 -->
   <main class="app-main">
     <div class="app-header">
-      <div class="app-badge">◆ AI</div>
-      <h1 class="app-title">
-  <div class="card-emoji sub-util-life" style="margin-bottom: 0; transform: scale(1.0);">
-        <i data-lucide="spell-check"></i>
-      </div>
-  <span>AI 맞춤법 검사</span>
-</h1>
+      <div class="app-badge">AI</div>
+      <h1 class="app-title">AI 맞춤법 검사 <span class="app-title-en">Spell Checker</span></h1>
       <p class="app-desc">AI가 한국어 맞춤법·문법을 교정하고 수정 이유를 설명합니다.</p>
     </div>
 
@@ -182,14 +182,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       </div>
       <div class="corrected-box" id="correctedBox"></div>
       <div class="btn-row">
-        <button type="button" class="btn btn-ghost" id="copyBtn" onclick="copyResult(this)">교정본 복사</button>
-        <button type="button" class="btn btn-ghost" id="gasBtn" onclick="toggleGas()" aria-expanded="false" aria-controls="gasPanel">📋 GAS 연동</button>
+        <button type="button" class="btn btn-ghost" id="copyBtn" onclick="copyResult(this)"><Icon name="copy" /> 교정본 복사</button>
+        <button type="button" class="btn btn-ghost" id="gasBtn" onclick="toggleGas()" aria-expanded="false" aria-controls="gasPanel"><Icon name="sheet" /> 구글 시트에서 쓰기</button>
       </div>
       <div class="error-list" id="errorList"></div>
     </div>
 
     <div class="gas-panel" id="gasPanel" hidden="">
-      <p class="gas-panel-title">Google Apps Script에서 API 호출</p>
+      <p class="gas-panel-title">구글 시트에서 쓰기</p>
+      <p class="gas-panel-desc">구글 시트의 <b>확장 프로그램 › Apps Script</b>에 아래 코드를 붙여넣고, 고칠 칸을 선택한 뒤 <b>correctSelection</b>을 실행하세요. 빈 칸은 건너뛰고, 한 칸씩 1초 간격으로 검사합니다.</p>
       <div class="gas-code" id="gasCode"></div>
     </div>
   </main>
@@ -209,10 +210,27 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const errorList   = document.getElementById('errorList');
     const gasPanel    = document.getElementById('gasPanel');
 
-    inputText.addEventListener('input', () => {
+    // 쓰던 글은 이 탭(sessionStorage)에 임시 저장 — 새로고침해도 사라지지 않게
+    const DRAFT_KEY = 'spell-checker:draft';
+    function updateCount() {
       const n = inputText.value.length;
       charCount.textContent = `${n.toLocaleString()} / 3,000`;
       charCount.classList.toggle('warn', n > 2500);
+    }
+    try {
+      const draft = sessionStorage.getItem(DRAFT_KEY);
+      if (draft && !inputText.value) { inputText.value = draft.slice(0, 3000); updateCount(); }
+    } catch { /* 저장소를 쓸 수 없음 — 임시 저장만 안 됨 */ }
+    let draftTimer = null;
+    inputText.addEventListener('input', () => {
+      updateCount();
+      clearTimeout(draftTimer);
+      draftTimer = setTimeout(() => {
+        try {
+          if (inputText.value) sessionStorage.setItem(DRAFT_KEY, inputText.value);
+          else sessionStorage.removeItem(DRAFT_KEY);
+        } catch { /* 저장 불가 — 무시 */ }
+      }, 400);
     });
 
     async function runCheck() {
@@ -245,7 +263,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       } catch (e) {
         const msg = e && /[가-힣]/.test(e.message || '') ? e.message
           : '검사 중 문제가 생겼습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.';
-        errorAlert.textContent = `⚠️ ${msg}`;
+        errorAlert.innerHTML = VUI.icon('triangle-alert') + esc(msg);
         errorAlert.classList.add('show');
       } finally {
         checkBtn.disabled = false;
@@ -277,7 +295,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         ? `<p class="error-list-title">교정 내역 (${errors.length}건)</p>` +
           errors.map(e => `<div class="error-item">
             <span class="err-before">${esc(e.original)}</span>
-            <span class="err-arrow">→</span>
+            <span class="err-arrow" aria-label="고친 말">${VUI.icon('arrow-right')}</span>
             <span class="err-after">${esc(e.corrected)}</span>
             <span class="err-reason">${esc(e.reason)}</span>
           </div>`).join('')
@@ -285,13 +303,32 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       resultPanel.classList.add('show');
     }
 
+    // 고친 말을 교정 내역 순서대로 찾는다 — 앞에서 찾은 위치 다음부터 찾아야 "의", "되"처럼
+    // 흔한 말이 엉뚱한 곳(첫 번째 등장 위치)에 표시되지 않는다.
     function highlight(text, errors) {
-      let html = esc(text);
+      const ranges = [];
+      const overlaps = (a, b) => ranges.some(([s, e]) => a < e && b > s);
+      let pos = 0;
       errors.forEach(({ corrected: c }) => {
-        const s = esc(c);
-        if (s) html = html.replace(s, `<mark>${s}</mark>`);
+        if (!c) return;
+        let idx = text.indexOf(c, pos);
+        while (idx !== -1 && overlaps(idx, idx + c.length)) idx = text.indexOf(c, idx + 1);
+        if (idx !== -1) { pos = idx + c.length; }
+        else {
+          // 순서가 어긋난 경우: 앞쪽에서 아직 표시하지 않은 자리를 찾는다
+          idx = text.indexOf(c);
+          while (idx !== -1 && overlaps(idx, idx + c.length)) idx = text.indexOf(c, idx + 1);
+          if (idx === -1) return;
+        }
+        ranges.push([idx, idx + c.length]);
       });
-      return html;
+      ranges.sort((a, b) => a[0] - b[0]);
+      let html = '', last = 0;
+      ranges.forEach(([s, e]) => {
+        html += esc(text.slice(last, s)) + `<mark>${esc(text.slice(s, e))}</mark>`;
+        last = e;
+      });
+      return html + esc(text.slice(last));
     }
 
     function esc(s) {
@@ -305,7 +342,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     let copyTimer = null;
     async function copyResult(btn) {
       const text = correctedBox.innerText;
-      const ok = await VUI.copy(text, '교정본을 복사했어요 ✓');
+      const ok = await VUI.copy(text, '교정본을 복사했어요');
       if (!ok) {
         VUI.toast('자동 복사가 안 돼요. 교정본을 길게 눌러 직접 복사해 주세요.', 'error');
         const r = document.createRange(); r.selectNodeContents(correctedBox);
@@ -313,9 +350,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         return;
       }
       if (!btn) return;
-      btn.textContent = '복사됨 ✓';
+      btn.innerHTML = VUI.icon('check') + ' 복사됨';
       clearTimeout(copyTimer);
-      copyTimer = setTimeout(() => { btn.textContent = '교정본 복사'; }, 1500);
+      copyTimer = setTimeout(() => { btn.innerHTML = VUI.icon('copy') + ' 교정본 복사'; }, 1500);
     }
 
     function toggleGas() {
@@ -337,18 +374,21 @@ function spellCheck(text) {
   return data;
 }
 
-// 스프레드시트 선택 범위 일괄 교정
+// 선택한 칸을 한 칸씩 교정 (빈 칸·숫자 칸은 건너뜀)
 function correctSelection() {
   const range = SpreadsheetApp.getActiveRange();
   const values = range.getValues();
-  values.forEach((row, r) => {
-    row.forEach((cell, c) => {
-      if (typeof cell === 'string' && cell.trim()) {
-        const { changed, corrected } = spellCheck(cell);
-        if (changed) range.getCell(r + 1, c + 1).setValue(corrected);
-      }
-    });
-  });
+  let first = true;
+  for (let r = 0; r < values.length; r++) {
+    for (let c = 0; c < values[r].length; c++) {
+      const cell = values[r][c];
+      if (typeof cell !== 'string' || !cell.trim()) continue;
+      if (!first) Utilities.sleep(1000);   // 요청이 몰리지 않게 1초씩 쉬기
+      first = false;
+      const { changed, corrected } = spellCheck(cell);
+      if (changed) range.getCell(r + 1, c + 1).setValue(corrected);
+    }
+  }
 }`;
   </script>
 

@@ -1,40 +1,37 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<AppLayout 
+<AppLayout
   title="달의 위상 3D — eduin VIVES"
   description="달을 직접 돌려 위상을 이해하고 일식·월식까지"
   image="https://eduin.info/og-images/moon-phase-v2.png"
   bodyShell="immersive"
+  theme="light"
+  toast="top"
 >
   <Fragment slot="head">
     <link rel="stylesheet" href="/common/sim-kit.css">
     <script is:inline src="/common/sim-kit.js"></script>
     <style is:global="">
-/* ── moon-phase-v2 전용 스타일 (immersive 전체화면) ── */
+/* ── moon-phase-v2 전용 스타일 (immersive 전체화면) ──
+   화면(조작판·버튼·글자)은 밝은 테마, 우주 무대(궤도 그림)와 '지구에서 본 달' 그림만 어둡게 둔다. */
 :root {
   --mp-space: #070913;
   --mp-space-deep: #030408;
-  --mp-accent: #ffd166;
-  --mp-card: rgba(13,27,42,0.85);
-  --mp-border: rgba(255,209,102,0.25);
-  --mp-orbit: rgba(255,255,255,0.15);
+  --mp-gold: #ffd166;          /* 무대 그림(어두운 배경) 위 강조색 */
+  --mp-accent: #a15c07;        /* 밝은 조작판 위 강조색 */
   --mp-sidebar-w: 360px;
-  /* SimKit(번호 버튼·피드백)은 어두운 우주 배경 위에서도 읽히도록 */
-  --sk-accent: #ffd166;
-  --sk-accent-fg: #000;
-  --sk-ring: rgba(255,209,102,0.4);
-  --border: rgba(255,209,102,0.35);
-  --card-bg: rgba(255,255,255,0.06);
-  --fg-muted: #d6d6d6;
-  --fg: #fffdf9;
+  --sk-accent: #a15c07;
+  --sk-accent-fg: #ffffff;
+  --sk-ring: rgba(161, 92, 7, 0.28);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
-  background: var(--mp-space);
-  color: #fffdf9;
+  font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Segoe UI', sans-serif;
+  background: var(--bg-sec, #f4f4f5);
+  color: var(--fg, #11181c);
   min-height: 100vh;
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
@@ -45,39 +42,33 @@ body {
 /* 화면 전환 때 제목으로 옮긴 초점(화면 읽기용)은 테두리를 그리지 않음 */
 .screen [tabindex="-1"]:focus { outline: none; }
 
-/* ── 인트로 ── */
-.intro-screen {
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 24px;
+/* ── 인트로·결과 (.sk-screen: 낮은 화면에서도 버튼이 잘리지 않게 안에서 스크롤) ── */
+.intro-screen, .result-screen {
   text-align: center;
-  background:
-    radial-gradient(circle at 50% 30%, rgba(255,209,102,0.08) 0, transparent 50%),
-    linear-gradient(180deg, var(--mp-space), var(--mp-space-deep));
+  background: linear-gradient(180deg, var(--bg, #fff), var(--bg-sec, #f4f4f5));
 }
 .intro-emoji {
-  font-size: 80px; margin-bottom: 12px;
+  font-size: 72px; margin-bottom: 8px;
   animation: float 3s ease-in-out infinite;
 }
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
 }
-.intro-screen h1 { font-size: 32px; font-weight: 800; margin-bottom: 6px; color: var(--mp-accent); }
-.intro-sub { font-size: 15px; opacity: 0.8; line-height: 1.7; margin-bottom: 24px; }
+.intro-screen h1 { font-size: 30px; font-weight: 800; margin-bottom: 6px; color: var(--fg, #11181c); }
+.intro-sub { font-size: 15px; color: var(--fg-muted, #71717a); line-height: 1.7; margin-bottom: 20px; }
 .intro-card {
-  background: var(--mp-card);
-  border: 1px solid var(--mp-border);
+  background: var(--bg, #fff);
+  border: 1px solid var(--border, #e4e4e7);
   border-radius: 16px;
-  padding: 20px 24px;
+  padding: 18px 22px;
   max-width: 440px; width: 100%;
-  margin-bottom: 24px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  margin-bottom: 20px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+  word-break: keep-all;
 }
-.intro-card h3 { font-size: 17px; font-weight: 700; color: var(--mp-accent); margin-bottom: 8px; }
-.intro-card p { font-size: 14px; line-height: 1.7; opacity: 0.8; }
+.intro-card h2 { font-size: 17px; font-weight: 700; color: var(--mp-accent); margin-bottom: 8px; }
+.intro-card p { font-size: 14px; line-height: 1.7; color: var(--fg, #11181c); }
 
 /* ── 메인 레이아웃 ── */
 .explore-screen {
@@ -89,42 +80,38 @@ body {
   width: 100%; height: 100%;
 }
 
-/* 캔버스 영역 */
+/* 캔버스 영역(우주 무대 — 어둡게 유지) */
 .canvas-zone {
   position: relative;
   background: radial-gradient(circle at center, #0e1329 0%, var(--mp-space-deep) 100%);
   overflow: hidden;
   display: flex; flex-direction: column;
+  min-width: 0;
 }
+/* 무대 위 이름표·범례: 누를 것이 없으므로 끌기를 막지 않게 pointer-events: none.
+   그림은 이 줄과 아래 도구줄 사이에만 그린다(JS measureLayout) */
 .canvas-header {
   position: absolute; top: 56px; left: 16px; right: 16px; z-index: 10;
   display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 6px;
   pointer-events: none;
 }
-.canvas-title-badge {
-  background: rgba(13,27,42,0.85); backdrop-filter: blur(6px);
-  color: #fff; border-radius: 14px; padding: 8px 16px;
-  font-size: 14px; font-weight: 700; border: 1px solid var(--mp-border);
-  display: flex; align-items: center; gap: 8px; pointer-events: auto;
+.canvas-title-badge, .orbit-legend {
+  background: rgba(13,27,42,0.85);
+  color: #fff; border-radius: 14px; padding: 6px 12px;
+  font-size: 14px; font-weight: 700; border: 1px solid rgba(255,209,102,0.3);
+  display: inline-flex; align-items: center; gap: 8px;
 }
 .canvas-title-badge .num {
-  background: var(--mp-accent); color: #000; width: 22px; height: 22px; border-radius: 50%;
-  display: inline-flex; align-items: center; justify-content: center; font-size: 11px;
+  background: var(--mp-gold); color: #000; width: 24px; height: 24px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 12px;
 }
+.canvas-title-badge .num .ic { width: 14px; height: 14px; }
+.orbit-legend { font-weight: 600; }
 
 .canvas-toolbar {
-  position: absolute; bottom: 16px; left: 16px; right: 16px; z-index: 10;
+  position: absolute; bottom: 12px; left: 16px; right: 16px; z-index: 10;
   display: flex; gap: 8px; flex-wrap: wrap;
-}
-.tool-btn {
-  background: rgba(13,27,42,0.85); border: 1px solid var(--mp-border);
-  color: #fff; padding: 8px 14px; min-height: 40px; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 700;
-  cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  pointer-events: auto; transition: all 0.15s;
-}
-.tool-btn:hover { background: rgba(13,27,42,1); }
-.tool-btn.active {
-  background: var(--mp-accent); color: #000; border-color: var(--mp-accent);
 }
 
 /* 캔버스 뷰포트 */
@@ -133,160 +120,131 @@ body {
 }
 #orbitCanvas {
   position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1;
+  touch-action: none;
 }
 
-/* ── 우측 사이드바 ── */
+/* ── 조작판(사이드바) ── */
 .sidebar {
-  background: var(--mp-card); border-left: 1px solid var(--mp-border);
+  background: var(--bg, #fff); border-left: 1px solid var(--border, #e4e4e7);
   overflow-y: auto; display: flex; flex-direction: column;
-  box-shadow: -4px 0 24px rgba(0,0,0,0.25);
-  backdrop-filter: blur(10px);
 }
 .side-head {
-  background: linear-gradient(135deg, #1b263b 0%, #0d1b2a 100%);
-  color: #fff; padding: 16px 20px 14px; position: relative; overflow: hidden; flex-shrink: 0;
-  border-bottom: 1px solid var(--mp-border);
+  padding: 16px 20px 12px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border, #e4e4e7);
 }
-.side-head h2 { font-size: 20px; font-weight: 700; color: var(--mp-accent); }
-.side-head .side-sub { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+.side-head h2 { font-size: 20px; font-weight: 800; color: var(--fg, #11181c); }
+.side-head .side-sub { font-size: 13px; color: var(--fg-muted, #71717a); margin-top: 2px; }
 
 .side-body { padding: 16px; flex: 1; display: flex; flex-direction: column; }
 
 /* 모드 탭 */
 .mode-tabs { display: flex; gap: 4px; margin-bottom: 14px; flex-shrink: 0; }
 .mode-tab {
-  flex: 1; padding: 8px 4px; border-radius: 10px; border: 1px solid var(--mp-border);
-  background: rgba(255,255,255,0.05); text-align: center; cursor: pointer;
-  font-size: 13px; font-weight: 800; font-family: inherit; color: #ddd;
-  transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  flex: 1; padding: 6px 4px; border-radius: 10px; border: 2px solid var(--border, #e4e4e7);
+  background: var(--card-bg, #f4f4f5); text-align: center; cursor: pointer;
+  font-size: 13px; font-weight: 800; font-family: inherit; color: var(--fg-muted, #71717a);
+  transition: border-color 0.15s, background-color 0.15s; display: flex; flex-direction: column; align-items: center; gap: 4px;
   min-height: 52px; justify-content: center;
 }
 .mode-tab.active {
-  border-color: var(--mp-accent); background: rgba(255,209,102,0.12); color: #fff;
+  border-color: var(--mp-accent); background: rgba(161,92,7,0.08); color: var(--fg, #11181c);
 }
-.mode-tab .em { font-size: 16px; }
+.mode-tab .ic { width: 18px; height: 18px; }
+.mode-tab.active .ic { color: var(--mp-accent); }
 
-/* 🌓 지구 관측 뷰 (실시간 위상 드로잉) */
+/* 지구에서 본 달(밤하늘 그림 — 어둡게 유지) */
 .observation-view {
-  background: #070913; border: 1px solid var(--mp-border); border-radius: 16px;
-  padding: 16px; margin-bottom: 14px; display: flex; flex-direction: column; align-items: center;
-  position: relative; overflow: hidden;
-}
-.observation-view::after {
-  content: ''; position: absolute; inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.02) 0, transparent 80%);
-  pointer-events: none;
+  background: var(--mp-space); border-radius: 16px;
+  padding: 14px; margin-bottom: 14px; display: flex; flex-direction: column; align-items: center;
+  color: #fffdf9; text-align: center;
 }
 #moonPhaseCanvas {
   width: 140px; height: 140px; background: transparent; display: block;
 }
 .moon-phase-name {
-  font-size: 20px; font-weight: 800; color: var(--mp-accent); margin-top: 10px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  font-size: 20px; font-weight: 800; color: var(--mp-gold); margin-top: 8px;
 }
-.moon-phase-date { font-size: 14px; opacity: 0.85; margin-top: 4px; }
-.orbit-legend {
-  background: rgba(13,27,42,0.85); color: #fff; border: 1px solid var(--mp-border); border-radius: 14px;
-  padding: 6px 12px; font-size: 14px; font-weight: 700; pointer-events: auto;
-}
-.canvas-header { flex-wrap: wrap; gap: 6px; }
+.moon-phase-date { font-size: 14px; opacity: 0.9; margin-top: 4px; word-break: keep-all; }
 
 /* 위상 설명 정보 */
 .info-box {
-  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 12px; padding: 12px; margin-bottom: 14px; font-size: 14px; line-height: 1.6;
+  background: var(--card-bg, #f4f4f5); border: 1px solid var(--border, #e4e4e7);
+  border-radius: 12px; padding: 10px 12px; margin-bottom: 14px; font-size: 14px; line-height: 1.6;
 }
-.info-row { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dashed rgba(255,255,255,0.08); padding: 6px 0; }
-.info-row .info-label { flex-shrink: 0; }
-.info-row .info-val { text-align: right; }
-.info-tip { font-weight: 600; font-size: 14px; color: #fffdf9; text-align: left; }
+.info-row { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dashed var(--border, #e4e4e7); padding: 6px 0; }
 .info-row:last-child { border-bottom: none; }
-.info-label { opacity: 0.7; }
-.info-val { font-weight: 700; color: var(--mp-accent); }
+.info-label { flex-shrink: 0; color: var(--fg-muted, #71717a); }
+.info-val { font-weight: 700; color: var(--mp-accent); text-align: right; word-break: keep-all; }
+.info-tip { font-weight: 600; color: var(--fg, #11181c); text-align: left; }
 
 /* 미션 카드 */
 .mission-card {
-  border: 1px solid var(--mp-border); border-radius: 14px; background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border, #e4e4e7); border-radius: 14px; background: var(--card-bg, #f4f4f5);
   padding: 12px 14px; margin-bottom: 14px;
 }
-.mission-title { font-size: 12px; font-weight: 700; color: var(--mp-accent); letter-spacing: 0.08em; margin-bottom: 8px; }
-.mission-desc { font-size: 14px; line-height: 1.6; font-weight: 600; }
+.mission-title { font-size: 13px; font-weight: 800; color: var(--mp-accent); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.mission-desc { font-size: 14px; line-height: 1.6; font-weight: 600; word-break: keep-all; }
+.mission-desc .ic { color: var(--mp-accent); vertical-align: -0.15em; }
 
 .mission-nav { display: flex; gap: 8px; margin-top: 10px; justify-content: center; flex-wrap: wrap; }
 /* 번호 버튼은 SimKit(.sk-mnav-btn, 44px)이 그린다 */
 .mission-nav[hidden] { display: none; }
-.eclipse-btn { font-size: 14px; padding: 8px 14px; min-height: 44px; }
 
-/* 슬라이더 제어 (드래그 대체 접근성) */
+/* 월령 슬라이더 (달을 끄는 대신 쓸 수 있음) */
 .slider-control {
-  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 12px; padding: 12px; margin-bottom: 14px;
+  background: var(--card-bg, #f4f4f5); border: 1px solid var(--border, #e4e4e7);
+  border-radius: 12px; padding: 10px 12px 4px; margin-bottom: 14px;
 }
-.slider-label { font-size: 14px; font-weight: 800; color: #ddd; margin-bottom: 6px; display: flex; justify-content: space-between; }
+.slider-label { font-size: 14px; font-weight: 800; margin-bottom: 2px; display: flex; justify-content: space-between; gap: 8px; }
+#sliderVal { color: var(--mp-accent); font-variant-numeric: tabular-nums; }
 .slider-input {
-  width: 100%; min-height: 32px; cursor: pointer; accent-color: var(--mp-accent);
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 32px; background: transparent; cursor: pointer; margin: 0;
+}
+.slider-input::-webkit-slider-runnable-track { height: 6px; background: #d4d4d8; border-radius: 3px; }
+.slider-input::-moz-range-track { height: 6px; background: #d4d4d8; border-radius: 3px; }
+.slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none; margin-top: -10px;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--mp-accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.slider-input::-moz-range-thumb {
+  width: 26px; height: 26px; border-radius: 50%; box-sizing: border-box;
+  background: var(--mp-accent); border: 3px solid #fff;
+}
+.slider-input:focus-visible { outline: 3px solid var(--mp-accent); outline-offset: 4px; border-radius: 6px; }
+/* 슬라이더 눈금 이름표(삭·상현·보름·하현) — 손잡이(26px) 중심에 맞춘다 */
+.ticks { position: relative; height: 26px; font-size: 13px; font-weight: 700; color: var(--fg-muted, #71717a); }
+.ticks span {
+  position: absolute; top: 0; padding-top: 7px; white-space: nowrap;
+  left: calc(13px + (100% - 26px) * var(--f)); transform: translateX(-50%);
+}
+.ticks span::before {
+  content: ''; position: absolute; top: 0; left: 50%;
+  width: 2px; height: 5px; background: currentColor; transform: translateX(-50%);
 }
 
-/* 피드백 박스 */
+/* 피드백 박스 (색은 SimKit .sk-feedback--ok/no) */
 .feedback-box {
-  padding: 10px; border-radius: 10px; font-size: 14px; line-height: 1.5; text-align: center; margin: 10px 0;
+  padding: 10px; border-radius: 10px; font-size: 14px; line-height: 1.5; text-align: center; margin: 0 0 10px;
+  word-break: keep-all;
 }
-.feedback-box.ok { background: rgba(46,204,113,0.15); color: #2ecc71; border: 1px solid #2ecc71; }
-.feedback-box.no { background: rgba(231,76,60,0.15); color: #ff7675; border: 1px solid #e74c3c; }
 
 /* 하단 액션 패널 */
-.action-panel { margin-top: auto; padding-top: 14px; flex-shrink: 0; }
-.action-btn {
-  width: 100%; padding: 12px; border-radius: 12px; border: none;
-  background: var(--mp-accent); color: #000; font-size: 14px; font-weight: 700;
-  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  transition: background 0.15s;
-}
-.action-btn:hover:not(:disabled) { background: #e0a96d; }
-.action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.action-btn.secondary {
-  background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--mp-border); margin-top: 6px;
-}
+.action-panel { margin-top: auto; padding-top: 6px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; }
 
 /* ── 결과 화면 ── */
-.result-screen {
-  flex-direction: column;
-  align-items: center; justify-content: center;
-  min-height: 100vh; padding: 24px; text-align: center;
-  background:
-    radial-gradient(circle at 50% 30%, rgba(255,209,102,0.08) 0, transparent 50%),
-    linear-gradient(180deg, var(--mp-space), var(--mp-space-deep));
-}
-.result-stars { font-size: 40px; margin: 12px 0; }
+.result-trophy { color: var(--mp-accent); }
+.result-trophy .ic { width: 64px; height: 64px; }
+.result-screen h2 { margin: 8px 0; font-size: 28px; }
+.result-stars { font-size: 36px; margin: 8px 0; }
 .result-summary {
-  background: var(--mp-card); border: 1px solid var(--mp-border); border-radius: 16px;
-  padding: 20px; font-size: 14px; line-height: 1.8; margin: 16px 0; text-align: left;
-  max-width: 440px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  background: var(--bg, #fff); border: 1px solid var(--border, #e4e4e7); border-radius: 16px;
+  padding: 18px 20px; font-size: 14px; line-height: 1.8; margin: 12px 0 18px; text-align: left;
+  max-width: 440px; width: 100%; box-shadow: 0 4px 18px rgba(0,0,0,0.06); word-break: keep-all;
 }
 .result-summary strong { color: var(--mp-accent); }
-
-/* ── 버튼 공통 스타일 ── */
-.fb-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 12px 28px; border-radius: 12px; font-size: 15px; font-weight: 700;
-  border: none; cursor: pointer; transition: all 0.2s ease;
-  font-family: inherit; text-decoration: none; outline: none;
-  min-height: 48px;
-}
-.fb-btn-primary {
-  background: linear-gradient(135deg, var(--mp-accent) 0%, #e0a96d 100%);
-  color: #000; box-shadow: 0 4px 12px rgba(255,209,102,0.25);
-}
-.fb-btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(255,209,102,0.35);
-}
-.fb-btn-primary:active:not(:disabled) {
-  transform: translateY(1px);
-}
-.fb-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.result-actions { width: 100%; max-width: 440px; }
 
 /* ── 반응형: 좁은 화면에서는 궤도(위) + 조작판(아래) 세로 배치 ── */
 @media (max-width: 860px) {
@@ -295,14 +253,18 @@ body {
     grid-template-rows: minmax(260px, 46dvh) 1fr;
   }
   .canvas-zone { min-height: 260px; }
-  .sidebar { border-left: none; border-top: 1px solid var(--mp-border); min-height: 0; }
-  .canvas-toolbar { left: 8px; right: 8px; bottom: 8px; flex-wrap: wrap; gap: 6px; }
-  .tool-btn { padding: 8px 10px; font-size: 13px; min-height: 40px; }
+  .sidebar { border-left: none; border-top: 1px solid var(--border, #e4e4e7); min-height: 0; }
+  .canvas-toolbar { left: 8px; right: 8px; bottom: 8px; gap: 6px; }
   .canvas-header { top: 52px; left: 8px; right: 8px; }
-  .canvas-title-badge { font-size: 12px; padding: 6px 12px; }
+  .canvas-title-badge, .orbit-legend { font-size: 12px; padding: 5px 10px; }
   .observation-view { padding: 10px; }
   #moonPhaseCanvas { width: 110px; height: 110px; }
   .moon-phase-name { font-size: 17px; margin-top: 6px; }
+}
+/* 폰 가로(844×390 등 낮은 화면): 무대와 조작판을 나란히 */
+@media (max-width: 860px) and (max-height: 520px) and (min-width: 600px) {
+  .explore-layout { grid-template-columns: 1fr 300px; grid-template-rows: 1fr; }
+  .sidebar { border-top: none; border-left: 1px solid var(--border, #e4e4e7); }
 }
   </style>
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"달의 위상 3D","description":"달을 직접 돌려 위상을 이해하고 일식·월식까지","url":"https://eduin.info/apps/moon-phase-v2/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
@@ -311,49 +273,48 @@ body {
 
 
 <!-- ============ 인트로 스크린 ============ -->
-<div id="screenIntro" class="screen active intro-screen">
+<div id="screenIntro" class="screen active sk-screen intro-screen">
   <div class="intro-emoji" aria-hidden="true">🌗</div>
   <h1>달의 위상 3D</h1>
-  <p class="intro-sub">달의 궤도 공전 시뮬레이션 · 일식과 월식 탐구</p>
+  <p class="intro-sub">달의 공전 시뮬레이션 · 일식과 월식 알아보기</p>
 
   <div class="intro-card">
-    <h3>달을 손으로 돌리며 탐험해요!</h3>
-    <p>달이 지구 주위를 공전할 때, 태양-지구-달의 각도에 따라 지구에서 보는 달의 모양(위상)이 어떻게 변하는지 3D 궤도 공전 모델로 직접 확인해 봐요!</p>
+    <h2>달을 손으로 돌리며 탐험해요!</h2>
+    <p>달이 지구 둘레를 돌 때, 태양-지구-달의 위치에 따라 지구에서 보는 달의 모양(위상)이 어떻게 변하는지 공전 모형으로 직접 확인해 봐요!</p>
   </div>
 
-  <button type="button" class="fb-btn fb-btn-primary" id="btnStart">시뮬레이터 들어가기</button>
+  <button type="button" class="sk-btn sk-btn--primary" id="btnStart"><Icon name="play" /> 시뮬레이터 들어가기</button>
 </div>
 
 <!-- ============ 메인 실험실 스크린 ============ -->
 <div id="screenExplore" class="screen explore-screen">
   <div class="explore-layout">
-    <!-- 좌측 공전 궤도 영역 -->
+    <!-- 공전 궤도 무대 -->
     <div class="canvas-zone" id="canvasZone">
-      <div class="canvas-header">
+      <div class="canvas-header" id="canvasHeader">
         <div class="canvas-title-badge">
-          <span class="num" id="canvasBadgeNum">1</span>
+          <span class="num" id="canvasBadgeNum"><Icon name="globe" /></span>
           <span id="canvasBadgeLabel">달의 공전과 위상</span>
         </div>
-        <div class="orbit-legend"><span aria-hidden="true">↺ </span>북쪽에서 본 모습 · 달은 시계 반대 방향으로 돌아요</div>
+        <div class="orbit-legend"><Icon name="rotate-ccw" /> 북쪽에서 본 모습 · 달은 시계 반대 방향으로 돌아요</div>
       </div>
 
       <div class="canvas-viewport" id="canvasViewport">
-        <!-- 3D 궤도 드래그 캔버스 -->
-        <canvas id="orbitCanvas" role="img" aria-label="북쪽(북극 위)에서 내려다본 지구와 달의 공전 궤도. 달은 시계 반대 방향으로 돌아요. 달을 끌어서 옮기거나 오른쪽 '달의 공전 조절' 슬라이더로 조절해요."></canvas>
+        <canvas id="orbitCanvas" role="img" aria-label="북쪽(북극 위)에서 내려다본 지구와 달의 공전 궤도. 태양은 오른쪽에 있고, 달은 시계 반대 방향으로 돌아요. 달을 끌어서 옮기거나 조작판의 월령 슬라이더로 조절해요."></canvas>
       </div>
 
-      <!-- 하단 툴바 -->
-      <div class="canvas-toolbar" role="group" aria-label="궤도 도구">
-        <button type="button" class="tool-btn" id="btnPlayAuto" aria-pressed="false">▶️ 자동 공전</button>
-        <button type="button" class="tool-btn" id="btnTiltToggle" aria-pressed="true">📐 궤도 기울기 (5°)</button>
-        <button type="button" class="tool-btn" id="btnResetView">🔄 시점 초기화</button>
+      <!-- 하단 도구줄 -->
+      <div class="canvas-toolbar" id="canvasToolbar" role="group" aria-label="궤도 도구">
+        <button type="button" class="sk-btn sk-btn--sm" id="btnPlayAuto" aria-pressed="false"><Icon name="play" /> 재생</button>
+        <button type="button" class="sk-btn sk-btn--sm" id="btnTiltToggle" aria-pressed="true"><Icon name="rotate-3d" /> 궤도 기울기 5°</button>
+        <button type="button" class="sk-btn sk-btn--sm" id="btnResetView"><Icon name="undo-2" /> 처음 위치로</button>
       </div>
     </div>
 
-    <!-- 우측 제어 사이드바 -->
+    <!-- 조작판 -->
     <div class="sidebar" id="sidebar">
       <div class="side-head">
-        <h2>🌗 달의 위상 3D</h2>
+        <h2>달의 위상 3D</h2>
         <div class="side-sub">초등 과학 6학년 「지구와 달의 운동」</div>
       </div>
 
@@ -361,57 +322,64 @@ body {
         <!-- 모드 탭 -->
         <div class="mode-tabs" id="modeTabs" role="group" aria-label="모드 고르기">
           <button type="button" class="mode-tab active" data-mode="1">
-            <span class="em" aria-hidden="true">🌏</span>자유 관찰
+            <Icon name="globe" />자유 탐험
           </button>
           <button type="button" class="mode-tab" data-mode="2">
-            <span class="em" aria-hidden="true">🏆</span>도전 미션
+            <Icon name="trophy" />도전 미션
           </button>
           <button type="button" class="mode-tab" data-mode="3">
-            <span class="em" aria-hidden="true">🌌</span>일식·월식
+            <Icon name="moon-star" />일식·월식
           </button>
         </div>
 
-        <!-- 지구 관측 뷰 (달 모양 렌더링) -->
+        <!-- 지구에서 본 달 모양 -->
         <div class="observation-view">
-          <canvas id="moonPhaseCanvas" role="img" aria-label="지구에서 본 달 모양: 보름달"></canvas>
-          <div class="moon-phase-name" id="moonPhaseName">보름달</div>
-          <div class="moon-phase-date" id="moonPhaseDate">음력 15일 경 (망)</div>
+          <canvas id="moonPhaseCanvas" role="img" aria-label="지구에서 본 달 모양"></canvas>
+          <div class="moon-phase-name" id="moonPhaseName">초승달</div>
+          <div class="moon-phase-date" id="moonPhaseDate">음력 2~3일 무렵</div>
         </div>
 
-        <!-- 미션 카드 (모드 2 전용) -->
+        <!-- 미션 카드 (미션·일식월식 모드) -->
         <div class="mission-card" id="missionCard" style="display:none;">
           <h3 class="mission-title" id="missionTitle">달의 위상 미션</h3>
           <div class="mission-desc" id="missionDesc">미션 내용을 불러오고 있습니다.</div>
           <div class="mission-nav" id="missionNav"></div>
-          <div class="mission-nav" id="eclipseNav" role="group" aria-label="일식·월식 위치" hidden>
-            <button type="button" class="fb-btn fb-btn-primary eclipse-btn" data-eclipse="solar">🌞 일식 위치로</button>
-            <button type="button" class="fb-btn fb-btn-primary eclipse-btn" data-eclipse="lunar" style="background:#b22222; color:#fff;">🌘 월식 위치로</button>
+          <div class="mission-nav sk-actions" id="eclipseNav" role="group" aria-label="일식·월식 위치" hidden>
+            <button type="button" class="sk-btn" data-eclipse="solar"><Icon name="sun" /> 일식 위치로</button>
+            <button type="button" class="sk-btn" data-eclipse="lunar"><Icon name="moon" /> 월식 위치로</button>
           </div>
         </div>
 
-        <!-- 상세 관측 정보 패널 -->
+        <!-- 상세 관측 정보 -->
         <div class="info-box" id="infoBox">
           <div class="info-row">
-            <span class="info-label">남중 시각:</span>
-            <span class="info-val" id="infoNoon">밤 12시 (자정)</span>
+            <span class="info-label">가장 높이 뜨는 때</span>
+            <span class="info-val" id="infoNoon">오후 3시 무렵</span>
           </div>
           <div class="info-row">
-            <span class="info-label">관측 방향:</span>
-            <span class="info-val" id="infoDir">밤새도록 (동 ➔ 남 ➔ 서)</span>
+            <span class="info-label">볼 수 있는 곳</span>
+            <span class="info-val" id="infoDir">초저녁 서쪽 하늘</span>
           </div>
           <div class="info-row">
-            <span class="info-label">관측 팁:</span>
-            <span class="info-val info-tip" id="infoTip">동쪽에서 떠서 남쪽을 지나 서쪽으로 지며 밤새 관찰됩니다.</span>
+            <span class="info-label">관찰 팁</span>
+            <span class="info-val info-tip" id="infoTip"></span>
           </div>
         </div>
 
-        <!-- 접근성 보조 슬라이더 -->
+        <!-- 월령 슬라이더 (0 = 삭) -->
         <div class="slider-control" id="sliderControl">
           <div class="slider-label">
-            <label for="moonSlider">달의 공전 조절</label>
-            <span id="sliderVal" aria-hidden="true">0°</span>
+            <label for="moonSlider">월령 (음력 날짜)</label>
+            <span id="sliderVal" aria-hidden="true">3.7일</span>
           </div>
-          <input type="range" class="slider-input" id="moonSlider" min="0" max="360" value="0" aria-valuetext="0°, 보름달">
+          <input type="range" class="slider-input" id="moonSlider" min="0" max="29.5" step="0.1" value="3.7">
+          <div class="ticks" aria-hidden="true">
+            <span style="--f:0">삭</span>
+            <span style="--f:0.25">상현</span>
+            <span style="--f:0.5">보름</span>
+            <span style="--f:0.75">하현</span>
+            <span style="--f:1">삭</span>
+          </div>
         </div>
 
         <!-- 피드백 박스 -->
@@ -419,8 +387,9 @@ body {
 
         <!-- 하단 액션 패널 -->
         <div class="action-panel">
-          <button type="button" class="action-btn" id="btnVerify" style="display:none;">🏆 정답 확인</button>
-          <button type="button" class="action-btn secondary" id="btnNextScreen" style="display:none;">탐험 완료 →</button>
+          <button type="button" class="sk-btn sk-btn--primary sk-btn--block" id="btnVerify" style="display:none;"><Icon name="circle-check" /> 확인하기</button>
+          <button type="button" class="sk-btn sk-btn--block" id="btnNextScreen" style="display:none;"><Icon name="award" /> 결과 보기</button>
+          <button type="button" class="sk-btn sk-btn--block" id="btnExitMission" style="display:none;"><Icon name="arrow-left" /> 자유 탐험으로</button>
         </div>
       </div>
     </div>
@@ -428,81 +397,86 @@ body {
 </div>
 
 <!-- ============ 결과 화면 ============ -->
-<div id="screenResult" class="screen result-screen">
-  <div style="font-size:72px;" aria-hidden="true">🏆</div>
-  <h2 style="margin:8px 0; font-size:28px;">달 탐사 완료!</h2>
+<div id="screenResult" class="screen sk-screen result-screen">
+  <div class="result-trophy" aria-hidden="true"><Icon name="trophy" /></div>
+  <h2>달 탐사 완료!</h2>
   <div class="result-stars" id="resultStars"></div>
   <div class="result-summary" id="resultSummary"></div>
-  <div class="result-actions">
-    <button type="button" class="fb-btn fb-btn-primary" id="btnRetry">다시 시작</button>
-    <button type="button" class="fb-btn fb-btn-primary" style="background:var(--mp-card); color:#fff; border:1px solid var(--mp-border);" id="btnBackToHub">자유 관찰로</button>
+  <div class="result-actions sk-actions">
+    <button type="button" class="sk-btn" id="btnBackToHub"><Icon name="arrow-left" /> 자유 탐험으로</button>
+    <button type="button" class="sk-btn sk-btn--danger" id="btnRetry"><Icon name="refresh-ccw" /> 처음부터</button>
   </div>
 </div>
 
 <script is:inline="">
 /* ================================================================
    달의 위상 3D — moon-phase-v2
+   규칙(오늘의 달 모양 앱과 같음): 태양은 오른쪽, 슬라이더는 월령(0 = 삭).
    ================================================================ */
+// @icons globe trophy moon-star play pause lightbulb
 (function() {
 'use strict';
 
-/* ── 달의 위상 데이터 8단계 정의 ── */
+const TWO_PI = Math.PI * 2;
+const SYNODIC = 29.53058867;               // 삭망월(일)
+const DAYS_PER_SEC = 2;                    // 재생: 1초에 약 2일(한 바퀴 약 15초)
+const TILT_DRAW = -0.2;                    // 궤도 기울기 그림(실제 5°를 잘 보이게 크게 그림, 라디안)
+const START_PHI = Math.PI / 4;             // 처음 위치: 초승달(미션 정답 자리가 아닌 곳)
+
+const norm = a => ((a % TWO_PI) + TWO_PI) % TWO_PI;
+const ageOf = phi => norm(phi) / TWO_PI * SYNODIC;   // 각도 → 월령(일)
+const phiOf = age => age / SYNODIC * TWO_PI;         // 월령(일) → 각도
+
+/* ── 달의 위상 8단계 ──
+   angle(φ): 태양에서 지구를 기준으로 잰 달의 각도(이각). 0 = 삭(태양 쪽), π/2 = 상현, π = 보름, 3π/2 = 하현 */
 const MOON_PHASES = [
-  { name: '보름달 (망)', date: '음력 15일 경', noon: '밤 12시 (자정)', dir: '밤새도록 (동 ➔ 남 ➔ 서)', angle: 0, tip: '저녁 동쪽에서 떠서 남쪽을 지나 아침에 서쪽으로 져요.' },
-  { name: '기우는 달 (Waning Gibbous)', date: '음력 18~19일 경', noon: '새벽 3시', dir: '밤늦게~새벽 남쪽 하늘', angle: Math.PI / 4, tip: '밤늦게 동쪽에서 떠서 새벽에 남쪽 하늘 높이 보여요. 왼쪽이 더 많이 밝아요.' },
-  { name: '하현달 (Third Quarter)', date: '음력 22~23일 경', noon: '아침 6시', dir: '새벽(해 뜰 무렵) 남쪽 하늘', angle: Math.PI / 2, tip: '자정에 동쪽에서 떠서 아침에 남쪽 하늘에서 왼쪽 반이 밝게 보여요.' },
-  { name: '그믐달 (Waning Crescent)', date: '음력 26~27일 경', noon: '오전 9시', dir: '새벽 동쪽 하늘', angle: Math.PI * 0.75, tip: '새벽녘 동쪽 하늘 끝에서 가느다랗게 보이다가 금방 해가 떠요.' },
-  { name: '그믐/삭 (New Moon)', date: '음력 29~30일 경', noon: '낮 12시', dir: '관측 불가 (태양과 같이 뜸)', angle: Math.PI, tip: '달이 태양과 같은 방향에 있어서 보이지 않아요.' },
-  { name: '초승달 (Waxing Crescent)', date: '음력 2~3일 경', noon: '오후 3시', dir: '초저녁 서쪽 하늘', angle: Math.PI * 1.25, tip: '해 질 무렵 서쪽 하늘 낮게 떴다가 바로 서쪽으로 져요.' },
-  { name: '상현달 (First Quarter)', date: '음력 7~8일 경', noon: '오후 6시', dir: '초저녁 남쪽 하늘', angle: Math.PI * 1.5, tip: '낮에 떠서 초저녁 남쪽 하늘에 오른쪽 반이 밝은 모습으로 보여요.' },
-  { name: '차오르는 달 (Waxing Gibbous)', date: '음력 11~12일 경', noon: '밤 9시', dir: '밤 남동쪽 하늘', angle: Math.PI * 1.75, tip: '남동쪽 하늘에서 거의 둥글어진 밝은 달을 감상할 수 있습니다.' }
+  { name: '삭', date: '음력 1일 무렵', noon: '낮 12시 무렵 (해와 함께)', dir: '보이지 않아요', angle: 0, tip: '달이 태양과 같은 방향에 있어서 보이지 않아요.' },
+  { name: '초승달', date: '음력 2~3일 무렵', noon: '오후 3시 무렵', dir: '초저녁 서쪽 하늘', angle: Math.PI / 4, tip: '해 질 무렵 서쪽 하늘에 낮게 떴다가 곧 서쪽으로 져요. 오른쪽이 가늘게 밝아요.' },
+  { name: '상현달', date: '음력 7~8일 무렵', noon: '저녁 6시 무렵', dir: '초저녁 남쪽 하늘', angle: Math.PI / 2, tip: '낮에 떠서 초저녁 남쪽 하늘에 오른쪽 반이 밝은 모습으로 보여요.' },
+  { name: '차오르는 볼록한 달', date: '음력 11~12일 무렵', noon: '밤 9시 무렵', dir: '초저녁 남동쪽 하늘', angle: Math.PI * 0.75, tip: '초저녁 남동쪽 하늘에서 거의 둥글어진 밝은 달을 볼 수 있어요.' },
+  { name: '보름달', date: '음력 15일 무렵', noon: '밤 12시 무렵 (자정)', dir: '밤새도록 (동 → 남 → 서)', angle: Math.PI, tip: '저녁에 동쪽에서 떠서 남쪽을 지나 아침에 서쪽으로 져요.' },
+  { name: '기우는 볼록한 달', date: '음력 18~19일 무렵', noon: '새벽 3시 무렵', dir: '밤늦게~새벽 남쪽 하늘', angle: Math.PI * 1.25, tip: '밤늦게 동쪽에서 떠서 새벽에 남쪽 하늘 높이 보여요. 왼쪽이 더 많이 밝아요.' },
+  { name: '하현달', date: '음력 22~23일 무렵', noon: '아침 6시 무렵', dir: '새벽(해 뜰 무렵) 남쪽 하늘', angle: Math.PI * 1.5, tip: '자정 무렵 동쪽에서 떠서 아침에 남쪽 하늘에서 왼쪽 반이 밝게 보여요.' },
+  { name: '그믐달', date: '음력 26~27일 무렵', noon: '오전 9시 무렵', dir: '새벽 동쪽 하늘', angle: Math.PI * 1.75, tip: '새벽녘 동쪽 하늘 낮은 곳에서 가느다랗게 보이다가 곧 해가 떠요.' }
 ];
 
 function getPhaseInfo(angle) {
-  // angle을 [0, 2pi] 범위로 클램프
-  let a = (angle % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-  
-  // 가장 가까운 정의 단계 검색
+  const a = norm(angle);
   let best = MOON_PHASES[0];
   let minDiff = Infinity;
   MOON_PHASES.forEach(p => {
-    let diff = Math.abs(a - p.angle);
-    if (diff > Math.PI) diff = Math.PI * 2 - diff;
-    if (diff < minDiff) {
-      minDiff = diff;
-      best = p;
-    }
+    const diff = angDist(a, p.angle);
+    if (diff < minDiff) { minDiff = diff; best = p; }
   });
   return best;
 }
 
 // 두 각도 사이의 가장 짧은 차이(0 ~ π). 0°와 359°도 가깝게 계산한다.
 function angDist(a, b) {
-  const TWO_PI = Math.PI * 2;
-  let d = Math.abs((((a - b) % TWO_PI) + TWO_PI) % TWO_PI);
+  let d = Math.abs(norm(a - b));
   if (d > Math.PI) d = TWO_PI - d;
   return d;
 }
 
-/* ── 도전 미션 ── */
+/* ── 도전 미션 (id·저장 형식 그대로, 정답 각도는 새 규칙 φ로) ── */
 const MISSIONS = [
   {
     id: 'm1',
-    desc: '달을 공전 궤도에서 드래그하여 <strong>보름달 (음력 15일 경)</strong>이 뜨는 위치로 맞춘 뒤 <strong>[정답 확인]</strong>을 눌러 보세요.',
-    targetAngle: 0,
-    verify: (angle) => angDist(angle, 0) < 0.25 // 15도 내외 오차 허용
+    desc: '달을 궤도에서 끌어 옮기거나 조작판의 슬라이더로 <strong>보름달 (음력 15일 무렵)</strong>이 되는 위치에 맞춘 뒤 <strong>[확인하기]</strong>를 눌러 보세요.',
+    targetAngle: Math.PI,
+    verify: (angle) => angDist(angle, Math.PI) < 0.25 // 약 15° 오차 허용
   },
   {
     id: 'm2',
-    desc: '초저녁 남쪽 하늘에 오른쪽 반이 밝게 뜨는 <strong>상현달 (음력 7~8일 경)</strong> 위치로 달을 움직인 뒤 <strong>[정답 확인]</strong>을 눌러 보세요.',
-    targetAngle: Math.PI * 1.5,
-    verify: (angle) => angDist(angle, Math.PI * 1.5) < 0.25
+    desc: '초저녁 남쪽 하늘에 오른쪽 반이 밝게 뜨는 <strong>상현달 (음력 7~8일 무렵)</strong> 위치로 달을 옮긴 뒤 <strong>[확인하기]</strong>를 눌러 보세요.',
+    targetAngle: Math.PI * 0.5,
+    verify: (angle) => angDist(angle, Math.PI * 0.5) < 0.25
   },
   {
     id: 'm3',
-    desc: '아침 남쪽 하늘에 왼쪽 반이 밝게 보이는 <strong>하현달 (음력 22~23일 경)</strong> 위치로 달을 맞춘 뒤 <strong>[정답 확인]</strong>을 눌러 보세요.',
-    targetAngle: Math.PI * 0.5,
-    verify: (angle) => angDist(angle, Math.PI * 0.5) < 0.25
+    desc: '아침 남쪽 하늘에 왼쪽 반이 밝게 보이는 <strong>하현달 (음력 22~23일 무렵)</strong> 위치로 달을 맞춘 뒤 <strong>[확인하기]</strong>를 눌러 보세요.',
+    targetAngle: Math.PI * 1.5,
+    verify: (angle) => angDist(angle, Math.PI * 1.5) < 0.25
   }
 ];
 
@@ -522,56 +496,58 @@ function loadState() {
   state.missionsCompleted = store.load().missionsCompleted;
 }
 
-/* ── 공유 링크 읽기 (#share=… 새 형식·예전 URI-JSON 모두) ── */
+/* ── 공유 링크 (#share=…, 형식 그대로 { v:1, phaseAngle }) ──
+   phaseAngle은 예전 규칙(0 = 보름, π = 삭)의 각도다. 예전 링크와 맞도록 읽고 쓸 때 π만큼 바꾼다:
+   φ(새 규칙, 0 = 삭) = phaseAngle + π */
 function parseShareLink() {
   const payload = SimKit.share.read({ version: 1 });
   const a = Number(payload && payload.phaseAngle);
-  if (payload && isFinite(a)) {
-    state.phaseAngle = ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-  }
+  if (payload && isFinite(a)) state.phi = norm(a + Math.PI);
+}
+function sharePhaseAngle() {
+  return Math.round(norm(state.phi - Math.PI) * 1000) / 1000;
 }
 
-/* ── 피드백 상자 (SimKit: role=status, aria-live) ── */
-const fb = SimKit.feedback('#feedbackBox', { classes: { ok: 'ok', no: 'no' } });
-function showFeedback(msg, type) { fb.show(type === 'ok' ? 'ok' : 'no', msg); }
+/* ── 피드백 상자 (SimKit: role=status, aria-live, 가려지면 스크롤) ── */
+const fb = SimKit.feedback('#feedbackBox');
 function hideFeedback() { fb.hide(); }
 
 const screens = SimKit.screens({ focus: true });
 let modeTabs = null;
 let mc = null;
 
-function syncSlider() {
-  const deg = Math.round(state.phaseAngle * 180 / Math.PI) % 360;
-  $('#moonSlider').value = deg;
-  $('#sliderVal').textContent = `${deg}°`;
-  $('#moonSlider').setAttribute('aria-valuetext', `${deg}°, ${getPhaseInfo(state.phaseAngle).name}`);
-}
-
 /* ── 앱 상태 ── */
 let state = {
   mode: 1, // 1: 자유, 2: 미션, 3: 일식/월식
   missionIdx: 0,
   missionsCompleted: { m1: false, m2: false, m3: false },
-  
-  phaseAngle: 0, // 0 to 2pi (0 = Full Moon, pi = New Moon)
+
+  phi: START_PHI, // 달의 각도(0 = 삭, π/2 = 상현, π = 보름, 3π/2 = 하현). 시간이 흐르면 커진다
   autoPlay: false,
-  tiltOrbit: true, // 궤도 경사 5도 토글
-  
-  // 일식/월식 연출 상태
+  tiltOrbit: true, // 궤도 기울기 5° 켜기/끄기
+
   eclipseType: null, // 'solar', 'lunar', null
-  eclipseProgress: 0, // 0 to 1
-  
   isDraggingMoon: false
 };
 
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
+function syncSlider() {
+  const age = ageOf(state.phi);
+  const v = Math.min(29.5, Math.round(age * 10) / 10);
+  $('#moonSlider').value = v;
+  $('#sliderVal').textContent = `${v.toFixed(1)}일`;
+  $('#moonSlider').setAttribute('aria-valuetext', `월령 ${v.toFixed(1)}일, ${getPhaseInfo(state.phi).name}`);
+}
+
 /* ══════════════════════════════════════
-   Canvas 렌더러 (궤도 3D & 위상)
+   Canvas 렌더러 (궤도 & 위상)
    ══════════════════════════════════════ */
 let orbitCtx, phaseCtx;
 let orbitCanvas, phaseCanvas;
+let cssW = 0, cssH = 0;               // 궤도 캔버스 CSS 크기
+const layout = { top: 0, bottom: 0 }; // 그림을 그릴 세로 범위(위 이름표 줄 ~ 아래 도구줄 사이)
 
 function initCanvas() {
   orbitCanvas = $('#orbitCanvas');
@@ -579,88 +555,124 @@ function initCanvas() {
   orbitCtx = orbitCanvas.getContext('2d');
   phaseCtx = phaseCanvas.getContext('2d');
 
-  // 위상 캔버스 High DPI 처리 및 크기 고정 (140x140)
-  phaseCanvas.width = 140 * window.devicePixelRatio;
-  phaseCanvas.height = 140 * window.devicePixelRatio;
-  phaseCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  // 위상 캔버스: 논리 크기 140×140, 화면 배율만큼 내부 해상도를 올린다(보이는 크기는 CSS)
+  const dpr = window.devicePixelRatio || 1;
+  phaseCanvas.width = Math.round(140 * dpr);
+  phaseCanvas.height = Math.round(140 * dpr);
+  phaseCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   resizeOrbitCanvas();
   window.addEventListener('resize', resizeOrbitCanvas);
 
-  // 드래그 궤도 조작 등록
   setupDragInteraction();
 }
 
 function resizeOrbitCanvas() {
   const rect = orbitCanvas.parentNode.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
-  orbitCanvas.width = Math.round(rect.width * dpr);
-  orbitCanvas.height = Math.round(rect.height * dpr);
-  orbitCanvas.style.width = rect.width + 'px';
-  orbitCanvas.style.height = rect.height + 'px';
+  cssW = rect.width; cssH = rect.height;
+  orbitCanvas.width = Math.max(1, Math.round(rect.width * dpr));
+  orbitCanvas.height = Math.max(1, Math.round(rect.height * dpr));
   orbitCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  measureLayout();
   requestRedraw();
 }
 
-// 화면 배율: 작은 화면(폰)에서는 궤도를 줄이고, 큰 화면에서는 최대 1.9배까지 키운다
-function getScale(cw, ch) {
-  return Math.max(0.45, Math.min(cw / 620, ch / 440, 1.9));
+// 무대 위 이름표 줄 아래 ~ 도구줄 위 사이에만 궤도를 그린다(이름표·도구줄이 달·궤도를 가리지 않게)
+function measureLayout() {
+  const cr = orbitCanvas.getBoundingClientRect();
+  if (!cr.height) return;
+  const hd = $('#canvasHeader').getBoundingClientRect();
+  const tb = $('#canvasToolbar').getBoundingClientRect();
+  layout.top = Math.max(0, hd.bottom - cr.top) + 6;
+  layout.bottom = Math.min(cr.height, tb.top - cr.top) - 6;
 }
 
-/* 궤도 그림은 교과서처럼 북쪽(북극 위)에서 내려다본 모습이다. 태양은 화면 왼쪽.
-   phaseAngle(θ): 0 = 보름달(태양 반대편, 오른쪽), π = 삭(태양 쪽, 왼쪽). θ가 늘수록 시간이 흐른다.
-   북쪽에서 보면 달은 시계 반대 방향으로 돌므로, θ가 늘 때 화면에서 오른쪽 → 위 → 왼쪽 → 아래로 간다.
-   그래서 화면 y(아래로 +)는 cy − rY·sinθ. 위(θ=π/2) = 하현달, 아래(θ=3π/2) = 상현달.
-   (위상 이름·달 모양·미션 정답은 θ로만 정해지므로 그대로 맞는다) */
-function moonScreenPos(cx, cy, k, angle) {
-  const rX = 220 * k;
-  const rY = (90 + (state.tiltOrbit ? 24 : 0)) * k; // 5° 경사 연출 시 세로로 조금 더 벌어짐
-  return { x: cx + rX * Math.cos(angle), y: cy - rY * Math.sin(angle) };
+/* 궤도 그림의 크기·위치. 북쪽(북극 위)에서 내려다본 모습, 태양은 화면 오른쪽.
+   φ = 0(삭)은 태양 쪽(오른쪽), 시간이 흐르면(φ 증가) 시계 반대 방향: 오른쪽 → 위(상현) → 왼쪽(보름) → 아래(하현).
+   궤도 기울기를 켜면 궤도 전체를 조금 돌려 그려서, 삭·보름 때 달이 태양-지구 줄에서 비껴 있게 보인다.
+   달 위치(orbitPoint)와 궤도선·화살표가 모두 같은 g를 쓰므로 달은 항상 궤도선 위에 있다. */
+function geom() {
+  const w = cssW, h = cssH;
+  let top = layout.top, bottom = layout.bottom;
+  if (!(bottom - top > 80)) { top = 0; bottom = h; } // 측정 전·아주 낮은 화면
+  const availH = bottom - top;
+  const k = Math.max(0.3, Math.min(w / 640, availH / 250, 1.9));
+  return {
+    w, h, k,
+    cx: w / 2 - 30 * k,                 // 오른쪽 햇빛 화살표 자리만큼 왼쪽으로
+    cy: top + availH / 2,
+    rX: 220 * k, rY: 90 * k,
+    alpha: state.tiltOrbit ? TILT_DRAW : 0,
+    moonR: Math.max(9, 13 * k)
+  };
 }
-// 화면 위치 → θ (moonScreenPos의 역함수)
-function screenToAngle(dx, dy) {
-  const ratio = 220 / (state.tiltOrbit ? 114 : 90);
-  const a = Math.atan2(-dy * ratio, dx);
-  return (a + Math.PI * 2) % (Math.PI * 2);
+function orbitPoint(g, phi) {
+  const px = g.rX * Math.cos(phi), py = -g.rY * Math.sin(phi);
+  const c = Math.cos(g.alpha), s = Math.sin(g.alpha);
+  return { x: g.cx + px * c - py * s, y: g.cy + px * s + py * c };
+}
+// 화면 위치 → φ (orbitPoint의 역함수)
+function screenToPhi(g, x, y) {
+  const dx = x - g.cx, dy = y - g.cy;
+  const c = Math.cos(g.alpha), s = Math.sin(g.alpha);
+  const px = dx * c + dy * s, py = -dx * s + dy * c;
+  return norm(Math.atan2(-py / g.rY, px / g.rX));
 }
 
-/* ── 그리기 예약 (P8: 상태가 바뀔 때만 그린다. 자동 공전 중에만 매 프레임) ── */
+/* ── 그리기 예약 (상태가 바뀔 때만 한 번 그린다) ── */
 let rafId = 0;
 function requestRedraw() {
   if (rafId) return;
-  rafId = requestAnimationFrame(drawLoop);
+  rafId = requestAnimationFrame(() => { rafId = 0; draw(); });
 }
 
-// 궤도 드래그 설정
+/* ── 자동 공전: 경과 시간(dt) 기준 — 120Hz 화면에서도 같은 속도, 탭이 숨으면 멈춤 ──
+   움직임 줄이기 설정이면 매끄럽게 돌지 않고 1.5초마다 다음 위상(8단계)으로 건너뛴다 */
+let reducedAcc = 0;
+const autoLoop = SimKit.loop((dt) => {
+  if (SimKit.motion.reduced()) {
+    reducedAcc += dt;
+    if (reducedAcc < 1.5) return;
+    reducedAcc = 0;
+    const step = Math.PI / 4;
+    state.phi = norm((Math.floor(norm(state.phi) / step + 1e-6) + 1) * step);
+  } else {
+    state.phi = norm(state.phi + phiOf(dt * DAYS_PER_SEC));
+  }
+  syncSlider();
+  updateUI();
+});
+
+function setAutoPlay(on) {
+  state.autoPlay = !!on;
+  if (state.autoPlay) { reducedAcc = 0; autoLoop.start(); }
+  else autoLoop.stop();
+  const b = $('#btnPlayAuto');
+  b.setAttribute('aria-pressed', state.autoPlay ? 'true' : 'false');
+  b.innerHTML = state.autoPlay
+    ? `${SimKit.icon('pause')} ${SimKit.LABELS.pause}`
+    : `${SimKit.icon('play')} ${SimKit.LABELS.play}`;
+}
+
+// 궤도 끌기
 function setupDragInteraction() {
   function getEventPos(e) {
     const rect = orbitCanvas.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
-    };
+    return { x: clientX - rect.left, y: clientY - rect.top };
   }
 
   function handleStart(e) {
     const pos = getEventPos(e);
-    const center = { x: orbitCanvas.width / (2 * window.devicePixelRatio), y: orbitCanvas.height / (2 * window.devicePixelRatio) };
-    
-    // 달의 현재 위치 계산 (drawLoop과 동일한 화면 배율 적용)
-    const cw = orbitCanvas.width / window.devicePixelRatio;
-    const ch = orbitCanvas.height / window.devicePixelRatio;
-    const k = getScale(cw, ch);
-    const mp = moonScreenPos(center.x, center.y, k, state.phaseAngle); // drawLoop과 같은 위치
-    const moonX = mp.x;
-    const moonY = mp.y;
-
-    // 클릭 거리가 달 반경 언저리면 드래그 시작 (손가락 터치를 위해 최소 30px)
-    const dist = Math.hypot(pos.x - moonX, pos.y - moonY);
-    if (dist < Math.max(30, 38 * k)) {
+    const g = geom();
+    const mp = orbitPoint(g, state.phi); // 그림과 같은 위치
+    // 달 언저리를 누르면 끌기 시작 (손가락 터치를 위해 최소 30px)
+    const dist = Math.hypot(pos.x - mp.x, pos.y - mp.y);
+    if (dist < Math.max(30, 38 * g.k)) {
       state.isDraggingMoon = true;
-      state.autoPlay = false;
-      updatePlayButtonState();
+      setAutoPlay(false);
       requestRedraw();
       e.preventDefault();
     }
@@ -668,16 +680,10 @@ function setupDragInteraction() {
 
   function handleMove(e) {
     if (!state.isDraggingMoon) return;
-    if (e.cancelable) e.preventDefault(); // 드래그 중 화면 스크롤 방지
+    if (e.cancelable) e.preventDefault(); // 끄는 동안 화면 스크롤 방지
     const pos = getEventPos(e);
-    const center = { x: orbitCanvas.width / (2 * window.devicePixelRatio), y: orbitCanvas.height / (2 * window.devicePixelRatio) };
-
-    // 마우스의 각도를 계산하여 phaseAngle로 매핑 (타원 세로 보정 + 북쪽에서 본 시계 반대 방향)
-    state.phaseAngle = screenToAngle(pos.x - center.x, pos.y - center.y);
-
-    // 슬라이더 동기화
+    state.phi = screenToPhi(geom(), pos.x, pos.y);
     syncSlider();
-
     updateUI();
   }
 
@@ -696,375 +702,335 @@ function setupDragInteraction() {
   window.addEventListener('touchend', handleEnd);
 }
 
-// 그리기: 상태가 바뀌면 requestRedraw()로 한 번, 자동 공전 중에는 매 프레임
-function drawLoop() {
-  rafId = 0;
-  if (state.autoPlay) {
-    state.phaseAngle = (state.phaseAngle + 0.008) % (Math.PI * 2);
-    syncSlider();
-    updateUI(); // updateUI가 다음 프레임을 예약한다
-  }
-
-  // 1. 궤도 캔버스 클리어
-  const w = orbitCanvas.width / window.devicePixelRatio;
-  const h = orbitCanvas.height / window.devicePixelRatio;
+function draw() {
+  if (!orbitCtx) return;
+  const g = geom();
+  const { w, h, cx, cy, k, rX } = g;
   orbitCtx.clearRect(0, 0, w, h);
+  const fs = Math.max(12, Math.round(13 * k)); // 무대 글자: 폰에서도 12px 이상
 
-  // 시각화 센터 (캔버스 크기에 비례해 궤도 확대·축소)
-  const cx = w / 2;
-  const cy = h / 2;
-  const k = getScale(w, h); // 화면 배율
-  const rX = 220 * k;
-  const rY = 90 * k;
-
-  // 2. 태양빛 표현 — 왼쪽 화면 밖 태양에서 퍼지는 방사형 광원 + 광선 화살표
-  const sunX = -w * 0.18; // 화면 왼쪽 바깥의 가상 태양 위치
-  const radGrad = orbitCtx.createRadialGradient(sunX, cy, 0, sunX, cy, cx + w * 0.2);
+  // 1. 햇빛 — 오른쪽 화면 밖 태양에서 퍼지는 빛 + 광선 화살표(오른쪽 → 왼쪽, 지구·달을 향해)
+  const sunX = w * 1.18;
+  const radGrad = orbitCtx.createRadialGradient(sunX, cy, 0, sunX, cy, (w - cx) + w * 0.2);
   radGrad.addColorStop(0, 'rgba(255, 209, 102, 0.28)');
   radGrad.addColorStop(0.55, 'rgba(255, 209, 102, 0.08)');
   radGrad.addColorStop(1, 'rgba(255, 209, 102, 0)');
   orbitCtx.fillStyle = radGrad;
   orbitCtx.fillRect(0, 0, w, h);
 
-  // 광선 화살표 3줄 (태양 → 오른쪽, 지구·달을 향해)
-  const rayEndX = cx - rX - 40 * k;
-  orbitCtx.strokeStyle = 'rgba(255, 209, 102, 0.55)';
-  orbitCtx.fillStyle = 'rgba(255, 209, 102, 0.55)';
-  orbitCtx.lineWidth = 2.5;
-  [-1, 0, 1].forEach(i => {
-    const ry = cy + i * 70 * k;
-    orbitCtx.beginPath();
-    orbitCtx.moveTo(16, ry);
-    orbitCtx.lineTo(rayEndX, ry);
-    orbitCtx.stroke();
-    // 화살촉
-    orbitCtx.beginPath();
-    orbitCtx.moveTo(rayEndX + 10, ry);
-    orbitCtx.lineTo(rayEndX - 4, ry - 6);
-    orbitCtx.lineTo(rayEndX - 4, ry + 6);
-    orbitCtx.closePath();
-    orbitCtx.fill();
-  });
-
-  // 태양 이정표 표시
-  orbitCtx.font = `bold ${Math.round(12 * k)}px sans-serif`;
+  const rayStartX = w - 12;
+  const rayEndX = cx + rX + 34 * k;
+  if (rayStartX - rayEndX > 24) {
+    orbitCtx.strokeStyle = 'rgba(255, 209, 102, 0.6)';
+    orbitCtx.fillStyle = 'rgba(255, 209, 102, 0.6)';
+    orbitCtx.lineWidth = 2.5;
+    [-1, 0, 1].forEach(i => {
+      const ry = cy + i * 60 * k;
+      orbitCtx.beginPath();
+      orbitCtx.moveTo(rayStartX, ry);
+      orbitCtx.lineTo(rayEndX, ry);
+      orbitCtx.stroke();
+      orbitCtx.beginPath(); // 화살촉(왼쪽으로)
+      orbitCtx.moveTo(rayEndX - 10, ry);
+      orbitCtx.lineTo(rayEndX + 4, ry - 6);
+      orbitCtx.lineTo(rayEndX + 4, ry + 6);
+      orbitCtx.closePath();
+      orbitCtx.fill();
+    });
+  }
+  orbitCtx.font = `bold ${fs}px sans-serif`;
   orbitCtx.fillStyle = '#ffd166';
-  orbitCtx.textAlign = 'left';
-  orbitCtx.fillText('☀️ 햇빛 방향', 20, cy - 70 * k - 12);
+  orbitCtx.textAlign = 'right';
+  orbitCtx.textBaseline = 'alphabetic';
+  orbitCtx.fillText('햇빛', w - 14, cy - 60 * k - 10);
 
-  // 3. 지구 그림자 뿔 표현 (태양 반대편인 오른쪽으로 길게 뻗는 어두운 암영대)
+  // 2. 지구 그림자(태양 반대편인 왼쪽으로)
   if (state.mode === 3 && state.eclipseType === 'lunar') {
     orbitCtx.beginPath();
     orbitCtx.moveTo(cx, cy - 25 * k);
-    orbitCtx.lineTo(cx + w, cy - 35 * k);
-    orbitCtx.lineTo(cx + w, cy + 35 * k);
+    orbitCtx.lineTo(0, cy - 35 * k);
+    orbitCtx.lineTo(0, cy + 35 * k);
     orbitCtx.lineTo(cx, cy + 25 * k);
-    orbitCtx.fillStyle = 'rgba(231,76,60,0.18)'; // 월식 지구 그림자 강조
+    orbitCtx.closePath();
+    orbitCtx.fillStyle = 'rgba(231,76,60,0.2)'; // 월식: 지구 그림자 강조
     orbitCtx.fill();
   } else {
-    const shadowGrad = orbitCtx.createLinearGradient(cx, cy, cx + rX + 60 * k, cy);
-    shadowGrad.addColorStop(0, 'rgba(11, 15, 36, 0.45)');
-    shadowGrad.addColorStop(1, 'rgba(11, 15, 36, 0)');
+    const len = rX + 60 * k;
+    const shadowGrad = orbitCtx.createLinearGradient(cx, cy, cx - len, cy);
+    shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
+    shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
     orbitCtx.fillStyle = shadowGrad;
-    orbitCtx.fillRect(cx, cy - 25 * k, rX + 60 * k, 50 * k);
+    orbitCtx.fillRect(cx - len, cy - 25 * k, len, 50 * k);
   }
 
-  // 4. 공전 궤도선 (3D 타원 표현)
+  // 3. 공전 궤도선(달 위치와 같은 타원·기울기)
   orbitCtx.beginPath();
-  orbitCtx.ellipse(cx, cy, rX, rY, 0, 0, Math.PI * 2);
-  orbitCtx.strokeStyle = 'rgba(255,255,255,0.15)'; // 캔버스는 CSS 변수를 못 읽음 (--mp-orbit 값)
+  orbitCtx.ellipse(cx, cy, g.rX, g.rY, g.alpha, 0, TWO_PI);
+  orbitCtx.strokeStyle = 'rgba(255,255,255,0.22)';
   orbitCtx.lineWidth = 3;
   orbitCtx.stroke();
+  if (g.alpha) {
+    // 기울기 비교용: 기울지 않은 궤도(태양-지구 줄과 같은 평면)를 점선으로
+    orbitCtx.beginPath();
+    orbitCtx.ellipse(cx, cy, g.rX, g.rY, 0, 0, TWO_PI);
+    orbitCtx.setLineDash([5, 6]);
+    orbitCtx.strokeStyle = 'rgba(255,255,255,0.12)';
+    orbitCtx.lineWidth = 1.5;
+    orbitCtx.stroke();
+    orbitCtx.setLineDash([]);
+  }
 
-  // 공전 방향 화살표(시계 반대 방향): 궤도 오른쪽 위·왼쪽 아래에 하나씩
+  // 공전 방향 화살표(시계 반대 방향)
   [Math.PI * 0.3, Math.PI * 1.3].forEach(a => {
-    const p = { x: cx + rX * Math.cos(a), y: cy - rY * Math.sin(a) };
-    // 접선 방향(θ가 늘어나는 쪽): d/dθ (rX cosθ, −rY sinθ) = (−rX sinθ, −rY cosθ)
-    const tx = -rX * Math.sin(a), ty = -rY * Math.cos(a);
-    const len = Math.hypot(tx, ty) || 1;
-    const ux = tx / len, uy = ty / len;
-    const s = 9 * k;
+    const p = orbitPoint(g, a);
+    const q = orbitPoint(g, a + 0.01);
+    const len = Math.hypot(q.x - p.x, q.y - p.y) || 1;
+    const ux = (q.x - p.x) / len, uy = (q.y - p.y) / len;
+    const s = 9 * Math.max(k, 0.6);
     orbitCtx.beginPath();
     orbitCtx.moveTo(p.x + ux * s, p.y + uy * s);
     orbitCtx.lineTo(p.x - ux * s - uy * s * 0.7, p.y - uy * s + ux * s * 0.7);
     orbitCtx.lineTo(p.x - ux * s + uy * s * 0.7, p.y - uy * s - ux * s * 0.7);
     orbitCtx.closePath();
-    orbitCtx.fillStyle = 'rgba(255,255,255,0.55)';
+    orbitCtx.fillStyle = 'rgba(255,255,255,0.6)';
     orbitCtx.fill();
   });
 
-  // 5. 중앙 지구 🌍 그리기 (자전 회전 연출)
+  // 4. 지구(햇빛 받는 오른쪽 반은 밝고, 왼쪽 반은 밤)
+  const er = 32 * k;
   orbitCtx.beginPath();
-  orbitCtx.arc(cx, cy, 32 * k, 0, Math.PI * 2);
+  orbitCtx.arc(cx, cy, er, 0, TWO_PI);
   orbitCtx.fillStyle = '#1e3d59';
   orbitCtx.fill();
   orbitCtx.strokeStyle = '#3a86c8';
   orbitCtx.lineWidth = 2;
   orbitCtx.stroke();
-
-  // 지구 반구 명암 (왼쪽 햇빛 영역은 밝고, 오른쪽 반구는 그늘)
   orbitCtx.beginPath();
-  orbitCtx.arc(cx, cy, 32 * k, -Math.PI/2, Math.PI/2);
+  orbitCtx.arc(cx, cy, er, Math.PI / 2, Math.PI * 1.5);
   orbitCtx.fillStyle = 'rgba(0,0,0,0.5)';
   orbitCtx.fill();
-
-  // 지구 자전 방향 및 아시아대륙 간이 표시
   orbitCtx.fillStyle = '#fff';
-  orbitCtx.font = '11px sans-serif';
+  orbitCtx.font = `bold ${Math.max(12, Math.round(12 * k))}px sans-serif`;
   orbitCtx.textAlign = 'center';
-  orbitCtx.fillText('🌏 지구', cx, cy + 4);
+  orbitCtx.textBaseline = 'middle';
+  orbitCtx.fillText('지구', cx, cy);
+  orbitCtx.textBaseline = 'alphabetic';
 
-  // 6. 궤도 위 달 🌑 그리기 (햇빛 방향에 맞게 항상 왼쪽 반구만 빛남)
-  //    궤도 경사 연출 시 세로 위치가 조금 더 벌어진다(moonScreenPos)
-  const mpos = moonScreenPos(cx, cy, k, state.phaseAngle);
-  const mx = mpos.x;
-  const my = mpos.y;
-
-  // 달 그림자 영역
+  // 5. 궤도 위 달(햇빛 쪽인 오른쪽 반만 밝음)
+  const mp = orbitPoint(g, state.phi);
+  const mr = g.moonR;
   orbitCtx.beginPath();
-  orbitCtx.arc(mx, my, 13 * k, 0, Math.PI * 2);
-  orbitCtx.fillStyle = '#222533';
+  orbitCtx.arc(mp.x, mp.y, mr, 0, TWO_PI);
+  orbitCtx.fillStyle = '#2a2e3d';
   orbitCtx.fill();
-
-  // 달 햇빛 반사 반구 (항상 왼쪽 방향이 밝음)
   orbitCtx.beginPath();
-  orbitCtx.arc(mx, my, 13 * k, Math.PI / 2, Math.PI * 1.5);
+  orbitCtx.arc(mp.x, mp.y, mr, -Math.PI / 2, Math.PI / 2);
   orbitCtx.fillStyle = '#ffd166';
   orbitCtx.fill();
 
-  // 드래그 링 외곽 원형 가이드
+  // 끌기 고리
   orbitCtx.beginPath();
-  orbitCtx.arc(mx, my, 22 * k, 0, Math.PI * 2);
-  orbitCtx.strokeStyle = state.isDraggingMoon ? '#ffd166' : 'rgba(255,255,255,0.2)';
+  orbitCtx.arc(mp.x, mp.y, mr + 9 * Math.max(k, 0.6), 0, TWO_PI);
+  orbitCtx.strokeStyle = state.isDraggingMoon ? '#ffd166' : 'rgba(255,255,255,0.3)';
   orbitCtx.lineWidth = 1.5;
   orbitCtx.stroke();
 
-  // 일식/월식 특수 효과 오버레이
-  if (state.mode === 3) {
-    if (state.eclipseType === 'solar') {
-      // 삭 부근에서 일식 불빛 라인 연출
-      const distToNew = angDist(state.phaseAngle, Math.PI);
-      if (distToNew < 0.1 && !state.tiltOrbit) {
-        // 일식 섬광 효과
-        orbitCtx.fillStyle = 'rgba(255,209,102,0.15)';
-        orbitCtx.fillRect(0, 0, w, h);
-      }
-    }
+  // 일식 연출: 삭(태양 쪽) 근처에서 기울기를 끄면 하늘이 번쩍
+  if (state.mode === 3 && state.eclipseType === 'solar' && !state.tiltOrbit && angDist(state.phi, 0) < 0.1) {
+    orbitCtx.fillStyle = 'rgba(255,209,102,0.15)';
+    orbitCtx.fillRect(0, 0, w, h);
   }
 
-  // 7. 실시간 위상 캔버스 렌더링 (지구에서 본 달의 위상)
-  drawMoonPhase(phaseCtx, 70, 70, 52, state.phaseAngle);
+  // 6. 지구에서 본 달 모양
+  drawMoonPhase(phaseCtx, 70, 70, 52, state.phi);
 }
 
-// 지구에서 보는 모양 명암 렌더링 (Volcano 스타일 입체 렌더링)
-function drawMoonPhase(ctx, cx, cy, r, theta) {
+// 위상(0~1, 0 = 삭)에 맞는 밝은 부분 경로 — '오늘의 달 모양' 앱과 같은 공식(명암 경계 타원 가로 반지름 = r·cos(2π·위상))
+function litPath(ctx, cx, cy, r, phase) {
+  const s = Math.cos(TWO_PI * phase);
+  ctx.beginPath();
+  if (phase <= 0.5) {
+    ctx.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, false);
+    if (phase < 0.25) ctx.ellipse(cx, cy, r * s, r, 0, Math.PI / 2, -Math.PI / 2, true);
+    else ctx.ellipse(cx, cy, r * Math.abs(s), r, 0, Math.PI / 2, -Math.PI / 2, false);
+  } else {
+    ctx.arc(cx, cy, r, Math.PI / 2, -Math.PI / 2, false);
+    if (phase < 0.75) ctx.ellipse(cx, cy, r * Math.abs(s), r, 0, -Math.PI / 2, Math.PI / 2, false);
+    else ctx.ellipse(cx, cy, r * s, r, 0, -Math.PI / 2, Math.PI / 2, true);
+  }
+}
+
+// 지구에서 본 달 모양(북반구: 차오를 때 오른쪽, 기울 때 왼쪽이 밝음)
+function drawMoonPhase(ctx, cx, cy, r, phi) {
   ctx.clearRect(0, 0, 140, 140);
-  
-  // 크레이터 패턴 그리기 헬퍼
+
   const drawCraters = (alpha) => {
     ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
-    ctx.beginPath(); ctx.arc(cx - r*0.3, cy - r*0.4, r*0.15, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + r*0.4, cy - r*0.2, r*0.2, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx - r*0.1, cy + r*0.3, r*0.25, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + r*0.2, cy + r*0.4, r*0.12, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx + r*0.1, cy - r*0.6, r*0.08, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx - r*0.4, cy + r*0.1, r*0.1, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx - r*0.3, cy - r*0.4, r*0.15, 0, TWO_PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + r*0.4, cy - r*0.2, r*0.2, 0, TWO_PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx - r*0.1, cy + r*0.3, r*0.25, 0, TWO_PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + r*0.2, cy + r*0.4, r*0.12, 0, TWO_PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + r*0.1, cy - r*0.6, r*0.08, 0, TWO_PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx - r*0.4, cy + r*0.1, r*0.1, 0, TWO_PI); ctx.fill();
   };
 
-  ctx.save();
-  // 1. 어두운 배경 구체
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.clip(); // 전체 달 영역 클리핑
-  
-  ctx.fillStyle = '#111726';
-  ctx.fill();
-  drawCraters(0.4); // 어두운 부분 크레이터
-
-  const cos = Math.cos(theta);
-  const sin = Math.sin(theta);
-
-  // 2. 일식/월식 시 붉은달 또는 가려지는 특수 렌더링
+  // 일식·월식(기울기를 끈 때만)
   if (state.mode === 3 && !state.tiltOrbit) {
-    if (state.eclipseType === 'lunar' && angDist(theta, 0) < 0.2) {
-      ctx.fillStyle = '#b22222'; // 개기월식 붉은 보름달 (Blood Moon)
-      ctx.fill();
+    if (state.eclipseType === 'lunar' && angDist(phi, Math.PI) < 0.2) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, TWO_PI); ctx.clip();
+      ctx.fillStyle = '#b22222'; // 개기월식: 붉은 달
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
       drawCraters(0.3);
-      
-      // 입체감 오버레이
       const grad = ctx.createRadialGradient(cx - r*0.2, cy - r*0.2, r*0.1, cx, cy, r);
       grad.addColorStop(0, 'rgba(255,255,255,0.1)');
       grad.addColorStop(1, 'rgba(0,0,0,0.6)');
       ctx.fillStyle = grad;
       ctx.fillRect(cx - r, cy - r, r*2, r*2);
-      
       ctx.restore();
       return;
     }
-    if (state.eclipseType === 'solar' && angDist(theta, Math.PI) < 0.2) {
-      // 코로나 섬광 고리 (클리핑 해제 후 그림)
-      ctx.restore();
-      ctx.save();
+    if (state.eclipseType === 'solar' && angDist(phi, 0) < 0.2) {
+      ctx.save(); // 개기일식: 검은 달 둘레의 코로나
       ctx.beginPath();
-      ctx.arc(cx, cy, r + 6, 0, Math.PI*2);
+      ctx.arc(cx, cy, r + 6, 0, TWO_PI);
       ctx.fillStyle = '#ffffff';
       ctx.shadowBlur = 15;
       ctx.shadowColor = '#ffd166';
       ctx.fill();
-      ctx.shadowBlur = 0; // 리셋
-      
+      ctx.shadowBlur = 0;
       ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI*2);
-      ctx.fillStyle = '#030408'; // 검은 구체
+      ctx.arc(cx, cy, r, 0, TWO_PI);
+      ctx.fillStyle = '#030408';
       ctx.fill();
       ctx.restore();
       return;
     }
   }
 
-  // 3. 햇빛 부분 그리기 (Terminator)
-  ctx.beginPath();
-  if (sin >= 0) {
-    ctx.arc(cx, cy, r, Math.PI / 2, Math.PI * 1.5);
-    const rx = r * cos;
-    ctx.ellipse(cx, cy, Math.abs(rx), r, 0, Math.PI * 1.5, Math.PI / 2, cos < 0);
-  } else {
-    ctx.arc(cx, cy, r, Math.PI * 1.5, Math.PI / 2);
-    const rx = r * cos;
-    ctx.ellipse(cx, cy, Math.abs(rx), r, 0, Math.PI / 2, Math.PI * 1.5, cos < 0);
-  }
-  
   ctx.save();
-  ctx.clip(); // 밝은 부분 영역 클리핑
-  ctx.fillStyle = '#ffe8a1'; // 더 예쁜 달빛 색상
-  ctx.fill();
-  drawCraters(0.15); // 밝은 부분 크레이터
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, TWO_PI);
+  ctx.clip();
+  ctx.fillStyle = '#111726';
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+  drawCraters(0.4);
+
+  // 햇빛 받는 부분
+  litPath(ctx, cx, cy, r, norm(phi) / TWO_PI);
+  ctx.save();
+  ctx.clip();
+  ctx.fillStyle = '#ffe8a1';
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+  drawCraters(0.15);
   ctx.restore();
 
-  // 4. 구형 입체감 셰이딩 (전체 오버레이)
+  // 구 입체감
   const sphereGrad = ctx.createRadialGradient(cx - r*0.3, cy - r*0.3, r*0.1, cx, cy, r);
   sphereGrad.addColorStop(0, 'rgba(255,255,255,0.1)');
   sphereGrad.addColorStop(0.6, 'rgba(0,0,0,0)');
-  sphereGrad.addColorStop(1, 'rgba(0,0,0,0.7)');
+  sphereGrad.addColorStop(1, 'rgba(0,0,0,0.6)');
   ctx.fillStyle = sphereGrad;
   ctx.fillRect(cx - r, cy - r, r*2, r*2);
-
-  // 태양광이 오는 방향(왼쪽)에 살짝 글로우 추가
-  if (Math.cos(theta) > -0.5) {
-     const glowGrad = ctx.createLinearGradient(cx - r, cy, cx, cy);
-     glowGrad.addColorStop(0, 'rgba(255,232,161,0.4)');
-     glowGrad.addColorStop(1, 'rgba(255,232,161,0)');
-     ctx.fillStyle = glowGrad;
-     ctx.fillRect(cx - r, cy - r, r, r*2);
-  }
-
-  ctx.restore(); // 전체 클리핑 해제
+  ctx.restore();
 }
 
 /* ══════════════════════════════════════
    인터랙션 및 UI 갱신
    ══════════════════════════════════════ */
 function updateUI() {
-  const info = getPhaseInfo(state.phaseAngle);
-  
-  // 텍스트 매핑
+  const info = getPhaseInfo(state.phi);
+
   $('#moonPhaseName').textContent = info.name;
   $('#moonPhaseCanvas').setAttribute('aria-label', '지구에서 본 달 모양: ' + info.name);
-  $('#moonPhaseDate').textContent = info.date;
+  $('#moonPhaseDate').textContent = `${info.date} · 월령 ${ageOf(state.phi).toFixed(1)}일`;
   $('#infoNoon').textContent = info.noon;
   $('#infoDir').textContent = info.dir;
-  $('#infoTip').innerHTML = info.tip;
+  $('#infoTip').textContent = info.tip;
 
-  // 일식/월식 시 텍스트 보강
-  if (state.mode === 3 && !state.tiltOrbit) {
-    if (state.eclipseType === 'solar' && angDist(state.phaseAngle, Math.PI) < 0.1) {
-      $('#moonPhaseName').textContent = '🌞 개기일식 (Solar Eclipse)';
-      $('#moonPhaseDate').textContent = '일직선 정렬 상태';
-      $('#infoTip').innerHTML = '달이 태양을 완전히 가리는 <strong>개기일식</strong> 현상입니다. 주변 하늘이 한낮에도 어두워져요!';
-    } else if (state.eclipseType === 'lunar' && angDist(state.phaseAngle, 0) < 0.1) {
-      $('#moonPhaseName').textContent = '🌘 개기월식 (Lunar Eclipse)';
-      $('#moonPhaseDate').textContent = '지구 그림자 통과 상태';
-      $('#infoTip').innerHTML = '지구의 그림자에 달이 완전히 가려져, 태양빛 굴절로 인해 붉게 빛나는 <strong>블러드문(붉은달)</strong>이 나타납니다.';
+  // 일식·월식 모드: 한 줄로 늘어선 자리에서 결과 문구
+  if (state.mode === 3 && state.eclipseType) {
+    const solar = state.eclipseType === 'solar';
+    const near = solar ? angDist(state.phi, 0) < 0.1 : angDist(state.phi, Math.PI) < 0.1;
+    if (near && !state.tiltOrbit) {
+      $('#moonPhaseName').textContent = solar ? '개기일식' : '개기월식';
+      $('#moonPhaseDate').textContent = solar
+        ? '달이 태양을 완전히 가렸어요. 한낮에도 하늘이 어두워져요!'
+        : '달이 지구 그림자에 들어가 붉게 보여요(붉은 달).';
+    } else if (near) {
+      $('#moonPhaseDate').textContent = solar
+        ? '궤도가 기울어 있어 달이 태양을 비껴가요. 일식이 일어나지 않아요.'
+        : '궤도가 기울어 있어 달이 지구 그림자를 비껴가요. 월식이 일어나지 않아요.';
     }
   }
 
-  // 미션 채점은 [정답 확인] 버튼(verifyMission)에서만 한다.
-  // (예전에는 매 프레임 자동 채점이라 자동 공전만 켜도 미션이 저절로 완료됐음)
-
+  // 미션 채점은 [확인하기] 버튼(verifyMission)에서만 한다.
   requestRedraw();
 }
 
 function verifyMission() {
   if (state.mode !== 2 || !mc) return;
   const m = MISSIONS[state.missionIdx];
-  if (!m.verify(state.phaseAngle)) {
+  if (!m.verify(state.phi)) {
     mc.fail('아직 아니에요. 지구에서 본 달 모양을 살펴보면서 위치를 다시 맞춰 보세요.');
     return;
   }
-  // 지금 동작 유지: 성공하면 즉시 첫 미완료 미션으로 넘어가되 성공 문구는 남긴다
+  // 성공하면 바로 첫 미완료 미션으로 넘어가되 성공 문구는 남긴다
   const nextIdx = MISSIONS.findIndex((ms, i) => i !== state.missionIdx && !mc.isDone(i));
   mc.complete({
     message: nextIdx === -1
-      ? '🎉 정답이에요! 미션을 모두 마쳤어요. 아래 [탐험 완료] 버튼을 눌러 보세요.'
-      : `🎉 정답이에요! 이제 ${nextIdx + 1}번 미션에 도전해 보세요.`
+      ? '정답이에요! 미션을 모두 마쳤어요. [결과 보기]를 눌러 보세요.'
+      : `정답이에요! 이제 ${nextIdx + 1}번 미션에 도전해 보세요.`
   });
   if (nextIdx >= 0) mc.go(nextIdx, { keepFeedback: true });
-}
-
-function updatePlayButtonState() {
-  $('#btnPlayAuto').classList.toggle('active', state.autoPlay);
-  $('#btnPlayAuto').setAttribute('aria-pressed', state.autoPlay ? 'true' : 'false');
-  $('#btnPlayAuto').textContent = state.autoPlay ? '⏸️ 자동 일시정지' : '▶️ 자동 공전';
-  if (state.autoPlay) requestRedraw();
 }
 
 function switchMode(modeNum) {
   const prevMode = state.mode;
   state.mode = parseInt(modeNum) || 1;
-  state.autoPlay = false;
+  setAutoPlay(false);
   state.eclipseType = null;
-  updatePlayButtonState();
 
-  // 탭 변경(표시만)
   if (modeTabs) modeTabs.select(state.mode, { silent: true });
   if (prevMode === 2 && state.mode !== 2 && mc) mc.stop();
 
   const mCard = $('#missionCard');
-  const infoBox = $('#infoBox');
-  const btnVerify = $('#btnVerify');
   const canvasBadgeNum = $('#canvasBadgeNum');
   const canvasBadgeLabel = $('#canvasBadgeLabel');
 
   mCard.style.display = 'none';
-  infoBox.style.display = 'block';
-  btnVerify.style.display = 'none';
+  $('#infoBox').style.display = 'block';
+  $('#btnVerify').style.display = 'none';
   $('#btnNextScreen').style.display = 'none';
+  $('#btnExitMission').style.display = 'none';
   $('#missionNav').hidden = false;
   $('#eclipseNav').hidden = true;
   hideFeedback();
 
   if (state.mode === 1) {
-    canvasBadgeNum.textContent = '🌏';
+    canvasBadgeNum.innerHTML = SimKit.icon('globe');
     canvasBadgeLabel.textContent = '달의 공전과 위상';
   } else if (state.mode === 2) {
-    canvasBadgeNum.textContent = '🏆';
+    canvasBadgeNum.innerHTML = SimKit.icon('trophy');
     canvasBadgeLabel.textContent = '위상 미션';
     mCard.style.display = 'block';
-    btnVerify.style.display = '';
+    $('#btnVerify').style.display = '';
+    $('#btnExitMission').style.display = ''; // 미션 중에는 항상 나가기 버튼(기록은 그대로)
     mc.start(state.missionIdx); // 번호 그리기 → onEnter(setupMissionUI)
   } else if (state.mode === 3) {
-    canvasBadgeNum.textContent = '🌌';
-    canvasBadgeLabel.textContent = '일식·월식 심화';
+    canvasBadgeNum.innerHTML = SimKit.icon('moon-star');
+    canvasBadgeLabel.textContent = '일식·월식 알아보기';
     setupEclipseUI();
   }
 
+  measureLayout(); // 이름표 글자가 바뀌면 줄 수가 달라질 수 있음
   updateUI();
 }
 
-/* 미션 준비: SimKit 미션 컨트롤러의 onEnter에서 부른다(번호 그리기·문구 숨김은 컨트롤러가 함) */
+/* 미션 준비: SimKit 미션 컨트롤러의 onEnter에서 부른다 */
 function setupMissionUI() {
   const m = MISSIONS[state.missionIdx];
-  $('#missionTitle').textContent = '달의 위상 미션'; // 일식·월식 모드에서 바뀐 제목 복원
+  $('#missionTitle').textContent = '달의 위상 미션';
   $('#missionDesc').innerHTML = m.desc;
   updateDoneButton();
   updateUI();
@@ -1072,51 +1038,45 @@ function setupMissionUI() {
 
 function updateDoneButton() {
   const allMissionsDone = MISSION_IDS.every(id => state.missionsCompleted[id] === true);
-  $('#btnNextScreen').style.display = state.mode === 2 && allMissionsDone ? 'block' : 'none';
+  $('#btnNextScreen').style.display = state.mode === 2 && allMissionsDone ? '' : 'none';
 }
 
 function setupEclipseUI() {
-  // 일식/월식 심화 모드에서는 5도 경사를 조작하며 개기일식/월식을 체험하도록 안내
   $('#infoBox').style.display = 'none';
-  
+
   const mCard = $('#missionCard');
   mCard.style.display = 'block';
-  $('#missionTitle').textContent = '🔭 일식·월식 심화 미션';
+  $('#missionTitle').textContent = '일식·월식 알아보기';
   $('#missionDesc').innerHTML = `
-    태양-지구-달이 일직선으로 정렬할 때 일어나는 현상입니다.<br><br>
-    - <strong>일식:</strong> 달이 태양을 가리는 현상 (달이 '삭'일 때)<br>
-    - <strong>월식:</strong> 달이 지구 그림자에 들어가는 현상 (달이 '망'일 때)<br><br>
-    💡 <strong>경사선 끄기:</strong> 5도 궤도 경사 켜짐 상태에서는 대개 달이 비껴갑니다. <strong>[궤도 기울기] 버튼을 꺼서 일직선으로 맞춰 보세요!</strong>
+    태양-지구-달이 한 줄로 늘어설 때 일어나는 현상이에요.<br><br>
+    · <strong>일식:</strong> 달이 태양을 가리는 현상 (달이 '삭'일 때)<br>
+    · <strong>월식:</strong> 달이 지구 그림자에 들어가는 현상 (달이 '보름달'일 때)<br><br>
+    ${SimKit.icon('lightbulb')} 달의 궤도는 약 5° 기울어져 있어서 대부분 달이 비껴가요(그림에서는 잘 보이도록 더 크게 기울였어요).
+    무대의 <strong>[궤도 기울기 5°]</strong> 버튼을 꺼서 한 줄로 맞춰 보세요!
   `;
 
-  // 일식/월식 시범 작동 버튼(마크업 #eclipseNav, 미션 번호 상자와 따로)
   $('#missionNav').hidden = true;
   $('#eclipseNav').hidden = false;
 }
 
 function runEclipse(type) {
   state.eclipseType = type;
-  state.autoPlay = false;
-  updatePlayButtonState();
-  if (type === 'solar') {
-    state.phaseAngle = Math.PI; // 삭 (New Moon)
-  } else {
-    state.phaseAngle = 0; // 망 (Full Moon)
-  }
+  setAutoPlay(false);
+  state.phi = type === 'solar' ? 0 : Math.PI; // 일식 = 삭, 월식 = 보름
   syncSlider();
   updateUI();
 }
 
 function showResultScreen() {
-  state.autoPlay = false;
-  updatePlayButtonState();
+  setAutoPlay(false);
   showScreen('screenResult');
   SimKit.stars.render('#resultStars', SimKit.stars.grade(mc.doneCount(), [1, 2, 3]));
-  let summary = `<strong>달 탐색 완료 보고서</strong><br><br>`;
-  summary += `① 보름달 위치 찾기: ${state.missionsCompleted.m1 ? '완료 ✓' : '미완료'}<br>`;
-  summary += `② 상현달 위치 찾기: ${state.missionsCompleted.m2 ? '완료 ✓' : '미완료'}<br>`;
-  summary += `③ 하현달 위치 찾기: ${state.missionsCompleted.m3 ? '완료 ✓' : '미완료'}<br><br>`;
-  summary += `달의 모양이 변하는 진짜 원인은 <strong>지구 주위를 도는 달에 닿는 햇빛의 방향과 우리의 관찰 각도</strong> 때문이에요. 5도 경사선 조작으로 매달 일식/월식이 안 일어나는 물리적 정렬 원인도 함께 마스터했습니다!`;
+  let summary = `<strong>달 탐사 보고서</strong><br><br>`;
+  summary += `① 보름달 위치 찾기: ${state.missionsCompleted.m1 ? '완료' : '아직'}<br>`;
+  summary += `② 상현달 위치 찾기: ${state.missionsCompleted.m2 ? '완료' : '아직'}<br>`;
+  summary += `③ 하현달 위치 찾기: ${state.missionsCompleted.m3 ? '완료' : '아직'}<br><br>`;
+  summary += `달의 모양이 바뀌는 까닭은 달이 지구 둘레를 돌면서, <strong>햇빛을 받아 밝은 쪽이 지구에서 보이는 만큼</strong>이 달라지기 때문이에요. `;
+  summary += `일식·월식이 궁금하면 [일식·월식] 탭에서 더 알아보세요.`;
 
   $('#resultSummary').innerHTML = summary;
 }
@@ -1124,6 +1084,7 @@ function showResultScreen() {
 /* ── 화면 전환 ── */
 function showScreen(id) {
   if (id !== 'screenExplore' && mc) mc.stop();
+  if (id !== 'screenExplore') setAutoPlay(false);
   screens.show(id);
   if (id === 'screenExplore') resizeOrbitCanvas();
 }
@@ -1134,6 +1095,7 @@ function init() {
   parseShareLink();
   initCanvas();
   syncSlider();
+  setAutoPlay(false);
 
   // 미션 컨트롤러: 번호 버튼(44px)·이동·문구·완료 기록
   mc = SimKit.missions({
@@ -1146,67 +1108,52 @@ function init() {
     onChange: (p) => { state.missionsCompleted = p; saveState(); updateDoneButton(); }
   });
 
-  // 일식·월식 위치 버튼
   $$('#eclipseNav [data-eclipse]').forEach(b => {
     b.addEventListener('click', () => runEclipse(b.dataset.eclipse));
   });
 
-  // 시작
   $('#btnStart').addEventListener('click', () => {
     showScreen('screenExplore');
-    resizeOrbitCanvas(); // Fix: resize after display becomes visible
     switchMode(1);
   });
 
-  // 탭 제어
   modeTabs = SimKit.tabs('.mode-tab', { attr: 'mode', initial: '1', onSelect: (v) => switchMode(v) });
 
-  // 슬라이더 조작
+  // 월령 슬라이더
   $('#moonSlider').addEventListener('input', (e) => {
-    state.phaseAngle = parseFloat(e.target.value) * Math.PI / 180;
-    $('#sliderVal').textContent = `${e.target.value}°`;
-    e.target.setAttribute('aria-valuetext', `${e.target.value}°, ${getPhaseInfo(state.phaseAngle).name}`);
-    state.autoPlay = false;
-    updatePlayButtonState();
+    state.phi = norm(phiOf(parseFloat(e.target.value) || 0));
+    setAutoPlay(false);
+    syncSlider();
     updateUI();
   });
 
-  // 자동 공전 재생/일시정지
-  $('#btnPlayAuto').addEventListener('click', () => {
-    state.autoPlay = !state.autoPlay;
-    updatePlayButtonState();
-  });
+  $('#btnPlayAuto').addEventListener('click', () => setAutoPlay(!state.autoPlay));
 
-  // 궤도 경사 5도 토글
+  // 궤도 기울기 5° 켜기/끄기
   $('#btnTiltToggle').addEventListener('click', (e) => {
     state.tiltOrbit = !state.tiltOrbit;
-    e.currentTarget.classList.toggle('active', state.tiltOrbit);
     e.currentTarget.setAttribute('aria-pressed', state.tiltOrbit ? 'true' : 'false');
     updateUI();
   });
-  $('#btnTiltToggle').classList.add('active'); // 디폴트 ON
-  updatePlayButtonState();
 
-  // 시점 초기화
+  // 처음 위치로(달 위치·기울기만 되돌림, 미션 기록은 그대로)
   $('#btnResetView').addEventListener('click', () => {
-    state.phaseAngle = 0;
+    state.phi = START_PHI;
     state.tiltOrbit = true;
-    state.autoPlay = false;
-    $('#btnTiltToggle').classList.add('active');
+    setAutoPlay(false);
     $('#btnTiltToggle').setAttribute('aria-pressed', 'true');
     syncSlider();
-    updatePlayButtonState();
     updateUI();
   });
 
-  // 미션 정답 확인
   $('#btnVerify').addEventListener('click', verifyMission);
-
-  // 탐험 완료 결과 화면
   $('#btnNextScreen').addEventListener('click', showResultScreen);
+  $('#btnExitMission').addEventListener('click', () => switchMode(1));
 
-  // 결과 액션
-  $('#btnRetry').addEventListener('click', () => {
+  // 결과 화면
+  $('#btnRetry').addEventListener('click', async () => {
+    const ok = await VUI.confirm('미션 기록을 모두 지우고 처음부터 할까요?', { title: SimKit.LABELS.reset, ok: SimKit.LABELS.reset, danger: true });
+    if (!ok) return;
     mc.reset(); // onChange → missionsCompleted 초기화·저장
     state.missionIdx = 0;
     showScreen('screenExplore');
@@ -1217,11 +1164,10 @@ function init() {
     switchMode(1);
   });
 
-  // 첫 그리기 (이후에는 상태가 바뀔 때만 다시 그림)
-  requestRedraw();
+  updateUI();
 
   // 셸 공유 버튼 → 지금 달 위치 링크(받는 쪽은 parseShareLink에서 복원)
-  SimKit.share.bind(() => ({ v: 1, phaseAngle: Math.round(state.phaseAngle * 1000) / 1000 }), {
+  SimKit.share.bind(() => ({ v: 1, phaseAngle: sharePhaseAngle() }), {
     title: '달의 위상 3D — 내가 관찰한 달의 위치'
   });
 }

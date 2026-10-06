@@ -1,11 +1,13 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
+
+const DESC = "요일마다 반복되는 알람을 정해 두고, 다음 알람까지 남은 시간을 한눈에 봐요. 수업 시작·쉬는 시간 알림에 알맞아요.";
 ---
-<AppLayout 
+<AppLayout
   sync
-  icons
-  title="Smart Timer — eduin VIVES"
-  description="수업, 회의, 운동에 딱 맞는 반복 알람 타이머. 구간별 시간 설정과 알림음 커스텀."
+  title="스마트 타이머 — eduin VIVES"
+  description={DESC}
   image="https://eduin.info/og-images/timer.png"
   bodyShell="column"
   bodyWidth="narrow"
@@ -14,10 +16,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <style is:global="">
     body {
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
       align-items: center;
       padding: 48px 1rem 7rem;
+      /* 공용 토스트를 아래 컨트롤 바 위로 올림 */
+      --vui-toast-bottom: 104px;
     }
 
     body::before {
@@ -93,6 +98,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       -webkit-overflow-scrolling: touch;
     }
     .tab-bar::-webkit-scrollbar { display: none; }
+    /* 오른쪽에 요일 탭이 더 있으면 끝을 흐리게 — 넘겨 볼 수 있다는 신호 */
+    .tab-bar.has-more {
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+      mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+    }
 
     .tab-item {
       padding: 6px 14px;
@@ -174,6 +184,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .control-bar {
       position: fixed;
       bottom: 20px;
+      bottom: calc(20px + env(safe-area-inset-bottom, 0px));
       width: calc(100% - 2rem);
       max-width: 500px;
       background: var(--card-bg);
@@ -204,7 +215,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       font-family: inherit;
     }
     .icon-btn:hover { background: var(--border); }
-    .icon-btn span { font-size: 0.75rem; font-weight: 600; color: var(--fg-muted); }
+    .icon-btn span { font-size: 0.75rem; font-weight: 600; color: var(--fg-muted); line-height: 1.15; text-align: center; word-break: keep-all; }
+    .icon-btn .ic { width: 22px; height: 22px; }
+    .empty-state .ic { width: 28px; height: 28px; }
+    .action-btn .ic { width: 16px; height: 16px; }
+    #alarm-overlay > .ic { width: 80px; height: 80px; }
+    .app-desc .ic { vertical-align: -0.12em; }
+
+    /* 소리 깨우기 안내: 한 번도 누르지 않은 페이지는 브라우저가 소리를 막을 수 있다 */
+    #audio-hint {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      margin: 0.5rem auto 0; padding: 6px 12px; border-radius: 999px; width: fit-content; max-width: 100%;
+      font-size: 0.8rem; font-weight: 600; color: var(--fg-muted); background: var(--card-bg); border: 1px dashed var(--border);
+      cursor: pointer; font-family: inherit;
+    }
+    #audio-hint[hidden] { display: none; }
 
     /* 모달 */
     .modal {
@@ -258,6 +283,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .modal-footer { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
     .btn-cancel { background: var(--card-bg); color: var(--fg); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.75rem 1rem; font-size: 0.9rem; cursor: pointer; flex: 1; font-family: inherit; min-height: 44px; }
     .btn-cancel:hover { border-color: var(--primary); }
+    .modal-footer .hero-btn { min-height: 44px; }
 
     /* 알람 오버레이 */
     #alarm-overlay {
@@ -299,7 +325,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .log-item .log-name { font-weight: 600; }
     .log-item .log-date { color: var(--fg-muted); font-size: 0.8rem; margin-top: 2px; }
   </style>
-  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"Smart Timer","description":"수업, 회의, 운동에 딱 맞는 반복 알람 타이머. 구간별 시간 설정과 알림음 커스텀.","url":"https://eduin.info/apps/timer/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"스마트 타이머","description":"요일마다 반복되는 알람을 정해 두고, 다음 알람까지 남은 시간을 한눈에 봐요. 수업 시작·쉬는 시간 알림에 알맞아요.","url":"https://eduin.info/apps/timer/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
 
@@ -307,20 +333,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 <div class="timer-wrap">
 
   <div class="app-header" style="width:100%;text-align:left;">
-    <div class="app-badge">◆ 업무경감</div>
-    <h1 class="app-title">
-  <div class="card-emoji sub-edu-work" style="margin-bottom: 0; transform: scale(1.0);">
-        <i data-lucide="timer"></i>
-      </div>
-  <span>Smart <span>Timer</span></span>
-</h1>
-    <p class="app-desc">반복 알람 스케줄을 직관적으로 관리합니다.</p>
+    <div class="app-badge">업무경감</div>
+    <h1 class="app-title">스마트 타이머 <span class="app-title-en">Smart Timer</span></h1>
+    <p class="app-desc">요일마다 반복되는 알람을 정해 두면 그 시각에 소리와 화면으로 알려 줘요.</p>
   </div>
 
   <div class="clock-section">
-    <div id="main-date">...</div>
-    <div id="main-clock" role="timer" aria-live="off" aria-label="현재 시각">00:00:00</div>
+    <div id="main-date">&nbsp;</div>
+    <div id="main-clock" role="timer" aria-live="off" aria-label="현재 시각">&nbsp;</div>
     <div id="next-alarm"></div>
+    <button type="button" id="audio-hint"><Icon name="volume-2" />알람 소리가 나도록 화면을 한 번 눌러 주세요</button>
     <div id="timer-live" class="visually-hidden" role="status" aria-live="polite"></div>
   </div>
 
@@ -340,20 +362,20 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
   <!-- 하단 컨트롤 바 -->
   <div class="control-bar" role="toolbar" aria-label="타이머 도구">
-    <button class="icon-btn" onclick="openAddModal()" aria-label="알람 추가">
-      <i data-lucide="plus-circle" aria-hidden="true"></i><span>추가</span>
+    <button type="button" class="icon-btn" onclick="openAddModal()" aria-label="알람 추가">
+      <Icon name="circle-plus" /><span>추가</span>
     </button>
-    <button class="icon-btn" onclick="testAlarm()" aria-label="알람 소리 시험">
-      <i data-lucide="bell-ring" aria-hidden="true"></i><span>테스트</span>
+    <button type="button" class="icon-btn" onclick="testAlarm()" aria-label="알람 소리 시험">
+      <Icon name="bell-ring" /><span>테스트</span>
     </button>
-    <button class="icon-btn" onclick="exportAlarms()" aria-label="알람 백업 파일 받기">
-      <i data-lucide="download" aria-hidden="true"></i><span>백업</span>
+    <button type="button" class="icon-btn" onclick="exportAlarms()" aria-label="알람을 파일로 저장">
+      <Icon name="download" /><span>파일로 저장</span>
     </button>
-    <button class="icon-btn" onclick="triggerImport()" aria-label="백업 파일로 복구">
-      <i data-lucide="upload" aria-hidden="true"></i><span>복구</span>
+    <button type="button" class="icon-btn" onclick="triggerImport()" aria-label="저장한 파일 불러오기">
+      <Icon name="upload" /><span>파일 불러오기</span>
     </button>
-    <button class="icon-btn" onclick="openModal('logModal')" aria-label="알람 실행 기록">
-      <i data-lucide="history" aria-hidden="true"></i><span>기록</span>
+    <button type="button" class="icon-btn" onclick="openModal('logModal')" aria-label="최근 알람 기록">
+      <Icon name="history" /><span>최근 기록</span>
     </button>
   </div>
 
@@ -365,7 +387,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
       <div class="form-group">
         <label class="form-label" for="alarmName">알람 이름</label>
-        <input type="text" id="alarmName" class="hero-input" placeholder="예: 약 먹기, 출근" maxlength="40">
+        <input type="text" id="alarmName" class="hero-input" placeholder="예: 1교시 시작" maxlength="40">
       </div>
       <div class="form-group">
         <label class="form-label" for="alarmTime">시간 설정</label>
@@ -374,38 +396,39 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <div class="form-group">
         <span class="form-label" id="daysLabel">반복 요일</span>
         <div class="day-selector" role="group" aria-labelledby="daysLabel">
-          <input type="checkbox" id="d0" class="day-checkbox" value="0" aria-label="일요일"><label for="d0" class="day-label" aria-hidden="true">일</label>
+          <!-- 위 요일 탭과 같은 순서(월→일) -->
           <input type="checkbox" id="d1" class="day-checkbox" value="1" checked="" aria-label="월요일"><label for="d1" class="day-label" aria-hidden="true">월</label>
           <input type="checkbox" id="d2" class="day-checkbox" value="2" checked="" aria-label="화요일"><label for="d2" class="day-label" aria-hidden="true">화</label>
           <input type="checkbox" id="d3" class="day-checkbox" value="3" checked="" aria-label="수요일"><label for="d3" class="day-label" aria-hidden="true">수</label>
           <input type="checkbox" id="d4" class="day-checkbox" value="4" checked="" aria-label="목요일"><label for="d4" class="day-label" aria-hidden="true">목</label>
           <input type="checkbox" id="d5" class="day-checkbox" value="5" checked="" aria-label="금요일"><label for="d5" class="day-label" aria-hidden="true">금</label>
           <input type="checkbox" id="d6" class="day-checkbox" value="6" aria-label="토요일"><label for="d6" class="day-label" aria-hidden="true">토</label>
+          <input type="checkbox" id="d0" class="day-checkbox" value="0" aria-label="일요일"><label for="d0" class="day-label" aria-hidden="true">일</label>
         </div>
       </div>
 
       <div class="modal-footer">
-        <button class="btn-cancel" onclick="closeModal('alarmModal')">취소</button>
-        <button class="hero-btn" style="flex:2" id="saveBtn" onclick="saveAlarm()">저장하기</button>
+        <button type="button" class="btn-cancel" onclick="closeModal('alarmModal')">취소</button>
+        <button type="button" class="hero-btn" style="flex:2" id="saveBtn" onclick="saveAlarm()">저장하기</button>
       </div>
     </div>
   </div>
 
-  <!-- 로그 모달 -->
+  <!-- 최근 기록 모달 -->
   <div id="logModal" class="modal">
     <div class="modal-content">
-      <h2 class="modal-title">알람 실행 기록</h2>
+      <h2 class="modal-title">최근 알람 기록</h2>
       <div class="log-list" id="log-list"></div>
       <div class="modal-footer">
-        <button class="btn-cancel" onclick="clearLogs()">기록 삭제</button>
-        <button class="hero-btn" style="flex:2" onclick="closeModal('logModal')">닫기</button>
+        <button type="button" class="hero-btn hero-btn-danger" style="flex:1" id="clearLogsBtn" onclick="clearLogs()"><Icon name="trash-2" />기록 지우기</button>
+        <button type="button" class="hero-btn hero-btn-ghost" style="flex:1" onclick="closeModal('logModal')">닫기</button>
       </div>
     </div>
   </div>
 
   <!-- 알람 오버레이 -->
   <div id="alarm-overlay" role="alertdialog" aria-labelledby="active-alarm-name" aria-describedby="active-alarm-time alarm-overlay-hint">
-    <i data-lucide="alarm-clock" style="width:80px;height:80px;" aria-hidden="true"></i>
+    <Icon name="alarm-clock" />
     <p id="active-alarm-name">알람</p>
     <h1 id="active-alarm-time">00:00</h1>
     <button id="stop-alarm" onclick="stopAlarm()">그만 울리기</button>
@@ -447,16 +470,41 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const RING_MAX_MS = 60 * 1000;   // 알람은 최대 60초 울린 뒤 저절로 멈춤
     let alarms = loadList('alarms');
     let logs   = loadList('alarm_logs');
-    let audioCtx, isAlarmPlaying = false, currentTab = 'all', wakeLock = null;
+    let isAlarmPlaying = false, currentTab = 'all', wakeLock = null;
     let ringToken = 0, ringTimer = null, ringingMinuteKey = null;
     const lastFired = {};   // id → 'date H:M' — 같은 분 중복 발동 방지 (런타임 전용, 저장 안 함)
     const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-    const refreshIcons = () => { try { window.lucide?.createIcons(); } catch (e) {} };   // 아이콘 CDN이 막혀도 시계·알람은 계속 동작
+    // lucide 스프라이트 아이콘 — @icons calendar-x bell bell-off pencil trash-2
+    const ic = (n) => (window.VUI ? VUI.icon(n) : '');
 
-    refreshIcons();
-    window.addEventListener('load', refreshIcons);   // 아이콘 스크립트가 늦게(defer) 오더라도 다시 그림
+    // 알림 권한은 페이지를 열자마자가 아니라 '추가'·'테스트'를 처음 누를 때 묻는다
+    function askNotify() {
+      try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {}
+    }
 
-    if (window.Notification && Notification.permission !== 'granted') Notification.requestPermission();
+    /* 소리: 오디오는 사용자가 한 번 누른 뒤에야 켤 수 있는 브라우저가 많다.
+       첫 누르기 때 오디오를 깨워 두고, 그 전에는 "한 번 눌러 주세요" 띠를 보인다. */
+    let audioCtx = null, ringGain = null;
+    function getAudio() {
+      if (!audioCtx) {
+        const C = window.AudioContext || window.webkitAudioContext;
+        if (!C) return null;
+        try { audioCtx = new C(); } catch (e) { return null; }
+      }
+      if (audioCtx.state === 'suspended') { try { audioCtx.resume().then(updateAudioHint, () => {}); } catch (e) {} }
+      return audioCtx;
+    }
+    let audioUnlocked = false;
+    function updateAudioHint() {
+      if (audioCtx && audioCtx.state === 'running') audioUnlocked = true;
+      const h = document.getElementById('audio-hint');
+      if (h) h.hidden = audioUnlocked || !(window.AudioContext || window.webkitAudioContext);
+    }
+    function unlockAudio() { getAudio(); audioUnlocked = true; updateAudioHint(); }
+    document.addEventListener('pointerdown', unlockAudio, { passive: true });
+    document.addEventListener('keydown', unlockAudio);
+    document.getElementById('audio-hint').addEventListener('click', () => { unlockAudio(); announce('알람 소리를 켰어요.'); });
+    updateAudioHint();
 
     async function requestWakeLock() {
       try {
@@ -472,13 +520,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (document.visibilityState === 'visible') requestWakeLock();
     });
 
-    worker.onmessage = () => {
-      const now = new Date();
+    // 시계·다음 알람 표시(첫 화면에서 "00:00:00"이 1초 보이지 않도록 로드 때도 한 번 부른다)
+    function paintClock(now) {
       document.getElementById('main-clock').textContent =
         now.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
       document.getElementById('main-date').textContent =
         now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
       updateNextAlarm(now);
+    }
+    worker.onmessage = () => {
+      const now = new Date();
+      paintClock(now);
       checkAlarms(now);
     };
 
@@ -489,9 +541,20 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           : el.textContent === ['일','월','화','수','목','금','토'][tab];
         el.classList.toggle('active', match);
         el.setAttribute('aria-pressed', String(match));
+        if (match) showTab(el);
       });
       renderAlarms();
     }
+    // 요일 탭 줄: 고른 탭이 가려져 있으면 줄 안에서만 옆으로 넘김 + 오른쪽 끝 흐림
+    const tabBar = document.getElementById('tab-bar');
+    function showTab(el) {
+      const r = el.getBoundingClientRect(), rr = tabBar.getBoundingClientRect();
+      if (r.left < rr.left) tabBar.scrollBy({ left: r.left - rr.left - 8, behavior: 'smooth' });
+      else if (r.right > rr.right - 36) tabBar.scrollBy({ left: r.right - rr.right + 44, behavior: 'smooth' });
+    }
+    function updateTabFade() { tabBar.classList.toggle('has-more', tabBar.scrollLeft + tabBar.clientWidth < tabBar.scrollWidth - 4); }
+    tabBar.addEventListener('scroll', updateTabFade, { passive: true });
+    window.addEventListener('resize', updateTabFade);
 
     function checkAlarms(now) {
       const h = now.getHours(), m = now.getMinutes(), d = now.getDay();
@@ -533,7 +596,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }, RING_MAX_MS);
       if (window.Notification && Notification.permission === 'granted') {
         try {
-          const n = new Notification('VIVES Timer', { body: `${alarm.name} (${alarm.time})` });
+          const n = new Notification('스마트 타이머', { body: `${alarm.name} (${alarm.time})` });
           n.onclick = () => { window.focus(); stopAlarm(); };
         } catch (e) {}
       }
@@ -546,13 +609,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       clearTimeout(ringTimer); ringTimer = null;
       document.getElementById('alarm-overlay').classList.remove('show');
       if (overlayModal) overlayModal.close();
-      if (audioCtx) { try { audioCtx.close(); } catch (e) {} audioCtx = null; }
+      // 울리던 소리만 끊는다(오디오는 다음 알람을 위해 깨운 채로 둔다)
+      if (ringGain) { try { ringGain.disconnect(); } catch (e) {} ringGain = null; }
     }
 
     function playAlarmSound() {
-      let ctx;
-      try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
-      audioCtx = ctx;
+      const ctx = getAudio();
+      if (!ctx) return;
+      if (ringGain) { try { ringGain.disconnect(); } catch (e) {} }
+      const master = ctx.createGain();
+      master.connect(ctx.destination);
+      ringGain = master;
       const token = ++ringToken;   // 이 알람의 소리만 이어 가도록 표시 (이전 알람 소리 루프와 겹치지 않음)
       const note = (f, t, d) => {
         const o = ctx.createOscillator(), g = ctx.createGain();
@@ -560,11 +627,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         g.gain.setValueAtTime(0, t);
         g.gain.linearRampToValueAtTime(0.2, t + 0.1);
         g.gain.exponentialRampToValueAtTime(0.001, t + d);
-        o.connect(g); g.connect(ctx.destination);
+        o.connect(g); g.connect(master);
         o.start(t); o.stop(t + d);
       };
       const seq = () => {
-        if (!isAlarmPlaying || token !== ringToken || ctx.state === 'closed') return;
+        if (!isAlarmPlaying || token !== ringToken || ctx.state === 'closed' || ringGain !== master) return;
         const t = ctx.currentTime;
         note(523.25, t, 2); note(659.25, t + 0.5, 2); note(783.99, t + 1.0, 2);
         setTimeout(seq, 3000);
@@ -573,11 +640,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     function testAlarm() {
-      if (window.Notification && Notification.permission !== 'granted') Notification.requestPermission();
+      askNotify();
       triggerAlarm({ name: '테스트 알람', time: 'TEST' }, true);   // 테스트는 실행 기록에 남기지 않음
     }
 
     function openAddModal() {
+      askNotify();
       const now = new Date();
       document.getElementById('modalTitle').textContent = '알람 추가';
       document.getElementById('saveBtn').textContent = '저장하기';
@@ -616,15 +684,26 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       saveList('alarms', alarms);
       renderAlarms();
       closeModal('alarmModal');
-      toast(id ? '알람을 고쳤어요 ✓' : `${time} 알람을 저장했어요 ✓`, 'success');
+      toast(id ? '알람을 고쳤어요' : `${time} 알람을 저장했어요`, 'success');
     }
 
     function deleteAlarm(id) {
-      const a = alarms.find(x => x.id === id);
+      const idx = alarms.findIndex(x => x.id === id);
+      const a = alarms[idx];
       alarms = alarms.filter(a => a.id !== id);
       saveList('alarms', alarms);
       renderAlarms();
-      if (a) announce(`${a.name} ${a.time} 알람을 지웠어요.`);
+      if (a) {
+        announce(`${a.name} ${a.time} 알람을 지웠어요.`);
+        // 잘못 눌렀을 때 되돌리기(같은 자리로)
+        if (window.VUI) VUI.toast(`${a.name} ${a.time} 알람을 지웠어요`, { action: { label: '되돌리기', onClick: () => {
+          if (alarms.some(x => x.id === a.id)) return;
+          alarms.splice(Math.min(idx, alarms.length), 0, a);
+          saveList('alarms', alarms);
+          renderAlarms();
+          announce(`${a.name} ${a.time} 알람을 되돌렸어요.`);
+        } } });
+      }
       // 지운 항목 버튼에 있던 키보드 포커스를 목록으로 돌려놓음
       const first = document.querySelector('#alarm-list [data-action]');
       if (first) first.focus(); else document.querySelector('.control-bar .icon-btn')?.focus();
@@ -646,8 +725,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       list.innerHTML = '';
       const filtered = currentTab === 'all' ? alarms : alarms.filter(a => a.days.includes(currentTab));
       if (!filtered.length) {
-        list.innerHTML = `<div class="empty-state"><i data-lucide="calendar-x" aria-hidden="true"></i><p>설정된 알람이 없습니다.</p></div>`;
-        refreshIcons(); return;
+        list.innerHTML = `<div class="empty-state">${ic('calendar-x')}<p>${currentTab === 'all' ? '아직 알람이 없어요. 아래 [추가]를 눌러 만들어 보세요.' : '이 요일에 울리는 알람이 없어요.'}</p></div>`;
+        return;
       }
       const dayNames = ['일','월','화','수','목','금','토'];
       filtered.sort((a,b) => a.time.localeCompare(b.time)).forEach(alarm => {
@@ -662,13 +741,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             <div class="days">${esc(dayStr)}</div>
           </div>
           <div class="item-actions">
-            <button class="action-btn toggle ${off ? '' : 'on'}" data-action="toggle" data-id="${esc(alarm.id)}" title="${off ? '알람 켜기' : '알람 끄기'}" aria-label="${esc(alarm.name)} ${esc(alarm.time)} 알람 켜짐" aria-pressed="${off ? 'false' : 'true'}"><i data-lucide="${off ? 'bell-off' : 'bell'}" style="width:16px" aria-hidden="true"></i></button>
-            <button class="action-btn edit" data-action="edit" data-id="${esc(alarm.id)}" title="수정" aria-label="${esc(alarm.name)} ${esc(alarm.time)} 알람 수정"><i data-lucide="pencil" style="width:16px" aria-hidden="true"></i></button>
-            <button class="action-btn delete" data-action="delete" data-id="${esc(alarm.id)}" title="삭제" aria-label="${esc(alarm.name)} ${esc(alarm.time)} 알람 삭제"><i data-lucide="trash-2" style="width:16px" aria-hidden="true"></i></button>
+            <button type="button" class="action-btn toggle ${off ? '' : 'on'}" data-action="toggle" data-id="${esc(alarm.id)}" title="${off ? '꺼져 있음 · 눌러서 켜기' : '켜져 있음 · 눌러서 끄기'}" aria-label="${esc(alarm.name)} ${esc(alarm.time)} 알람 켜기" aria-pressed="${off ? 'false' : 'true'}">${ic(off ? 'bell-off' : 'bell')}</button>
+            <button type="button" class="action-btn edit" data-action="edit" data-id="${esc(alarm.id)}" title="수정" aria-label="${esc(alarm.name)} ${esc(alarm.time)} 알람 수정">${ic('pencil')}</button>
+            <button type="button" class="action-btn delete" data-action="delete" data-id="${esc(alarm.id)}" title="삭제" aria-label="${esc(alarm.name)} ${esc(alarm.time)} 알람 삭제">${ic('trash-2')}</button>
           </div>`;
         list.appendChild(div);
       });
-      refreshIcons();
     }
 
     function exportAlarms() {
@@ -681,35 +759,56 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = ev => {
+      reader.onload = async ev => {
+        let data = null;
         try {
-          const data = JSON.parse(ev.target.result);
+          data = JSON.parse(ev.target.result);
           if (!data || !Array.isArray(data.alarms)) throw new Error('형식 오류');
-          alarms = data.alarms;
-          logs = Array.isArray(data.logs) ? data.logs.slice(0, LOG_MAX) : [];
-          saveList('alarms', alarms);
-          saveList('alarm_logs', logs);   // 복구한 기록도 저장 — 새로고침해도 유지
-          renderAlarms();
-          toast(`알람 ${alarms.length}개를 불러왔어요 ✓`, 'success');
         } catch (err) {
-          toast('백업 파일을 읽을 수 없어요. 이 앱에서 받은 JSON 백업 파일인지 확인해 주세요.', 'error');
-        } finally {
-          e.target.value = '';   // 같은 파일을 다시 선택해도 onchange가 발동하도록 초기화
+          toast('파일을 읽을 수 없어요. 이 앱에서 [파일로 저장]으로 받은 파일인지 확인해 주세요.', 'error');
+          e.target.value = '';
+          return;
         }
+        e.target.value = '';   // 같은 파일을 다시 선택해도 onchange가 발동하도록 초기화
+        // 지금 알람을 통째로 바꾸므로 먼저 묻고, 바꾼 뒤에도 되돌릴 수 있게
+        if (alarms.length && window.VUI) {
+          const ok = await VUI.confirm(`지금 알람 ${alarms.length}개를 파일의 알람 ${data.alarms.length}개로 바꿀까요?`, { title: '파일 불러오기', ok: '바꾸기', danger: true });
+          if (!ok) return;
+        }
+        const prev = { alarms, logs };
+        alarms = data.alarms;
+        logs = Array.isArray(data.logs) ? data.logs.slice(0, LOG_MAX) : [];
+        saveList('alarms', alarms);
+        saveList('alarm_logs', logs);   // 불러온 기록도 저장 — 새로고침해도 유지
+        renderAlarms();
+        const msg = `알람 ${alarms.length}개를 불러왔어요`;
+        if (window.VUI && prev.alarms.length) VUI.toast(msg, { type: 'success', action: { label: '되돌리기', onClick: () => {
+          alarms = prev.alarms; logs = prev.logs;
+          saveList('alarms', alarms); saveList('alarm_logs', logs); renderAlarms();
+        } } });
+        else toast(msg, 'success');
       };
       reader.readAsText(file);
     }
 
     function renderLogs() {
       const c = document.getElementById('log-list');
-      if (!logs.length) { c.innerHTML = '<p style="text-align:center;color:var(--fg-muted);padding:1rem">기록이 없습니다.</p>'; return; }
+      document.getElementById('clearLogsBtn').disabled = !logs.length;
+      if (!logs.length) { c.innerHTML = '<p style="text-align:center;color:var(--fg-muted);padding:1rem">아직 울린 알람이 없어요.</p>'; return; }
       c.innerHTML = logs.slice(0, 30).map(l => `
         <div class="log-item">
           <div class="log-name">${esc(l.name)} (${esc(l.time)})</div>
           <div class="log-date">${esc(l.date)}</div>
         </div>`).join('');
     }
-    function clearLogs() { logs = []; saveList('alarm_logs', logs); renderLogs(); announce('실행 기록을 지웠어요.'); }
+    function clearLogs() {
+      if (!logs.length) return;
+      const prev = logs;
+      logs = []; saveList('alarm_logs', logs); renderLogs(); announce('최근 기록을 지웠어요.');
+      if (window.VUI) VUI.toast('최근 기록을 지웠어요', { action: { label: '되돌리기', onClick: () => {
+        logs = prev; saveList('alarm_logs', logs); renderLogs();
+      } } });
+    }
     // 모달: VUI가 role=dialog·포커스 가두기·ESC·배경 클릭 닫기·포커스 복귀를 맡음
     const modals = window.VUI ? {
       alarmModal: VUI.modal.bind('#alarmModal', { className: 'open', backdropClose: true, dialog: '#alarmModal .modal-content', initialFocus: '#alarmName' }),
@@ -781,6 +880,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     });
 
     renderAlarms();
+    paintClock(new Date());   // 첫 1초 동안 빈 시계가 보이지 않게
+    updateTabFade();
 
     // 선택 동기화: 헤더 '동기화' 버튼 (알람·기록을 코드 하나로 기기 간 이어쓰기)
     if (window.VivesSync) VivesSync.mountDocSync({

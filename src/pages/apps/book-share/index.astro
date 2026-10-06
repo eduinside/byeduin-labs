@@ -1,10 +1,10 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<AppLayout 
-  icons
+<AppLayout
   title="도서 정보 나눔 — eduin VIVES"
-  description="ISBN을 입력하면 도서 정보를 자동 조회. 카드 형태로 예쁘게 공유할 수 있습니다."
+  description="ISBN을 붙여넣으면 도서 정보를 자동으로 조회해 표로 정리합니다. 엑셀로 내려받거나 링크로 공유할 수 있습니다."
   image="https://eduin.info/og-images/book-share.png"
   bodyShell="column"
   bodyWidth="narrow"
@@ -17,6 +17,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', sans-serif;
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -181,9 +182,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     td.num { color: var(--fg-muted); font-size: 0.75rem; width: 36px; text-align: center; }
     td.title { font-weight: 500; }
+    td.title .isbn { display: block; margin-top: 2px; font-size: 0.72rem; font-weight: 400; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+    tbody tr.error-row td.title .isbn { color: var(--danger); }
     td.price { white-space: nowrap; }
     td.qty { width: 90px; }
-    td.del { width: 44px; text-align: center; }
+    td.del { width: 52px; text-align: center; }
 
     .qty-input {
       width: 64px;
@@ -203,8 +206,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       border: none;
       color: var(--fg-muted);
       cursor: pointer;
-      min-width: 40px;
-      min-height: 40px;
+      min-width: 44px;
+      min-height: 44px;
       padding: 4px;
       border-radius: 6px;
       line-height: 1;
@@ -260,21 +263,54 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       margin-top: 0.5rem;
     }
 
+    .action-row .hero-btn-danger { flex: 0 1 auto; }
+    .stats-row .fail-stat, .stats-row .fail-stat strong { color: var(--danger); }
+    .gather-hint { margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--fg-muted); line-height: 1.6; }
+    .gather-hint a { color: var(--primary); font-weight: 600; }
+
+    @media (pointer: coarse) {
+      .qty-input { min-height: 44px; }
+    }
+
     @media (max-width: 540px) {
       .page-wrap { padding-top: 56px; }
       .overlay-btn span { display: none; }
+      /* iOS 확대 방지: 입력칸 16px */
+      textarea.hero-input, .qty-input { font-size: 16px; }
+      #tableSection { padding: 0; }
+
+      /* 휴대폰: 표를 줄마다 카드처럼(수량·삭제가 화면 안에 보이도록) */
+      .table-wrap table { min-width: 0; }
+      .table-wrap thead { display: none; }
+      .table-wrap tbody tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: center;
+        column-gap: 0.5rem;
+        padding: 0.6rem 0.25rem 0.6rem 0.85rem;
+      }
+      .table-wrap td { padding: 0; }
+      .table-wrap td.num { display: none; }
+      .table-wrap td.title { grid-column: 1; grid-row: 1; }
+      .table-wrap td.author, .table-wrap td.publisher, .table-wrap td.price { grid-column: 1; font-size: 0.78rem; color: var(--fg-muted); }
+      .table-wrap td.author { grid-row: 2; }
+      .table-wrap td.publisher { grid-row: 3; }
+      .table-wrap td.price { grid-row: 4; }
+      .table-wrap td.author:empty, .table-wrap td.publisher:empty { display: none; }
+      .table-wrap td.qty { grid-column: 2; grid-row: 1 / span 4; width: auto; }
+      .table-wrap td.del { grid-column: 3; grid-row: 1 / span 4; width: auto; }
+      .table-wrap .qty-input { width: 56px; }
+      tbody tr.error-row td.author, tbody tr.error-row td.publisher, tbody tr.error-row td.price { display: none; }
     }
   </style>
-  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"도서 정보 나눔","description":"ISBN을 입력하면 도서 정보를 자동 조회. 카드 형태로 예쁘게 공유할 수 있습니다.","url":"https://eduin.info/apps/book-share/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"도서 정보 나눔","description":"ISBN을 붙여넣으면 도서 정보를 자동으로 조회해 표로 정리합니다. 엑셀로 내려받거나 링크로 공유할 수 있습니다.","url":"https://eduin.info/apps/book-share/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
 
 
   <div class="app-actions">
-    <a href="./gather.html" class="overlay-btn" title="다른 사람의 링크에서 책 정보 수집">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-      </svg>
+    <a href="./gather.html" class="overlay-btn" title="여러 사람의 공유 링크를 모아 한 표로 합치기" aria-label="링크 모아 수집하기">
+      <Icon name="link" />
       <span>수집</span>
     </a>
   </div>
@@ -283,20 +319,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     <!-- 앱 헤더 -->
     <div class="app-header">
-      <div class="app-badge">◆ 소셜</div>
-      <h1 class="app-title">
-  <div class="card-emoji sub-util-social" style="margin-bottom: 0; transform: scale(1.0);">
-        <i data-lucide="book-marked"></i>
-      </div>
-  <span>도서 정보 <span>나눔</span></span>
-</h1>
-      <p class="app-desc">ISBN 목록을 붙여넣으면 카카오 책 검색으로 도서 정보를 가져와 표로 정리하고, 파일로 내려받거나 링크로 다른 사용자에게 쉽게 전달할 수 있습니다. <span style="opacity:0.45;font-size:0.85em">(카카오 책 검색 API)</span></p>
+      <div class="app-badge">소셜</div>
+      <h1 class="app-title">도서 정보 나눔 <span class="app-title-en">Book Share</span></h1>
+      <p class="app-desc">ISBN 목록을 붙여넣으면 카카오 책 검색으로 도서 정보를 가져와 표로 정리하고, 엑셀 파일로 내려받거나 링크로 다른 사람에게 쉽게 전달할 수 있습니다. <span style="opacity:0.45;font-size:0.85em">(카카오 책 검색 API)</span></p>
+      <p class="gather-hint">여러 사람에게 받은 공유 링크를 한 표로 모으려면 <a href="./gather.html">도서 정보 수집</a>으로 가세요.</p>
     </div>
 
     <!-- ISBN 입력 -->
     <div style="margin-bottom:1rem">
       <label class="section-label" for="isbnInput">ISBN 목록</label>
-      <textarea class="hero-input" id="isbnInput" placeholder="ISBN-13 코드를 붙여넣으세요. 줄바꿈·공백·쉼표 모두 OK.
+      <textarea class="hero-input" id="isbnInput" placeholder="13자리 ISBN을 붙여넣으세요. 줄바꿈·공백·쉼표 모두 OK.
 
 예)
 9791173325878
@@ -305,7 +337,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     <!-- 조회 버튼 + 진행 상태 -->
     <button class="hero-btn" id="fetchBtn" onclick="startFetch()" style="width:100%">
-      목록에 추가
+      <Icon name="plus" /> 목록에 추가
     </button>
 
     <div class="progress-wrap" id="progressWrap">
@@ -317,28 +349,29 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     <!-- 화살표 (조회 후 표시) -->
     <div class="fetch-arrow" id="fetchArrow" style="display:none">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="3" x2="12" y2="20"></line><polyline points="6 14 12 20 18 14"></polyline>
-      </svg>
+      <Icon name="arrow-down" size={18} />
     </div>
 
-    <div id="emptyState"></div>
+    <div id="emptyState" class="empty-state" style="display:none">
+      아직 목록이 비어 있어요.<br>
+      책 뒤표지 바코드 아래의 <strong>13자리 ISBN</strong>(978·979로 시작)을 위 칸에 붙여넣고 <strong>목록에 추가</strong>를 눌러 보세요.
+    </div>
 
   </div>
 
   <!-- 결과 테이블 (page-wrap 밖으로 분리 - 독립적인 폭 설정) -->
-  <div id="tableSection" style="display:none; max-width:800px; margin:0 auto; padding:0 1.5rem">
+  <div id="tableSection" style="display:none">
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
             <th class="num">#</th>
-            <th>도서명</th>
+            <th>도서명 · ISBN</th>
             <th>저자</th>
             <th>출판사</th>
             <th>정가</th>
             <th>주문수량</th>
-            <th></th>
+            <th aria-label="삭제"></th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -348,28 +381,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <div class="stats-row" id="statsRow"></div>
 
     <div class="action-row">
-      <button class="hero-btn" onclick="exportExcel()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line>
-        </svg>
-        내려받기
+      <button type="button" class="hero-btn" id="excelBtn" onclick="exportExcel()">
+        <Icon name="download" />
+        엑셀 내려받기
       </button>
       <button type="button" class="hero-btn hero-btn-ghost share-btn" id="shareBtn" onclick="shareList()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle>
-          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-        </svg>
-        링크로 공유
+        <Icon name="share-2" />
+        <span class="btn-label">링크로 공유</span>
       </button>
-      <button class="hero-btn hero-btn-ghost" onclick="confirmReset()">전체 초기화</button>
+      <button type="button" class="hero-btn hero-btn-danger" onclick="confirmReset()">
+        <Icon name="trash-2" />
+        전체 초기화
+      </button>
     </div>
   </div>
 
   <!-- 토스트·공유 창은 공용 VUI (public/common/ui.js) -->
-
-  <!-- SheetJS -->
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" is:inline=""></script>
+  <!-- SheetJS는 엑셀 내려받기를 누를 때만 불러온다(loadXLSX) -->
 
   <script is:inline="">
     /* ── 상태 ── */
@@ -411,7 +439,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     /* ── 초기화 ── */
-    (function init() {
+    (async function init() {
       // 일반 접근: localStorage 복원
       let saved = [];
       try { saved = sanitizeBooks(JSON.parse(localStorage.getItem(LS_ITEMS) || '[]'), true); } catch { saved = []; }
@@ -423,30 +451,42 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         const shared = sanitizeBooks(decodeShareData(hash.slice(7)), false);
         history.replaceState(null, '', location.pathname);
         if (shared.length > 0) {
-          const ok = saved.length === 0 || confirm(
-            `공유받은 목록(${shared.length}권)을 열까요?\n지금 이 기기에 저장된 내 목록(${saved.length}권)은 지워지고 공유받은 목록으로 바뀌어요.`);
+          let ok = saved.length === 0;
+          if (!ok) {
+            renderTable(); // 확인 창 뒤에 내 목록이 보이도록
+            ok = await VUI.confirm(
+              `지금 이 기기에 저장된 내 목록(${saved.length}권)은 지워지고 공유받은 목록(${shared.length}권)으로 바뀌어요.`,
+              { title: '공유받은 목록을 열까요?', ok: '공유받은 목록 열기', cancel: '내 목록 유지' });
+          }
           if (ok) {
             list = shared;
             saveList();
             renderTable();
-            showToast(`📚 ${shared.length}권의 목록이 로드되었습니다.`);
+            showToast(`공유받은 목록 ${shared.length}권을 불러왔어요.`);
             return;
           }
           renderTable();
           showToast('내 목록을 그대로 두었어요.');
           return;
         }
-        showToast('공유 링크를 읽을 수 없습니다.');
+        showToast('공유 링크를 읽을 수 없어요. 링크가 잘리지 않았는지 확인해 주세요.', 'error');
       }
       renderTable();
     })();
 
-    /* ── ISBN 파싱 ── */
+    /* ── ISBN 파싱 ──
+       줄바꿈·공백·쉼표·세미콜론으로 나누고 하이픈 등 숫자 아닌 글자는 지운다.
+       숫자가 들어 있지만 13자리가 아닌 토막(ISBN-10, 잘린 번호)은 invalid로 세어 알린다. */
     function parseISBNs(text) {
-      const all = text.split(/[\s,;]+/)
-        .map(s => s.replace(/\D/g, ''))
-        .filter(s => s.length === 13);
-      return [...new Set(all)];
+      const all = [];
+      let invalid = 0;
+      text.split(/[\s,;]+/).forEach(tok => {
+        const digits = tok.replace(/\D/g, '');
+        if (!digits) return;            // 숫자 없는 낱말(예: "예)")은 무시
+        if (digits.length === 13) all.push(digits);
+        else invalid++;
+      });
+      return { isbns: [...new Set(all)], invalid };
     }
 
     /* ── ISBN 조회 (서버 함수 경유 — 키는 서버 env, 배포본에서도 동작) ──
@@ -474,20 +514,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (fetching) return;
 
       const text = document.getElementById('isbnInput').value;
-      const isbns = parseISBNs(text);
+      const { isbns, invalid } = parseISBNs(text);
+      const invalidMsg = invalid ? `13자리가 아닌 번호 ${invalid}건 건너뜀` : '';
 
       if (isbns.length === 0) {
-        showToast('유효한 ISBN-13 코드가 없습니다.');
+        showToast(invalid
+          ? `13자리 ISBN이 없어요(${invalidMsg}). ISBN-10은 978·979로 시작하는 13자리 번호로 넣어 주세요.`
+          : '13자리 ISBN을 붙여넣어 주세요.', 'error');
         return;
       }
 
-      // 중복 제거 (이미 목록에 있는 ISBN)
-      const existing = new Set(list.map(b => b.isbn13));
+      // 중복 제거 (이미 목록에 있는 ISBN). 조회 실패 행은 빼고 센다 — 같은 ISBN을 다시 넣으면 재조회
+      const existing = new Set(list.filter(b => !b.error).map(b => b.isbn13));
       const toFetch = isbns.filter(isbn => !existing.has(isbn));
       const skipped = isbns.length - toFetch.length;
 
       if (toFetch.length === 0) {
-        showToast(`${skipped}개 모두 이미 목록에 있습니다.`);
+        showToast(`${skipped}건 모두 이미 목록에 있어요.` + (invalidMsg ? ` · ${invalidMsg}` : ''));
         return;
       }
 
@@ -499,11 +542,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
       let added = 0, errors = 0, remaining = 0;
 
+      // 같은 ISBN의 조회 실패 행이 있으면 그 자리를 새 결과로 바꾼다(재시도)
+      const putRow = (isbn, row) => {
+        const at = list.findIndex(b => b.error && b.isbn13 === isbn);
+        if (at >= 0) list[at] = row; else list.push(row);
+      };
+
       for (let i = 0; i < toFetch.length; i++) {
         setProgress(i + 1, toFetch.length);
         try {
           const book = await lookupISBN(toFetch[i]);
-          list.push({
+          putRow(toFetch[i], {
             isbn13: book.isbn13 || toFetch[i],
             title: book.title || '(제목 없음)',
             author: book.author || '',
@@ -521,7 +570,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             saveList();
             break;
           }
-          list.push({
+          putRow(toFetch[i], {
             isbn13: toFetch[i],
             title: '(' + ((e && e.message) || e) + ')',
             publisher: '-', priceStandard: 0, qty: 0, error: true,
@@ -540,14 +589,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       pw.classList.remove('visible');
 
       if (remaining) {
-        showToast(`도서 조회가 잠시 제한되었어요. 10분 뒤 남은 ${remaining}건을 다시 시도해 주세요.`);
+        showToast(`도서 조회가 잠시 제한되었어요. 10분 뒤 남은 ${remaining}건을 다시 시도해 주세요.`
+          + (invalidMsg ? ` · ${invalidMsg}` : ''), 'error');
         return;
       }
 
-      let msg = `${added}권 추가 완료.`;
-      if (skipped) msg += ` (중복 ${skipped}건 제외)`;
-      if (errors) msg += ` 조회 실패 ${errors}건.`;
-      showToast(msg);
+      const parts = [`${added}권 추가`];
+      if (skipped) parts.push(`이미 있는 책 ${skipped}건 제외`);
+      if (invalidMsg) parts.push(invalidMsg);
+      if (errors) parts.push(`조회 실패 ${errors}건(표의 빨간 줄)`);
+      // 실패가 섞이면 성공색을 쓰지 않는다. 하나도 넣지 못했으면 오류색
+      showToast(parts.join(' · '), (errors || invalid) && !added ? 'error' : undefined);
     }
 
     /* ── 진행 상태 ── */
@@ -584,12 +636,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         if (!b.error) num++;
         return `<tr class="${b.error ? 'error-row' : ''}">
           <td class="num">${b.error ? '–' : num}</td>
-          <td class="title">${escHtml(b.title)}</td>
-          <td>${escHtml(b.author || '')}</td>
-          <td>${escHtml(b.publisher)}</td>
+          <td class="title">${escHtml(b.title)}${b.isbn13 ? `<span class="isbn">ISBN ${escHtml(b.isbn13)}</span>` : ''}</td>
+          <td class="author">${escHtml(b.author || '')}</td>
+          <td class="publisher">${escHtml(b.publisher)}</td>
           <td class="price">${b.priceStandard ? b.priceStandard.toLocaleString() + '원' : '–'}</td>
           <td class="qty">${b.error ? '' : `<input class="qty-input" type="number" min="0" max="999" value="${b.qty}" data-idx="${idx}" aria-label="${escHtml(b.title)} 주문수량" onchange="updateQty(this)">`}</td>
-          <td class="del"><button type="button" class="del-btn" title="삭제" aria-label="${escHtml(b.title)} 삭제" onclick="deleteRow(${idx})">✕</button></td>
+          <td class="del"><button type="button" class="del-btn" title="삭제" aria-label="${escHtml(b.title)} 삭제" onclick="deleteRow(${idx})">${VUI.icon('x')}</button></td>
         </tr>`;
       }).join('');
 
@@ -600,7 +652,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         `<span>총 <strong>${validList.length}종</strong></span>` +
         `<span>주문수량 <strong>${totalQty}권</strong></span>` +
         `<span>합계 <strong>${totalPrice.toLocaleString()}원</strong></span>` +
-        (errorList.length ? `<span style="color:var(--danger)">조회 실패 <strong>${errorList.length}건</strong></span>` : '');
+        (errorList.length ? `<span class="fail-stat">조회 실패 <strong>${errorList.length}건</strong> — 같은 ISBN을 다시 추가하면 재조회</span>` : '');
     }
 
     /* ── 수량 업데이트 ── */
@@ -625,12 +677,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     /* ── 전체 초기화 ── */
-    function confirmReset() {
-      if (!confirm('목록을 모두 삭제할까요?')) return;
+    async function confirmReset() {
+      const ok = await VUI.confirm(
+        `목록의 ${list.length}줄을 모두 지울까요? 되돌릴 수 없어요.\n도서 정보 수집 화면도 같은 목록을 쓰므로 함께 비워져요.`,
+        { title: '전체 초기화', ok: '모두 지우기', danger: true });
+      if (!ok) return;
       list = [];
       saveList();
       renderTable();
-      showToast('목록이 초기화되었습니다.');
+      showToast('목록을 모두 지웠어요.');
     }
 
     /* ── localStorage 저장 ── */
@@ -642,11 +697,39 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }
     }
 
+    /* ── SheetJS: 엑셀 내려받기를 누를 때만 불러온다(첫 화면을 막지 않게) ── */
+    const XLSX_SRC = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+    let xlsxLoading = null;
+    function loadXLSX() {
+      if (window.XLSX) return Promise.resolve(window.XLSX);
+      if (!xlsxLoading) {
+        xlsxLoading = new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = XLSX_SRC;
+          s.async = true;
+          s.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('XLSX 없음'));
+          s.onerror = () => { s.remove(); reject(new Error('불러오기 실패')); };
+          document.head.appendChild(s);
+        }).catch(e => { xlsxLoading = null; throw e; }); // 실패하면 다음 클릭 때 다시 시도
+      }
+      return xlsxLoading;
+    }
+
     /* ── 엑셀 내보내기 ── */
-    function exportExcel() {
-      if (typeof XLSX === 'undefined') { showToast('SheetJS 로딩 중...'); return; }
+    async function exportExcel() {
       const valid = list.filter(b => !b.error);
-      if (valid.length === 0) { showToast('내보낼 항목이 없습니다.'); return; }
+      if (valid.length === 0) { showToast('내려받을 책이 없어요.'); return; }
+
+      const btn = document.getElementById('excelBtn');
+      if (btn) btn.disabled = true;
+      try {
+        await loadXLSX();
+      } catch {
+        showToast('엑셀 도구를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.', 'error');
+        return;
+      } finally {
+        if (btn) btn.disabled = false;
+      }
 
       const rows = valid.map((b, i) => ({
         '순번': i + 1,
@@ -675,7 +758,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       XLSX.utils.book_append_sheet(wb, ws, '도서 정보');
       const today = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(wb, `도서 정보_${today}.xlsx`);
-      showToast('엑셀 파일을 내려받았습니다.');
+      showToast('엑셀 파일을 내려받았어요.');
     }
 
     /* ── 유틸 ── */
@@ -702,33 +785,34 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     async function shareList() {
       const valid = list.filter(b => !b.error);
-      if (valid.length === 0) { showToast('공유할 목록이 없습니다.'); return; }
+      if (valid.length === 0) { showToast('공유할 책이 없어요.'); return; }
 
       const btn = document.getElementById('shareBtn');
+      const label = btn.querySelector('.btn-label');
       btn.classList.add('loading');
       btn.querySelector('svg').style.display = 'none';
-      const origText = btn.childNodes[btn.childNodes.length - 1].textContent;
-      btn.childNodes[btn.childNodes.length - 1].textContent = ' 생성 중…';
+      const origText = label.textContent;
+      label.textContent = '링크 만드는 중…';
 
       const longURL = buildShareURL();
 
       try {
         // 단축(실패하면 원래 링크) → 복사. 복사가 안 되면 링크 창(입력칸 + 복사 버튼)
         await VUI.share.link(longURL, {
-          title: '🔗 도서 목록 공유',
+          title: '도서 목록 공유',
           desc: `링크를 연 사람은 이 목록(${valid.length}권)을 그대로 볼 수 있어요.`,
         });
       } finally {
         btn.classList.remove('loading');
         btn.querySelector('svg').style.display = '';
-        btn.childNodes[btn.childNodes.length - 1].textContent = origText;
+        label.textContent = origText;
       }
     }
 
     /* ── 페이지 공유 ── */
     function shareCurrentPage() {
       const url = location.href;
-      const copy = () => VUI.share.copyOrShow(url, { title: '🔗 페이지 공유' });
+      const copy = () => VUI.share.copyOrShow(url, { title: '페이지 공유' });
       if (navigator.share) {
         navigator.share({ title: '도서 정보 나눔', url }).catch(copy);
       } else {

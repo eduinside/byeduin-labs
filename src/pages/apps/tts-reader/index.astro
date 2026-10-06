@@ -1,19 +1,21 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
 <AppLayout
-  title="로컬 TTS 리더 — eduin VIVES"
-  description="브라우저 내장 음성으로 텍스트를 자연스럽게 읽어주는 로컬 TTS 리더"
+  title="글 읽어주기 (TTS Reader) — eduin VIVES"
+  description="기기에 들어 있는 목소리로 글을 소리 내어 읽어 주는 도구 — 속도·음높이 조절, 읽는 문장 표시"
   image="https://eduin.info/og-images/tts-reader.png"
   bodyShell="column"
   bodyWidth="wide"
 >
   <Fragment slot="head">
-    <script type="application/ld+json" is:inline>{"@context":"https://schema.org","@type":"WebApplication","name":"로컬 TTS 리더","description":"브라우저 내장 음성으로 텍스트를 자연스럽게 읽어주는 로컬 TTS 리더","url":"https://eduin.info/apps/tts-reader/","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+    <script type="application/ld+json" is:inline>{"@context":"https://schema.org","@type":"WebApplication","name":"글 읽어주기 (TTS Reader)","description":"기기에 들어 있는 목소리로 글을 소리 내어 읽어 주는 도구 — 속도·음높이 조절, 읽는 문장 표시","url":"https://eduin.info/apps/tts-reader/","applicationCategory":"UtilitiesApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
     <style is:global="">
       body {
         padding: 56px 1rem 5rem;
         min-height: 100vh;
+        min-height: 100dvh;
       }
       body::before {
         content: '';
@@ -42,6 +44,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         color: var(--fg); outline: none; transition: border-color 0.2s;
       }
       .fd-input:focus { border-color: var(--primary); }
+      select.fd-input { min-height: 44px; }
       .fd-textarea {
         width: 100%; background: var(--bg); border: 1px solid var(--border);
         border-radius: 8px; padding: 12px; font-size: 14px;
@@ -63,6 +66,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       .fd-btn-danger { background: rgba(243,18,96,0.10); color: var(--danger); }
       .fd-btn-danger:hover { background: rgba(243,18,96,0.18); }
       .fd-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+      /* iOS는 16px 미만 입력칸에서 화면을 확대하므로 휴대폰·태블릿에서는 16px */
+      @media (max-width: 720px), (pointer: coarse) {
+        .fd-input, .fd-textarea { font-size: 16px; }
+      }
 
       /* ── 앱 전용 레이아웃 ── */
       .tts-layout {
@@ -104,9 +111,30 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       #record { width: 100%; }
       .hint-mini { font-size: 11px; color: var(--fg-muted); line-height: 1.5; margin: 8px 0 0; text-align: center; }
       .hint-mini b { color: var(--fg); font-weight: 700; }
+      .hint-mini.is-off { color: var(--danger); }
+      .voice-notice {
+        display: flex; gap: 8px; align-items: flex-start;
+        margin: 10px 0 0; padding: 10px 12px; border-radius: 10px;
+        font-size: 13px; line-height: 1.55; color: var(--fg);
+        background: color-mix(in srgb, var(--warning, #f5a524) 14%, transparent);
+        border: 1px solid color-mix(in srgb, var(--warning, #f5a524) 45%, transparent);
+      }
+      .voice-notice[hidden] { display: none; }
+      .voice-notice .ic { flex: none; margin-top: 3px; color: var(--warning, #f5a524); }
 
       .main-col { display: flex; flex-direction: column; gap: 0.75rem; height: 100%; }
       #text { flex: 1; min-height: 400px; }
+      /* 읽는 동안 보여 주는 읽기 전용 화면 — 입력칸에 focus()를 주지 않아 태블릿 화상 키보드가 올라오지 않는다 */
+      .read-view {
+        flex: 1; min-height: 400px; max-height: 70vh; max-height: 70dvh; overflow-y: auto; position: relative;
+        background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+        font-size: 14px; line-height: 1.7; color: var(--fg);
+        white-space: pre-wrap; overflow-wrap: anywhere;
+        font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', sans-serif;
+      }
+      .read-view[hidden] { display: none; }
+      .read-view mark { background: color-mix(in srgb, var(--primary) 28%, transparent); color: var(--fg); border-radius: 3px; }
+      @media (max-width: 720px), (pointer: coarse) { .read-view { font-size: 16px; } }
       #text::selection { background: rgba(0,111,238,0.35); color: var(--fg); }
       #text::-moz-selection { background: rgba(0,111,238,0.35); color: var(--fg); }
       .hint { font-size: 13px; color: var(--fg-muted); line-height: 1.6; text-align: center; min-height: 2.8em; }
@@ -119,9 +147,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <main class="app-main">
   <div class="page-wrap">
   <div class="app-header">
-    <div class="app-badge">◆ 크리에이티브</div>
-    <h1 class="app-title">🔊 로컬 TTS 리더</h1>
-    <p class="app-desc">브라우저 내장 음성으로 텍스트를 읽어주는 도구 — 입력한 글은 이 사이트 서버로 보내지 않습니다. (이름에 Online·Google이 붙은 음성은 브라우저 회사 서버를 거쳐 읽을 수 있어요)</p>
+    <div class="app-badge">크리에이티브</div>
+    <h1 class="app-title">글 읽어주기 <span class="app-title-en">TTS Reader</span></h1>
+    <p class="app-desc">기기에 들어 있는 목소리로 글을 소리 내어 읽어 주는 도구 — 입력한 글은 이 사이트 서버로 보내지 않습니다. (이름에 Online·Google이 붙은 목소리는 브라우저 회사 서버를 거쳐 읽을 수 있어요)</p>
   </div>
 
   <div class="tts-layout">
@@ -130,12 +158,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <div class="fd-card">
         <div class="fd-section-title">재생</div>
         <div class="btn-grid-2">
-          <button type="button" id="playPause" class="fd-btn fd-btn-primary">▶ 재생</button>
-          <button type="button" id="stop" class="fd-btn fd-btn-ghost" disabled>■ 중지</button>
+          <button type="button" id="playPause" class="fd-btn fd-btn-primary"><Icon name="play" /> 재생</button>
+          <button type="button" id="stop" class="fd-btn fd-btn-ghost" disabled><Icon name="square" /> 중지</button>
         </div>
 
-        <label class="fd-label" for="voice">음성 (Voice)</label>
-        <select id="voice" class="fd-input"></select>
+        <label class="fd-label" for="voice">목소리</label>
+        <select id="voice" class="fd-input" aria-describedby="voiceNotice"></select>
+        <p class="voice-notice" id="voiceNotice" role="status" hidden><Icon name="triangle-alert" /><span id="voiceNoticeText"></span></p>
 
         <div class="field-grid-2">
           <div>
@@ -161,8 +190,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       </div>
 
       <div class="fd-card">
-        <div class="fd-section-title">다운로드</div>
-        <button type="button" id="record" class="fd-btn fd-btn-danger" aria-describedby="recordHint">⬇ MP3로 다운로드</button>
+        <div class="fd-section-title">MP3로 저장</div>
+        <button type="button" id="record" class="fd-btn fd-btn-ghost" aria-describedby="recordHint"><Icon name="mic" /> 녹음해서 MP3로 저장</button>
         <p class="hint-mini" id="recordHint">공유 창에서 <b>전체 화면</b> + <b>시스템 오디오 공유</b>를 선택해야 소리가 녹음됩니다.</p>
       </div>
     </aside>
@@ -170,7 +199,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <!-- ── 메인: 텍스트 입력 ── -->
     <div class="main-col">
       <label for="text" class="visually-hidden">읽을 텍스트</label>
-      <textarea id="text" class="fd-textarea" placeholder="여기에 영어(또는 다른 언어) 텍스트를 붙여넣으세요...">Hello! This is a local text-to-speech reader running entirely in your browser.</textarea>
+      <textarea id="text" class="fd-textarea" placeholder="읽어 줄 글을 여기에 쓰거나 붙여넣으세요. 한국어·영어 등 여러 언어를 읽을 수 있어요.">안녕하세요! 여기에 쓴 글을 기기의 목소리로 읽어 드려요.
+속도와 음높이를 바꿔 보고, 재생 버튼을 눌러 들어 보세요.</textarea>
+      <div class="read-view" id="readView" hidden aria-label="읽는 중인 글"></div>
       <p class="hint" id="mainStatus"><span id="statusText" role="status" aria-live="polite">대기 중</span><span id="statusTimer" aria-hidden="true"></span></p>
     </div>
   </div>
@@ -212,6 +243,19 @@ const timerEl = document.getElementById('statusTimer');
 const stripMarkdownEl = document.getElementById('stripMarkdown');
 const ignoreParensEl = document.getElementById('ignoreParens');
 const handlePausesEl = document.getElementById('handlePauses');
+const readView = document.getElementById('readView');
+const voiceNotice = document.getElementById('voiceNotice');
+const voiceNoticeText = document.getElementById('voiceNoticeText');
+const recordHint = document.getElementById('recordHint');
+
+// 녹음 저장은 화면 공유(getDisplayMedia)와 MediaRecorder가 있어야 한다 — 휴대폰·태블릿 대부분은 없음
+const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) && typeof MediaRecorder !== 'undefined';
+const RECORD_LABEL = VUI.icon('mic') + ' 녹음해서 MP3로 저장';
+if (!canRecord) {
+  recordBtn.disabled = true;
+  recordHint.textContent = '이 기기·브라우저에서는 녹음 저장을 할 수 없어요. 컴퓨터의 크롬·엣지에서 쓸 수 있습니다. (읽어 주기는 그대로 쓸 수 있어요)';
+  recordHint.classList.add('is-off');
+}
 
 let voices = [];
 let lastDetectedLang = null;
@@ -263,18 +307,38 @@ function detectLang(text) {
 // ---------- 음성 목록 (언어별 optgroup) ----------
 function loadVoices() {
   if (!synth) {
-    voiceSel.innerHTML = '<option>이 브라우저는 음성 읽기를 지원하지 않습니다</option>';
-    statusEl.textContent = '이 브라우저는 음성 읽기(Web Speech)를 지원하지 않습니다. 크롬·엣지·사파리 최신 버전을 사용해 주세요.';
+    voiceSel.innerHTML = '<option>이 브라우저는 글 읽어 주기를 지원하지 않습니다</option>';
+    statusEl.textContent = '이 브라우저는 글 읽어 주기를 지원하지 않습니다. 크롬·엣지·사파리 최신 버전을 사용해 주세요.';
     playPauseBtn.disabled = true;
     recordBtn.disabled = true;
     return;
   }
   voices = synth.getVoices();
   if (voices.length === 0) {
-    voiceSel.innerHTML = '<option>음성 목록 로딩 중...</option>';
+    voiceSel.innerHTML = '<option>목소리 목록을 불러오는 중...</option>';
     return;
   }
   renderVoiceList();
+}
+
+function langName(base) {
+  try {
+    const name = new Intl.DisplayNames(['ko'], { type: 'language' }).of(base);
+    if (name && name.toLowerCase() !== base) return name;
+  } catch (e) { /* Intl.DisplayNames 미지원 */ }
+  return base;
+}
+
+// 글의 언어에 맞는 목소리가 기기에 없으면 화면에 알린다(다른 언어 목소리로 읽혀 발음이 어색함)
+function updateVoiceNotice(detected) {
+  const hasLangVoice = voices.some(v => baseLang(v.lang) === detected);
+  if (voices.length === 0 || hasLangVoice || !textEl.value.trim()) {
+    voiceNotice.hidden = true;
+    return true;
+  }
+  voiceNoticeText.textContent = `이 기기에는 ${langName(detected)} 목소리가 없어요. 다른 언어 목소리로 읽어서 발음이 어색할 수 있습니다. 다른 기기나 브라우저(크롬·엣지·사파리)를 써 보세요.`;
+  voiceNotice.hidden = false;
+  return false;
 }
 
 function baseLang(lang) {
@@ -295,6 +359,7 @@ function renderVoiceList() {
   if (voices.length === 0) return;
   const detected = detectLang(textEl.value);
   const prevSelected = voiceSel.value;
+  updateVoiceNotice(detected);
 
   const groups = new Map();
   voices.forEach(v => {
@@ -403,11 +468,11 @@ function setButtons({ playing, paused }) {
   isPaused = paused;
   stopBtn.disabled = !playing;
   if (!playing) {
-    playPauseBtn.textContent = '▶ 재생';
+    playPauseBtn.innerHTML = VUI.icon('play') + ' 재생';
   } else if (paused) {
-    playPauseBtn.textContent = '▶ 계속 재생';
+    playPauseBtn.innerHTML = VUI.icon('play') + ' 계속 재생';
   } else {
-    playPauseBtn.textContent = '⏸ 일시정지';
+    playPauseBtn.innerHTML = VUI.icon('pause') + ' 일시정지';
   }
 }
 
@@ -426,7 +491,8 @@ function stripMarkdown(text) {
   t = t.replace(/\*\*([^*]+)\*\*/g, '$1');
   t = t.replace(/__([^_]+)__/g, '$1');
   t = t.replace(/\*([^*]+)\*/g, '$1');
-  t = t.replace(/(?<![a-zA-Z0-9])_([^_]+)_(?![a-zA-Z0-9])/g, '$1');
+  // 앞 글자 검사는 lookbehind 대신 앞 글자를 함께 잡아 되돌려 놓는다(iOS 16.4 미만 Safari 호환)
+  t = t.replace(/(^|[^a-zA-Z0-9])_([^_]+)_(?![a-zA-Z0-9])/g, '$1$2');
   t = t.replace(/~~([^~]+)~~/g, '$1');
   return t;
 }
@@ -479,7 +545,8 @@ function processText(rawText, opts) {
 }
 
 function splitSentences(text) {
-  const parts = text.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+  // 문장부호 뒤 공백에서 나눈다(lookbehind 없이 — iOS 16.4 미만 Safari 호환)
+  const parts = text.replace(/([.!?])\s+/g, '$1\u0000').split('\u0000').map(s => s.trim()).filter(Boolean);
   return parts.length ? parts : [text];
 }
 
@@ -511,19 +578,42 @@ function buildUtterance(text) {
 }
 
 // ---------- 읽는 구간 하이라이트 ----------
+// 입력칸에 focus()/setSelectionRange()를 쓰면 태블릿에서 문장마다 화상 키보드가 올라오므로,
+// 읽는 동안에는 입력칸 대신 읽기 전용 화면(readView)을 보여 주고 <mark>로 현재 문장을 표시한다.
 let highlightSearchFrom = 0;
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function showReadView() {
+  if (!readView.hidden) return;
+  readView.style.height = textEl.offsetHeight ? textEl.offsetHeight + 'px' : '';
+  readView.textContent = textEl.value;
+  textEl.hidden = true;
+  readView.hidden = false;
+}
 function highlightSegment(text) {
   const value = textEl.value;
   let idx = value.indexOf(text, highlightSearchFrom);
   if (idx === -1) idx = value.indexOf(text);
   if (idx === -1) return;
   highlightSearchFrom = idx + text.length;
-  textEl.focus({ preventScroll: true });
-  textEl.setSelectionRange(idx, idx + text.length);
+  showReadView();
+  readView.innerHTML = escapeHtml(value.slice(0, idx))
+    + '<mark>' + escapeHtml(value.slice(idx, idx + text.length)) + '</mark>'
+    + escapeHtml(value.slice(idx + text.length));
+  const mark = readView.querySelector('mark');
+  if (mark) {
+    const top = mark.offsetTop, bottom = top + mark.offsetHeight;
+    if (top < readView.scrollTop || bottom > readView.scrollTop + readView.clientHeight) {
+      readView.scrollTop = Math.max(0, top - readView.clientHeight / 3);
+    }
+  }
 }
 function clearHighlight() {
-  const pos = textEl.selectionStart;
-  textEl.setSelectionRange(pos, pos);
+  if (readView.hidden) return;
+  readView.hidden = true;
+  readView.textContent = '';
+  textEl.hidden = false;
 }
 
 // ---------- 순차 재생 (여러 구간 + 사이 간격) ----------
@@ -535,8 +625,12 @@ let session = null;
 function playBtnClick() {
   const segments = processText(textEl.value, getOpts());
   if (segments.length === 0) {
-    statusEl.textContent = '읽을 텍스트를 입력하세요.';
+    statusEl.textContent = '읽을 글을 입력하세요.';
+    VUI.toast('읽을 글을 먼저 입력하세요.');
     return;
+  }
+  if (!updateVoiceNotice(detectLang(textEl.value))) {
+    VUI.toast(voiceNoticeText.textContent, 'error');
   }
   synth.cancel();
   highlightSearchFrom = 0;
@@ -592,7 +686,7 @@ playPauseBtn.addEventListener('click', () => {
     synth.cancel();
     timerPause();
     setButtons({ playing: true, paused: true });
-    statusEl.textContent = '일시정지됨';
+    statusEl.textContent = '일시정지됨 — 글을 고치려면 중지를 누르세요';
   } else {
     // 계속: 같은 구간부터 다시 읽는다
     session.paused = false;
@@ -601,16 +695,19 @@ playPauseBtn.addEventListener('click', () => {
     speakNext(session);
   }
 });
-stopBtn.addEventListener('click', () => {
+function stopPlayback() {
   if (session) {
     session.cancelled = true;
     if (session.gapTimer) clearTimeout(session.gapTimer);
   }
   synth.cancel();
-  statusEl.textContent = '정지됨';
   setButtons({ playing: false, paused: false });
   clearHighlight();
   timerReset();
+}
+stopBtn.addEventListener('click', () => {
+  stopPlayback();
+  statusEl.textContent = '정지됨';
 });
 
 // ---------- MP3 다운로드 (탭 오디오 캡처 → 브라우저 내 MP3 인코딩) ----------
@@ -645,23 +742,36 @@ function encodeToMp3(audioBuffer) {
   return new Blob(mp3Data, { type: 'audio/mp3' });
 }
 
-// 공용 토스트(VUI.toast) — 함수 이름은 그대로 두어 호출부는 바꾸지 않음
-function showToast(msg, type) { VUI.toast(msg, type); }
+// 녹음 중 상태 — 같은 버튼을 다시 누르면 녹음을 취소한다
+let recState = null;
+function setRecordButton(recording) {
+  recordBtn.innerHTML = recording ? VUI.icon('square') + ' 녹음 취소' : RECORD_LABEL;
+}
 
 recordBtn.addEventListener('click', async () => {
-  const segments = processText(textEl.value, getOpts());
-  if (segments.length === 0) {
-    statusEl.textContent = '읽을 텍스트를 입력하세요.';
+  if (recState) {
+    recState.cancelled = true;
+    synth.cancel();
+    if (recState.wake) recState.wake();
     return;
   }
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-    statusEl.textContent = '이 기능은 http://localhost 또는 https 환경에서만 동작합니다.';
+  const segments = processText(textEl.value, getOpts());
+  if (segments.length === 0) {
+    statusEl.textContent = '읽을 글을 입력하세요.';
+    VUI.toast('읽을 글을 먼저 입력하세요.');
+    return;
+  }
+  if (!canRecord) {
+    statusEl.textContent = '이 기기·브라우저에서는 녹음 저장을 할 수 없습니다.';
+    VUI.toast('이 기기·브라우저에서는 녹음 저장을 할 수 없어요.', 'error');
     return;
   }
   if (!(await loadMp3Encoder())) {
     statusEl.textContent = 'MP3 변환 도구를 불러오지 못했습니다. 인터넷 연결을 확인하세요. (읽기 기능은 그대로 쓸 수 있습니다)';
+    VUI.toast('MP3 변환 도구를 불러오지 못했습니다.', 'error');
     return;
   }
+  if (isPlaying) stopPlayback();
 
   let displayStream;
   try {
@@ -679,6 +789,7 @@ recordBtn.addEventListener('click', async () => {
     });
   } catch (e) {
     statusEl.textContent = '녹음이 취소되었습니다.';
+    VUI.toast('녹음이 취소되었습니다.');
     return;
   }
 
@@ -687,6 +798,7 @@ recordBtn.addEventListener('click', async () => {
   if (audioTracks.length === 0) {
     statusEl.textContent = '오디오가 공유되지 않았습니다. "전체 화면"을 선택하고 "시스템 오디오 공유"를 체크했는지 확인해주세요. (윈도우 로컬 음성은 "이 탭" 공유로는 녹음되지 않습니다)';
     displayStream.getTracks().forEach(t => t.stop());
+    VUI.toast('소리가 공유되지 않아 녹음하지 못했습니다.', 'error');
     return;
   }
 
@@ -699,29 +811,48 @@ recordBtn.addEventListener('click', async () => {
   recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
   const stopped = new Promise((resolve) => { recorder.onstop = resolve; });
 
-  recordBtn.disabled = true;
+  const rec = recState = { cancelled: false, wake: null };
+  // 브라우저의 "공유 중지"로 끊겨도 취소로 처리
+  audioTracks.forEach(t => t.addEventListener('ended', () => {
+    if (recState !== rec) return;
+    rec.cancelled = true;
+    synth.cancel();
+    if (rec.wake) rec.wake();
+  }));
+  setRecordButton(true);
   playPauseBtn.disabled = true;
   recorder.start();
 
   synth.cancel();
-  for (let i = 0; i < segments.length; i++) {
-    statusEl.textContent = `녹음 중... 읽는 중... (${i + 1}/${segments.length})`;
+  for (let i = 0; i < segments.length && !rec.cancelled; i++) {
+    statusEl.textContent = `녹음 중... 읽는 중... (${i + 1}/${segments.length}) — 멈추려면 "녹음 취소"`;
     const utter = buildUtterance(segments[i].text);
     await new Promise((resolve) => {
+      rec.wake = resolve;
       utter.onend = resolve;
       utter.onerror = resolve;
       synth.speak(utter);
     });
-    if (i < segments.length - 1) {
+    if (i < segments.length - 1 && !rec.cancelled) {
       const gap = gapDuration(segments[i].gapAfter);
-      await new Promise(r => setTimeout(r, gap));
+      await new Promise(r => { rec.wake = r; setTimeout(r, gap); });
     }
   }
+  rec.wake = null;
 
-  await new Promise(r => setTimeout(r, 400));
-  recorder.stop();
+  if (!rec.cancelled) await new Promise(r => setTimeout(r, 400));
+  if (recorder.state !== 'inactive') recorder.stop();
   audioTracks.forEach(t => t.stop());
   await stopped;
+  recState = null;
+  setRecordButton(false);
+
+  if (rec.cancelled) {
+    playPauseBtn.disabled = false;
+    statusEl.textContent = '녹음을 취소했습니다.';
+    VUI.toast('녹음을 취소했습니다. 저장된 파일은 없습니다.');
+    return;
+  }
 
   try {
     statusEl.textContent = 'MP3로 변환 중...';
@@ -739,13 +870,12 @@ recordBtn.addEventListener('click', async () => {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    statusEl.textContent = 'MP3 다운로드 완료';
-    showToast('MP3 다운로드 완료');
+    statusEl.textContent = 'MP3로 저장했습니다.';
+    VUI.toast('MP3로 저장했습니다.', 'success');
   } catch (e) {
-    statusEl.textContent = '변환 오류: ' + e.message;
-    showToast('변환 중 오류가 발생했습니다.', 'error');
+    statusEl.textContent = 'MP3로 바꾸지 못했습니다: ' + e.message;
+    VUI.toast('MP3로 바꾸는 중 오류가 발생했습니다.', 'error');
   } finally {
-    recordBtn.disabled = false;
     playPauseBtn.disabled = false;
   }
 });

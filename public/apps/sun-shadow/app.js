@@ -15,7 +15,8 @@
   const RAD = Math.PI / 180, DEG = 180 / Math.PI;
   const mod = (a, n) => ((a % n) + n) % n;
   const isObj = (v) => v && typeof v === "object" && !Array.isArray(v);
-  const reduceMotion = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduceMotion = () => (SK.motion ? SK.motion.reduced() : !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches));
+  const LAB = SK.LABELS || {};
   const el = (tag, a, p, text) => VG.el(tag, a, p, text);
 
   const PLACES = {
@@ -163,8 +164,31 @@
   }
 
   // 하늘·땅(남쪽을 보고 선 모습: 왼쪽 동, 오른쪽 서, 먼 쪽 남, 가까운 쪽 북)
-  function skyGround(W, H, alt) {
-    const cx = W / 2, hy = H * 0.64, R = Math.min(W * 0.44 - 20, H * 0.56); // 동·서 글자 자리 남김
+  // inset: 왼쪽 아래 측정기 그림 {w, h}. 폰(360px)·낮은 화면(844×390)에서 측정기가 '동' 글자·지평선·오전 태양 길을 가리지 않게 자리를 옮긴다.
+  const STAGE_TOP = 64; // 규약 v2 --sk-stage-top(위 공용 버튼 줄) + 여유
+  function skyLayout(W, H, inset) {
+    let cx = W / 2, hy = H * 0.64, R = Math.min(W * 0.44 - 20, H * 0.56); // 동·서 글자 자리 남김
+    // 하늘 꼭대기(고도 90°·해 크기)가 위 공용 버튼 줄 밑에 들어가지 않게
+    if (hy - R * 0.95 - 14 < STAGE_TOP) R = Math.max(50, (hy - STAGE_TOP - 14) / 0.95);
+    if (!inset) return { cx, hy, R };
+    const top = H - inset.h - 12, right = 12 + inset.w + 8;
+    const collide = (cx, hy, R) => {
+      if (top < hy + 14 && cx - R - 32 < right) return true; // '동' 글자·지평선 왼쪽 끝
+      const dy = top - hy, ry = R * 0.28 + 4;
+      if (dy < ry) { const hw = R * Math.sqrt(Math.max(0, 1 - (dy / ry) * (dy / ry))); if (cx - hw < right) return true; }
+      return false;
+    };
+    if (!collide(cx, hy, R)) return { cx, hy, R };
+    // 1) 넓은 화면: 그림을 옆으로 옮겨 측정기 옆을 비운다
+    const cx2 = right + 34 + R;
+    if (cx2 + R + 34 <= W) return { cx: cx2, hy, R };
+    // 2) 좁은 화면: 땅(타원)·'북' 글자를 측정기 위로 올리고 필요하면 조금 작게
+    hy = Math.min(hy, top - 4 - R * 0.28);
+    if (hy - R * 0.95 - 14 < STAGE_TOP) { R = Math.max(50, (top - 4 - STAGE_TOP - 14) / 1.23); hy = top - 4 - R * 0.28; }
+    return { cx, hy, R };
+  }
+  function skyGround(W, H, alt, inset) {
+    const { cx, hy, R } = skyLayout(W, H, inset);
     const k = Math.max(0, Math.min(1, (alt + 8) / 16)); // 밤 0 ~ 낮 1
     const top = mix(cssVar("--ss-sky-night"), cssVar("--ss-sky-day"), k), bot = mix(cssVar("--ss-sky-night2"), cssVar("--ss-sky-day2"), k);
     const defs = el("defs", {}, svg);
@@ -174,7 +198,7 @@
     el("rect", { x: 0, y: hy, width: W, height: H - hy, fill: mix(cssVar("--ss-ground").replace("#", "#"), "#000000", (1 - k) * 0.45) }, svg);
     el("ellipse", { cx, cy: hy, rx: R, ry: R * 0.28, fill: mix(cssVar("--ss-ground"), "#ffffff", 0.18 * k), stroke: cssVar("--ss-ground-edge"), "stroke-width": 2 }, svg);
     const lab = (x, y, t) => el("text", { x, y, "text-anchor": "middle", "dominant-baseline": "central", "font-size": 16, "font-weight": 900, fill: k > 0.5 ? "#1f2937" : "#f1f5f9" }, svg, t);
-    lab(cx - R - 18, hy, "동"); lab(cx + R + 18, hy, "서"); lab(cx, hy - R * 0.28 - 14, "남"); lab(cx, hy + R * 0.28 + 16, "북");
+    lab(Math.max(10, cx - R - 18), hy, "동"); lab(Math.min(W - 10, cx + R + 18), hy, "서"); lab(cx, hy - R * 0.28 - 14, "남"); lab(cx, hy + R * 0.28 + 16, "북");
     return { cx, hy, R, k };
   }
   // 하늘 반구를 그림으로: 가로는 동서, 높이는 고도에 비례(높은 고도끼리도 차이가 보이게)
@@ -237,7 +261,8 @@
   function drawDay() {
     const { W, H } = freshSvg();
     const sp = sunPos(state.date, state.min, P());
-    const g = skyGround(W, H, sp.alt);
+    const iw = Math.min(260, W * 0.42), ih = H < 480 ? 116 : 150;
+    const g = skyGround(W, H, sp.alt, { w: iw, h: ih });
     const st = sunTimes(state.date, P());
     el("path", { d: pathOf(g, state.date, 0, 1440, 5), fill: "none", stroke: cssVar("--ss-path"), "stroke-width": 3, "stroke-dasharray": "2 7", "stroke-linecap": "round" }, svg);
     // 남중 표시
@@ -247,7 +272,6 @@
     stickShadow(g, sp.alt, sp.az, { string: true });
     if (sp.alt > -1) { const [x, y] = proj(g, sp.alt, sp.az); sunDot(x, y, Math.max(14, g.R * 0.06)); }
     else el("text", { x: g.cx, y: g.hy - g.R * 0.55, "text-anchor": "middle", "font-size": 22, "font-weight": 900, fill: "#e2e8f0" }, svg, "🌙 밤이에요");
-    const iw = Math.min(260, W * 0.42), ih = 150;
     inset(12, H - ih - 12, iw, ih, sp.alt);
     geo = { kind: "day", g };
     svg.setAttribute("role", "img");
@@ -263,7 +287,7 @@
     const add = (label, val) => { const d = document.createElement("div"); const s = document.createElement("small"); s.textContent = label; const b = document.createElement("b"); b.textContent = val; d.append(s, b); box.appendChild(d); };
     add("태양 고도", up ? Math.round(sp.alt * 10) / 10 + "°" : "—");
     add("그림자 길이 (1m 막대)", up ? (1 / Math.tan(sp.alt * RAD) > 9.99 ? "10m 넘음" : Math.round(100 / Math.tan(sp.alt * RAD)) + "cm") : "—");
-    add("기온 (평년 보기)", T == null ? "…" : (Math.round(T * 10) / 10) + "°C");
+    add("기온 (평소 이맘때 어림)", T == null ? "…" : (Math.round(T * 10) / 10) + "°C");
     add("그림자 방향", up ? dirKo(sp.az + 180) : "—");
     add("해 뜸 · 해 짐", hm(st.rise) + " · " + hm(st.set));
     add("남중 시각", hm(st.noon));
@@ -369,8 +393,15 @@
     const half = beam / 2;
     el("polygon", { points: [[ox + px * half, oy + py * half], [ox - px * half, oy - py * half], [a1, gy], [a0, gy]].map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" "), fill: "#fde68a", opacity: 0.55 }, svg);
     el("rect", { x: ox - 26, y: oy - 18, width: 52, height: 36, rx: 8, fill: "#475569", transform: "rotate(" + (ang) + " " + ox + " " + oy + ")" }, svg);
-    el("text", { x: W / 2, y: H * 0.12, "text-anchor": "middle", "font-size": 20, "font-weight": 900, fill: cssVar("--ss-text") }, svg, "빛이 " + ang + "°로 비출 때 · 같은 빛이 약 " + (span / cw).toFixed(1) + "칸에 퍼져요");
-    el("text", { x: W / 2, y: H * 0.12 + 28, "text-anchor": "middle", "font-size": 15, "font-weight": 700, fill: cssVar("--ss-muted") }, svg, "수직(90°)일 때는 4칸 → 한 칸이 받는 빛은 " + Math.round(Math.sin(ang * RAD) * 100) + "%");
+    // 제목: 좁은 무대(360px)에서 양옆이 잘리지 않게 넓으면 한 줄, 좁으면 두 줄로. 위 공용 버튼 줄(--sk-stage-top) 아래에서 시작
+    const narrow = W < 620;
+    const f1 = Math.max(14, Math.min(20, W / 20)), f2 = Math.max(12, Math.min(15, W / 26));
+    const t1 = ["빛이 " + ang + "°로 비출 때", "같은 빛이 약 " + (span / cw).toFixed(1) + "칸에 퍼져요"];
+    const t2 = ["수직(90°)일 때는 4칸에 모여요", "한 칸이 받는 빛은 " + Math.round(Math.sin(ang * RAD) * 100) + "%"];
+    let ty = Math.max(STAGE_TOP + f1, H * 0.12);
+    const line = (txt, fs, w, col) => { el("text", { x: W / 2, y: ty, "text-anchor": "middle", "font-size": fs, "font-weight": w, fill: col }, svg, txt); ty += fs * 1.45; };
+    if (narrow) { t1.forEach((t) => line(t, f1, 900, cssVar("--ss-text"))); t2.forEach((t) => line(t, f2, 700, cssVar("--ss-muted"))); }
+    else { line(t1.join(" · "), f1, 900, cssVar("--ss-text")); line(t2.join(" → "), f2, 700, cssVar("--ss-muted")); }
     geo = { kind: "light" };
     svg.setAttribute("role", "img");
     svg.setAttribute("aria-label", "빛 실험: " + ang + "도로 비출 때 빛이 " + (span / cw).toFixed(1) + "칸에 퍼짐");
@@ -520,12 +551,12 @@
 
   // 재생
   let playId = 0;
-  function stopPlay() { if (playId) { timers.clear(playId); playId = 0; } $("dPlay").setAttribute("aria-pressed", "false"); $("dPlay").textContent = "▶ 재생"; }
+  function stopPlay() { if (playId) { timers.clear(playId); playId = 0; } $("dPlay").setAttribute("aria-pressed", "false"); $("dPlay").innerHTML = SK.icon("play") + (LAB.play || "재생"); }
   $("dPlay").addEventListener("click", () => {
     if (playId) return stopPlay();
     const st = sunTimes(state.date, P());
     if (state.min >= st.set - 10 || state.min < st.rise) state.min = Math.ceil(st.rise / 10) * 10;
-    $("dPlay").setAttribute("aria-pressed", "true"); $("dPlay").textContent = "⏸ 멈춤";
+    $("dPlay").setAttribute("aria-pressed", "true"); $("dPlay").innerHTML = SK.icon("pause") + (LAB.pause || "멈춤");
     playId = timers.interval(() => {
       const s = sunTimes(state.date, P());
       if (state.min + 10 > s.set) { stopPlay(); return; }
@@ -563,7 +594,13 @@
   $("dDate").addEventListener("change", () => { const v = $("dDate").value.split("-").map(Number); if (v.length === 3 && v.every(Number.isFinite)) { state.date = { y: YEAR, m: v[1], d: v[2] }; state.rec = []; persist(); setDate(state.date); dayReadouts(); } });
   $("dRecord").addEventListener("click", () => { record(state.min); if (SK.sound) SK.sound.play("move"); });
   $("dAuto").addEventListener("click", () => { for (let m = 570; m <= 930; m += 60) if (!state.rec.includes(m)) state.rec.push(m); persist(); renderRecords(); if (SK.sound) SK.sound.play("star"); });
-  $("dClear").addEventListener("click", () => { state.rec = []; persist(); renderRecords(); });
+  $("dClear").addEventListener("click", () => {
+    if (!state.rec.length) return;
+    const prev = state.rec.slice();
+    state.rec = []; persist(); renderRecords();
+    const undo = () => { state.rec = prev; persist(); renderRecords(); };
+    if (VUI && VUI.toast) VUI.toast("측정 기록을 지웠어요.", { duration: 6000, action: { label: "되돌리기", onClick: undo } });
+  });
   $("sSlider").addEventListener("input", () => { setDate(dateFromDoy(Number($("sSlider").value))); });
   $("sMinus").addEventListener("click", () => setDate(dateFromDoy(Math.max(1, doyOf(state.date) - 1))));
   $("sPlus").addEventListener("click", () => setDate(dateFromDoy(Math.min(365, doyOf(state.date) + 1))));
@@ -597,7 +634,6 @@
   document.querySelector(".mode-tabs").addEventListener("click", (e) => { const b = e.target.closest(".mode-tab"); if (b) setMode(b.dataset.mode); });
   let rz = 0;
   if (window.ResizeObserver) new ResizeObserver(() => { cancelAnimationFrame(rz); rz = requestAnimationFrame(render); }).observe(scene);
-  new MutationObserver(() => setTimeout(() => { render(); if (state.mode === "day") renderRecords(); if (state.mode === "season") seasonPanel(); if (state.mode === "orbit") orbitPanel(); }, 30)).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
   /* ═════════ 미션 ═════════ */
   const fb = SK.feedback("#mFeedback");
@@ -605,7 +641,7 @@
   const todayD = () => ({ y: YEAR, m: today.getMonth() + 1, d: today.getDate() });
   const MISSIONS = [
     { id: "m1", title: "그림자가 가장 짧은 때", scene: "day", control: "time",
-      setup() { setDateQuiet(todayD()); state.min = 570; return "오늘 " + P().name + "에서 그림자가 가장 짧아지는 시각을 찾아 ‘이때!’를 눌러요."; },
+      setup() { setDateQuiet(todayD()); state.min = 570; return "오늘 " + P().name + "에서 그림자가 가장 짧아지는 시각을 찾아 ‘확인하기’를 눌러요."; },
       check() { const st = sunTimes(state.date, P()); // 남중 앞뒤 20분은 그림자 길이 차이가 1cm도 안 돼 눈으로 구별하기 어려우므로 ±20분까지 정답
         return { ok: Math.abs(state.min - st.noon) <= 20, msg: "그림자가 가장 짧은 때는 태양이 남쪽 하늘 가장 높이 뜬 남중 때, " + hm(st.noon) + "쯤이에요. 낮 12시가 아니라 조금 늦어요(경도 때문).", reveal() { setTime(Math.round(st.noon / 10) * 10); } }; } },
     { id: "m2", title: "그림자 길이 = 막대 길이", scene: "day", control: "time",
@@ -617,7 +653,9 @@
       after() { tempGraphInto($("mControls")); setTime(870); },
       explain: "땅이 데워지고 그 열로 공기가 데워지는 데 시간이 걸려서, 기온은 남중보다 늦은 오후 2시 무렵에 가장 높아요." },
     { id: "m4", title: "오후 3시의 그림자", scene: "day", control: null,
-      setup() { setDateQuiet(todayD()); state.min = 900; return "오후 3시에 막대의 그림자는 어느 쪽으로 생길까요? (태양은 남서쪽 하늘에 있어요)"; },
+      // 날짜를 추분으로 고정: 대구·서울·제주 모두 오후 3시 태양이 남서쪽(방위 약 230~236°)이라 그림자는 북동쪽.
+      // 오늘 날짜로 풀면 5~8월에는 태양이 거의 서쪽이라 문제("남서쪽")와 화면 그림자가 어긋났다.
+      setup() { const d = seasonDates()[2]; setDateQuiet(d.d); state.min = 900; return d.name + "(" + dateKo(d.d) + ") 오후 3시에 막대의 그림자는 어느 쪽으로 생길까요? (태양은 남서쪽 하늘에 있어요)"; },
       opts: ["북동쪽", "북서쪽", "남동쪽", "남서쪽"], answer: 0, two: true,
       after() { setTime(900); },
       explain: "그림자는 태양의 반대쪽에 생겨요. 오전에는 서쪽, 남중 때는 북쪽, 오후에는 동쪽으로 돌아가요." },
@@ -627,7 +665,7 @@
       after() { const a = sunTimes(seasonDates()[1].d, P()).noonAlt, b = sunTimes(seasonDates()[3].d, P()).noonAlt; this.explain = "하지 " + a.toFixed(1) + "°, 동지 " + b.toFixed(1) + "°. 여름에는 태양이 높이 떠서 그림자가 짧고 기온이 높아요."; },
       explain: "" },
     { id: "m6", title: "낮이 가장 긴 날", scene: "season", control: "date",
-      setup() { setDateQuiet({ y: YEAR, m: 3, d: 1 }); return "날짜를 움직여 낮의 길이가 가장 긴 날을 찾고 ‘이 날!’을 눌러요."; },
+      setup() { setDateQuiet({ y: YEAR, m: 3, d: 1 }); return "날짜를 움직여 낮의 길이가 가장 긴 날을 찾고 ‘확인하기’를 눌러요."; },
       check() { let best = 1, bl = 0; for (let k = 1; k <= 365; k++) { const l = sunTimes(dateFromDoy(k), P()).dayLen; if (l > bl) { bl = l; best = k; } } const ok = Math.abs(doyOf(state.date) - best) <= 3; return { ok, msg: "낮이 가장 긴 날은 하지(" + dateKo(dateFromDoy(best)) + " 무렵) — " + durKo(bl) + ". 남중 고도도 가장 높아요.", reveal() { setDate(dateFromDoy(best)); } }; } },
     { id: "m7", title: "빛이 비추는 각도", scene: "light", control: null,
       setup() { state.lightAng = 30; return "손전등을 바닥에 수직에 가깝게 세울수록(태양 고도가 높을수록), 같은 빛이 닿는 칸의 수는?"; },
@@ -671,7 +709,7 @@
       def.opts.forEach((t, ix) => { const b = document.createElement("button"); b.type = "button"; b.className = "opt"; b.textContent = t; b.addEventListener("click", () => answerOpt(ix, b)); g.appendChild(b); });
       ab.appendChild(g);
       $("mCheck").hidden = true;
-    } else { $("mCheck").hidden = false; $("mCheck").textContent = def.control === "date" ? "이 날!" : "이때!"; }
+    } else { $("mCheck").hidden = false; }
     scene.textContent = ""; svg = null;
     render();
   }
@@ -716,7 +754,7 @@
     const items = []; for (let h = 6; h <= 20; h += 2) items.push({ label: h + "시", value: Math.round((tempAt(state.place, state.date, h * 60) || 0) * 10) / 10 });
     const gb = document.createElement("div"); gb.className = "graph-box"; const gs = document.createElementNS(NS, "svg"); gb.appendChild(gs); box.appendChild(gb);
     const mn = Math.min(...items.map((x) => x.value));
-    VG.line(gs, { width: 360, height: 220, title: dateKo(state.date) + " 기온(평년 보기)", unit: "°C", items, colors: vgColors(), showValues: true, wave: mn > 4 ? { from: Math.floor((mn - 2) / 2) * 2 } : null, fontSize: 12 });
+    VG.line(gs, { width: 360, height: 220, title: dateKo(state.date) + " 기온(평소 이맘때 어림)", unit: "°C", items, colors: vgColors(), showValues: true, wave: mn > 4 ? { from: Math.floor((mn - 2) / 2) * 2 } : null, fontSize: 12 });
     gs.removeAttribute("width"); gs.removeAttribute("height");
   }
   function lightSlider(box) {
@@ -732,11 +770,11 @@
     box.textContent = "";
     const row = document.createElement("div"); row.className = "row";
     [[23.5, "지금 지구 (23.5°)"], [0, "기울지 않았다면 (0°)"]].forEach(([t, lab]) => {
-      const b = document.createElement("button"); b.type = "button"; b.className = "ss-btn sm"; b.textContent = lab; b.setAttribute("aria-pressed", state.tilt === t ? "true" : "false");
+      const b = document.createElement("button"); b.type = "button"; b.className = "sk-btn sk-btn--sm"; b.textContent = lab; b.setAttribute("aria-pressed", state.tilt === t ? "true" : "false");
       b.addEventListener("click", () => { state.tilt = t; for (const x of row.children) x.setAttribute("aria-pressed", x === b ? "true" : "false"); render(); });
       row.appendChild(b);
     });
-    const p = document.createElement("p"); p.className = "hint-text"; p.style.marginTop = "6px"; p.textContent = "날짜를 바꿔 보려면 🌍 원인 탭에서 해 보세요. 0°이면 1년 내내 남중 고도가 " + (90 - P().lat).toFixed(1) + "°예요.";
+    const p = document.createElement("p"); p.className = "hint-text"; p.style.marginTop = "6px"; p.textContent = "날짜를 바꿔 보려면 ‘원인’ 탭에서 해 보세요. 0°이면 1년 내내 남중 고도가 " + (90 - P().lat).toFixed(1) + "°예요.";
     box.append(row, p);
   }
   function finish(stars, msg, tone) {
@@ -779,6 +817,7 @@
   });
   $("mNextMission").addEventListener("click", () => { const c = mc.current(); if (c < MISSIONS.length - 1) mc.go(c + 1); else { const n = mc.firstIncomplete(); if (n >= 0) mc.go(n); else showResult(); } });
   $("mResult").addEventListener("click", showResult);
+  $("mExit").addEventListener("click", () => setMode("day"));
 
   /* ═════════ 결과 ═════════ */
   const screens = SK.screens({});

@@ -1,9 +1,9 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<AppLayout 
-  icons
-  title="Blocks Universe — eduin VIVES"
+<AppLayout
+  title="블록스 유니버스 (Blocks Universe) — eduin VIVES"
   description="넘버블록스·알파블록스·컬러블록스·원더블록스 372편의 에피소드를 탐색하세요. AI 검색·즐겨찾기·재생목록·순차재생 지원."
   image="https://eduin.info/og-default.png"
   bodyShell="gallery"
@@ -19,18 +19,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
 <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입. '시리즈 선택'은 app.js가 좌상단 홈 옆으로 이동 -->
 <div class="app-actions">
-  <button type="button" id="welcomeBack" class="overlay-btn" onclick="goToWelcome()" hidden="">← 시리즈 선택</button>
+  <button type="button" id="welcomeBack" class="overlay-btn" onclick="goToWelcome()" hidden=""><Icon name="arrow-left" /> 시리즈 선택</button>
 </div>
 
 <div class="bu-root app-main">
   <header class="app-header">
-    <span class="app-badge">◆ 학습지원</span>
-    <h1 class="app-title">
-  <div class="card-emoji sub-edu-sim" style="margin-bottom: 0; transform: scale(1.0);">
-        <i data-lucide="puzzle"></i>
-      </div>
-  <span>Blocks Universe</span>
-</h1>
+    <span class="app-badge">학습지원</span>
+    <h1 class="app-title">블록스 유니버스 <span class="app-title-en">Blocks Universe</span></h1>
     <p class="app-desc">넘버블록스 · 알파블록스 · 컬러블록스 · 원더블록스 — 4개 시리즈 · 372편 에피소드 탐색</p>
   </header>
 
@@ -41,18 +36,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <div class="season-chips" id="seasonChips"></div>
     <div class="filter-row">
       <div class="level-seg" id="levelSeg"></div>
-      <button type="button" class="fav-toggle" id="favToggle" aria-pressed="false">★ 즐겨찾기</button>
-      <button type="button" class="fav-toggle recent-toggle" id="recentToggle" aria-pressed="false">🕐 최근시청</button>
+      <button type="button" class="fav-toggle" id="favToggle" aria-pressed="false"><Icon name="star" /> 즐겨찾기</button>
+      <button type="button" class="fav-toggle recent-toggle" id="recentToggle" aria-pressed="false"><Icon name="clock" /> 최근 시청</button>
       <div class="search-box" role="search">
         <input id="searchInput" type="search" placeholder="제목·설명 검색 (한글/영문)" aria-label="에피소드 제목·설명 검색">
-        <button type="button" class="ai-btn" id="aiSearchBtn" title="AI 검색">✨ AI 검색</button>
+        <button type="button" class="ai-btn" id="aiSearchBtn" title="AI 검색"><Icon name="sparkles" /> AI 검색</button>
       </div>
     </div>
   </div>
 
   <div class="result-info" id="resultInfo" role="status" aria-live="polite"></div>
   <div class="ep-grid" id="epGrid"></div>
-  <div class="empty-state" id="emptyState" hidden="">조건에 맞는 에피소드가 없어요 🤔</div>
+  <div class="empty-state" id="emptyState" hidden="">조건에 맞는 에피소드가 없어요</div>
 </div>
 
 <!-- 에피소드 상세 모달 -->
@@ -60,12 +55,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-video">
       <div id="modalVideoWrap" style="width:100%;height:100%"></div>
-      <button type="button" class="modal-close" id="modalCloseBtn" title="닫기" aria-label="닫기">✕</button>
+      <button type="button" class="modal-close" id="modalCloseBtn" title="닫기" aria-label="닫기"><Icon name="x" /></button>
     </div>
     <div class="modal-nav" id="modalNav" hidden="">
-      <button type="button" class="m-nav" id="modalPrev" title="이전 영상 (←)">◀ 이전</button>
+      <button type="button" class="m-nav" id="modalPrev" title="이전 영상 (←)"><Icon name="chevron-left" /> 이전</button>
       <span class="m-nav-pos" id="modalNavPos"></span>
-      <button type="button" class="m-nav" id="modalNext" title="다음 영상 (→)">다음 ▶</button>
+      <button type="button" class="m-nav" id="modalNext" title="다음 영상 (→)">다음 <Icon name="chevron-right" /></button>
     </div>
     <div class="modal-body">
       <div class="modal-tags" id="modalTags"></div>
@@ -78,22 +73,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 </div>
 
 <!-- 재생목록 FAB -->
-<button type="button" class="pl-fab" id="plFab" title="재생목록" aria-haspopup="dialog" aria-expanded="false" aria-controls="plDrawer">
-  ▶ 재생목록 <span class="pl-count" id="plCount">0</span><span class="visually-hidden">편</span>
+<!-- 숫자는 '내 재생목록'에 담긴 편수(고른 에피소드가 아님). 비어 있으면 숫자를 숨긴다 -->
+<button type="button" class="pl-fab" id="plFab" title="내 재생목록 열기" aria-haspopup="dialog" aria-expanded="false" aria-controls="plDrawer">
+  <Icon name="list-video" /> 내 재생목록 <span class="pl-count" id="plCount" hidden="">0편</span>
 </button>
 
 <!-- 재생목록 드로어 (VUI.modal로 여닫음) -->
 <aside class="pl-drawer" id="plDrawer" aria-labelledby="plHeading">
   <div class="pl-head">
-    <h2 id="plHeading">📋 내 재생목록 <small class="pl-total" id="plTotal"></small></h2>
-    <button type="button" class="pl-close-btn" id="plCloseBtn" title="닫기" aria-label="재생목록 닫기">✕</button>
+    <h2 id="plHeading"><Icon name="list-video" /> 내 재생목록 <small class="pl-total" id="plTotal"></small></h2>
+    <button type="button" class="pl-close-btn" id="plCloseBtn" title="닫기" aria-label="재생목록 닫기"><Icon name="x" /></button>
   </div>
   <div class="pl-list" id="plList"></div>
   <div class="pl-foot">
-    <button type="button" class="hero-btn pl-play-btn" id="plPlayBtn">▶ 순차재생</button>
+    <button type="button" class="hero-btn pl-play-btn" id="plPlayBtn"><Icon name="play" /> 순서대로 재생</button>
     <div class="pl-foot-row">
-      <button type="button" class="hero-btn-ghost pl-sec-btn" id="plShareBtn">🔗 공유</button>
-      <button type="button" class="hero-btn-ghost pl-sec-btn pl-clear-btn" id="plClearBtn">🗑 비우기</button>
+      <button type="button" class="hero-btn hero-btn-ghost pl-sec-btn" id="plShareBtn"><Icon name="link" /> 공유</button>
+      <button type="button" class="hero-btn hero-btn-danger pl-sec-btn" id="plClearBtn"><Icon name="trash-2" /> 비우기</button>
     </div>
   </div>
 </aside>
@@ -102,13 +98,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 <div class="player-overlay" id="playerOverlay" hidden="" aria-labelledby="playerTitle">
   <div class="player-head">
     <h2 id="playerTitle">재생목록</h2>
-    <button type="button" id="playerCloseBtn">✕ 닫기</button>
+    <button type="button" id="playerCloseBtn"><Icon name="x" /> 닫기</button>
   </div>
   <div class="player-stage" id="playerStage"></div>
   <div class="player-controls">
-    <button type="button" class="hero-btn-ghost pc-btn" id="pcPrev">⏮ 이전</button>
+    <button type="button" class="hero-btn-ghost pc-btn" id="pcPrev"><Icon name="skip-back" /> 이전</button>
     <span class="pc-info" id="pcInfo" aria-live="polite"></span>
-    <button type="button" class="hero-btn-ghost pc-btn" id="pcNext">다음 ⏭</button>
+    <button type="button" class="hero-btn-ghost pc-btn" id="pcNext">다음 <Icon name="skip-forward" /></button>
   </div>
   <div class="player-queue" id="playerQueue" role="group" aria-label="재생 순서"></div>
 </div>
