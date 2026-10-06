@@ -1,0 +1,357 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+---
+<AppLayout
+  title="태양과 그림자 — eduin VIVES"
+  description="시각과 날짜를 바꾸며 태양 고도, 그림자 길이, 기온, 낮의 길이가 어떻게 달라지는지 관찰해요. 자전축 기울기를 바꿔 계절이 생기는 까닭까지. 초등 과학 6학년 계절의 변화."
+  image="https://eduin.info/og-images/sun-shadow.png"
+  bodyShell="immersive"
+>
+  <Fragment slot="head">
+    <link rel="stylesheet" href="/common/sim-kit.css">
+    <script is:inline src="/common/sim-kit.js"></script>
+    <script is:inline src="/common/vgraph.js"></script>
+    <style is:global="">
+/* ══════════════════════════════════════════════
+   sun-shadow — 태양과 그림자 (immersive, 태블릿 손가락 조작 전제)
+   계획: docs/sun-shadow-plan.md
+   ══════════════════════════════════════════════ */
+:root {
+  --ss-primary: #c2410c;
+  --ss-primary-h: #9a3412;
+  --ss-primary-soft: rgba(234,88,12,0.10);
+  --ss-bg: #fbf7f1;
+  --ss-panel: #ffffff;
+  --ss-border: #ece3d6;
+  --ss-text: #2b2118;
+  --ss-muted: #7a6c5d;
+  --ss-btn: #f7f1e8;
+  --ss-btn-h: #efe5d6;
+  --ss-sky-day: #bfe3ff;
+  --ss-sky-day2: #eaf6ff;
+  --ss-sky-night: #1b2442;
+  --ss-sky-night2: #2e3a63;
+  --ss-ground: #cfe6b5;
+  --ss-ground-edge: #9cc27a;
+  --ss-sun: #f59e0b;
+  --ss-path: rgba(245,158,11,0.55);
+  --ss-shadow: rgba(30,30,40,0.55);
+  --ss-stick: #7c2d12;
+  --ss-string: #dc2626;
+  --ss-ok: #15803d;
+  --ss-no: #c2410c;
+  --sk-accent: var(--ss-primary);
+}
+[data-theme="dark"] {
+  --ss-primary: #fb923c;
+  --ss-primary-h: #fdba74;
+  --ss-primary-soft: rgba(251,146,60,0.14);
+  --ss-bg: #120e0a;
+  --ss-panel: #17120d;
+  --ss-border: #2e251b;
+  --ss-text: #f3ebe1;
+  --ss-muted: #b3a491;
+  --ss-btn: #221a12;
+  --ss-btn-h: #2c2218;
+  --ss-sky-day: #3b6d99;
+  --ss-sky-day2: #6f9cc4;
+  --ss-sky-night: #0b1024;
+  --ss-sky-night2: #19213f;
+  --ss-ground: #3e5a2b;
+  --ss-ground-edge: #5b7f40;
+  --ss-path: rgba(251,191,36,0.6);
+  --ss-shadow: rgba(0,0,0,0.6);
+  --ss-stick: #fdba74;
+  --ss-string: #f87171;
+  --ss-ok: #4ade80;
+  --ss-no: #fdba74;
+  --sk-accent-fg: #120e0a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', 'Segoe UI', sans-serif;
+  background: var(--ss-bg); color: var(--ss-text); min-height: 100vh; overflow: hidden; -webkit-tap-highlight-color: transparent;
+}
+button, input { font-family: inherit; }
+.screen { display: none; }
+.screen.active { display: flex; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.ss-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 48px; padding: 0 16px;
+  border-radius: 14px; border: 1px solid var(--ss-border); background: var(--ss-btn); color: var(--ss-text);
+  font-size: 15px; font-weight: 800; cursor: pointer; touch-action: manipulation; transition: background .15s, transform .08s;
+}
+.ss-btn:hover { background: var(--ss-btn-h); }
+.ss-btn:active { transform: scale(.96); }
+.ss-btn:disabled { opacity: .45; cursor: not-allowed; }
+.ss-btn.primary { background: var(--ss-primary); border-color: var(--ss-primary); color: #fff; }
+[data-theme="dark"] .ss-btn.primary { color: #120e0a; }
+.ss-btn.big { min-height: 60px; padding: 0 36px; font-size: 19px; border-radius: 99px; }
+.ss-btn.sm { min-height: 44px; padding: 0 12px; font-size: 14px; border-radius: 12px; }
+.ss-btn[aria-pressed="true"] { border-color: var(--ss-primary); background: var(--ss-primary-soft); color: var(--ss-primary); }
+
+/* ══════════ 인트로·결과 ══════════ */
+.intro-screen, .result-screen {
+  flex-direction: column; align-items: center; height: 100vh; height: 100dvh; padding: 64px 20px 28px; text-align: center; overflow-y: auto;
+  animation: fadeUp .45s ease;
+  background: radial-gradient(circle at 75% 20%, rgba(245,158,11,.20) 0, transparent 40%), radial-gradient(circle at 20% 80%, rgba(156,194,122,.18) 0, transparent 40%), var(--ss-bg);
+}
+.intro-screen > :first-child, .result-screen > :first-child { margin-top: auto; }
+.intro-screen > :last-child, .result-screen > :last-child { margin-bottom: auto; }
+.intro-tag { display: inline-block; background: var(--ss-primary); color: #fff; font-size: 14px; font-weight: 800; padding: 6px 14px; border-radius: 99px; margin-bottom: 14px; }
+[data-theme="dark"] .intro-tag { color: #120e0a; }
+.intro-art { font-size: 84px; line-height: 1; margin-bottom: 6px; }
+.intro-screen h1, .result-screen h1 { font-size: 34px; font-weight: 900; margin-bottom: 6px; }
+.intro-sub { font-size: 16px; color: var(--ss-muted); line-height: 1.7; margin-bottom: 18px; }
+.intro-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: min(640px, 100%); margin-bottom: 22px; text-align: left; }
+.intro-cards div { background: var(--ss-panel); border: 1px solid var(--ss-border); border-radius: 16px; padding: 14px; font-size: 14px; line-height: 1.55; color: var(--ss-muted); }
+.intro-cards b { display: block; color: var(--ss-text); font-size: 16px; margin-bottom: 4px; }
+
+/* ══════════ 본 화면 ══════════ */
+.main-screen { width: 100vw; height: 100vh; height: 100dvh; animation: fadeUp .35s ease; }
+.main-layout { display: grid; grid-template-columns: minmax(0, 1fr) 390px; width: 100%; height: 100%; }
+.scene { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--ss-bg); }
+.scene > svg { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
+.scene-cap {
+  position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 3; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; pointer-events: none;
+}
+.scene-cap span { background: var(--ss-panel); border: 1px solid var(--ss-border); border-radius: 12px; padding: 6px 12px; font-weight: 800; font-size: 15px; box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+
+.panel { background: var(--ss-panel); border-left: 1px solid var(--ss-border); overflow-y: auto; display: flex; flex-direction: column; min-height: 0; }
+.panel-head { padding: 60px 16px 10px; border-bottom: 1px solid var(--ss-border); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.panel-head h2 { font-size: 20px; font-weight: 900; flex: 1; min-width: 140px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { min-height: 40px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--ss-border); background: var(--ss-panel); color: var(--ss-text); font-size: 14px; font-weight: 800; cursor: pointer; touch-action: manipulation; }
+.chip[aria-pressed="true"] { border-color: var(--ss-primary); background: var(--ss-primary-soft); color: var(--ss-primary); }
+.mode-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 12px 14px 0; }
+.mode-tab { min-height: 48px; border-radius: 12px; border: 2px solid var(--ss-border); background: var(--ss-btn); font-size: 14.5px; font-weight: 800; color: var(--ss-muted); cursor: pointer; touch-action: manipulation; }
+.mode-tab.active { border-color: var(--ss-primary); background: var(--ss-primary-soft); color: var(--ss-primary); }
+.panel-body { padding: 14px; flex: 1; }
+.pane[hidden] { display: none; }
+.group { border: 1px solid var(--ss-border); border-radius: 16px; padding: 12px; margin-bottom: 12px; background: var(--ss-bg); }
+.group-title { font-size: 13.5px; font-weight: 800; color: var(--ss-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.group-title .sp { flex: 1; }
+.row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.row + .row { margin-top: 8px; }
+.big-val { font-size: 22px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.slider-row { display: grid; grid-template-columns: 48px 1fr 48px; gap: 6px; align-items: center; }
+.sq { min-height: 48px; border-radius: 12px; border: 1px solid var(--ss-border); background: var(--ss-btn); color: var(--ss-text); font-size: 15px; font-weight: 900; cursor: pointer; touch-action: manipulation; }
+input[type="range"] { width: 100%; height: 44px; accent-color: var(--ss-primary); cursor: pointer; }
+input[type="range"]::-webkit-slider-thumb { width: 30px; height: 30px; }
+input[type="date"] { min-height: 44px; border-radius: 10px; border: 1px solid var(--ss-border); background: var(--ss-panel); color: var(--ss-text); padding: 0 10px; font-size: 15px; font-weight: 700; }
+.readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.readouts div { background: var(--ss-panel); border: 1px solid var(--ss-border); border-radius: 12px; padding: 8px 10px; }
+.readouts small { display: block; font-size: 12.5px; font-weight: 800; color: var(--ss-muted); }
+.readouts b { font-size: 20px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.hint-text { font-size: 13.5px; color: var(--ss-muted); line-height: 1.6; }
+table.rec { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+table.rec th, table.rec td { border: 1px solid var(--ss-border); padding: 5px 4px; text-align: center; }
+table.rec th { background: var(--ss-btn); font-weight: 800; }
+.graph-box { margin-top: 8px; background: var(--ss-panel); border: 1px solid var(--ss-border); border-radius: 12px; overflow: hidden; }
+.graph-box svg { display: block; width: 100%; height: auto; }
+
+/* 미션 */
+.m-title { font-size: 18px; font-weight: 900; margin: 10px 0 4px; }
+.m-q { font-size: 17px; font-weight: 800; line-height: 1.5; margin: 6px 0 10px; }
+.opts { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.opts.two { grid-template-columns: 1fr 1fr; }
+.opt { min-height: 56px; border-radius: 14px; border: 2px solid var(--ss-border); background: var(--ss-panel); color: var(--ss-text); font-size: 16px; font-weight: 800; cursor: pointer; padding: 8px 10px; text-align: left; touch-action: manipulation; }
+.opts.two .opt { text-align: center; }
+.opt.right { border-color: var(--ss-ok); background: rgba(22,163,74,.12); }
+.opt.wrong { border-color: var(--ss-no); background: rgba(234,88,12,.10); }
+.m-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.m-actions .ss-btn { flex: 1; }
+.m-actions [hidden] { display: none; }
+#mFeedback { margin-top: 10px; font-size: 15.5px; }
+#mFeedback:empty { display: none; }
+.sk-mnav { gap: 6px; flex-wrap: wrap; }
+
+.result-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: min(560px, 100%); margin: 12px 0 18px; }
+.result-cell { background: var(--ss-panel); border: 1px solid var(--ss-border); border-radius: 14px; padding: 10px; font-size: 14px; font-weight: 700; text-align: left; display: flex; justify-content: space-between; gap: 8px; }
+.result-cell .stars { color: #f59e0b; white-space: nowrap; }
+.summary { background: var(--ss-panel); border: 1px solid var(--ss-border); border-radius: 18px; padding: 16px 20px; width: min(560px, 100%); text-align: left; margin-bottom: 16px; }
+.summary h3 { font-size: 16px; color: var(--ss-primary); margin-bottom: 6px; }
+.summary li { font-size: 15px; line-height: 1.7; margin-left: 18px; }
+.result-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+@media (max-width: 900px), (orientation: portrait) and (max-width: 1100px) {
+  body { overflow-y: auto; }
+  .main-screen { height: auto; min-height: 100dvh; }
+  .main-layout { display: flex; flex-direction: column; height: auto; min-height: 100dvh; }
+  .scene { height: 52vh; height: 52dvh; min-height: 320px; flex-shrink: 0; }
+  .panel { border-left: 0; border-top: 1px solid var(--ss-border); overflow: visible; }
+  .panel-head { padding-top: 14px; }
+}
+@media (max-width: 560px) {
+  .intro-cards { grid-template-columns: 1fr; }
+  .intro-screen h1 { font-size: 28px; }
+  .mode-tab { font-size: 13px; }
+}
+    </style>
+  </Fragment>
+
+<!-- ============ 인트로 ============ -->
+<div id="screenIntro" class="screen intro-screen active">
+  <div class="intro-tag">과학 6학년 · 계절의 변화</div>
+  <div class="intro-art" aria-hidden="true">☀️</div>
+  <h1>태양과 그림자</h1>
+  <p class="intro-sub">시각과 날짜를 바꾸며 태양 고도, 그림자 길이, 기온,<br>낮의 길이가 어떻게 달라지는지 관찰해요.</p>
+  <div class="intro-cards">
+    <div><b>☀ 하루 관찰</b>태양 고도 측정기로 하루 동안 고도·그림자·기온을 재요.</div>
+    <div><b>🗓 계절 비교</b>계절마다 남중 고도와 낮의 길이가 어떻게 바뀔까요?</div>
+    <div><b>🌍 계절의 원인</b>자전축이 기울지 않았다면 어떻게 될까요?</div>
+  </div>
+  <button type="button" class="ss-btn primary big" id="btnStart">시작하기</button>
+</div>
+
+<!-- ============ 본 화면 ============ -->
+<div id="screenMain" class="screen main-screen">
+  <div class="main-layout">
+    <div class="scene" id="scene" aria-live="off"></div>
+
+    <aside class="panel" aria-label="조작판">
+      <div class="panel-head">
+        <h2>☀️ 태양과 그림자</h2>
+        <div class="chips" id="places" role="group" aria-label="장소"></div>
+      </div>
+      <div class="mode-tabs" role="group" aria-label="모드">
+        <button type="button" class="mode-tab active" data-mode="day" aria-pressed="true">☀ 하루</button>
+        <button type="button" class="mode-tab" data-mode="season" aria-pressed="false">🗓 계절</button>
+        <button type="button" class="mode-tab" data-mode="orbit" aria-pressed="false">🌍 원인</button>
+        <button type="button" class="mode-tab" data-mode="mission" aria-pressed="false">🏆 미션</button>
+      </div>
+      <div class="panel-body">
+        <!-- 하루 관찰 -->
+        <div class="pane" id="paneDay">
+          <div class="group">
+            <div class="group-title">날짜<span class="sp"></span><input type="date" id="dDate" aria-label="날짜"></div>
+            <div class="chips" data-season-chips></div>
+          </div>
+          <div class="group">
+            <div class="group-title">시각 <span class="big-val" id="dTime" style="margin-left:6px"></span><span class="sp"></span>
+              <button type="button" class="ss-btn sm" id="dPlay" aria-pressed="false">▶ 재생</button>
+            </div>
+            <div class="slider-row">
+              <button type="button" class="sq" id="dMinus" aria-label="10분 전">−10분</button>
+              <input type="range" id="dSlider" min="0" max="1430" step="10" aria-label="시각">
+              <button type="button" class="sq" id="dPlus" aria-label="10분 뒤">+10분</button>
+            </div>
+            <p class="hint-text" style="margin-top:6px">하늘의 태양을 손가락으로 끌어도 시각이 바뀌어요.</p>
+          </div>
+          <div class="readouts" id="dReadouts"></div>
+          <div class="group" style="margin-top:12px">
+            <div class="group-title">측정 기록<span class="sp"></span>
+              <button type="button" class="ss-btn sm primary" id="dRecord">📏 측정하기</button>
+            </div>
+            <div class="row">
+              <button type="button" class="ss-btn sm" id="dAuto">9:30~15:30 매시 측정</button>
+              <button type="button" class="ss-btn sm" id="dClear">기록 지우기</button>
+            </div>
+            <div id="dTable"></div>
+            <div class="chips" id="dGraphTabs" style="margin-top:8px"></div>
+            <div class="graph-box" id="dGraph"></div>
+            <p class="hint-text" id="dTempNote" style="margin-top:6px"></p>
+          </div>
+        </div>
+
+        <!-- 계절 비교 -->
+        <div class="pane" id="paneSeason" hidden>
+          <div class="group">
+            <div class="group-title">날짜 <span class="big-val" id="sDateLbl" style="margin-left:6px"></span></div>
+            <div class="slider-row">
+              <button type="button" class="sq" id="sMinus" aria-label="하루 전">−1일</button>
+              <input type="range" id="sSlider" min="1" max="365" step="1" aria-label="날짜">
+              <button type="button" class="sq" id="sPlus" aria-label="하루 뒤">+1일</button>
+            </div>
+            <div class="chips" data-season-chips style="margin-top:8px"></div>
+          </div>
+          <div class="readouts" id="sReadouts"></div>
+          <div class="group" style="margin-top:12px">
+            <div class="group-title">절기별 비교</div>
+            <div id="sTable"></div>
+          </div>
+          <div class="group">
+            <div class="group-title">달마다(15일) 바뀌는 모습</div>
+            <div class="chips" id="sGraphTabs"></div>
+            <div class="graph-box" id="sGraph"></div>
+          </div>
+          <div class="group">
+            <div class="group-title">🔦 빛 실험<span class="sp"></span><button type="button" class="ss-btn sm" id="sLight" aria-pressed="false">실험 보기</button></div>
+            <p class="hint-text">전등을 기울이면 같은 양의 빛이 더 넓은 곳에 퍼져요. 한 칸이 받는 빛이 줄어 덜 따뜻해요.</p>
+            <div class="slider-row" id="sLightRow" hidden style="margin-top:6px">
+              <span class="hint-text" style="font-weight:800">각도</span>
+              <input type="range" id="sLightAng" min="15" max="90" step="5" value="30" aria-label="빛이 비추는 각도">
+              <span class="big-val" id="sLightLbl">30°</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 계절의 원인 -->
+        <div class="pane" id="paneOrbit" hidden>
+          <div class="group">
+            <div class="group-title">날짜 <span class="big-val" id="oDateLbl" style="margin-left:6px"></span></div>
+            <div class="slider-row">
+              <button type="button" class="sq" id="oMinus" aria-label="열흘 전">−10일</button>
+              <input type="range" id="oSlider" min="1" max="365" step="1" aria-label="날짜">
+              <button type="button" class="sq" id="oPlus" aria-label="열흘 뒤">+10일</button>
+            </div>
+          </div>
+          <div class="group">
+            <div class="group-title">자전축 기울기</div>
+            <div class="row" id="oTilt">
+              <button type="button" class="ss-btn sm" data-tilt="23.5" aria-pressed="true">지금 지구 (23.5°)</button>
+              <button type="button" class="ss-btn sm" data-tilt="0" aria-pressed="false">기울지 않았다면 (0°)</button>
+            </div>
+          </div>
+          <div class="readouts" id="oReadouts"></div>
+          <div class="group" style="margin-top:12px">
+            <div class="group-title">한 해 동안의 남중 고도</div>
+            <div class="graph-box" id="oGraph"></div>
+            <p class="hint-text" style="margin-top:6px">지구는 1월 초에 태양과 가장 가깝고 7월 초에 가장 멀어요. 그래도 7월이 더 더운 까닭은 남중 고도가 높고 낮이 길기 때문이에요.</p>
+          </div>
+        </div>
+
+        <!-- 미션 -->
+        <div class="pane" id="paneMission" hidden>
+          <div class="sk-mnav" id="missionNav" aria-label="미션 번호"></div>
+          <h3 class="m-title" id="mTitle"></h3>
+          <p class="m-q" id="mQ"></p>
+          <div id="mControls"></div>
+          <div id="mAnswer"></div>
+          <div id="mFeedback"></div>
+          <div class="m-actions">
+            <button type="button" class="ss-btn primary" id="mCheck">이때!</button>
+            <button type="button" class="ss-btn primary" id="mNextMission" hidden>다음 미션 →</button>
+            <button type="button" class="ss-btn" id="mResult" hidden>🏆 결과 보기</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ============ 결과 ============ -->
+<div id="screenResult" class="screen result-screen">
+  <div style="font-size:64px" aria-hidden="true">🏆</div>
+  <h1>미션 결과</h1>
+  <p class="intro-sub" id="resultSub"></p>
+  <div class="result-grid" id="resultGrid" role="list"></div>
+  <div class="summary">
+    <h3>📖 배움 정리</h3>
+    <ul>
+      <li>태양 고도가 높을수록 그림자는 짧아지고, 기온은 조금 늦게(오후 2~3시) 가장 높아요.</li>
+      <li>여름에는 남중 고도가 높고 낮이 길어요. 겨울에는 남중 고도가 낮고 낮이 짧아요.</li>
+      <li>계절이 생기는 까닭은 지구가 <b>자전축이 기울어진 채</b> 태양 둘레를 돌기 때문이에요.</li>
+    </ul>
+  </div>
+  <div class="result-btns">
+    <button type="button" class="ss-btn primary" id="btnRetry">다시 도전</button>
+    <button type="button" class="ss-btn" id="btnToDay">관찰로 돌아가기</button>
+  </div>
+</div>
+
+<script is:inline src="/apps/sun-shadow/app.js"></script>
+</AppLayout>
