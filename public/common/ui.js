@@ -6,7 +6,11 @@
    로드 시점에는 document.body를 건드리지 않는다 — DOM은 처음 쓸 때 만든다.
    자세한 사용법·이전 패턴 → docs/common-ui.md
 
-   VUI.toast(msg, opts)                 공용 토스트(스크린리더 안내 포함). opts: {type:'error'|'success', duration}
+   VUI.toast(msg, opts)                 공용 토스트(스크린리더 안내 포함). opts: {type:'error'|'success', duration,
+                                        action:{label:'되돌리기', onClick}}. 위치: --vui-toast-bottom, <body data-toast="top">
+   VUI.icon(name, opts)                 lucide 아이콘 SVG 문자열(/common/icons.svg). opts: {cls, size, label}
+   VUI.icons.render(root)               [data-icon="x"] 요소 안에 아이콘을 넣는다(로드 시 자동 1회)
+   VUI.confirm(msg, opts) / prompt / alert  앱 안 대화상자(Promise). opts: {title, ok, cancel, danger, value, placeholder}
    VUI.modal.open(el, opts) / close(el) 기존 모달 요소의 접근성(포커스 가두기·ESC·포커스 복귀)
    VUI.modal.bind(el, opts)             기본 옵션 등록 + {open, close, isOpen} 반환
    VUI.share.encode(obj) / decode(str)  공유 링크용 base64url(UTF-8). decode는 옛 형식도 읽음
@@ -29,7 +33,7 @@
      색은 hero-theme.css의 토스트·대화상자 토큰을 쓰고, 없으면 기본값.
      ───────────────────────────────────────────── */
   var CSS = [
-    '.vui-toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:10050;',
+    '.vui-toast{position:fixed;left:50%;bottom:calc(var(--vui-toast-bottom,24px) + env(safe-area-inset-bottom,0px));z-index:10050;',
     'box-sizing:border-box;width:max-content;max-width:min(92vw,480px);padding:10px 18px;border-radius:12px;',
     'background:var(--toast-bg,#18181b);color:var(--toast-fg,#fafafa);font-family:inherit;font-size:14px;font-weight:600;',
     'line-height:1.5;text-align:center;white-space:pre-line;word-break:keep-all;overflow-wrap:anywhere;',
@@ -38,17 +42,28 @@
     '.vui-toast:empty{padding:0;box-shadow:none}',
     '.vui-toast.vui-show{opacity:1;transform:translate(-50%,0)}',
     '.vui-toast.vui-error{background:var(--toast-error-bg,#be123c);color:var(--toast-error-fg,#fff)}',
+    // 화면 아래에 고정 바·조작줄이 있는 앱(시뮬레이션 등)은 <body data-toast="top">으로 위쪽에 띄운다
+    'body[data-toast="top"] .vui-toast{bottom:auto;top:calc(var(--vui-toast-top,60px) + env(safe-area-inset-top,0px));transform:translate(-50%,-12px)}',
+    'body[data-toast="top"] .vui-toast.vui-show{transform:translate(-50%,0)}',
+    '.vui-toast.vui-has-act{pointer-events:auto;display:flex;align-items:center;gap:12px;text-align:left}',
+    '.vui-toast-act{flex:none;min-height:36px;padding:0 12px;border-radius:8px;border:1px solid currentColor;background:transparent;',
+    'color:inherit;font:inherit;font-weight:800;cursor:pointer}',
+    '.vui-toast-act:focus-visible{outline:2px solid currentColor;outline-offset:2px}',
+    '.vui-btn-danger{background:var(--danger,#f31260);border-color:var(--danger,#f31260);color:#fff}',
+    '.vui-field{display:flex;flex-direction:column;gap:6px}',
+    '.vui-field .vui-input{font-size:16px}',
+    '.vui-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}',
     '.vui-sr{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;',
     'overflow:hidden!important;clip:rect(0 0 0 0)!important;white-space:nowrap!important;border:0!important}',
     '.vui-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;',
     'padding:16px;background:rgba(0,0,0,.5)}',
     '.vui-overlay[hidden]{display:none}',
-    '.vui-dialog{box-sizing:border-box;width:min(360px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:20px;',
+    '.vui-dialog{box-sizing:border-box;width:min(360px,100%);max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow:auto;padding:20px;',
     'display:flex;flex-direction:column;gap:12px;border-radius:16px;font-family:inherit;',
     'background:var(--dialog-bg,#fff);color:var(--dialog-fg,#11181c);border:1px solid var(--dialog-border,rgba(127,127,127,.3));',
     'box-shadow:0 20px 50px rgba(0,0,0,.3)}',
     '.vui-dialog h2{margin:0;font-size:17px;font-weight:800;line-height:1.4}',
-    '.vui-dialog p{margin:0;font-size:13px;line-height:1.55;opacity:.8}',
+    '.vui-dialog p{margin:0;font-size:14px;line-height:1.55;opacity:.85;white-space:pre-line}',
     '.vui-status{font-size:13px;line-height:1.5;text-align:center}',
     '.vui-status:empty{display:none}',
     '.vui-qr{display:flex;justify-content:center;align-items:center;padding:12px;background:#fff;border-radius:12px;min-height:80px}',
@@ -115,7 +130,7 @@
       if (!el) return;
       el.classList.remove('vui-show');
       // 흐려진 뒤 글자를 비워 스크린리더가 옛 문구를 다시 읽지 않게
-      setTimeout(function () { if (!el.classList.contains('vui-show')) el.textContent = ''; }, 250);
+      setTimeout(function () { if (!el.classList.contains('vui-show')) { el.textContent = ''; el.classList.remove('vui-has-act'); } }, 250);
     });
   }
   function toast(msg, opts) {
@@ -132,10 +147,26 @@
     if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
     // 같은 문구를 연달아 띄워도 다시 읽히도록 비웠다가 넣는다(새로 만든 영역은 조금 더 기다림)
     el.textContent = '';
+    el.classList.remove('vui-has-act');
     var delay = r.fresh ? 80 : 20;
+    var act = opts.action && opts.action.label ? opts.action : null;
     var dur = typeof opts.duration === 'number' && opts.duration > 0 ? opts.duration : toastDuration(msg);
+    if (act) dur = Math.max(dur, 6000);   // 되돌리기 버튼을 누를 시간
     setTimeout(function () {
       el.textContent = msg;
+      if (act) {
+        // 예: VUI.toast('알람을 지웠어요', { action: { label: '되돌리기', onClick: restore } })
+        var b = doc.createElement('button');
+        b.type = 'button';
+        b.className = 'vui-toast-act';
+        b.textContent = act.label;
+        b.addEventListener('click', function () {
+          hideToast();
+          try { act.onClick(); } catch (e) { if (global.console) console.error(e); }
+        });
+        el.appendChild(b);
+        el.classList.add('vui-has-act');
+      }
       el.classList.add('vui-show');
     }, delay);
     toastTimer = setTimeout(hideToast, dur + delay);
@@ -519,7 +550,7 @@
   function dialogOpen(opts) {
     if (!dlg) dlg = buildDialog();
     var d = dlg;
-    d.title.textContent = opts.title || '🔗 링크 공유';
+    d.title.textContent = opts.title || '링크 공유';
     d.desc.textContent = opts.desc || '';
     d.desc.hidden = !opts.desc;
     d.status.textContent = opts.status || '';
@@ -772,6 +803,99 @@
     }
   };
 
+  /* ─────────────────────────────────────────────
+     7) 아이콘 — lucide 스프라이트(/common/icons.svg, scripts/build-icons.mjs가 생성)
+        이름은 lucide 이름 그대로. 스크립트가 이름을 만들어 쓰면 파일 어딘가에 "@icons 이름1 이름2" 형식 주석으로 적어 둔다.
+     ───────────────────────────────────────────── */
+  var ICON_URL = '/common/icons.svg';
+  function icon(name, opts) {
+    opts = typeof opts === 'string' ? { cls: opts } : (opts || {});
+    var n = String(name || '').replace(/[^a-z0-9-]/g, '');
+    var cls = 'ic' + (opts.cls ? ' ' + String(opts.cls).replace(/[<>"&]/g, '') : '');
+    var size = opts.size ? ' style="width:' + (+opts.size || 0) + 'px;height:' + (+opts.size || 0) + 'px"' : '';
+    var a11y = opts.label
+      ? ' role="img" aria-label="' + String(opts.label).replace(/[<>"&]/g, '') + '"'
+      : ' aria-hidden="true"';
+    return '<svg class="' + cls + '"' + size + a11y + ' focusable="false"><use href="' + ICON_URL + '#' + n + '"></use></svg>';
+  }
+  // <span data-icon="camera"></span> → 안에 아이콘을 넣는다(독립 HTML·정적 마크업용). 이미 있으면 건너뜀.
+  function renderIcons(root) {
+    var list = (root || doc).querySelectorAll('[data-icon]');
+    for (var i = 0; i < list.length; i++) {
+      var el = list[i];
+      if (el.querySelector('svg.ic')) continue;
+      el.insertAdjacentHTML('afterbegin', icon(el.getAttribute('data-icon')));
+    }
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { renderIcons(); });
+  else setTimeout(function () { renderIcons(); }, 0);
+
+  /* ─────────────────────────────────────────────
+     8) 확인·입력 창 — 브라우저 기본 confirm()/prompt() 대신(전자칠판에서 앱 디자인과 맞게)
+        VUI.confirm('지울까요?', { ok:'지우기', danger:true }).then(ok => …)
+        VUI.prompt('주제를 입력하세요', { value:'', placeholder:'예) 동물' }).then(text => …)  // 취소하면 null
+     ───────────────────────────────────────────── */
+  var ask = null;
+  function buildAsk() {
+    ensureStyle();
+    var ov = doc.createElement('div');
+    ov.className = 'vui-overlay';
+    ov.hidden = true;
+    var tid = 'vui-ask-t' + (++uid), did = 'vui-ask-d' + uid;
+    ov.innerHTML =
+      '<form class="vui-dialog" role="alertdialog" aria-modal="true" aria-labelledby="' + tid + '" aria-describedby="' + did + '">' +
+        '<h2 id="' + tid + '"></h2>' +
+        '<p id="' + did + '"></p>' +
+        '<label class="vui-field" hidden><span class="vui-sr">입력</span><input class="vui-input" type="text" autocomplete="off"></label>' +
+        '<div class="vui-actions">' +
+          '<button type="button" class="vui-btn vui-btn-ghost" data-vui-close></button>' +
+          '<button type="submit" class="vui-btn vui-ok"></button>' +
+        '</div>' +
+      '</form>';
+    doc.body.appendChild(ov);
+    var q = function (s) { return ov.querySelector(s); };
+    var a = { ov: ov, form: q('form'), title: q('h2'), msg: q('p'), field: q('.vui-field'), input: q('.vui-input'),
+      cancel: q('[data-vui-close]'), ok: q('.vui-ok'), done: null };
+    a.form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var f = a.done; a.done = null;
+      modal.close(ov);
+      if (f) f(true);
+    });
+    return a;
+  }
+  function openAsk(kind, message, opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      whenBody(function () {
+        if (!ask) ask = buildAsk();
+        var a = ask;
+        if (a.done) { var prev = a.done; a.done = null; prev(false); }
+        a.title.textContent = opts.title || (kind === 'prompt' ? '입력' : '확인');
+        a.msg.textContent = message == null ? '' : String(message);
+        a.msg.hidden = !a.msg.textContent;
+        a.field.hidden = kind !== 'prompt';
+        a.input.value = opts.value == null ? '' : String(opts.value);
+        a.input.placeholder = opts.placeholder || '';
+        if (opts.maxLength) a.input.maxLength = opts.maxLength; else a.input.removeAttribute('maxlength');
+        a.ok.textContent = opts.ok || '확인';
+        a.cancel.textContent = opts.cancel || '취소';
+        a.cancel.hidden = kind === 'alert';
+        a.ok.className = 'vui-btn vui-ok' + (opts.danger ? ' vui-btn-danger' : '');
+        a.done = function (ok) {
+          if (kind === 'prompt') resolve(ok ? a.input.value : null);
+          else resolve(!!ok);
+        };
+        modal.open(a.ov, {
+          backdropClose: kind !== 'prompt',
+          initialFocus: function () { return kind === 'prompt' ? a.input : (opts.danger ? a.cancel : a.ok); },
+          onClose: function () { var f = a.done; a.done = null; if (f) f(false); }
+        });
+        if (kind === 'prompt') setTimeout(function () { try { a.input.select(); } catch (e) {} }, 30);
+      });
+    });
+  }
+
   global.VUI = {
     toast: toast,
     modal: modal,
@@ -780,6 +904,11 @@
     apiFetch: apiFetch,
     josa: josa,
     withJosa: withJosa,
-    storage: storage
+    storage: storage,
+    icon: icon,
+    icons: { render: renderIcons, url: ICON_URL },
+    confirm: function (msg, opts) { return openAsk('confirm', msg, opts); },
+    prompt: function (msg, opts) { return openAsk('prompt', msg, opts); },
+    alert: function (msg, opts) { return openAsk('alert', msg, opts).then(function () {}); }
   };
 })(typeof window !== 'undefined' ? window : this);

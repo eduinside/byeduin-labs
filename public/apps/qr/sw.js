@@ -1,4 +1,4 @@
-const CACHE = 'qr-master-v6';  // 2026-10 3단계: 공용 ui.js(VUI)·제목 조회 선택제 — 이름을 올려야 기존 사용자 캐시가 교체됨
+const CACHE = 'qr-master-v7';  // 2026-10 UI 다듬기: lucide 런타임 → 공용 아이콘 스프라이트 — 이름을 올려야 기존 사용자 캐시가 교체됨
 
 const ASSETS = [
   '/apps/qr/',
@@ -11,7 +11,7 @@ const ASSETS = [
   '/common/theme.js',
   '/common/init.js',
   '/common/app-shell.js',
-  '/vendor/lucide-1.52.0.min.js',
+  '/common/icons.svg',
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
   'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',
 ];

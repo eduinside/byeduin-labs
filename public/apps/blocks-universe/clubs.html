@@ -1,315 +1,292 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme-lock="light" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>수의 클럽 배지 (Club Badge) — eduin VIVES</title>
-<script src="/common/init.js"></script>
-<script src="clubs-data.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Dongle:wght@300;400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/common/hero-theme.css">
 <link rel="stylesheet" href="/common/app-shell.css">
 <link rel="stylesheet" href="/common/sim-kit.css">
+<script src="/common/safe.js"></script>
 <script src="/common/ui.js"></script>
-<script src="/common/sim-kit.js"></script>
 <script src="/common/theme.js"></script>
+<script src="/common/init.js"></script>
 <script src="/common/app-shell.js" defer></script>
+<script src="/common/sim-kit.js"></script>
+<script src="clubs-data.js"></script>
 <style>
+  /* 수의 클럽 배지 — 시뮬레이션 공통 규약 v2(밝은 화면 고정, 무대 + 조작판, .sk-btn) */
   :root {
-    --bg: #FFF9F0;
-    --sky: #C8E6FF;
-    --yellow: #FFD93D;
-    --orange: #FF8C00;
-    --red: #FF4757;
-    --green: #2ED573;
-    --blue: #1E90FF;
-    --purple: #A855F7;
-    --dark: #2D2D2D;
-    --paper: #FFFDF8;
-    --shadow: 4px 4px 0px #2D2D2D;
-    --side-w: 400px;
+    --cl-accent: #1e78e6;
+    --cl-accent-h: #1560bf;
+    --cl-accent-soft: #eaf3ff;
+    --cl-orange: #f08a00;
+    --cl-panel: #ffffff;
+    --cl-panel-border: #e4e4e7;
+    --cl-stage-bg: #f6f9fd;
+    --cl-text: #2c2f36;
+    --cl-text-muted: #6b7280;
+    --cl-btn-bg: #f4f4f5;
+    --cl-side-w: 380px;
+    --sk-accent: var(--cl-accent);
+    --sk-ring: rgba(30, 120, 230, 0.28);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { -webkit-text-size-adjust: 100%; }
-  body {
-    font-family: 'Dongle', sans-serif;
-    background: var(--bg);
-    color: var(--dark);
-    min-height: 100vh;
-    background-image:
-      radial-gradient(circle at 10% 20%, #FFE0B2 0%, transparent 40%),
-      radial-gradient(circle at 90% 80%, #C8E6FF 0%, transparent 40%);
-  }
+  body { background: var(--cl-stage-bg); color: var(--cl-text); min-height: 100vh; }
   body.exploring { overflow: hidden; }
-  h1, h2, h3 { font-weight: 700; }
+  h1, h2, h3 { font-weight: 800; letter-spacing: -0.01em; }
+  b { font-weight: 800; }
 
-  /* ===== 인트로 ===== */
-  .wrap { max-width: 620px; margin: 0 auto; padding: 20px 16px 60px; }
-  .intro { text-align: center; padding-top: 56px; animation: fadeUp .6s ease both; }
-  .intro .hero-art { font-size: 84px; line-height: 1; animation: bounce 2.4s ease-in-out infinite; }
-  .intro h1 {
-    font-size: 60px; margin: 10px 0 2px; color: var(--dark);
-    letter-spacing: 1px; text-shadow: 4px 4px 0 var(--blue); line-height: 1;
-  }
-  .intro h1 .h1-en { display: block; font-size: 34px; letter-spacing: 0; text-shadow: none; color: #666; margin-top: 4px; }
-  .intro .sub { font-size: 28px; color: #666; margin-bottom: 20px; line-height: 1.3; font-weight: 700; }
-  .lesson-tag {
-    display: inline-block; background: var(--dark); color: var(--sky);
-    font-size: 24px; padding: 4px 20px; border-radius: 99px; margin-bottom: 18px; line-height: 1.3;
-  }
-  .mission-card {
-    background: var(--paper); border: 3px dashed var(--blue); border-radius: 22px;
-    padding: 18px 22px; text-align: left; margin: 0 auto 26px; box-shadow: var(--shadow);
-  }
-  .mission-card h3 { color: var(--blue); font-size: 30px; margin-bottom: 6px; line-height: 1.1; }
-  .mission-card li { margin: 4px 0 4px 22px; line-height: 1.25; font-size: 25px; }
-  .mission-card b { color: var(--red); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+  @keyframes popIn { from { opacity: 0; transform: scale(.88); } to { opacity: 1; transform: scale(1); } }
+  @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 
-  /* ===== 버튼 ===== */
-  .btn {
-    font-family: 'Dongle', sans-serif; font-size: 30px; line-height: 1.1;
-    border: 3px solid var(--dark); cursor: pointer;
-    border-radius: 99px; padding: 10px 36px; transition: transform .12s, box-shadow .12s;
-    box-shadow: var(--shadow); background: white; color: var(--dark);
-    -webkit-tap-highlight-color: transparent;
+  /* ===== 인트로 (.sk-screen) ===== */
+  .intro-screen {
+    text-align: center;
+    background:
+      radial-gradient(circle at 20% 25%, rgba(30,120,230,0.08) 0, transparent 40%),
+      radial-gradient(circle at 80% 75%, rgba(245,165,36,0.10) 0, transparent 38%),
+      var(--cl-stage-bg);
+    animation: fadeUp .5s ease both;
   }
-  .btn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--dark); }
-  .btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--dark); }
-  .btn-primary { background: var(--green); }
-  .btn-blue { background: var(--blue); color: white; }
+  body.exploring .intro-screen { display: none; }
+  .intro-inner { width: 100%; max-width: 460px; display: flex; flex-direction: column; align-items: center; }
+  .intro-tag { display: inline-block; background: var(--cl-accent); color: #fff; font-size: 14px; font-weight: 700; padding: 5px 14px; border-radius: 99px; margin-bottom: 14px; }
+  .intro-art { font-size: 72px; line-height: 1; margin-bottom: 10px; animation: bounce 2.4s ease-in-out infinite; }
+  .intro-screen h1 { font-size: 30px; line-height: 1.25; margin-bottom: 6px; }
+  .intro-screen h1 .app-title-en { display: block; font-size: 16px; font-weight: 600; color: var(--cl-text-muted); margin-top: 2px; }
+  .intro-sub { font-size: 15px; color: var(--cl-text-muted); line-height: 1.6; margin-bottom: 16px; }
+  .intro-card {
+    width: 100%; background: var(--cl-panel); border: 2px dashed var(--cl-accent);
+    border-radius: 18px; padding: 16px 20px; text-align: left; margin-bottom: 20px;
+  }
+  .intro-card h3 { color: var(--cl-accent); font-size: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .intro-card ol { padding-left: 20px; }
+  .intro-card li { margin: 4px 0; line-height: 1.6; font-size: 15px; }
+  .intro-card b { color: var(--cl-accent-h); }
+  .intro-screen .sk-btn--primary { min-width: 200px; min-height: 52px; font-size: 17px; border-radius: 99px; }
 
-  /* ===== 탐험 레이아웃 ===== */
+  /* ===== 탐험: 무대 + 조작판 ===== */
   .explore {
     display: none;
-    grid-template-columns: 1fr var(--side-w);
+    grid-template-columns: 1fr var(--cl-side-w);
     width: 100vw; height: 100vh; height: 100dvh;
     animation: fadeUp .4s ease both;
   }
   body.exploring .explore { display: grid; }
-  body.exploring .wrap { display: none; }
   .stage-zone {
-    position: relative; min-width: 0; overflow: hidden;
-    background:
-      radial-gradient(circle at 20% 15%, rgba(30,144,255,.10) 0, transparent 35%),
-      radial-gradient(circle at 80% 85%, rgba(255,217,61,.28) 0, transparent 45%),
-      linear-gradient(180deg, #FFF9F0 0%, #EAF3FF 100%);
+    position: relative; min-width: 0; min-height: 0; overflow: hidden;
+    background-color: var(--cl-stage-bg);
+    background-image:
+      radial-gradient(rgba(30,120,230,0.10) 1.5px, transparent 1.5px),
+      radial-gradient(rgba(245,165,36,0.12) 1.5px, transparent 1.5px);
+    background-size: 32px 32px;
+    background-position: 0 0, 16px 16px;
   }
   .viewer-title {
     position: absolute; top: 56px; left: 14px; z-index: 5;
-    background: var(--dark); color: #fff; border-radius: 14px; padding: 4px 16px;
-    font-size: 27px; line-height: 1.2; display: flex; align-items: center; gap: 9px;
-    box-shadow: var(--shadow);
+    background: rgba(38,50,56,0.80); color: #fff; border-radius: 14px; padding: 7px 14px;
+    font-size: 15px; font-weight: 700; line-height: 1.2; display: flex; align-items: center; gap: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   }
   .viewer-title .num {
-    background: var(--blue); min-width: 26px; height: 26px; border-radius: 50%; padding: 0 4px;
-    display: inline-flex; align-items: center; justify-content: center; font-size: 18px;
+    background: var(--cl-accent); min-width: 26px; height: 26px; border-radius: 50%; padding: 0 5px;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 14px; color: #fff;
   }
+  .viewer-title .num .ic { width: 15px; height: 15px; }
+  /* 그림은 이름표(위)·안내줄(아래) 자리를 비우고, 넘치면 무대 안에서 스크롤 */
   .stage-canvas {
     position: absolute; inset: 0;
     display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 14px;
-    padding: 96px 28px 60px; overflow: auto;
+    padding: calc(var(--sk-stage-top) + 40px) 24px var(--sk-stage-bottom); overflow: auto;
   }
-  /* justify-content:center는 내용이 넘칠 때 위쪽을 스크롤로도 못 보게 자른다(36처럼 배지가 많은 수).
-     auto 여백으로 가운데 정렬하면 넘칠 때는 위에서부터 보인다 */
+  /* 넘칠 때 위쪽이 잘리지 않게 auto 여백으로 가운데 정렬(36처럼 배지가 많은 수) */
   .stage-canvas > :first-child { margin-top: auto; }
   .stage-canvas > :last-child { margin-bottom: auto; }
   .stage-hint {
-    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 5;
-    background: rgba(45,45,45,.85); color: #fff; font-size: 23px; line-height: 1.2;
-    border-radius: 99px; padding: 6px 20px; white-space: nowrap; max-width: calc(100% - 24px);
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 5;
+    background: rgba(38,50,56,0.82); color: #fff; font-size: 14px; font-weight: 600; line-height: 1.3;
+    border-radius: 99px; padding: 8px 16px; white-space: nowrap; max-width: calc(100% - 24px);
     overflow: hidden; text-overflow: ellipsis;
   }
   .stage-number {
-    font-family: 'Dongle', sans-serif; font-size: 130px; line-height: 1;
-    color: var(--orange); text-shadow: 6px 6px 0 var(--dark); animation: bounce .6s ease;
+    font-size: 96px; font-weight: 900; line-height: 1; letter-spacing: -0.02em;
+    color: var(--cl-orange); text-shadow: 4px 4px 0 rgba(38,50,56,0.85); animation: popIn .4s ease;
   }
-  .stage-number.small { font-size: 90px; }
-  .hint { font-size: 30px; color: #999; font-weight: 700; text-align: center; line-height: 1.3; }
+  .stage-number.small { font-size: 64px; }
+  .stage-center { text-align: center; }
+  .stage-center .stage-art { font-size: 72px; line-height: 1; }
+  .stage-center .stage-score { font-size: 44px; font-weight: 900; color: var(--cl-accent); margin-top: 6px; }
+  .hint { font-size: 18px; color: var(--cl-text-muted); font-weight: 700; text-align: center; line-height: 1.5; margin-top: 6px; }
 
-  /* 무대: 배지 그리드 */
+  /* 무대: 배지 */
   .badge-grid { display: flex; flex-direction: column; gap: 10px; width: min(520px, 100%); }
   .club-badge {
-    display: flex; align-items: stretch; border: 3px solid var(--dark); border-radius: 14px;
-    box-shadow: 3px 3px 0 var(--dark); overflow: hidden;
-    animation: popIn .4s cubic-bezier(.36,1.56,.64,1) both; min-height: 76px;
+    display: flex; align-items: stretch; border-radius: 14px; overflow: hidden; min-height: 68px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12); border: 1px solid rgba(0,0,0,0.12);
+    animation: popIn .35s ease both;
   }
   .badge-emoji {
-    flex-shrink: 0; width: 76px; min-width: 76px; padding: 12px;
+    flex-shrink: 0; width: 68px; min-width: 68px; padding: 10px;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(0,0,0,.05); border-right: 3px solid rgba(0,0,0,.1);
+    background: rgba(0,0,0,.06); border-right: 1px solid rgba(0,0,0,.1);
   }
+  .badge-emoji svg, .club-ic svg, .club-detail-icon svg, .choice-emoji svg { width: 100%; height: 100%; }
   .badge-header { display: flex; flex-direction: column; justify-content: center; gap: 2px; flex: 1; padding: 8px 14px; }
-  .badge-name { font-size: 28px; line-height: 1.05; font-weight: 900; }
-  .badge-reason { font-size: 22px; line-height: 1.2; opacity: .9; word-break: keep-all; }
-  .no-club-msg { font-size: 30px; color: #999; text-align: center; padding: 10px; }
+  .badge-name { font-size: 17px; line-height: 1.3; font-weight: 900; }
+  .badge-reason { font-size: 14px; line-height: 1.4; opacity: .92; word-break: keep-all; }
+  .no-club-msg { font-size: 17px; font-weight: 700; color: var(--cl-text-muted); text-align: center; padding: 10px; }
 
   /* 무대: 클럽 상세 */
   .club-detail {
-    background: var(--paper); border: 3px solid var(--dark); border-radius: 24px;
-    box-shadow: var(--shadow); padding: 24px 28px; width: min(560px, 100%);
-    animation: popIn .35s cubic-bezier(.36,1.56,.64,1) both;
+    background: var(--cl-panel); border: 1px solid var(--cl-panel-border); border-radius: 20px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.07); padding: 20px 22px; width: min(560px, 100%);
+    animation: popIn .3s ease both;
   }
-  .club-detail-head { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
-  .club-detail-icon { width: 72px; height: 72px; flex-shrink: 0; border-radius: 18px; border: 3px solid var(--dark); display: flex; align-items: center; justify-content: center; padding: 8px; }
-  .club-detail-head h3 { font-size: 40px; line-height: 1; }
-  .club-detail-head p { font-size: 22px; color: #888; line-height: 1.1; }
-  .club-detail .desc-ko { font-size: 27px; line-height: 1.3; margin-bottom: 6px; word-break: keep-all; }
-  .club-detail .desc-en { font-size: 22px; color: #999; line-height: 1.3; margin-bottom: 12px; }
-  .examples-label { font-size: 24px; font-weight: 900; color: #555; margin-bottom: 6px; }
+  .club-detail-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+  .club-detail-icon { width: 64px; height: 64px; flex-shrink: 0; border-radius: 16px; border: 1px solid rgba(0,0,0,0.12); display: flex; align-items: center; justify-content: center; padding: 8px; }
+  .club-detail-head h3 { font-size: 22px; line-height: 1.25; }
+  .club-detail-head p { font-size: 14px; color: var(--cl-text-muted); line-height: 1.3; }
+  .club-detail .desc-ko { font-size: 16px; line-height: 1.6; margin-bottom: 4px; word-break: keep-all; }
+  .club-detail .desc-en { font-size: 14px; color: var(--cl-text-muted); line-height: 1.5; margin-bottom: 12px; }
+  .examples-label { font-size: 14px; font-weight: 800; color: var(--cl-text-muted); margin-bottom: 6px; }
   .examples-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 150px; overflow-y: auto; }
   .num-chip {
-    font-size: 22px; line-height: 1.1; padding: 2px 12px; border-radius: 999px;
-    border: 2px solid var(--dark); background: var(--sky); box-shadow: 2px 2px 0 var(--dark); color: var(--dark);
+    font-size: 14px; font-weight: 700; line-height: 1.3; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid #b9d5f7; background: var(--cl-accent-soft); color: var(--cl-text);
   }
 
-  /* ===== 사이드바 ===== */
+  /* ===== 조작판 ===== */
   .side {
-    background: var(--paper); border-left: 3px solid var(--dark);
+    background: var(--cl-panel); border-left: 2px solid var(--cl-panel-border);
     overflow-y: auto; display: flex; flex-direction: column;
-    box-shadow: -8px 0 24px rgba(45,45,45,.12);
+    box-shadow: -4px 0 24px rgba(0,0,0,0.06);
   }
   .side-head {
-    background: linear-gradient(135deg, var(--blue) 0%, #1565C0 100%);
-    color: #fff; padding: 18px 22px 14px; position: relative; overflow: hidden; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--cl-accent) 0%, var(--cl-accent-h) 100%);
+    color: #fff; padding: 16px 20px 14px; position: relative; overflow: hidden; flex-shrink: 0;
   }
-  .side-head::after {
-    content: ''; position: absolute; inset: 0;
-    background: radial-gradient(circle at 80% -20%, rgba(255,217,61,.35) 0, transparent 55%);
-  }
-  .side-head .flag { font-size: 22px; line-height: 1.1; opacity: .9; position: relative; z-index: 1; }
-  .side-head h2 { font-size: 38px; line-height: 1.05; margin: 2px 0 0; position: relative; z-index: 1; }
-  .side-body { padding: 16px 20px 26px; flex: 1; }
+  .side-head::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 80% -20%, rgba(255,255,255,0.18) 0, transparent 55%); }
+  .side-head h2 { font-size: 20px; position: relative; z-index: 1; }
+  .side-head .side-sub { font-size: 14px; opacity: .85; position: relative; z-index: 1; margin-top: 2px; }
+  .side-body { padding: 14px 16px 20px; flex: 1; }
 
-  .mode-pills { display: flex; gap: 8px; margin-bottom: 14px; }
+  .mode-pills { display: flex; gap: 6px; margin-bottom: 14px; }
   .mode-pill {
-    flex: 1; font-family: 'Dongle', sans-serif; font-size: 25px; line-height: 1.1;
-    padding: 8px 4px; border: 3px solid var(--dark); border-radius: 99px; cursor: pointer;
-    background: white; color: var(--dark); box-shadow: 3px 3px 0 var(--dark);
-    transition: transform .1s, box-shadow .1s, background .2s;
-    -webkit-tap-highlight-color: transparent;
+    flex: 1; min-height: 44px; padding: 8px 6px; border-radius: 12px;
+    border: 2px solid var(--cl-panel-border); background: var(--cl-btn-bg);
+    font: inherit; font-size: 15px; font-weight: 700; color: var(--cl-text-muted);
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: border-color .15s, background .15s, color .15s;
   }
-  .mode-pill:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--dark); }
-  .mode-pill.active { background: var(--yellow); }
+  .mode-pill:hover { border-color: var(--cl-accent); }
+  .mode-pill.active { border-color: var(--cl-accent); background: var(--cl-accent-soft); color: var(--cl-accent-h); }
 
-  .observe-box {
-    background: #EAF3FF; border: 2px solid var(--blue); border-radius: 16px;
-    padding: 12px 16px 10px; margin-bottom: 14px;
-  }
-  .observe-box h3 { font-size: 26px; line-height: 1.1; color: #1565C0; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-  .observe-box p { font-size: 24px; line-height: 1.25; }
-  .tip-box {
-    background: #FFF7E0; border: 2px solid var(--orange); border-radius: 16px;
-    padding: 10px 15px; margin-bottom: 14px; font-size: 22px; line-height: 1.3; color: #8A5A00;
-  }
-  .tip-box b { color: #B06A00; }
+  .observe-box { background: var(--cl-accent-soft); border: 1px solid #c4dcf8; border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; }
+  .observe-box h3 { font-size: 15px; color: var(--cl-accent-h); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .observe-box p { font-size: 15px; line-height: 1.6; }
+  .tip-box { background: #fff7e0; border: 1px solid #f5d48a; border-radius: 14px; padding: 10px 14px; margin-top: 14px; font-size: 14px; line-height: 1.6; color: #7a5200; }
+  .tip-box b { color: #9a6400; }
+  .tip-box .ic { vertical-align: -0.15em; }
+  .kbd-tip { font-size: 13px; line-height: 1.5; color: var(--cl-text-muted); margin-top: 6px; }
 
-  /* 클럽 목록(사이드바) */
+  /* 클럽 목록 */
   .club-list { display: flex; flex-direction: column; gap: 8px; }
   .club-row {
-    display: flex; align-items: center; gap: 10px; padding: 6px 12px; min-height: 48px;
-    border: 3px solid var(--dark); border-radius: 14px; cursor: pointer;
-    box-shadow: 3px 3px 0 var(--dark); transition: transform .1s, box-shadow .1s;
-    color: white; width: 100%; text-align: left; font-family: inherit;
+    display: flex; align-items: center; gap: 10px; padding: 6px 12px; min-height: 52px;
+    border: 1px solid rgba(0,0,0,0.12); border-radius: 12px; cursor: pointer;
+    color: #fff; width: 100%; text-align: left; font: inherit;
+    transition: transform .1s, box-shadow .15s;
   }
-  .club-row:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--dark); }
-  .club-row.sel { outline: 3px solid var(--yellow); outline-offset: -1px; }
-  .club-row .ic { width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .club-row:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.12); }
+  .club-row.sel { outline: 3px solid var(--cl-text); outline-offset: 2px; }
+  .club-ic { width: 32px; height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
   .club-row .names { flex: 1; min-width: 0; }
-  .club-row .ko { font-size: 25px; line-height: 1; font-weight: 900; text-shadow: 1px 1px 0 rgba(0,0,0,.25); }
-  .club-row .en { font-size: 20px; line-height: 1.1; opacity: .9; }
+  .club-row .ko { font-size: 15px; line-height: 1.3; font-weight: 800; text-shadow: 0 1px 1px rgba(0,0,0,.25); }
+  .club-row .en { font-size: 13px; line-height: 1.3; opacity: .9; }
 
-  /* 숫자 탐색: 넘패드 */
-  .num-display-box {
-    background: white; border: 3px solid var(--dark); border-radius: 18px;
-    box-shadow: var(--shadow); padding: 4px 20px; text-align: center; margin-bottom: 12px;
-  }
-  .num-display-val {
-    font-size: 62px; line-height: 1.15; color: var(--orange);
-    text-shadow: 3px 3px 0 var(--dark); min-height: 1.15em; letter-spacing: 3px;
-  }
+  /* 숫자 탐색: 숫자 누르개 */
+  .num-display-box { background: var(--cl-panel); border: 2px solid var(--cl-panel-border); border-radius: 14px; padding: 4px 16px; text-align: center; margin-bottom: 12px; }
+  .num-display-val { font-size: 40px; font-weight: 900; line-height: 1.3; color: var(--cl-orange); min-height: 1.3em; letter-spacing: 2px; }
   .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
   .np-btn {
-    font-family: 'Dongle', sans-serif; font-size: 34px; line-height: 1; padding: 10px;
-    border: 3px solid var(--dark); border-radius: 14px; cursor: pointer;
-    box-shadow: 3px 3px 0 var(--dark); background: white; color: var(--dark);
-    transition: transform .08s, box-shadow .08s;
+    min-height: 52px; font: inherit; font-size: 22px; font-weight: 800; line-height: 1;
+    border: 1px solid var(--cl-panel-border); border-radius: 12px; cursor: pointer;
+    background: var(--cl-btn-bg); color: var(--cl-text);
+    display: flex; align-items: center; justify-content: center;
+    transition: background .1s, border-color .1s;
   }
-  .np-btn:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--dark); }
-  .np-btn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--dark); }
-  .np-zero { background: var(--sky); }
-  .np-del { background: var(--yellow); }
-  .np-clear { background: var(--red); color: white; }
-  .check-row { text-align: center; }
+  .np-btn:hover { border-color: var(--cl-accent); }
+  .np-btn:active { background: #e4e4e7; }
+  .np-del, .np-clear { color: var(--cl-text-muted); font-size: 16px; }
+  .np-del .ic, .np-clear .ic { width: 22px; height: 22px; }
+  .check-row .sk-btn { width: 100%; }
 
-  /* 퀴즈 (volcano 계승) */
+  /* 퀴즈 */
   .progress-zone { margin-bottom: 14px; }
-  .progress-track { height: 12px; background: #E4ECF6; border: 2px solid var(--dark); border-radius: 99px; overflow: hidden; }
-  .progress-fill {
-    height: 100%; border-radius: 99px; min-width: 8px;
-    background: linear-gradient(90deg, var(--sky), var(--blue));
-    transition: width .5s cubic-bezier(.6,0,.3,1.4);
-  }
-  .progress-label { display: flex; justify-content: space-between; font-size: 21px; color: #888; margin-top: 4px; line-height: 1.1; }
-
-  .quiz-q { text-align: center; font-size: 28px; line-height: 1.2; margin-bottom: 12px; }
-  .quiz-choices { display: flex; flex-direction: column; gap: 10px; margin-bottom: 6px; }
+  .progress-track { height: 8px; background: var(--cl-btn-bg); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; min-width: 8px; background: linear-gradient(90deg, #7fb6f5, var(--cl-accent)); transition: width .4s ease; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 14px; color: var(--cl-text-muted); margin-top: 6px; }
+  .quiz-q { text-align: center; font-size: 17px; font-weight: 700; line-height: 1.5; margin-bottom: 12px; }
+  .quiz-q .qn { color: var(--cl-orange); font-size: 1.2em; }
+  .quiz-choices { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
   .choice-btn {
-    font-family: 'Dongle', sans-serif; font-size: 26px; line-height: 1.1; padding: 8px 14px;
-    border: 3px solid var(--dark); border-radius: 14px; cursor: pointer;
-    box-shadow: 3px 3px 0 var(--dark); background: white; color: var(--dark);
-    transition: transform .1s, box-shadow .1s;
+    min-height: 52px; font: inherit; font-size: 16px; font-weight: 700; line-height: 1.3; padding: 8px 14px;
+    border: 2px solid var(--cl-panel-border); border-radius: 12px; cursor: pointer;
+    background: var(--cl-panel); color: var(--cl-text);
+    transition: border-color .12s, background .12s;
     display: flex; align-items: center; gap: 10px; word-break: keep-all; text-align: left;
   }
-  .choice-btn:hover:not(:disabled) { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--dark); }
-  .choice-btn:disabled { cursor: not-allowed; }
-  .choice-btn.correct-ans { background: var(--green) !important; }
-  .choice-btn.wrong-ans { background: var(--red) !important; color: white; }
-  .choice-emoji { width: 34px; height: 34px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .choice-btn:hover:not(:disabled) { border-color: var(--cl-accent); }
+  .choice-btn:disabled { cursor: default; }
+  .choice-btn.correct-ans { background: #dcf7e6 !important; border-color: #17c964; }
+  .choice-btn.wrong-ans { background: #fde8ee !important; border-color: #f31260; }
+  .choice-emoji { width: 32px; height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px; padding: 3px; }
 
-  .reveal { animation: popIn .45s cubic-bezier(.5,0,.3,1.5) both; }
-  .reveal-banner {
-    text-align: center; border-radius: 18px; padding: 8px; font-size: 29px; line-height: 1.15;
-    margin: 10px 0; border: 3px solid;
-  }
-  .reveal-banner.correct { background: #E3F5EA; color: #14813F; border-color: var(--green); }
-  .reveal-banner.wrong { background: #FDEAEA; color: #C0392B; border-color: var(--red); }
-  .explain { font-size: 24px; line-height: 1.35; background: #F2F6FB; border-radius: 14px; padding: 11px 15px; }
-  .explain b { color: #1565C0; }
-  .next-zone { text-align: center; margin-top: 12px; }
+  .reveal { animation: popIn .35s ease both; }
+  .reveal-banner { display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center; border-radius: 12px; padding: 10px; font-size: 17px; font-weight: 800; margin: 12px 0 8px; }
+  .reveal-banner.correct { background: var(--sk-ok-bg); color: var(--sk-ok-fg); }
+  .reveal-banner.wrong { background: var(--sk-no-bg); color: var(--sk-no-fg); }
+  .explain { font-size: 15px; line-height: 1.6; background: #f2f6fb; border-radius: 12px; padding: 10px 14px; word-break: keep-all; }
+  .explain b { color: var(--cl-accent-h); }
+  .next-zone { margin-top: 12px; }
+  .next-zone .sk-btn { width: 100%; }
 
-  .result { text-align: center; animation: fadeUp .5s ease both; }
-  .result h2 { font-size: 40px; color: var(--blue); margin: 6px 0 0; line-height: 1.1; }
-  .result .score { font-size: 30px; color: #888; margin-bottom: 14px; line-height: 1.1; }
-  .summary-box {
-    background: var(--dark); color: #EAF3FF; border-radius: 18px;
-    padding: 14px 18px; text-align: left; margin-bottom: 16px;
-  }
-  .summary-box h3 { color: var(--yellow); font-size: 27px; line-height: 1.1; margin-bottom: 6px; }
-  .summary-box p { font-size: 23px; line-height: 1.35; }
-  .summary-box b { color: #FFD98A; }
+  .result { text-align: center; animation: fadeUp .4s ease both; }
+  .result h2 { font-size: 22px; color: var(--cl-accent); margin: 4px 0 2px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .result .score { font-size: 16px; color: var(--cl-text-muted); margin-bottom: 14px; }
+  .summary-box { background: var(--cl-accent-soft); border: 1px solid #c4dcf8; border-radius: 14px; padding: 12px 16px; text-align: left; margin-bottom: 14px; }
+  .summary-box h3 { color: var(--cl-accent-h); font-size: 15px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .summary-box p { font-size: 15px; line-height: 1.6; word-break: keep-all; }
+  .result-btns { display: flex; flex-direction: column; gap: 8px; }
 
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
-  @keyframes popIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
-  @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-
-  .kbd-tip { font-size: 21px; line-height: 1.25; color: #555; margin-top: 6px; }
-
-  /* ===== 태블릿·모바일 ===== */
-  @media (max-width: 900px) {
+  /* ===== 태블릿·폰 세로: 무대 위, 조작판 아래 ===== */
+  @media (max-width: 900px) and (orientation: portrait), (max-width: 600px) {
     body.exploring { overflow: auto; }
     body.exploring .explore { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
     .stage-zone { position: sticky; top: 0; z-index: 40; height: 46vh; min-height: 300px; flex-shrink: 0; }
-    .stage-canvas { padding: 70px 14px 56px; justify-content: flex-start; }
-    .stage-canvas > :first-child { margin-top: 0; }
-    .stage-canvas > :last-child { margin-bottom: 0; }
-    .side { border-left: none; border-top: 3px solid var(--dark); }
-    .intro h1 { font-size: 44px; }
-    .viewer-title { font-size: 23px; padding: 3px 13px; }
-    .stage-number { font-size: 90px; }
-    .badge-emoji { width: 60px; min-width: 60px; padding: 9px; }
+    .stage-canvas { padding: calc(var(--sk-stage-top) + 36px) 14px 52px; }
+    .side { border-left: none; border-top: 2px solid var(--cl-panel-border); box-shadow: none; }
+    .stage-number { font-size: 72px; }
+    .stage-number.small { font-size: 52px; }
+    .badge-emoji { width: 56px; min-width: 56px; padding: 8px; }
+  }
+  /* 가로 폰(844×390 등) */
+  @media (max-height: 500px) and (orientation: landscape) {
+    :root { --cl-side-w: 320px; }
+    .stage-canvas { padding: calc(var(--sk-stage-top) + 30px) 14px 16px; }
+    .stage-hint { display: none; }
+    .stage-number { font-size: 64px; }
+    .stage-number.small { font-size: 44px; }
+    .side-head { padding: 10px 16px 8px; }
+    .side-head .side-sub { display: none; }
+    .np-btn { min-height: 44px; }
   }
 
-  button:focus-visible, a:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--cl-accent); outline-offset: 2px; }
 
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; }
@@ -325,49 +302,49 @@
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"수의 클럽 배지 (Club Badge)","description":"1~100까지 수의 넘버블록스 클럽(배수 그룹)을 탐색하고 퀴즈로 연습하세요.","url":"https://eduin.info/apps/blocks-universe/clubs.html","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   <script src="/common/seo-injector.js" defer></script>
 </head>
-<body data-shell="immersive">
+<body data-shell="immersive" data-toast="top">
 
 <!-- 플로팅 크롬(홈·공유)은 app-shell.js가 주입 — 음소거 버튼은 크롬으로 끌어올려짐 -->
 <div class="app-actions">
-  <button class="overlay-btn" id="muteBtn" title="소리 켜기/끄기" aria-label="소리 켜기/끄기" aria-pressed="false"></button>
+  <button type="button" class="overlay-btn" id="muteBtn" title="소리 켜기/끄기" aria-label="소리 켜기/끄기" aria-pressed="false"></button>
 </div>
 
 <!-- ===== 인트로 ===== -->
-<div class="wrap">
-  <div class="intro">
-    <div class="hero-art" aria-hidden="true">🏅</div>
-    <h1>수의 클럽 배지 <span class="h1-en">(Club Badge)</span></h1>
-    <p class="sub">넘버블록스 클럽 멤버십 탐색기</p>
-    <div class="lesson-tag">숫자마다 어떤 클럽에 속해 있을까요?</div>
-    <div class="mission-card">
-      <h3>🧭 탐험 방법</h3>
+<div class="intro-screen sk-screen" id="screenIntro">
+  <div class="intro-inner">
+    <div class="intro-tag">넘버블록스 · 수의 성질</div>
+    <div class="intro-art" aria-hidden="true">🏅</div>
+    <h1>수의 클럽 배지 <span class="app-title-en">Club Badge</span></h1>
+    <p class="intro-sub">숫자마다 어떤 클럽에 속해 있을까요? 넘버블록스 클럽 멤버십 탐색기</p>
+    <div class="intro-card">
+      <h3><span data-icon="compass"></span> 탐험 방법</h3>
       <ol>
         <li><b>클럽 소개</b>에서 짝수 탑 클럽, 큐브 클럽 같은 16개 클럽을 구경해요.</li>
         <li><b>숫자 탐색</b>에서 아무 숫자나 입력하면 그 수가 속한 <b>클럽 배지</b>가 무대에 나타나요!</li>
         <li>준비가 되면 <b>퀴즈 10문제</b>로 클럽 찾기 실력을 확인해요!</li>
       </ol>
     </div>
-    <button class="btn btn-primary" onclick="startExplore()">탐험 시작! 🚀</button>
+    <button type="button" class="sk-btn sk-btn--primary" onclick="startExplore()"><span data-icon="play"></span> 탐험 시작</button>
   </div>
 </div>
 
-<!-- ===== 탐험: 무대 + 사이드바 ===== -->
+<!-- ===== 탐험: 무대 + 조작판 ===== -->
 <div class="explore">
   <div class="stage-zone">
-    <div class="viewer-title" id="viewerTitle"><span class="num">📖</span> 클럽 소개</div>
+    <div class="viewer-title" id="viewerTitle"><span class="num" data-icon="book-open"></span> 클럽 소개</div>
     <div class="stage-canvas" id="stageCanvas"></div>
-    <div class="stage-hint" id="stageHint">👆 오른쪽에서 클럽을 골라 보세요!</div>
+    <div class="stage-hint" id="stageHint">조작판에서 클럽을 골라 보세요!</div>
   </div>
-  <aside class="side">
+  <aside class="side" aria-label="조작판">
     <div class="side-head">
-      <div class="flag">넘버블럭스 · 수의 성질</div>
-      <h2>🏅 수의 클럽 배지</h2>
+      <h2>수의 클럽 배지</h2>
+      <div class="side-sub">넘버블록스 · 수의 성질</div>
     </div>
     <div class="side-body">
       <div class="mode-pills" role="group" aria-label="모드 고르기">
-        <button class="mode-pill active" id="pill-info" onclick="setMode('info')" aria-pressed="true">📖 클럽</button>
-        <button class="mode-pill" id="pill-explorer" onclick="setMode('explorer')" aria-pressed="false">🔢 탐색</button>
-        <button class="mode-pill" id="pill-quiz" onclick="setMode('quiz')" aria-pressed="false">🎯 퀴즈</button>
+        <button type="button" class="mode-pill active" id="pill-info" onclick="setMode('info')" aria-pressed="true"><span data-icon="book-open"></span> 클럽</button>
+        <button type="button" class="mode-pill" id="pill-explorer" onclick="setMode('explorer')" aria-pressed="false"><span data-icon="search"></span> 탐색</button>
+        <button type="button" class="mode-pill" id="pill-quiz" onclick="setMode('quiz')" aria-pressed="false"><span data-icon="trophy"></span> 퀴즈</button>
       </div>
       <div id="sideContent"></div>
     </div>
@@ -379,9 +356,9 @@
    예전과 같은 소리를 SimKit.sound로 낸다. 음소거 키 'clubs.muted'는 그대로. */
 SimKit.sound.useKey('clubs.muted');
 function sfx(type) { SimKit.sound.play(type); }
-var MUTE_ICON_ON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
-var MUTE_ICON_OFF = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>';
-SimKit.sound.bindButton('#muteBtn', { render: function (el, m) { el.innerHTML = m ? MUTE_ICON_OFF : MUTE_ICON_ON; } });
+// @icons volume-2 volume-x book-open search trophy arrow-right award rotate-ccw delete x circle-check circle-x notebook-pen
+const icon = (name) => SimKit.icon(name);
+SimKit.sound.bindButton('#muteBtn', { render: function (el, m) { el.innerHTML = m ? icon('volume-x') : icon('volume-2'); } });
 
 /* ──────────────────────── 토스트 ──────────────────────── */
 // 공용 토스트(VUI) — 테마 색 토큰을 써서 다크 설정에서도 글씨가 보인다
@@ -482,7 +459,7 @@ const viewerTitle = () => document.getElementById('viewerTitle');
 
 function badgeGridHtml(n, matches) {
   if (matches.length === 0) {
-    return `<div class="badge-grid"><div class="no-club-msg">😔 ${n.toLocaleString('ko-KR')}${josaEunNeun(n)} 어떤 클럽에도 속하지 않아요!</div></div>`;
+    return `<div class="badge-grid"><div class="no-club-msg">${n.toLocaleString('ko-KR')}${josaEunNeun(n)} 어떤 클럽에도 속하지 않아요!</div></div>`;
   }
   return `<div class="badge-grid">` + matches.map((club, i) => `
     <div class="club-badge" style="background:${club.color};color:${club.textColor};animation-delay:${i * 0.06}s;">
@@ -509,10 +486,10 @@ function setMode(m) {
 
 /* ──────────────────────── 클럽 소개 ──────────────────────── */
 function renderInfo() {
-  viewerTitle().innerHTML = '<span class="num">📖</span> 클럽 소개';
+  viewerTitle().innerHTML = '<span class="num">' + icon('book-open') + '</span> 클럽 소개';
   sideContent().innerHTML = `
     <div class="observe-box">
-      <h3>🔍 관찰 포인트</h3>
+      <h3>${icon('search')} 관찰 포인트</h3>
       <p>클럽을 누르면 무대에 <b>클럽 카드</b>가 나타나요. 어떤 수들이 멤버인지 살펴보세요!</p>
     </div>
     <div class="club-list" id="clubList" role="group" aria-label="클럽 목록"></div>`;
@@ -524,7 +501,7 @@ function renderInfo() {
     row.setAttribute('aria-pressed', String(club.id === selClubId));
     row.style.background = club.color;
     row.innerHTML = `
-      <div class="ic" aria-hidden="true">${getClubIcon(club.id, club.textColor)}</div>
+      <div class="club-ic" aria-hidden="true">${getClubIcon(club.id, club.textColor)}</div>
       <div class="names">
         <div class="ko">${club.nameKo}</div>
         <div class="en">${club.nameEn}</div>
@@ -536,11 +513,11 @@ function renderInfo() {
     const c = CLUBS.find(c => c.id === selClubId);
     if (c) { renderClubStage(c); return; }
   }
-  stageCanvas().innerHTML = `<div style="text-align:center;">
-    <div style="font-size:90px;line-height:1;">🏅</div>
-    <p class="hint">클럽마다 특별한 숫자들이 모여 있어요!</p>
+  stageCanvas().innerHTML = `<div class="stage-center">
+    <div class="stage-art" aria-hidden="true">🏅</div>
+    <p class="hint">클럽마다 특별한 숫자들이 모여 있어요!<br>조작판에서 클럽을 골라 보세요.</p>
   </div>`;
-  stageHint().textContent = '👆 오른쪽에서 클럽을 골라 보세요!';
+  stageHint().textContent = '조작판에서 클럽을 골라 보세요!';
 }
 function showClubDetail(club) {
   selClubId = club.id;
@@ -564,46 +541,46 @@ function renderClubStage(club) {
       <p class="desc-ko">${club.descKo}</p>
       <p class="desc-en">${club.descEn}</p>
       <div class="examples-label">1~100 멤버 예시:</div>
-      <div class="examples-chips">${nums.length ? nums.map(n => `<span class="num-chip">${n}</span>`).join('') : '<span style="color:#aaa;">해당 없음</span>'}</div>
+      <div class="examples-chips">${nums.length ? nums.map(n => `<span class="num-chip">${n}</span>`).join('') : '<span class="hint">해당 없음</span>'}</div>
     </div>`;
-  stageHint().textContent = '🔎 멤버 숫자들의 공통점을 찾아보세요!';
+  stageHint().textContent = '멤버 숫자들의 공통점을 찾아보세요!';
 }
 
 /* ──────────────────────── 숫자 탐색 ──────────────────────── */
 function renderExplorer() {
-  viewerTitle().innerHTML = '<span class="num">🔢</span> 숫자 탐색';
+  viewerTitle().innerHTML = '<span class="num">' + icon('search') + '</span> 숫자 탐색';
   sideContent().innerHTML = `
     <div class="observe-box">
-      <h3>🔍 이렇게 해요</h3>
-      <p>궁금한 수를 입력하고 <b>확인</b>을 누르면, 무대에 그 수의 <b>클럽 배지</b>가 모두 나타나요!</p>
+      <h3>${icon('search')} 이렇게 해요</h3>
+      <p>궁금한 수를 입력하고 <b>결과 보기</b>를 누르면, 무대에 그 수의 <b>클럽 배지</b>가 모두 나타나요!</p>
     </div>
     <div class="num-display-box"><div class="num-display-val" id="explorerDisplay" role="status" aria-live="polite" aria-label="입력한 수">${explorerVal === '' ? '—' : explorerVal}</div></div>
     <div class="numpad" role="group" aria-label="숫자 누르개">
-      <button class="np-btn" onclick="npInput('7')">7</button>
-      <button class="np-btn" onclick="npInput('8')">8</button>
-      <button class="np-btn" onclick="npInput('9')">9</button>
-      <button class="np-btn" onclick="npInput('4')">4</button>
-      <button class="np-btn" onclick="npInput('5')">5</button>
-      <button class="np-btn" onclick="npInput('6')">6</button>
-      <button class="np-btn" onclick="npInput('1')">1</button>
-      <button class="np-btn" onclick="npInput('2')">2</button>
-      <button class="np-btn" onclick="npInput('3')">3</button>
-      <button class="np-btn np-zero" onclick="npInput('0')">0</button>
-      <button class="np-btn np-del" onclick="npBackspace()" aria-label="한 글자 지우기">⌫</button>
-      <button class="np-btn np-clear" onclick="npClear()" aria-label="모두 지우기">C</button>
+      <button type="button" class="np-btn" onclick="npInput('7')">7</button>
+      <button type="button" class="np-btn" onclick="npInput('8')">8</button>
+      <button type="button" class="np-btn" onclick="npInput('9')">9</button>
+      <button type="button" class="np-btn" onclick="npInput('4')">4</button>
+      <button type="button" class="np-btn" onclick="npInput('5')">5</button>
+      <button type="button" class="np-btn" onclick="npInput('6')">6</button>
+      <button type="button" class="np-btn" onclick="npInput('1')">1</button>
+      <button type="button" class="np-btn" onclick="npInput('2')">2</button>
+      <button type="button" class="np-btn" onclick="npInput('3')">3</button>
+      <button type="button" class="np-btn" onclick="npInput('0')">0</button>
+      <button type="button" class="np-btn np-del" onclick="npBackspace()" aria-label="한 글자 지우기">${icon('delete')}</button>
+      <button type="button" class="np-btn np-clear" onclick="npClear()" aria-label="모두 지우기">${icon('x')}</button>
     </div>
-    <div class="check-row"><button class="btn btn-primary" onclick="checkClubs()">🔍 확인</button></div>
-    <div class="tip-box" style="margin-top:14px;">💡 <b>탐험 팁</b> · 36처럼 여러 클럽에 속하는 <b>인기쟁이 수</b>도 있고, 어디에도 못 들어가는 수도 있어요!
-      <div class="kbd-tip">⌨️ 키보드로 숫자를 치고 <b>Enter</b>로 확인할 수 있어요.</div></div>`;
+    <div class="check-row"><button type="button" class="sk-btn sk-btn--primary" onclick="checkClubs()">${icon('circle-check')} 결과 보기</button></div>
+    <div class="tip-box">${icon('lightbulb')} <b>탐험 팁</b> · 36처럼 여러 클럽에 속하는 <b>인기쟁이 수</b>도 있고, 어디에도 못 들어가는 수도 있어요!
+      <div class="kbd-tip">${icon('keyboard')} 키보드로 숫자를 치고 <b>Enter</b>로 결과를 볼 수 있어요.</div></div>`;
   renderExplorerStage(null);
 }
 function renderExplorerStage(n) {
   if (n == null) {
-    stageCanvas().innerHTML = `<div style="text-align:center;">
+    stageCanvas().innerHTML = `<div class="stage-center">
       <div class="stage-number small">?</div>
-      <p class="hint">숫자를 입력하고 확인을 눌러 주세요</p>
+      <p class="hint">숫자를 입력하고 [결과 보기]를 눌러 주세요</p>
     </div>`;
-    stageHint().textContent = '🔢 어떤 수의 클럽이 궁금한가요?';
+    stageHint().textContent = '어떤 수의 클럽이 궁금한가요?';
     return;
   }
   const matches = CLUBS.filter(c => c.check(n));
@@ -611,8 +588,8 @@ function renderExplorerStage(n) {
     <div class="stage-number small">${n.toLocaleString('ko-KR')}</div>
     ${badgeGridHtml(n, matches)}`;
   stageHint().textContent = matches.length > 0
-    ? `🏅 ${matches.length}개 클럽의 멤버예요!`
-    : '😔 이 수는 클럽이 없네요. 다른 수도 넣어 보세요!';
+    ? `${matches.length}개 클럽의 멤버예요!`
+    : '이 수는 클럽이 없네요. 다른 수도 넣어 보세요!';
 }
 function npInput(digit) {
   if (explorerVal.length >= 5) return;
@@ -666,14 +643,14 @@ function nextQuizQuestion() {
 
   viewerTitle().innerHTML = `<span class="num">${quizIdx + 1}</span> 퀴즈 ${quizIdx + 1} / ${QUIZ_TOTAL}`;
   stageCanvas().innerHTML = `<div class="stage-number">${qzCurrentN}</div>`;
-  stageHint().textContent = '🤔 이 수는 어떤 클럽의 멤버일까요?';
+  stageHint().textContent = '이 수는 어떤 클럽의 멤버일까요?';
 
   sideContent().innerHTML = `
     <div class="progress-zone">
       <div class="progress-track"><div class="progress-fill" style="width:${quizIdx / QUIZ_TOTAL * 100}%"></div></div>
       <div class="progress-label"><span>퀴즈 진행 중</span><span>${quizIdx + 1} / ${QUIZ_TOTAL}</span></div>
     </div>
-    <div class="quiz-q">무대의 <b style="color:var(--orange);">${qzCurrentN}</b>${josaIGa(qzCurrentN)} 멤버인 클럽을 고르세요!</div>
+    <div class="quiz-q">무대의 <b class="qn">${qzCurrentN}</b>${josaIGa(qzCurrentN)} 멤버인 클럽을 고르세요!</div>
     <div class="quiz-choices" id="quizChoices" role="group" aria-label="클럽 고르기"></div>
     <div id="quizReveal" aria-live="polite"></div>`;
 
@@ -684,7 +661,7 @@ function nextQuizQuestion() {
     btn.dataset.clubId = club.id;
     btn.style.background = club.color + '22';
     btn.type = 'button';
-    btn.innerHTML = `<div class="choice-emoji" aria-hidden="true">${getClubIcon(club.id, club.textColor)}</div><span>${club.nameKo}</span>`;
+    btn.innerHTML = `<div class="choice-emoji" aria-hidden="true" style="background:${club.color}">${getClubIcon(club.id, club.textColor)}</div><span>${club.nameKo}</span>`;
     btn.addEventListener('click', () => selectChoice(club, btn));
     choicesEl.appendChild(btn);
   });
@@ -707,24 +684,25 @@ function selectChoice(club, btnEl) {
   stageCanvas().innerHTML = `
     <div class="stage-number small">${qzCurrentN}</div>
     ${badgeGridHtml(qzCurrentN, matches)}`;
-  stageHint().textContent = `🏅 ${qzCurrentN}의 클럽 배지가 모두 공개됐어요!`;
+  stageHint().textContent = `${qzCurrentN}의 클럽 배지가 모두 공개됐어요!`;
 
   const reason = getClubReason(qzCorrectClub, qzCurrentN);
   document.getElementById('quizReveal').innerHTML = `
     <div class="reveal">
       <div class="reveal-banner ${isCorrect ? 'correct' : 'wrong'}">
-        ${isCorrect ? '🎉 딩동댕! 정답이에요!' : '🤔 아쉬워요!'}
+        ${isCorrect ? icon('circle-check') + ' 딩동댕! 정답이에요!' : icon('circle-x') + ' 아쉬워요!'}
       </div>
       <div class="explain"><b>${qzCurrentN}</b>${josaEunNeun(qzCurrentN)} <b>${qzCorrectClub.nameKo}</b>의 멤버예요. ${reason}<br>무대에서 ${qzCurrentN}의 배지를 모두 확인해 보세요!</div>
       <div class="next-zone">
-        <button class="btn btn-primary" id="quizNextBtn" onclick="afterQuestion()">
-          ${quizIdx === QUIZ_TOTAL - 1 ? '결과 보기 🏁' : '다음 문제! ➡️'}
+        <button type="button" class="sk-btn sk-btn--primary" id="quizNextBtn" onclick="afterQuestion()">
+          ${quizIdx === QUIZ_TOTAL - 1 ? icon('award') + ' 결과 보기' : '다음 문제 ' + icon('arrow-right')}
         </button>
       </div>
     </div>`;
-  // 고른 버튼이 잠겼으니 다음 버튼으로 초점을 옮긴다
+  // 고른 버튼이 잠겼으니 다음 버튼으로 초점을 옮기고, 폰에서 결과 문구가 가려져 있으면 보이게
   const nb = document.getElementById('quizNextBtn');
   if (nb) nb.focus({ preventScroll: true });
+  SimKit.reveal(document.querySelector('#quizReveal .reveal-banner'));
 }
 function afterQuestion() {
   quizIdx++;
@@ -732,25 +710,25 @@ function afterQuestion() {
   nextQuizQuestion();
 }
 function renderResult() {
-  viewerTitle().innerHTML = '🏆 탐험 완료!';
-  stageCanvas().innerHTML = `<div style="text-align:center;">
-    <div style="font-size:110px;line-height:1;">🏆</div>
-    <div class="stage-number small" style="font-size:64px;">${quizScore} / ${QUIZ_TOTAL}</div>
+  viewerTitle().innerHTML = '<span class="num">' + icon('award') + '</span> 퀴즈 결과';
+  stageCanvas().innerHTML = `<div class="stage-center">
+    <div class="stage-art" aria-hidden="true">🏆</div>
+    <div class="stage-score">${quizScore} / ${QUIZ_TOTAL}</div>
   </div>`;
-  stageHint().textContent = '🏅 클럽 탐험을 완료했어요!';
+  stageHint().textContent = '클럽 퀴즈를 마쳤어요!';
   if (quizScore >= 8) sfx('stamp');
   sideContent().innerHTML = `
     <div class="result">
-      <h2>🏆 퀴즈 완료!</h2>
+      <h2>${icon('award')} 퀴즈 완료!</h2>
       <div class="score">${QUIZ_TOTAL}개 중 ${quizScore}개 맞혔어요</div>
       <div class="summary-box">
-        <h3>📚 오늘의 배움 정리</h3>
+        <h3>${icon('notebook-pen')} 오늘의 배움 정리</h3>
         <p>수마다 <b>나누어떨어짐(배수)</b>, <b>같은 수를 두 번 곱한 수</b>, <b>계단 수(삼각수)</b>, <b>소수</b> 같은 성질이 있어요.
         같은 성질을 가진 수들이 하나의 <b>클럽</b>이 되고, 한 수가 여러 클럽에 속하기도 해요!</p>
       </div>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <button class="btn btn-primary" onclick="startQuiz()">다시 도전하기 🔄</button>
-        <button class="btn" onclick="setMode('explorer')">🔢 숫자 탐색으로</button>
+      <div class="result-btns">
+        <button type="button" class="sk-btn sk-btn--primary" onclick="startQuiz()">${icon('rotate-ccw')} 다시 하기</button>
+        <button type="button" class="sk-btn" onclick="setMode('explorer')">${icon('search')} 숫자 탐색으로</button>
       </div>
     </div>`;
   document.querySelector('.side').scrollTo({ top: 0 });
@@ -759,6 +737,7 @@ function renderResult() {
 /* ──────────────────────── 시작 ──────────────────────── */
 function startExplore() {
   document.body.classList.add('exploring');
+  window.scrollTo(0, 0);
   setMode('info');
   sfx('done');
 }
@@ -770,7 +749,7 @@ document.addEventListener('keydown', e => {
   const t = e.target;
   if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
   // 숫자를 치면 [확인] 버튼으로 초점을 옮겨 Enter 한 번으로 확인
-  const focusCheck = () => { const b = document.querySelector('.check-row .btn'); if (b) b.focus({ preventScroll: true }); };
+  const focusCheck = () => { const b = document.querySelector('.check-row .sk-btn'); if (b) b.focus({ preventScroll: true }); };
   if (/^[0-9]$/.test(e.key)) { e.preventDefault(); npInput(e.key); focusCheck(); }
   else if (e.key === 'Backspace') { e.preventDefault(); npBackspace(); focusCheck(); }
   else if (e.key === 'Escape' || e.key === 'Delete') { npClear(); }

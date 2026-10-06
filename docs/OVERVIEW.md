@@ -206,6 +206,13 @@ docs/                  ← 개발 문서
 
 ## 주요 변경 이력
 
+### 2026-10 — UI 다듬기: lucide 아이콘·버튼 체계·시뮬레이션 공통 규약 v2 (`docs/ui-polish-plan.md`)
+- 근거: UI·사용성 검토 보고서 `docs/ui-review-2026-10.md`(공개 39개 앱 + 홈, 375×740·844×390·1280×720 실측 + 코드 대조).
+- **아이콘**: UI 기호는 모두 lucide 선 아이콘. 빌드 때 쓰인 이름만 모은 스프라이트 `public/common/icons.svg`(`scripts/build-icons.mjs`, `npm run build`에 포함). `<Icon name>`(src/components/Icon.astro)·`VUI.icon()`·`[data-icon]`. 홈의 lucide 런타임(446KB) 제거. 학습 내용 이모지는 유지.
+- **공용**: 버튼 체계 `.hero-btn-danger/-danger-solid/-sm/-icon`, `--warning` 토큰, 배지 마름모를 CSS로 통일, 제목 영문 병기 `.app-title-en`. `VUI.confirm/prompt/alert`(기본 대화상자 대체), 되돌리기 토스트(`action`), 토스트 위치(`toast="top"`, `--vui-toast-bottom`). 셸: "홈", 화면 모드 아이콘·이름, 사이드바 `.app-shell-layout > .app-main` 범위, 드로어 Esc·aria-expanded. `<AppLayout theme="light">`(화면 모드 고정).
+- **시뮬레이션 공통 규약 v2**(sim-kit 2.0.0, `docs/sim-kit.md` 0장): 밝은 화면 고정, 표준 버튼·용어(확인하기·다음 미션·다시 하기·처음부터·자유 탐험으로), 결과 문구 자동 스크롤(`reveal`), `.sk-screen`, 시간 기준 루프(`SimKit.loop`)·움직임 줄이기, 별 아이콘. 14개 시뮬레이션 + blocks-universe 하위 3종(공용 셸·무대+조작판 모양으로 개편).
+- **앱별**: 설명과 실제 동작 불일치 약 20건 정정, 영어·개발자 용어 정리, 모바일 넘침(notion-styler·math-sheet 등), qr 파일 스캔 뒤 카메라 재시작, scoring-table 인쇄, grid-maker 칸 채우기 계산, graph-maker 동점 정답·도달 불가 값, eco-web 화살촉, 달 앱 2종 규칙 통일(태양 오른쪽·월령), sun-shadow 미션 4 추분 고정 등. 운영자 추가 요청: 시계 "지금 시각 따라가기", 그래프 진입 시 "만들기/공부하기" 모드 선택, 식품구성자전거 안내 배너 위치.
+
 ### 2026-10 — 개선·신규 앱 묶음 (`docs/new-apps-2026-10.md`)
 - **홈 검색창 헤더 이동**: 768px 이상은 로고 · 검색창 · 테마/공유 버튼을 한 줄(테마/공유는 헤더 안 정적 배치), 768px 미만은 로고 아래 전체 폭 검색창 + 우상단 떠 있는 버튼(종전과 같음). 계획 `docs/home-search-header-plan.md`.
 - **뽑기·모둠(`picker`) 신규** — 업무경감. 학급 목록 → 뽑기·순서·모둠·명단 탭, 결과 상자 '크게 보기'(전체화면, 글자 자동 맞춤). 공평 뽑기(한 바퀴 동안 중복 없음, 방금 뽑기 취소), 연출 슬롯·카드·룰렛, 오늘 결석(다음 날 자동 해제), 모둠 나누기(모둠 수/모둠당 인원·남는 학생 처리, 떨어뜨릴 쌍·성별 섞기·지난 모둠 피하기·고정, 끌어 놓기/누르기 교환, 모둠장, A4 인쇄). 난수는 `crypto.getRandomValues`. 자리 배치 명단은 읽기만. 저장 `vives-picker-v1`(서버·공유 없음). 계획 `docs/picker-plan.md`.

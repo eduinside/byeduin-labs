@@ -1,11 +1,13 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
 ---
-<AppLayout 
+<AppLayout
   title="세계 탐험대 — eduin VIVES"
-  description="3D 위성지도로 세계 랜드마크 11곳을 탐험하고, 27개국의 국기·수도·음식·문화를 살펴보며 조사 보고서를 완성하는 세계 여러 나라 학습 앱"
+  description="3D 위성지도로 세계 랜드마크 11곳을 탐험하며 여권 도장을 모으고, 27개국의 국기·수도·음식·문화를 조사해 공책이나 학습지에 정리하는 세계 여러 나라 학습 앱"
   image="https://eduin.info/og-images/world-landmarks.png"
   bodyShell="immersive"
+  theme="light"
+  toast="top"
 >
   <Fragment slot="head">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,6 +16,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <link href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js" crossorigin="anonymous" defer is:inline=""></script>
   <script src="/apps/world-landmarks/countries.js" is:inline=""></script>
+  <link rel="stylesheet" href="/common/sim-kit.css">
   <script is:inline src="/common/sim-kit.js"></script>
   <style is:global="">
 /* ── world-landmarks 전용 스타일 (immersive 전체화면) ── */
@@ -44,30 +47,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   --hero-bg: #0d1b2a;
   --hero-bg-deep: #060b11;
   --on-gold: #0d1b2a; /* 금색 바탕 위 글자 */
+  /* 시뮬레이션 공통 버튼(.sk-btn) 강조색: 남색 + 금색 테두리 빛 */
+  --sk-accent: #0d1b2a;
+  --sk-accent-fg: #ffffff;
+  --sk-ring: rgba(224,169,109,0.45);
 }
-[data-theme="dark"] {
-  --navy: #e0e6ed;
-  --navy-deep: #0b0f19;
-  --gold: #f3c68f;
-  --gold-deep: #d8a065;
-  --paper: #1e1e2e;
-  --cream: #0f141c;
-  --shadow: 0 8px 24px rgba(0,0,0,0.4);
-  --stamp-red: #e5716f;
-  --stamp-green: #4fbe83;
-  --observe-bg: #232a36;
-  --tip-bg: #16202e;
-  --tip-border: #33587f;
-  --tip-fg: #a8c8ea;
-  --quiz-bg: #252a38;
-  --explain-bg: #1c222e;
-  --chip-bg: rgba(18,24,34,0.92);
-  --ok-bg: #14301f;
-  --bad-bg: #351a1b;
-  --bad-fg: #f08b82;
-  --hero-bg: #1b3050;
-  --hero-bg-deep: #0b0f19;
-}
+/* 화면 모드는 밝게 고정(<AppLayout theme="light">, 시뮬레이션 공통 규약 v2) — 다크 전용 색은 두지 않는다 */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -76,6 +61,7 @@ body {
   background: var(--cream);
   color: var(--navy);
   min-height: 100vh;
+  min-height: 100dvh;
   background-image:
     radial-gradient(circle at 15% 20%, rgba(224,169,109,0.12) 0, transparent 30%),
     radial-gradient(circle at 85% 70%, rgba(13,27,42,0.06) 0, transparent 35%);
@@ -83,11 +69,13 @@ body {
 body.exploring { overflow: hidden; }
 h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 
-/* ── 인트로 스크린 ── */
+/* ── 인트로 스크린 (.sk-screen: 낮은 화면에서도 시작 버튼이 잘리지 않게 안에서 스크롤) ── */
 .wrap { max-width: 560px; margin: 0 auto; padding: 20px 16px 60px; }
-.intro { text-align: center; padding-top: 56px; animation: fadeUp .6s ease both; }
+.sk-screen .wrap { width: 100%; padding: 0 0 24px; }
+.intro { text-align: center; animation: fadeUp .6s ease both; }
 .intro .intro-art { font-size: 84px; line-height: 1; animation: bounce 2.4s ease-in-out infinite; }
 .intro h1 { font-size: 34px; margin: 14px 0 6px; color: var(--navy); }
+.intro h1 .intro-en { display: block; font-family: 'Gowun Dodum', sans-serif; font-size: 16px; font-weight: 700; opacity: .6; margin-top: 2px; }
 .intro .sub { font-size: 16px; color: var(--navy); opacity: 0.8; margin-bottom: 22px; line-height: 1.7; }
 .lesson-tag {
   display: inline-block; background: var(--hero-bg); color: var(--gold);
@@ -97,7 +85,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   background: var(--paper); border: 3px dashed var(--gold); border-radius: var(--radius);
   padding: 20px 22px; text-align: left; margin: 0 auto 26px; box-shadow: var(--shadow);
 }
-.mission-card h3 { color: var(--navy); font-size: 19px; margin-bottom: 10px; }
+.mission-card h3 { color: var(--navy); font-size: 19px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 .mission-card li { margin: 8px 0 8px 20px; line-height: 1.6; font-size: 15px; }
 
 /* ── 버튼 ── */
@@ -105,6 +93,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   font-family: 'Jua', sans-serif; font-size: 19px; border: none; cursor: pointer;
   border-radius: 99px; padding: 15px 36px; transition: transform .15s;
   -webkit-tap-highlight-color: transparent;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
 }
 .btn:active { transform: scale(.96); }
 .btn-primary {
@@ -121,31 +110,30 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 }
 .map-zone { position: relative; background: #0c1420; min-width: 0; }
 #map { width: 100%; height: 100%; }
+/* 위 이름표·안내 칩: 셸 버튼 줄(--sk-stage-top) 아래 왼쪽에 위아래로 쌓는다(좁은 화면에서 서로 겹치지 않게).
+   오른쪽은 지도 확대·축소 버튼 자리(약 50px)를 비워 둔다 */
+.map-top {
+  position: absolute; top: var(--sk-stage-top, 60px); left: 14px; right: 64px; z-index: 5;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none;
+}
 .viewer-title {
-  position: absolute; top: 56px; left: 14px; z-index: 5;
   background: rgba(13,27,42,0.85); backdrop-filter: blur(6px);
-  color: #fff; border-radius: 14px; padding: 9px 16px;
+  color: #fff; border-radius: 14px; padding: 9px 16px; max-width: 100%;
   font-family: 'Jua'; font-size: 19px; display: flex; align-items: center; gap: 9px;
   border: 1px solid rgba(255,255,255,.25);
 }
 .viewer-title .num {
-  background: var(--gold); width: 26px; height: 26px; border-radius: 50%;
+  background: var(--gold); width: 26px; height: 26px; border-radius: 50%; flex: none;
   display: inline-flex; align-items: center; justify-content: center; font-size: 14px; color: var(--on-gold);
 }
+/* 지도 확대·축소·방향 버튼: 오른쪽 위, 셸의 홈·공유 버튼 줄 아래(아래 카메라 버튼 줄과 겹치지 않게) */
+.map-zone .maplibregl-ctrl-top-right { top: var(--sk-stage-top, 60px); }
 .cam-bar {
-  position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%); z-index: 5;
+  position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); z-index: 5;
   display: flex; gap: 8px; width: max-content; max-width: calc(100% - 20px);
 }
-.cam-btn {
-  font-family: 'Jua'; font-size: 15px; color: #fff; cursor: pointer; min-height: 44px;
-  background: rgba(13,27,42,0.8); backdrop-filter: blur(6px);
-  border: 1px solid rgba(255,255,255,.3); border-radius: 99px; padding: 10px 16px;
-  transition: background .15s, transform .12s; white-space: nowrap;
-  -webkit-tap-highlight-color: transparent;
-}
-.cam-btn:active { transform: scale(.94); }
-.cam-btn.active { background: var(--gold); color: var(--on-gold); border-color: var(--gold); }
-.cam-btn.return-btn { background: rgba(13,27,42,0.95); border-color: var(--gold); }
+.cam-bar .sk-btn { background: rgba(255,255,255,.94); box-shadow: 0 2px 10px rgba(0,0,0,.3); white-space: nowrap; }
+.cam-bar .sk-btn.active { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
 
 .map-loading {
   position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column;
@@ -154,12 +142,12 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   transition: opacity .5s; pointer-events: none;
 }
 .map-loading.hide { opacity: 0; }
-.map-loading .spin { font-size: 40px; animation: spin 1.6s linear infinite; }
+.map-loading .spin { font-size: 40px; line-height: 1; display: inline-flex; animation: spin 1.6s linear infinite; }
 /* 7초 뒤 JS가 .gone을 붙여 숨긴다(키프레임으로 숨기면 '움직임 줄이기' 설정에서 바로 사라짐) */
 .hint-chip {
-  position: absolute; top: 60px; right: 14px; z-index: 5;
-  background: var(--chip-bg); color: var(--navy);
+  background: var(--chip-bg); color: var(--navy); max-width: 100%;
   font-size: 14px; border-radius: 99px; padding: 7px 13px;
+  display: inline-flex; align-items: center; gap: 6px;
   transition: opacity .6s ease, visibility .6s;
 }
 .hint-chip.gone { opacity: 0; visibility: hidden; }
@@ -175,6 +163,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 .map-notice-card p { font-size: 15px; line-height: 1.7; margin: 8px 0 14px; }
 .map-notice-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .map-notice-btns .btn { font-size: 16px; padding: 10px 18px; min-height: 44px; }
+.map-notice-icon { font-size: 40px; color: var(--gold); display: inline-flex; }
 .map-notice-btns .btn-ghost-dark { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.4); box-shadow: none; }
 
 /* ── 카드 모드 폴백 (지도 실패 시) ── */
@@ -185,7 +174,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 }
 .fallback-landmark-emoji { font-size: 120px; margin-bottom: 16px; animation: float 3s ease-in-out infinite; }
 .fallback-landmark-name { font-family: 'Jua'; font-size: 32px; color: #fff; margin-bottom: 12px; }
-.fallback-landmark-desc { font-size: 16px; opacity: 0.8; }
+.fallback-landmark-desc { font-size: 16px; opacity: 0.85; line-height: 1.6; max-width: 460px; }
 
 /* ── 사이드바 ── */
 .side {
@@ -208,14 +197,15 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   font-family: 'Jua', sans-serif; font-size: 14px; white-space: nowrap;
   color: #fff; background: rgba(255,255,255,0.16);
   border: 1px solid rgba(255,255,255,0.35); border-radius: 99px;
-  padding: 8px 14px; min-height: 40px; cursor: pointer;
+  padding: 8px 14px; min-height: 44px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
   transition: background .15s, transform .12s;
   -webkit-tap-highlight-color: transparent;
 }
 .side-home-btn:hover { background: rgba(255,255,255,0.28); }
 .side-home-btn:active { transform: scale(.95); }
 .side-head .flag { font-size: 14px; opacity: .85; position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; }
-.side-head h2 { font-size: 27px; margin: 3px 0 2px; position: relative; z-index: 1; }
+.side-head h2 { font-size: 27px; margin: 3px 0 2px; position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; }
 .side-head .height { font-size: 14px; opacity: .8; position: relative; z-index: 1; padding-right: 120px; min-height: 30px; }
 .side-body { padding: 18px 20px 26px; flex: 1; display: flex; flex-direction: column; }
 .progress-zone { margin-bottom: 16px; }
@@ -245,13 +235,13 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   padding: 16px; margin-bottom: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.02);
   position: relative;
 }
-.culture-title { font-family: 'Jua'; font-size: 17px; margin-bottom: 10px; color: var(--navy); padding-right: 44px; }
+.culture-title { font-family: 'Jua'; font-size: 17px; margin-bottom: 10px; color: var(--navy); padding-right: 44px; display: flex; align-items: center; gap: 6px; }
 .culture-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .culture-item {
   background: var(--cream); border-radius: 12px; padding: 10px 4px; text-align: center;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
-.culture-item .icon { font-size: 28px; }
+.culture-item .icon { font-size: 26px; display: inline-flex; color: var(--gold-deep); }
 .culture-item .label { font-size: 14px; font-weight: 800; }
 .culture-item .name { font-size: 14px; font-weight: 600; opacity: 0.85; line-height: 1.3; word-break: keep-all; }
 
@@ -260,7 +250,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   position: absolute; top: 8px; right: 8px;
   width: 44px; height: 44px; border-radius: 50%;
   border: 1.5px solid var(--border);
-  background: var(--paper); font-size: 18px; cursor: pointer;
+  background: var(--paper); font-size: 18px; cursor: pointer; color: var(--navy);
   display: flex; align-items: center; justify-content: center;
   transition: background .15s, transform .12s;
   -webkit-tap-highlight-color: transparent;
@@ -287,6 +277,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 .reveal { animation: popIn .45s cubic-bezier(.5,0,.3,1.5) both; }
 .reveal-banner {
   text-align: center; border-radius: 18px; padding: 12px; font-family: 'Jua'; font-size: 18px; margin-bottom: 11px;
+  display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
 }
 .reveal-banner.correct { background: var(--ok-bg); color: var(--stamp-green); border: 2px solid var(--stamp-green); }
 .reveal-banner.wrong { background: var(--bad-bg); color: var(--bad-fg); border: 2px solid var(--bad-fg); }
@@ -296,7 +287,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   display: flex; justify-content: center; margin: 12px 0; position: relative;
 }
 .passport-stamp {
-  width: 90px; height: 90px; border-radius: 50%; border: 4px double var(--stamp-red);
+  width: 90px; height: 90px; border-radius: 50%; border: 4px double var(--stamp-red); gap: 2px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   color: var(--stamp-red); font-family: 'Jua'; font-weight: bold; transform: rotate(-15deg) scale(1.6);
   opacity: 0; transition: all 0.3s cubic-bezier(0.6, -0.28, 0.735, 0.045);
@@ -312,7 +303,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 
 .explain { font-size: 14.5px; line-height: 1.75; background: var(--explain-bg); color: var(--navy); border-radius: 14px; padding: 13px 15px; margin-top: 10px; }
 .next-zone { text-align: center; margin-top: 16px; }
-.next-zone .btn { font-size: 17px; padding: 13px 30px; }
+.next-zone .sk-btn { min-width: 60%; font-family: 'Jua', sans-serif; font-weight: 400; font-size: 17px; }
 
 /* ── 여권 도장 그리드 ── */
 .passport-grid {
@@ -329,9 +320,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 .passport-slot.done {
   border: 2px solid var(--stamp-red); background: var(--paper);
 }
-.passport-slot.done::after {
-  content: '✓'; position: absolute; top: 2px; right: 4px; font-size: 12px; font-weight: 900; color: var(--stamp-red);
-}
+.passport-slot .slot-check { position: absolute; top: 3px; right: 4px; width: 14px; height: 14px; stroke-width: 3; color: var(--stamp-red); }
 /* 도장 획득 전: 물음표 아이콘 */
 .slot-emoji-pending { font-size: 22px; opacity: 0.35; }
 /* 도장 획득 후: 랜드마크 이모지 크게 */
@@ -346,7 +335,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   border: 4px double var(--gold); padding: 22px 20px; text-align: center; margin-bottom: 18px;
   box-shadow: var(--shadow); position: relative;
 }
-.certificate-title { font-family: 'Jua'; font-size: 24px; color: var(--gold); margin-bottom: 8px; }
+.certificate-title { font-family: 'Jua'; font-size: 24px; color: var(--gold); margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .certificate-text { font-size: 14px; line-height: 1.8; margin-bottom: 12px; word-break: keep-all; }
 .certificate-stamp {
   font-size: 54px; margin: 10px 0; animation: bounce 2s infinite;
@@ -360,6 +349,9 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   width: 100%; min-height: 44px; border: none; font-family: inherit; color: var(--navy);
 }
 .revisit-item:hover { transform: scale(1.03); background: var(--gold); color: var(--on-gold); }
+.revisit-item .todo { display: block; font-size: 12px; font-weight: 600; opacity: .75; }
+.result .sk-btn { font-family: 'Jua', sans-serif; font-weight: 400; font-size: 17px; margin-top: 16px; }
+.section-title { display: flex; align-items: center; gap: 6px; }
 
 @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 @keyframes popIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
@@ -367,28 +359,31 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeOutLater { 0%, 70% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
 
-/* ══ 조사 보고서 모드 ══ */
+/* ══ 나라 조사 모드 (예전 이름: 조사 보고서) ══ */
 /* 위쪽 64px: 셸의 홈·공유 버튼(고정)과 겹치지 않게 */
 .research-wrap { max-width: 860px; margin: 0 auto; padding: 64px 16px 80px; animation: fadeUp .4s ease both; }
 .research-top { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
-.research-top h1 { font-size: 26px; color: var(--navy); flex: 1; }
+.research-top h1 { font-size: 26px; color: var(--navy); flex: 1; display: flex; align-items: center; gap: 8px; }
 .back-link {
   font-family: 'Jua', sans-serif; font-size: 15px; color: var(--navy); background: var(--paper);
   border: 2px solid var(--border); border-radius: 99px; padding: 8px 16px; cursor: pointer; min-height: 44px;
+  display: inline-flex; align-items: center; gap: 6px;
   transition: transform .12s; -webkit-tap-highlight-color: transparent;
 }
 .back-link:active { transform: scale(.95); }
 .extlink-notice {
   background: var(--tip-bg); border: 2px solid var(--tip-border); border-radius: 14px; color: var(--tip-fg);
   font-size: 14px; line-height: 1.6; padding: 10px 14px; margin-bottom: 16px;
+  display: flex; align-items: flex-start; gap: 8px;
 }
+.extlink-notice .ic { margin-top: 0.25em; }
 
-/* 보고서 쓰는 순서 */
+/* 조사하는 순서 */
 .howto-card {
   background: var(--paper); border: 3px dashed var(--gold); border-radius: var(--radius);
   padding: 16px 18px; margin-bottom: 20px; box-shadow: var(--shadow);
 }
-.howto-card h3 { font-size: 17px; color: var(--navy); margin-bottom: 10px; }
+.howto-card h3 { font-size: 17px; color: var(--navy); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
 .howto-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .howto-step { background: var(--cream); border-radius: 12px; padding: 10px 8px; text-align: center; font-size: 14px; line-height: 1.5; }
 .howto-step .step-num {
@@ -448,7 +443,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 .country-head h1 { font-size: 30px; margin: 10px 0 4px; color: #fff; }
 .country-head .head-sub { font-size: 14px; opacity: .85; }
 .country-head .explore-link {
-  display: inline-block; margin-top: 12px; font-family: 'Jua'; font-size: 14px;
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; font-family: 'Jua'; font-size: 14px;
   background: var(--gold); color: #0d1b2a; border: none; border-radius: 99px; padding: 9px 20px; min-height: 44px;
   cursor: pointer; transition: transform .12s; -webkit-tap-highlight-color: transparent;
 }
@@ -465,12 +460,13 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 }
 .report-section.checked { border-color: var(--stamp-green); }
 .report-section-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
-.report-section-head h3 { font-size: 18px; color: var(--navy); flex: 1; }
+.report-section-head h3 { font-size: 18px; color: var(--navy); flex: 1; display: flex; align-items: center; gap: 6px; }
 .check-btn {
   font-family: 'Jua', sans-serif; font-size: 14px; white-space: nowrap; min-height: 44px;
   border: 2px solid var(--border); background: var(--cream); color: var(--navy);
   border-radius: 99px; padding: 7px 13px; cursor: pointer; transition: transform .12s;
   -webkit-tap-highlight-color: transparent;
+  display: inline-flex; align-items: center; gap: 5px;
 }
 .check-btn:active { transform: scale(.94); }
 .check-btn.on { background: var(--ok-bg); border-color: var(--stamp-green); color: var(--stamp-green); }
@@ -489,7 +485,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 .greeting-word { font-family: 'Jua'; font-size: 24px; color: var(--navy); }
 .greeting-speak {
   width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--border);
-  background: var(--paper); font-size: 18px; cursor: pointer;
+  background: var(--paper); font-size: 18px; cursor: pointer; color: var(--navy);
   display: inline-flex; align-items: center; justify-content: center;
   transition: transform .12s; -webkit-tap-highlight-color: transparent;
 }
@@ -501,21 +497,19 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   margin-top: 8px; border-radius: 14px; overflow: hidden; background: #cfe3f0;
   border: 1px solid var(--border); min-height: 120px;
 }
-[data-theme="dark"] .mini-map-box { background: #0e1a26; }
 .mini-map-loading, .mini-map-fail {
   display: flex; align-items: center; justify-content: center; min-height: 160px;
   font-size: 13.5px; color: var(--navy); opacity: .6; padding: 16px; text-align: center;
 }
 .mini-map { width: 100%; height: auto; display: block; }
 .mini-map path { fill: #e6dcc6; stroke: #c2b291; stroke-width: .35; }
-[data-theme="dark"] .mini-map path { fill: #2a3547; stroke: #3f4b60; }
 .mini-map path.hl { fill: var(--gold); stroke: var(--gold-deep); stroke-width: .6; }
 .map-credit { font-size: 12px; opacity: .6; margin-top: 4px; text-align: right; }
 
 /* 조사 링크 칩 */
 .link-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
 .link-chip {
-  display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 700; min-height: 40px;
+  display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 700; min-height: 44px;
   color: var(--navy); background: var(--cream); border: 1.5px solid var(--border);
   border-radius: 99px; padding: 7px 13px; text-decoration: none; transition: transform .12s, border-color .15s;
   -webkit-tap-highlight-color: transparent;
@@ -527,7 +521,7 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
 
 /* 상세 하단 이동 */
 .detail-nav { display: flex; gap: 10px; margin-top: 18px; }
-.detail-nav .btn { flex: 1; font-size: 15px; padding: 13px 10px; }
+.detail-nav .btn { flex: 1; font-size: 15px; padding: 13px 10px; min-width: 0; }
 .btn-ghost { background: var(--paper); color: var(--navy); border: 2px solid var(--border); box-shadow: none; }
 
 @media (max-width: 640px) {
@@ -540,21 +534,29 @@ h1, h2, h3 { font-family: 'Jua', sans-serif; font-weight: 400; }
   .country-grid { grid-template-columns: 1fr; }
 }
 
-/* ── 태블릿·모바일 반응형 ── */
+/* ── 태블릿·모바일 반응형: 지도 위 / 정보판 아래 ── */
 @media (max-width: 900px) {
   body.exploring { overflow: auto; }
-  .explore { display: flex; flex-direction: column; height: auto; min-height: 100vh; }
-  .map-zone { position: sticky; top: 0; z-index: 40; height: 48vh; min-height: 300px; flex-shrink: 0; }
+  .explore { display: flex; flex-direction: column; height: auto; min-height: 100vh; min-height: 100dvh; }
+  .map-zone { position: sticky; top: 0; z-index: 40; height: 48vh; height: 48dvh; min-height: 300px; flex-shrink: 0; }
   .side { border-left: none; border-top: 3px solid var(--navy); }
   .quiz-btns { flex-direction: row; flex-wrap: wrap; }
   .quiz-btn { flex: 1; font-size: 15px; padding: 12px 4px; min-width: 100px; }
   .intro h1 { font-size: 28px; }
-  .cam-btn { font-size: 14px; padding: 9px 12px; }
   .viewer-title { font-size: 16px; padding: 8px 13px; }
+  .map-top { left: 10px; }
   .cam-bar { flex-wrap: wrap; justify-content: center; }
 }
+/* 휴대폰 가로(낮은 화면): 지도가 화면 대부분을 덮지 않게 높이 절반까지, 고정(sticky)하지 않고 함께 스크롤 */
+@media (max-width: 900px) and (orientation: landscape) {
+  .map-zone { position: relative; height: 50vh; height: 50dvh; min-height: 0; max-height: 50dvh; }
+  .map-top { gap: 4px; }
+  .viewer-title { font-size: 15px; padding: 6px 11px; }
+  .hint-chip { display: none; }
+  .cam-bar { bottom: 10px; flex-wrap: nowrap; }
+}
   </style>
-  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"세계 탐험대","description":"세계 랜드마크 11곳을 3D 위성지도로 탐험하고, 27개국의 국기·위치·수도·인사말·음식·자랑거리·문화를 살펴보며 조사 보고서를 완성하는 세계 여러 나라 학습 앱","url":"https://eduin.info/apps/world-landmarks/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"세계 탐험대","description":"세계 랜드마크 11곳을 3D 위성지도로 탐험하고, 27개국의 국기·위치·수도·인사말·음식·자랑거리·문화를 조사해 공책이나 학습지에 정리하는 세계 여러 나라 학습 앱","url":"https://eduin.info/apps/world-landmarks/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
 
@@ -576,7 +578,7 @@ const LANDMARKS = [
     id: 'gyeongbokgung', name: '경복궁', countryFlag: '🇰🇷', countryName: '대한민국', emoji: '🏯',
     capital: '서울', greeting: '안녕하세요!', food: '비빔밥 🍚', clothes: '한복 👘', house: '한옥 🏠',
     observe: '궁궐 전각들이 남북 방향으로 곧게 일렬로 늘어서 있는 배치 구조를 위에서 살펴보세요.',
-    tip: '⬇️ 위에서 보기를 누르면 궁궐의 전체적인 구조를 한눈에 볼 수 있어요.',
+    tip: '‘위에서 보기’를 누르면 궁궐의 전체적인 구조를 한눈에 볼 수 있어요.',
     explain: '경복궁은 한국의 대표적인 <b>조선 시대 궁궐</b>이에요. 기와지붕이 아름다운 목조 건물 한옥과 대청마루가 조화를 이룬답니다.',
     lat: 37.5796, lng: 126.9770, zoom: 16.5,
     quiz: {
@@ -589,7 +591,7 @@ const LANDMARKS = [
     id: 'greatwall', name: '만리장성', countryFlag: '🇨🇳', countryName: '중국', emoji: '🧱',
     capital: '베이징', greeting: '니하오!', food: '만두 🥟', clothes: '치파오 👘', house: '사합원 🏠',
     observe: '험난한 산봉우리를 따라 끝없이 이어져 있는 성벽의 형태를 3D 지도로 감상해 보세요.',
-    tip: '🔄 한 바퀴를 눌러 산맥 위에 성벽이 어떻게 지어졌는지 확인해 보세요.',
+    tip: '‘한 바퀴’를 눌러 산맥 위에 성벽이 어떻게 지어졌는지 확인해 보세요.',
     explain: '만리장성은 중국의 대표적인 <b>고대 성곽</b>이에요. 여러 시대에 걸쳐 이어 쌓아 길이가 수천 킬로미터나 될 만큼 아주 길며, 흙과 돌을 쌓아 산맥을 따라 만들었습니다.',
     lat: 40.4319, lng: 116.5704, zoom: 15.5,
     quiz: {
@@ -727,6 +729,22 @@ const app = document.getElementById('app');
 // 지도에 걸린 타이머·rAF는 한곳에 모아 탐험을 나갈 때 한 번에 정리(SimKit.timers)
 const mapTimers = SimKit.timers();
 let tileErrors = 0, tileOk = 0, mapNoticeShown = false;
+const icon = (name, opts) => SimKit.icon(name, opts);
+// 움직임 줄이기 설정이면 지도 이동 애니메이션 없이 바로 옮긴다
+const dur = ms => SimKit.motion.reduced() ? 0 : ms;
+// 한 바퀴 돌기: 프레임 수가 아니라 경과 시간 기준(초당 7.2°, 예전 60Hz에서 프레임당 0.12°와 같은 빠르기 — 120Hz 전자칠판에서도 같은 속도)
+const ORBIT_DEG_PER_SEC = 7.2;
+const orbitLoop = SimKit.loop(dt => {
+  if (!orbiting || !map) { orbitLoop.stop(); return; }
+  map.setBearing(map.getBearing() + ORBIT_DEG_PER_SEC * dt);
+});
+// 지도를 못 쓰는 까닭: 'lib'(지도 도구를 못 받음 — 인터넷·학교망 차단) / 'webgl'(기기가 3D 지도를 못 그림)
+let mapFailReason = '';
+function mapFailText() {
+  return mapFailReason === 'lib'
+    ? '3D 지도 도구를 불러오지 못했어요. 인터넷이 느리거나 학교에서 지도 사이트가 막혀 있을 수 있어요. 새로고침해 보거나, 나라 정보를 읽고 퀴즈를 풀어 도장을 모으세요!'
+    : '이 기기(브라우저)는 3D 지도를 보여 줄 수 없어요. 나라 정보를 읽고 퀴즈를 풀어 도장을 모으세요!';
+}
 
 /* 여권 도장 칸(버튼) — 누르면 그 나라로 이동 */
 function passportSlotsHtml() {
@@ -735,6 +753,7 @@ function passportSlotsHtml() {
     return `
       <button type="button" class="passport-slot ${hasS ? 'done' : ''} ${i === idx ? 'current' : ''}" onclick="goToIndex(${i})"
         title="${lm.name}" aria-label="${i + 1}. ${lm.name}${hasS ? ' (도장 받음)' : ''}"${i === idx ? ' aria-current="step"' : ''}>
+        ${hasS ? icon('check', 'slot-check') : ''}
         <span class="${hasS ? 'slot-emoji-done' : 'slot-emoji-pending'}" aria-hidden="true">${lm.emoji}</span>
         <span class="passport-slot-label" aria-hidden="true">${lm.name.length > 4 ? lm.name.slice(0,4)+'…' : lm.name}</span>
       </button>`;
@@ -758,11 +777,11 @@ function showMapNotice() {
   box.setAttribute('role', 'status');
   box.innerHTML = `
     <div class="map-notice-card">
-      <div style="font-size:40px" aria-hidden="true">🛰️</div>
+      <div class="map-notice-icon" aria-hidden="true">${icon('satellite')}</div>
       <p><b>지도 사진을 불러오지 못하고 있어요.</b><br>인터넷이 느리거나 학교에서 막혀 있을 수 있어요.<br>문화 카드를 읽고 퀴즈는 그대로 풀 수 있어요!</p>
       <div class="map-notice-btns">
-        <button type="button" class="btn btn-primary" data-act="retry">🔄 다시 불러오기</button>
-        <button type="button" class="btn btn-ghost-dark" data-act="earth">🌍 구글 어스로 보기</button>
+        <button type="button" class="btn btn-primary" data-act="retry">${icon('refresh-cw')} 다시 불러오기</button>
+        <button type="button" class="btn btn-ghost-dark" data-act="earth">${icon('globe')} 구글 어스로 보기</button>
         <button type="button" class="btn btn-ghost-dark" data-act="close">닫기</button>
       </div>
     </div>`;
@@ -792,17 +811,22 @@ function getGoogleEarthUrl(m) {
 }
 
 /* ── 3D 지도 셋업 ── */
-function mapFallback(msg) {
+// reason: 'lib'(지도 도구를 못 받음) | 'webgl'(기기가 3D 지도를 못 그림)
+function mapFallback(reason) {
   mapFailed = true;
+  mapFailReason = reason;
   const zone = document.querySelector('.map-zone');
   if (!zone) return;
-  const m = LANDMARKS[idx];
-  zone.innerHTML = `
-    <div class="card-fallback-view">
-      <div class="fallback-landmark-emoji">${m.emoji}</div>
+  const m = LANDMARKS[idx] || LANDMARKS[0];
+  zone.innerHTML = fallbackViewHtml(m);
+}
+function fallbackViewHtml(m) {
+  return `
+    <div class="card-fallback-view" role="status">
+      <div class="fallback-landmark-emoji" aria-hidden="true">${m.emoji}</div>
       <div class="fallback-landmark-name">${m.name} (${m.countryName})</div>
-      <div class="fallback-landmark-desc">🛰️ 3D 지도를 지원하지 않는 기기입니다. 대신 문화 정보를 바탕으로 탐험해봐요!</div>
-      <a class="earth-link" href="${getGoogleEarthUrl(m)}" target="_blank" rel="noopener" style="margin-top:20px; color:var(--gold); text-decoration:underline;">🌍 구글 어스 앱으로 열기 ↗</a>
+      <div class="fallback-landmark-desc">${mapFailText()}</div>
+      <a class="earth-link" href="${getGoogleEarthUrl(m)}" target="_blank" rel="noopener" style="margin-top:20px; color:var(--gold); text-decoration:underline; display:inline-flex; align-items:center; gap:6px;">${icon('globe')} 구글 어스에서 열기 ${icon('external-link')}</a>
     </div>
   `;
 }
@@ -813,7 +837,7 @@ function buildMap() {
   tileErrors = 0; tileOk = 0;
   if (map) { try { map.remove(); } catch (e) {} map = null; }
   if (typeof maplibregl === 'undefined') {
-    mapFallback('지도 라이브러리 로드 실패');
+    mapFallback('lib');
     return;
   }
   try {
@@ -848,7 +872,8 @@ function buildMap() {
       }
     });
 
-    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-left');
+    // 확대·축소 버튼은 오른쪽 위(아래 카메라 버튼 줄과 겹치지 않게)
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 
     let mapLoaded = false;
     const hideLoading = () => {
@@ -858,7 +883,7 @@ function buildMap() {
       // 로드가 늦어도 지금 보고 있는 곳 기준(결과 화면이면 세계 전체)
       const m = curLandmark();
       if (m) flyToLandmark(m);
-      else if (map) map.easeTo({ zoom: 2.2, pitch: 0, duration: 1500 });
+      else if (map) map.easeTo({ zoom: 2.2, pitch: 0, duration: dur(1500) });
     };
 
     map.on('load', () => {
@@ -881,27 +906,18 @@ function buildMap() {
     ['mousedown', 'touchstart', 'wheel'].forEach(ev => map.on(ev, stopOrbit));
   } catch (err) {
     console.error('지도 초기화 실패:', err);
-    mapFallback('WebGL 미지원 가능성');
+    mapFallback('webgl');
   }
 }
 
 function flyToLandmark(m) {
   if (mapFailed || !map) {
     const zone = document.querySelector('.map-zone');
-    if (zone) {
-      zone.innerHTML = `
-        <div class="card-fallback-view">
-          <div class="fallback-landmark-emoji">${m.emoji}</div>
-          <div class="fallback-landmark-name">${m.name} (${m.countryName})</div>
-          <div class="fallback-landmark-desc">지도가 지원되지 않는 기기입니다. 이 랜드마크의 퀴즈를 풀어 도장을 모으세요!</div>
-          <a class="earth-link" href="${getGoogleEarthUrl(m)}" target="_blank" rel="noopener" style="margin-top:20px; color:var(--gold); text-decoration:underline;">🌍 구글 어스 앱으로 열기 ↗</a>
-        </div>
-      `;
-    }
+    if (zone) zone.innerHTML = fallbackViewHtml(m);
     return;
   }
   stopOrbit();
-  map.flyTo({ center: [m.lng, m.lat], zoom: m.zoom, pitch: 65, bearing: 20, duration: 4500, essential: true });
+  map.flyTo({ center: [m.lng, m.lat], zoom: m.zoom, pitch: 65, bearing: 20, duration: dur(4500), essential: true });
 }
 
 /* ── 카메라 컨트롤 (window 노출) ── */
@@ -912,19 +928,19 @@ window.camReturn = function() {
   stopOrbit();
   const m = curLandmark();
   if (m) flyToLandmark(m);
-  else map.easeTo({ zoom: 2.2, pitch: 0, bearing: 0, duration: 1500 });
+  else map.easeTo({ zoom: 2.2, pitch: 0, bearing: 0, duration: dur(1500) });
 };
 window.camTop = function() {
   if (mapFailed || !map) return;
   stopOrbit();
   const m = curLandmark();
-  map.easeTo({ pitch: 0, bearing: 0, zoom: m ? m.zoom + 0.4 : 2.2, duration: 1200 });
+  map.easeTo({ pitch: 0, bearing: 0, zoom: m ? m.zoom + 0.4 : 2.2, duration: dur(1200) });
 };
 window.camTilt = function() {
   if (mapFailed || !map) return;
   stopOrbit();
   const m = curLandmark();
-  map.easeTo({ pitch: 65, zoom: m ? m.zoom : map.getZoom(), duration: 1200 });
+  map.easeTo({ pitch: 65, zoom: m ? m.zoom : map.getZoom(), duration: dur(1200) });
 };
 window.toggleOrbit = function() {
   if (mapFailed || !map) return;
@@ -932,17 +948,15 @@ window.toggleOrbit = function() {
   document.getElementById('orbitBtn')?.classList.toggle('active', orbiting);
   document.getElementById('orbitBtn')?.setAttribute('aria-pressed', String(orbiting));
   if (orbiting) {
-    if (map.getPitch() < 30) map.easeTo({ pitch: 65, duration: 800 });
-    orbitFrame();
+    if (map.getPitch() < 30) map.easeTo({ pitch: 65, duration: dur(800) });
+    orbitLoop.start();
+  } else {
+    orbitLoop.stop();
   }
 };
 
-function orbitFrame() {
-  if (!orbiting || !map) return;
-  map.setBearing(map.getBearing() + 0.12);
-  mapTimers.raf(orbitFrame);
-}
 function stopOrbit() {
+  orbitLoop.stop();
   if (!orbiting) return;
   orbiting = false;
   document.getElementById('orbitBtn')?.classList.remove('active');
@@ -953,35 +967,37 @@ function stopOrbit() {
 function renderIntro() {
   document.body.classList.remove('exploring');
   app.innerHTML = `
+  <div class="sk-screen">
   <div class="wrap">
     <div class="intro">
       <div class="intro-art" aria-hidden="true">🌏</div>
-      <h1>세계 탐험대</h1>
+      <h1>세계 탐험대 <span class="intro-en">World Landmarks</span></h1>
       <div class="lesson-tag">3D 지도로 떠나는 세계 문화 여행</div>
       <p class="sub">에펠탑, 피라미드, 자유의 여신상 등<br>세계 유명 랜드마크 11곳을 3D 위성지도로 탐험하고<br>나라마다 다른 국기, 수도, 문화들을 공부해요!</p>
 
       <div class="mission-card">
-        <h3>🧭 여권 도장 모으기 미션</h3>
+        <h3>${icon('compass')} 여권 도장 모으기 미션</h3>
         <ol>
-          <li>지도를 <b>마우스나 손가락으로 밀며</b> 랜드마크를 구경해요.</li>
-          <li>우측의 나라별 <strong>전통 음식, 옷, 집</strong> 카드를 관찰해요.</li>
+          <li>지도를 <b>손가락이나 마우스로 끌어</b> 랜드마크를 구경해요.</li>
+          <li>나라 정보판의 <strong>전통 음식, 옷, 집</strong> 카드를 관찰해요.</li>
           <li>퀴즈를 맞히고 여권에 <b>11개 나라의 탐험 도장</b>을 모으세요!</li>
         </ol>
       </div>
 
-      <button class="btn btn-primary" onclick="start()">탐험 여권 만들기 🛫</button>
+      <button class="btn btn-primary" onclick="start()">${icon('plane-takeoff')} 탐험 여권 만들기</button>
 
       <div class="mission-card" style="margin-top:26px;">
-        <h3>📝 조사 보고서 미션</h3>
+        <h3>${icon('notebook-pen')} 나라 조사 미션</h3>
         <ol>
           <li>여섯 대륙 <b>27개 나라</b> 중에서 조사할 나라를 골라요.</li>
           <li>국기·위치·수도·인사말·음식·자랑거리·문화 <strong>7가지 항목</strong>을 살펴봐요.</li>
-          <li>조사 링크로 더 알아보고 <b>나만의 보고서</b>를 완성하세요!</li>
+          <li>조사 링크로 더 알아보고, 알게 된 것을 <b>공책이나 학습지에 정리</b>하세요!</li>
         </ol>
       </div>
 
-      <button class="btn btn-primary" onclick="goResearch()">조사 보고서 만들기 📝</button>
+      <button class="btn btn-primary" onclick="goResearch()">${icon('notebook-pen')} 나라 조사하기</button>
     </div>
+  </div>
   </div>`;
 }
 
@@ -990,15 +1006,17 @@ function renderExplore() {
   app.innerHTML = `
   <div class="explore">
     <div class="map-zone">
-      <div class="viewer-title" id="viewerTitle"></div>
-      <div class="hint-chip" id="hintChip">💡 지도를 돌리고 움직이며 랜드마크를 관찰하세요!</div>
       <div id="map"></div>
-      <div class="map-loading" id="mapLoading"><div class="spin">🌏</div>3D 지도 불러오는 중...</div>
-      <div class="cam-bar">
-        <button class="cam-btn return-btn" onclick="camReturn()" title="랜드마크로 시점 돌아가기">📍 제자리로</button>
-        <button class="cam-btn" id="orbitBtn" onclick="toggleOrbit()" aria-pressed="false">🔄 한 바퀴</button>
-        <button class="cam-btn" onclick="camTop()">⬇️ 위에서 보기</button>
-        <button class="cam-btn" onclick="camTilt()">⛰️ 3D 보기</button>
+      <div class="map-top">
+        <div class="viewer-title" id="viewerTitle"></div>
+        <div class="hint-chip" id="hintChip">${icon('hand')} 지도를 끌거나 돌려서 랜드마크를 살펴보세요!</div>
+      </div>
+      <div class="map-loading" id="mapLoading"><div class="spin">${icon('globe')}</div>3D 지도 불러오는 중...</div>
+      <div class="cam-bar sk-actions" role="group" aria-label="지도 보는 방법">
+        <button type="button" class="sk-btn sk-btn--sm" onclick="camReturn()" title="랜드마크로 시점 돌아가기">${icon('locate-fixed')} 제자리로</button>
+        <button type="button" class="sk-btn sk-btn--sm" id="orbitBtn" onclick="toggleOrbit()" aria-pressed="false">${icon('rotate-cw')} 한 바퀴</button>
+        <button type="button" class="sk-btn sk-btn--sm" onclick="camTop()">${icon('circle-arrow-down')} 위에서 보기</button>
+        <button type="button" class="sk-btn sk-btn--sm" onclick="camTilt()">${icon('mountain')} 3D 보기</button>
       </div>
     </div>
     <aside class="side">
@@ -1020,7 +1038,7 @@ function renderPanel() {
 
   // 국기 이미지(flagcdn) + 헤더 렌더링 — Windows Chrome 국기 이모지 미지원 대응
   document.getElementById('sideHead').innerHTML = `
-    <button class="side-home-btn" onclick="exitExplore()" title="처음 화면으로">🏠 처음으로</button>
+    <button type="button" class="side-home-btn" onclick="exitExplore()" title="처음 화면으로">${icon('house')} 처음 화면</button>
     <div class="flag">
       ${flagMarkup(flagEmojiToCode(m.countryFlag), m.countryName, 'sm')}
       <span>${m.countryName} (수도: ${m.capital})</span>
@@ -1031,34 +1049,35 @@ function renderPanel() {
 
   const isStamped = stamps.includes(m.id);
 
+  // 진행 막대는 모은 도장 수(지금 몇 번째 나라인지와 따로)
   let bodyHtml = `
     <div class="progress-zone">
-      <div class="progress-track"><div class="progress-fill" style="width:${idx / LANDMARKS.length * 100}%"></div></div>
-      <div class="progress-label"><span>탐험 진도</span><span>${idx + 1} / ${LANDMARKS.length}</span></div>
+      <div class="progress-track" role="progressbar" aria-label="모은 도장" aria-valuemin="0" aria-valuemax="${LANDMARKS.length}" aria-valuenow="${stamps.length}"><div class="progress-fill" style="width:${stamps.length / LANDMARKS.length * 100}%"></div></div>
+      <div class="progress-label"><span>모은 도장 ${stamps.length} / ${LANDMARKS.length}</span><span>${idx + 1}번째 나라</span></div>
     </div>
 
     <div class="observe-box">
-      <h3>🔍 관찰 포인트</h3>
+      <h3>${icon('search')} 관찰 포인트</h3>
       <p>${m.observe}</p>
     </div>
 
     <!-- 문화 도감 카드 -->
     <div class="culture-card">
-      <button class="culture-speak-btn" onclick="speakCulture('${m.id}')" id="speakBtn" title="설명 읽어주기" aria-label="${m.countryName} 문화 소개 소리로 읽어주기">🔊</button>
-      <div class="culture-title">🌐 ${m.countryName}의 대표 문화 소개</div>
+      <button class="culture-speak-btn" onclick="speakCulture('${m.id}')" id="speakBtn" title="설명 읽어주기" aria-label="${m.countryName} 문화 소개 소리로 읽어주기">${icon('volume-2')}</button>
+      <div class="culture-title">${icon('globe')} ${m.countryName}의 대표 문화 소개</div>
       <div class="culture-grid">
         <div class="culture-item">
-          <span class="icon" aria-hidden="true">🍲</span>
+          <span class="icon" aria-hidden="true">${icon('utensils')}</span>
           <span class="label">대표 음식</span>
           <span class="name">${m.food}</span>
         </div>
         <div class="culture-item">
-          <span class="icon" aria-hidden="true">👘</span>
+          <span class="icon" aria-hidden="true">${icon('shirt')}</span>
           <span class="label">대표 옷</span>
           <span class="name">${m.clothes}</span>
         </div>
         <div class="culture-item">
-          <span class="icon" aria-hidden="true">🏠</span>
+          <span class="icon" aria-hidden="true">${icon('house')}</span>
           <span class="label">대표 집</span>
           <span class="name">${m.house}</span>
         </div>
@@ -1071,16 +1090,12 @@ function renderPanel() {
   if (isStamped) {
     bodyHtml += `
       <div class="reveal">
-        <div class="reveal-banner correct">🎉 이미 도장을 쾅 모았어요!</div>
+        <div class="reveal-banner correct">${icon('party-popper')} 이미 도장을 쾅 모았어요!</div>
         <div class="passport-stamp-zone">
-          <div class="passport-stamp stamped">✈️ 탐험인증</div>
+          <div class="passport-stamp stamped">${icon('plane')} 탐험인증</div>
         </div>
         <div class="explain">${m.explain}</div>
-        <div class="next-zone">
-          <button class="btn btn-primary" onclick="next()">
-            ${idx === LANDMARKS.length - 1 ? '탐험 수료식 가기 🏁' : '다음 나라로! ✈️'}
-          </button>
-        </div>
+        <div class="next-zone">${nextBtnHtml()}</div>
       </div>
     `;
   } else {
@@ -1099,7 +1114,7 @@ function renderPanel() {
 
     <!-- 여권 도장 리스트 프리뷰 -->
     <div style="margin-top:20px; border-top:1px dashed var(--border); padding-top:14px;">
-      <h4 style="font-size:14px; font-weight:800; color:var(--navy); opacity:0.8;">✈️ 내 여권 스탬프 (${stamps.length} / ${LANDMARKS.length})</h4>
+      <h4 style="font-size:14px; font-weight:800; color:var(--navy); opacity:0.8; display:flex; align-items:center; gap:6px;">${icon('stamp')} 내 여권 도장 (${stamps.length} / ${LANDMARKS.length})</h4>
       <div class="passport-grid" role="group" aria-label="여권 도장 — 누르면 그 나라로 가요">
         ${passportSlotsHtml()}
       </div>
@@ -1108,6 +1123,13 @@ function renderPanel() {
 
   document.getElementById('sideBody').innerHTML = bodyHtml;
   document.querySelector('.side')?.scrollTo({ top: 0 });
+}
+
+// 다음 나라 / 마지막이면 결과 보기 — 정보판의 주 버튼(.sk-btn--primary)
+function nextBtnHtml() {
+  return idx === LANDMARKS.length - 1
+    ? `<button type="button" class="sk-btn sk-btn--primary" onclick="next()">${icon('award')} 탐험 수료식 보기</button>`
+    : `<button type="button" class="sk-btn sk-btn--primary" onclick="next()">다음 나라로 ${icon('arrow-right')}</button>`;
 }
 
 /* ── TTS 문화 리딩 기능 ── */
@@ -1145,16 +1167,12 @@ window.submitAnswer = function(answer) {
 
     quizZone.innerHTML = `
       <div class="reveal">
-        <div class="reveal-banner correct" id="revealBanner" tabindex="-1">🎉 정답입니다! 여권 도장을 쾅 모았어요!</div>
+        <div class="reveal-banner correct" id="revealBanner" tabindex="-1">${icon('party-popper')} 정답입니다! 여권 도장을 쾅 모았어요!</div>
         <div class="passport-stamp-zone">
-          <div class="passport-stamp" id="pStamp">✈️ 탐험인증</div>
+          <div class="passport-stamp" id="pStamp">${icon('plane')} 탐험인증</div>
         </div>
         <div class="explain">${m.explain}</div>
-        <div class="next-zone">
-          <button class="btn btn-primary" onclick="next()">
-            ${idx === LANDMARKS.length - 1 ? '탐험 수료식 가기 🏁' : '다음 나라로! ✈️'}
-          </button>
-        </div>
+        <div class="next-zone">${nextBtnHtml()}</div>
       </div>
     `;
 
@@ -1162,22 +1180,30 @@ window.submitAnswer = function(answer) {
       document.getElementById('pStamp')?.classList.add('stamped');
     }, 100);
 
-    // 스탬프 그리드 갱신
+    // 도장 그리드·진행 막대 갱신
     const grid = document.querySelector('.passport-grid');
     if (grid) grid.innerHTML = passportSlotsHtml();
+    const fill = document.querySelector('.progress-zone .progress-fill');
+    if (fill) fill.style.width = (stamps.length / LANDMARKS.length * 100) + '%';
+    const track = document.querySelector('.progress-zone .progress-track');
+    if (track) track.setAttribute('aria-valuenow', String(stamps.length));
+    const lbl = document.querySelector('.progress-zone .progress-label span');
+    if (lbl) lbl.textContent = `모은 도장 ${stamps.length} / ${LANDMARKS.length}`;
     document.getElementById('revealBanner')?.focus({ preventScroll: true });
+    SimKit.reveal(document.getElementById('revealBanner'));
 
   } else {
     quizZone.innerHTML = `
       <div class="reveal">
-        <div class="reveal-banner wrong" id="revealBanner" tabindex="-1">🤔 아쉬워요! 다른 답을 골라볼까요?</div>
-        <div class="explain">국기나 음식/의상 설명 카드를 다시 읽어보고 도전해 보세요.</div>
+        <div class="reveal-banner wrong" id="revealBanner" tabindex="-1">${icon('circle-x')} 아쉬워요! 다른 답을 골라볼까요?</div>
+        <div class="explain">나라 이름 아래의 수도·인사말과 ‘대표 문화 소개’ 카드(음식·옷·집)를 다시 읽어 보고 도전해 보세요.</div>
         <div class="next-zone">
-          <button class="btn" style="background:var(--cream); color:var(--navy);" onclick="retryQuiz()">다시 풀기 🔄</button>
+          <button type="button" class="sk-btn" onclick="retryQuiz()">${icon('rotate-ccw')} ${SimKit.LABELS.retry}</button>
         </div>
       </div>
     `;
     document.getElementById('revealBanner')?.focus({ preventScroll: true });
+    SimKit.reveal(document.getElementById('revealBanner'));
   }
 };
 
@@ -1208,11 +1234,11 @@ window.goToIndex = function(i) {
 function renderResult() {
   stopOrbit();
   if (map && !mapFailed) {
-    map.easeTo({ zoom: 2.2, pitch: 0, duration: 3000 });
+    map.easeTo({ zoom: 2.2, pitch: 0, duration: dur(3000) });
   }
 
   const vt = document.getElementById('viewerTitle');
-  if (vt) vt.innerHTML = `🏆 세계 탐험 완료!`;
+  if (vt) vt.innerHTML = `${icon('trophy')} 세계 탐험 완료!`;
 
   const totalScore = stamps.length;
   const total = LANDMARKS.length;
@@ -1220,8 +1246,8 @@ function renderResult() {
   const missing = LANDMARKS.filter(lm => !stamps.includes(lm.id));
 
   document.getElementById('sideHead').innerHTML = `
-    <div class="flag">🌏 세계 탐험대</div>
-    <h2>🏆 탐험 수료식</h2>
+    <div class="flag">${icon('globe')} 세계 탐험대</div>
+    <h2>${icon('trophy')} 탐험 수료식</h2>
     <div class="height">${complete ? `${total}개 나라 여권 스탬프 완성!` : `여권 스탬프 ${totalScore} / ${total}개`}</div>
   `;
 
@@ -1229,14 +1255,14 @@ function renderResult() {
     <div class="result">
       ${complete ? `
       <div class="certificate-box">
-        <div class="certificate-title">🎖️ 세계 탐험 챔피언</div>
+        <div class="certificate-title">${icon('award')} 세계 탐험 챔피언</div>
         <div class="certificate-stamp">🌏</div>
         <div class="certificate-text">
           위 어린이는 3D 지도를 활용하여 경복궁, 에펠탑, 피라미드 등 세계 랜드마크 ${total}곳을 성실히 탐험하고, 나라마다 다른 국기, 수도, 의상, 음식, 집의 다양성을 훌륭히 공부하였으므로 이 세계 탐험 인증서를 수여합니다.
         </div>
       </div>` : `
       <div class="certificate-box">
-        <div class="certificate-title">✈️ 거의 다 왔어요!</div>
+        <div class="certificate-title">${icon('plane')} 거의 다 왔어요!</div>
         <div class="certificate-text">
           도장을 <b>${totalScore}개</b> 모았어요. 아직 <b>${missing.length}개</b> 나라의 도장이 남았어요.<br>
           ${missing.map(lm => `${lm.emoji} ${lm.name}`).join(', ')}<br>
@@ -1245,34 +1271,37 @@ function renderResult() {
       </div>`}
 
       <div class="observe-box" style="text-align:left;">
-        <h3 style="color:var(--gold-deep)">📚 배움 정리</h3>
+        <h3 style="color:var(--gold-deep)">${icon('book-open')} 배움 정리</h3>
         <p style="font-size:14.5px; line-height:1.75;">
           세계 여러 나라 사람들은 각자의 환경과 역사에 따라 서로 다른 <strong>국기, 음식, 옷, 집</strong>을 가지고 살아가요.<br>
           우리와 다른 모습들은 이상하거나 틀린 것이 아니라, <strong>서로 다르고 고유한 문화적 특징</strong>이랍니다!
         </p>
       </div>
 
-      <h4 style="text-align:left; font-size:14px; margin-bottom:8px; opacity:0.85;">🗺️ 방문했던 랜드마크 다시 보기</h4>
+      <h4 style="text-align:left; font-size:14px; margin-bottom:8px; opacity:0.85; display:flex; align-items:center; gap:6px;">${icon('map')} 랜드마크 다시 보기</h4>
       <ul class="revisit-list">
         ${LANDMARKS.map((lm, i) => `
           <li><button type="button" class="revisit-item" onclick="goToIndex(${i})">
-            ${lm.emoji} ${lm.name}${stamps.includes(lm.id) ? '' : ' ✈️'}
+            ${lm.emoji} ${lm.name}${stamps.includes(lm.id) ? '' : '<span class="todo">도장 받으러 가기</span>'}
           </button></li>
         `).join('')}
       </ul>
 
-      <button class="btn btn-primary" style="font-size:17px; margin-top:16px; width:100%;" onclick="resetExplore()">처음부터 다시 도전 🔄</button>
+      <button type="button" class="sk-btn sk-btn--danger sk-btn--block" onclick="resetExplore()">${icon('refresh-ccw')} ${SimKit.LABELS.reset}</button>
     </div>
   `;
 }
 
-window.resetExplore = function() {
-  if (confirm('모든 도장과 진도를 초기화하고 처음부터 다시 시작할까요?')) {
-    stamps = [];
-    idx = 0;
-    saveState();
-    location.reload();
-  }
+// 처음부터: 모은 도장을 모두 지우고 첫 나라로(확인 창 필수 — 시뮬레이션 공통 규약 v2)
+window.resetExplore = async function() {
+  const ok = await VUI.confirm('모은 여권 도장을 모두 지우고 첫 나라부터 다시 시작할까요?', { title: SimKit.LABELS.reset, ok: '도장 지우고 다시 시작', danger: true });
+  if (!ok) return;
+  stamps = [];
+  idx = 0;
+  saveState();
+  renderPanel();
+  flyToLandmark(LANDMARKS[0]);
+  focusSideHead();
 };
 
 window.start = function() {
@@ -1287,6 +1316,7 @@ window.start = function() {
 // 탐험 모드 → 처음 화면. 도장(stamps)은 저장돼 있어 다시 들어오면 이어서 진행된다.
 window.exitExplore = function() {
   stopOrbit();
+  orbitLoop.stop();
   mapTimers.reset();
   SimKit.speak.cancel();
   if (map) { try { map.remove(); } catch (e) {} map = null; }
@@ -1359,9 +1389,9 @@ function niUrl(q) { return 'https://search.naver.com/search.naver?where=image&qu
 function chip(url, label, cls) {
   return `<a class="link-chip ${cls || ''}" href="${url}" target="_blank" rel="noopener">${label}</a>`;
 }
-function chipYt(q, label) { return chip(ytUrl(q), '▶️ ' + (label || q), 'yt'); }
-function chipNv(q, label) { return chip(nvUrl(q), '🟢 ' + (label || q), ''); }
-function chipNi(q, label) { return chip(niUrl(q), '🖼️ ' + (label || q), ''); }
+function chipYt(q, label) { return chip(ytUrl(q), icon('play') + ' ' + (label || q), 'yt'); }
+function chipNv(q, label) { return chip(nvUrl(q), icon('search') + ' ' + (label || q), ''); }
+function chipNi(q, label) { return chip(niUrl(q), icon('image') + ' ' + (label || q), ''); }
 
 /* ── 국기 이미지 (flagcdn + 이모지 폴백) ──
    code: ISO 3166-1 alpha-2 소문자 · Windows Chrome은 국기 이모지를 렌더링 못 해
@@ -1426,7 +1456,7 @@ function injectMiniMap(c) {
       } catch (e) {}
     }
   }).catch(() => {
-    if (box) box.innerHTML = '<p class="mini-map-fail">🗺️ 지도를 불러오지 못했어요. 아래 검색 링크로 위치를 찾아보세요.</p>';
+    if (box) box.innerHTML = '<p class="mini-map-fail">지도를 불러오지 못했어요. 아래 검색 링크로 위치를 찾아보세요.</p>';
   });
 }
 
@@ -1461,18 +1491,18 @@ function renderResearchList() {
   app.innerHTML = `
   <div class="research-wrap">
     <div class="research-top">
-      <h1>📝 조사 보고서 만들기</h1>
-      <button class="back-link" onclick="history.replaceState(null,'',location.pathname); appModeReset();">🏠 처음으로</button>
+      <h1>${icon('notebook-pen')} 나라 조사하기</h1>
+      <button type="button" class="back-link" onclick="history.replaceState(null,'',location.pathname); appModeReset();">${icon('house')} 처음 화면</button>
     </div>
-    <div class="extlink-notice">🔗 조사 링크는 유튜브·네이버 등 외부 사이트로 연결돼요. 선생님·부모님과 함께 살펴보세요.</div>
+    <div class="extlink-notice">${icon('link')} <span>조사 링크는 유튜브·네이버 등 외부 사이트로 연결돼요. 선생님·부모님과 함께 살펴보세요.</span></div>
 
     <div class="howto-card">
-      <h3>📋 보고서 쓰는 순서</h3>
+      <h3>${icon('list-ordered')} 조사하는 순서</h3>
       <div class="howto-steps">
         <div class="howto-step"><span class="step-num">1</span><br>조사할 나라<br>고르기</div>
         <div class="howto-step"><span class="step-num">2</span><br>7가지 항목<br>살펴보기</div>
         <div class="howto-step"><span class="step-num">3</span><br>조사 링크로<br>더 알아보기</div>
-        <div class="howto-step"><span class="step-num">4</span><br>내 보고서에<br>정리하기</div>
+        <div class="howto-step"><span class="step-num">4</span><br>공책이나 학습지에<br>정리하기</div>
       </div>
     </div>
 
@@ -1492,7 +1522,7 @@ function renderResearchList() {
           ${flagImg(c)}
           <div class="country-name">${c.nameKo}</div>
           <div class="country-sub">${contName} · 수도 ${c.capital.name}</div>
-          <div class="country-progress ${done ? '' : 'zero'}">${done ? `✅ 조사 ${done} / ${SECTION_KEYS.length}` : `조사 전 · 0 / ${SECTION_KEYS.length}`}</div>
+          <div class="country-progress ${done ? '' : 'zero'}">${done ? `${icon('check')} 조사 ${done} / ${SECTION_KEYS.length}` : `조사 전 · 0 / ${SECTION_KEYS.length}`}</div>
         </button>`;
       }).join('')}
     </div>
@@ -1512,12 +1542,15 @@ function sectionBox(c, key, title, inner, chips) {
   <section class="report-section ${on ? 'checked' : ''}" id="sec-${key}">
     <div class="report-section-head">
       <h3>${title}</h3>
-      <button type="button" class="check-btn ${on ? 'on' : ''}" aria-pressed="${on}" onclick="toggleCheck('${c.id}','${key}')">${on ? '✅ 조사했어요' : '⬜ 조사했어요'}</button>
+      <button type="button" class="check-btn ${on ? 'on' : ''}" aria-pressed="${on}" onclick="toggleCheck('${c.id}','${key}')">${checkBtnHtml(on)}</button>
     </div>
     ${inner}
     ${chips && chips.length ? `<div class="link-chips">${chips.join('')}</div>` : ''}
   </section>`;
 }
+
+// @icons square-check square
+function checkBtnHtml(on) { return icon(on ? 'square-check' : 'square') + ' 조사했어요'; }
 
 function itemCards(items) {
   return `<div class="item-cards">${items.map(i => `
@@ -1539,14 +1572,14 @@ function renderResearchDetail(c) {
   app.innerHTML = `
   <div class="research-wrap">
     <div class="research-top">
-      <button class="back-link" onclick="location.hash='#research'">← 나라 목록</button>
+      <button type="button" class="back-link" onclick="location.hash='#research'">${icon('arrow-left')} 나라 목록</button>
     </div>
 
     <div class="country-head">
       ${flagImg(c, true)}
       <h1>${c.nameKo}</h1>
       <div class="head-sub">${contName} · 수도 ${c.capital.name}</div>
-      ${landmark >= 0 ? `<button class="explore-link" onclick="exploreFromResearch(${landmark})">🛫 탐험 모드에서 3D로 보기</button>` : ''}
+      ${landmark >= 0 ? `<button type="button" class="explore-link" onclick="exploreFromResearch(${landmark})">${icon('plane-takeoff')} 탐험 모드에서 3D로 보기</button>` : ''}
     </div>
 
     <div class="research-progress">
@@ -1554,44 +1587,44 @@ function renderResearchDetail(c) {
       <div class="progress-label"><span>조사 진행</span><span id="rProgressNum">${done} / ${SECTION_KEYS.length}</span></div>
     </div>
 
-    ${sectionBox(c, 'flag', '🏳️ 국기', `
+    ${sectionBox(c, 'flag', icon('flag') + ' 국기', `
       <div class="report-flag-row">
         ${flagImg(c, true)}
         <p class="section-desc">${c.flag.meaning}</p>
       </div>`,
       [chipNi(`${c.nameKo} 국기 의미`, '국기 의미 사진'), chipNv(`${c.nameKo} 국기`, '국기 검색')])}
 
-    ${sectionBox(c, 'location', '📍 위치', `
+    ${sectionBox(c, 'location', icon('map-pin') + ' 위치', `
       <p class="section-desc">${c.location.desc}</p>
-      <div class="mini-map-box" id="miniMap-${c.id}"><div class="mini-map-loading">🗺️ 지도 불러오는 중...</div></div>
+      <div class="mini-map-box" id="miniMap-${c.id}"><div class="mini-map-loading">지도 불러오는 중...</div></div>
       <div class="map-credit">지도: SVG Maps · CC BY 4.0</div>`,
       [chipNv(`${c.nameKo} 위치 지도`, '위치 지도'), chipNi(`${c.nameKo} 지도`, '지도 사진')])}
 
-    ${sectionBox(c, 'capital', '🏛️ 수도', `
+    ${sectionBox(c, 'capital', icon('landmark') + ' 수도', `
       <p class="section-desc"><strong>${c.capital.name}</strong> — ${c.capital.desc}</p>`,
       [chipYt(`${c.capital.name} 여행`, `${c.capital.name} 여행 영상`), chipNi(c.capital.name, `${c.capital.name} 사진`)])}
 
-    ${sectionBox(c, 'greeting', '👋 인사말', `
+    ${sectionBox(c, 'greeting', icon('hand') + ' 인사말', `
       <div class="greeting-line">
         <span class="greeting-word">"${c.greeting.text}"</span>
-        <button class="greeting-speak" id="greetSpeakBtn" onclick="speakGreeting('${c.id}')" title="인사말 읽어주기" aria-label="인사말 소리로 읽어주기">🔊</button>
+        <button class="greeting-speak" id="greetSpeakBtn" onclick="speakGreeting('${c.id}')" title="인사말 읽어주기" aria-label="인사말 소리로 읽어주기">${icon('volume-2')}</button>
       </div>
       <p class="section-desc">한글 발음: ${c.greeting.korean}</p>`,
       [chipYt(`${c.nameKo} 인사말 배우기`, '인사말 배우기 영상')])}
 
-    ${sectionBox(c, 'food', '🍲 대표 음식', itemCards(c.foods),
+    ${sectionBox(c, 'food', icon('utensils') + ' 대표 음식', itemCards(c.foods),
       [chipYt(`${c.nameKo} 음식`, `${c.nameKo} 음식 영상`)].concat(c.foods.map(f => chipNi(f.name, `${f.name} 사진`))))}
 
-    ${sectionBox(c, 'pride', '🏆 자랑거리', itemCards(c.prides),
+    ${sectionBox(c, 'pride', icon('trophy') + ' 자랑거리', itemCards(c.prides),
       c.prides.map(p => chipYt(p.name, `${p.name} 영상`)).concat(c.prides.map(p => chipNi(p.name, `${p.name} 사진`))))}
 
-    ${sectionBox(c, 'culture', '🎎 문화', itemCards(c.cultures),
+    ${sectionBox(c, 'culture', icon('drama') + ' 문화', itemCards(c.cultures),
       [chipYt(`${c.nameKo} 전통 문화`, '전통 문화 영상')].concat(c.cultures.map(cu => chipNi(cu.name, `${cu.name} 사진`))))}
 
     <div class="detail-nav">
-      <button class="btn btn-ghost" onclick="location.hash='#research/${prev.id}'">← ${prev.nameKo}</button>
-      <button class="btn btn-ghost" onclick="location.hash='#research'">목록</button>
-      <button class="btn btn-ghost" onclick="location.hash='#research/${next.id}'">${next.nameKo} →</button>
+      <button type="button" class="btn btn-ghost" onclick="location.hash='#research/${prev.id}'">${icon('arrow-left')} ${prev.nameKo}</button>
+      <button type="button" class="btn btn-ghost" onclick="location.hash='#research'">목록</button>
+      <button type="button" class="btn btn-ghost" onclick="location.hash='#research/${next.id}'">${next.nameKo} ${icon('arrow-right')}</button>
     </div>
   </div>`;
   window.scrollTo({ top: 0 });
@@ -1610,7 +1643,7 @@ window.toggleCheck = function(cid, key) {
     const on = arr.includes(key);
     sec.classList.toggle('checked', on);
     const btn = sec.querySelector('.check-btn');
-    if (btn) { btn.classList.toggle('on', on); btn.setAttribute('aria-pressed', String(on)); btn.textContent = on ? '✅ 조사했어요' : '⬜ 조사했어요'; }
+    if (btn) { btn.classList.toggle('on', on); btn.setAttribute('aria-pressed', String(on)); btn.innerHTML = checkBtnHtml(on); }
   }
   const done = checkedCount(cid);
   const fill = document.getElementById('rProgressFill');

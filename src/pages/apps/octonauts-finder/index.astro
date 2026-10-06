@@ -1,5 +1,6 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
 <AppLayout
   title="옥토넛 어디서 보지 — eduin VIVES"
@@ -27,7 +28,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         position: relative;
         margin-top: 4px;
       }
-      .oc-search svg {
+      .oc-search > svg {
         position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
         width: 20px; height: 20px; color: var(--fg-muted); pointer-events: none;
       }
@@ -57,7 +58,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         content: ''; position: absolute; inset: 8px; border-radius: 50%;
         background: var(--bg-sec); z-index: -1;
       }
-      .oc-clear.show { display: block; }
+      .oc-clear.show { display: inline-flex; align-items: center; justify-content: center; }
       .oc-clear:hover { color: var(--fg); }
 
       /* ── 주제 칩 ── */
@@ -66,7 +67,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         margin-top: 12px;
       }
       .oc-topic {
-        min-height: 40px; padding: 6px 13px; border-radius: 99px;
+        min-height: 44px; padding: 6px 14px; border-radius: 99px;
         border: 1px solid var(--border); background: var(--bg);
         color: var(--fg-muted); font-size: 14px; font-weight: 600; font-family: inherit;
         cursor: pointer; transition: border-color .15s, color .15s, background .15s;
@@ -78,9 +79,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       [data-theme="dark"] .oc-topic.on { color: #4ade80; }
 
       /* ── 시청처 필터 ── */
+      /* 좁은 화면에서 옆으로 넘치면 오른쪽 끝을 흐리게 해 '더 있음'을 알린다(.has-more는 스크립트가 붙임) */
+      .oc-filter-wrap { position: relative; margin-top: 18px; }
+      .oc-filter-wrap::after {
+        content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 36px;
+        border-radius: 0 12px 12px 0; pointer-events: none;
+        background: linear-gradient(90deg, transparent, var(--bg-sec));
+        opacity: 0; transition: opacity .15s;
+      }
+      .oc-filter-wrap.has-more::after { opacity: 1; }
       .oc-filter {
         display: flex; gap: 4px; padding: 4px;
-        margin-top: 18px;
         background: var(--bg-sec); border-radius: 12px;
         overflow-x: auto; scrollbar-width: none;
       }
@@ -124,6 +133,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         min-height: 44px; padding: 0 8px; margin-right: -8px;
         border: none; background: none; font-family: inherit;
         font-size: 14px; font-weight: 600; color: var(--fg-muted); cursor: pointer;
+        display: inline-flex; align-items: center; gap: 5px;
       }
       .oc-pick-again:hover { color: var(--primary); }
       .oc-pick .oc-item { border: none; padding: 0; background: none; }
@@ -146,21 +156,27 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         padding: 0 2px; border-radius: 3px;
       }
 
+      /* 시청처 표시: 누를 수 없는 안내(넷플릭스·티빙·대기중)는 글자 + 색 점만,
+         누를 수 있는 유튜브 링크만 버튼 모양 — 둘을 한눈에 구분 */
       .pf {
-        display: inline-flex; align-items: center; gap: 5px;
-        padding: 5px 9px; border-radius: 7px;
-        font-size: 14px; font-weight: 700; line-height: 1.3; letter-spacing: -.01em;
-        text-decoration: none;
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 2px; margin-right: 8px;
+        font-size: 14px; font-weight: 600; line-height: 1.4; letter-spacing: -.01em;
+        color: var(--fg); text-decoration: none;
       }
-      a.pf { min-height: 40px; padding: 5px 12px; }
       .pf b { font-weight: 800; }
-      .pf-nf   { background: rgba(229,9,20,0.09);  color: #d10812; }
-      .pf-tv   { background: rgba(255,21,60,0.08); color: #e0103a; }
+      span.pf::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+      .pf-nf b { color: #d10812; }
+      .pf-tv b { color: #e0103a; }
+      span.pf-nf::before { background: #e50914; }
+      span.pf-tv::before { background: #ff153c; }
+      span.pf-wait { color: var(--fg-muted); }
+      span.pf-wait::before { background: transparent; border: 1.5px dashed var(--fg-muted); }
+      a.pf { min-height: 44px; padding: 5px 14px; border-radius: 10px; margin-right: 0; }
       .pf-yt   { background: #ff0000; color: #fff; transition: opacity .12s, transform .12s; }
       .pf-yt:hover { opacity: .85; transform: translateY(-1px); }
-      .pf-wait { border: 1px dashed var(--border); color: var(--fg-muted); }
-      [data-theme="dark"] .pf-nf { background: rgba(229,9,20,0.18);  color: #ff5a62; }
-      [data-theme="dark"] .pf-tv { background: rgba(255,21,60,0.16); color: #ff5f7e; }
+      [data-theme="dark"] .pf-nf b { color: #ff5a62; }
+      [data-theme="dark"] .pf-tv b { color: #ff5f7e; }
       [data-theme="dark"] .pf-yt { background: #e60000; }
       .dot-nf { background: #e50914; }
       .dot-tv { background: #ff153c; }
@@ -195,19 +211,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입합니다 -->
   <main class="app-main oc-root">
   <div class="app-header">
-    <div class="app-badge">◆ 학습지원</div>
-    <h1 class="app-title">🐙 옥토넛 어디서 보지</h1>
+    <div class="app-badge">학습지원</div>
+    <h1 class="app-title">옥토넛 어디서 보지 <span class="app-title-en">Octonauts Finder</span></h1>
     <p class="app-desc">궁금한 생물이나 주제를 검색하면, 그 이야기가 나오는 옥토넛 편과 볼 수 있는 곳(넷플릭스·티빙·유튜브)을 알려 줘요.</p>
   </div>
 
     <div class="oc-search">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <Icon name="search" />
       <input id="q" type="search" placeholder="생물이나 주제 검색 (예: 해파리, 사막)" autocomplete="off" aria-label="생물·주제 검색">
-      <button class="oc-clear" id="clear" type="button" aria-label="검색어 지우기">✕</button>
+      <button class="oc-clear" id="clear" type="button" aria-label="검색어 지우기"><Icon name="x" /></button>
     </div>
     <div class="oc-topics" id="topics" role="group" aria-label="자주 찾는 주제"></div>
 
-    <div class="oc-filter" id="filter" role="group" aria-label="볼 수 있는 곳으로 거르기"></div>
+    <div class="oc-filter-wrap" id="filterWrap">
+      <div class="oc-filter" id="filter" role="group" aria-label="볼 수 있는 곳으로 거르기"></div>
+    </div>
 
     <div id="pickWrap"></div>
     <div class="oc-info"><span id="info" role="status" aria-live="polite"></span><span id="hint"></span></div>
@@ -215,7 +233,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <button class="oc-more" id="more" type="button" hidden>더 보기</button>
     <button class="oc-more" id="showAll" type="button" hidden>전체 목록 보기</button>
 
-    <p class="oc-note">시청처는 2026년 10월 기준이며 서비스 사정에 따라 바뀔 수 있어요.<br>대기중 = 국내 OTT에 아직 공개되지 않은 편</p>
+    <p class="oc-note">시청처는 2026년 10월 기준이며 서비스 사정에 따라 바뀔 수 있어요.<br>‘3번째 이야기’ = 극장판·특별편에 묶인 이야기 중 몇 번째인지<br>대기중 = 국내 OTT에 아직 공개되지 않은 편</p>
   </main>
 
   <script is:inline src="/apps/octonauts-finder/data.js"></script>
@@ -266,14 +284,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }
       if (e[3]) {
         var t = e[3].split('#'), isSeries = t[0].indexOf('시리즈') > -1;
-        c += '<span class="pf pf-tv"><b>티빙</b> ' + esc(t[0]) + ' ' + (isSeries ? t[1] + '화' : '#' + t[1]) + '</span>';
+        // 극장판·특별편은 여러 이야기를 묶은 것 — '#3'은 그 안의 3번째 이야기
+        c += '<span class="pf pf-tv"><b>티빙</b> ' + esc(t[0]) + ' ' + (isSeries ? t[1] + '화' : esc(t[1]) + '번째 이야기') + '</span>';
       }
       if (e[4]) {
-        c += '<a class="pf pf-yt" target="_blank" rel="noopener" href="https://youtu.be/' + encodeURIComponent(e[4]) + '" aria-label="' + esc(e[0]) + ' 유튜브에서 보기 (새 창)">▶ 유튜브</a>';
+        c += '<a class="pf pf-yt" target="_blank" rel="noopener" href="https://youtu.be/' + encodeURIComponent(e[4]) + '" aria-label="' + esc(e[0]) + ' 유튜브에서 보기 (새 창)">' + VUI.icon('play') + ' 유튜브에서 보기</a>';
       }
       if (e[5]) {
         var w = e[5].split('#');
-        c += '<span class="pf pf-wait"><b>대기중</b> ' + esc(w[0]) + ' #' + w[1] + '</span>';
+        c += '<span class="pf pf-wait"><b>대기중</b> ' + esc(w[0]) + ' ' + esc(w[1]) + '번째 이야기</span>';
       }
       return c;
     }
@@ -298,7 +317,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (!show) { $pick.innerHTML = ''; return; }
       if (!pick) pick = todayPick(false);
       $pick.innerHTML = '<section class="oc-pick" aria-labelledby="pickLabel"><div class="oc-pick-head"><h2 class="oc-pick-label" id="pickLabel">오늘의 추천</h2>' +
-        '<button class="oc-pick-again" id="again" type="button">다른 편 보기 ↻</button></div>' +
+        '<button class="oc-pick-again" id="again" type="button">' + VUI.icon('shuffle') + ' 다른 편 보기</button></div>' +
         '<div role="list" aria-live="polite">' + item(pick, '') + '</div></section>';
       document.getElementById('again').onclick = function () {
         var prev = pick;
@@ -328,7 +347,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         b.querySelector('.cnt').textContent = n;
         b.setAttribute('aria-label', f.label + ' ' + n + '편');
       });
+      updateFilterFade();
     }
+
+    // 필터 줄이 옆으로 넘칠 때 오른쪽 끝 흐림 표시, 고른 버튼은 화면 안으로
+    var $filterWrap = document.getElementById('filterWrap');
+    function updateFilterFade() {
+      var more = $filter.scrollWidth - $filter.clientWidth - $filter.scrollLeft > 2;
+      $filterWrap.classList.toggle('has-more', more);
+    }
+    $filter.addEventListener('scroll', updateFilterFade, { passive: true });
+    window.addEventListener('resize', updateFilterFade);
 
     function renderTopics(k) {
       if (!topicBtns) {
@@ -385,7 +414,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }
 
       if (!r.length) {
-        $list.innerHTML = '<div class="oc-empty" role="listitem">일치하는 편이 없어요 🐙<br>다른 낱말(예: 고래, 상어, 사막)로 찾아보세요.</div>';
+        $list.innerHTML = '<div class="oc-empty" role="listitem">일치하는 편이 없어요.<br>다른 낱말(예: 고래, 상어, 사막)로 찾아보세요.</div>';
         $more.hidden = true;
       } else {
         $list.innerHTML = r.slice(0, shown).map(function (e) { return item(e, k); }).join('');
@@ -405,6 +434,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     $filter.addEventListener('click', function (ev) {
       var b = ev.target.closest('button[data-f]'); if (!b) return;
       F = b.dataset.f; run();
+      try { b.scrollIntoView({ inline: 'nearest', block: 'nearest' }); } catch (e) {}
     });
     $showAll.addEventListener('click', function () {
       browse = true; run();

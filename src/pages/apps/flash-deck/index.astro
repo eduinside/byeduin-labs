@@ -1,10 +1,10 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<AppLayout 
+<AppLayout
   sync
-  icons
-  title="Flash Deck — eduin VIVES"
+  title="플래시 카드 (Flash Deck) — eduin VIVES"
   description="나만의 플래시카드를 만들고 AI로 자동 생성하세요. 링크 공유로 친구와 함께 학습."
   image="https://eduin.info/og-images/flash-deck.png"
   bodyShell="column"
@@ -18,6 +18,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     body {
       min-height: 100vh;
+      min-height: 100dvh;
       padding: 56px 1rem 5rem;
       font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
     }
@@ -80,6 +81,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       cursor: pointer; transition: all 0.15s; font-size: 14px;
     }
     .fd-btn-icon:hover { border-color: var(--danger); color: var(--danger); }
+    .fd-btn-icon.fd-btn-move:hover { border-color: var(--primary); color: var(--primary); }
+    .fd-btn[hidden] { display: none; }
 
     /* ── 입력 ── */
     .fd-input {
@@ -97,6 +100,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       transition: border-color 0.2s;
     }
     .fd-textarea:focus { border-color: var(--primary); }
+    /* 휴대폰·태블릿: 16px 미만이면 입력할 때 화면이 확대됨 */
+    @media (max-width: 768px), (hover: none) {
+      .fd-input, .fd-textarea { font-size: 16px; }
+    }
 
     /* ── 진행률 바 ── */
     .fd-progress-bar {
@@ -144,7 +151,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(0,111,238,0.1);
     }
-    .deck-item-emoji { font-size: 28px; line-height: 1; }
+    .deck-item-emoji { font-size: 28px; line-height: 1; color: var(--primary); display: flex; }
     .deck-item-name {
       font-size: 15px; font-weight: 700; color: var(--fg);
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -195,7 +202,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       position: absolute; top: 10px; right: 10px;
       background: none; border: 1px solid var(--border);
       border-radius: 7px; cursor: pointer;
-      color: var(--fg-muted); font-size: 14px; padding: 4px 12px; min-height: 40px; min-width: 56px;
+      color: var(--fg-muted); font-size: 14px; padding: 4px 12px; min-height: 44px; min-width: 56px;
+      display: inline-flex; align-items: center; gap: 4px;
       font-family: inherit; font-weight: 600; transition: all 0.15s;
     }
     .btn-copy-prompt:hover { border-color: var(--primary); color: var(--primary); }
@@ -207,8 +215,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       grid-column: 1 / -1; text-align: center;
       padding: 48px 20px; color: var(--fg-muted); font-size: 14px;
     }
-    .deck-empty-icon { display: flex; justify-content: center; margin-bottom: 16px; color: var(--fg-muted); }
-    .deck-empty-icon svg { width: 48px; height: 48px; stroke: currentColor; stroke-width: 1.5; fill: none; opacity: 0.5; }
+    .deck-empty-icon { display: flex; justify-content: center; margin-bottom: 16px; color: var(--fg-muted); font-size: 48px; }
+    .deck-empty-icon .ic { stroke-width: 1.5; opacity: 0.5; }
+    .deck-empty-title { font-size: 16px; font-weight: 700; color: var(--fg); margin-bottom: 4px; }
+    .deck-empty-actions { margin-top: 20px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 
     /* 새 덱 모달 */
     .fd-modal-overlay {
@@ -221,7 +231,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       background: var(--card-bg); border: 1px solid var(--border);
       border-radius: 20px; padding: 28px; width: 100%; max-width: 380px;
       animation: scaleIn 0.2s ease;
-      max-height: 90vh; display: flex; flex-direction: column;
+      max-height: 90vh; max-height: 90dvh; display: flex; flex-direction: column;
     }
     .fd-modal-body {
       overflow-y: auto;
@@ -350,6 +360,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       margin-bottom: 16px;
     }
     .study-fullscreen #study-actions { flex-shrink: 0; }
+    /* 전자칠판: 화면 크기에 맞춰 글자를 키움(뒤에서도 보이게) */
+    .study-fullscreen .flip-face { padding: 56px 40px 52px; }
+    .study-fullscreen .flip-face-label,
+    .study-fullscreen .flip-face-hint { font-size: clamp(14px, 1.6vw, 20px); }
+    .study-fullscreen .flip-text {
+      font-size: max(18px, calc(clamp(28px, min(6vw, 10vh), 120px) * var(--len)));
+    }
     .study-fullscreen .keyboard-hints { flex-shrink: 0; }
 
     /* 전체화면 진입 시 고정 오버레이 숨김 */
@@ -382,7 +399,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       border-radius: 20px;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      padding: 28px;
+      /* 위 라벨·아래 안내 자리를 비워 글이 겹치지 않게 */
+      padding: 48px 24px 44px;
       user-select: none;
     }
     .flip-face-back { transform: rotateY(180deg); }
@@ -397,11 +415,19 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       font-size: 14px; color: var(--fg-muted);
       display: flex; align-items: center; gap: 4px;
     }
+    /* 글이 길면 --len으로 글자를 줄이고(JS), 그래도 넘치면 카드 안에서 스크롤 */
     .flip-text {
-      font-size: clamp(18px, 4vw, 26px);
+      --len: 1;
+      font-size: max(15px, calc(clamp(18px, 4vw, 26px) * var(--len)));
       font-weight: 700; text-align: center; color: var(--fg);
-      line-height: 1.4; word-break: break-word;
+      line-height: 1.4; word-break: keep-all; overflow-wrap: anywhere;
+      white-space: pre-line;
+      width: 100%; max-height: 100%; min-height: 0;
+      overflow-y: auto; overscroll-behavior: contain;
     }
+    .flip-text.len-m  { --len: 0.85; }
+    .flip-text.len-l  { --len: 0.7; }
+    .flip-text.len-xl { --len: 0.58; }
     .flip-face-back .flip-text { color: var(--primary); }
 
     /* 결과 버튼 */
@@ -425,8 +451,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       display: flex; align-items: center; gap: 5px;
       font-size: 14px; color: var(--fg-muted);
     }
+    /* 터치 기기에는 키보드가 없으니 단축키 안내를 숨김 */
+    @media (hover: none) { .keyboard-hints { display: none; } }
     .kbd {
-      display: inline-flex; align-items: center; justify-content: center;
+      display: inline-flex; gap: 2px; align-items: center; justify-content: center;
       background: var(--bg); border: 1px solid var(--border);
       border-radius: 5px; padding: 2px 7px; font-size: 13px;
       font-family: 'JetBrains Mono', monospace; color: var(--fg-muted);
@@ -439,7 +467,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     #view-result {
       text-align: center;
     }
-    .result-icon { font-size: 56px; margin-bottom: 12px; }
+    .result-icon { font-size: 56px; margin-bottom: 12px; color: var(--primary); display: flex; justify-content: center; }
+    .result-icon .ic { stroke-width: 1.75; }
     .result-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
     .result-sub { font-size: 14px; color: var(--fg-muted); margin-bottom: 28px; }
 
@@ -562,7 +591,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .share-import-choice-title { font-size: 15px; font-weight: 700; color: var(--fg); }
     .share-import-choice-desc { font-size: 14px; color: var(--fg-muted); line-height: 1.5; }
   </style>
-  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"Flash Deck","description":"나만의 플래시카드를 만들고 AI로 자동 생성하세요. 링크 공유로 친구와 함께 학습.","url":"https://eduin.info/apps/flash-deck/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"플래시 카드 (Flash Deck)","description":"나만의 플래시카드를 만들고 AI로 자동 생성하세요. 링크 공유로 친구와 함께 학습.","url":"https://eduin.info/apps/flash-deck/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
 
@@ -571,11 +600,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 <!-- 공유 드롭다운 -->
 <div id="share-dropdown" aria-label="덱 공유 방식">
   <button class="share-opt" onclick="doShare('view')">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+    <Icon name="eye" />
     보기 전용
   </button>
   <button class="share-opt" onclick="doShare('clone')">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+    <Icon name="copy" />
     복제 허용
   </button>
 </div>
@@ -584,13 +613,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
   <!-- 앱 헤더 -->
   <header class="app-header">
-    <span class="app-badge">◆ 학습지원</span>
-    <h1 class="app-title">
-  <div class="card-emoji sub-edu-learn" style="margin-bottom: 0; transform: scale(1.0);">
-        <i data-lucide="layers"></i>
-      </div>
-  <span>Flash Deck</span>
-</h1>
+    <span class="app-badge">학습지원</span>
+    <h1 class="app-title">플래시 카드 <span class="app-title-en">Flash Deck</span></h1>
     <p class="app-desc">플래시카드 덱을 만들고 반복 학습하세요</p>
   </header>
 
@@ -598,8 +622,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <div id="view-home" class="fd-view active">
     <div class="home-top">
       <div class="fd-section-title" style="margin:0;flex:1">내 덱</div>
-      <button class="fd-btn fd-btn-primary" onclick="openNewDeckModal()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      <button id="btn-new-deck" class="fd-btn fd-btn-primary" onclick="openNewDeckModal()">
+        <Icon name="plus" />
         새 덱
       </button>
     </div>
@@ -610,21 +634,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <div id="view-deck" class="fd-view">
     <div class="deck-top">
       <button class="fd-btn fd-btn-ghost fd-btn-sm" onclick="goHome()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        <Icon name="chevron-left" />
         목록
       </button>
       <span id="deck-view-title" class="deck-top-title"></span>
       <input id="deck-name-input" class="fd-input" style="display:none" aria-label="덱 이름" maxlength="40" onblur="saveDeckName()" onkeydown="handleDeckNameKey(event)">
       <button id="btn-deck-rename" title="이름 변경" aria-label="덱 이름 바꾸기" onclick="startRenameDeck()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        <Icon name="pencil" />
       </button>
       <button id="btn-deck-share" title="덱 공유" aria-label="덱 공유" aria-haspopup="true" aria-expanded="false" aria-controls="share-dropdown" onclick="toggleShareMenu(event)">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+        <Icon name="share-2" />
       </button>
-      <span id="badge-readonly">보기 전용</span>
+      <span id="badge-readonly"><Icon name="eye" /> 보기 전용</span>
       <button id="btn-clone-deck" class="fd-btn fd-btn-ghost fd-btn-sm" onclick="cloneAndOpen()">복제하기</button>
       <button id="btn-start-study" class="fd-btn fd-btn-primary fd-btn-sm" onclick="startStudy()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        <Icon name="play" />
         학습 시작
       </button>
     </div>
@@ -637,15 +661,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
         <div style="flex:1;min-width:120px">
           <label class="fd-label" for="inp-front">앞면 (질문)</label>
-          <input id="inp-front" class="fd-input" type="text" placeholder="예) photosynthesis" onkeydown="handleCardInputKey(event)">
+          <input id="inp-front" class="fd-input" type="text" placeholder="예) apple" onkeydown="handleCardInputKey(event)">
         </div>
         <div style="flex:1;min-width:120px">
           <label class="fd-label" for="inp-back">뒷면 (답)</label>
-          <input id="inp-back" class="fd-input" type="text" placeholder="예) 광합성" onkeydown="handleCardInputKey(event)">
+          <input id="inp-back" class="fd-input" type="text" placeholder="예) 사과" onkeydown="handleCardInputKey(event)">
         </div>
         <div style="align-self:flex-end">
           <button class="fd-btn fd-btn-primary" onclick="addSingleCard()" style="margin-top:0">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <Icon name="plus" />
             추가
           </button>
         </div>
@@ -653,23 +677,25 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
       <!-- 일괄 입력 토글 -->
       <button type="button" class="bulk-toggle" id="bulk-toggle" aria-expanded="false" aria-controls="bulk-area" onclick="toggleBulk()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <Icon name="chevron-down" />
         일괄 입력
       </button>
       <div class="bulk-area" id="bulk-area">
         <div class="bulk-hint" id="bulk-hint">
           한 줄에 카드 하나씩: <code>앞면 :: 뒷면</code> 형식으로 입력하세요.
         </div>
-        <textarea id="bulk-input" class="fd-textarea" aria-label="일괄 입력 (한 줄에 앞면 :: 뒷면)" aria-describedby="bulk-hint" placeholder="photosynthesis :: 광합성
-mitosis :: 세포 분열
-osmosis :: 삼투"></textarea>
+        <textarea id="bulk-input" class="fd-textarea" aria-label="일괄 입력 (한 줄에 앞면 :: 뒷면)" aria-describedby="bulk-hint" placeholder="apple :: 사과
+증발 :: 물이 수증기로 변하는 것
+세종대왕 :: 한글을 만든 임금"></textarea>
         <div style="display:flex;justify-content:flex-end;margin-top:8px;gap:8px;flex-wrap:wrap">
-          <button id="btn-ai-recommend" class="fd-btn fd-btn-success fd-btn-sm" onclick="recommendCardsWithAi()" style="margin-right:auto">
-            ✨ AI로 추천받기
+          <button id="btn-ai-recommend" class="fd-btn fd-btn-ghost fd-btn-sm" onclick="recommendCardsWithAi()" style="margin-right:auto">
+            <Icon name="sparkles" /> AI로 추천받기
           </button>
-          <button class="fd-btn fd-btn-ghost fd-btn-sm" onclick="clearBulk()">지우기</button>
-          <button class="fd-btn fd-btn-primary fd-btn-sm" onclick="addBulkCards()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <button class="fd-btn fd-btn-danger fd-btn-sm" onclick="clearBulk()">
+            <Icon name="eraser" /> 지우기
+          </button>
+          <button class="fd-btn fd-btn-ghost fd-btn-sm" onclick="addBulkCards()">
+            <Icon name="check" />
             일괄 추가
           </button>
         </div>
@@ -686,7 +712,7 @@ osmosis :: 삼투"></textarea>
         </div>
         <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
           <span id="shuffle-label" style="font-size:14px;font-weight:700;color:var(--fg-muted)">섞기</span>
-          <button id="shuffle-toggle" class="study-opt" data-active="false" aria-pressed="false" aria-labelledby="shuffle-label shuffle-toggle" onclick="toggleShuffle()">OFF</button>
+          <button id="shuffle-toggle" class="study-opt" data-active="false" aria-pressed="false" aria-labelledby="shuffle-label shuffle-toggle" onclick="toggleShuffle()">끔</button>
         </div>
       </div>
     </div>
@@ -702,14 +728,14 @@ osmosis :: 삼투"></textarea>
   <div id="view-study" class="fd-view">
     <div class="study-top">
       <button class="fd-btn fd-btn-ghost fd-btn-sm" onclick="exitStudy()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        <Icon name="chevron-left" />
         나가기
       </button>
       <span id="study-deck-name" style="font-size:14px;font-weight:700;color:var(--fg-muted);flex:1;text-align:center"></span>
       <span id="study-counter" class="study-counter"></span>
       <button class="btn-fullscreen" id="btn-fullscreen" onclick="toggleFullscreen()" title="전체화면 (F)" aria-label="전체화면" aria-pressed="false">
-        <svg id="fs-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>
-        <svg id="fs-icon-compress" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none"><path d="M8 3v3a2 2 0 0 1-2 2H3"></path><path d="M21 8h-3a2 2 0 0 1-2-2V3"></path><path d="M3 16h3a2 2 0 0 1 2 2v3"></path><path d="M16 21v-3a2 2 0 0 1 2-2h3"></path></svg>
+        <span id="fs-icon-expand" style="display:inline-flex"><Icon name="maximize" /></span>
+        <span id="fs-icon-compress" style="display:none"><Icon name="minimize" /></span>
       </button>
     </div>
 
@@ -726,7 +752,7 @@ osmosis :: 삼투"></textarea>
           <span class="flip-face-label">앞면</span>
           <div id="flip-front-text" class="flip-text"></div>
           <div class="flip-face-hint">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"></path><path d="M9 21H3v-6"></path><path d="M21 3l-7 7"></path><path d="M3 21l7-7"></path></svg>
+            <Icon name="refresh-cw" />
             눌러서 뒤집기
           </div>
         </div>
@@ -740,11 +766,11 @@ osmosis :: 삼투"></textarea>
     <!-- 결과 버튼 (뒤집은 후 표시) -->
     <div id="study-actions" class="study-actions">
       <button class="fd-btn fd-btn-danger" onclick="markCard(false)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <Icon name="x" />
         모르겠어요
       </button>
       <button class="fd-btn fd-btn-success" onclick="markCard(true)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <Icon name="check" />
         알아요
       </button>
     </div>
@@ -752,8 +778,8 @@ osmosis :: 삼투"></textarea>
     <div id="fd-live" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
     <div class="keyboard-hints">
       <div class="kbd-hint"><kbd class="kbd">Space</kbd> 뒤집기</div>
-      <div class="kbd-hint"><kbd class="kbd">←</kbd> 모르겠어요</div>
-      <div class="kbd-hint"><kbd class="kbd">→</kbd> 알아요</div>
+      <div class="kbd-hint"><kbd class="kbd" aria-label="왼쪽 화살표"><Icon name="arrow-left" /></kbd> 모르겠어요</div>
+      <div class="kbd-hint"><kbd class="kbd" aria-label="오른쪽 화살표"><Icon name="arrow-right" /></kbd> 알아요</div>
       <div class="kbd-hint"><kbd class="kbd">F</kbd> 전체화면</div>
     </div>
   </div>
@@ -778,12 +804,12 @@ osmosis :: 삼투"></textarea>
 
       <div class="result-actions">
         <button class="fd-btn fd-btn-ghost" onclick="goHome()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          <Icon name="house" />
           전체 목록
         </button>
         <button class="fd-btn fd-btn-ghost" onclick="exitStudy()">덱으로 돌아가기</button>
         <button class="fd-btn fd-btn-primary" onclick="restartStudy()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+          <Icon name="rotate-ccw" />
           다시 학습
         </button>
       </div>
@@ -797,7 +823,7 @@ osmosis :: 삼투"></textarea>
   <div class="fd-modal">
     <h2 class="fd-modal-title">새 덱 만들기</h2>
     <label class="fd-label" for="new-deck-name">덱 이름</label>
-    <input id="new-deck-name" class="fd-input" type="text" placeholder="예) 생물 용어, 영단어 Day 1..." maxlength="40" onkeydown="if(event.key==='Enter'&&!event.isComposing){event.preventDefault();confirmNewDeck()}">
+    <input id="new-deck-name" class="fd-input" type="text" placeholder="예) 3학년 영어 단어, 과학 용어" maxlength="40" onkeydown="if(event.key==='Enter'&&!event.isComposing){event.preventDefault();confirmNewDeck()}">
     <div class="fd-modal-actions">
       <button class="fd-btn fd-btn-ghost" onclick="closeNewDeckModal()">취소</button>
       <button class="fd-btn fd-btn-primary" onclick="confirmNewDeck()">만들기</button>
@@ -808,7 +834,7 @@ osmosis :: 삼투"></textarea>
 <!-- AI 프롬프트 모달 -->
 <div class="fd-modal-overlay" id="ai-prompt-modal">
   <div class="fd-modal">
-    <h2 class="fd-modal-title">✨ AI로 카드 만들기</h2>
+    <h2 class="fd-modal-title"><Icon name="sparkles" /> AI로 카드 만들기</h2>
     <div class="fd-modal-body">
       <p style="font-size:14px;color:var(--fg-muted);margin:0 0 4px">아래 프롬프트를 복사해 Gemini나 ChatGPT에 붙여넣으세요.<br>결과물을 <strong>일괄 입력</strong> 탭에 그대로 붙여넣으면 카드가 생성됩니다.</p>
       <div class="ai-prompt-list">
@@ -820,18 +846,18 @@ osmosis :: 삼투"></textarea>
 각 줄은 반드시 다음 형식이어야 해:
 앞면 내용 :: 뒷면 내용
 예)
-광합성 :: 식물이 빛 에너지로 포도당을 합성하는 과정
-미토콘드리아 :: 세포 호흡(ATP 생성)이 일어나는 세포소기관</div>
+광합성 :: 식물이 햇빛을 받아 스스로 양분을 만드는 일
+증발 :: 물이 표면에서 수증기로 바뀌어 날아가는 현상</div>
       </div>
 
       <div class="ai-prompt-block">
         <div class="ai-prompt-block-label">영단어 (단어 → 뜻)</div>
         <button class="btn-copy-prompt" onclick="copyPrompt(this)" aria-label="프롬프트 복사">복사</button>
-        <div class="ai-prompt-text">고등학교 수준 영단어 중 [주제/파트명] 관련 단어 20개를 다음 형식으로 작성해줘.
-영단어 :: 한국어 뜻 (예문 한 줄)
+        <div class="ai-prompt-text">초등 3학년 영어 단어 중 [주제] 관련 단어 20개를 다음 형식으로 작성해줘.
+영단어 :: 한국어 뜻 (쉬운 예문 한 줄)
 
 예)
-ambiguous :: 모호한 (His answer was ambiguous.)</div>
+apple :: 사과 (I like apples.)</div>
       </div>
 
       <div class="ai-prompt-block">
@@ -845,21 +871,21 @@ ambiguous :: 모호한 (His answer was ambiguous.)</div>
       </div>
 
       <div class="ai-prompt-block">
-        <div class="ai-prompt-block-label">수식·공식 (공식명 → 식)</div>
+        <div class="ai-prompt-block-label">수학·과학 공식 (공식명 → 식)</div>
         <button class="btn-copy-prompt" onclick="copyPrompt(this)" aria-label="프롬프트 복사">복사</button>
-        <div class="ai-prompt-text">[수학/물리/화학] [단원명] 공식 15개를 다음 형식으로 작성해줘.
-공식 이름 :: 공식 (변수 설명)
+        <div class="ai-prompt-text">초등 [학년] [수학/과학] [단원명] 공식 15개를 다음 형식으로 작성해줘.
+공식 이름 :: 공식 (뜻 설명)
 
 예)
-운동에너지 :: Ek = ½mv² (m: 질량, v: 속도)</div>
+직사각형의 넓이 :: 가로 × 세로</div>
       </div>
 
     </div>
-    <p class="ai-modal-note">💡 일괄 입력 탭에서 생성된 카드를 <code>::</code> 구분자로 붙여넣기 하면 한번에 여러 장을 추가할 수 있습니다.</p>
+    <p class="ai-modal-note"><Icon name="lightbulb" /> 일괄 입력 탭에서 생성된 카드를 <code>::</code> 구분자로 붙여넣기 하면 한번에 여러 장을 추가할 수 있습니다.</p>
     </div>
     <div class="fd-modal-actions" style="margin-top: 16px; flex-shrink: 0; display: flex; gap: 8px;">
       <button class="fd-btn fd-btn-primary" onclick="createDeckWithAiDirectly()" style="flex: 1; justify-content: center; gap: 6px;">
-        ✨ AI로 직접 만들기
+        <Icon name="sparkles" /> AI로 직접 만들기
       </button>
       <button class="fd-btn fd-btn-ghost" onclick="closeAiPromptModal()">닫기</button>
     </div>
@@ -877,11 +903,11 @@ ambiguous :: 모호한 (His answer was ambiguous.)</div>
     </div>
     <div class="share-import-choices">
       <button class="share-import-choice" onclick="enterViewOnly(_pendingShared)">
-        <span class="share-import-choice-title">👁 보기 전용</span>
+        <span class="share-import-choice-title"><Icon name="eye" /> 보기 전용</span>
         <span class="share-import-choice-desc">저장하지 않고 학습합니다. 앱을 나가면 사라집니다.</span>
       </button>
       <button class="share-import-choice" onclick="cloneAndOpen()">
-        <span class="share-import-choice-title">📋 복제하기</span>
+        <span class="share-import-choice-title"><Icon name="copy" /> 복제하기</span>
         <span class="share-import-choice-desc">내 덱 목록에 [사본] 이름으로 저장합니다.</span>
       </button>
     </div>
@@ -934,14 +960,16 @@ function renderHome() {
   showView('home');
   const data = getData();
   const grid = document.getElementById('deck-grid');
+  // 덱이 없을 때는 빈 상태 카드의 버튼이 주 동작 — 위쪽 '새 덱' 버튼은 숨김(주 버튼 하나)
+  document.getElementById('btn-new-deck').hidden = !data.decks.length;
   if (!data.decks.length) {
-    grid.innerHTML = `<div class="deck-empty">
-      <div class="deck-empty-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div>
-      아직 덱이 없어요.<br>새 덱을 만들어 시작하세요!
-      <div style="margin-top:16px">
-        <button class="fd-btn fd-btn-ghost fd-btn-sm" onclick="openAiPromptModal()" style="gap:6px">
-          ✨ AI 프롬프트로 카드 만들기
-        </button>
+    grid.innerHTML = `<div class="deck-empty fd-card">
+      <div class="deck-empty-icon">${VUI.icon('layers')}</div>
+      <div class="deck-empty-title">아직 덱이 없어요</div>
+      덱을 만들고 카드를 넣어 공부해 보세요.<br>AI에게 카드를 만들어 달라고 할 수도 있어요.
+      <div class="deck-empty-actions">
+        <button class="fd-btn fd-btn-primary" onclick="openNewDeckModal()">${VUI.icon('plus')} 새 덱 만들기</button>
+        <button class="fd-btn fd-btn-ghost" onclick="openAiPromptModal()">${VUI.icon('sparkles')} AI로 카드 만들기</button>
       </div>
     </div>`;
     return;
@@ -956,16 +984,16 @@ function renderHome() {
     const studyCount = deck.studyCount || 0;
     return `<div class="deck-item" style="animation-delay:${i * 0.05}s" onclick="openDeck('${esc(deck.id)}')">
       <button class="deck-item-del" title="덱 삭제" aria-label="${esc(deck.name)} 덱 삭제" onclick="event.stopPropagation();deleteDeck('${esc(deck.id)}')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        ${VUI.icon('trash-2')}
       </button>
-      <div class="deck-item-emoji" aria-hidden="true">🗂️</div>
+      <div class="deck-item-emoji" aria-hidden="true">${VUI.icon('layers')}</div>
       <div class="deck-item-name" title="${esc(deck.name)}">${esc(deck.name)}</div>
       <div class="deck-item-meta">카드 ${total}장 · 학습 ${studyCount}회 · 마지막 ${lastStudied}</div>
       <div class="deck-item-progress">
         <div class="fd-progress-bar">
           <div class="fd-progress-fill" style="width:${pct}%"></div>
         </div>
-        <div style="font-size:14px;color:var(--fg-muted);margin-top:3px;text-align:right">${mastered}/${total} 완료</div>
+        <div style="font-size:14px;color:var(--fg-muted);margin-top:3px;text-align:right">익힌 카드 ${mastered}/${total}</div>
       </div>
       <div class="deck-item-actions">
         <button class="fd-btn fd-btn-ghost fd-btn-sm" aria-label="${esc(deck.name)} 편집" onclick="event.stopPropagation();openDeck('${esc(deck.id)}')">편집</button>
@@ -975,7 +1003,7 @@ function renderHome() {
   });
 
   const aiCard = `<div class="deck-item deck-item-ai" style="animation-delay:${data.decks.length * 0.05}s" onclick="openAiPromptModal()">
-    <div class="deck-item-emoji" aria-hidden="true">✨</div>
+    <div class="deck-item-emoji" aria-hidden="true">${VUI.icon('sparkles')}</div>
     <div class="deck-item-name">AI로 카드 만들기</div>
     <div class="deck-item-meta">Gemini · ChatGPT 프롬프트 예시</div>
     <div style="flex:1"></div>
@@ -989,11 +1017,13 @@ function renderHome() {
 
 function goHome() { exitViewOnly(); renderHome(); }
 
-function deleteDeck(id) {
-  const data = getData();
-  const deck = data.decks.find(d => d.id === id);
+async function deleteDeck(id) {
+  const deck = getData().decks.find(d => d.id === id);
   if (!deck) return;
-  if (!confirm(`"${deck.name}" 덱을 삭제할까요?\n카드 ${deck.cards.length}장이 모두 사라집니다.`)) return;
+  const ok = await VUI.confirm(`"${deck.name}" 덱을 삭제할까요?\n카드 ${deck.cards.length}장이 모두 사라집니다.`,
+    { title: '덱 삭제', ok: '삭제', danger: true });
+  if (!ok) return;
+  const data = getData();   // 확인 창을 띄운 사이 바뀌었을 수 있어 다시 읽음
   data.decks = data.decks.filter(d => d.id !== id);
   saveData(data);
   renderHome();
@@ -1025,13 +1055,13 @@ function copyPrompt(btn) {
   const text = btn.closest('.ai-prompt-block').querySelector('.ai-prompt-text').textContent;
   VUI.copy(text.trim(), false).then(ok => {
     if (!ok) { showToast('복사하지 못했어요. 글을 길게 눌러 직접 복사해 주세요.', 'error'); return; }
-    const orig = btn.textContent;
-    btn.textContent = '복사됨 ✓';
+    const orig = btn.innerHTML;
+    btn.innerHTML = VUI.icon('check') + ' 복사됨';
     btn.style.borderColor = 'var(--success)';
     btn.style.color = 'var(--success)';
-    VUI.toast('프롬프트를 복사했어요 ✓', 'success');
+    VUI.toast('프롬프트를 복사했어요', 'success');
     setTimeout(() => {
-      btn.textContent = orig;
+      btn.innerHTML = orig;
       btn.style.borderColor = '';
       btn.style.color = '';
     }, 1600);
@@ -1092,14 +1122,14 @@ function renderDeckView() {
       <div class="card-row-front">${esc(c.front)}</div>
       <div class="card-row-back">${esc(c.back)}</div>
       <div class="card-row-actions">
-        <button class="fd-btn-icon" onclick="moveCard('${esc(c.id)}',-1)" title="위로" aria-label="${esc(c.front)} 위로" ${i === 0 ? 'disabled' : ''}>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        <button class="fd-btn-icon fd-btn-move" onclick="moveCard('${esc(c.id)}',-1)" title="위로" aria-label="${esc(c.front)} 위로" ${i === 0 ? 'disabled' : ''}>
+          ${VUI.icon('chevron-up')}
         </button>
-        <button class="fd-btn-icon" onclick="moveCard('${esc(c.id)}',1)" title="아래로" aria-label="${esc(c.front)} 아래로" ${i === n - 1 ? 'disabled' : ''}>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        <button class="fd-btn-icon fd-btn-move" onclick="moveCard('${esc(c.id)}',1)" title="아래로" aria-label="${esc(c.front)} 아래로" ${i === n - 1 ? 'disabled' : ''}>
+          ${VUI.icon('chevron-down')}
         </button>
         <button class="fd-btn-icon" onclick="deleteCard('${esc(c.id)}')" title="삭제" aria-label="${esc(c.front)} 삭제">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          ${VUI.icon('trash-2')}
         </button>
       </div>
     </div>`).join('');
@@ -1109,7 +1139,12 @@ function addSingleCard() {
   if (viewOnlyData) return;
   const front = document.getElementById('inp-front').value.trim();
   const back  = document.getElementById('inp-back').value.trim();
-  if (!front || !back) return;
+  if (!front && !back) return;
+  if (!front || !back) {
+    showToast(front ? '뒷면(답)도 적어 주세요.' : '앞면(질문)도 적어 주세요.', 'error');
+    document.getElementById(front ? 'inp-back' : 'inp-front').focus();
+    return;
+  }
   const data = getData();
   const deck = data.decks.find(d => d.id === currentDeckId);
   deck.cards.push({ id: uid(), front, back, mastered: false, passCount: 0, failCount: 0 });
@@ -1128,9 +1163,25 @@ function deleteCard(cardId) {
   if (viewOnlyData) return;
   const data = getData();
   const deck = data.decks.find(d => d.id === currentDeckId);
-  deck.cards = deck.cards.filter(c => c.id !== cardId);
+  if (!deck) return;
+  const idx = deck.cards.findIndex(c => c.id === cardId);
+  if (idx < 0) return;
+  const [removed] = deck.cards.splice(idx, 1);
+  const deckId = deck.id;
   saveData(data);
   renderDeckView();
+  showToast(`"${removed.front}" 카드를 지웠어요.`, {
+    duration: 7000,
+    action: { label: '되돌리기', onClick: () => {
+      const d = getData();
+      const dk = d.decks.find(x => x.id === deckId);
+      if (!dk || dk.cards.some(c => c.id === removed.id)) return;
+      dk.cards.splice(Math.min(idx, dk.cards.length), 0, removed);
+      saveData(d);
+      if (currentView === 'deck' && currentDeckId === deckId) renderDeckView();
+      showToast('카드를 되살렸어요.');
+    } },
+  });
 }
 
 function toggleBulk() {
@@ -1142,7 +1193,28 @@ function toggleBulk() {
   if (open) document.getElementById('bulk-input').focus();
 }
 
-function clearBulk() { document.getElementById('bulk-input').value = ''; }
+function clearBulk() {
+  const ta = document.getElementById('bulk-input');
+  const prev = ta.value;
+  if (!prev.trim()) return;
+  ta.value = '';
+  showToast('입력 칸을 비웠어요.', {
+    duration: 7000,
+    action: { label: '되돌리기', onClick: () => { ta.value = prev; ta.focus(); } },
+  });
+}
+
+// 일괄 입력 해석: '앞면 :: 뒷면' 한 줄 = 카드 한 장. 형식이 틀리거나 한쪽이 빈 줄은 bad로 모음
+function parseBulk(raw) {
+  const pairs = [], bad = [];
+  raw.split('\n').map(l => l.trim()).filter(Boolean).forEach(l => {
+    const sep = l.indexOf('::');
+    const front = sep === -1 ? '' : l.slice(0, sep).trim();
+    const back  = sep === -1 ? '' : l.slice(sep + 2).trim();
+    if (front && back) pairs.push({ front, back }); else bad.push(l);
+  });
+  return { pairs, bad };
+}
 
 async function recommendCardsWithAi() {
   const deck = getActiveDeck();
@@ -1162,8 +1234,18 @@ async function recommendCardsWithAi() {
       throw new Error('AI가 추천을 만들지 못했어요. 잠시 후 다시 해 주세요.');
     }
     const textarea = document.getElementById('bulk-input');
+    const prev = textarea.value;
+    const count = parseBulk(data.recommendation).pairs.length;
     textarea.value = data.recommendation;
-    showToast('AI가 단어 10개를 추천했어요!', 'success');
+    const msg = count
+      ? `AI가 카드 ${count}장을 추천했어요. 살펴보고 '일괄 추가'를 눌러 주세요.`
+      : 'AI 추천을 입력 칸에 넣었어요. 형식을 확인해 주세요.';
+    if (prev.trim()) {
+      // 적어 두었던 내용을 덮어썼으면 되돌릴 수 있게
+      showToast(msg, { duration: 8000, action: { label: '되돌리기', onClick: () => { textarea.value = prev; } } });
+    } else {
+      showToast(msg, count ? 'success' : undefined);
+    }
   } catch (e) {
     if (e.code !== 'abort') showToast(e.message || 'AI 추천에 실패했어요.', 'error');
   } finally {
@@ -1172,17 +1254,19 @@ async function recommendCardsWithAi() {
   }
 }
 
-function createDeckWithAiDirectly() {
-  const topic = prompt("어떤 주제로 카드 덱을 만들까요?\n(예: 초등 필수 영단어, 조선시대 왕, 화학 원소 기호)");
+async function createDeckWithAiDirectly() {
+  // 프롬프트 창을 먼저 닫고(포커스 가두기 겹침 방지) 앱 안 입력 창을 띄움
+  closeAiPromptModal();
+  const topic = await VUI.prompt('어떤 주제로 카드 덱을 만들까요?\nAI가 카드를 추천해 줘요.', {
+    title: 'AI로 직접 만들기', ok: '만들기',
+    placeholder: '예) 초등 3학년 영어 단어, 조선의 왕, 우리 몸의 기관',
+  });
   if (!topic || !topic.trim()) return;
 
   const data = getData();
-  const newDeck = { id: uid(), name: topic.trim(), createdAt: Date.now(), lastStudied: null, cards: [] };
+  const newDeck = { id: uid(), name: topic.trim().slice(0, 40), createdAt: Date.now(), lastStudied: null, cards: [] };
   data.decks.push(newDeck);
   saveData(data);
-
-  // 모달 닫기
-  closeAiPromptModal();
 
   // 신규 생성된 덱 편집 화면 열기
   openDeck(newDeck.id);
@@ -1202,22 +1286,31 @@ function createDeckWithAiDirectly() {
 
 function addBulkCards() {
   if (viewOnlyData) return;
-  const raw = document.getElementById('bulk-input').value;
-  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
-  const pairs = lines.map(l => {
-    const sep = l.indexOf('::');
-    if (sep === -1) return null;
-    return { front: l.slice(0, sep).trim(), back: l.slice(sep + 2).trim() };
-  }).filter(p => p && p.front && p.back);
-  if (!pairs.length) return;
+  const textarea = document.getElementById('bulk-input');
+  if (!textarea.value.trim()) return;
+  const { pairs, bad } = parseBulk(textarea.value);
+  if (!pairs.length) {
+    showToast("형식에 맞는 줄이 없어요.\n한 줄에 '앞면 :: 뒷면'처럼 적어 주세요.", 'error');
+    textarea.focus();
+    return;
+  }
 
   const data = getData();
   const deck = data.decks.find(d => d.id === currentDeckId);
+  if (!deck) return;
   pairs.forEach(p => deck.cards.push({ id: uid(), front: p.front, back: p.back, mastered: false, passCount: 0, failCount: 0 }));
   saveData(data);
-  document.getElementById('bulk-input').value = '';
-  toggleBulk();
   renderDeckView();
+  if (bad.length) {
+    // 건너뛴 줄은 입력 칸에 남겨 고칠 수 있게
+    textarea.value = bad.join('\n');
+    showToast(`카드 ${pairs.length}장을 추가했어요. ${bad.length}줄 건너뜀\n('앞면 :: 뒷면' 형식이 아니거나 한쪽이 비어 있어요. 입력 칸에 남겨 두었어요.)`, { duration: 7000 });
+    textarea.focus();
+  } else {
+    textarea.value = '';
+    toggleBulk();
+    showToast(`카드 ${pairs.length}장을 추가했어요.`, 'success');
+  }
 }
 
 function setStudyOpt(opt) {
@@ -1231,7 +1324,7 @@ function setStudyOpt(opt) {
 function toggleShuffle() {
   shuffleOn = !shuffleOn;
   const btn = document.getElementById('shuffle-toggle');
-  btn.textContent = shuffleOn ? 'ON' : 'OFF';
+  btn.textContent = shuffleOn ? '켬' : '끔';
   btn.classList.toggle('active', shuffleOn);
   btn.setAttribute('aria-pressed', String(shuffleOn));
 }
@@ -1250,7 +1343,7 @@ function startStudy() {
 
   let cards = [...deck.cards];
   if (studyOpt === 'unknown') cards = cards.filter(c => !c.mastered);
-  if (!cards.length) { alert('모르는 카드가 없어요! 전체로 전환합니다.'); cards = [...deck.cards]; }
+  if (!cards.length) { showToast('모르는 카드가 없어요. 전체 카드로 학습할게요.'); cards = [...deck.cards]; }
   if (shuffleOn) cards = cards.sort(() => Math.random() - 0.5);
 
   studyQueue = cards;
@@ -1268,8 +1361,8 @@ function showStudyCard() {
   const card = studyQueue[studyIndex];
   const total = studyQueue.length;
 
-  document.getElementById('flip-front-text').textContent = card.front;
-  document.getElementById('flip-back-text').textContent = card.back;
+  setFlipText(document.getElementById('flip-front-text'), card.front);
+  setFlipText(document.getElementById('flip-back-text'), card.back);
   document.getElementById('study-counter').textContent = `${studyIndex + 1} / ${total}`;
   document.getElementById('study-progress-fill').style.width = `${(studyIndex / total) * 100}%`;
 
@@ -1283,6 +1376,17 @@ function showStudyCard() {
   document.getElementById('study-actions').classList.remove('show');
   document.getElementById('flip-scene').setAttribute('aria-label', '카드 뒤집기');
   announce(`${studyIndex + 1}번째 카드 (${total}장 중). 앞면: ${card.front}`);
+}
+
+// 글이 길수록 글자를 줄임(CSS --len). 그래도 넘치면 카드 안에서 스크롤
+function setFlipText(el, text) {
+  const n = String(text).length;
+  el.textContent = text;
+  el.scrollTop = 0;
+  el.classList.remove('len-m', 'len-l', 'len-xl');
+  if (n > 140) el.classList.add('len-xl');
+  else if (n > 60) el.classList.add('len-l');
+  else if (n > 20) el.classList.add('len-m');
 }
 
 // 스크린리더: 카드 앞면·뒷면을 읽어 줌
@@ -1395,13 +1499,14 @@ function showResult() {
   const fail  = studyResults.fail;
   const pct   = total ? Math.round(pass / total * 100) : 0;
 
+  // @icons party-popper smile dumbbell book-open
   let icon, title, sub;
-  if (pct === 100) { icon = '🎉'; title = '완벽해요!'; sub = '모든 카드를 맞혔어요.'; }
-  else if (pct >= 70) { icon = '😊'; title = '잘 했어요!'; sub = `${fail}개만 더 복습하면 완벽해요.`; }
-  else if (pct >= 40) { icon = '💪'; title = '조금 더 분발!'; sub = '틀린 카드를 다시 복습해 보세요.'; }
-  else { icon = '📚'; title = '더 연습이 필요해요'; sub = '포기하지 말고 다시 도전해 보세요!'; }
+  if (pct === 100) { icon = 'party-popper'; title = '완벽해요!'; sub = '모든 카드를 알았어요.'; }
+  else if (pct >= 70) { icon = 'smile'; title = '잘 했어요!'; sub = `${fail}장만 더 복습하면 완벽해요.`; }
+  else if (pct >= 40) { icon = 'dumbbell'; title = '조금 더 힘내요!'; sub = '모르는 카드를 다시 복습해 보세요.'; }
+  else { icon = 'book-open'; title = '더 연습이 필요해요'; sub = '포기하지 말고 다시 도전해 보세요!'; }
 
-  document.getElementById('result-icon').textContent = icon;
+  document.getElementById('result-icon').innerHTML = VUI.icon(icon);
   document.getElementById('result-title').textContent = title;
   document.getElementById('result-sub').textContent = sub;
   document.getElementById('result-stats').innerHTML = `
@@ -1436,9 +1541,9 @@ function esc(str) {
 // ── 페이지 링크 공유 (우상단 공유 버튼) ──
 function shareCurrentPage() {
   const url = location.href;
-  const copy = () => VUI.share.copyOrShow(url, { title: '🔗 Flash Deck 링크' });
+  const copy = () => VUI.share.copyOrShow(url, { title: '플래시 카드 링크' });
   if (navigator.share) {
-    navigator.share({ title: 'Flash Deck', url }).catch(err => { if (!err || err.name !== 'AbortError') copy(); });
+    navigator.share({ title: '플래시 카드', url }).catch(err => { if (!err || err.name !== 'AbortError') copy(); });
   } else {
     copy();
   }
@@ -1594,7 +1699,7 @@ async function doShare(permission) {
   try {
     await Promise.race([loadQR(), new Promise(r => setTimeout(r, 1500))]);
     await VUI.share.link(longURL, {
-      title: '🔗 덱 공유',
+      title: '덱 공유',
       desc: permission === 'view' ? '받는 사람은 저장하지 않고 학습만 할 수 있어요.' : '받는 사람이 자기 덱으로 복제할 수 있어요.',
     });
   } finally { if (btn) btn.disabled = false; }
@@ -1668,16 +1773,11 @@ function cloneAndOpen() {
       }
       return;
     }
-    showToast('공유 링크를 읽을 수 없습니다.');
+    showToast('공유 링크를 읽을 수 없어요. 링크가 잘렸는지 확인해 주세요.', 'error');
     return;
   }
+  // 덱이 없으면 홈의 빈 상태 카드가 '새 덱 만들기'·'AI로 카드 만들기'를 안내(창을 자동으로 띄우지 않음)
   renderHome();
-
-  // 초기 데이터가 없는 경우 'AI로 카드 만들기' 안내 모달 띄우기
-  const data = getData();
-  if (!data.decks || data.decks.length === 0) {
-    setTimeout(openAiPromptModal, 300);
-  }
 })();
 
 // 선택 동기화: 헤더 '동기화' 버튼 + 코드 패널 (코드 연결 시 덱을 기기 간 이어쓰기)

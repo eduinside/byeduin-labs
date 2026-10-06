@@ -12,6 +12,8 @@
   const SK = window.SimKit;
   const VUI = window.VUI;
   const $ = (id) => document.getElementById(id);
+  // lucide 스프라이트 아이콘 — @icons eye eye-off lock sunrise moon flag target delete arrow-right
+  const ic = (n) => (SK && SK.icon ? SK.icon(n) : VUI ? VUI.icon(n) : "");
   const NS = "http://www.w3.org/2000/svg";
   const DAY = 86400, HALF = 43200;
 
@@ -55,6 +57,7 @@
     show: Object.assign({}, SHOW_DEFAULT[saved.unit], saved.show || {}),
     hideReading: false,
     mode: "play",
+    follow: false,   // 지금 시각 따라가기 중
   };
 
   /* ───── 시각 글 ───── */
@@ -262,8 +265,9 @@
   const screens = SK.screens({ focus: false });
   const main = makeClock($("clockA"), {
     label: "시계",
-    onChange: (t) => { state.t = t; renderReadout(); },
-    onRelease: (t) => { state.t = t; renderReadout(); },
+    // 바늘을 직접 끌거나 키보드로 돌리면 '지금 시각 따라가기'를 멈춘다
+    onChange: (t) => { stopFollow(); state.t = t; renderReadout(); },
+    onRelease: (t) => { stopFollow(); state.t = t; renderReadout(); },
   });
   const second = makeClock($("clockB"), { label: "끝난 시각 시계" });
 
@@ -281,7 +285,7 @@
     const p = parts(t);
     $("before").textContent = !hidden && state.unit !== "h30" && p.m >= 50 && !p.s ? "(" + ((p.h % 12) + 1) + "시 " + (60 - p.m) + "분 전)" : "";
     $("btnHide").setAttribute("aria-pressed", state.hideReading ? "true" : "false");
-    $("btnHide").textContent = state.hideReading ? "🙉" : "🙈";
+    $("btnHide").innerHTML = state.hideReading ? ic("eye") + "<span>글 보이기</span>" : ic("eye-off") + "<span>글 가리기</span>";
     $("daybar").hidden = !(state.show.dayBar && state.mode !== "mission");
     $("dayMark").style.left = (mod(t, DAY) / DAY) * 100 + "%";
     for (const b of document.querySelectorAll("#ampm [data-ampm]")) b.setAttribute("aria-pressed", (b.dataset.ampm === "pm") === p.pm ? "true" : "false");
@@ -327,7 +331,8 @@
       }
     }
     const chip = $("unitChip");
-    chip.textContent = UNITS[state.unit].u + " 단위" + (state.lock ? " 🔒" : "");
+    chip.textContent = UNITS[state.unit].u + " 단위";
+    if (state.lock) chip.insertAdjacentHTML("beforeend", ic("lock"));
     chip.disabled = state.lock;
     chip.title = state.lock ? "선생님이 정한 단위예요" : "단위 바꾸기";
     $("introUnits").hidden = state.lock;
@@ -345,7 +350,7 @@
     const changed = u !== state.unit;
     state.unit = u;
     if (changed) { state.show = Object.assign({}, SHOW_DEFAULT[u]); saved.show = null; }
-    state.t = snap(state.t, u);
+    state.t = state.follow ? nowT() : snap(state.t, u);
     saved.unit = u; persist();
     renderUnitGrids();
     renderSteps();
@@ -380,12 +385,14 @@
     for (const [d, label] of list) {
       const b = document.createElement("button");
       b.type = "button"; b.className = "ck-btn"; b.textContent = label;
-      b.addEventListener("click", () => { state.t = snap(state.t + d); drawMain(); if (SK.sound) SK.sound.play("move"); });
+      b.addEventListener("click", () => { stopFollow(); state.t = snap(state.t + d); drawMain(); if (SK.sound) SK.sound.play("move"); });
       g.appendChild(b);
     }
     const sm = stepButtons().find(([d]) => d > 0 && d < 3600) || [UNITS[state.unit].step, ""];
     $("bigMinusLbl").textContent = sm[1].replace("+", "");
     $("bigPlusLbl").textContent = sm[1].replace("+", "");
+    $("bigMinus").setAttribute("aria-label", sm[1].replace("+", "") + " 전으로");
+    $("bigPlus").setAttribute("aria-label", sm[1].replace("+", "") + " 뒤로");
   }
   function renderToggles() {
     for (const b of document.querySelectorAll(".tog[data-show]")) {
@@ -407,20 +414,63 @@
     const b = e.target.closest("[data-ampm]");
     if (!b) return;
     const pm = b.dataset.ampm === "pm";
-    if (parts(state.t).pm !== pm) state.t = mod(state.t + HALF, DAY);
+    if (parts(state.t).pm !== pm) { stopFollow(); state.t = mod(state.t + HALF, DAY); }
     drawMain();
   });
-  $("btnNow").addEventListener("click", () => {
+
+  /* ───── 지금 시각 따라가기 ─────
+     누르면 실제 시각을 계속 따라간다(초침이 보이면 1초마다, 아니면 분이 바뀔 때마다 — 단위에 맞춰 내림).
+     바늘을 끌거나·시각 버튼을 누르거나·단위/모드를 바꾸거나·다시 누르면 멈춘다. 탭이 숨겨지면 쉬었다가 돌아오면 다시 맞춘다. */
+  let followTimer = 0;
+  function nowT() {
     const d = new Date();
-    state.t = snap(d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() - (state.unit === "s1" ? 0 : (UNITS[state.unit].step / 2 - 0.5)));
+    const t = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+    // 단위 아래 자투리는 버림(예: 5분 단위에서 3:17 → 3:15). 1초 단위는 그대로
+    return state.unit === "s1" ? t : snap(t - (UNITS[state.unit].step / 2 - 0.5));
+  }
+  function followTick() {
+    if (!state.follow || main.drag) return;
+    const t = nowT();
+    if (t !== state.t) { state.t = t; drawMain(); }
+  }
+  function paintFollow() {
+    const b = $("btnNow");
+    b.setAttribute("aria-pressed", state.follow ? "true" : "false");
+    $("btnNowLbl").textContent = state.follow ? "지금 시각 따라가는 중 (누르면 멈춤)" : "지금 시각 따라가기";
+  }
+  function runFollowTimer() {
+    clearInterval(followTimer); followTimer = 0;
+    if (!state.follow || document.hidden) return;
+    // 초침이 없어도 1초마다 확인한다(분이 바뀌는 순간을 놓치지 않게) — 바늘은 값이 바뀔 때만 다시 그림
+    followTimer = setInterval(followTick, 1000);
+  }
+  function startFollow() {
+    if (state.mode === "mission") return;
+    state.follow = true;
+    state.t = nowT();
     drawMain();
+    paintFollow();
+    runFollowTimer();
+  }
+  function stopFollow() {
+    if (!state.follow) return;
+    state.follow = false;
+    clearInterval(followTimer); followTimer = 0;
+    paintFollow();
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (!state.follow) return;
+    if (document.hidden) { clearInterval(followTimer); followTimer = 0; }
+    else { followTick(); runFollowTimer(); }
   });
+  $("btnNow").addEventListener("click", () => { if (state.follow) stopFollow(); else startFollow(); });
   $("btnSay").addEventListener("click", () => SK.speak(fmt(state.t, state.unit, { ampm: state.show.dayBar })));
   $("btnHide").addEventListener("click", () => { state.hideReading = !state.hideReading; renderReadout(); });
 
   /* ───── 모드 ───── */
   let bigReveal = false;
   function setMode(m) {
+    if (m === "mission") stopFollow();   // 미션 중에는 실제 시각을 따라가지 않음(문제 시계를 덮지 않게)
     if (state.mode === "mission" && m !== "mission" && mc) mc.stop();
     state.mode = m;
     document.body.classList.toggle("big", m === "big");
@@ -433,7 +483,7 @@
     if (m !== "mission") {
       $("qBanner").hidden = true; $("boxB").hidden = true; $("capA").hidden = true;
       main.setInteractive(true);
-      bigReveal = false; $("bigReveal").setAttribute("aria-pressed", "false"); $("bigReveal").textContent = "👁 정답 보기";
+      bigReveal = false; setReveal(false);
       drawMain();
     } else {
       if (!mc) buildMissions();
@@ -445,23 +495,28 @@
   document.querySelector(".mode-tabs").addEventListener("click", (e) => { const b = e.target.closest(".mode-tab"); if (b) setMode(b.dataset.mode); });
 
   /* ───── 큰 시계 ───── */
-  function bigStep(sign) { const sm = stepButtons().find(([d]) => d > 0 && d < 3600); state.t = snap(state.t + sign * (sm ? sm[0] : 3600)); drawMain(); }
+  // 정답 보기 버튼 모양(아이콘+글자). 링크 공유는 위쪽 공유 버튼이 같은 일을 해서 큰 시계 도구줄에서 뺐다.
+  function setReveal(on) {
+    const b = $("bigReveal");
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+    b.innerHTML = on ? ic("eye-off") + "가리기" : ic("eye") + "정답 보기";
+  }
+  function bigStep(sign) { stopFollow(); const sm = stepButtons().find(([d]) => d > 0 && d < 3600); state.t = snap(state.t + sign * (sm ? sm[0] : 3600)); drawMain(); }
   $("bigMinus").addEventListener("click", () => bigStep(-1));
   $("bigPlus").addEventListener("click", () => bigStep(1));
   $("bigRandom").addEventListener("click", () => {
+    stopFollow();
     state.t = randTime(state.unit) + (state.show.dayBar && Math.random() < 0.5 ? HALF : 0);
-    bigReveal = false; $("bigReveal").setAttribute("aria-pressed", "false"); $("bigReveal").textContent = "👁 정답 보기";
+    bigReveal = false; setReveal(false);
     drawMain();
     if (SK.sound) SK.sound.play("star");
   });
   $("bigReveal").addEventListener("click", () => {
     bigReveal = !bigReveal;
-    $("bigReveal").setAttribute("aria-pressed", bigReveal ? "true" : "false");
-    $("bigReveal").textContent = bigReveal ? "🙈 가리기" : "👁 정답 보기";
+    setReveal(bigReveal);
     renderReadout();
     if (bigReveal) SK.speak(fmt(state.t, state.unit, { ampm: state.show.dayBar }));
   });
-  $("bigShare").addEventListener("click", () => window.shareCurrentPage && window.shareCurrentPage());
   $("bigExit").addEventListener("click", () => setMode("play"));
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.mode === "big" && !document.querySelector(".ck-modal.open")) setMode("play"); });
 
@@ -583,7 +638,7 @@
       const t = mod(h, 12) * 3600 + m * 60 + (ev.pm ? HALF : 0);
       const label = fmt(t, u);
       return { kind: "ampm", t, ev, text: ev.e + " " + ev.text + ". 시계는 " + ieyo(label) + ". 오전일까요, 오후일까요?", say: ev.text + ". 시계는 " + ieyo(label) + ". 오전일까요, 오후일까요?",
-        answer: { type: "opts", big: true, opts: [{ label: "🌅 오전", ok: !ev.pm }, { label: "🌙 오후", ok: ev.pm }] } };
+        answer: { type: "opts", big: true, opts: [{ label: "오전", icon: "sunrise", ok: !ev.pm }, { label: "오후", icon: "moon", ok: ev.pm }] } };
     }
     // 더하고 빼기
     const base = randTime(u);
@@ -634,7 +689,7 @@
     renderSteps2();
     $("capA").hidden = q.kind !== "elapsed";
     $("boxB").hidden = q.kind !== "elapsed";
-    if (q.kind === "elapsed") { $("capA").textContent = "🏁 시작"; $("capB").textContent = "🎯 끝"; }
+    if (q.kind === "elapsed") { $("capA").innerHTML = ic("flag") + "시작"; $("capB").innerHTML = ic("target") + "끝"; }
     main.setInteractive(q.kind === "set" || q.kind === "calc");
     const st = q.kind === "set" ? 0 : q.t;
     main.draw(st, missionShow());
@@ -694,6 +749,7 @@
     const kp = document.createElement("div"); kp.className = "keypad";
     ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "⌫", "다음 칸"].forEach((k) => {
       const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = k;
+      if (k === "⌫") { b.innerHTML = ic("delete"); b.setAttribute("aria-label", "한 글자 지우기"); }
       if (k === "다음 칸") b.style.gridColumn = "span 4";
       b.addEventListener("click", () => {
         const keys = Object.keys(answerState.pads);
@@ -721,6 +777,7 @@
       const g = document.createElement("div"); g.className = "opts";
       a.opts.forEach((o, ix) => {
         const b = document.createElement("button"); b.type = "button"; b.className = "opt" + (a.big ? " big" : ""); b.textContent = o.label;
+        if (o.icon) b.insertAdjacentHTML("afterbegin", ic(o.icon));
         b.addEventListener("click", () => {
           if (mq.answered) return;
           answerState.opt = ix;
@@ -733,11 +790,11 @@
       $("mCheck").hidden = true;
       return;
     }
-    if (a.type === "set") { box.appendChild(Object.assign(document.createElement("p"), { className: "hint-text", textContent: "👉 시계의 바늘을 손가락으로 끌어 돌린 뒤 ‘확인’을 눌러요. 분침을 돌리면 시침도 따라 움직여요." })); return; }
+    if (a.type === "set") { box.appendChild(Object.assign(document.createElement("p"), { className: "hint-text", textContent: "시계의 바늘을 손가락으로 끌어 돌린 뒤 ‘확인하기’를 눌러요. 분침을 돌리면 시침도 따라 움직여요." })); return; }
     const fields = document.createElement("div"); fields.className = "fields";
     const u = state.unit;
     if (a.type === "time") {
-      if (q.kind === "calc") fields.appendChild(Object.assign(document.createElement("p"), { className: "hint-text", textContent: "👉 시계를 돌려 보며 생각해도 좋아요." }));
+      if (q.kind === "calc") fields.appendChild(Object.assign(document.createElement("p"), { className: "hint-text", textContent: "시계를 돌려 보며 생각해도 좋아요." }));
       fields.appendChild(chipRow("시", "h", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]));
       const mv = minuteValues();
       if (mv) fields.appendChild(chipRow("분", "m", mv));
@@ -803,7 +860,7 @@
     if (r.ok) {
       mq.answered = true;
       mq.res[mq.n] = mq.attempt === 0 ? "ok" : "late";
-      fb.show("ok", pick(["맞았어요! 👏", "정확해요! 🎉", "좋아요! 시계 박사네요 ⭐"]) + " " + ieyo(answerText(q)) + ".");
+      fb.show("ok", pick(["맞았어요!", "정확해요!", "좋아요! 시계 박사네요!"]) + " " + ieyo(answerText(q)) + ".");
       if (SK.sound) SK.sound.play("done");
       markOpts(q, true);
       if (q.kind === "ampm") { main.draw(q.t, Object.assign(missionShow(), {})); }
@@ -848,7 +905,7 @@
     // 미션 끝
     const first = mq.res.filter((x) => x === "ok").length;
     const stars = first >= 3 ? 3 : first === 2 ? 2 : 1;
-    const msg = (stars === 3 ? "🌟 세 문제 모두 한 번에 맞혔어요!" : "미션 완료! 처음에 맞힌 문제 " + first + "개") + " " + SK.stars.text(stars, 3);
+    const msg = (stars === 3 ? "세 문제 모두 한 번에 맞혔어요!" : "미션 완료! 처음에 맞힌 문제 " + first + "개") + " " + SK.stars.text(stars, 3);
     mc.complete({ stars, message: msg, tone: "ok" });
     if (SK.sound) SK.sound.play("star");
     const next = mc.firstIncomplete();
@@ -882,6 +939,8 @@
       grid.appendChild(c);
     });
     $("resultSub").textContent = UNITS[state.unit].grade + " · " + UNITS[state.unit].u + " 단위 — 별 " + total + " / " + MISSIONS.length * 3;
+    // 잠금 링크(선생님이 단위를 정함)에서는 단위를 바꿀 수 없으니 "다른 단위 도전"을 숨김
+    $("btnOtherUnit").hidden = state.lock;
     screens.show("screenResult");
     document.body.classList.remove("big");
   }

@@ -15,6 +15,26 @@ function showToast(msg, type) {
   if (window.VUI) VUI.toast(msg, type);
   else console.log('[file-tools]', msg);
 }
+// 아이콘(공용 스프라이트). VUI가 없으면 빈 문자열
+// @icons x circle-check triangle-alert circle-x chart-column
+function ic(name) { return window.VUI ? VUI.icon(name) : ''; }
+
+// 목표 용량 표시: MB 소수 둘째 자리
+function fmtMB(v) { return (+v).toFixed(2); }
+// 화질 0.75 → "75%"
+function fmtQ(q) { return Math.round(q * 100) + '%'; }
+
+// 파일 확장자로 탭별 지원 여부 판단
+const SCAN_EXTS = ['pdf', 'tif', 'tiff', 'jpg', 'jpeg', 'png'];
+function extOf(f) { return f.name.split('.').pop().toLowerCase(); }
+function isScanFile(f) { return SCAN_EXTS.includes(extOf(f)); }
+function isPptxFile(f) { return extOf(f) === 'pptx'; }
+// 못 쓰는 파일을 뺐다고 알림(조용히 빈 결과를 만들지 않게)
+function reportSkipped(skipped, hint) {
+  if (!skipped.length) return;
+  const names = skipped.slice(0, 2).map(f => f.name).join(', ') + (skipped.length > 2 ? ` 외 ${skipped.length - 2}개` : '');
+  showToast(`${skipped.length}개는 여기서 줄일 수 없는 파일이라 뺐어요: ${names}${hint ? '\n' + hint : ''}`, 'error');
+}
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -186,21 +206,25 @@ async function searchBestUnderTarget(ladder, targetBytes, evaluate) {
 }
 
 // ─────────────── Tab 1: 스캔 최적화 ───────────────
-const scanState = { files: [], format: 'pdf' };
+// userTarget: 사용자가 슬라이더로 정한 목표(MB). 파일을 더해도 이 값을 지킨다(범위 밖이면 범위 안으로만 맞춤)
+const scanState = { files: [], format: 'pdf', userTarget: null };
 
 bindDropzone(
   document.getElementById('scanDrop'),
   document.getElementById('scanInput'),
   (files) => {
     // PPTX 파일만 들어오면 PPTX 탭으로 이동
-    if (files.every(f => f.name.toLowerCase().endsWith('.pptx'))) {
+    if (files.every(isPptxFile)) {
       switchTab('pptx');
-      pptxState.file = files[0];
-      renderPptxList();
-      scanPptxMedia();
+      setPptxFile(files[0]);
+      if (files.length > 1) showToast('PPTX는 한 번에 한 파일만 줄일 수 있어요. 첫 파일만 넣었어요.');
       return;
     }
-    scanState.files.push(...files);
+    const ok = files.filter(isScanFile);
+    const skipped = files.filter(f => !isScanFile(f));
+    reportSkipped(skipped, skipped.some(isPptxFile) ? 'PPTX는 ‘PPTX 줄이기’ 탭에서 넣어 주세요.' : '');
+    if (!ok.length) return;
+    scanState.files.push(...ok);
     renderScanList();
   }
 );
@@ -212,59 +236,84 @@ document.querySelectorAll('#scanFormatToggle button').forEach(btn => {
       b.classList.toggle('active', b === btn);
       b.setAttribute('aria-pressed', String(b === btn));
     });
+    updateMergeNote();
     updateScanEstimate();
   });
 });
 
 document.getElementById('scanTargetMB').addEventListener('input', () => {
   const v = +document.getElementById('scanTargetMB').value;
-  document.getElementById('scanTargetMBVal').textContent = v.toFixed(1);
+  scanState.userTarget = v;
+  document.getElementById('scanTargetMBVal').textContent = fmtMB(v);
   updateScanEstimate();
 });
+
+// 여러 파일을 넣었을 때 결과가 어떻게 나오는지 안내
+function updateMergeNote() {
+  const n = scanState.files.length;
+  const el = document.getElementById('scanMergeNote');
+  if (!el) return;
+  if (n < 2) {
+    el.textContent = scanState.format === 'pdf' ? '' : '여러 페이지(PDF·TIFF)면 페이지마다 한 장씩 ZIP 파일 하나로 묶어요.';
+    return;
+  }
+  el.textContent = scanState.format === 'pdf'
+    ? `파일 ${n}개를 순서대로 PDF 한 개로 합쳐요(파일 이름은 첫 파일 기준).`
+    : `파일 ${n}개의 모든 페이지를 한 장씩 ${scanState.format.toUpperCase()}로 만들어 ZIP 파일 하나로 묶어요.`;
+}
 
 function renderScanList() {
   const el = document.getElementById('scanFileList');
   el.innerHTML = scanState.files.map((f, i) =>
     `<div class="file-list-item">
-       <span>${escHtml(f.name)}</span>
-       <span class="meta">${fmtBytes(f.size)} <button type="button" class="file-list-remove" onclick="removeScanFile(${i})" title="제거" aria-label="${escHtml(f.name)} 목록에서 빼기">×</button></span>
+       <span class="name">${escHtml(f.name)}</span>
+       <span class="meta">${fmtBytes(f.size)} <button type="button" class="file-list-remove" onclick="removeScanFile(${i})" title="목록에서 빼기" aria-label="${escHtml(f.name)} 목록에서 빼기">${ic('x')}</button></span>
      </div>`).join('');
   const grid = document.getElementById('scanOptionsGrid');
   if (scanState.files.length > 0) {
     grid.style.display = 'grid';
-    // 동적 슬라이더 범위 설정
+    // 슬라이더 범위: 최소 = 합계의 2.5%(0.05MB 아래로는 안 내림), 최대 = 합계
     const totalSize = scanState.files.reduce((s, f) => s + f.size, 0);
-    const minMB = (totalSize * 0.025) / (1024 * 1024);
-    const maxMB = totalSize / (1024 * 1024);
+    const minMB = Math.max(0.05, (totalSize * 0.025) / (1024 * 1024));
+    const maxMB = Math.max(minMB, totalSize / (1024 * 1024));
     const slider = document.getElementById('scanTargetMB');
-    slider.min = minMB.toFixed(1);
-    slider.max = maxMB.toFixed(1);
-    slider.value = Math.min(1.0, maxMB).toFixed(1);
-    document.getElementById('scanTargetMBVal').textContent = slider.value;
+    slider.min = fmtMB(minMB);
+    slider.max = fmtMB(maxMB);
+    const want = scanState.userTarget != null ? scanState.userTarget : 1.0;
+    slider.value = fmtMB(Math.min(Math.max(want, minMB), maxMB));
+    document.getElementById('scanTargetMBVal').textContent = fmtMB(slider.value);
+    document.getElementById('scanTargetMin').textContent = '최소 ' + fmtBytes(minMB * 1024 * 1024);
+    document.getElementById('scanTargetMax').textContent = '최대 ' + fmtBytes(maxMB * 1024 * 1024);
   } else {
     grid.style.display = 'none';
   }
   document.getElementById('scanRunBtn').disabled = scanState.files.length === 0;
+  updateMergeNote();
   updateScanEstimate();
 }
 
 window.removeScanFile = (i) => { scanState.files.splice(i, 1); renderScanList(); };
 window.clearScan = () => {
   scanState.files = [];
+  scanState.userTarget = null;
   renderScanList();
   document.getElementById('scanResult').style.display = 'none';
   document.getElementById('scanProgress').style.display = 'none';
 };
 
+// 페이지 수는 파일마다 한 번만 센다(슬라이더를 움직일 때마다 PDF를 다시 읽지 않게)
+const _pageCountCache = new WeakMap();
 async function countPagesEstimate() {
   let pages = 0;
   for (const f of scanState.files) {
     const ext = f.name.split('.').pop().toLowerCase();
     if (ext === 'pdf') {
+      if (_pageCountCache.has(f)) { pages += _pageCountCache.get(f); continue; }
       try {
         await loadLib('pdfjs');
         const buf = await f.arrayBuffer();
         const doc = await pdfjsLib.getDocument({ data: buf }).promise;
+        _pageCountCache.set(f, doc.numPages);
         pages += doc.numPages;
         doc.destroy();
       } catch { pages += 1; }
@@ -308,8 +357,8 @@ function updateScanEstimate() {
     const est = bytesPerPage * pages * (scanState.format === 'pdf' ? 1.05 : 1);
     document.getElementById('scanEstimate').style.display = 'block';
     document.getElementById('scanEstimate').innerHTML =
-      `📊 입력 ${scanState.files.length}개 · ${pages}페이지 · 예상 출력 <strong>≈ ${fmtBytes(est)}</strong> ` +
-      `<span style="color:var(--fg-muted)">(품질 ${estQ.toFixed(2)}, ${estW}px · 목표 ${fmtBytes(targetBytes)})</span>`;
+      `${ic('chart-column')} 파일 ${scanState.files.length}개 · ${pages}페이지 · 예상 결과 <strong>약 ${fmtBytes(est)}</strong> ` +
+      `<span style="color:var(--fg-muted)">(화질 ${fmtQ(estQ)}, 폭 ${estW}px · 목표 ${fmtBytes(targetBytes)})</span>`;
   }, 200);
 }
 
@@ -466,10 +515,10 @@ async function runScan() {
     else needs.push('jszip');
     await loadLibs(needs);
 
-    setScanProgress(5, '페이지 라스터화 중…');
+    setScanProgress(5, '페이지를 그림으로 바꾸는 중…');
 
     const found = await searchBestUnderTarget(ladder, targetBytes, async ({ w, q }, n, maxSteps) => {
-      setScanProgress(5 + ((n - 1) / maxSteps) * 90, `시도 ${n}/${maxSteps} — ${w}px${fmt === 'png' ? '' : ` / 품질 ${q.toFixed(2)}`}`);
+      setScanProgress(5 + ((n - 1) / maxSteps) * 90, `알맞은 크기 찾는 중 (${n}/${maxSteps}번째) — 폭 ${w}px${fmt === 'png' ? '' : ` · 화질 ${fmtQ(q)}`}`);
       const pages = await getPages(w);
       const result = fmt === 'pdf'
         ? (await buildPdf(pages, q))
@@ -481,33 +530,35 @@ async function runScan() {
       return blob;
     });
 
-    setScanProgress(100, '완료');
+    setScanProgress(100, '끝났어요');
 
     const bestBlob = found.blob, bestParams = found.params, reached = found.reached;
     const ext = fmt === 'pdf' ? 'pdf' : (bestBlob._ext || 'jpg');
     const baseName = scanState.files[0].name.replace(/\.[^.]+$/, '');
-    const fname = `${baseName}_optimized.${ext}`;
+    const more = scanState.files.length > 1 ? `_외${scanState.files.length - 1}개` : '';
+    const fname = `${baseName}${more}_optimized.${ext}`;
     downloadBlob(bestBlob, fname);
 
     const compressionRatio = ((1 - bestBlob.size / origTotal) * 100).toFixed(1);
     const r = document.getElementById('scanResult');
     r.className = 'result' + (reached ? '' : ' warning');
     r.style.display = 'block';
-    r.innerHTML = `✅ <strong>${escHtml(fname)}</strong> 다운로드<br>
-      원본 ${fmtBytes(origTotal)} → 출력 ${fmtBytes(bestBlob.size)} (${compressionRatio}% 감소)<br>
-      적용 옵션: ${bestParams.w}px${fmt === 'png' ? '' : ` / 품질 ${bestParams.q.toFixed(2)}`}<br>
-      ${reached
-        ? '✓ 목표 용량 안에서 가장 좋은 화질로 만들었어요'
-        : '⚠️ 가장 작게 줄여도 목표 용량보다 커요. 시도한 것 중 가장 작은 파일을 내려받았어요. 목표 용량을 조금 올리거나 JPG/PDF 형식을 골라 보세요.'}`;
+    r.innerHTML = `<span class="res-head">${ic(reached ? 'circle-check' : 'triangle-alert')} ${escHtml(fname)}</span> 내려받기를 시작했어요<br>
+      원본 ${fmtBytes(origTotal)} → 결과 ${fmtBytes(bestBlob.size)} (${compressionRatio}% 줄어듦)<br>
+      적용: 폭 ${bestParams.w}px${fmt === 'png' ? '' : ` · 화질 ${fmtQ(bestParams.q)}`}
+      <span class="res-note">${reached
+        ? '목표 용량 안에서 가장 좋은 화질로 만들었어요.'
+        : '가장 작게 줄여도 목표 용량보다 커요. 시도한 것 중 가장 작은 파일을 내려받았어요. 목표 용량을 조금 올리거나 JPG·PDF 형식을 골라 보세요.'}</span>`;
 
-    showToast(reached ? '변환 완료 ✓' : '목표 용량에는 못 미쳤어요', reached ? 'success' : undefined);
+    showToast(reached ? '다 만들었어요. 내려받기를 시작했어요.' : '목표 용량보다 큰 파일이 나왔어요. 결과 안내를 확인해 주세요.', reached ? 'success' : undefined);
   } catch (e) {
     console.error(e);
     const r = document.getElementById('scanResult');
     r.className = 'result error';
     r.style.display = 'block';
-    r.textContent = '❌ 변환 중 오류: ' + (e.message || e);
-    showToast('변환하지 못했어요', 'error');
+    r.innerHTML = `${ic('circle-x')} 만들지 못했어요: <span></span>`;
+    r.querySelector('span').textContent = e.message || String(e);
+    showToast('만들지 못했어요', 'error');
   } finally {
     for (const pages of rasterCache.values()) releasePages(pages);
     rasterCache.clear();
@@ -520,32 +571,40 @@ async function runScan() {
 window.runScan = runScan;
 
 // ─────────────── Tab 2: PPTX 압축 ───────────────
-const pptxState = { file: null, mediaInfo: null, minMB: 0.5, maxMB: 10 };
+// analyzing: 그림 목록을 살펴보는 중(실행 버튼 잠금). userTarget: 사용자가 정한 목표(MB)
+const pptxState = { file: null, mediaInfo: null, minMB: 0.05, maxMB: 10, analyzing: false, userTarget: null, seq: 0 };
+
+function setPptxFile(file) {
+  pptxState.file = file;
+  pptxState.mediaInfo = null;
+  document.getElementById('pptxResult').style.display = 'none';
+  renderPptxList();
+  scanPptxMedia();
+}
 
 bindDropzone(
   document.getElementById('pptxDrop'),
   document.getElementById('pptxInput'),
   (files) => {
     // 스캔 타입 파일이 들어오면 스캔 탭으로 이동
-    const scanExts = ['jpg', 'jpeg', 'png', 'pdf', 'tif', 'tiff'];
-    if (files.every(f => {
-      const ext = f.name.split('.').pop().toLowerCase();
-      return scanExts.includes(ext);
-    })) {
+    if (files.every(isScanFile)) {
       switchTab('scan');
       scanState.files.push(...files);
       renderScanList();
       return;
     }
-    pptxState.file = files[0];
-    renderPptxList();
-    scanPptxMedia();
+    const pptx = files.filter(isPptxFile);
+    reportSkipped(files.filter(f => !isPptxFile(f)), '');
+    if (!pptx.length) return;
+    if (pptx.length > 1) showToast('PPTX는 한 번에 한 파일만 줄일 수 있어요. 첫 파일만 넣었어요.');
+    setPptxFile(pptx[0]);
   }
 );
 
 document.getElementById('pptxTargetMB').addEventListener('input', () => {
   const v = +document.getElementById('pptxTargetMB').value;
-  document.getElementById('pptxTargetMBVal').textContent = v.toFixed(1);
+  pptxState.userTarget = v;
+  document.getElementById('pptxTargetMBVal').textContent = fmtMB(v);
   updatePptxEstimate();
 });
 
@@ -560,15 +619,17 @@ function renderPptxList() {
   }
   const f = pptxState.file;
   el.innerHTML = `<div class="file-list-item">
-       <span>${escHtml(f.name)}</span>
-       <span class="meta">${fmtBytes(f.size)} <button type="button" class="file-list-remove" onclick="window.clearPptx()" title="제거" aria-label="${escHtml(f.name)} 빼기">×</button></span>
+       <span class="name">${escHtml(f.name)}</span>
+       <span class="meta">${fmtBytes(f.size)} <button type="button" class="file-list-remove" onclick="window.clearPptx()" title="빼기" aria-label="${escHtml(f.name)} 빼기">${ic('x')}</button></span>
      </div>`;
   grid.style.display = 'grid';
-  document.getElementById('pptxRunBtn').disabled = false;
+  // 그림 목록을 다 살펴본 뒤에만 실행할 수 있다
+  document.getElementById('pptxRunBtn').disabled = pptxState.analyzing || !pptxState.mediaInfo;
 }
 
 window.clearPptx = () => {
-  pptxState.file = null; pptxState.mediaInfo = null;
+  pptxState.seq++;   // 살펴보는 중이던 결과는 버린다
+  pptxState.file = null; pptxState.mediaInfo = null; pptxState.analyzing = false; pptxState.userTarget = null;
   renderPptxList();
   document.getElementById('pptxEstimate').style.display = 'none';
   document.getElementById('pptxResult').style.display = 'none';
@@ -577,6 +638,12 @@ window.clearPptx = () => {
 
 async function scanPptxMedia() {
   if (!pptxState.file) return;
+  const seq = ++pptxState.seq;
+  pptxState.analyzing = true;
+  renderPptxList();
+  const est = document.getElementById('pptxEstimate');
+  est.style.display = 'block';
+  est.textContent = 'PPTX 안의 그림을 살펴보는 중…';
   try {
     await loadLib('jszip');
     const zip = await JSZip.loadAsync(pptxState.file);
@@ -589,28 +656,38 @@ async function scanPptxMedia() {
       totalBytes += blob.size;
       items.push({ name, ext, size: blob.size });
     }
+    if (seq !== pptxState.seq) return;   // 그사이 다른 파일로 바뀜
     pptxState.mediaInfo = { items, totalBytes };
 
     // 슬라이더 범위 설정:
-    // 최소 = 현재 파일의 2.5%, 최대 = 현재 크기
+    // 최소 = 현재 파일의 2.5%(0.05MB 아래로는 안 내림), 최대 = 현재 크기
     const fileMB = pptxState.file.size / 1024 / 1024;
 
     pptxState.minMB = Math.max(0.05, fileMB * 0.025); // 현재 파일의 2.5%
-    pptxState.maxMB = fileMB;
+    pptxState.maxMB = Math.max(pptxState.minMB, fileMB);
 
     const slider = document.getElementById('pptxTargetMB');
-    slider.min = pptxState.minMB.toFixed(2);
-    slider.max = fileMB.toFixed(1);
-    slider.value = Math.min(3, fileMB * 0.5); // 기본값: 50% 또는 3MB 중 작은 값
-    document.getElementById('pptxTargetMBVal').textContent = (+slider.value).toFixed(1);
+    slider.min = fmtMB(pptxState.minMB);
+    slider.max = fmtMB(pptxState.maxMB);
+    // 기본값: 50% 또는 3MB 중 작은 값. 사용자가 정한 값이 있으면 그 값(범위 안으로만 맞춤)
+    const want = pptxState.userTarget != null ? pptxState.userTarget : Math.min(3, fileMB * 0.5);
+    slider.value = fmtMB(Math.min(Math.max(want, pptxState.minMB), pptxState.maxMB));
+    document.getElementById('pptxTargetMBVal').textContent = fmtMB(slider.value);
 
-    document.getElementById('pptxTargetMin').textContent = fmtBytes(pptxState.minMB * 1024 * 1024);
-    document.getElementById('pptxTargetMax').textContent = fmtBytes(pptxState.maxMB * 1024 * 1024);
+    document.getElementById('pptxTargetMin').textContent = '최소 ' + fmtBytes(pptxState.minMB * 1024 * 1024);
+    document.getElementById('pptxTargetMax').textContent = '최대 ' + fmtBytes(pptxState.maxMB * 1024 * 1024);
 
     updatePptxEstimate();
   } catch (e) {
+    if (seq !== pptxState.seq) return;
     console.error(e);
+    est.style.display = 'none';
     showToast(/불러오지 못했어요/.test(e?.message || '') ? e.message : 'PPTX 파일을 열 수 없어요. 파일이 손상되지 않았는지 확인해 주세요.', 'error');
+  } finally {
+    if (seq === pptxState.seq) {
+      pptxState.analyzing = false;
+      renderPptxList();
+    }
   }
 }
 
@@ -621,8 +698,8 @@ function updatePptxEstimate() {
   const targetBytes = targetMB * 1024 * 1024;
   document.getElementById('pptxEstimate').style.display = 'block';
   document.getElementById('pptxEstimate').innerHTML =
-    `📊 이미지 ${info.items.length}개 · 합계 ${fmtBytes(info.totalBytes)} (PPTX의 ${(info.totalBytes / pptxState.file.size * 100).toFixed(0)}%)<br>` +
-    `목표 용량: <strong>${fmtBytes(targetBytes)}</strong> — 이미지 폭과 품질을 자동 조절합니다`;
+    `${ic('chart-column')} 그림 ${info.items.length}개 · 합계 ${fmtBytes(info.totalBytes)} (PPTX의 ${(info.totalBytes / pptxState.file.size * 100).toFixed(0)}%)<br>` +
+    `목표 용량: <strong>${fmtBytes(targetBytes)}</strong> — 그림의 크기와 화질을 자동으로 조절해요`;
 }
 
 function setPptxProgress(pct, msg) { setProgressUI('pptx', pct, msg); }
@@ -717,7 +794,7 @@ function minifyXml(xml) {
 }
 
 async function runPptx() {
-  if (!pptxState.file) return;
+  if (!pptxState.file || pptxState.analyzing) return;
   document.getElementById('pptxRunBtn').disabled = true;
   document.getElementById('pptxTargetMB').disabled = true;
   document.getElementById('pptxResult').style.display = 'none';
@@ -750,14 +827,14 @@ async function runPptx() {
     }
     const ladder = buildLadder(widths, qualities, false);
 
-    setPptxProgress(8, 'PPTX 로드 중…');
+    setPptxProgress(8, 'PPTX 파일 여는 중…');
     const baseZip = await JSZip.loadAsync(fileBuf);
 
-    setPptxProgress(12, '이미지 확인 중…');
+    setPptxProgress(12, '그림 확인하는 중…');
     const media = await preparePptxMedia(baseZip);
 
-    // XML 미리 정리해서 캐시
-    setPptxProgress(18, 'XML 정리 중…');
+    // 문서 내용(XML) 미리 정리해서 캐시
+    setPptxProgress(18, '문서 내용 정리하는 중…');
     const minifiedXmlCache = new Map();
     for (const fileName of Object.keys(baseZip.files)) {
       if ((fileName.endsWith('.xml') || fileName.endsWith('.rels')) && !baseZip.files[fileName].dir) {
@@ -773,16 +850,16 @@ async function runPptx() {
     const found = await searchBestUnderTarget(ladder, targetBytes, async ({ w, q }, n, maxSteps) => {
       const base = 20 + ((n - 1) / maxSteps) * 75;
       const span = 75 / maxSteps;
-      setPptxProgress(base, `시도 ${n}/${maxSteps} — ${w}px / 품질 ${q.toFixed(2)}`);
+      setPptxProgress(base, `알맞은 크기 찾는 중 (${n}/${maxSteps}번째) — 폭 ${w}px · 화질 ${fmtQ(q)}`);
 
       // 시도마다 원본 PPTX에서 새로 시작
       const zip = await JSZip.loadAsync(fileBuf);
       const outMedia = await recompressPptxMedia(media, q, w, (d, t) =>
-        setPptxProgress(base + span * 0.8 * (d / Math.max(1, t)), `시도 ${n}/${maxSteps} — 이미지 ${d}/${t}`));
+        setPptxProgress(base + span * 0.8 * (d / Math.max(1, t)), `알맞은 크기 찾는 중 (${n}/${maxSteps}번째) — 그림 ${d}/${t}`));
       for (const [name, blob] of outMedia) zip.file(name, blob);
       for (const [fileName, minified] of minifiedXmlCache) zip.file(fileName, minified);
 
-      setPptxProgress(base + span * 0.85, `시도 ${n}/${maxSteps} — PPTX 재패키징 중…`);
+      setPptxProgress(base + span * 0.85, `알맞은 크기 찾는 중 (${n}/${maxSteps}번째) — 파일 다시 묶는 중…`);
       return zip.generateAsync({
         type: 'blob',
         compression: 'DEFLATE',
@@ -791,7 +868,7 @@ async function runPptx() {
       });
     });
 
-    setPptxProgress(100, '완료');
+    setPptxProgress(100, '끝났어요');
 
     const { blob: bestBlob, params: bestParams, reached } = found;
     const fname = pptxState.file.name.replace(/\.pptx$/i, '') + '_compressed.pptx';
@@ -800,26 +877,27 @@ async function runPptx() {
     const r = document.getElementById('pptxResult');
     r.className = 'result' + (reached ? '' : ' warning');
     r.style.display = 'block';
-    r.innerHTML = `✅ <strong>${escHtml(fname)}</strong><br>
-      원본 ${fmtBytes(origSize)} → 출력 ${fmtBytes(bestBlob.size)} (${compressionRatio}% 감소)<br>
-      적용 옵션: ${bestParams.w}px / 품질 ${bestParams.q.toFixed(2)}<br>
-      <span style="font-size:0.78rem; color:var(--fg-muted)">이미지 폭·품질 조절 + XML 정리 + ZIP 재압축</span>
-      ${reached
-        ? '<br>✓ 목표 용량 안에서 가장 좋은 화질로 만들었어요'
-        : '<br>⚠️ 가장 작게 줄여도 목표 용량보다 커요. 시도한 것 중 가장 작은 파일을 내려받았어요. 영상·글꼴처럼 줄일 수 없는 내용이 많으면 이렇게 될 수 있어요.'}`;
+    r.innerHTML = `<span class="res-head">${ic(reached ? 'circle-check' : 'triangle-alert')} ${escHtml(fname)}</span> 내려받기를 시작했어요<br>
+      원본 ${fmtBytes(origSize)} → 결과 ${fmtBytes(bestBlob.size)} (${compressionRatio}% 줄어듦)<br>
+      적용: 폭 ${bestParams.w}px · 화질 ${fmtQ(bestParams.q)}<br>
+      <span style="font-size:0.78rem; color:var(--fg-muted)">그림의 크기·화질을 줄이고 파일을 다시 묶었어요</span>
+      <span class="res-note">${reached
+        ? '목표 용량 안에서 가장 좋은 화질로 만들었어요.'
+        : '가장 작게 줄여도 목표 용량보다 커요. 시도한 것 중 가장 작은 파일을 내려받았어요. 영상·글꼴처럼 줄일 수 없는 내용이 많으면 이렇게 될 수 있어요.'}</span>`;
 
-    // 압축된 PPTX 자동 다운로드
+    // 줄인 PPTX 자동 내려받기
     downloadBlob(bestBlob, fname);
-    showToast(reached ? '다운로드 완료 ✓' : '목표 용량에는 못 미쳤어요', reached ? 'success' : undefined);
+    showToast(reached ? '다 만들었어요. 내려받기를 시작했어요.' : '목표 용량보다 큰 파일이 나왔어요. 결과 안내를 확인해 주세요.', reached ? 'success' : undefined);
   } catch (e) {
     console.error(e);
     const r = document.getElementById('pptxResult');
     r.className = 'result error';
     r.style.display = 'block';
-    r.textContent = '❌ 압축 중 오류: ' + (e.message || e);
-    showToast('압축하지 못했어요', 'error');
+    r.innerHTML = `${ic('circle-x')} 줄이지 못했어요: <span></span>`;
+    r.querySelector('span').textContent = e.message || String(e);
+    showToast('줄이지 못했어요', 'error');
   } finally {
-    document.getElementById('pptxRunBtn').disabled = false;
+    document.getElementById('pptxRunBtn').disabled = !pptxState.mediaInfo;
     document.getElementById('pptxTargetMB').disabled = false;
     setTimeout(() => { document.getElementById('pptxProgress').style.display = 'none'; }, 1500);
   }

@@ -5,11 +5,27 @@
  * 정적 마크업을 다시 그리지 않고 그대로 두고 보강(hydrate)만 한다.
  */
 import appsData from '../../public/apps.json';
+import Icon from '../components/Icon.astro';
 
 const SITE_TITLE = 'eduin VIVES — 교육 미니앱 모음';
 const SITE_DESC = '교육 현장에서 바로 쓸 수 있는 미니 웹 앱 모음. 채점표, AI 검색, 플래시카드, QR, 타이머, 마크다운 에디터 등 다양한 도구를 무료로 사용하세요.';
 
-const categories = appsData.categories || [];
+// 카테고리 이름 앞 이모지는 화면에서 떼고, 같은 자리에 lucide 아이콘을 빌드 때 그린다(apps.json에 lucideIcon이 있으면 그것을 우선)
+// @icons book-open globe book-open-text briefcase wrench puzzle message-circle palette ruler folder
+const CAT_ICONS = {
+  edu: 'book-open', 'edu-sim': 'globe', 'edu-learn': 'book-open-text', 'edu-work': 'briefcase',
+  utility: 'wrench', 'util-life': 'wrench', 'util-chrome': 'puzzle', 'util-social': 'message-circle',
+  'util-creative': 'palette', 'util-notion': 'ruler',
+};
+const stripEmoji = (s) => String(s || '').replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}‍\s]+/u, '').trim();
+const catIcon = (c) => c.lucideIcon || CAT_ICONS[c.id] || 'folder';
+
+const categories = (appsData.categories || []).map((c) => ({
+  ...c,
+  label: stripEmoji(c.label),
+  icon: catIcon(c),
+  subcategories: c.subcategories && c.subcategories.map((s) => ({ ...s, label: stripEmoji(s.label), icon: catIcon(s) })),
+}));
 // hidden: 비공개 앱 — 페이지 폴더가 src/pages/apps/_<id>/라 빌드되지 않음(주소로도 404)
 const apps = (appsData.apps || []).filter((a) => !a.hidden);
 
@@ -24,16 +40,16 @@ for (const cat of categories) {
   if (items.length === 0) continue;
   const subcats = cat.subcategories;
   if (subcats) {
-    blocks.push({ type: 'header', id: cat.id, cat: cat.id, label: cat.label, desc: cat.desc, items: [] });
+    blocks.push({ type: 'header', id: cat.id, cat: cat.id, label: cat.label, icon: cat.icon, desc: cat.desc, items: [] });
     const subIds = new Set(subcats.map((sc) => sc.id));
     for (const sc of subcats) {
       const scItems = items.filter((a) => a.subcategory === sc.id);
-      if (scItems.length) blocks.push({ type: 'sub', id: sc.id, cat: cat.id, label: sc.label, items: scItems });
+      if (scItems.length) blocks.push({ type: 'sub', id: sc.id, cat: cat.id, label: sc.label, icon: sc.icon, items: scItems });
     }
     const unassigned = items.filter((a) => !a.subcategory || !subIds.has(a.subcategory));
     if (unassigned.length) blocks.push({ type: 'extra', id: null, cat: cat.id, items: unassigned });
   } else {
-    blocks.push({ type: 'flat', id: cat.id, cat: cat.id, label: cat.label, desc: cat.desc, items });
+    blocks.push({ type: 'flat', id: cat.id, cat: cat.id, label: cat.label, icon: cat.icon, desc: cat.desc, items });
   }
 }
 const sectionIds = new Set(blocks.filter((b) => b.id).map((b) => b.id));
@@ -97,8 +113,8 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="stylesheet" href="/common/hero-theme.css" />
+  <script is:inline src="/common/ui.js"></script>
   <script is:inline src="/common/theme.js"></script>
-  <script is:inline src="/vendor/lucide-1.52.0.min.js"></script>
   <script is:inline src="/common/init.js"></script>
   <script is:inline type="application/ld+json">
   {
@@ -118,6 +134,7 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
   <style is:global>
     body {
       min-height: 100vh;
+      min-height: 100dvh;
     }
 
     body::before {
@@ -475,7 +492,18 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
         margin-bottom: 1rem;
       }
       .cat-chips::-webkit-scrollbar { display: none; }
+      /* 오른쪽에 칩이 더 있으면 끝을 흐리게 — 넘겨 볼 수 있다는 신호 */
+      .cat-chips.has-more {
+        -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+        mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+      }
     }
+    .cat-chip .ic, .tree-item .ic, .subtree-item .ic { flex-shrink: 0; margin-right: 0.35rem; }
+    .tree-chevron .ic, .notice-chevron .ic { width: 14px; height: 14px; margin: 0; display: block; }
+    .notices-more, .notice-go { gap: 0.25rem; }
+    .notices-toggle > .ic { flex-shrink: 0; color: var(--fg-muted); }
+    .external-badge .ic { width: 14px; height: 14px; display: block; }
+    .category-label .ic { margin-right: 0.35rem; vertical-align: -0.12em; color: var(--fg-muted); }
 
     /* 카테고리 섹션 */
     .category-section {
@@ -651,6 +679,7 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
       max-width: 420px;
       width: 100%;
       max-height: calc(100vh - 2rem);
+      max-height: calc(100dvh - 2rem);
       overflow-y: auto;
       transform: translateY(12px);
       transition: transform 0.2s;
@@ -663,7 +692,7 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
       letter-spacing: 0.08em; text-transform: uppercase;
       padding: 3px 9px; border-radius: 99px; margin-bottom: 12px;
     }
-    .modal-badge::before { content: '◆'; font-size: 7px; }
+    .modal-badge::before { content: ''; width: 6px; height: 6px; flex: none; background: currentColor; border-radius: 1px; transform: rotate(45deg); }
     .modal-title {
       margin: 0 0 8px;
       font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em;
@@ -680,9 +709,7 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
       font-size: 0.82rem; color: var(--fg-muted);
       display: flex; align-items: flex-start; gap: 7px;
     }
-    .modal-features li::before {
-      content: '✓'; color: var(--primary); font-weight: 700; flex-shrink: 0; margin-top: 1px;
-    }
+    .modal-features li > .ic { color: var(--primary); flex-shrink: 0; margin-top: 2px; }
     .modal-actions {
       display: flex; gap: 8px; flex-direction: column;
     }
@@ -912,9 +939,7 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
 
     <form class="app-search" id="appSearchForm" role="search" action="/" method="get">
       <label for="appSearch" class="visually-hidden">앱 이름·설명으로 찾기</label>
-      <span class="app-search-icon" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-      </span>
+      <span class="app-search-icon" aria-hidden="true"><Icon name="search" size={18} /></span>
       <input
         id="appSearch"
         name="q"
@@ -933,13 +958,9 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
 
     <!-- 테마 토글 + 공유: 넓은 화면은 헤더 줄 맨 오른쪽, 768px 미만은 우상단에 떠 있음(hero-theme.css 기본) -->
     <div class="top-overlay">
-      <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드" aria-label="보기 모드">💻</button>
-      <button id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="공유" aria-label="공유">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-          <polyline points="16 6 12 2 8 6"/>
-          <line x1="12" x2="12" y1="2" y2="15"/>
-        </svg>
+      <button type="button" id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="화면 모드" aria-label="화면 모드"><Icon name="monitor" /></button>
+      <button type="button" id="shareBtn" class="overlay-btn" onclick="shareCurrentPage()" title="이 페이지 공유" aria-label="이 페이지 공유">
+        <Icon name="share-2" />
         <span>공유</span>
       </button>
     </div>
@@ -948,7 +969,7 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
   <main id="main">
     <nav class="cat-chips" aria-label="카테고리 바로가기">
       {chipBlocks.map((b) => (
-        <a class="cat-chip" href={`#section-${b.id}`} data-nav-id={b.id}>{b.label}</a>
+        <a class="cat-chip" href={`#section-${b.id}`} data-nav-id={b.id}><Icon name={b.icon} />{b.label}</a>
       ))}
     </nav>
 
@@ -957,13 +978,13 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
     <section class="notices-section" id="noticesSection" aria-label="공지사항" hidden>
       <div class="notices-bar">
         <button type="button" class="notices-toggle" id="noticesToggle" aria-expanded="false" aria-controls="noticesList" disabled>
-          <span aria-hidden="true">📢</span>
+          <Icon name="megaphone" />
           <span class="notices-title" id="noticesTitle">공지사항</span>
           <span class="notices-new" id="noticesNew" hidden>새 글</span>
-          <span class="notices-meta" id="noticesMeta">불러오는 중…</span>
-          <span class="notice-chevron" aria-hidden="true">▾</span>
+          <span class="notices-meta" id="noticesMeta">에듀인 블로그 소식</span>
+          <span class="notice-chevron" aria-hidden="true"><Icon name="chevron-down" /></span>
         </button>
-        <a class="notices-more" id="noticesMore" href="https://blog.eduin.info/" target="_blank" rel="noopener noreferrer">전체 공지 보기 →</a>
+        <a class="notices-more" id="noticesMore" href="https://blog.eduin.info/" target="_blank" rel="noopener noreferrer">전체 공지 보기<Icon name="arrow-right" /></a>
       </div>
       <div class="notices-list" id="noticesList" hidden></div>
     </section>
@@ -976,15 +997,15 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
             <li class:list={['tree-node', cat.subs.length > 0 && 'is-open']} data-cat-id={cat.id}>
               {cat.subs.length > 0 ? (
                 <button class="tree-item" type="button" aria-expanded="true" aria-controls={`subtree-${cat.id}`}>
-                  {cat.label}<span class="tree-chevron" aria-hidden="true">▶</span>
+                  <Icon name={cat.icon} />{cat.label}<span class="tree-chevron" aria-hidden="true"><Icon name="chevron-right" /></span>
                 </button>
               ) : (
-                <a class="tree-item" href={`#section-${cat.id}`}>{cat.label}</a>
+                <a class="tree-item" href={`#section-${cat.id}`}><Icon name={cat.icon} />{cat.label}</a>
               )}
               {cat.subs.length > 0 && (
                 <ul class="subtree" id={`subtree-${cat.id}`}>
                   {cat.subs.map((sc) => (
-                    <li><a class="subtree-item" href={`#section-${sc.id}`} data-subcat-id={sc.id}>{sc.label}</a></li>
+                    <li><a class="subtree-item" href={`#section-${sc.id}`} data-subcat-id={sc.id}><Icon name={sc.icon} />{sc.label}</a></li>
                   ))}
                 </ul>
               )}
@@ -1007,12 +1028,12 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
             >
               {b.type === 'sub' && (
                 <div class="category-header" style="border-bottom-style:dashed; opacity:0.75;">
-                  <h3 class="category-label" style="font-size:0.85rem;">{b.label}</h3>
+                  <h3 class="category-label" style="font-size:0.85rem;"><Icon name={b.icon} />{b.label}</h3>
                 </div>
               )}
               {(b.type === 'header' || b.type === 'flat') && (
                 <div class="category-header">
-                  <h2 class="category-label">{b.label}</h2>
+                  <h2 class="category-label"><Icon name={b.icon} />{b.label}</h2>
                   <span class="category-desc">{b.desc}</span>
                 </div>
               )}
@@ -1031,10 +1052,10 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
                         rel={newTab ? 'noopener noreferrer' : undefined}
                         aria-haspopup={modal ? 'dialog' : undefined}
                       >
-                        {external && <span class="external-badge" aria-hidden="true">↗</span>}
-                        {modal && <span class="external-badge" aria-hidden="true">ℹ</span>}
+                        {external && <span class="external-badge" aria-hidden="true"><Icon name="arrow-up-right" /></span>}
+                        {modal && <span class="external-badge" aria-hidden="true"><Icon name="info" /></span>}
                         <div class={`card-emoji sub-${app.subcategory || 'default'}`} aria-hidden="true">
-                          {app.lucideIcon ? <i data-lucide={app.lucideIcon}>{app.emoji}</i> : app.emoji}
+                          {app.lucideIcon ? <Icon name={app.lucideIcon} /> : app.emoji}
                         </div>
                         <div class="card-title">{app.title}</div>
                         <div class="card-desc">{app.desc}</div>
@@ -1057,7 +1078,7 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
     </div>
   </main>
 
-  <footer>eduin · built with vibe coding</footer>
+  <footer>eduin · 선생님이 바이브 코딩으로 만들었어요</footer>
 
   <!-- 모달 -->
   <div class="modal-backdrop" id="appModal">
@@ -1087,6 +1108,8 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
     const NOTICE_CFG_KEY = 'byeduin_notices_cfg';
     const NOTICE_TTL = 60 * 60 * 1000; // 1시간
     const NOTICE_FRESH_MS = 30 * 24 * 60 * 60 * 1000; // 30일 안 글이 있으면 펼침
+    // lucide 스프라이트 아이콘(공용 ui.js) — @icons history pin arrow-right chevron-down check
+    const ic = (n) => (window.VUI && window.VUI.icon ? window.VUI.icon(n) : '');
 
     const store = {
       get(key, fallback) {
@@ -1151,8 +1174,8 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
       section.setAttribute('aria-labelledby', 'recentHeading');
       section.innerHTML = `
         <div class="category-header">
-          <h2 class="category-label" id="recentHeading">⏱ 최근 방문</h2>
-          <span class="category-desc">최근에 사용한 앱</span>
+          <h2 class="category-label" id="recentHeading">${ic('history')}홈에서 최근 연 앱</h2>
+          <span class="category-desc">이 기기에서 홈 카드로 연 앱</span>
         </div>
         <div class="card-grid" id="grid-recent"></div>
       `;
@@ -1186,26 +1209,24 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
 
       const titleEl = document.getElementById('modalTitle');
       titleEl.textContent = '';
-      const icon = document.createElement('div');
-      icon.className = 'card-emoji sub-' + (app.subcategory || 'default');
+      // 아이콘은 카드에 빌드 때 그려 둔 것을 복제(런타임 아이콘 라이브러리 없이)
+      const cardIcon = opener && opener.querySelector ? opener.querySelector('.card-emoji') : null;
+      const icon = cardIcon ? cardIcon.cloneNode(true) : document.createElement('div');
+      if (!cardIcon) {
+        icon.className = 'card-emoji sub-' + (app.subcategory || 'default');
+        icon.innerHTML = app.lucideIcon ? ic(app.lucideIcon) : '';
+        if (!app.lucideIcon) icon.textContent = app.emoji || '';
+      }
       icon.setAttribute('aria-hidden', 'true');
       icon.style.cssText = 'display:inline-flex; vertical-align:middle; margin-right:8px; margin-bottom:0;';
-      if (app.lucideIcon) {
-        const i = document.createElement('i');
-        i.setAttribute('data-lucide', app.lucideIcon);
-        icon.appendChild(i);
-      } else {
-        icon.textContent = app.emoji || '';
-      }
       const name = document.createElement('span');
       name.style.verticalAlign = 'middle';
       name.textContent = app.title;
       titleEl.append(icon, name);
-      if (window.lucide) window.lucide.createIcons();
 
       document.getElementById('modalDesc').textContent = m.modalDesc || app.desc || '';
       // features는 빌드 때 apps.json에서 온 신뢰된 HTML(링크 포함)
-      document.getElementById('modalFeatures').innerHTML = (m.features || []).map((f) => `<li><span>${f}</span></li>`).join('');
+      document.getElementById('modalFeatures').innerHTML = (m.features || []).map((f) => `<li>${ic('check')}<span>${f}</span></li>`).join('');
       const link = document.getElementById('modalLink');
       link.href = app.href;
       link.textContent = m.linkLabel || '바로가기';
@@ -1428,6 +1449,25 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
       const sel = window.CSS && CSS.escape ? CSS.escape(id) : id;
       document.querySelectorAll(`[data-cat-id="${sel}"] > .tree-item, .subtree-item[data-subcat-id="${sel}"], .cat-chip[data-nav-id="${sel}"]`)
         .forEach((el) => el.classList.add('is-active'));
+      // 가로 칩 줄: 활성 칩이 가려져 있으면 줄 안에서만 옆으로 넘겨 보이게(페이지는 세로로 움직이지 않음)
+      const chip = document.querySelector(`.cat-chip[data-nav-id="${sel}"]`);
+      const row = chip && chip.parentElement;
+      if (row && row.scrollWidth > row.clientWidth) {
+        const r = chip.getBoundingClientRect(), rr = row.getBoundingClientRect();
+        const pad = 24;
+        if (r.left < rr.left) row.scrollBy({ left: r.left - rr.left - pad, behavior: 'smooth' });
+        else if (r.right > rr.right - 40) row.scrollBy({ left: r.right - rr.right + 40 + pad, behavior: 'smooth' });
+      }
+    }
+
+    // 가로 칩 줄 오른쪽 끝 흐림(더 넘길 칩이 있을 때만)
+    function setupChipFade() {
+      const row = document.querySelector('.cat-chips');
+      if (!row) return;
+      const update = () => row.classList.toggle('has-more', row.scrollLeft + row.clientWidth < row.scrollWidth - 4);
+      row.addEventListener('scroll', update, { passive: true });
+      window.addEventListener('resize', update);
+      update();
     }
 
     function setupScrollSpy() {
@@ -1543,7 +1583,8 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
 
       const titleEl = document.createElement('span');
       titleEl.className = 'notice-title';
-      titleEl.textContent = (post.pinned ? '📌 ' : '') + post.title; // XSS 안전
+      titleEl.textContent = post.title; // XSS 안전
+      if (post.pinned) titleEl.insertAdjacentHTML('afterbegin', ic('pin') + ' ');
       titleEl.title = post.title;
 
       const dateEl = document.createElement('span');
@@ -1553,7 +1594,7 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
       const chev = document.createElement('span');
       chev.className = 'notice-chevron';
       chev.setAttribute('aria-hidden', 'true');
-      chev.textContent = '▾';
+      chev.innerHTML = ic('chevron-down');
 
       header.append(titleEl, dateEl, chev);
 
@@ -1572,7 +1613,8 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
       go.href = post.link; // http(s)만 통과
       go.target = '_blank';
       go.rel = 'noopener noreferrer';
-      go.textContent = '글 보러가기 →';
+      go.textContent = '글 보러가기';
+      go.insertAdjacentHTML('beforeend', ic('arrow-right'));
       body.appendChild(go);
 
       // ── 아코디언 토글(한 번에 하나만 열림) ──
@@ -1612,7 +1654,7 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
     }
 
     async function loadNotices() {
-      notices.section.hidden = false; // 한 줄 자리(불러오는 중…)를 먼저 확보
+      // 자리를 미리 잡지 않는다 — 0건·실패면 줄이 생겼다 사라지며 카드가 위로 튀므로, 글이 있을 때만 보인다(캐시가 있으면 바로)
       const cachedCfg = normalizeNoticesCfg(store.get(NOTICE_CFG_KEY, DEFAULT_NOTICES_CFG));
       const cached = store.get(NOTICE_CACHE_KEY, null);
       const hasCache = !!(cached && Array.isArray(cached.posts));
@@ -1654,7 +1696,7 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
       applyFilter(false);
     }
 
-    if (window.lucide) window.lucide.createIcons();
+    setupChipFade();
     requestAnimationFrame(setupScrollSpy);
   })();
   </script>

@@ -37,6 +37,12 @@
 
   var CODE_RE = /^[A-Z0-9]{6}$/;
   var CODE_LEN = 6;
+
+  // 헤더 동기화 버튼 아이콘(lucide 스프라이트) — @icons refresh-cw
+  function syncIcon() {
+    if (global.VUI && global.VUI.icon) return global.VUI.icon('refresh-cw');
+    return '<svg class="ic" aria-hidden="true" focusable="false"><use href="/common/icons.svg#refresh-cw"></use></svg>';
+  }
   var ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
   function isCode(s) { return CODE_RE.test(String(s || '').toUpperCase()); }
@@ -379,7 +385,7 @@
     function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
     function render() {
       var code = getCode();
-      btn.innerHTML = code ? '🔄 <span>' + esc(maskCode(code)) + '</span>' : '🔄 <span>동기화</span>';
+      btn.innerHTML = syncIcon() + (code ? '<span>' + esc(maskCode(code)) + '</span>' : '<span>동기화</span>');
       btn.classList.toggle('vs-on', !!code);
       if (code) {
         panel.innerHTML =
@@ -517,7 +523,7 @@
 
     function render() {
       var code = getCode(), app = esc(cfg.appName || '내용');
-      btn.innerHTML = code ? '🔄 <span>' + esc(maskCode(code)) + '</span>' : '🔄 <span>동기화</span>';
+      btn.innerHTML = syncIcon() + (code ? '<span>' + esc(maskCode(code)) + '</span>' : '<span>동기화</span>');
       btn.classList.toggle('vs-on', !!code);
       if (code) {
         panel.innerHTML =

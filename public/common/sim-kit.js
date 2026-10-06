@@ -109,6 +109,35 @@
      - role="status" + aria-live="polite"를 붙인다.
      - 기본은 textContent. html:true는 앱이 직접 쓴 고정 문구에만(공유 링크·입력값을 넣지 말 것).
      - classes: 앱의 기존 스타일 클래스를 함께 붙이고 뗀다(예: .feedback-box.ok). */
+  // 요소가 실제로 보이는지(화면 안 + 다른 요소에 덮이지 않음) 확인하고, 아니면 스크롤해 보여 준다.
+  function covered(e) {
+    var r = e.getBoundingClientRect();
+    var vh = root.innerHeight || document.documentElement.clientHeight;
+    var vw = root.innerWidth || document.documentElement.clientWidth;
+    if (r.height === 0 || r.bottom <= 0 || r.top >= vh) return true;
+    var ys = [r.top + Math.min(8, r.height / 2), r.top + r.height / 2];
+    var x = Math.min(vw - 2, Math.max(1, r.left + r.width / 2));
+    for (var i = 0; i < ys.length; i++) {
+      var y = ys[i];
+      if (y < 0 || y >= vh) return true;
+      var hit = document.elementFromPoint ? document.elementFromPoint(x, y) : e;
+      if (hit && hit !== e && !e.contains(hit)) return true;
+    }
+    return false;
+  }
+  function reveal(e) {
+    if (!hasDoc || !e || !e.scrollIntoView) return;
+    root.requestAnimationFrame(function () {
+      if (!covered(e)) return;
+      var smooth = !motion.reduced();
+      try { e.scrollIntoView({ block: 'nearest', behavior: smooth ? 'smooth' : 'auto' }); } catch (x) { e.scrollIntoView(false); }
+      // 붙어 있는 무대(sticky) 아래 가려진 경우: 'nearest'로는 그대로라 아래쪽 끝에 맞춘다
+      root.setTimeout(function () {
+        if (covered(e)) { try { e.scrollIntoView({ block: 'end', behavior: 'auto' }); } catch (x) {} }
+      }, smooth ? 450 : 30);
+    });
+  }
+
   var FB_TYPES = ['ok', 'no', 'info', 'warn'];
   function normType(t) {
     if (FB_TYPES.indexOf(t) >= 0) return t;
@@ -144,6 +173,10 @@
         e.hidden = false;
         e.style.display = opts.display || '';
         e.setAttribute('data-sk-type', type);
+        // 규약 v2: 문구가 화면 밖이거나 붙어 있는 무대(sticky) 밑에 가려져 있으면 보이는 곳으로 스크롤.
+        // 폰 세로 배치(무대 위·패널 아래)에서 [확인] 뒤 결과가 안 보이던 문제. reveal:false로 끔.
+        var rv = o && o.reveal != null ? o.reveal : opts.reveal;
+        if (rv !== false) reveal(e);
         return true;
       },
       hide: function () {
@@ -476,7 +509,10 @@
       max = max == null ? 3 : max;
       n = toInt(n, 0, max, 0);
       el.classList.add('sk-stars');
-      el.textContent = stars.text(n, max, o && o.empty);
+      // 규약 v2: lucide 별(얻은 별은 채움, 못 얻은 별은 흐린 테두리). 글자로만 쓸 곳은 stars.text
+      var h = '';
+      for (var i = 0; i < max; i++) h += icon('star', { cls: i < n ? 'on' : 'off' });
+      el.innerHTML = h;
       el.setAttribute('role', 'img');
       el.setAttribute('aria-label', '별 ' + max + '개 중 ' + n + '개');
     }
@@ -826,7 +862,7 @@
         b.el.setAttribute('aria-label', m ? '소리 켜기' : '소리 끄기');
         b.el.title = m ? '소리 켜기' : '소리 끄기';
         if (typeof b.render === 'function') b.render(b.el, m);
-        else if (!b.keep) b.el.textContent = m ? '🔇' : '🔊';
+        else if (!b.keep) b.el.innerHTML = m ? icon('volume-x') : icon('volume-2');
       });
     }
     var api = {
@@ -906,8 +942,64 @@
   function josa(word, pair) { return String(word == null ? '' : word) + josaPick(word, pair); }
   josa.pick = josaPick;
 
+  /* ───────────── 규약 v2: 표준 용어 ─────────────
+     시뮬레이션 앱의 버튼·안내는 이 말을 쓴다(docs/sim-kit.md "공통 규약 v2"). 화면 배치 방향(오른쪽·왼쪽)은 쓰지 않고 "조작판"이라고 한다. */
+  var LABELS = {
+    check: '확인하기',          // 채점 버튼(자유 탐험에서는 checkFree)
+    checkFree: '결과 보기',
+    next: '다음 미션',
+    retry: '다시 하기',         // 같은 미션 다시
+    reset: '처음부터',          // 모든 진행 지우기(확인 창 필수)
+    exit: '자유 탐험으로',      // 미션 모드 나가기
+    skip: '건너뛰기',
+    play: '재생',
+    pause: '멈춤',
+    missionStart: '미션 도전',
+    result: '결과 보기',
+    panel: '조작판'
+  };
+
+  /* ───────────── 규약 v2: 움직임 ─────────────
+     SimKit.motion.reduced() → 움직임 줄이기 설정 여부(바뀌면 바로 반영)
+     var lp = SimKit.loop(function (dt, t) { … }) → dt는 초(프레임 간격, 최대 0.1). lp.start() / lp.stop() / lp.running()
+       화면 재생률(60·120·144Hz)과 상관없이 같은 속도로 움직이게 한다. 탭이 숨겨지면 멈췄다가 돌아오면 이어서. */
+  var rmq = hasDoc && root.matchMedia ? root.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  var motion = { reduced: function () { return !!(rmq && rmq.matches); } };
+  function loop(fn, opts) {
+    opts = opts || {};
+    var id = 0, last = 0, on = false, maxDt = opts.maxDt || 0.1;
+    function frame(t) {
+      if (!on) return;
+      var dt = last ? Math.min(maxDt, (t - last) / 1000) : 0;
+      last = t;
+      try { fn(dt, t); } catch (e) { on = false; throw e; }
+      if (on) id = root.requestAnimationFrame(frame);
+    }
+    function start() { if (on) return api; on = true; last = 0; id = root.requestAnimationFrame(frame); return api; }
+    function stop() { on = false; if (id) root.cancelAnimationFrame(id); id = 0; last = 0; return api; }
+    var wasOn = false;
+    if (hasDoc) document.addEventListener('visibilitychange', function () {
+      if (document.hidden) { wasOn = on; if (on) stop(); }
+      else if (wasOn) { wasOn = false; start(); }
+    });
+    var api = { start: start, stop: stop, running: function () { return on; } };
+    return api;
+  }
+
+  // lucide 아이콘(공용 스프라이트). VUI가 있으면 같은 마크업.
+  function icon(name, opts) {
+    if (root.VUI && root.VUI.icon) return root.VUI.icon(name, opts);
+    return '<svg class="ic" aria-hidden="true" focusable="false"><use href="/common/icons.svg#' +
+      String(name).replace(/[^a-z0-9-]/g, '') + '"></use></svg>';
+  }
+
   root.SimKit = {
-    version: '1.0.0',
+    version: '2.0.0',
+    LABELS: LABELS,
+    motion: motion,
+    loop: loop,
+    icon: icon,
+    reveal: reveal,
     ready: ready,
     timers: timers,
     feedback: feedback,

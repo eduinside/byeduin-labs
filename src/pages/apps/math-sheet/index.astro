@@ -1,9 +1,9 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<AppLayout 
+<AppLayout
   sync
-  icons
   title="연산연습지 — eduin VIVES"
   description="덧셈·뺄셈·곱셈·나눗셈 세로셈 문제지를 조건별로 만들어 A4로 인쇄하고, 링크·QR로 공유하세요. 받아올림/내림·나머지·자릿수 유형 설정, 정답지 토글 지원."
   image="https://eduin.info/og-images/math-sheet.png"
@@ -19,6 +19,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     body {
       min-height: 100vh;
+      min-height: 100dvh;
       padding: 54px 1rem 5rem;
       font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', 'Segoe UI', sans-serif;
     }
@@ -42,14 +43,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       padding: 8px 13px; border-radius: 9px; border: 1px solid var(--border);
       background: var(--card-bg); color: var(--fg);
       font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
-      white-space: nowrap; transition: all 0.15s; min-height: 40px; text-decoration: none;
+      white-space: nowrap; transition: all 0.15s; min-height: 44px; text-decoration: none;
     }
     .ms-tb-btn:hover { border-color: var(--primary); color: var(--primary); }
     .ms-tb-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .ms-tb-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
     .ms-tb-btn.primary:hover { background: var(--primary-h); color: #fff; }
     .ms-tb-btn.active { background: rgba(0,111,238,0.1); border-color: var(--primary); color: var(--primary); }
-    .ms-tb-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+    .ms-tb-btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); }
+    .ms-tb-btn.danger:hover { border-color: var(--danger); color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }
     #ansToggleBtn, #ansToggle { min-width: 96px; }   /* 라벨 바뀌어도 폭 유지 */
     /* 설정 변경 후 재생성 유도 하이라이트 */
     @keyframes msAttn { 0%, 100% { box-shadow: 0 0 0 0 rgba(0,111,238,0.55); } 50% { box-shadow: 0 0 0 7px rgba(0,111,238,0); } }
@@ -101,11 +103,19 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
     }
     .ms-set-row-opts .ms-set-field { flex: 0 0 auto; width: 160px; }
-    .ms-set-row-opts .ms-check { margin-bottom: 9px; }   /* 셀렉트 하단선에 맞춤 */
+    .ms-set-row-opts .ms-check-wrap { margin-bottom: 4px; display: flex; flex-direction: column; gap: 3px; }
+    .ms-check-help { font-size: 12px; color: var(--fg-muted); line-height: 1.4; }
     .ms-opts-empty { font-size: 12.5px; color: var(--fg-muted); line-height: 1.5; margin-bottom: 9px; }
     .ms-set-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
     .ms-set-field > span { font-size: 10.5px; font-weight: 700; color: var(--fg-muted); letter-spacing: 0.01em; }
-    .ms-set-field select.hero-input { font-size: 12.5px; padding: 7px 8px; border-radius: 9px; cursor: pointer; width: 100%; }
+    .ms-set-field select.hero-input { font-size: 12.5px; padding: 7px 8px; border-radius: 9px; cursor: pointer; width: 100%; min-height: 40px; }
+    /* 터치 기기: 입력 16px(iOS 확대 방지)·누르는 영역 44px */
+    @media (pointer: coarse) {
+      .ms-set-field select.hero-input, .ms-title-input, .ms-stepper input { font-size: 16px; min-height: 44px; }
+      .ms-stepper button, .ms-radio span { width: 44px; height: 44px; }
+      .ms-stepper input { height: 44px; }
+      .ms-btn-sm { min-height: 44px; }
+    }
     .ms-set-bottom { display: flex; align-items: center; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
 
     /* 스테퍼 / 라디오 */
@@ -209,7 +219,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px;
       padding: 24px; max-width: 380px; width: 100%;
       display: flex; flex-direction: column; gap: 14px; box-shadow: var(--shadow);
-      max-height: 86vh; overflow-y: auto;
+      max-height: 86vh; max-height: 86dvh; overflow-y: auto;
     }
     .ms-modal h3 { margin: 0; font-size: 17px; color: var(--fg); }
     .ms-modal-desc { margin: 0; font-size: 12.5px; color: var(--fg-muted); line-height: 1.55; }
@@ -229,8 +239,22 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .ms-code-bar input { flex: 1; min-width: 90px; text-transform: uppercase; text-align: center; letter-spacing: 0.14em; font-weight: 700; padding: 7px; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--fg); font-family: inherit; }
     .ms-code-bar .ms-code-val { font-family: ui-monospace, monospace; font-weight: 800; letter-spacing: 0.12em; color: var(--primary); font-size: 14px; }
     .ms-code-bar .ms-code-lead { color: var(--fg-muted); }
-    .ms-doc-sec-title { font-size: 11px; font-weight: 800; color: var(--fg-muted); letter-spacing: 0.02em; margin: 16px 2px 2px; }
+    .ms-doc-sec-title { font-size: 12px; font-weight: 800; color: var(--fg-muted); letter-spacing: 0.02em; margin: 16px 2px 2px; display: flex; align-items: center; gap: 5px; }
+    .ms-storage-note .ic, .ms-modal h3 .ic { vertical-align: -0.15em; }
     .ms-btn-sm { padding: 6px 10px; min-height: 40px; font-size: 12px; }
+
+    /* ── 휴대폰 화면(공유 링크로 열 때 등): 학습지를 2열로 줄여 가로로 넘치지 않게. 인쇄는 설정한 칸 수 그대로 ── */
+    @media screen and (max-width: 640px) {
+      .ms-sheet { padding: 18px 12px 22px; }
+      .sheet-title { font-size: 19px; padding: 0 8px; }
+      .sheet-meta { padding-right: 0; font-size: 13px; }
+      .sheet-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10px; }
+      .prob { padding-left: 6px; padding-right: 6px; min-width: 0; overflow-x: auto; }
+      .vcalc, .ldiv { font-size: calc(var(--num-fs, 27px) * 0.8); }
+    }
+    @media screen and (max-width: 380px) {
+      .vcalc, .ldiv { font-size: calc(var(--num-fs, 27px) * 0.7); }
+    }
 
     /* ── 인쇄 (빈 페이지 방지) ── */
     @page { size: A4; margin: 14mm; }
@@ -258,40 +282,36 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <div class="ms-root">
 
     <header class="app-header">
-      <span class="app-badge">◆ 학습지원</span>
-      <h1 class="app-title">
-  <div class="card-emoji sub-edu-learn" style="margin-bottom: 0; transform: scale(1.0);">
-        <i data-lucide="calculator"></i>
-      </div>
-  <span>연산<span>연습지</span></span>
-</h1>
+      <span class="app-badge">학습지원</span>
+      <h1 class="app-title">연산연습지 <span class="app-title-en">Math Sheet</span></h1>
       <p class="app-desc">덧셈·뺄셈·곱셈·나눗셈 세로셈 학습지를 만들어 A4로 인쇄하고, 링크·QR로 공유하세요.</p>
     </header>
 
     <!-- 뷰어 바 (공유 링크 접속 시) -->
     <div id="viewerBar" class="ms-viewer-bar no-print" hidden="">
-      <span class="ms-viewer-tag">📄 공유된 학습지</span>
-      <button class="ms-tb-btn" id="practiceBtn" onclick="practiceAgain()">🎲 이 유형의 다른 문제</button>
+      <span class="ms-viewer-tag"><Icon name="file-text" /> 공유된 학습지</span>
+      <button class="ms-tb-btn" id="practiceBtn" onclick="practiceAgain()"><Icon name="dices" /> 이 유형의 다른 문제</button>
       <button class="ms-tb-btn" id="ansToggle" onclick="toggleAns()">정답 보기</button>
-      <button class="ms-tb-btn" onclick="printSheet()">🖨️ 인쇄</button>
-      <button class="ms-tb-btn" onclick="exitViewerToNew()">📝 새 문제</button>
+      <button class="ms-tb-btn" onclick="printSheet()"><Icon name="printer" /> 인쇄</button>
+      <button class="ms-tb-btn" onclick="exitViewerToNew()"><Icon name="notebook-pen" /> 새 문제</button>
     </div>
 
     <!-- 편집 UI (툴바 + 설정) -->
     <section id="panel" class="ms-editor no-print">
       <div class="ms-toolbar">
         <input id="titleInput" class="ms-title-input" type="text" maxlength="40" placeholder="학습지 제목" aria-label="학습지 제목">
-        <button class="ms-tb-btn" onclick="newWorksheet()" id="newBtn">📝 새 문제</button>
-        <button class="ms-tb-btn" onclick="openLoadModal()">📂 열기</button>
+        <button class="ms-tb-btn" onclick="newWorksheet()" id="newBtn"><Icon name="notebook-pen" /> 새 문제</button>
+        <button class="ms-tb-btn" onclick="openLoadModal()"><Icon name="folder-open" /> 열기</button>
         <div class="ms-dd-wrap">
-          <button class="ms-tb-btn" id="saveBtn" onclick="toggleSaveMenu(event)" aria-haspopup="true" aria-expanded="false" aria-controls="saveMenu">💾 저장 ▾</button>
+          <button class="ms-tb-btn" id="saveBtn" onclick="toggleSaveMenu(event)" aria-haspopup="true" aria-expanded="false" aria-controls="saveMenu"><Icon name="save" /> 저장 <Icon name="chevron-down" /></button>
           <div class="ms-dropdown" id="saveMenu">
-            <button class="ms-dd-opt" onclick="printSheet()">📄 PDF로 저장 <small>인쇄</small></button>
-            <button class="ms-dd-opt" onclick="saveSet()">💾 브라우저에 저장 <small>로컬</small></button>
-            <button class="ms-dd-opt" onclick="saveToServer()">☁️ 코드로 저장 <small>다른 기기</small></button>
+            <button class="ms-dd-opt" onclick="printSheet()"><Icon name="file-text" /> PDF로 저장 <small>인쇄 창</small></button>
+            <button class="ms-dd-opt" onclick="saveSet()"><Icon name="save" /> 브라우저에 저장 <small>이 기기</small></button>
+            <button class="ms-dd-opt" onclick="saveToServer()"><Icon name="cloud" /> 코드로 저장 <small>다른 기기</small></button>
           </div>
         </div>
-        <button class="ms-tb-btn" onclick="openShare()">🔗 공유</button>
+        <button class="ms-tb-btn" onclick="printSheet()"><Icon name="printer" /> 인쇄</button>
+        <button class="ms-tb-btn" onclick="openShare()"><Icon name="link" /> 공유</button>
         <span class="ms-tb-spacer"></span>
         <button class="ms-tb-btn" id="ansToggleBtn" onclick="toggleAnsMain()">정답 보기</button>
       </div>
@@ -310,7 +330,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             </select>
           </label>
           <label class="ms-set-field">
-            <span>피연산자 (A·위)</span>
+            <span id="aTypeLabel">앞의 수 (위)</span>
             <select id="aTypeSel" class="hero-input">
               <option value="x">한 자리 수</option>
               <option value="ten">십</option>
@@ -324,7 +344,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             </select>
           </label>
           <label class="ms-set-field">
-            <span>연산자 (B·아래)</span>
+            <span id="bTypeLabel">뒤의 수 (아래)</span>
             <select id="bTypeSel" class="hero-input">
               <option value="x" selected="">한 자리 수</option>
               <option value="ten">십</option>
@@ -340,9 +360,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <label class="ms-set-field ms-field-auto">
             <span>문제 수 (4–60)</span>
             <div class="ms-stepper">
-              <button type="button" onclick="bumpCount(-1)" aria-label="줄이기">−</button>
+              <button type="button" onclick="bumpCount(-1)" aria-label="문제 수 줄이기"><Icon name="minus" /></button>
               <input id="countInput" type="number" min="4" max="60" value="12" inputmode="numeric">
-              <button type="button" onclick="bumpCount(1)" aria-label="늘리기">+</button>
+              <button type="button" onclick="bumpCount(1)" aria-label="문제 수 늘리기"><Icon name="plus" /></button>
             </div>
           </label>
           <label class="ms-set-field ms-field-auto">
@@ -353,7 +373,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
               <label class="ms-radio"><input type="radio" name="cols" value="5"><span>5</span></label>
             </div>
           </label>
-          <button class="ms-tb-btn primary" id="genBtn" onclick="doGenerate()">🎲 만들기</button>
+          <button class="ms-tb-btn primary" id="genBtn" onclick="doGenerate()"><Icon name="dices" /> 만들기</button>
         </div>
 
         <!-- 2행: 연산별 옵션 -->
@@ -374,13 +394,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
               <option value="mix">섞기</option>
             </select>
           </label>
-          <label class="ms-check" id="addLimitWrap" title="켜면 합의 자리수가 더 큰 수보다 늘지 않아요. 예) 23+45=68 ⭕  67+89=156 ❌"><input type="checkbox" id="addLimitChk"> 합이 자리수 안 늘게</label>
+          <div class="ms-check-wrap" id="addLimitWrap">
+            <label class="ms-check"><input type="checkbox" id="addLimitChk"> 합의 자릿수가 늘지 않게</label>
+            <small class="ms-check-help">예) 23+45=68은 나오고, 67+89=156은 나오지 않아요</small>
+          </div>
           <div class="ms-opts-empty" id="optsEmpty" hidden="">이 연산에는 추가 옵션이 없어요.</div>
         </div>
       </div>
 
       <div id="notice" class="ms-notice" hidden="" role="status" aria-live="polite"></div>
-      <p class="ms-storage-note">💡 제목은 자동으로 채워져요(직접 수정 가능). <b>'브라우저에 저장'</b>한 세트는 이 기기·브라우저(로컬)에만 보관되고, <b>열기</b> 버튼으로 불러올 수 있어요.</p>
+      <p class="ms-storage-note"><Icon name="lightbulb" /> 제목은 자동으로 채워져요. 직접 고친 제목은 설정을 바꿔도 그대로 남아요. <b>'브라우저에 저장'</b>한 세트는 이 기기·브라우저(로컬)에만 보관되고, <b>열기</b> 버튼으로 불러올 수 있어요.</p>
     </section>
 
     <!-- 빈 상태: 사용법 안내 -->
@@ -388,11 +411,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <div class="ms-empty-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line><line x1="5" y1="19" x2="19" y2="19"></line></svg></div>
       <h2 class="ms-empty-title">연산 학습지를 만들어 보세요</h2>
       <ol class="ms-empty-steps">
-        <li><span class="ms-empty-n">1</span><span><b>📝 새 문제</b>를 누르면 무작위 유형으로 바로 출제돼요.</span></li>
-        <li><span class="ms-empty-n">2</span><span>위 설정에서 <b>연산·자릿수·문제 수</b>를 직접 고르고 <b>🎲 만들기</b>를 눌러도 돼요. <b>정답 보기</b>로 정답 확인.</span></li>
-        <li><span class="ms-empty-n">3</span><span><b>💾 저장</b>(PDF·브라우저)·<b>🔗 공유</b>(단축 링크·QR)로 학생에게 보낼 수 있어요.</span></li>
+        <li><span class="ms-empty-n">1</span><span><b>새 문제</b>를 누르면 무작위 유형으로 바로 출제돼요.</span></li>
+        <li><span class="ms-empty-n">2</span><span>위 설정에서 <b>연산·자릿수·문제 수</b>를 직접 고르고 <b>만들기</b>를 눌러도 돼요. <b>정답 보기</b>로 정답 확인.</span></li>
+        <li><span class="ms-empty-n">3</span><span><b>인쇄</b>·<b>저장</b>(PDF·브라우저)·<b>공유</b>(단축 링크·QR)로 학생에게 보낼 수 있어요.</span></li>
       </ol>
-      <button class="ms-tb-btn primary" onclick="newWorksheet()">📝 새 문제</button>
+      <button class="ms-tb-btn primary" onclick="newWorksheet()"><Icon name="notebook-pen" /> 새 문제</button>
     </section>
 
     <!-- 학습지 -->
@@ -405,12 +428,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <!-- 불러오기 모달 (접근성: VUI.modal — 배경 클릭·ESC·닫기 버튼으로 닫힘) -->
   <div id="loadModal" class="ms-modal-overlay no-print">
     <div class="ms-modal">
-      <h3>📂 저장한 세트 열기</h3>
-      <p class="ms-modal-desc">누르면 조건과 문제가 그대로 복원돼요. 우상단 <b>🔄 동기화</b> 버튼으로 코드를 연결하면 다른 기기에 저장한 세트도 보여요(로그인·개인정보 없음).</p>
-      <div class="ms-doc-sec-title">📱 이 기기(로컬)</div>
+      <h3><Icon name="folder-open" /> 저장한 세트 열기</h3>
+      <p class="ms-modal-desc">누르면 조건과 문제가 그대로 복원돼요. 화면 위 <b>동기화</b> 버튼에서 코드를 연결하면 <b>코드로 저장</b>한 세트도 보여요(로그인·개인정보 없음).</p>
+      <div class="ms-doc-sec-title"><Icon name="smartphone" /> 이 기기(브라우저)</div>
       <ul class="ms-doc-list" id="docList"></ul>
       <div id="serverSection" hidden="">
-        <div class="ms-doc-sec-title">☁️ 코드(<span id="msCodeTag"></span>)</div>
+        <div class="ms-doc-sec-title"><Icon name="cloud" /> 코드로 저장한 세트(<span id="msCodeTag"></span>)</div>
         <ul class="ms-doc-list" id="serverDocList"></ul>
       </div>
       <button class="ms-tb-btn" data-vui-close>닫기</button>
@@ -644,9 +667,19 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (forceCol3 && r.value === '3') r.checked = true;
     });
     const cg = $('colsGroup'); if (cg) cg.classList.toggle('ms-locked', forceCol3);
+    updateTypeLabels(op);
     updateTitle();
   }
-  function updateTitle() { titleInput.value = makeTitle(opSel.value, aTypeSel.value, bTypeSel.value); }
+  // 직접 고친 제목은 설정을 바꿔도 덮어쓰지 않는다(비우면 다시 자동 제목)
+  let titleEdited = false;
+  titleInput.addEventListener('input', () => { titleEdited = titleInput.value.trim() !== ''; });
+  function updateTitle() { if (!titleEdited) titleInput.value = makeTitle(opSel.value, aTypeSel.value, bTypeSel.value); }
+  // 앞·뒤 수 이름: 나눗셈은 나뉠 수·나누는 수(장제법에는 위·아래가 없음)
+  function updateTypeLabels(op) {
+    const div = op === 'div';
+    $('aTypeLabel').textContent = div ? '나뉠 수' : op === 'mix' ? '앞의 수' : '앞의 수 (위)';
+    $('bTypeLabel').textContent = div ? '나누는 수' : op === 'mix' ? '뒤의 수' : '뒤의 수 (아래)';
+  }
   function getCols() { const r = document.querySelector('input[name="cols"]:checked'); return r ? parseInt(r.value) : 4; }
 
   function getConfig() {
@@ -666,8 +699,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const r = document.querySelector('input[name="cols"][value="' + cfg.cols + '"]'); if (r) r.checked = true;
     addLimitChk.checked = !!cfg.addLimit;
     ansShown = !!cfg.showAns; updateAnsBtn();
+    titleEdited = false;
     updateControls();
-    if (cfg.title) titleInput.value = cfg.title;
+    if (cfg.title) {
+      titleInput.value = cfg.title;
+      titleEdited = cfg.title !== makeTitle(opSel.value, aTypeSel.value, bTypeSel.value);
+    }
   }
 
   window.bumpCount = function (d) { countInput.value = clamp((parseInt(countInput.value) || 12) + d * 2, 4, 60); markStale(); };
@@ -676,6 +713,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   window.newWorksheet = function () {   // 처음 로드처럼: 랜덤 조건으로 새 문제 생성
     settingsRow.hidden = false;
     const def = document.querySelector('input[name="cols"][value="4"]'); if (def) def.checked = true;   // 한 줄 칸 수 기본 4로 리셋
+    titleEdited = false;   // 새 문제는 자동 제목부터
     randomizeControls();
     updateControls();   // 새 조건이 강제 3(나머지·4자리)이면 여기서 다시 3으로 잠금
     doGenerate();
@@ -688,7 +726,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   window.doGenerate = function (collapse) {
     const cfg = getConfig();
     const probs = generate(cfg);
-    if (probs === null) { showNotice('선택한 조건으로 만들 수 있는 문제가 없습니다. A·B 유형이나 연산 조건을 바꿔 주세요. (예: 뺄셈에서 A가 B보다 항상 작은 경우)'); return; }
+    if (probs === null) { showNotice('선택한 조건으로 만들 수 있는 문제가 없어요. 앞의 수·뒤의 수 유형이나 연산 조건을 바꿔 주세요. (예: 뺄셈에서 앞의 수가 뒤의 수보다 항상 작은 경우)'); return; }
     hideNotice();
     currentConfig = cfg; currentProblems = probs;
     renderSheet(); applyAns(ansShown);
@@ -712,7 +750,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const d = new Date();
     const stamp = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
     sets.unshift({ id: Date.now(), title: currentConfig.title, config: currentConfig, problems: currentProblems, savedAt: stamp });
-    if (saveSets(sets.slice(0, 40))) showToast('이 브라우저(로컬)에 저장됐어요 ✓');
+    if (saveSets(sets.slice(0, 40))) showToast('이 브라우저에 저장했어요.');
   };
   window.openLoadModal = function () {
     const sets = loadSets(), list = $('docList');
@@ -740,9 +778,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   };
   window.deleteSet = function (id, ev) {
     if (ev) ev.stopPropagation();
-    saveSets(loadSets().filter(s => String(s.id) !== String(id)));
+    const before = loadSets();
+    const gone = before.find(s => String(s.id) === String(id));
+    saveSets(before.filter(s => String(s.id) !== String(id)));
     openLoadModal();
     focusDocList('docList');
+    if (gone) VUI.toast(`'${gone.title || '세트'}'를 지웠어요.`, { action: { label: '되돌리기', onClick: () => { saveSets(before); if (loadM.isOpen()) openLoadModal(); } } });
   };
   // 목록을 다시 그리면 누른 삭제 버튼이 사라지므로 포커스를 목록의 첫 항목(없으면 닫기 버튼)으로
   function focusDocList(listId) {
@@ -778,8 +819,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const stamp = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
     const ok = await mathLib.save(code, id, { id, title: currentConfig.title, config: currentConfig, problems: currentProblems, savedAt: stamp });
     if (!hadCode && msCodeBtn) msCodeBtn.refresh();   // 자동 발급된 코드를 상단 버튼에 반영
-    if (ok) showToast(`코드 ${code}에 저장됐어요 ☁️ 우상단 버튼의 코드를 다른 기기에 입력하면 열려요`);
-    else showToast('서버에 저장하지 못했어요. 연결을 확인하고 다시 해 주세요.', 'error');
+    if (ok) showToast(`코드 ${code}에 저장했어요. 다른 기기의 동기화 버튼에 이 코드를 넣으면 열려요.`);
+    else showToast('코드로 저장하지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요.', 'error');
   };
 
   async function renderServerSets() {
@@ -805,6 +846,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   window.deleteServerSet = async function (id, ev) {
     if (ev) ev.stopPropagation();
     const code = VivesSync.getCode(); if (!code) return;
+    const s = serverSets.find(x => String(x.id) === String(id));
+    const name = (s && s.value && s.value.title) || '이 세트';
+    if (!(await VUI.confirm(`'${name}'를 코드 저장소에서 지울까요? 다른 기기에서도 사라져요.`, { title: '세트 지우기', ok: '지우기', danger: true }))) return;
     await mathLib.remove(code, id);
     await renderServerSets();
     focusDocList('serverDocList');
@@ -831,7 +875,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   // 같은 학습지(같은 공유 주소)는 단축 링크를 한 번만 만들고 재사용 — VUI.share.shorten이 성공한 주소를 기억한다
   async function renderSheetQR() {
     const box = $('sheetQR'); if (!box) return;
-    const url = await VUI.share.shorten(buildShareURL());   // 단축 실패 시 원본 URL로 QR
+    // 단축 실패·지연 시 원본 URL로 QR (인쇄 창이 최대 10초 늦게 뜨던 문제 → 2.5초까지만 기다림)
+    const long = buildShareURL();
+    const url = await Promise.race([VUI.share.shorten(long), new Promise(r => setTimeout(() => r(long), 2500))]);
     box.innerHTML = '';
     if (typeof QRCode !== 'undefined') { try { new QRCode(box, { text: url, width: 58, height: 58, correctLevel: QRCode.CorrectLevel.M }); } catch {} }
   }
@@ -859,7 +905,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     if (!currentProblems.length) { showToast('먼저 문제를 생성하세요.'); return; }
     VUI.share.link(buildShareURL(), {
       show: true,
-      title: '🔗 공유',
+      title: '학습지 공유',
       desc: "단축 링크·QR로 공유하세요. 링크로 접속하면 같은 문제를 보고 '정답'·'다른 문제'를 쓸 수 있어요.",
     });
   };
@@ -910,7 +956,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     currentProblems = probs;
     renderSheet(); applyAns(false);
     $('ansToggle').textContent = '정답 보기'; $('ansToggle').classList.remove('active');
-    showToast('이 유형의 다른 문제를 만들었어요 🎲');
+    showToast('이 유형의 다른 문제를 만들었어요.');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   window.exitViewerToNew = function () {   // 공유 뷰어 → 내 편집 화면(새 문제 상태)
@@ -948,7 +994,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   // ── 상단 공유 버튼: 현재 페이지 URL 공유/복사 (복사가 안 되면 링크 창) ──
   window.shareCurrentPage = function () {
     const url = location.href;
-    const copy = () => VUI.share.copyOrShow(url, { title: '🔗 페이지 공유' });
+    const copy = () => VUI.share.copyOrShow(url, { title: '페이지 공유' });
     if (navigator.share) navigator.share({ title: '연산연습지', url }).catch(copy); else copy();
   };
 
@@ -964,7 +1010,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
   function showEmpty() { emptyEl.hidden = false; sheetEl.hidden = true; }
 
-  // 처음 로드: 연산·피연산자·연산자를 무작위로 (유효한 조합만 채택)
+  // 처음 로드: 연산·앞의 수·뒤의 수 유형을 무작위로 (유효한 조합만 채택)
   function randomizeControls() {
     const types = ['x', 'ten', 'x0', '1y', 'xy', 'x00', 'xyz', 'x000', 'xyzq'];
     for (let i = 0; i < 50; i++) {

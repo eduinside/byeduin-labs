@@ -1,7 +1,10 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
 <AppLayout
+  theme="light"
+  toast="top"
   title="그래프 그리기 — eduin VIVES"
   description="조사한 자료를 표로 정리하고 ○그래프, 그림그래프, 막대·꺾은선그래프, 띠·원그래프로 바꿔 보세요. 눈금 읽기, 평균, 알맞은 그래프 고르기 미션까지. 초등 수학 자료와 가능성."
   image="https://eduin.info/og-images/graph-maker.png"
@@ -37,33 +40,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   --gm-bar: #6d28d9;
   --sk-accent: var(--gm-primary);
 }
-[data-theme="dark"] {
-  --gm-primary: #a78bfa;
-  --gm-primary-h: #c4b5fd;
-  --gm-primary-soft: rgba(167,139,250,0.14);
-  --gm-bg: #0e0c16;
-  --gm-paper: #16131f;
-  --gm-panel: #131020;
-  --gm-border: #2a2540;
-  --gm-text: #ece9f8;
-  --gm-muted: #a29db8;
-  --gm-grid: #26213a;
-  --gm-axis: #b5b0cc;
-  --gm-btn: #1d1930;
-  --gm-btn-h: #27223e;
-  --gm-ok: #4ade80;
-  --gm-no: #fdba74;
-  --gm-avg: #fbbf24;
-  --gm-line: #fb7185;
-  --gm-bar: #a78bfa;
-  --sk-accent-fg: #0e0c16;
-}
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', 'Segoe UI', sans-serif;
-  background: var(--gm-bg); color: var(--gm-text); min-height: 100vh; overflow: hidden;
+  background: var(--gm-bg); color: var(--gm-text); min-height: 100vh; min-height: 100dvh; overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 button, input, textarea { font-family: inherit; }
@@ -71,34 +53,41 @@ button, input, textarea { font-family: inherit; }
 .screen.active { display: flex; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
-.gm-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 48px; padding: 0 18px;
-  border-radius: 14px; border: 1px solid var(--gm-border); background: var(--gm-btn); color: var(--gm-text);
-  font-size: 15.5px; font-weight: 800; cursor: pointer; touch-action: manipulation; transition: background .15s, transform .08s;
-}
-.gm-btn:hover { background: var(--gm-btn-h); }
-.gm-btn:active { transform: scale(.96); }
-.gm-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
-.gm-btn.primary { background: var(--gm-primary); border-color: var(--gm-primary); color: #fff; }
-[data-theme="dark"] .gm-btn.primary { color: #0e0c16; }
-.gm-btn.primary:hover { background: var(--gm-primary-h); }
-.gm-btn.big { min-height: 60px; padding: 0 36px; font-size: 19px; border-radius: 99px; }
-.gm-btn.sm { min-height: 44px; padding: 0 12px; font-size: 14px; border-radius: 12px; }
-.gm-btn.block { width: 100%; }
-.gm-btn[aria-pressed="true"] { border-color: var(--gm-primary); background: var(--gm-primary-soft); color: var(--gm-primary); }
+/* 버튼은 공용 .sk-btn(규약 v2). 앱에서는 터치 조작 보조만 */
+.sk-btn { touch-action: manipulation; }
+.sk-btn.gm-big { min-height: 56px; padding: 0 30px; font-size: 18px; border-radius: 99px; }
 
 /* ══════════ 인트로 ══════════ */
+/* 높이·스크롤·가운데 정렬은 .sk-screen */
 .intro-screen, .result-screen {
-  flex-direction: column; align-items: center; height: 100vh; height: 100dvh; padding: 64px 20px 28px;
-  text-align: center; overflow-y: auto; animation: fadeUp .45s ease;
+  text-align: center; animation: fadeUp .45s ease;
   background: radial-gradient(circle at 20% 25%, rgba(109,40,217,.10) 0, transparent 40%),
               radial-gradient(circle at 80% 75%, rgba(225,29,72,.07) 0, transparent 38%), var(--gm-bg);
 }
-.intro-screen > :first-child, .result-screen > :first-child { margin-top: auto; }
-.intro-screen > :last-child, .result-screen > :last-child { margin-bottom: auto; }
 .intro-tag { display: inline-block; background: var(--gm-primary); color: #fff; font-size: 14px; font-weight: 800; padding: 6px 14px; border-radius: 99px; margin-bottom: 14px; }
-[data-theme="dark"] .intro-tag { color: #0e0c16; }
-.intro-art { font-size: 84px; line-height: 1; margin-bottom: 6px; }
+.intro-art { font-size: 72px; line-height: 1; margin-bottom: 6px; color: var(--gm-primary); }
+/* 두 가지 모드 고르기 */
+.mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: min(620px, 100%); margin: 4px 0 18px; }
+.mode-card {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 14px; min-height: 140px;
+  border-radius: 20px; border: 2px solid var(--gm-border); background: var(--gm-panel); color: var(--gm-text);
+  cursor: pointer; touch-action: manipulation; font: inherit; text-align: center;
+  transition: border-color .15s, transform .08s, box-shadow .15s;
+}
+.mode-card:hover { border-color: var(--gm-primary); box-shadow: 0 6px 20px rgba(109,40,217,.12); }
+.mode-card:active { transform: scale(.98); }
+.mode-card:focus-visible { outline: 3px solid var(--gm-primary); outline-offset: 2px; }
+.mode-card .ic { width: 40px; height: 40px; color: var(--gm-primary); }
+.mode-card > span { display: flex; flex-direction: column; gap: 4px; }
+.mode-card b { font-size: 19px; font-weight: 900; }
+.mode-card small { font-size: 14px; color: var(--gm-muted); font-weight: 700; line-height: 1.5; }
+.mode-card.learn .ic { color: #d97706; }
+@media (max-width: 520px) { .mode-cards { grid-template-columns: 1fr; } .mode-card { min-height: 0; flex-direction: row; text-align: left; } .mode-card .ic { flex-shrink: 0; } .mode-card span { display: flex; flex-direction: column; gap: 2px; } }
+/* 조작판 위: 지금 모드 + 바꾸기 */
+.mode-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mode-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 19px; font-weight: 900; flex: 1 1 auto; }
+.mode-badge .ic { width: 22px; height: 22px; color: var(--gm-primary); }
+.mode-badge small { font-size: 12.5px; font-weight: 800; color: var(--gm-muted); }
 .intro-screen h1, .result-screen h1 { font-size: 34px; font-weight: 900; letter-spacing: -.02em; margin-bottom: 6px; }
 .intro-sub { font-size: 16px; color: var(--gm-muted); line-height: 1.7; margin-bottom: 18px; }
 .intro-types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: min(560px, 100%); margin-bottom: 22px; }
@@ -154,6 +143,8 @@ button, input, textarea { font-family: inherit; }
 .panel-head h2 { font-size: 20px; font-weight: 900; }
 .mode-tabs { display: flex; gap: 6px; padding: 12px 14px 0; }
 .mode-tab { flex: 1; min-height: 48px; border-radius: 12px; border: 2px solid var(--gm-border); background: var(--gm-btn); font-size: 15px; font-weight: 800; color: var(--gm-muted); cursor: pointer; touch-action: manipulation; }
+.mode-tab { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.mode-tabs[hidden] { display: none; }
 .mode-tab.active { border-color: var(--gm-primary); background: var(--gm-primary-soft); color: var(--gm-primary); }
 .panel-body { padding: 14px; flex: 1; }
 .pane[hidden] { display: none; }
@@ -164,12 +155,12 @@ button, input, textarea { font-family: inherit; }
 .row + .row { margin-top: 8px; }
 .inp {
   min-height: 44px; border-radius: 10px; border: 1px solid var(--gm-border); background: var(--gm-panel); color: var(--gm-text);
-  padding: 0 10px; font-size: 15px; font-weight: 700; min-width: 0;
+  padding: 0 10px; font-size: 16px; font-weight: 700; min-width: 0;
 }
 .inp:focus { outline: none; border-color: var(--gm-primary); }
 .chipset { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
-  min-height: 40px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--gm-border); background: var(--gm-panel); color: var(--gm-text);
+  min-height: 44px; padding: 0 12px; display: inline-flex; align-items: center; gap: 5px; border-radius: 99px; border: 1px solid var(--gm-border); background: var(--gm-panel); color: var(--gm-text);
   font-size: 13.5px; font-weight: 800; cursor: pointer; touch-action: manipulation;
 }
 .chip[aria-pressed="true"] { border-color: var(--gm-primary); background: var(--gm-primary-soft); color: var(--gm-primary); }
@@ -180,7 +171,7 @@ button, input, textarea { font-family: inherit; }
   font-size: 17px; font-weight: 900; cursor: pointer; font-variant-numeric: tabular-nums;
 }
 .trow .val.focus { border-color: var(--gm-primary); box-shadow: 0 0 0 3px var(--gm-primary-soft); }
-.sq { min-height: 44px; border-radius: 10px; border: 1px solid var(--gm-border); background: var(--gm-btn); color: var(--gm-text); font-size: 20px; font-weight: 800; cursor: pointer; touch-action: manipulation; }
+.sq { min-height: 44px; border-radius: 10px; border: 1px solid var(--gm-border); background: var(--gm-btn); color: var(--gm-text); font-size: 20px; font-weight: 800; cursor: pointer; touch-action: manipulation; display: inline-flex; align-items: center; justify-content: center; }
 .sq.del { font-size: 15px; color: var(--gm-muted); }
 .ttotal { display: flex; justify-content: space-between; font-weight: 800; font-size: 14.5px; margin-top: 8px; color: var(--gm-muted); }
 .hint-text { font-size: 13.5px; color: var(--gm-muted); line-height: 1.6; }
@@ -189,8 +180,8 @@ button, input, textarea { font-family: inherit; }
 /* 숫자 입력판 */
 .keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 8px; }
 .keypad button { min-height: 50px; border-radius: 10px; border: 1px solid var(--gm-border); background: var(--gm-panel); color: var(--gm-text); font-size: 20px; font-weight: 900; cursor: pointer; touch-action: manipulation; }
+.keypad button { display: inline-flex; align-items: center; justify-content: center; }
 .keypad button.ok { background: var(--gm-primary); color: #fff; border-color: var(--gm-primary); font-size: 16px; }
-[data-theme="dark"] .keypad button.ok { color: #0e0c16; }
 .kp-pop { position: fixed; z-index: 9000; width: 260px; background: var(--gm-panel); border: 1px solid var(--gm-border); border-radius: 16px; padding: 10px; box-shadow: 0 12px 34px rgba(0,0,0,.2); }
 .kp-pop[hidden] { display: none; }
 .kp-pop .kp-head { display: flex; align-items: center; gap: 8px; font-weight: 800; }
@@ -215,7 +206,7 @@ button, input, textarea { font-family: inherit; }
 .counter-row .lbl { font-size: 18px; font-weight: 900; }
 .counter-row .v { text-align: center; font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
 .m-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-.m-actions .gm-btn { flex: 1; }
+.m-actions .sk-btn { flex: 1; }
 .m-actions [hidden] { display: none; }
 #mFeedback { margin-top: 10px; font-size: 15.5px; }
 #mFeedback:empty { display: none; }
@@ -227,7 +218,7 @@ button, input, textarea { font-family: inherit; }
 /* 모달 */
 .gm-modal { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; padding: 16px; }
 .gm-modal.open { display: flex; }
-.gm-mbox { background: var(--gm-panel); color: var(--gm-text); border-radius: 20px; padding: 22px; width: min(520px, 100%); max-height: calc(100vh - 32px); overflow: auto; border: 1px solid var(--gm-border); }
+.gm-mbox { background: var(--gm-panel); color: var(--gm-text); border-radius: 20px; padding: 22px; width: min(520px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--gm-border); }
 .gm-mbox h2 { font-size: 19px; font-weight: 900; margin-bottom: 6px; }
 .gm-mbox p { font-size: 14px; color: var(--gm-muted); line-height: 1.6; margin-bottom: 10px; }
 .gm-mbox textarea { width: 100%; height: 200px; border-radius: 12px; border: 1px solid var(--gm-border); background: var(--gm-bg); color: var(--gm-text); padding: 10px; font-size: 15px; line-height: 1.6; }
@@ -237,6 +228,9 @@ button, input, textarea { font-family: inherit; }
 .result-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: min(560px, 100%); margin: 12px 0 18px; }
 .result-cell { background: var(--gm-panel); border: 1px solid var(--gm-border); border-radius: 14px; padding: 10px; font-size: 14px; font-weight: 700; text-align: left; display: flex; justify-content: space-between; gap: 8px; }
 .result-cell .stars { color: #f59e0b; white-space: nowrap; }
+.stars .ic { fill: currentColor; }
+.stage-msg .ic { vertical-align: -0.15em; }
+.hint-text .ic { vertical-align: -0.15em; }
 .result-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 
 /* 인쇄: 그래프 한 장 */
@@ -267,20 +261,30 @@ button, input, textarea { font-family: inherit; }
   </Fragment>
 
 <!-- ============ 인트로 ============ -->
-<div id="screenIntro" class="screen intro-screen active">
+<div id="screenIntro" class="screen intro-screen sk-screen active">
   <div class="intro-tag">수학 1~6학년 · 자료와 가능성</div>
-  <div class="intro-art" aria-hidden="true">📊</div>
+  <div class="intro-art" aria-hidden="true"><Icon name="chart-column" /></div>
   <h1>그래프 그리기</h1>
-  <p class="intro-sub">조사한 자료를 표로 정리하고<br>여러 가지 그래프로 바꿔 보며 무엇이 잘 보이는지 비교해요.</p>
-  <div class="intro-types" aria-hidden="true">
-    <div>○ 그래프<small>1~2학년</small></div>
-    <div>🍎 그림그래프<small>3~4학년</small></div>
-    <div>📊 막대그래프<small>3~4학년</small></div>
-    <div>📈 꺾은선그래프<small>3~4학년</small></div>
-    <div>▬ 띠그래프<small>5~6학년</small></div>
-    <div>◔ 원그래프<small>5~6학년</small></div>
+  <p class="intro-sub">무엇을 할까요? 하나를 골라요.</p>
+  <!-- 두 가지 모드: ① 내 자료로 표·그래프(보고서) 만들기 ② 미션으로 그래프 공부하기 -->
+  <div class="mode-cards" role="group" aria-label="모드 고르기">
+    <button type="button" class="mode-card make" id="btnStartMake">
+      <Icon name="chart-column" />
+      <span><b>그래프 만들기</b><small>조사한 자료로 표와 그래프를 만들어 보고서로</small></span>
+    </button>
+    <button type="button" class="mode-card learn" id="btnStartLearn">
+      <Icon name="trophy" />
+      <span><b>그래프 공부하기</b><small>미션을 풀며 그래프 읽는 법 익히기</small></span>
+    </button>
   </div>
-  <button type="button" class="gm-btn primary big" id="btnStart">시작하기</button>
+  <div class="intro-types" aria-label="만들 수 있는 그래프">
+    <div>○그래프<small>1~2학년</small></div>
+    <div>그림그래프<small>3~4학년</small></div>
+    <div>막대그래프<small>3~4학년</small></div>
+    <div>꺾은선그래프<small>3~4학년</small></div>
+    <div>띠그래프<small>5~6학년</small></div>
+    <div>원그래프<small>5~6학년</small></div>
+  </div>
 </div>
 
 <!-- ============ 본 화면 ============ -->
@@ -292,11 +296,16 @@ button, input, textarea { font-family: inherit; }
     </div>
 
     <aside class="panel" aria-label="조작판">
-      <div class="panel-head"><h2>📊 그래프 그리기</h2></div>
-      <div class="mode-tabs" role="group" aria-label="모드">
-        <button type="button" class="mode-tab active" data-mode="make" aria-pressed="true">📋 만들기</button>
-        <button type="button" class="mode-tab" data-mode="survey" aria-pressed="false">🗳 조사하기</button>
-        <button type="button" class="mode-tab" data-mode="mission" aria-pressed="false">🏆 미션</button>
+      <div class="panel-head">
+        <!-- 지금 모드 표시 + 다른 모드로 바꾸기(app.js가 채움) -->
+        <div class="mode-head">
+          <h2 class="mode-badge" id="modeBadge" aria-live="polite"></h2>
+          <button type="button" class="sk-btn sk-btn--sm" id="btnSwitchMode"></button>
+        </div>
+      </div>
+      <div class="mode-tabs" id="makeTabs" role="group" aria-label="만들기 방법">
+        <button type="button" class="mode-tab active" data-mode="make" aria-pressed="true"><Icon name="table" /> 표·그래프</button>
+        <button type="button" class="mode-tab" data-mode="survey" aria-pressed="false"><Icon name="vote" /> 조사하기</button>
       </div>
       <div class="panel-body">
         <!-- 만들기 -->
@@ -306,10 +315,10 @@ button, input, textarea { font-family: inherit; }
             <div class="chipset" id="presets"></div>
           </div>
           <div class="group">
-            <div class="group-title">표<span class="sp"></span><button type="button" class="chip" id="btnPaste">📋 붙여넣기</button></div>
+            <div class="group-title">표<span class="sp"></span><button type="button" class="chip" id="btnPaste"><Icon name="clipboard-paste" /> 붙여넣기</button></div>
             <div class="row"><input class="inp" id="tTitle" style="flex:1" maxlength="30" placeholder="제목 (예: 좋아하는 계절)" aria-label="그래프 제목"><input class="inp" id="tUnit" style="width:84px" maxlength="6" placeholder="단위" aria-label="단위 (예: 명)"></div>
             <div id="rows" style="margin-top:10px"></div>
-            <div class="row" style="margin-top:8px"><button type="button" class="gm-btn sm" id="btnAddRow">＋ 항목 추가</button></div>
+            <div class="row" style="margin-top:8px"><button type="button" class="sk-btn sk-btn--sm" id="btnAddRow"><Icon name="plus" /> 항목 추가</button></div>
             <div class="ttotal"><span>합계</span><span id="tTotal">0</span></div>
           </div>
           <div class="group" id="optGroup">
@@ -319,9 +328,9 @@ button, input, textarea { font-family: inherit; }
           <div class="group">
             <div class="group-title">내보내기</div>
             <div class="row">
-              <button type="button" class="gm-btn sm" id="btnPng">🖼 그림 저장</button>
-              <button type="button" class="gm-btn sm" id="btnPrint">🖨 인쇄</button>
-              <button type="button" class="gm-btn sm" id="btnShare">🔗 링크</button>
+              <button type="button" class="sk-btn sk-btn--sm" id="btnPng"><Icon name="image" /> 그림 저장</button>
+              <button type="button" class="sk-btn sk-btn--sm" id="btnPrint"><Icon name="printer" /> 인쇄</button>
+              <button type="button" class="sk-btn sk-btn--sm" id="btnShare"><Icon name="link" /> 링크</button>
             </div>
           </div>
         </div>
@@ -332,13 +341,13 @@ button, input, textarea { font-family: inherit; }
           <div class="group">
             <div class="group-title">항목 (최대 8개)</div>
             <div id="sItems"></div>
-            <div class="row" style="margin-top:8px"><button type="button" class="gm-btn sm" id="sAdd">＋ 항목 추가</button></div>
+            <div class="row" style="margin-top:8px"><button type="button" class="sk-btn sk-btn--sm" id="sAdd"><Icon name="plus" /> 항목 추가</button></div>
           </div>
           <div class="row">
-            <button type="button" class="gm-btn sm" id="sUndo">↶ 하나 취소</button>
-            <button type="button" class="gm-btn sm" id="sReset">모두 0으로</button>
+            <button type="button" class="sk-btn sk-btn--sm" id="sUndo"><Icon name="undo-2" /> 하나 되돌리기</button>
+            <button type="button" class="sk-btn sk-btn--sm sk-btn--danger" id="sReset"><Icon name="rotate-ccw" /> 모두 0으로</button>
           </div>
-          <button type="button" class="gm-btn primary block" id="sToTable" style="margin-top:12px">📋 표로 정리하기</button>
+          <button type="button" class="sk-btn sk-btn--primary sk-btn--block" id="sToTable" style="margin-top:12px"><Icon name="table" /> 표로 정리하기</button>
         </div>
 
         <!-- 미션 -->
@@ -351,10 +360,10 @@ button, input, textarea { font-family: inherit; }
           <div id="mAnswer"></div>
           <div id="mFeedback"></div>
           <div class="m-actions">
-            <button type="button" class="gm-btn primary" id="mCheck">확인</button>
-            <button type="button" class="gm-btn primary" id="mNextQ" hidden>다음 문제 →</button>
-            <button type="button" class="gm-btn primary" id="mNextMission" hidden>다음 미션 →</button>
-            <button type="button" class="gm-btn" id="mResult" hidden>🏆 결과 보기</button>
+            <button type="button" class="sk-btn sk-btn--primary" id="mCheck"><Icon name="circle-check" /> 확인하기</button>
+            <button type="button" class="sk-btn sk-btn--primary" id="mNextQ" hidden><Icon name="arrow-right" /> 다음 문제</button>
+            <button type="button" class="sk-btn sk-btn--primary" id="mNextMission" hidden><Icon name="arrow-right" /> 다음 미션</button>
+            <button type="button" class="sk-btn" id="mResult" hidden><Icon name="award" /> 결과 보기</button>
           </div>
         </div>
       </div>
@@ -363,14 +372,14 @@ button, input, textarea { font-family: inherit; }
 </div>
 
 <!-- ============ 결과 ============ -->
-<div id="screenResult" class="screen result-screen">
-  <div style="font-size:64px" aria-hidden="true">🏆</div>
+<div id="screenResult" class="screen result-screen sk-screen">
+  <div style="font-size:64px;line-height:1;color:#f59e0b" aria-hidden="true"><Icon name="trophy" /></div>
   <h1>미션 결과</h1>
   <p class="intro-sub" id="resultSub"></p>
   <div class="result-grid" id="resultGrid" role="list"></div>
   <div class="result-btns">
-    <button type="button" class="gm-btn primary" id="btnRetry">다시 도전</button>
-    <button type="button" class="gm-btn" id="btnToMake">그래프 만들기로</button>
+    <button type="button" class="sk-btn sk-btn--primary" id="btnRetry"><Icon name="rotate-ccw" /> 미션 1부터 다시 하기</button>
+    <button type="button" class="sk-btn" id="btnToMake"><Icon name="chart-column" /> 그래프 만들기로</button>
   </div>
 </div>
 
@@ -387,8 +396,8 @@ button, input, textarea { font-family: inherit; }
     <p>엑셀·구글 시트에서 <b>항목</b>과 <b>값</b> 두 열을 복사해 붙여 넣으세요. 쉼표로 적어도 돼요. (예: 봄, 7)</p>
     <textarea id="pasteText" spellcheck="false" aria-label="붙여 넣을 표"></textarea>
     <div class="mfoot">
-      <button type="button" class="gm-btn sm" data-vui-close>취소</button>
-      <button type="button" class="gm-btn sm primary" id="pasteApply">적용</button>
+      <button type="button" class="sk-btn sk-btn--sm" data-vui-close>취소</button>
+      <button type="button" class="sk-btn sk-btn--sm sk-btn--primary" id="pasteApply">적용</button>
     </div>
   </div>
 </div>

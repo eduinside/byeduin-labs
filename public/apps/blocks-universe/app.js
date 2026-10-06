@@ -1,5 +1,7 @@
-/* Blocks Universe — 에피소드 탐색기 */
+/* 블록스 유니버스 (Blocks Universe) — 에피소드 탐색기 */
 'use strict';
+// @icons star x list-video
+const icon = (name) => VUI.icon(name);
 
 const SERIES = [
   { id: 'numberblocks', name: 'Numberblocks', ko: '넘버블록스', emoji: '🔢', color: '#f5a524' },
@@ -154,10 +156,10 @@ function renderToolbar() {
     mk(`시즌 ${i}`, state.season === i && !state.theme, () => { state.season = i; state.theme = false; state.aiIds = null; renderToolbar(); renderGrid(); });
   }
   if (DATA.episodes.some(e => e.series === state.series && e.season === 0)) {
-    mk('⭐ 특집', state.season === -1 && !state.theme, () => { state.season = -1; state.theme = false; state.aiIds = null; renderToolbar(); renderGrid(); });
+    mk('특집', state.season === -1 && !state.theme, () => { state.season = -1; state.theme = false; state.aiIds = null; renderToolbar(); renderGrid(); });
   }
   if (state.series === 'numberblocks') {
-    mk('✖️ 구구단', state.theme, () => { state.theme = !state.theme; state.season = 0; state.aiIds = null; renderToolbar(); renderGrid(); }, 'theme-chip');
+    mk('구구단', state.theme, () => { state.theme = !state.theme; state.season = 0; state.aiIds = null; renderToolbar(); renderGrid(); }, 'theme-chip');
   }
 
   const seg = $('levelSeg');
@@ -225,7 +227,7 @@ function renderGrid() {
       banner.className = 'ai-banner';
       $('epGrid').before(banner);
     }
-    banner.innerHTML = `✨ AI 검색 결과 ${state.aiIds.size}편 <button type="button" onclick="clearAiIds()" aria-label="AI 검색 결과 지우기">✕ 초기화</button>`;
+    banner.innerHTML = `${icon('sparkles')} AI 검색 결과 ${state.aiIds.size}편 <button type="button" onclick="clearAiIds()" aria-label="AI 검색 결과 지우기">${icon('x')} 지우기</button>`;
   } else {
     banner?.remove();
   }
@@ -251,7 +253,7 @@ function renderGrid() {
         <img src="${thumb(ep, 'mqdefault')}" alt="" loading="lazy">
         <span class="ep-se">${seLabel(ep)}</span>
         ${ep.ytKo ? '<span class="ep-ko-badge">한글판</span>' : ''}
-        <button type="button" class="ep-fav ${favOn ? 'on' : ''}" aria-pressed="${favOn}" aria-label="즐겨찾기: ${escAttr(dispTitle(ep))}" title="즐겨찾기">${favOn ? '★' : '☆'}</button>
+        <button type="button" class="ep-fav ${favOn ? 'on' : ''}" aria-pressed="${favOn}" aria-label="즐겨찾기: ${escAttr(dispTitle(ep))}" title="즐겨찾기">${icon('star')}</button>
       </div>
       <div class="ep-body">
         <div class="ep-title" aria-hidden="true">${dispTitle(ep)}</div>
@@ -281,27 +283,27 @@ function renderWelcome() {
     <p class="welcome-hint">위에서 시리즈를 선택하면 에피소드를 탐색할 수 있어요</p>
     <div class="welcome-features">
       <div class="welcome-feat">
-        <div class="wf-icon">📺</div>
+        <div class="wf-icon">${icon('tv')}</div>
         <div class="wf-title">4개 시리즈 · ${total}편</div>
         <div class="wf-desc">넘버블록스·알파블록스·컬러블록스·원더블록스 전 에피소드</div>
       </div>
       <div class="welcome-feat">
-        <div class="wf-icon">🔍</div>
+        <div class="wf-icon">${icon('search')}</div>
         <div class="wf-title">시즌·레벨·즐겨찾기 필터</div>
         <div class="wf-desc">시즌별·학습 레벨별로 걸러서 탐색. 즐겨찾기로 모아보기</div>
       </div>
       <div class="welcome-feat">
-        <div class="wf-icon">✨</div>
+        <div class="wf-icon">${icon('sparkles')}</div>
         <div class="wf-title">AI 검색</div>
         <div class="wf-desc">한글·영문 키워드로 검색하면 AI가 관련 에피소드를 추천</div>
       </div>
       <div class="welcome-feat">
-        <div class="wf-icon">▶</div>
-        <div class="wf-title">재생목록 · 순차재생</div>
+        <div class="wf-icon">${icon('list-video')}</div>
+        <div class="wf-title">재생목록 · 순서대로 재생</div>
         <div class="wf-desc">에피소드를 모아 재생목록으로 만들고, 연속으로 자동 재생</div>
       </div>
       <div class="welcome-feat">
-        <div class="wf-icon">🔀</div>
+        <div class="wf-icon">${icon('shuffle')}</div>
         <div class="wf-title">랜덤 재생</div>
         <div class="wf-desc">시리즈를 골라 에피소드를 바로 랜덤 재생</div>
         <div class="wf-random-btns">${seriesBtns}</div>
@@ -310,19 +312,20 @@ function renderWelcome() {
   $('epGrid').before(sec);
 }
 
-function randomPlay(seriesId) {
+async function randomPlay(seriesId) {
   const s = SERIES.find(x => x.id === seriesId);
   if (!s || !DATA) return;
   // 랜덤 재생은 내 재생목록을 바꾸므로, 비어 있지 않으면 먼저 확인
   if (playlist.ids.length &&
-      !confirm(`🔀 ${s.ko} 랜덤 재생을 시작하면 지금 재생목록(${playlist.ids.length}편)이 랜덤 목록으로 바뀝니다.\n계속할까요?`)) return;
+      !(await VUI.confirm(`${s.ko} 랜덤 재생을 시작하면 지금 내 재생목록(${playlist.ids.length}편)이 랜덤 목록으로 바뀝니다. 계속할까요?`,
+        { title: '랜덤 재생', ok: '바꾸고 재생' }))) return;
   state.series = seriesId; state.season = 0; state.theme = false; state.aiIds = null;
   renderSeriesTabs(); renderToolbar(); renderGrid();
   const eps = DATA.episodes.filter(ep => ep.series === seriesId);
   const shuffled = [...eps].sort(() => Math.random() - 0.5);
-  playlist = { title: `🔀 ${s.ko} 랜덤 재생`, ids: shuffled.map(ep => ep.id) };
+  playlist = { title: `${s.ko} 랜덤 재생`, ids: shuffled.map(ep => ep.id) };
   savePl();
-  startSequentialPlay(`🔀 ${s.ko} 랜덤 재생`);
+  startSequentialPlay(`${s.ko} 랜덤 재생`);
 }
 
 /* ── AI 추천 ── */
@@ -331,7 +334,7 @@ async function aiRecommend() {
   const q = $('searchInput').value.trim();
   if (!q) { $('searchInput').focus(); toast('검색어를 입력한 후 AI 검색을 눌러주세요'); return; }
 
-  toast('✨ AI가 에피소드를 추천하는 중…', 0);
+  toast('AI가 에피소드를 추천하는 중…', 0);
   // 현재 시리즈+시즌+레벨 필터 기준 에피소드를 LLM에 전달
   const base = DATA.episodes.filter(ep => {
     if (ep.series !== state.series) return false;
@@ -354,7 +357,7 @@ async function aiRecommend() {
     if (!ids.length) { toast('관련 에피소드를 찾지 못했어요', 4000); return; }
     state.aiIds = new Set(ids);
     renderGrid();
-    toast(`✨ AI 검색 결과 ${ids.length}편`);
+    toast(`AI 검색 결과 ${ids.length}편`);
   } catch (e) {
     toast(`AI 검색 실패: ${e.message}`, 'error');
   }
@@ -376,7 +379,7 @@ function toggleFav(id) {
   if (modalEp && modalEp.id === id) renderModalActions();
   if (refocus === 'modal') $('mFav')?.focus();
   else if (refocus === 'card') document.querySelector(`.ep-card[data-id="${CSS.escape(id)}"] .ep-fav`)?.focus();
-  toast(favs.has(id) ? '⭐ 즐겨찾기에 넣었어요' : '즐겨찾기에서 뺐어요', 1800);
+  toast(favs.has(id) ? '즐겨찾기에 넣었어요' : '즐겨찾기에서 뺐어요', 1800);
 }
 
 /* ── 상세 모달 ── */
@@ -450,14 +453,14 @@ function renderModal(skipVideo = false) {
   const isAiDesc = !!ep.descKo && !ep.ytKo;
   $('modalTags').innerHTML = `
     <span class="mtag series-tag" style="background:${s.color}">${s.emoji} ${s.name}</span>
-    <span class="mtag">${ep.season ? `시즌 ${ep.season} · ${ep.ep}화` : '⭐ 특집'}</span>
+    <span class="mtag">${ep.season ? `시즌 ${ep.season} · ${ep.ep}화` : '특집'}</span>
     ${ep.level ? `<span class="mtag" style="color:${LEVEL_COLORS[ep.level]}">Lv${ep.level}</span>` : ''}
-    ${ep.theme === 'TimesTables' ? '<span class="mtag">✖️ 구구단</span>' : ''}
+    ${ep.theme === 'TimesTables' ? '<span class="mtag">구구단</span>' : ''}
     ${showLangToggle ? `
       <span class="lang-toggle">
         ${isAiDesc ? `
           <button type="button" id="langEn" class="${useKo ? '' : 'active'}" aria-pressed="${!useKo}" aria-label="영어 설명">EN</button>
-          <button type="button" id="langKo" class="${useKo ? 'active' : ''} ai-lang" aria-pressed="${useKo}" title="AI 번역 설명">🤖 한글번역</button>
+          <button type="button" id="langKo" class="${useKo ? 'active' : ''} ai-lang" aria-pressed="${useKo}" title="AI 번역 설명">${icon('bot')} 한글 번역</button>
         ` : `
           <button type="button" id="langKo" class="${useKo ? 'active' : ''}" aria-pressed="${useKo}">한글</button>
           <button type="button" id="langEn" class="${useKo ? '' : 'active'}" aria-pressed="${!useKo}" aria-label="영어">EN</button>
@@ -469,7 +472,7 @@ function renderModal(skipVideo = false) {
       // 영문 설명만 있고 한글 번역이 없으면 AI 번역 요청 (사전 번역 없는 예외 경우)
       if (ep.desc && !ep.descKo) {
         renderModal(isAiDesc);
-        $('modalDesc').textContent = '✨ 번역 중…';
+        $('modalDesc').textContent = '번역 중…';
         try {
           const data = await VUI.apiFetch('/api/bu-translate', { json: { text: ep.desc }, timeout: 30000 });
           if (data && typeof data.ko === 'string' && data.ko) ep.descKo = data.ko;
@@ -493,10 +496,10 @@ function renderModalActions() {
   const inPl = playlist.ids.includes(ep.id);
   const favOn = favs.has(ep.id);
   $('modalActions').innerHTML = `
-    <button type="button" class="m-act${favOn ? ' on-fav' : ''}" id="mFav" aria-pressed="${favOn}">⭐ ${favOn ? '즐겨찾기 해제' : '즐겨찾기'}</button>
-    <button type="button" class="m-act" id="mShare">🔗 공유</button>
-    <button type="button" class="m-act${inPl ? ' on-pl' : ''}" id="mPl" aria-pressed="${inPl}">${inPl ? '✅ 재생목록에 있음' : '➕ 재생목록'}</button>
-    ${ep.official ? `<a class="m-act" href="${ep.official}" target="_blank" rel="noopener">🌐 공식 페이지</a>` : ''}`;
+    <button type="button" class="m-act${favOn ? ' on-fav' : ''}" id="mFav" aria-pressed="${favOn}">${icon('star')} ${favOn ? '즐겨찾기 해제' : '즐겨찾기'}</button>
+    <button type="button" class="m-act" id="mShare">${icon('link')} 공유</button>
+    <button type="button" class="m-act${inPl ? ' on-pl' : ''}" id="mPl" aria-pressed="${inPl}">${inPl ? icon('check') + ' 재생목록에 있음' : icon('plus') + ' 재생목록에 넣기'}</button>
+    ${ep.official ? `<a class="m-act" href="${ep.official}" target="_blank" rel="noopener">${icon('globe')} 공식 페이지</a>` : ''}`;
   $('mFav').onclick = () => toggleFav(ep.id);
   $('mShare').onclick = () => shareEpisode(ep);
   $('mPl').onclick = () => togglePlaylist(ep.id);
@@ -509,7 +512,7 @@ async function shareEpisode(ep) {
     catch (e) { if (e && e.name === 'AbortError') return; /* 그 밖의 실패는 복사로 */ }
   }
   // 복사 실패 시 링크·QR 창(VUI)이 열린다
-  await VUI.share.copyOrShow(url, { title: '🔗 에피소드 공유', desc: dispTitle(ep) });
+  await VUI.share.copyOrShow(url, { title: '에피소드 공유', desc: dispTitle(ep) });
 }
 
 /* ── 재생목록 ── */
@@ -518,14 +521,18 @@ function savePl() {
   updatePlFab();
 }
 
+// 숫자 = 내 재생목록에 담긴 편수. 비어 있으면 숫자를 숨긴다(아무것도 안 골랐는데 숫자가 보여 헷갈리지 않게)
 function updatePlFab() {
-  $('plCount').textContent = playlist.ids.length;
+  const n = playlist.ids.length;
+  $('plCount').textContent = `${n}편`;
+  $('plCount').hidden = n === 0;
+  $('plFab').setAttribute('aria-label', n ? `내 재생목록 열기 (${n}편 담김)` : '내 재생목록 열기 (비어 있음)');
 }
 
 function togglePlaylist(id) {
   const i = playlist.ids.indexOf(id);
   if (i >= 0) { playlist.ids.splice(i, 1); toast('재생목록에서 제거했습니다'); }
-  else { playlist.ids.push(id); toast('➕ 재생목록에 추가했습니다'); }
+  else { playlist.ids.push(id); toast('재생목록에 넣었어요'); }
   savePl();
   if (modalEp) renderModalActions();
   if ($('plDrawer').classList.contains('open')) renderPlDrawer();
@@ -551,7 +558,7 @@ function renderPlDrawer() {
   list.innerHTML = '';
   if (playlist.ids.length === 0) {
     $('plTotal').textContent = '';
-    list.innerHTML = '<p class="pl-empty">재생목록이 비어 있습니다.<br>에피소드 상세에서 ➕ 버튼으로 추가하세요.</p>';
+    list.innerHTML = '<p class="pl-empty">재생목록이 비어 있습니다.<br>에피소드를 열고 [재생목록에 넣기]를 눌러 담아 보세요.</p>';
     return;
   }
   const valid = playlist.ids.filter(id => byId.has(id));
@@ -566,17 +573,17 @@ function renderPlDrawer() {
     row.draggable = true;
     const t = escAttr(dispTitle(ep));
     row.innerHTML = `
-      <span class="pl-drag" title="드래그해서 순서 변경" aria-hidden="true">⠿</span>
+      <span class="pl-drag" title="끌어서 순서 바꾸기" aria-hidden="true">${icon('grip-vertical')}</span>
       <button type="button" class="pl-open" aria-label="${i + 1}번 ${t} 보기">
         <img src="${thumb(ep, 'default')}" alt="">
         <span class="pl-item-title">${i + 1}. ${dispTitle(ep)}
           ${dur ? `<small class="pl-item-dur">${fmtDur(dur)}</small>` : ''}</span>
       </button>
       <span class="pl-move">
-        <button type="button" class="pl-del-btn pl-up-btn" title="위로" aria-label="${t} 위로 이동"${i === 0 ? ' disabled' : ''}>▲</button>
-        <button type="button" class="pl-del-btn pl-down-btn" title="아래로" aria-label="${t} 아래로 이동"${i === playlist.ids.length - 1 ? ' disabled' : ''}>▼</button>
+        <button type="button" class="pl-del-btn pl-up-btn" title="위로" aria-label="${t} 위로 이동"${i === 0 ? ' disabled' : ''}>${icon('chevron-up')}</button>
+        <button type="button" class="pl-del-btn pl-down-btn" title="아래로" aria-label="${t} 아래로 이동"${i === playlist.ids.length - 1 ? ' disabled' : ''}>${icon('chevron-down')}</button>
       </span>
-      <button type="button" class="pl-del-btn pl-rm-btn" title="제거" aria-label="${t} 재생목록에서 제거">✕</button>`;
+      <button type="button" class="pl-del-btn pl-rm-btn" title="제거" aria-label="${t} 재생목록에서 제거">${icon('x')}</button>`;
     // 터치 기기·키보드는 드래그를 못 하므로 ▲▼ 버튼으로 순서 변경(누른 뒤에도 같은 항목 버튼에 포커스 유지)
     row.querySelector('.pl-up-btn').onclick = (e) => { e.stopPropagation(); movePl(i, -1, '.pl-up-btn'); };
     row.querySelector('.pl-down-btn').onclick = (e) => { e.stopPropagation(); movePl(i, 1, '.pl-down-btn'); };
@@ -635,26 +642,27 @@ async function sharePlaylist() {
   savePl();
   const payload = VUI.share.encode({ t: playlist.title, ids: playlist.ids });
   const longURL = location.href.split('#')[0] + `#list=${payload}`;
-  toast('⏳ 공유 링크를 만드는 중이에요…', 0);
+  toast('공유 링크를 만드는 중이에요…', 0);
   await VUI.share.link(longURL, {
-    title: '🔗 재생목록 공유',
+    title: '재생목록 공유',
     desc: '링크를 연 사람은 이 재생목록을 가져올 수 있어요.',
-    copiedMessage: '🔗 재생목록 링크를 복사했어요',
+    copiedMessage: '재생목록 링크를 복사했어요',
   });
 }
 
-function importPlaylist(payload) {
+async function importPlaylist(payload) {
   const p = VUI.share.decode(payload, (o) => o && Array.isArray(o.ids));
   history.replaceState(null, '', location.pathname);
   if (!p || p.ids.length === 0) { toast('재생목록 링크가 올바르지 않아요', 'error'); return; }
   const valid = p.ids.filter(id => typeof id === 'string' && byId.has(id));
   if (!valid.length) { toast('이 링크의 에피소드를 찾지 못했어요', 'error'); return; }
   const name = (typeof p.t === 'string' && p.t.trim() ? p.t.trim() : '공유된 재생목록').slice(0, 80);
-  if (!confirm(`📋 "${name}" (${valid.length}편) 재생목록을 가져올까요?\n현재 내 재생목록을 대체합니다.`)) return;
+  if (!(await VUI.confirm(`"${name}" (${valid.length}편) 재생목록을 가져올까요? 지금 내 재생목록은 이 목록으로 바뀝니다.`,
+    { title: '재생목록 가져오기', ok: '가져오기' }))) return;
   playlist = { title: name, ids: valid };
   savePl();
   openPlDrawer();
-  toast('✅ 재생목록을 가져왔습니다');
+  toast('재생목록을 가져왔어요', { type: 'success' });
 }
 
 /* ── 순차재생 (YT IFrame API) ── */
@@ -757,7 +765,7 @@ function playNext() {
   // ENDED 이벤트와 워치독이 동시에 트리거해도 한 번만 넘어가도록
   if (performance.now() - lastAdvance < 1500) return;
   if (queueIdx + 1 < queue.length) playAt(queueIdx + 1);
-  else { stopWatchdog(); toast('🎉 재생목록이 끝났습니다'); }
+  else { stopWatchdog(); toast('재생목록을 끝까지 봤어요'); }
 }
 
 /* ENDED 이벤트가 누락되는 경우를 대비한 자동 넘김 워치독:
@@ -865,11 +873,13 @@ function bind() {
   $('plCloseBtn').onclick = closePlDrawer;
   $('plPlayBtn').onclick = () => startSequentialPlay('재생목록');
   $('plShareBtn').onclick = sharePlaylist;
-  $('plClearBtn').onclick = () => {
-    if (playlist.ids.length && confirm('재생목록을 비울까요?')) {
-      playlist = { title: '', ids: [] };
-      savePl(); renderPlDrawer();
-    }
+  $('plClearBtn').onclick = async () => {
+    if (!playlist.ids.length) return;
+    if (!(await VUI.confirm(`내 재생목록 ${playlist.ids.length}편을 모두 뺄까요?`, { title: '재생목록 비우기', ok: '비우기', danger: true }))) return;
+    const prev = playlist;
+    playlist = { title: '', ids: [] };
+    savePl(); renderPlDrawer();
+    toast('재생목록을 비웠어요', { duration: 6000, action: { label: '되돌리기', onClick: () => { playlist = prev; savePl(); renderPlDrawer(); } } });
   };
   $('playerCloseBtn').onclick = closePlayer;
   $('pcPrev').onclick = () => playAt(queueIdx - 1);

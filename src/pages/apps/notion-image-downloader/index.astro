@@ -1,10 +1,10 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<AppLayout 
-  icons
-  title="Notion Image DL — eduin VIVES"
-  description="Notion 데이터베이스의 이미지를 한 번에 다운로드. 만료된 URL도 자동 처리."
+<AppLayout
+  title="노션 이미지 내려받기 (Notion Image DL) — eduin VIVES"
+  description="노션 데이터베이스의 이미지를 모아 ZIP 파일 하나로 내려받기. JPG·PNG로 바꾸거나 원본 그대로 저장."
   image="https://eduin.info/og-images/notion-image-downloader.png"
   bodyShell="column"
   bodyWidth="narrow"
@@ -25,7 +25,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     --accent-hover:  var(--primary-h);
     --text:      var(--fg);
     --text-dim:  var(--fg-muted);
-    --text-muted:#a1a1aa;
+    --text-muted: var(--fg-muted);
     --success: #17c964;
     --warn:    #f5a524;
     --error:   #f31260;
@@ -35,7 +35,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   [data-theme="dark"] {
     --surface:  #18181b;
     --surface2: #222228;
-    --text-muted: #55556a;
   }
 
   body {
@@ -48,19 +47,19 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     position: fixed;
     inset: 0;
     background-image:
-      linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+      linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
     background-size: 40px 40px;
     pointer-events: none;
     z-index: 0;
   }
 
-  .wrap { width: 100%; max-width: 580px; position: relative; z-index: 1; }
+  .wrap { width: 100%; position: relative; z-index: 1; }
 
   .header { margin-bottom: 40px; }
   .badge {
     display: inline-flex; align-items: center; gap: 6px;
-    background: var(--accent-dim); border: 1px solid rgba(124,106,247,0.3);
+    background: var(--accent-dim); border: 1px solid rgba(0,111,238,0.3);
     color: var(--accent-hover); font-size: 11px; font-weight: 700;
     letter-spacing: 0.1em; text-transform: uppercase;
     padding: 4px 10px; border-radius: 99px; margin-bottom: 14px;
@@ -91,31 +90,37 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   input:focus { border-color: var(--accent); }
   input::placeholder { color: var(--text-muted); }
 
-  .hint { font-size: 11.5px; color: var(--text-muted); line-height: 1.6; margin-top: -10px; margin-bottom: 14px; }
+  .hint { font-size: 12.5px; color: var(--text-muted); line-height: 1.6; margin-top: -10px; margin-bottom: 14px; }
+  .hint code { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; background: var(--border); padding: 1px 5px; border-radius: 4px; color: var(--text); }
+  .token-cleared { font-size: 13px; color: var(--accent); line-height: 1.5; margin: -6px 0 14px; display: flex; gap: 6px; align-items: flex-start; }
+  .token-cleared[hidden] { display: none; }
+  .token-cleared .ic { margin-top: 0.2em; }
   .hint a { color: var(--accent); text-decoration: none; }
   .hint a:hover { text-decoration: underline; }
 
   /* 보안 안내 */
   .security-note {
     display: flex; align-items: flex-start; gap: 10px;
-    background: rgba(124,106,247,0.07); border: 1px solid rgba(124,106,247,0.2);
+    background: rgba(0,111,238,0.06); border: 1px solid rgba(0,111,238,0.2);
     border-radius: 8px; padding: 12px 14px; margin-bottom: 14px;
     font-size: 12px; color: var(--text-dim); line-height: 1.6;
   }
   .security-note .icon { color: var(--accent); font-size: 14px; flex-shrink: 0; margin-top: 1px; }
 
-  .options { display: flex; gap: 8px; margin-bottom: 4px; }
+  .options { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
   .opt-btn {
     flex: 1; padding: 8px; min-height: 44px; background: var(--bg);
     border: 1px solid var(--border); border-radius: 8px;
-    color: var(--text-muted); font-size: 14px;
+    color: var(--text-dim); font-size: 14px;
     font-family: 'Noto Sans KR', sans-serif; cursor: pointer;
     transition: all 0.15s; text-align: center;
   }
   .opt-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent-hover); font-weight: 700; }
 
+  .run-row { display: flex; gap: 8px; }
   .btn-run {
-    width: 100%; padding: 14px; background: var(--accent);
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    flex: 1; width: 100%; padding: 14px; background: var(--accent);
     border: none; border-radius: 10px; color: #fff; font-size: 16px;
     font-weight: 700; font-family: inherit;
     cursor: pointer; transition: background 0.15s, transform 0.1s;
@@ -124,6 +129,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   .btn-run:hover { background: var(--accent-hover); }
   .btn-run:active { transform: scale(0.99); }
   .btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-stop {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    min-height: 48px; padding: 0 18px; background: var(--card-bg); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 10px; font-size: 15px; font-weight: 700;
+    font-family: inherit; cursor: pointer;
+  }
+  .btn-stop[hidden] { display: none; }
+  .btn-stop:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-stop:disabled { opacity: 0.6; cursor: wait; }
 
   .progress-wrap { margin-bottom: 16px; display: none; }
   .progress-bar-bg { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 10px; }
@@ -140,31 +154,38 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     color: var(--text-dim); max-height: 260px; overflow-y: auto; line-height: 1.8;
   }
   .log-item { display: flex; gap: 8px; }
+  .log-icon { flex: none; display: inline-flex; padding-top: 0.35em; }
   .log-item.ok .log-icon { color: var(--success); }
   .log-item.skip .log-icon { color: var(--warn); }
   .log-item.err .log-icon { color: var(--error); }
   .log-item.info .log-icon { color: var(--accent); }
 
+  /* 결과 요약 — 다 받음(초록)·일부/멈춤(주황)·실패(빨강). 실패를 초록으로 그리지 않는다 */
   .summary {
-    display: none; background: rgba(74,222,128,0.08);
-    border: 1px solid rgba(74,222,128,0.25); border-radius: var(--radius);
-    padding: 14px 18px; font-size: 13px; color: var(--success);
-    text-align: center; font-weight: 600; margin-bottom: 16px;
+    display: none; background: rgba(23,201,100,0.08);
+    border: 1px solid rgba(23,201,100,0.3); border-radius: var(--radius);
+    padding: 14px 18px; font-size: 14px; color: #0e8a43;
+    text-align: center; font-weight: 600; margin-bottom: 16px; line-height: 1.5;
   }
+  .summary.warn { background: rgba(245,165,36,0.1); border-color: rgba(245,165,36,0.4); color: #a15c00; }
+  .summary.err  { background: rgba(243,18,96,0.08); border-color: rgba(243,18,96,0.35); color: #c20e4d; }
+  [data-theme="dark"] .summary { color: #4ade80; }
+  [data-theme="dark"] .summary.warn { color: #fbbf24; }
+  [data-theme="dark"] .summary.err { color: #fb7185; }
 
   .guide {
     background: var(--surface2); border: 1px solid var(--border);
     border-left: 3px solid var(--accent); border-radius: var(--radius);
     padding: 16px 20px; margin-bottom: 16px;
   }
-  .guide-title { font-size: 12px; font-weight: 700; color: var(--accent-hover); margin-bottom: 10px; }
+  .guide-title { font-size: 13px; font-weight: 700; color: var(--accent-hover); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
   .guide ol { padding-left: 18px; }
   .guide li { font-size: 13px; color: var(--text-dim); line-height: 1.7; margin-bottom: 4px; }
   .guide li code { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; background: var(--border); padding: 1px 5px; border-radius: 4px; color: var(--text); }
   .guide a { color: var(--accent); text-decoration: none; }
   .guide a:hover { text-decoration: underline; }
 </style>
-  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"Notion Image DL","description":"Notion 데이터베이스의 이미지를 한 번에 다운로드. 만료된 URL도 자동 처리.","url":"https://eduin.info/apps/notion-image-downloader/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"노션 이미지 내려받기 (Notion Image DL)","description":"노션 데이터베이스의 이미지를 모아 ZIP 파일 하나로 내려받기. JPG·PNG로 바꾸거나 원본 그대로 저장.","url":"https://eduin.info/apps/notion-image-downloader/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
 
@@ -172,22 +193,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 <div class="wrap app-main">
 
   <div class="app-header">
-    <div class="app-badge">◆ Notion Tool</div>
-    <h1 class="app-title">
-  <div class="card-emoji sub-util-notion" style="margin-bottom: 0; transform: scale(1.0);">
-        <i data-lucide="download"></i>
-      </div>
-  <span>이미지 <span>일괄 다운로드</span></span>
-</h1>
-    <p class="app-desc">노션 DB의 이미지를 JPG / PNG로 변환해 한 번에 저장합니다.</p>
+    <div class="app-badge">노션도구</div>
+    <h1 class="app-title">노션 이미지 내려받기 <span class="app-title-en">Notion Image DL</span></h1>
+    <p class="app-desc">노션 데이터베이스에 들어 있는 이미지를 모아 ZIP 파일 하나로 내려받아요.</p>
   </div>
 
   <div class="guide">
-    <div class="guide-title">📋 사용 전 준비 (최초 1회)</div>
+    <div class="guide-title"><Icon name="clipboard-list" /> 사용 전 준비 (처음 한 번)</div>
     <ol>
-      <li><a href="https://www.notion.so/profile/integrations" target="_blank">노션 인테그레이션 페이지</a>에서 새 인테그레이션을 만들고 <code>secret_...</code> 토큰을 복사합니다.</li>
-      <li>대상 DB 페이지 우측 상단 <code>···</code> → 연결 추가에서 만든 인테그레이션을 연결합니다.</li>
-      <li>DB URL에서 ID를 복사합니다. <code>notion.so/.../[여기 32자리]?v=...</code></li>
+      <li><a href="https://www.notion.so/profile/integrations" target="_blank" rel="noopener">노션 인테그레이션 페이지</a>에서 새 인테그레이션을 만들고 토큰(<code>ntn_…</code>, 예전 토큰은 <code>secret_…</code>)을 복사합니다.</li>
+      <li>대상 DB 페이지 오른쪽 위 <code>···</code> → 연결 추가에서 만든 인테그레이션을 연결합니다.</li>
+      <li>DB 페이지 주소(링크)를 복사해 아래 칸에 그대로 붙여넣습니다. 주소 안의 32자리 ID를 자동으로 찾아요.</li>
     </ol>
   </div>
 
@@ -195,42 +211,50 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <div class="card-title">설정</div>
 
     <label for="token">노션 API 토큰</label>
-    <input type="password" id="token" placeholder="secret_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" aria-describedby="tokenNote">
+    <input type="password" id="token" placeholder="ntn_… 또는 secret_…" autocomplete="off" aria-describedby="tokenNote tokenCleared">
 
     <div class="security-note" id="tokenNote">
-      <span class="icon" aria-hidden="true">🔒</span>
-      <span>토큰은 브라우저에서 이 서버의 프록시 함수로만 전달되며, 서버에 저장되거나 로그에 기록되지 않습니다.</span>
+      <span class="icon" aria-hidden="true"><Icon name="lock" /></span>
+      <span>토큰은 이 사이트의 중계 서버를 거쳐 노션에만 전달되며, 서버에 저장되거나 기록되지 않습니다. 작업이 끝나면 입력칸도 비웁니다.</span>
     </div>
+    <p class="token-cleared" id="tokenCleared" hidden><Icon name="info" /> 보안을 위해 토큰 입력칸을 비웠어요. 다시 하려면 토큰을 다시 넣어 주세요.</p>
 
-    <label for="dbid">데이터베이스 ID</label>
-    <input type="text" id="dbid" placeholder="32자리 영문+숫자" aria-describedby="dbidHint">
-    <p class="hint" id="dbidHint">URL에서 <code>?v=</code> 앞의 32자리 문자열</p>
+    <label for="dbid">데이터베이스 주소 또는 ID</label>
+    <input type="text" id="dbid" placeholder="https://www.notion.so/… 또는 32자리 ID" aria-describedby="dbidHint" onchange="normalizeDbInput()">
+    <p class="hint" id="dbidHint">DB 페이지 주소를 통째로 붙여넣어도 돼요. <code>?v=</code> 앞의 32자리 ID를 찾아 씁니다.</p>
 
     <label id="fmtLabel">저장 형식</label>
     <div class="options" role="group" aria-labelledby="fmtLabel">
-      <button type="button" class="opt-btn active" onclick="setFmt('jpg', this)" aria-pressed="true">JPG</button>
-      <button type="button" class="opt-btn" onclick="setFmt('png', this)" aria-pressed="false">PNG</button>
+      <button type="button" class="opt-btn active" onclick="setFmt('jpg', this)" aria-pressed="true">JPG로 바꾸기</button>
+      <button type="button" class="opt-btn" onclick="setFmt('png', this)" aria-pressed="false">PNG로 바꾸기</button>
+      <button type="button" class="opt-btn" onclick="setFmt('orig', this)" aria-pressed="false">원본 그대로</button>
     </div>
+    <p class="hint" style="margin-top:8px;margin-bottom:0;">‘원본 그대로’는 움직이는 GIF도 그대로 받아요.</p>
   </div>
 
   <div class="progress-wrap" id="progressWrap">
     <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
-    <div class="progress-text" id="progressText" role="status" aria-live="polite">준비 중...</div>
+    <div class="progress-text" id="progressText" role="status" aria-live="polite">준비 중…</div>
   </div>
 
   <div class="summary" id="summary" role="status" aria-live="polite"></div>
 
   <div class="log-wrap" id="logWrap">
-    <div class="log-header" id="logLabel">진행 로그</div>
+    <div class="log-header" id="logLabel">진행 기록</div>
     <div class="log" id="log" role="log" aria-labelledby="logLabel" tabindex="0"></div>
   </div>
 
-  <button type="button" class="btn-run" id="runBtn" onclick="run()">⬇ 이미지 다운로드 시작</button>
+  <div class="run-row">
+    <button type="button" class="btn-run" id="runBtn" onclick="run()"><Icon name="download" /> <span id="runLabel">이미지 모아 ZIP으로 받기</span></button>
+    <button type="button" class="btn-stop" id="stopBtn" onclick="requestStop()" hidden><Icon name="square" /> 멈추기</button>
+  </div>
 
 </div>
 <script is:inline="">
 // 토큰은 이 변수에만 머물고, Function 호출 후 응답이 오면 메모리에서 사라짐
 let fmt = 'jpg';
+let stopRequested = false;
+// @icons check x minus info
 
 function setFmt(f, el) {
   fmt = f;
@@ -239,11 +263,33 @@ function setFmt(f, el) {
   el.setAttribute('aria-pressed', 'true');
 }
 
+// 붙여넣은 DB 주소에서 32자리 ID를 뽑는다. 못 찾으면 ''.
+//  - 하이픈이 들어간 UUID(8-4-4-4-12)도 받는다
+//  - 주소는 ?v=(보기 ID)·# 뒤를 버리고 마지막 경로 조각의 끝 32자리를 쓴다(예: /제목-<32자리>)
+function extractDbId(raw) {
+  let s = String(raw || '').trim();
+  if (!s) return '';
+  const uuid = s.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+  if (uuid) return uuid[0].replace(/-/g, '').toLowerCase();
+  s = s.split(/[?#]/)[0].replace(/\/+$/, '');
+  const seg = s.split('/').pop() || '';
+  const tail = seg.slice(-32);
+  return /^[0-9a-f]{32}$/i.test(tail) ? tail.toLowerCase() : '';
+}
+
+function normalizeDbInput() {
+  const el = document.getElementById('dbid');
+  const raw = el.value.trim();
+  if (!raw || /^[0-9a-f]{32}$/i.test(raw)) return;
+  const id = extractDbId(raw);
+  if (id) { el.value = id; VUI.toast('주소에서 데이터베이스 ID를 찾았어요.'); }
+}
+
 function addLog(type, icon, msg) {
   const log = document.getElementById('log');
   const item = document.createElement('div');
   item.className = `log-item ${type}`;
-  item.innerHTML = `<span class="log-icon">${icon}</span><span></span>`;
+  item.innerHTML = `<span class="log-icon">${VUI.icon(icon)}</span><span></span>`;
   item.querySelector('span:last-child').textContent = msg;   // 노션 제목·오류문은 텍스트로만 표시
   log.appendChild(item);
   log.scrollTop = log.scrollHeight;
@@ -265,13 +311,12 @@ async function notionCall(token, path, payload) {
     const data = e.data;
     const notionMsg = (data && (data.message || data.code)) || null;
     if (e.status === 404) {
-      e.message = notionMsg
-        ? `DB를 찾을 수 없음: ${notionMsg}`
-        : '404 — DB ID가 잘못됐거나 인테그레이션이 DB에 연결되지 않았습니다. (Notion 워크스페이스 → DB → ··· → 연결 추가)';
+      e.message = '데이터베이스를 찾지 못했어요. DB ID가 맞는지, 인테그레이션을 그 DB에 연결했는지 확인해 주세요. (DB 페이지 → ··· → 연결 추가)'
+        + (notionMsg ? ` (노션 안내: ${notionMsg})` : '');
     } else if (e.status === 401) {
-      e.message = '401 — 토큰이 잘못됐거나 만료됐습니다. 인테그레이션 토큰을 다시 확인해 주세요.';
+      e.message = '토큰이 맞지 않거나 만료됐어요. 인테그레이션 토큰을 다시 확인해 주세요.';
     } else if (notionMsg && e.status !== 429) {
-      e.message = `Notion 오류 ${e.status}: ${notionMsg}`;
+      e.message = `노션 오류(${e.status}): ${notionMsg}`;
     }
     throw e;
   }
@@ -284,7 +329,7 @@ async function getAllPages(token, dbId) {
     const data = await notionCall(token, `/v1/databases/${dbId}/query`, { page_size: 100, ...(cursor ? { start_cursor: cursor } : {}) });
     pages.push(...data.results);
     cursor = data.has_more ? data.next_cursor : null;
-  } while (cursor);
+  } while (cursor && !stopRequested);
   return pages;
 }
 
@@ -312,7 +357,7 @@ function getImageUrlsFromProps(page) {
 
 // 노션은 블록을 한 번에 100개까지만 돌려준다. has_more면 start_cursor로 다음 묶음을 요청한다.
 // 단, 서버 프록시(functions/api/notion.js)가 경로 뒤 쿼리(?start_cursor=)를 아직 허용하지 않으면
-// 두 번째 요청이 거절되므로, 그때는 앞의 100개만 쓰고 로그로 알린다.
+// 두 번째 요청이 거절되므로, 그때는 앞의 100개만 쓰고 기록으로 알린다.
 async function getImageUrlsFromBlocks(token, pageId, title) {
   const urls = [];
   let cursor = null, first = true;
@@ -324,7 +369,7 @@ async function getImageUrlsFromBlocks(token, pageId, title) {
       try {
         data = await notionCall(token, path);
       } catch (e) {
-        if (!first) addLog('skip', '–', `[${title}] 블록이 100개를 넘어 뒤쪽 본문 이미지는 읽지 못했습니다.`);
+        if (!first) addLog('skip', 'minus', `[${title}] 블록이 100개를 넘어 뒤쪽 본문 이미지는 읽지 못했습니다.`);
         break;
       }
       first = false;
@@ -369,6 +414,34 @@ function canvasToBlob(canvas, format) {
   return new Promise(res => canvas.toBlob(res, format === 'jpg' ? 'image/jpeg' : 'image/png', 0.92));
 }
 
+// '원본 그대로'일 때 확장자: 파일 형식(MIME) → 주소 끝 확장자 → img
+const MIME_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp', 'image/svg+xml': 'svg', 'image/avif': 'avif', 'image/bmp': 'bmp', 'image/heic': 'heic' };
+function originalExt(blob, url) {
+  if (blob && MIME_EXT[blob.type]) return MIME_EXT[blob.type];
+  try {
+    const m = new URL(url).pathname.match(/\.([a-z0-9]{2,5})$/i);
+    if (m) return m[1].toLowerCase();
+  } catch (_) {}
+  return 'img';
+}
+
+// JSZip은 받을 때만 불러온다(file-tools와 같은 주소·버전)
+const JSZIP_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+let jszipPromise = null;
+function loadJSZip() {
+  if (window.JSZip) return Promise.resolve(window.JSZip);
+  if (!jszipPromise) {
+    jszipPromise = new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = JSZIP_SRC;
+      s.onload = () => window.JSZip ? res(window.JSZip) : rej(new Error('JSZip'));
+      s.onerror = () => { jszipPromise = null; rej(new Error('JSZip')); };
+      document.head.appendChild(s);
+    });
+  }
+  return jszipPromise;
+}
+
 function triggerDownload(blob, filename) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -378,78 +451,152 @@ function triggerDownload(blob, filename) {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 
+function requestStop() {
+  stopRequested = true;
+  const b = document.getElementById('stopBtn');
+  b.disabled = true;
+  document.getElementById('progressText').textContent = '멈추는 중… 지금까지 받은 이미지로 ZIP을 만들어요.';
+}
+
+function showSummary(kind, msg) {
+  const sumEl = document.getElementById('summary');
+  sumEl.className = 'summary ' + kind;
+  sumEl.style.display = 'block';
+  sumEl.textContent = msg;
+}
+
 async function run() {
   const token = document.getElementById('token').value.trim();
-  const dbId  = document.getElementById('dbid').value.trim().replace(/-/g, '');
+  const dbRaw = document.getElementById('dbid').value.trim();
+  const dbId  = extractDbId(dbRaw) || dbRaw.replace(/-/g, '');
 
-  if (!token || !dbId) {
-    VUI.toast('토큰과 DB ID를 모두 입력해 주세요.', 'error');
+  if (!token || !dbRaw) {
+    VUI.toast('토큰과 데이터베이스 주소(또는 ID)를 모두 입력해 주세요.', 'error');
     document.getElementById(token ? 'dbid' : 'token').focus();
+    return;
+  }
+  if (!/^[0-9a-f]{32}$/i.test(dbId)) {
+    VUI.toast('주소에서 32자리 데이터베이스 ID를 찾지 못했어요. DB 페이지 주소를 다시 복사해 주세요.', 'error');
+    document.getElementById('dbid').focus();
     return;
   }
 
   const btn = document.getElementById('runBtn');
+  const label = document.getElementById('runLabel');
+  const stopBtn = document.getElementById('stopBtn');
   btn.disabled = true;
-  btn.textContent = '처리 중...';
+  label.textContent = '받는 중…';
+  stopRequested = false;
+  stopBtn.disabled = false;
+  stopBtn.hidden = false;
+  document.getElementById('tokenCleared').hidden = true;
 
   document.getElementById('progressWrap').style.display = 'block';
   document.getElementById('logWrap').style.display = 'block';
   document.getElementById('summary').style.display = 'none';
   document.getElementById('log').innerHTML = '';
+  setProgress(0, 1, '준비 중…');
 
-  let saved = 0, skipped = 0, failed = 0;
+  let saved = 0, skipped = 0, failed = 0, fatal = false;
+  let zip = null;
+  const usedNames = new Set();
+  const uniqueName = (name) => {
+    if (!usedNames.has(name)) { usedNames.add(name); return name; }
+    const dot = name.lastIndexOf('.');
+    const stem = dot > 0 ? name.slice(0, dot) : name, ext = dot > 0 ? name.slice(dot) : '';
+    let k = 2;
+    while (usedNames.has(`${stem} (${k})${ext}`)) k++;
+    const n = `${stem} (${k})${ext}`;
+    usedNames.add(n);
+    return n;
+  };
 
   try {
-    addLog('info', '◆', 'DB 항목 불러오는 중...');
-    const pages = await getAllPages(token, dbId);
-    addLog('info', '◆', `총 ${pages.length}개 항목 발견`);
+    try {
+      const JSZipLib = await loadJSZip();
+      zip = new JSZipLib();
+    } catch (_) {
+      throw new Error('ZIP 도구를 불러오지 못했어요. 학교망에서 cdnjs.cloudflare.com이 막혀 있을 수 있어요. 새로고침하거나 다른 네트워크에서 해 주세요.');
+    }
 
-    for (let i = 0; i < pages.length; i++) {
+    addLog('info', 'info', '데이터베이스 항목을 불러오는 중…');
+    const pages = await getAllPages(token, dbId);
+    addLog('info', 'info', `항목 ${pages.length}개를 찾았어요.`);
+
+    for (let i = 0; i < pages.length && !stopRequested; i++) {
       const page  = pages[i];
       const title = getTitle(page);
-      setProgress(i + 1, pages.length, `처리 중... ${i + 1} / ${pages.length}`);
+      setProgress(i + 1, pages.length, `항목 ${i + 1} / ${pages.length} 살펴보는 중 · 받은 이미지 ${saved}개`);
 
       const propUrls  = getImageUrlsFromProps(page);
       const blockUrls = await getImageUrlsFromBlocks(token, page.id, title);
       const allUrls   = [...propUrls, ...blockUrls];
 
       if (!allUrls.length) {
-        addLog('skip', '–', `[${title}] 이미지 없음`);
+        addLog('skip', 'minus', `[${title}] 이미지 없음`);
         skipped++;
         continue;
       }
 
-      for (let j = 0; j < allUrls.length; j++) {
+      for (let j = 0; j < allUrls.length && !stopRequested; j++) {
         try {
-          const blob   = await downloadAsBlob(allUrls[j]);
-          const canvas = await blobToCanvas(blob, fmt === 'jpg');
-          const out    = await canvasToBlob(canvas, fmt);
-          const fname  = allUrls.length === 1
-            ? `${title}.${fmt}`
-            : `${title}_${String(j + 1).padStart(3, '0')}.${fmt}`;
-          triggerDownload(out, fname);
-          addLog('ok', '✓', fname);
+          const blob = await downloadAsBlob(allUrls[j]);
+          let out, ext;
+          if (fmt === 'orig') {
+            out = blob; ext = originalExt(blob, allUrls[j]);
+          } else {
+            const canvas = await blobToCanvas(blob, fmt === 'jpg');
+            out = await canvasToBlob(canvas, fmt);
+            ext = fmt;
+            if (!out) throw new Error('이미지를 바꾸지 못했어요.');
+          }
+          const fname = uniqueName(allUrls.length === 1
+            ? `${title}.${ext}`
+            : `${title}_${String(j + 1).padStart(3, '0')}.${ext}`);
+          zip.file(fname, out);
+          addLog('ok', 'check', fname);
           saved++;
-          await new Promise(r => setTimeout(r, 300));
         } catch (e) {
-          addLog('err', '✗', `[${title}] 이미지 ${j + 1} 실패${e && e.code ? ' — ' + e.message : ''}`);
+          const why = e && e.message ? e.message : '이미지 주소가 열리지 않거나, 이미지가 있는 사이트가 내려받기를 막았을 수 있어요.';
+          addLog('err', 'x', `[${title}] 이미지 ${j + 1} 실패 — ${why}`);
           failed++;
         }
       }
     }
-
-    const sumEl = document.getElementById('summary');
-    sumEl.style.display = 'block';
-    sumEl.textContent = `완료! 저장 ${saved}개 · 이미지 없음 ${skipped}개 · 실패 ${failed}개`;
-
   } catch (e) {
-    addLog('err', '✗', `오류: ${e.message}`);
+    fatal = true;
+    addLog('err', 'x', e.message || '알 수 없는 오류가 났어요.');
   }
 
-  // 실행 완료 후 토큰 입력란 초기화 (메모리에서 제거)
+  let zipped = false;
+  if (zip && saved > 0) {
+    setProgress(1, 1, `ZIP 파일 만드는 중… (이미지 ${saved}개)`);
+    try {
+      const out = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+      const d = new Date();
+      const ymd = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+      triggerDownload(out, `notion-images_${ymd}.zip`);
+      zipped = true;
+    } catch (e) {
+      addLog('err', 'x', 'ZIP 파일을 만들지 못했어요. 이미지가 너무 많으면 저장 형식을 JPG로 바꿔 다시 해 보세요.');
+    }
+  }
+
+  const counts = `받은 이미지 ${saved}개 · 이미지 없는 항목 ${skipped}개 · 실패 ${failed}개`;
+  if (fatal && !saved) showSummary('err', '받지 못했어요. 아래 진행 기록의 안내를 확인해 주세요.');
+  else if (stopRequested) showSummary('warn', `중간에 멈췄어요. ${counts}` + (zipped ? ' — 지금까지 받은 이미지를 ZIP으로 저장했어요.' : ''));
+  else if (!saved && failed) showSummary('err', `이미지를 하나도 받지 못했어요. ${counts}`);
+  else if (failed || fatal || (saved && !zipped)) showSummary('warn', `일부만 받았어요. ${counts}` + (zipped ? ' — ZIP으로 저장했어요.' : ''));
+  else if (!saved) showSummary('warn', '받을 이미지가 없었어요. 파일 속성이나 본문에 이미지가 있는지 확인해 주세요.');
+  else showSummary('ok', `다 받았어요! ${counts} — ZIP 파일로 저장했어요.`);
+  setProgress(1, 1, stopRequested ? '멈췄어요.' : '끝났어요.');
+
+  // 실행 완료 후 토큰 입력란 초기화 (메모리에서 제거) — 화면에도 알린다
   document.getElementById('token').value = '';
+  document.getElementById('tokenCleared').hidden = false;
   btn.disabled = false;
-  btn.textContent = '⬇ 이미지 다운로드 시작';
+  label.textContent = '이미지 모아 ZIP으로 받기';
+  stopBtn.hidden = true;
 }
 </script>
 

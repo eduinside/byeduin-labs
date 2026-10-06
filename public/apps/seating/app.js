@@ -40,6 +40,10 @@
   const $ = (id) => document.getElementById(id);
   const VUI = window.VUI;
   const toast = (m, t) => { if (VUI) VUI.toast(m, t); };
+  // lucide 스프라이트 아이콘 — @icons pin triangle-alert x arrow-left-right notebook-pen plus
+  const ic = (n) => (VUI && VUI.icon ? VUI.icon(n) : "");
+  // 되돌리기 버튼이 붙은 토스트(지우기·불러오기처럼 되돌릴 수 있는 일)
+  const undoToast = (m) => { if (VUI) VUI.toast(m, { action: { label: "되돌리기", onClick: undo } }); };
 
   /* ───── 앱 상태 ───── */
   let db = { v: 1, classes: [] };
@@ -392,7 +396,7 @@
     const s = rec.s;
     const safe = (s.className || "좌석배치").replace(/[\\/:*?"<>|]/g, "_");
     download(safe + "_" + new Date().toISOString().slice(0, 10) + ".json", JSON.stringify(s, null, 2));
-    toast("JSON 파일로 내보냈어요");
+    toast("파일로 저장했어요");
   }
   function importFile(file) {
     if (!file) return;
@@ -400,7 +404,7 @@
     const r = new FileReader();
     r.onload = () => {
       let obj;
-      try { obj = JSON.parse(r.result); } catch (e) { toast("불러오기 실패: 올바른 JSON 파일이 아니에요.", "error"); return; }
+      try { obj = JSON.parse(r.result); } catch (e) { toast("불러오지 못했어요: 자리 배치에서 저장한 파일이 아니에요.", "error"); return; }
       const list = isObj(obj) && Array.isArray(obj.classes) ? obj.classes.map(c => isObj(c) && c.s ? c.s : c) : [obj];
       const base = file.name.replace(/\.json$/i, "").replace(/_\d{4}-\d{2}-\d{2}$/, "").slice(0, 30);
       const added = [];
@@ -412,7 +416,7 @@
         const rec = newClassRecord(s);
         db.classes.push(rec); added.push(rec);
       }
-      if (!added.length) { toast("불러오기 실패: 자리 배치 백업 파일이 아니에요.", "error"); return; }
+      if (!added.length) { toast("불러오지 못했어요: 자리 배치에서 저장한 파일이 아니에요.", "error"); return; }
       saveDb();
       toast(added.length === 1 ? `‘${added[0].s.className}’ 학급을 불러왔어요` : `학급 ${added.length}개를 불러왔어요`);
       if (added.length === 1) openClass(added[0].id); else renderList();
@@ -433,7 +437,7 @@
     selectedSeat = null; selectedStudent = null;
     commit();
     announce("되돌렸어요");
-    toast("되돌렸어요 ↶", 1500);
+    toast("되돌렸어요", 1500);
   }
 
   /* 상태를 바꾸는 동작은 모두 이 함수를 거친다: 되돌리기 저장 → 실행 → 정규화 → 저장·렌더 */
@@ -479,7 +483,7 @@
     let s = seatLabel(key) + " " + (st ? st.name : "빈자리");
     if (st && st.pinnedSeat === key) s += ", 자리 고정";
     if (st && st.frontFix) s += ", 앞줄 우선";
-    if (violSet.has(key)) s += ", 분리 위반";
+    if (violSet.has(key)) s += ", 떨어뜨릴 짝과 붙어 있음";
     return s;
   }
 
@@ -546,7 +550,7 @@
       const g = st.gender === "M" ? "m" : st.gender === "F" ? "f" : "n";
       b.style.setProperty("--pfs", fitFont(st.name, r.w, r.h) + "px");
       b.innerHTML = `<span class="gdot ${g}" aria-hidden="true"></span><span class="sname" aria-hidden="true">${escapeHtml(st.name)}</span>` +
-        (st.pinnedSeat === key ? '<span class="pin" aria-hidden="true">📌</span>' : "") + (st.frontFix ? '<span class="ff" aria-hidden="true">앞</span>' : "");
+        (st.pinnedSeat === key ? '<span class="pin" aria-hidden="true">' + ic("pin") + '</span>' : "") + (st.frontFix ? '<span class="ff" aria-hidden="true">앞</span>' : "");
     }
     return b;
   }
@@ -579,8 +583,8 @@
     const seats = state.rows * totalCols(), M = state.students.length, assigned = Object.keys(state.assignment).length, un = M - assigned;
     $("st-counts").innerHTML = `좌석 ${seats} · 학생 <b>${M}</b>명 · 배정 ${assigned} · 미배치 ${un}` + (M > seats ? ` <b style="color:var(--danger)">(자리 ${M - seats}개 부족)</b>` : "");
     const v = countViolations(), vel = $("st-viol");
-    if (v > 0) { vel.textContent = "⚠ 분리 위반 " + v + "건"; vel.className = "bad"; }
-    else { vel.textContent = "분리 위반 0건"; vel.className = "good"; }
+    if (v > 0) { vel.innerHTML = ic("triangle-alert") + "떨어뜨릴 짝이 붙은 곳 " + v + "곳"; vel.className = "bad"; }
+    else { vel.textContent = state.pairs.length ? "떨어뜨릴 짝 모두 지킴" : "떨어뜨릴 짝 없음"; vel.className = "good"; }
     const prevEl = $("st-prev");
     if (state.avoidPrev && baseline()) { const n = countPrevMates(state.assignment, prevMateSet()); prevEl.textContent = "이전 짝 다시 " + n + "쌍"; }
     else prevEl.textContent = "";
@@ -618,14 +622,14 @@
       return `<div class="srow ${assigned ? "" : "un"} ${selectedStudent === s.id ? "picked" : ""}" data-id="${s.id}">
         <span class="grip" data-drag="1" aria-hidden="true" title="끌어서 자리에 놓기">${GRIP}</span>
         <span class="seq">${s.seq}</span>
-        <button type="button" class="gbtn ${g}" data-action="gender" data-id="${s.id}" data-fk="g${s.id}" title="성별: ${gName} (눌러서 바꾸기)" aria-label="${escapeHtml(s.name)} 성별 ${gName}, 바꾸기"></button>
+        <button type="button" class="gbtn ${g}" data-action="gender" data-id="${s.id}" data-fk="g${s.id}" title="성별: ${gName} (눌러서 바꾸기)" aria-label="${escapeHtml(s.name)} 성별 ${gName}, 바꾸기">${g === "n" ? "?" : gName}</button>
         <button type="button" class="rname" data-action="pick" data-id="${s.id}" data-fk="n${s.id}" aria-pressed="${selectedStudent === s.id}" title="${escapeHtml(s.name)} — 끌어서 놓거나, 누른 뒤 자리를 누르세요" aria-label="${escapeHtml(s.name)}, ${assigned ? seatLabel(seat) : "미배치"}. 눌러서 고른 뒤 앉힐 자리를 누르세요">${escapeHtml(s.name)}</button>
         <button type="button" class="tag" data-action="front" data-id="${s.id}" data-fk="f${s.id}" aria-pressed="${!!s.frontFix}" title="앞줄 우선" aria-label="${escapeHtml(s.name)} 앞줄 우선">앞</button>
-        <button type="button" class="tag" data-action="pin" data-id="${s.id}" data-fk="p${s.id}" aria-pressed="${!!s.pinnedSeat}" title="좌석 고정" aria-label="${escapeHtml(s.name)} 좌석 고정" ${assigned ? "" : "disabled"}>핀</button>
+        <button type="button" class="tag" data-action="pin" data-id="${s.id}" data-fk="p${s.id}" aria-pressed="${!!s.pinnedSeat}" title="좌석 고정" aria-label="${escapeHtml(s.name)} 좌석 고정" ${assigned ? "" : "disabled"}>고정</button>
       </div>`;
     }).join("");
     return `<div class="psec">
-        <div class="prow"><button type="button" class="sc-btn block" data-action="editroster" data-fk="editroster">📝 명부 일괄 편집</button></div>
+        <div class="prow"><button type="button" class="sc-btn block" data-action="editroster" data-fk="editroster">${ic("notebook-pen")}명단 한꺼번에 편집</button></div>
         ${state.students.length ? "" : '<div class="prow"><button type="button" class="sc-btn block" data-action="sample" data-fk="sample">예시 명단 넣기 (가상의 이름)</button></div>'}
         <div class="prow two"><button type="button" class="sc-btn" data-action="fill" data-fk="fill">빈자리 채우기</button><button type="button" class="sc-btn" data-action="clearfill" data-fk="clearfill">비우고 채우기</button></div>
         <div class="muted small">미배치 <b>${un.size}</b>명 · 총 ${state.students.length}명 ${selectedStudent != null ? "· <b style='color:var(--primary)'>앉힐 자리를 누르세요</b>" : ""}</div>
@@ -635,20 +639,23 @@
   }
   function buildConstraints() {
     const opts = state.students.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join("");
-    const pairs = state.pairs.map((p, i) => { const a = studentById(p[0]), b = studentById(p[1]); return `<div class="pairrow"><span>${escapeHtml(a ? a.name : "?")} ↔ ${escapeHtml(b ? b.name : "?")}</span><button type="button" class="x" data-action="pair-del" data-i="${i}" aria-label="${escapeHtml(a ? a.name : "?")}·${escapeHtml(b ? b.name : "?")} 쌍 지우기">✕</button></div>`; }).join("") || '<div class="muted small">설정된 쌍이 없어요.</div>';
+    const pairs = state.pairs.map((p, i) => { const a = studentById(p[0]), b = studentById(p[1]); return `<div class="pairrow"><span>${escapeHtml(a ? a.name : "?")} ↔ ${escapeHtml(b ? b.name : "?")}</span><button type="button" class="x" data-action="pair-del" data-i="${i}" aria-label="${escapeHtml(a ? a.name : "?")}·${escapeHtml(b ? b.name : "?")} 떨어뜨릴 짝 지우기">${ic("x")}</button></div>`; }).join("") || '<div class="muted small">아직 떨어뜨릴 짝이 없어요.</div>';
     const b = baseline();
-    const prevNote = b ? `기준: <b>${escapeHtml(b.label)}</b>` : "기준이 아직 없어요. 랜덤 배치 때 <b>지금 배치</b>를 기준으로 저장해서 피해요.";
+    // 기준이 있으면 무엇인지(비교 기준 또는 최근 저장 배치), 없으면 랜덤 배치 때 지금 배치를 기준으로 정한다는 것만 — 서로 모순되는 두 문장을 함께 보이지 않게
+    const prevNote = b
+      ? `기준: <b>${escapeHtml(b.label)}</b>${state.previous ? "" : "<br>비교 기준을 따로 정하지 않아 최근 저장 배치를 써요."}`
+      : "기준이 아직 없어요. 랜덤 배치 때 <b>지금 배치</b>를 비교 기준으로 정해서 피해요.";
     return `<div class="psec">
-        <h3>떨어뜨릴 학생 쌍</h3>
+        <h3>떨어뜨릴 짝</h3>
         <div class="muted small" style="margin-bottom:8px">두 학생이 앞뒤·옆으로 붙지 않게 해요. 랜덤 배치 때 피하고, 붙어 있으면 빨갛게 표시돼요.</div>
         <div class="prow"><select class="sc-sel" id="pair-a" aria-label="첫째 학생">${opts}</select><span class="amp" aria-hidden="true">↔</span><select class="sc-sel" id="pair-b" aria-label="둘째 학생">${opts}</select></div>
-        <div class="prow"><button type="button" class="sc-btn block" data-action="pair-add" data-fk="pair-add" ${state.students.length < 2 ? "disabled" : ""}>쌍 추가</button></div>
+        <div class="prow"><button type="button" class="sc-btn block" data-action="pair-add" data-fk="pair-add" ${state.students.length < 2 ? "disabled" : ""}>떨어뜨릴 짝 추가</button></div>
         <div class="pairlist">${pairs}</div>
       </div>
       <div class="psec">
         <h3>이전 짝 피하기</h3>
         <label class="check"><input type="checkbox" id="ap-check" data-fk="ap" ${state.avoidPrev ? "checked" : ""}> 이전에 옆자리(2인 책상은 짝)였던 학생끼리 다시 붙지 않게 랜덤 배치해요.</label>
-        <div class="muted small" style="margin:4px 0 0 24px">${prevNote}<br>비교 기준이 없으면 최근 저장 배치를 써요.</div>
+        <div class="muted small" style="margin:4px 0 0 24px">${prevNote}</div>
       </div>
       <div class="psec">
         <h3>성별 균형</h3>
@@ -656,24 +663,25 @@
       </div>
       <div class="psec">
         <h3>앞줄 우선 · 좌석 고정</h3>
-        <div class="muted small">명단 탭에서 학생마다 <b>앞</b>(앞줄 우선) · <b>핀</b>(지금 자리 고정)을 켜세요. 자리를 오른쪽 클릭하거나 길게 눌러도 고정할 수 있어요.</div>
+        <div class="muted small">명단 탭에서 학생마다 <b>앞</b>(앞줄 우선) · <b>고정</b>(지금 자리 고정)을 켜세요. 자리를 오른쪽 클릭하거나 길게 눌러도 고정할 수 있어요.</div>
       </div>`;
   }
   function buildStorage() {
-    const snaps = state.snapshots.map(s => `<div class="snap"><div class="sinfo"><b>${escapeHtml(s.name)}</b><span class="muted small">${Object.keys(s.assignment).length}명 · ${s.cols}분단 ${s.rows}줄 · ${s.layout === "free" ? "자유" : "분단"}</span></div><div class="sbtns"><button type="button" class="sc-btn sm" data-action="snap-load" data-id="${s.id}" data-fk="sl${s.id}">불러오기</button><button type="button" class="sc-btn sm" data-action="snap-base" data-id="${s.id}" data-fk="sb${s.id}">비교 기준</button><button type="button" class="sc-btn sm danger" data-action="snap-del" data-id="${s.id}" aria-label="${escapeHtml(s.name)} 삭제">삭제</button></div></div>`).join("") || '<div class="muted small">저장된 배치가 없어요.</div>';
+    const snaps = state.snapshots.map(s => `<div class="snap"><div class="sinfo"><b>${escapeHtml(s.name)}</b><span class="muted small">${Object.keys(s.assignment).length}명 · ${s.cols}분단 ${s.rows}줄 · ${s.layout === "free" ? "자유" : "분단"}</span></div><div class="sbtns"><button type="button" class="sc-btn sm" data-action="snap-load" data-id="${s.id}" data-fk="sl${s.id}">불러오기</button><button type="button" class="sc-btn sm" data-action="snap-base" data-id="${s.id}" data-fk="sb${s.id}">비교 기준으로</button><button type="button" class="sc-btn sm danger" data-action="snap-del" data-id="${s.id}" aria-label="${escapeHtml(s.name)} 삭제">삭제</button></div></div>`).join("") || '<div class="muted small">저장된 배치가 없어요.</div>';
     return `<div class="psec">
         <h3>배치 저장</h3>
-        <div class="prow"><button type="button" class="sc-btn primary block" data-action="snap-save" data-fk="snap-save">＋ 현재 배치 저장</button></div>
+        <div class="prow"><button type="button" class="sc-btn primary block" data-action="snap-save" data-fk="snap-save">${ic("plus")}지금 배치 저장</button></div>
+        <div class="muted small" style="margin-bottom:6px">저장한 배치는 언제든 다시 불러오거나, <b>비교 기준으로</b> 정해 이동 화살표·이전 짝 피하기에 쓸 수 있어요.</div>
         <div class="snaplist">${snaps}</div>
       </div>
       <div class="psec">
-        <h3>JSON 백업</h3>
-        <div class="prow two"><button type="button" class="sc-btn" data-action="export" data-fk="export">내보내기</button><button type="button" class="sc-btn" data-action="import-trigger" data-fk="import">불러오기</button></div>
+        <h3>파일로 옮기기</h3>
+        <div class="prow two"><button type="button" class="sc-btn" data-action="export" data-fk="export">파일로 저장</button><button type="button" class="sc-btn" data-action="import-trigger" data-fk="import">파일 불러오기</button></div>
         <div class="muted small" style="margin-top:4px">명단·제약·저장 배치·설정이 모두 들어가요. 불러온 파일은 <b>새 학급</b>으로 추가돼요(원본 자리 배치 앱 백업도 돼요).</div>
       </div>
       <div class="psec">
         <h3>저장 위치</h3>
-        <div class="muted small">이 학급은 이 기기의 브라우저에만 저장돼요. 브라우저 기록을 지우면 사라질 수 있으니 가끔 내보내기 해 두세요.</div>
+        <div class="muted small">이 학급은 이 기기의 브라우저에만 저장돼요. 브라우저 기록을 지우면 사라질 수 있으니 가끔 파일로 저장해 두세요.</div>
       </div>`;
   }
 
@@ -699,12 +707,12 @@
     else if (a === "pair-add") {
       const av = +$("pair-a").value, bv = +$("pair-b").value;
       if (!av || !bv || av === bv) { toast("서로 다른 두 학생을 고르세요"); return; }
-      if (state.pairs.some(p2 => (p2[0] === av && p2[1] === bv) || (p2[0] === bv && p2[1] === av))) { toast("이미 있는 쌍이에요"); return; }
-      act(() => state.pairs.push([av, bv]), { say: "떨어뜨릴 쌍을 추가했어요" });
+      if (state.pairs.some(p2 => (p2[0] === av && p2[1] === bv) || (p2[0] === bv && p2[1] === av))) { toast("이미 있는 짝이에요"); return; }
+      act(() => state.pairs.push([av, bv]), { say: "떨어뜨릴 짝을 추가했어요" });
     }
-    else if (a === "pair-del") act(() => state.pairs.splice(+el.dataset.i, 1), { say: "쌍을 지웠어요" });
+    else if (a === "pair-del") act(() => state.pairs.splice(+el.dataset.i, 1), { say: "떨어뜨릴 짝을 지웠어요" });
     else if (a === "snap-save") { const n = saveSnapshot(); commit(); toast("배치를 저장했어요 · " + n); }
-    else if (a === "snap-load") { act(() => loadSnapshot(parseInt(el.dataset.id, 10))); toast("저장 배치를 불러왔어요 · 되돌리기 가능"); }
+    else if (a === "snap-load") { act(() => loadSnapshot(parseInt(el.dataset.id, 10))); undoToast("저장한 배치를 불러왔어요"); }
     else if (a === "snap-base") { const s = state.snapshots.find(x => x.id === parseInt(el.dataset.id, 10)); if (s) { act(() => { state.previous = { ...s.assignment }; state.prevDesk = s.deskSeats; state.compareOn = true; }); toast("비교 기준으로 정했어요"); } }
     else if (a === "snap-del") { const sid = parseInt(el.dataset.id, 10); confirmDialog({ title: "저장 배치 삭제", msg: "이 저장 배치를 지울까요?", ok: "삭제", danger: true }).then(ok => { if (ok) { state.snapshots = state.snapshots.filter(x => x.id !== sid); commit(); } }); }
     else if (a === "export") exportClass(cur);
@@ -724,32 +732,32 @@
     if (!state.students.length) { toast("먼저 명단을 넣어 주세요"); return; }
     const r = act(randomPlace);
     let msg = "랜덤으로 배치했어요";
-    if (r.v) msg += ` · 분리 위반 ${r.v}건 남음(자리가 부족해요)`;
-    if (r.autoBase) msg += " · 지금 배치를 비교 기준으로 저장했어요";
+    if (r.v) msg += ` · 떨어뜨릴 짝 ${r.v}곳은 떼지 못했어요(자리가 부족해요)`;
+    if (r.autoBase) msg += " · 지금 배치를 비교 기준으로 정했어요";
     else if (state.avoidPrev && r.p) msg += ` · 이전 짝 ${r.p}쌍은 피하지 못했어요`;
-    msg += isTouchish(lastPointer.type) ? " · ↶로 되돌리기" : " · Ctrl+Z로 되돌리기";
-    toast(msg);
+    if (!isTouchish(lastPointer.type)) msg += " · Ctrl+Z로도 되돌려요";
+    undoToast(msg);
     announce("랜덤으로 배치했어요");
   }
   function doClear() {
     if (!Object.keys(state.assignment).length) { toast("비울 자리가 없어요"); return; }
     act(() => { state.assignment = {}; state.students.forEach(s => s.pinnedSeat = null); selectedSeat = null; });
-    toast("모든 자리를 비웠어요 · 되돌리기 가능");
+    undoToast("모든 자리를 비웠어요");
     announce("모든 자리를 비웠어요");
   }
   function doBaseline() {
     act(() => { state.previous = { ...state.assignment }; state.prevDesk = state.deskSeats; state.compareOn = true; });
-    toast("지금 배치를 비교 기준으로 저장했어요");
+    toast("지금 배치를 비교 기준으로 정했어요");
   }
   function doCompare() {
-    if (!state.previous) { toast("먼저 ‘기준 저장’을 눌러 주세요"); return; }
+    if (!state.previous) { toast("먼저 ‘기준 정하기’를 눌러 주세요"); return; }
     act(() => { state.compareOn = !state.compareOn; }, { undo: false });
     announce(state.compareOn ? "이동 비교를 켰어요" : "이동 비교를 껐어요");
   }
   function doRestore() {
-    if (!state.previous) { toast("저장된 비교 기준이 없어요"); return; }
+    if (!state.previous) { toast("정해 둔 비교 기준이 없어요"); return; }
     act(() => { state.assignment = { ...state.previous }; selectedSeat = null; });
-    toast("기준 배치로 되돌렸어요");
+    undoToast("비교 기준 배치로 되돌렸어요");
   }
 
   /* 그리드 변경 (원본 그대로 + 되돌리기) */
@@ -948,8 +956,8 @@
     const id = state.assignment[key], st = id != null ? studentById(id) : null, un = unassignedStudents();
     let h = `<div class="phead">${seatLabel(key)} · ${st ? escapeHtml(st.name) : "빈자리"}</div>`;
     if (st) {
-      h += `<button type="button" role="menuitem" data-m="select">↔ 다른 자리와 바꾸기</button>`;
-      h += `<button type="button" role="menuitem" data-m="pin">📌 ${st.pinnedSeat === key ? "좌석 고정 해제" : "이 자리에 고정"}</button>`;
+      h += `<button type="button" role="menuitem" data-m="select">${ic("arrow-left-right")}다른 자리와 바꾸기</button>`;
+      h += `<button type="button" role="menuitem" data-m="pin">${ic("pin")}${st.pinnedSeat === key ? "좌석 고정 해제" : "이 자리에 고정"}</button>`;
       h += `<button type="button" role="menuitem" data-m="front">${st.frontFix ? "앞줄 우선 끄기" : "앞줄 우선 켜기"}</button>`;
       h += `<button type="button" role="menuitem" data-m="empty">이 자리 비우기</button>`;
     }
@@ -1117,7 +1125,7 @@
   function renderList() {
     const el = $("sl-grid");
     const list = db.classes.slice().sort((a, b) => b.updated - a.updated);
-    if (!list.length) { el.innerHTML = '<p class="muted" style="grid-column:1/-1;text-align:center;padding:40px 0">학급이 없어요. ＋ 새 학급을 눌러 만들어 보세요.</p>'; return; }
+    if (!list.length) { el.innerHTML = '<p class="muted" style="grid-column:1/-1;text-align:center;padding:40px 0">학급이 없어요. <b>새 학급</b>을 눌러 만들어 보세요.</p>'; return; }
     el.innerHTML = list.map((c, i) => {
       const s = c.s, n = s.students.length, a = Object.keys(s.assignment).length;
       const name = s.className || "이름 없는 학급";
@@ -1258,7 +1266,7 @@
 
     // 모달
     $("roster-apply").addEventListener("click", applyRoster);
-    $("roster-sample").addEventListener("click", () => { $("roster-text").value = SAMPLE; $("roster-text").focus(); toast("가상의 예시 이름이에요. ‘명부 적용’을 눌러야 반영돼요."); });
+    $("roster-sample").addEventListener("click", () => { $("roster-text").value = SAMPLE; $("roster-text").focus(); toast("가상의 예시 이름이에요. ‘명단 적용’을 눌러야 반영돼요."); });
     $("dlg-ok").addEventListener("click", () => { const v = $("dlg-input").hidden ? "" : $("dlg-input").value; dlgModal.close(); finishDialog(v); });
     $("dlg-cancel").addEventListener("click", () => { dlgModal.close(); finishDialog(null); });
     $("dlg-input").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("dlg-ok").click(); } });

@@ -1,5 +1,6 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 
 // 아이콘(lucide 경로, 빌드 때 인라인)
 const I = {
@@ -23,7 +24,7 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
 ---
 <AppLayout
   title="뽑기·모둠 — eduin VIVES"
-  description="학급 명단으로 발표자를 공평하게 뽑고, 발표 순서를 정하고, 조건을 지켜 모둠을 나눠요. 전자칠판에 크게 띄우고 A4로 인쇄합니다. 명단은 이 기기 브라우저에만 저장돼요."
+  description="학급 명단으로 발표자를 공평하게 뽑고, 발표 순서를 정하고, 조건을 지켜 모둠을 나눠요. 전자칠판에 크게 띄우고 모둠 결과는 A4로 인쇄해요. 명단은 이 기기 브라우저에만 저장돼요."
   image="https://eduin.info/og-images/picker.png"
   bodyShell="column"
   bodyWidth="wide"
@@ -133,12 +134,13 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
     }
     .pk-card-name { font-size: 17px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .pk-card-meta { font-size: 13px; color: var(--fg-muted); margin-top: 6px; line-height: 1.5; }
+    /* 메뉴 버튼은 카드 오른쪽 띠 전체(위~아래)를 차지 — 메뉴 주변을 잘못 눌러 카드가 열리지 않게 */
     .pk-card-menu {
-      position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 10px;
-      border: 1px solid transparent; background: transparent; color: var(--fg-muted); cursor: pointer;
+      position: absolute; right: 0; top: 0; bottom: 0; width: 52px; border-radius: 0 16px 16px 0;
+      border: 0; border-left: 1px solid transparent; background: transparent; color: var(--fg-muted); cursor: pointer;
       display: flex; align-items: center; justify-content: center;
     }
-    .pk-card-menu:hover { background: var(--bg); border-color: var(--border); color: var(--fg); }
+    .pk-card-menu:hover { background: var(--bg); border-left-color: var(--border); color: var(--fg); }
     .pk-card-menu svg { width: 20px; height: 20px; }
     .pk-empty {
       grid-column: 1 / -1; text-align: center; padding: 40px 16px; border: 1px dashed var(--border); border-radius: 16px;
@@ -336,7 +338,7 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
     .pk-modal.open { display: flex; }
     .pk-mbox {
       background: var(--dialog-bg); color: var(--dialog-fg); border: 1px solid var(--dialog-border);
-      border-radius: 18px; width: min(540px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 22px;
+      border-radius: 18px; width: min(540px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow: auto; padding: 22px;
       box-shadow: 0 20px 50px rgba(0,0,0,.25);
     }
     .pk-mbox h2 { margin: 0 0 6px; font-size: 18px; }
@@ -358,6 +360,28 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
     .pk-list .it span { flex: 1; }
     .pk-list .src { width: 100%; justify-content: flex-start; text-align: left; min-height: 52px; }
     .pk-list .src small { color: var(--fg-muted); font-weight: 600; margin-left: auto; }
+
+    /* 아이콘(lucide 스프라이트) */
+    .pk-btn .ic { width: 18px; height: 18px; }
+    .pk-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .pk-tabs button .ic { width: 16px; height: 16px; flex-shrink: 0; }
+    .pk-mem .tag.pin .ic { width: 13px; height: 13px; vertical-align: -2px; }
+    .pk-sub { font-size: 12.5px; color: var(--fg-muted); line-height: 1.6; margin: -4px 0 12px; }
+    /* 위험(지우기) 확인 버튼: 빨간 바탕 흰 글자 */
+    .pk-btn.danger-solid { background: var(--danger); border-color: var(--danger); color: #fff; }
+    .pk-btn.danger-solid:hover { background: color-mix(in srgb, var(--danger) 85%, #000); color: #fff; border-color: var(--danger); }
+
+    /* 터치 기기: 누르는 곳 44px 이상 */
+    @media (pointer: coarse) {
+      .pk-btn.sm { min-height: 44px; }
+      .pk-stepper button { width: 44px; height: 44px; }
+      .pk-seg button { min-height: 44px; }
+      .pk-absent-chip { min-height: 44px; }
+    }
+    /* iOS는 16px 미만 입력칸에서 화면을 확대한다 */
+    @media (max-width: 768px), (pointer: coarse) {
+      .pk-inp, .pk-mbox select, .pk-mbox textarea { font-size: 16px; }
+    }
 
     @media (max-width: 760px) {
       .pk-tabs { margin-left: 0; width: 100%; }
@@ -391,8 +415,8 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
   <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입합니다 -->
   <main class="app-main">
     <div class="app-header">
-      <div class="app-badge">◆ 업무경감</div>
-      <h1 class="app-title">🎲 뽑기·모둠</h1>
+      <div class="app-badge">업무경감</div>
+      <h1 class="app-title">뽑기·모둠 <span class="app-title-en">Picker</span></h1>
       <p class="app-desc">발표자를 공평하게 뽑고, 발표 순서를 정하고, 조건을 지켜 모둠을 나눠요. 전자칠판에 크게 띄울 수 있어요.</p>
     </div>
 
@@ -400,12 +424,12 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
     <section id="view-list" aria-label="학급 목록">
       <div class="pk-top">
         <h2 class="pk-h2">내 학급</h2>
-        <button type="button" class="pk-btn sm" id="pl-seating" hidden>🪑 자리 배치에서 가져오기</button>
-        <button type="button" class="pk-btn sm" id="pl-import"><Fragment set:html={svg(I.upload)} />JSON 불러오기</button>
-        <button type="button" class="pk-btn sm" id="pl-numbers">🔢 번호로 시작</button>
+        <button type="button" class="pk-btn sm" id="pl-seating" hidden><Icon name="armchair" />자리 배치에서 가져오기</button>
+        <button type="button" class="pk-btn sm" id="pl-import"><Fragment set:html={svg(I.upload)} />파일 불러오기</button>
+        <button type="button" class="pk-btn sm" id="pl-numbers"><Icon name="hash" />번호로 시작</button>
         <button type="button" class="pk-btn primary sm" id="pl-new"><Fragment set:html={svg(I.plus, 2.5)} />새 학급</button>
       </div>
-      <p class="pk-note">명단은 이 기기의 브라우저에만 저장돼요. 이름을 남기고 싶지 않으면 <b>번호로 시작</b>을 쓰세요.</p>
+      <p class="pk-note">명단은 이 기기의 브라우저에만 저장돼요. 이름을 남기고 싶지 않으면 <b>번호로 시작</b>을 쓰세요. 다른 기기로 옮길 땐 학급 메뉴의 <b>파일로 저장</b>을 쓰세요.</p>
       <div id="pl-grid" class="pk-grid"></div>
       <input type="file" id="pl-file" accept="application/json,.json" hidden>
     </section>
@@ -417,10 +441,10 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
         <input id="pk-name" type="text" maxlength="30" spellcheck="false" autocomplete="off" aria-label="학급 이름" placeholder="학급 이름">
         <button type="button" class="pk-absent-chip" id="pc-absent">결석 0명</button>
         <div class="pk-tabs" role="tablist" aria-label="도구">
-          <button type="button" role="tab" id="tab-draw" data-tab="draw" aria-controls="panel-draw">🎯 뽑기</button>
-          <button type="button" role="tab" id="tab-order" data-tab="order" aria-controls="panel-order">🔢 순서</button>
-          <button type="button" role="tab" id="tab-groups" data-tab="groups" aria-controls="panel-groups">👥 모둠</button>
-          <button type="button" role="tab" id="tab-roster" data-tab="roster" aria-controls="panel-roster">📋 명단</button>
+          <button type="button" role="tab" id="tab-draw" data-tab="draw" aria-controls="panel-draw"><Icon name="target" />뽑기</button>
+          <button type="button" role="tab" id="tab-order" data-tab="order" aria-controls="panel-order"><Icon name="list-ordered" />순서</button>
+          <button type="button" role="tab" id="tab-groups" data-tab="groups" aria-controls="panel-groups"><Icon name="users" />모둠</button>
+          <button type="button" role="tab" id="tab-roster" data-tab="roster" aria-controls="panel-roster"><Icon name="clipboard-list" />명단</button>
         </div>
       </div>
 
@@ -428,16 +452,17 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
       <div class="pk-panel" id="panel-draw" role="tabpanel" aria-labelledby="tab-draw">
         <div class="pk-opts">
           <div class="pk-opt"><span class="lbl" id="lbl-count">인원</span>
-            <div class="pk-stepper" role="group" aria-labelledby="lbl-count"><button type="button" id="dr-dec" aria-label="한 명 줄이기">−</button><output id="dr-count" aria-live="polite">1</output><button type="button" id="dr-inc" aria-label="한 명 늘리기">+</button></div>
+            <div class="pk-stepper" role="group" aria-labelledby="lbl-count"><button type="button" id="dr-dec" aria-label="한 명 줄이기"><Icon name="minus" /></button><output id="dr-count" aria-live="polite">1</output><button type="button" id="dr-inc" aria-label="한 명 늘리기"><Icon name="plus" /></button></div>
           </div>
           <div class="pk-opt"><span class="lbl">방식</span>
-            <div class="pk-seg" id="seg-fair" role="group" aria-label="뽑는 방식"><button type="button" data-v="fair" title="모두 한 번씩 뽑힐 때까지 다시 뽑히지 않아요">공평하게</button><button type="button" data-v="free" title="매번 모든 학생 중에서 뽑아요">매번 새로</button></div>
+            <div class="pk-seg" id="seg-fair" role="group" aria-label="뽑는 방식" aria-describedby="dr-fair-hint"><button type="button" data-v="fair">공평하게</button><button type="button" data-v="free">매번 새로</button></div>
           </div>
           <div class="pk-opt"><span class="lbl">연출</span>
             <div class="pk-seg" id="seg-effect" role="group" aria-label="뽑기 연출"><button type="button" data-v="slot">슬롯</button><button type="button" data-v="card">카드</button><button type="button" data-v="wheel">룰렛</button></div>
           </div>
-          <button type="button" class="pk-btn icon" id="dr-sound" aria-pressed="false">🔊</button>
+          <button type="button" class="pk-btn icon" id="dr-sound" aria-pressed="false" aria-label="소리 끄기"><Icon name="volume-2" /></button>
         </div>
+        <p class="pk-sub" id="dr-fair-hint"><b>공평하게</b>: 모두 한 번씩 뽑힐 때까지 다시 뽑히지 않아요 · <b>매번 새로</b>: 매번 모든 학생 중에서 뽑아요</p>
 
         <div class="pk-display" id="draw-display">
           <div class="pk-view" id="draw-view" aria-live="polite"></div>
@@ -451,7 +476,7 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
         </div>
         <div class="pk-info">
           <span id="dr-left"></span>
-          <button type="button" class="pk-btn sm" id="dr-undo"><Fragment set:html={svg(I.undo)} />방금 뽑기 취소</button>
+          <button type="button" class="pk-btn sm" id="dr-undo"><Fragment set:html={svg(I.undo)} />방금 뽑기 되돌리기</button>
           <button type="button" class="pk-btn sm" id="dr-reset">새 바퀴 시작</button>
         </div>
         <div class="pk-history" id="dr-history" aria-label="오늘 뽑힌 사람"></div>
@@ -477,7 +502,7 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
         <div class="pk-opts">
           <div class="pk-opt">
             <div class="pk-seg" id="seg-gmode" role="group" aria-label="나누는 기준"><button type="button" data-v="count">모둠 수</button><button type="button" data-v="size">모둠당 인원</button></div>
-            <div class="pk-stepper" role="group" aria-label="값"><button type="button" id="gr-dec" aria-label="줄이기">−</button><output id="gr-val" aria-live="polite">4</output><button type="button" id="gr-inc" aria-label="늘리기">+</button></div>
+            <div class="pk-stepper" role="group" aria-label="값"><button type="button" id="gr-dec" aria-label="줄이기"><Icon name="minus" /></button><output id="gr-val" aria-live="polite">4</output><button type="button" id="gr-inc" aria-label="늘리기"><Icon name="plus" /></button></div>
           </div>
           <div class="pk-opt" id="gr-rem-wrap"><span class="lbl">남는 학생</span>
             <div class="pk-seg" id="seg-grem" role="group" aria-label="남는 학생"><button type="button" data-v="add">모둠에 더하기</button><button type="button" data-v="new">작은 모둠</button></div>
@@ -485,7 +510,7 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
           <label class="pk-check"><input type="checkbox" id="gr-gender">성별 섞기</label>
           <label class="pk-check"><input type="checkbox" id="gr-prev">지난 모둠과 덜 겹치게</label>
           <label class="pk-check"><input type="checkbox" id="gr-lead">모둠장 뽑기</label>
-          <button type="button" class="pk-btn sm" id="gr-pairs">떨어뜨릴 쌍 0개</button>
+          <button type="button" class="pk-btn sm" id="gr-pairs">떨어뜨릴 짝 0쌍</button>
         </div>
         <div class="pk-display" id="groups-display">
           <div id="groups-print-title"></div>
@@ -494,8 +519,8 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
             <button type="button" class="pk-btn pk-present-only" data-present-close><Fragment set:html={svg(I.x, 2.5)} />닫기</button>
             <button type="button" class="pk-btn primary big" id="gr-go"><Fragment set:html={svg(I.users)} /><span>모둠 나누기</span></button>
             <button type="button" class="pk-btn icon" id="gr-undo" title="되돌리기" aria-label="되돌리기"><Fragment set:html={svg(I.undo)} /></button>
-            <button type="button" class="pk-btn pk-hide-present" id="gr-keep" title="다음에 '지난 모둠과 덜 겹치게'가 이 모둠을 피해요"><Fragment set:html={svg(I.check, 2.5)} />이대로 쓰기</button>
-            <button type="button" class="pk-btn icon pk-hide-present" id="gr-print" title="A4 인쇄" aria-label="A4 인쇄"><Fragment set:html={svg(I.printer)} /></button>
+            <button type="button" class="pk-btn pk-hide-present" id="gr-keep" aria-describedby="gr-hint"><Fragment set:html={svg(I.check, 2.5)} />이대로 쓰기</button>
+            <button type="button" class="pk-btn icon pk-hide-present" id="gr-print" title="모둠 결과 A4 인쇄" aria-label="모둠 결과 A4 인쇄"><Fragment set:html={svg(I.printer)} /></button>
             <button type="button" class="pk-btn icon pk-hide-present" data-present="groups-display" title="크게 보기" aria-label="크게 보기"><Fragment set:html={svg(I.max)} /></button>
           </div>
         </div>
@@ -505,15 +530,15 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
           <button type="button" class="pk-btn sm" id="gr-unsel">선택 취소</button>
         </div>
         <div class="pk-info" id="gr-status"></div>
-        <p class="pk-hint" style="text-align:left;margin-top:6px">학생을 끌어 다른 학생과 바꾸거나 다른 모둠에 놓으세요. 누르기만 해도 돼요: 한 명을 누르고 → 바꿀 학생이나 모둠을 누르기.</p>
+        <p class="pk-hint" id="gr-hint" style="text-align:left;margin-top:6px">학생을 끌어 다른 학생과 바꾸거나 다른 모둠에 놓으세요. 누르기만 해도 돼요: 한 명을 누르고 → 바꿀 학생이나 모둠을 누르기.<br><b>이대로 쓰기</b>를 누르면 이 모둠을 기억해 두고, 다음에 ‘지난 모둠과 덜 겹치게’가 이 모둠을 피해요.</p>
       </div>
 
       <!-- 명단 -->
       <div class="pk-panel" id="panel-roster" role="tabpanel" aria-labelledby="tab-roster" hidden>
         <div class="pk-opts">
-          <button type="button" class="pk-btn primary" id="ro-edit">📝 명단 편집</button>
-          <button type="button" class="pk-btn" id="ro-seating" hidden>🪑 자리 배치에서 가져오기</button>
-          <button type="button" class="pk-btn" id="ro-pairs">떨어뜨릴 쌍</button>
+          <button type="button" class="pk-btn primary" id="ro-edit"><Icon name="notebook-pen" />명단 편집</button>
+          <button type="button" class="pk-btn" id="ro-seating" hidden><Icon name="armchair" />자리 배치에서 가져오기</button>
+          <button type="button" class="pk-btn" id="ro-pairs">떨어뜨릴 짝</button>
           <button type="button" class="pk-btn" id="ro-clear-absent">결석 표시 모두 풀기</button>
         </div>
         <p class="pk-note" id="ro-sum" style="margin:0"></p>
@@ -529,7 +554,7 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
     <button type="button" role="menuitem" data-cact="open">열기</button>
     <button type="button" role="menuitem" data-cact="rename">이름 바꾸기</button>
     <button type="button" role="menuitem" data-cact="dup">복제</button>
-    <button type="button" role="menuitem" data-cact="export">JSON 내보내기</button>
+    <button type="button" role="menuitem" data-cact="export">파일로 저장</button>
     <div class="pdiv"></div>
     <button type="button" role="menuitem" class="danger" data-cact="delete">삭제</button>
   </div>
@@ -540,13 +565,13 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
       <h2>명단 편집</h2>
       <div class="pk-seg" id="seg-rmode" role="group" aria-label="명단 방식" style="margin-bottom:12px"><button type="button" data-v="names">이름</button><button type="button" data-v="numbers">번호만</button></div>
       <div id="rm-names">
-        <p class="mdesc">한 줄에 한 명. 이름 뒤에 <b>남</b>/<b>여</b>를 적으면 성별 섞기에 쓰여요. 이름이 같으면 결석·쌍 설정이 유지돼요.</p>
+        <p class="mdesc">한 줄에 한 명. 이름 뒤에 <b>남</b>/<b>여</b>를 적으면 성별 섞기에 쓰여요. 이름이 같으면 결석·떨어뜨릴 짝 설정이 유지돼요.</p>
         <textarea id="roster-text" spellcheck="false" aria-label="명단 (한 줄에 한 명)" placeholder="김민준 남&#10;이서연 여&#10;…"></textarea>
       </div>
       <div id="rm-numbers" hidden>
         <p class="mdesc">이름 대신 <b>1번</b>, <b>2번</b> …으로 뽑아요. 이름이 기기에 남지 않아요.</p>
         <div class="pk-mrow"><span class="lbl" style="font-weight:700">학생 수</span>
-          <div class="pk-stepper"><button type="button" id="rn-dec" aria-label="줄이기">−</button><output id="rn-val">25</output><button type="button" id="rn-inc" aria-label="늘리기">+</button></div>
+          <div class="pk-stepper"><button type="button" id="rn-dec" aria-label="줄이기"><Icon name="minus" /></button><output id="rn-val">25</output><button type="button" id="rn-inc" aria-label="늘리기"><Icon name="plus" /></button></div>
         </div>
       </div>
       <div class="mfoot">
@@ -561,21 +586,21 @@ const svg = (d: string, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="
   <div id="m-seating" class="pk-modal">
     <div class="pk-mbox">
       <h2>자리 배치에서 가져오기</h2>
-      <p class="mdesc" id="ms-desc">이 기기의 자리 배치 앱에 저장된 학급이에요. 이름·성별·떨어뜨릴 쌍을 복사해 와요(자리 배치 데이터는 바뀌지 않아요).</p>
+      <p class="mdesc" id="ms-desc">이 기기의 자리 배치 앱에 저장된 학급이에요. 이름·성별·떨어뜨릴 짝을 복사해 와요(자리 배치 데이터는 바뀌지 않아요).</p>
       <div class="pk-list" id="ms-list"></div>
       <div class="mfoot"><button type="button" class="pk-btn" data-vui-close>닫기</button></div>
     </div>
   </div>
 
-  <!-- 떨어뜨릴 쌍 -->
+  <!-- 떨어뜨릴 짝 -->
   <div id="m-pairs" class="pk-modal">
     <div class="pk-mbox">
-      <h2>떨어뜨릴 쌍</h2>
+      <h2>떨어뜨릴 짝</h2>
       <p class="mdesc">모둠을 나눌 때 같은 모둠에 넣지 않을 두 학생이에요.</p>
       <div class="pk-mrow">
         <select id="mp-a" aria-label="첫째 학생"></select>
         <select id="mp-b" aria-label="둘째 학생"></select>
-        <button type="button" class="pk-btn primary" id="mp-add">쌍 추가</button>
+        <button type="button" class="pk-btn primary" id="mp-add">짝 추가</button>
       </div>
       <div class="pk-list" id="mp-list"></div>
       <div class="mfoot"><button type="button" class="pk-btn" data-vui-close>닫기</button></div>

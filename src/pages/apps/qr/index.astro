@@ -1,10 +1,10 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<AppLayout 
-  icons
-  title="QR Master — eduin VIVES"
-  description="QR 코드 생성, 카메라/이미지 스캔, 단축주소 올인원. 빠르고 간편한 QR 도구."
+<AppLayout
+  title="QR 만들기·읽기 (QR Master) — eduin VIVES"
+  description="QR 코드 만들기, 카메라·사진으로 QR 읽기, 단축 주소 만들기를 한 곳에서."
   image="https://eduin.info/og-images/qr.png"
   bodyShell="column"
   bodyWidth="narrow"
@@ -16,32 +16,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <style is:global="">
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
 
-    body {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      padding: 48px 1rem 5rem;
-    }
-
     body::before {
       content: '';
       position: fixed;
       inset: 0;
       background-image:
-        linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+        linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
       background-size: 40px 40px;
       pointer-events: none;
       z-index: 0;
-    }
-
-    .wrap {
-      width: 100%;
-      max-width: 440px;
-      position: relative;
-      z-index: 1;
     }
 
     /* 외부 카드 래퍼 */
@@ -82,23 +66,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       overflow: hidden;
     }
 
-    /* 탭 패널 — 두 패널이 항상 공간을 차지하여 높이 고정 */
-    .tab-panels-wrap {
-      display: grid;
-      grid-template-columns: 1fr;
-    }
+    /* 탭 패널 — 고른 탭만 보인다(숨은 패널이 자리를 차지하지 않게) */
     .tab-panel {
-      grid-area: 1 / 1;
-      visibility: hidden;
-      pointer-events: none;
+      display: none;
       min-width: 0;
       overflow: hidden;
       width: 100%;
     }
-    .tab-panel.active {
-      visibility: visible;
-      pointer-events: auto;
-    }
+    .tab-panel.active { display: block; }
 
     /* 스캔 입력 그리드 */
     .scan-grid {
@@ -153,7 +128,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1rem;
+      font-size: 1.1rem;
+      color: #11181c;
       z-index: 10;
     }
 
@@ -197,7 +173,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     #scanResultArea.show { display: block; }
 
     .scan-result-header {
-      font-size: 0.75rem;
+      font-size: 0.8rem;
       font-weight: 700;
       color: var(--success);
       margin-bottom: 0.5rem;
@@ -213,8 +189,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       font-size: 1.2rem;
       cursor: pointer;
       padding: 0;
-      min-width: 40px;
-      min-height: 40px;
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       margin: -10px -10px -10px 0;
       border-radius: 50%;
       font-family: inherit;
@@ -241,7 +220,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .scan-actions { display: flex; gap: 0.5rem; }
     .scan-actions a, .scan-actions button {
       font-size: 0.8rem;
-      min-height: 40px;
+      min-height: 44px;
       padding: 0.4rem 0.875rem;
       border-radius: 0.5rem;
       border: none;
@@ -270,8 +249,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       margin-bottom: 0.75rem;
     }
     .history-header span { font-size: 0.85rem; font-weight: 700; }
-    .btn-clear { font-size: 0.75rem; color: var(--danger); background: none; border: none; cursor: pointer; font-family: inherit; min-height: 40px; padding: 0 8px; border-radius: 8px; }
-    .btn-title-all { font-size: 0.75rem; color: var(--primary); background: none; border: none; cursor: pointer; font-family: inherit; min-height: 40px; padding: 0 8px; border-radius: 8px; }
+    .btn-clear { font-size: 0.8rem; color: var(--danger); background: none; border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); cursor: pointer; font-family: inherit; min-height: 44px; padding: 0 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px; }
+    .btn-clear:hover { background: color-mix(in srgb, var(--danger) 10%, transparent); }
+    .btn-title-all { font-size: 0.8rem; color: var(--primary); background: none; border: none; cursor: pointer; font-family: inherit; min-height: 44px; padding: 0 8px; border-radius: 8px; }
     .history-header-actions { display: flex; align-items: center; gap: 2px; }
 
     #historyList { list-style: none; padding: 0; margin: 0; max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
@@ -346,8 +326,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       font-size: 1rem;
       line-height: 1;
       flex-shrink: 0;
-      min-width: 40px;
-      min-height: 40px;
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       border-radius: 50%;
       font-family: inherit;
     }
@@ -372,25 +355,29 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .mt-1 { margin-top: 0.5rem; }
     .mt-2 { margin-top: 0.75rem; }
     .w-full { width: 100%; }
-    .hint { font-size: 0.72rem; color: var(--fg-muted); text-align: center; margin-top: 0.375rem; }
+    .hint { font-size: 0.75rem; color: var(--fg-muted); text-align: center; margin-top: 0.375rem; line-height: 1.5; }
+    /* 키보드 단축키 안내는 터치 기기에서 숨김 */
+    @media (hover: none) { .hint-kbd { display: none; } }
+    .gen-error { display: none; margin-top: 0.75rem; padding: 0.75rem 1rem; border-radius: 0.75rem; font-size: 0.85rem; line-height: 1.5;
+      color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); }
+    .gen-error.show { display: block; }
 
   </style>
-  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"QR Master","description":"QR 코드 생성, 카메라/이미지 스캔, 단축주소 올인원. 빠르고 간편한 QR 도구.","url":"https://eduin.info/apps/qr/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"QR 만들기·읽기 (QR Master)","description":"QR 코드 만들기, 카메라·사진으로 QR 읽기, 단축 주소 만들기를 한 곳에서.","url":"https://eduin.info/apps/qr/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
 
-<div class="wrap">
+<main class="app-main">
 
-  <!-- has-lucide-header를 직접 두면 seo-injector가 헤더 재작성을 건너뛴다.
-       아이콘이 /apps.json 요청(서비스워커 캐시·오프라인 시 실패 가능)에 좌우되지 않는다. -->
+  <!-- has-lucide-header를 직접 두면 빌드 때 헤더 재작성을 건너뛴다(아이콘은 공용 스프라이트). -->
   <div class="app-header has-lucide-header">
     <div class="app-header-icon-blob sub-util-life">
-      <i data-lucide="qr-code"></i>
+      <Icon name="qr-code" />
     </div>
     <div class="app-header-text">
-      <div class="app-badge">◆ 생활편의</div>
-      <h1 class="app-title"><span>QR <span>Master</span></span></h1>
-      <p class="app-desc">생성부터 스캔까지 한 번에</p>
+      <div class="app-badge">생활편의</div>
+      <h1 class="app-title">QR 만들기·읽기 <span class="app-title-en">QR Master</span></h1>
+      <p class="app-desc">QR 코드를 만들고, 카메라나 사진으로 읽어요</p>
     </div>
   </div>
 
@@ -409,17 +396,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         변환할 주소 (URL) 또는 텍스트
       </label>
       <input type="text" id="urlInput" class="hero-input" placeholder="https://example.com" onkeypress="if(event.key==='Enter')generateQR()">
-      <button onclick="generateQR()" class="hero-btn w-full mt-2">QR 코드 생성</button>
+      <button onclick="generateQR()" class="hero-btn w-full mt-2">QR 코드 만들기</button>
+      <p id="genError" class="gen-error" role="alert"></p>
 
       <div id="genResultArea">
         <div id="qrcode-wrap"><div id="qrcode"></div></div>
         <div id="genResultText"></div>
         <button onclick="downloadQR()" class="hero-btn hero-btn-ghost w-full" style="font-size:0.9rem;">
-          ⬇ 이미지 저장
+          <Icon name="download" /> 이미지 저장 (1024×1024)
         </button>
-        <button id="btnShortenUrl" onclick="shortenGeneratedUrl()" class="hero-btn hero-btn-ghost w-full mt-1" style="font-size:0.9rem;display:none;">
-          🔗 단축 URL 생성
-        </button>
+        <div id="shortenWrap" class="w-full" style="display:none;">
+          <button id="btnShortenUrl" onclick="shortenGeneratedUrl()" class="hero-btn hero-btn-ghost w-full" style="font-size:0.9rem;">
+            <Icon name="link" /> <span id="btnShortenLabel">단축 주소 만들기</span>
+          </button>
+          <p class="hint">단축 주소는 외부 서비스(short.io)에 이 주소를 보내 만들어요.</p>
+        </div>
       </div>
     </div>
 
@@ -427,43 +418,36 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <div id="scanTab" class="tab-panel" role="tabpanel" aria-labelledby="tabBtnScan">
       <div class="scan-grid">
         <button type="button" class="scan-opt" onclick="startCamera()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M23 7l-7-5-7 5M23 7v10l-7 5-7-5V7"></path><path d="M16 12l-7-5-7 5"></path>
-          </svg>
+          <Icon name="camera" />
           카메라
         </button>
         <!-- 숨긴 파일 입력은 키보드로 닿지 않으므로 버튼이 대신 연다 -->
         <button type="button" class="scan-opt" onclick="document.getElementById('qrInputFile').click()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="9" cy="9" r="2"></circle>
-            <path d="M21 15l-5-5L5 21"></path>
-          </svg>
-          파일
+          <Icon name="image" />
+          사진 파일
         </button>
         <input type="file" id="qrInputFile" accept="image/*" class="hidden" style="display:none" tabindex="-1" aria-hidden="true" onchange="handleFileUpload(this)">
         <button type="button" class="scan-opt" onclick="handleClipboardPaste()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-          </svg>
+          <Icon name="clipboard-paste" />
           붙여넣기
         </button>
       </div>
-      <p class="hint">Ctrl+V로 이미지를 바로 붙여넣을 수 있습니다</p>
+      <p class="hint">카메라 버튼을 눌러야 카메라가 켜져요.<span class="hint-kbd"> 복사한 QR 이미지는 Ctrl+V로 바로 붙여넣을 수 있어요.</span></p>
 
       <div id="cameraArea">
         <div id="reader"></div>
-        <button type="button" class="camera-close" onclick="stopCamera()" aria-label="카메라 끄기" title="카메라 끄기">✕</button>
+        <button type="button" class="camera-close" onclick="stopCamera()" aria-label="카메라 끄기" title="카메라 끄기"><Icon name="x" /></button>
       </div>
 
       <div id="scanResultArea">
         <div class="scan-result-header">
-          <span>✓ 스캔 성공!</span>
-          <button type="button" class="btn-close-scan" onclick="closeScanResult()" aria-label="스캔 결과 닫기" title="닫기">✕</button>
+          <span><Icon name="circle-check" /> 읽었어요</span>
+          <button type="button" class="btn-close-scan" onclick="closeScanResult()" aria-label="스캔 결과 닫기" title="닫기"><Icon name="x" /></button>
         </div>
         <div id="scanResultText"></div>
         <div class="scan-actions">
-          <button type="button" class="btn-copy-scan" onclick="copyScanResult()">복사</button>
-          <a id="scanResultLink" class="btn-open-link" href="#" target="_blank" rel="noopener">↗ 이동</a>
+          <button type="button" class="btn-copy-scan" onclick="copyScanResult()"><Icon name="copy" /> 복사</button>
+          <a id="scanResultLink" class="btn-open-link" href="#" target="_blank" rel="noopener"><Icon name="external-link" /> 열기</a>
         </div>
       </div>
 
@@ -473,31 +457,31 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <span id="multiListCount" role="status" aria-live="polite"></span>
           <div class="history-header-actions">
             <button type="button" id="btnTitleAll" onclick="fetchAllTitles()" class="btn-title-all" hidden>제목 모두 가져오기</button>
-            <button type="button" onclick="clearMultiScans()" class="btn-clear">지우기</button>
+            <button type="button" onclick="clearMultiScans()" class="btn-clear"><Icon name="trash-2" /> 스캔 목록 비우기</button>
           </div>
         </div>
         <ul id="multiScanList" style="list-style:none;padding:0;margin:0;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:0.5rem;"></ul>
-        <p class="title-note" id="titleNote" hidden>ℹ️ ‘제목 가져오기’를 누르면 웹페이지 제목을 읽으려고 그 주소를 eduin 서버로 보내요. 누르지 않으면 주소는 이 기기에만 있어요.</p>
+        <p class="title-note" id="titleNote" hidden><Icon name="info" /> ‘제목 가져오기’를 누르면 웹페이지 제목을 읽으려고 그 주소를 eduin 서버로 보내요. 누르지 않으면 주소는 이 기기에만 있어요.</p>
         <button onclick="exportMultiMd()" class="hero-btn w-full mt-2" style="font-size:0.9rem;">
-          📄 링크 정리 (MD Editor로)
+          <Icon name="file-text" /> 문서로 정리하기
         </button>
       </div>
     </div>
 
   </div><!-- /.tab-panels-wrap -->
 
-    <!-- 공통 히스토리 -->
+    <!-- 공통 최근 기록 -->
     <div class="history-section">
       <div class="history-header">
-        <span>히스토리</span>
-        <button type="button" class="btn-clear" onclick="clearHistory()">지우기</button>
+        <span>최근 기록</span>
+        <button type="button" class="btn-clear" onclick="clearHistory()"><Icon name="trash-2" /> 기록 모두 지우기</button>
       </div>
       <ul id="historyList"></ul>
     </div>
   </div>
   </div><!-- /.qr-card -->
 
-</div>
+</main>
 
 <!-- 토스트·링크 창은 공용 VUI (/common/ui.js) -->
 
@@ -516,7 +500,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   let canvasContext = null;
   let scannerAnimationId = null;
   let lastScannedCodes = new Set();
-  let scanResultCloseTimer = null;
 
   // ── 스캔 목록 상태 ──
   let multiScans = [];
@@ -538,7 +521,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   // 목록 항목 누르기: 웹 주소는 새 창으로 열고, 그 밖의 글자는 복사
   function activateScanned(text) {
     if (httpUrl(text)) openScanned(text);
-    else VUI.copy(text, '복사했어요 ✓').then(ok => { if (!ok) showToast('복사하지 못했어요. 글자를 직접 선택해 복사해 주세요.', 'error'); });
+    else VUI.copy(text, '복사했어요').then(ok => { if (!ok) showToast('복사하지 못했어요. 글자를 직접 선택해 복사해 주세요.', 'error'); });
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -546,10 +529,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     document.addEventListener('paste', handlePasteEvent);
     let savedTab = null;
     try { savedTab = localStorage.getItem(QR_TAB_KEY); } catch {}
+    // 마지막 탭만 되살린다. 카메라는 '카메라' 버튼을 누를 때만 켠다(열자마자 권한을 묻지 않게)
     if (savedTab === 'scan' || savedTab === 'generate') switchTab(savedTab);
   });
 
   // ── 탭 전환 ──
+  // 카메라는 탭을 바꿀 때 켜지 않는다 — 스캔 탭의 '카메라' 버튼으로만(파일·붙여넣기 스캔 결과를 가리지 않게).
+  // 생성 탭으로 가면 켜져 있던 카메라는 끈다.
   function switchTab(tab) {
     ['generate', 'scan'].forEach(k => {
       document.getElementById(k === 'generate' ? 'generateTab' : 'scanTab').classList.toggle('active', k === tab);
@@ -558,11 +544,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       b.setAttribute('aria-selected', k === tab ? 'true' : 'false');
       b.tabIndex = k === tab ? 0 : -1;
     });
-    if (tab === 'scan') {
-      setTimeout(() => startCamera(), 100);
-    } else {
-      stopCamera();
-    }
+    if (tab !== 'scan') stopCamera();
     try { localStorage.setItem(QR_TAB_KEY, tab); } catch {}
   }
 
@@ -579,28 +561,88 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   function showToast(msg, type) { VUI.toast(msg, type); }
 
   /* ---- 생성 ---- */
+  // qrcodejs는 글자가 너무 길면(오류 복원 H 기준 약 1,200바이트 — 한글은 글자당 3바이트) 예외를 던진다.
+  // 오류 복원 단계를 H → L 순으로 낮춰 다시 시도하고, 그래도 안 되면 화면에 이유를 보여 준다.
+  const QR_LEVELS = () => [QRCode.CorrectLevel.H, QRCode.CorrectLevel.M, QRCode.CorrectLevel.L];
+  let genText = '';
+  let genLevel = null;
+
+  function makeQR(el, text, size) {
+    for (const level of QR_LEVELS()) {
+      el.innerHTML = '';
+      try {
+        new QRCode(el, { text, width: size, height: size, colorDark: '#000', colorLight: '#fff', correctLevel: level });
+        return level;
+      } catch (e) { /* 다음 단계로 */ }
+    }
+    el.innerHTML = '';
+    return null;
+  }
+
+  function showGenError(msg) {
+    const box = document.getElementById('genError');
+    box.textContent = msg || '';
+    box.classList.toggle('show', !!msg);
+  }
+
   function generateQR(text) {
     const val = text || document.getElementById('urlInput').value.trim();
-    if (!val) return showToast('내용을 입력해주세요.');
+    if (!val) return showToast('내용을 입력해 주세요.');
+    if (typeof window.QRCode === 'undefined') {
+      showGenError('QR 코드 도구를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.');
+      return;
+    }
     const container = document.getElementById('qrcode');
-    container.innerHTML = '';
-    new QRCode(container, { text: val, width: 180, height: 180, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.H });
+    const level = makeQR(container, val, 180);
+    if (level === null) {
+      document.getElementById('genResultArea').classList.remove('show');
+      genText = '';
+      showGenError(`글자가 너무 길어서 QR 코드로 만들 수 없어요(지금 ${val.length.toLocaleString()}자). 내용을 줄이거나, 웹 주소라면 단축 주소를 먼저 만들어 넣어 주세요.`);
+      return;
+    }
+    showGenError('');
+    genText = val;
+    genLevel = level;
     document.getElementById('genResultText').textContent = val;
     document.getElementById('genResultArea').classList.add('show');
     if (!text) document.getElementById('urlInput').value = val;
     addToHistory(val, 'generate');
     // 단축은 웹 주소(http/https)만 된다
-    document.getElementById('btnShortenUrl').style.display = httpUrl(val) ? '' : 'none';
+    document.getElementById('shortenWrap').style.display = httpUrl(val) ? '' : 'none';
   }
 
+  // 저장 파일 이름: 웹 주소면 도메인, 아니면 앞 글자 몇 개 + 날짜
+  function qrFileName(text) {
+    let base = '';
+    const u = httpUrl(text);
+    if (u) {
+      try { const p = new URL(u); base = (p.hostname.replace(/^www\./, '') + p.pathname.split('/').slice(0, 2).join('-')).replace(/-+$/, ''); } catch {}
+    }
+    if (!base) base = String(text).trim().slice(0, 20);
+    base = base.replace(/[\\/:*?"<>|\s]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'text';
+    const d = new Date();
+    const ymd = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+    return `QR_${base}_${ymd}.png`;
+  }
+
+  // 인쇄·전자칠판용으로 1024×1024(흰 여백 포함)로 다시 그려 저장한다
   function downloadQR() {
-    const img = document.querySelector('#qrcode img');
-    const cvs = document.querySelector('#qrcode canvas');
+    if (!genText) return;
+    const OUT = 1024, MARGIN = 64;
+    const tmp = document.createElement('div');
+    const level = makeQR(tmp, genText, OUT - MARGIN * 2);
+    const src = tmp.querySelector('canvas');
+    if (level === null || !src) { showToast('이미지를 만들지 못했어요.', 'error'); return; }
+    const out = document.createElement('canvas');
+    out.width = OUT; out.height = OUT;
+    const ctx = out.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, OUT, OUT);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(src, MARGIN, MARGIN, OUT - MARGIN * 2, OUT - MARGIN * 2);
     const a = document.createElement('a');
-    a.download = `qr_${Date.now()}.png`;
-    if (img && img.src) a.href = img.src;
-    else if (cvs) a.href = cvs.toDataURL('image/png');
-    else return;
+    a.download = qrFileName(genText);
+    a.href = out.toDataURL('image/png');
     a.click();
   }
 
@@ -611,7 +653,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     document.getElementById('scanResultArea').classList.remove('show');
 
     if (typeof window.jsQR === 'undefined') {
-      showToast('QR 스캔 라이브러리를 로드할 수 없습니다.');
+      showToast('QR 읽기 도구를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.', 'error');
       document.getElementById('cameraArea').style.display = 'none';
       return;
     }
@@ -624,6 +666,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw Object.assign(new Error('unsupported'), { name: 'NotSupportedError' });
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment' }
       });
@@ -631,11 +674,19 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       videoElement.play();
       isCameraRunning = true;
       lastScannedCodes.clear();
-      showToast('카메라가 시작되었습니다.');
+      showToast('카메라를 켰어요. QR 코드를 화면 가운데에 비춰 주세요.');
       startScanLoop();
     } catch (err) {
-      showToast('카메라를 시작할 수 없습니다. 권한을 확인해주세요.', 'error');
-      document.getElementById('cameraArea').style.display = 'none';
+      const name = err && err.name;
+      const msg = name === 'NotFoundError' || name === 'OverconstrainedError'
+        ? '이 기기에서 카메라를 찾지 못했어요. 사진 파일이나 붙여넣기로 읽어 주세요.'
+        : name === 'NotAllowedError' || name === 'SecurityError'
+          ? '카메라 사용이 막혀 있어요. 주소창 옆 설정에서 카메라를 허용해 주세요.'
+          : name === 'NotReadableError'
+            ? '다른 프로그램이 카메라를 쓰고 있어요. 그 프로그램을 닫고 다시 눌러 주세요.'
+            : '카메라를 켤 수 없어요. 사진 파일이나 붙여넣기로 읽어 주세요.';
+      showToast(msg, 'error');
+      stopCamera();
     }
   }
 
@@ -759,10 +810,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     stopCamera();
 
     if (typeof window.jsQR === 'undefined') {
-      showToast('QR 스캔 라이브러리를 로드할 수 없습니다.');
+      showToast('QR 읽기 도구를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.', 'error');
       return;
     }
 
+    // 스캔 탭으로만 옮긴다(카메라는 켜지 않음 — 결과 상자를 가리지 않게)
     switchTab('scan');
 
     const objectUrl = URL.createObjectURL(file);
@@ -774,13 +826,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (results && results.length > 0) {
         onScanSuccess(results, tool);
       } else {
-        showToast('QR 코드를 찾을 수 없습니다. QR이 더 크고 선명하게 보이도록 잘라서 시도해 보세요.');
+        showToast('QR 코드를 찾지 못했어요. QR이 크고 선명하게 보이도록 잘라서 다시 해 보세요.', 'error');
       }
     };
 
     img.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      showToast('이미지를 불러올 수 없습니다.');
+      showToast('이 이미지를 열 수 없어요. PNG나 JPG 사진으로 해 보세요.', 'error');
     };
     img.src = objectUrl;
   }
@@ -873,10 +925,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         link.href = webUrl;
         link.classList.add('show');
         document.getElementById('scanResultArea').classList.add('show');
-        autoCloseScanResult();
-        showToast('✓ 링크가 추가되었습니다.');
+        showToast('링크를 스캔 목록에 넣었어요.');
       } else {
-        showToast('이미 추가된 링크입니다.');
+        showToast('이미 목록에 있는 링크예요.');
       }
     }
   }
@@ -888,9 +939,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         const t = item.types.find(t => t.startsWith('image/'));
         if (t) { scanImageFile(new File([await item.getType(t)], 'clip.png', { type: t }), 'clipboard'); return; }
       }
-      showToast('클립보드에 이미지가 없습니다.');
+      showToast('클립보드에 이미지가 없어요. QR 이미지를 먼저 복사해 주세요.');
     } catch {
-      showToast('Ctrl+V (또는 Cmd+V)로 이미지를 붙여넣어 주세요.');
+      const touch = window.matchMedia && window.matchMedia('(hover: none)').matches;
+      showToast(touch
+        ? '클립보드를 읽지 못했어요. QR 이미지를 사진으로 저장한 뒤 "사진 파일"로 골라 주세요.'
+        : '클립보드를 읽지 못했어요. Ctrl+V(맥은 Cmd+V)로 이미지를 붙여넣어 주세요.');
     }
   }
 
@@ -953,33 +1007,27 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       }
 
       document.getElementById('scanResultArea').classList.add('show');
-      autoCloseScanResult();
     }
 
     renderMultiList();
     if (addedCount > 0) {
-      showToast(`✓ ${addedCount}개 QR 코드가 추가되었습니다.`);
+      showToast(`QR 코드 ${addedCount}개를 읽어 스캔 목록에 넣었어요.`);
+    } else if (tool !== 'camera') {
+      showToast('이미 목록에 있는 QR 코드예요.');
     }
   }
 
 
   function copyScanResult() {
     const text = document.getElementById('scanResultText').textContent;
-    VUI.copy(text, '복사했어요 ✓').then(ok => {
+    VUI.copy(text, '복사했어요').then(ok => {
       if (!ok) showToast('복사하지 못했어요. 글자를 직접 선택해 복사해 주세요.', 'error');
     });
   }
 
+  // 결과 상자는 저절로 닫히지 않는다(학생이 읽을 시간) — 닫기 버튼으로만
   function closeScanResult() {
-    clearTimeout(scanResultCloseTimer);
     document.getElementById('scanResultArea').classList.remove('show');
-  }
-
-  function autoCloseScanResult() {
-    clearTimeout(scanResultCloseTimer);
-    scanResultCloseTimer = setTimeout(() => {
-      document.getElementById('scanResultArea').classList.remove('show');
-    }, 5000); // 5초 후 자동 닫기
   }
 
   /* ---- Short.io 단축 URL ---- */
@@ -987,20 +1035,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const text = document.getElementById('genResultText').textContent;
     if (!text) return;
     const btn = document.getElementById('btnShortenUrl');
+    const label = document.getElementById('btnShortenLabel');
     btn.disabled = true;
-    btn.textContent = '처리 중...';
+    label.textContent = '만드는 중…';
     try {
       // 단축(실패하면 원래 주소) → 복사. 복사가 안 되면 링크·QR 창
       const short = await VUI.share.shorten(text);
       const ok = short !== text;
       await VUI.share.copyOrShow(short, {
-        title: ok ? '🔗 단축 URL' : '🔗 원래 주소',
-        copiedMessage: ok ? '단축 URL을 복사했어요 ✓ ' + short : '단축하지 못해서 원래 주소를 복사했어요.',
+        title: ok ? '단축 주소' : '원래 주소',
+        copiedMessage: ok ? '단축 주소를 복사했어요: ' + short : '단축하지 못해서 원래 주소를 복사했어요.',
         note: ok ? '' : '단축하지 못해서 원래 주소를 보여 드려요.',
       });
     } finally {
       btn.disabled = false;
-      btn.textContent = '🔗 단축 URL 생성';
+      label.textContent = '단축 주소 만들기';
     }
   }
 
@@ -1016,11 +1065,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     document.getElementById('titleNote').hidden = !webItems.length;
     document.getElementById('btnTitleAll').hidden = !webItems.some(it => !(it.url in pageTitleCache));
 
+    // @icons camera image clipboard-paste qr-code circle-help
     const toolIcons = {
-      'camera': '📷',
-      'file': '📁',
-      'clipboard': '📋',
-      'generate': '✏️'
+      'camera': 'camera',
+      'file': 'image',
+      'clipboard': 'clipboard-paste',
+      'generate': 'qr-code'
     };
 
     // 역순으로 (최근 항목이 맨 위). 스캔 내용은 textContent로만 넣는다.
@@ -1039,7 +1089,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const icon = document.createElement('span');
       icon.className = 'history-icon';
       icon.setAttribute('aria-hidden', 'true');
-      icon.textContent = toolIcons[item.tool] || '📷';
+      icon.innerHTML = VUI.icon(toolIcons[item.tool] || 'camera');
       const textWrap = document.createElement('span');
       textWrap.className = 'history-text';
       const main = document.createElement('span');
@@ -1078,7 +1128,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const del = document.createElement('button');
       del.type = 'button';
       del.className = 'history-del';
-      del.textContent = '✕';
+      del.innerHTML = VUI.icon('x');
       del.title = '목록에서 지우기';
       del.setAttribute('aria-label', '목록에서 지우기: ' + display);
       del.addEventListener('click', () => deleteMultiScan(idx));
@@ -1095,8 +1145,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     if (next) next.focus();
   }
 
-  function clearMultiScans() {
-    if (!confirm('멀티 스캔 목록을 모두 삭제하시겠습니까?')) return;
+  async function clearMultiScans() {
+    const ok = await VUI.confirm('이번에 읽은 스캔 목록을 모두 지울까요? (아래 최근 기록은 그대로 남아요)', { title: '스캔 목록 비우기', ok: '비우기', danger: true });
+    if (!ok) return;
     multiScans = [];
     lastScannedCodes.clear();
     document.getElementById('scanResultArea').classList.remove('show');
@@ -1135,7 +1186,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     btn.disabled = false;
     btn.textContent = '제목 모두 가져오기';
     renderMultiList();
-    if (!fail) showToast('제목을 가져왔어요 ✓');
+    if (!fail) showToast('제목을 가져왔어요.');
   }
 
   function exportMultiMd() {
@@ -1179,18 +1230,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   function renderHistory(h) {
     const getToolInfo = (tool) => {
       const toolMap = {
-        'camera': { icon: '📷', label: '카메라' },
-        'file': { icon: '📁', label: '파일' },
-        'clipboard': { icon: '📋', label: '붙여넣기' },
-        'generate': { icon: '✏️', label: '생성하기' }
+        'camera': { icon: 'camera', label: '카메라' },
+        'file': { icon: 'image', label: '사진 파일' },
+        'clipboard': { icon: 'clipboard-paste', label: '붙여넣기' },
+        'generate': { icon: 'qr-code', label: '만들기' }
       };
-      return toolMap[tool] || { icon: '❓', label: String(tool || '') };
+      return toolMap[tool] || { icon: 'circle-help', label: String(tool || '') };
     };
 
     const list = document.getElementById('historyList');
     list.innerHTML = '';
     if (!h.length) {
-      list.innerHTML = '<li class="history-empty">기록이 없습니다.</li>';
+      list.innerHTML = '<li class="history-empty">아직 기록이 없어요.</li>';
       return;
     }
     h.forEach(item => {
@@ -1214,7 +1265,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const icon = document.createElement('span');
       icon.className = 'history-icon';
       icon.setAttribute('aria-hidden', 'true');
-      icon.textContent = toolInfo.icon;
+      icon.innerHTML = VUI.icon(toolInfo.icon);
       const textWrap = document.createElement('span');
       textWrap.className = 'history-text';
       const main = document.createElement('span');
@@ -1228,7 +1279,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const del = document.createElement('button');
       del.type = 'button';
       del.className = 'history-del';
-      del.textContent = '✕';
+      del.innerHTML = VUI.icon('x');
       del.title = '기록 지우기';
       del.setAttribute('aria-label', '기록 지우기: ' + item.text.slice(0, 60));
       del.addEventListener('click', () => deleteHistoryItem(item.text));
@@ -1246,11 +1297,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     if (next) next.focus();
   }
 
-  function clearHistory() {
-    if (confirm('기록을 모두 삭제하시겠습니까?')) {
-      try { localStorage.removeItem('qr_history'); } catch {}
-      renderHistory([]);
-    }
+  async function clearHistory() {
+    const ok = await VUI.confirm('최근 기록(만든 QR·읽은 주소)을 모두 지울까요?', { title: '기록 모두 지우기', ok: '모두 지우기', danger: true });
+    if (!ok) return;
+    const prev = readHistory();
+    try { localStorage.removeItem('qr_history'); } catch {}
+    renderHistory([]);
+    if (prev.length) VUI.toast('최근 기록을 지웠어요.', { action: { label: '되돌리기', onClick: () => { writeHistory(prev); renderHistory(prev); } } });
   }
 </script>
 

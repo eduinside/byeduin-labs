@@ -1,36 +1,35 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<AppLayout 
-  icons
-  title="YT Thumbnail — eduin VIVES"
-  description="유튜브 URL만 입력하면 고화질 썸네일을 추출. 아카이빙과 다운로드 지원."
+<AppLayout
+  title="유튜브 썸네일 (YT Thumbnail) — eduin VIVES"
+  description="유튜브 영상 주소로 썸네일 이미지를 저장하고, 재생목록은 영상 목록과 썸네일을 ZIP으로 모아 받아요."
   image="https://eduin.info/og-images/yt-thumb.png"
   bodyShell="column"
   bodyWidth="narrow"
 >
   <Fragment slot="head">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" is:inline=""></script>
+    <!-- JSZip은 재생목록 ZIP 받기를 누를 때만 불러온다(downloadZip) -->
   <style is:global="">
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
 
-    body { min-height: 100vh; }
+    body { min-height: 100vh; min-height: 100dvh; }
 
     body::before {
       content: '';
       position: fixed;
       inset: 0;
       background-image:
-        linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px);
+        linear-gradient(rgba(0,111,238,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,111,238,0.03) 1px, transparent 1px);
       background-size: 40px 40px;
       pointer-events: none;
       z-index: 0;
     }
 
+    /* 폭은 공용 셸(bodyWidth="narrow" → .app-main)이 정한다 */
     .wrap {
-      width: 100%;
-      max-width: 440px;
       position: relative;
       z-index: 1;
     }
@@ -74,7 +73,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     #result { margin-top: 1.25rem; display: none; }
 
     .thumb-item { margin-bottom: 1rem; }
-    .thumb-label { font-size: 0.75rem; font-weight: 600; color: var(--fg-muted); margin-bottom: 0.375rem; }
+    .thumb-label { font-size: 0.85rem; font-weight: 600; color: var(--fg-muted); margin-bottom: 0.375rem; }
+    .thumb-title { font-size: 0.95rem; font-weight: 700; margin: 0 0 0.75rem; line-height: 1.4; word-break: break-word; }
+    .thumb-title.loading { color: var(--fg-muted); font-weight: 500; }
+    .thumb-save { width: 100%; margin-bottom: 1rem; }
+    .thumb-save-sm { margin-top: 0.5rem; width: 100%; }
+    .thumb-missing { color: #ccc; font-size: 0.85rem; padding: 1rem; text-align: center; line-height: 1.5; }
 
     .thumb-preview {
       width: 100%;
@@ -147,7 +151,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     .history-header span { font-size: 0.9rem; font-weight: 700; }
-    .btn-clear-h { font-size: 0.875rem; color: var(--danger); background: none; border: none; cursor: pointer; font-family: inherit; min-height: 44px; padding: 0 8px; margin-right: -8px; }
+    .btn-clear-h { font-size: 0.875rem; color: var(--danger); background: none; border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); border-radius: 0.5rem; cursor: pointer; font-family: inherit; min-height: 44px; padding: 0 10px; display: inline-flex; align-items: center; gap: 4px; }
+    .btn-clear-h:hover { background: color-mix(in srgb, var(--danger) 10%, transparent); }
 
     .history-list {
       display: flex;
@@ -349,8 +354,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .url-input-row .hero-input { flex: 1; min-width: 0; }
     .dual-tab-btn { min-height: 44px; font-family: inherit; }
     .btn-analyze {
-      width: 44px; height: 44px;
-      border-radius: 0.625rem;
+      min-width: 44px; height: 48px;
+      padding: 0 1rem;
+      border-radius: 0.75rem;
       border: none;
       background: var(--primary);
       color: #fff;
@@ -358,7 +364,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       display: flex;
       align-items: center;
       justify-content: center;
+      gap: 0.35rem;
       flex-shrink: 0;
+      font: inherit;
+      font-weight: 700;
       transition: opacity 0.15s;
     }
     .btn-analyze:hover { opacity: 0.85; }
@@ -388,7 +397,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       transition: width 0.3s;
     }
   </style>
-  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"YT Thumbnail","description":"유튜브 URL만 입력하면 고화질 썸네일을 추출. 아카이빙과 다운로드 지원.","url":"https://eduin.info/apps/yt-thumb/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"유튜브 썸네일 (YT Thumbnail)","description":"유튜브 영상 주소로 썸네일 이미지를 저장하고, 재생목록은 영상 목록과 썸네일을 ZIP으로 모아 받아요.","url":"https://eduin.info/apps/yt-thumb/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
 
@@ -396,26 +405,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 <div class="wrap app-main">
 
   <div class="app-header">
-    <div class="app-badge">◆ 크리에이티브</div>
-    <h1 class="app-title">
-  <div class="card-emoji sub-util-creative" style="margin-bottom: 0; transform: scale(1.0);">
-        <i data-lucide="image"></i>
-      </div>
-  <span>YT <span>Thumbnail</span></span>
-</h1>
-    <p class="app-desc">영상 주소를 입력하면 썸네일을 추출하고, 재생목록 주소를 입력하면 전체 영상 정보와 썸네일을 수집합니다.</p>
+    <div class="app-badge">크리에이티브</div>
+    <h1 class="app-title">유튜브 썸네일 <span class="app-title-en">YT Thumbnail</span></h1>
+    <p class="app-desc">영상 주소를 넣으면 썸네일 이미지를 저장할 수 있고, 재생목록 주소를 넣으면 모든 영상의 제목과 썸네일을 모아 받을 수 있어요.</p>
   </div>
 
   <div class="app-card">
 
     <!-- 통합 URL 입력 -->
     <div class="url-input-row">
-      <input type="url" id="youtubeUrl" class="hero-input" placeholder="YouTube 영상 또는 재생목록 URL" aria-label="YouTube 영상 또는 재생목록 주소" onkeyup="if(event.key==='Enter')analyzeUrl()">
-      <button type="button" class="btn-analyze" onclick="analyzeUrl()" title="분석 시작" aria-label="분석 시작">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-          <polyline points="12 5 19 12 12 19"></polyline>
-        </svg>
+      <input type="url" id="youtubeUrl" class="hero-input" placeholder="유튜브 영상 또는 재생목록 주소" aria-label="유튜브 영상 또는 재생목록 주소" onkeyup="if(event.key==='Enter')analyzeUrl()">
+      <button type="button" class="btn-analyze" onclick="analyzeUrl()">
+        <Icon name="search" /> 찾기
       </button>
     </div>
 
@@ -424,7 +425,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:0.5rem;" role="group" aria-label="보기 선택">
         <button type="button" aria-pressed="true" onclick="switchDualModeTab('thumbnail')" id="tab-thumbnail" class="dual-tab-btn dual-tab-active" style="padding:0.5rem; border-radius:0.5rem; border:1px solid var(--border); background:var(--primary); color:#fff; cursor:pointer; font-weight:600; font-size:0.875rem; transition:all 0.2s;">썸네일</button>
         <button type="button" aria-pressed="false" onclick="switchDualModeTab('playlist')" id="tab-playlist" class="dual-tab-btn" style="padding:0.5rem; border-radius:0.5rem; border:1px solid var(--border); background:transparent; color:var(--fg); cursor:pointer; font-weight:600; font-size:0.875rem; transition:all 0.2s;">재생목록</button>
-        <button type="button" aria-pressed="false" onclick="switchDualModeTab('history')" id="tab-history" class="dual-tab-btn" style="padding:0.5rem; border-radius:0.5rem; border:1px solid var(--border); background:transparent; color:var(--fg); cursor:pointer; font-weight:600; font-size:0.875rem; transition:all 0.2s;">히스토리</button>
+        <button type="button" aria-pressed="false" onclick="switchDualModeTab('history')" id="tab-history" class="dual-tab-btn" style="padding:0.5rem; border-radius:0.5rem; border:1px solid var(--border); background:transparent; color:var(--fg); cursor:pointer; font-weight:600; font-size:0.875rem; transition:all 0.2s;">최근 기록</button>
       </div>
     </div>
 
@@ -435,15 +436,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     <!-- 재생목록 UI -->
     <div id="playlist-ui" style="display:none; margin-top:1rem;">
-      <button type="button" onclick="showApiKeyModal()" class="hero-btn hero-btn-ghost" id="plApiKeyBtn" style="display:none;width:100%;margin-top:0.5rem;font-size:0.875rem;min-height:44px;">⚙️ API 키 설정</button>
+      <button type="button" onclick="showApiKeyModal()" class="hero-btn hero-btn-ghost" id="plApiKeyBtn" style="display:none;width:100%;margin-top:0.5rem;font-size:0.875rem;min-height:44px;"><Icon name="key-round" /> API 키 설정</button>
       <div id="plResult" class="pl-result-wide" aria-live="polite"></div>
     </div>
 
     <!-- 통합 히스토리 -->
     <div class="history-section" id="historySection" style="margin-top:1.5rem;">
       <div class="history-header">
-        <span id="historyHeading">최근 검색</span>
-        <button type="button" class="btn-clear-h" onclick="clearAllHistory()">전체 삭제</button>
+        <span id="historyHeading">최근 기록</span>
+        <button type="button" class="btn-clear-h" onclick="clearAllHistory()"><Icon name="trash-2" /> 기록 모두 지우기</button>
       </div>
       <div class="history-list" id="historyList" role="list" aria-labelledby="historyHeading"></div>
     </div>
@@ -455,7 +456,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
 <script is:inline="">
   // ── 초기화 ──
+  // @icons copy check x download triangle-alert file-text key-round
   let currentMode = null; // 'video', 'playlist', 'dual'
+  let currentVideo = null; // { videoId, title } — '이미지 저장' 파일 이름용
 
   document.addEventListener('DOMContentLoaded', () => {
     renderUnifiedHistory();
@@ -464,12 +467,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   /* ─────────────────────── URL 분석 + 모드 전환 ─────────────────────── */
   function analyzeUrl() {
     const url = document.getElementById('youtubeUrl').value.trim();
-    if (!url) { showError('URL을 입력해주세요.'); return; }
+    if (!url) { showError('유튜브 주소를 입력해 주세요.'); return; }
     const isVideo = YT_REGEX.test(url);
     const isList = PL_REGEX.test(url);
 
     if (!isVideo && !isList) {
-      showError('유효하지 않은 유튜브 URL입니다.');
+      showError('유튜브 영상이나 재생목록 주소가 아니에요. 주소를 다시 확인해 주세요.');
       document.getElementById('dual-mode-tabs').style.display = 'none';
       return;
     }
@@ -579,72 +582,100 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   /* ───────────────────────── 단일 영상 ───────────────────────── */
   const YT_REGEX = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?|shorts|live)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
 
+  // 썸네일은 바로 보여 주고, 제목(기록·파일 이름용)은 그 뒤에 따로 가져온다(최대 10초 기다리지 않게)
   async function extractThumbnail() {
     const url = document.getElementById('youtubeUrl').value.trim();
-    const result = document.getElementById('result');
-    if (!url) { showError('URL을 입력해주세요.'); return; }
+    if (!url) { showError('유튜브 주소를 입력해 주세요.'); return; }
     const match = url.match(YT_REGEX);
     if (match && match[1]) {
       const videoId = match[1];
+      displayResult(videoId, '');
 
       // 영상 제목 조회(기록 표시용 — 실패해도 썸네일은 그대로 보여 준다)
+      let title = '', author = '';
       try {
         const data = await VUI.apiFetch('/api/yt-video-info', { json: { videoId }, timeout: 10000 });
-        const videoData = {
-          videoId,
-          title: (data && typeof data.title === 'string' && data.title) || 'Unknown Title',
-          author: (data && typeof data.author === 'string' && data.author) || 'Unknown Channel',
-        };
-        saveToUnifiedHistory('video', videoData);
-      } catch (e) {
-        // 실패 시 ID만 저장
-        saveToUnifiedHistory('video', { videoId, title: 'Unknown Title', author: '' });
-      }
-
-      displayResult(videoId);
+        title = (data && typeof data.title === 'string' && data.title) || '';
+        author = (data && typeof data.author === 'string' && data.author) || '';
+      } catch (e) { /* 실패 시 ID만 저장 */ }
+      saveToUnifiedHistory('video', { videoId, title, author });
+      if (currentVideo && currentVideo.videoId === videoId) setVideoTitle(videoId, title);
       renderUnifiedHistory();
     } else {
-      showError('유효하지 않은 유튜브 URL입니다.');
+      showError('유튜브 영상 주소가 아니에요. 주소를 다시 확인해 주세요.');
     }
   }
 
-  function displayResult(videoId) {
+  function setVideoTitle(videoId, title) {
+    currentVideo = { videoId, title: title || '' };
+    const el = document.getElementById('thumbTitle');
+    if (!el) return;
+    el.classList.remove('loading');
+    el.textContent = title || '(영상 제목을 가져오지 못했어요)';
+  }
+
+  const COPY_SVG = () => VUI.icon('copy');
+  function displayResult(videoId, title) {
     const result = document.getElementById('result');
     const maxRes = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
     const hq     = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    currentVideo = { videoId, title: title || '' };
 
     result.style.display = 'block';
     result.innerHTML = `
+      <p class="thumb-title${title ? '' : ' loading'}" id="thumbTitle">${title ? escHtml(title) : '영상 제목을 가져오는 중…'}</p>
+      <button type="button" class="hero-btn thumb-save" onclick="saveThumb('maxres')">${VUI.icon('download')} 이미지 저장</button>
       <div class="thumb-item">
-        <div class="thumb-label">최대 해상도 (maxresdefault)</div>
+        <div class="thumb-label">가장 큰 크기 (1280×720)</div>
         <div class="thumb-preview">
-          <img src="${maxRes}" alt="최대 해상도 썸네일"
-               onerror="this.parentElement.innerHTML='<span style=&quot;color:#888;font-size:0.8rem&quot;>이미지 없음 (1080p 미지원 영상)</span>'">
+          <img src="${maxRes}" alt="가장 큰 크기 썸네일"
+               onerror="this.parentElement.innerHTML='<span class=&quot;thumb-missing&quot;>이 영상에는 가장 큰 크기(1280×720) 썸네일이 없어요.<br>아래 기본 크기로 저장돼요.</span>'">
         </div>
         <div class="thumb-url-row">
           <a href="${maxRes}" target="_blank" class="thumb-url" rel="noopener">${maxRes}</a>
-          <button type="button" class="btn-copy" onclick="copyUrl(this,'${maxRes}')" title="복사" aria-label="최대 해상도 썸네일 주소 복사">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
+          <button type="button" class="btn-copy" onclick="copyUrl(this,'${maxRes}')" title="주소 복사" aria-label="가장 큰 크기 썸네일 주소 복사">${COPY_SVG()}</button>
         </div>
       </div>
       <div class="thumb-item">
-        <div class="thumb-label">고화질 (hqdefault)</div>
+        <div class="thumb-label">기본 크기 (480×360)</div>
         <div class="thumb-preview">
-          <img src="${hq}" alt="고화질 썸네일">
+          <img src="${hq}" alt="기본 크기 썸네일">
         </div>
         <div class="thumb-url-row">
           <a href="${hq}" target="_blank" class="thumb-url" rel="noopener">${hq}</a>
-          <button type="button" class="btn-copy" onclick="copyUrl(this,'${hq}')" title="복사" aria-label="고화질 썸네일 주소 복사">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
+          <button type="button" class="btn-copy" onclick="copyUrl(this,'${hq}')" title="주소 복사" aria-label="기본 크기 썸네일 주소 복사">${COPY_SVG()}</button>
         </div>
+        <button type="button" class="hero-btn hero-btn-ghost hero-btn-sm thumb-save-sm" onclick="saveThumb('hq')">${VUI.icon('download')} 기본 크기로 저장</button>
       </div>
     `;
+  }
+
+  // 이미지 저장: 같은 출처 프록시(/api/yt-thumb-img)로 받아 파일로 저장(유튜브 이미지는 바로 내려받기가 안 됨)
+  // 가장 큰 크기가 없는 영상은 기본 크기로 대신 저장한다.
+  async function saveThumb(q) {
+    if (!currentVideo) return;
+    const { videoId, title } = currentVideo;
+    const tryGet = async (qq) => {
+      const res = await fetch(`/api/yt-thumb-img?id=${encodeURIComponent(videoId)}&q=${qq}`);
+      return res.ok ? res.blob() : null;
+    };
+    try {
+      let used = q;
+      let blob = await tryGet(q);
+      if (!blob && q === 'maxres') { used = 'hq'; blob = await tryGet('hq'); }
+      if (!blob) throw new Error('no image');
+      const size = used === 'maxres' ? '1280x720' : '480x360';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${sanitizeFilename(title || videoId)}_${size}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      VUI.toast(used !== q ? '가장 큰 크기가 없어서 기본 크기(480×360)로 저장했어요.' : '썸네일 이미지를 저장했어요.');
+    } catch {
+      VUI.toast('이미지를 저장하지 못했어요. 썸네일을 길게 누르거나 오른쪽 클릭해서 저장해 보세요.', 'error');
+    }
   }
 
   function showError(msg) {
@@ -655,12 +686,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
   // 복사는 공용 VUI.copy(성공 토스트), 실패하면 링크 창(VUI.share.show)으로 주소를 보여 준다
   function copyUrl(btn, url) {
-    VUI.copy(url, '주소를 복사했어요 ✓').then((ok) => {
-      if (!ok) { VUI.share.show(url, { title: '🔗 썸네일 주소', qr: false, note: '자동 복사가 안 돼서 주소를 보여 드려요.' }); return; }
-      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
-      setTimeout(() => {
-        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-      }, 1500);
+    VUI.copy(url, '주소를 복사했어요').then((ok) => {
+      if (!ok) { VUI.share.show(url, { title: '썸네일 주소', qr: false, note: '자동 복사가 안 돼서 주소를 보여 드려요.' }); return; }
+      btn.innerHTML = VUI.icon('check');
+      btn.style.color = 'var(--success)';
+      setTimeout(() => { btn.innerHTML = VUI.icon('copy'); btn.style.color = ''; }, 1500);
     });
   }
 
@@ -715,7 +745,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const list = document.getElementById('historyList');
     const hist = loadUnifiedHistory();
     if (!hist.length) {
-      list.innerHTML = '<p style="text-align:center;color:var(--fg-muted);font-size:0.8rem;padding:1rem">기록이 없습니다.</p>';
+      list.innerHTML = '<p style="text-align:center;color:var(--fg-muted);font-size:0.85rem;padding:1rem">아직 기록이 없어요.</p>';
       return;
     }
     list.innerHTML = hist.map((item, idx) => {
@@ -725,7 +755,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         // item.data가 객체일 수도 있고 문자열(ID)일 수도 있음 (하위호환성)
         const isNewFormat = typeof item.data === 'object' && item.data.videoId;
         const videoId = isNewFormat ? item.data.videoId : item.data;
-        const videoTitle = isNewFormat ? item.data.title : 'Unknown Title';
+        const rawTitle = isNewFormat ? item.data.title : '';
+        // 예전 기록의 'Unknown Title'(제목 조회 실패)도 같은 문구로
+        const videoTitle = rawTitle && rawTitle !== 'Unknown Title' ? rawTitle : `영상 ${videoId}`;
 
         return `
           <div class="history-item" role="listitem">
@@ -736,7 +768,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                 <span class="history-time" style="display:block">${dateStr} · 영상</span>
               </span>
             </button>
-            <button type="button" class="btn-del-h" onclick="deleteHistoryAt(${idx})" aria-label="${escHtml(String(videoTitle || '영상'))} 기록 지우기" title="기록 지우기">✕</button>
+            <button type="button" class="btn-del-h" onclick="deleteHistoryAt(${idx})" aria-label="${escHtml(String(videoTitle || '영상'))} 기록 지우기" title="기록 지우기">${VUI.icon('x')}</button>
           </div>
         `;
       } else if (item.type === 'playlist') {
@@ -764,7 +796,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
                 <span class="history-time" style="display:block">${dateStr} · 재생목록</span>
               </span>
             </button>
-            <button type="button" class="btn-del-h" onclick="deleteHistoryAt(${idx})" aria-label="${escHtml(String(displayTitle))} 기록 지우기" title="기록 지우기">✕</button>
+            <button type="button" class="btn-del-h" onclick="deleteHistoryAt(${idx})" aria-label="${escHtml(String(displayTitle))} 기록 지우기" title="기록 지우기">${VUI.icon('x')}</button>
           </div>
         `;
       }
@@ -789,8 +821,6 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       playlistBtn.style.opacity = '0.5';
       playlistBtn.style.cursor = 'not-allowed';
       switchDualModeTab('thumbnail');
-
-      displayResult(videoId);
     } else if (type === 'playlist') {
       // data가 객체일 수도 있고 문자열(URL)일 수도 있음 (하위호환성)
       const playlistUrl = typeof data === 'object' ? data.url : data;
@@ -824,11 +854,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     VUI.toast('기록을 지웠어요', 1800);
   }
 
-  function clearAllHistory() {
-    if (confirm('모든 기록을 삭제하시겠습니까?')) {
-      localStorage.removeItem(UNIFIED_HISTORY_KEY);
+  async function clearAllHistory() {
+    const prev = loadUnifiedHistory();
+    if (!prev.length) return;
+    const ok = await VUI.confirm('최근 기록을 모두 지울까요?', { title: '기록 모두 지우기', ok: '모두 지우기', danger: true });
+    if (!ok) return;
+    try { localStorage.removeItem(UNIFIED_HISTORY_KEY); } catch {}
+    renderUnifiedHistory();
+    VUI.toast('최근 기록을 지웠어요.', { action: { label: '되돌리기', onClick: () => {
+      try { localStorage.setItem(UNIFIED_HISTORY_KEY, JSON.stringify(prev)); } catch {}
       renderUnifiedHistory();
-    }
+    } } });
   }
 
   /* ───────────────────────── 플레이리스트 ───────────────────────── */
@@ -841,10 +877,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
   async function fetchPlaylist() {
     const url = document.getElementById('youtubeUrl').value.trim();
-    if (!url) { showPlError('URL을 입력해주세요.'); return; }
+    if (!url) { showPlError('유튜브 주소를 입력해 주세요.'); return; }
 
     const match = url.match(PL_REGEX);
-    if (!match) { showPlError('유효하지 않은 플레이리스트 URL입니다.'); return; }
+    if (!match) { showPlError('재생목록 주소가 아니에요. 주소를 다시 확인해 주세요.'); return; }
 
     const playlistId = match[1];
     plUrl = url;
@@ -853,7 +889,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     const plFetchBtn = document.getElementById('plFetchBtn');
     if (plFetchBtn) plFetchBtn.disabled = true;
-    showPlLoading('플레이리스트 불러오는 중…');
+    showPlLoading('재생목록 불러오는 중…');
+    document.getElementById('plApiKeyBtn').style.display = 'none';
 
     try {
       let pageToken = null;
@@ -872,8 +909,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         if (useCustomKey) {
           // 사용자 정의 API 키 사용
           const customKey = localStorage.getItem(API_KEY_STORAGE);
-          if (!customKey) { showPlError('API 키가 설정되지 않았습니다.'); return; }
-          res = await fetchWithCustomKey(playlistId, pageToken, customKey);
+          if (!customKey) { showApiKeyNeeded('재생목록을 불러오려면 YouTube API 키가 필요해요. 아래 ‘API 키 설정’ 버튼을 눌러 주세요.'); return; }
+          try {
+            res = await fetchWithCustomKey(playlistId, pageToken, customKey);
+          } catch (e) {
+            if (e && e.keyError) { showApiKeyNeeded(e.message); return; }
+            throw e;
+          }
           data = res;
           usingCustomKey = true;
         } else {
@@ -897,15 +939,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             useCustomKey = true;
             continue;
           } else {
-            showPlError('API 키 설정이 필요합니다. ⚙️ 설정 버튼을 클릭해주세요.');
-            document.getElementById('plApiKeyBtn').style.display = 'inline-flex';
-            document.getElementById('plApiKeyBtn').focus();
+            showApiKeyNeeded('재생목록을 불러오려면 YouTube API 키가 필요해요. 아래 ‘API 키 설정’ 버튼을 눌러 주세요.');
             return;
           }
         }
 
         if (!useCustomKey && !res?.ok) {
-          showPlError(data?.error ?? '불러오기 실패');
+          showPlError(data?.error ?? '재생목록을 불러오지 못했어요.');
           return;
         }
 
@@ -916,7 +956,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         isFirst = false;
 
         if (pageToken) {
-          showPlLoading(`불러오는 중… (${totalFetched}개 완료)`);
+          showPlLoading(`불러오는 중… (${totalFetched}개 받음)`);
         }
       } while (pageToken);
 
@@ -932,7 +972,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       saveToUnifiedHistory('playlist', playlistData);
       renderUnifiedHistory();
     } catch (e) {
-      showPlError('네트워크 오류가 발생했습니다. API 키 설정을 확인해주세요.');
+      showPlError('재생목록을 불러오지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요.');
     } finally {
       if (plFetchBtn) plFetchBtn.disabled = false;
     }
@@ -941,20 +981,47 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   async function fetchWithCustomKey(playlistId, pageToken, apiKey) {
     const BASE = 'https://www.googleapis.com/youtube/v3';
 
+    // Google API 오류(키 틀림·사용 설정 안 됨·한도 초과)를 알아보고 한국어로 알린다.
+    // (예전에는 오류여도 빈 목록으로 처리돼 '영상이 없는 재생목록'으로 잘못 안내했다)
+    const checkApiError = (res, data) => {
+      const err = data && data.error;
+      if (res.ok && !err) return;
+      const reasons = ((err && err.errors) || []).map(x => x.reason).concat(
+        ((err && err.details) || []).map(x => x.reason)).join(' ');
+      const msg = String((err && err.message) || '');
+      let text, keyError = false;
+      if (/keyInvalid|API_KEY_INVALID|badRequest/i.test(reasons) || /API key not valid/i.test(msg)) {
+        text = 'API 키가 맞지 않아요. 키를 다시 복사해 ‘API 키 설정’에 넣어 주세요.'; keyError = true;
+      } else if (/accessNotConfigured|SERVICE_DISABLED/i.test(reasons) || /has not been used|is disabled/i.test(msg)) {
+        text = '이 API 키에서 YouTube Data API v3가 꺼져 있어요. Google Cloud Console에서 사용 설정해 주세요.'; keyError = true;
+      } else if (/quotaExceeded|dailyLimitExceeded|rateLimitExceeded/i.test(reasons)) {
+        text = '오늘 쓸 수 있는 API 사용량을 다 썼어요. 내일 다시 하거나 다른 키를 넣어 주세요.'; keyError = true;
+      } else if (/ipRefererBlocked|API_KEY_HTTP_REFERRER_BLOCKED|forbidden/i.test(reasons) || res.status === 403) {
+        text = '이 API 키는 이 사이트에서 쓸 수 없게 막혀 있어요. 키의 웹사이트 제한을 확인해 주세요.'; keyError = true;
+      } else if (/playlistNotFound/i.test(reasons) || res.status === 404) {
+        text = '재생목록을 찾지 못했어요. 비공개 재생목록이거나 주소가 틀렸을 수 있어요.';
+      } else {
+        text = `재생목록을 불러오지 못했어요(오류 ${res.status}).`;
+      }
+      throw Object.assign(new Error(text), { keyError });
+    };
+
     let playlistTitle = null;
     if (!pageToken) {
       const plRes = await fetch(
-        `${BASE}/playlists?part=snippet&id=${playlistId}&key=${apiKey}`
+        `${BASE}/playlists?part=snippet&id=${encodeURIComponent(playlistId)}&key=${encodeURIComponent(apiKey)}`
       );
-      const plData = await plRes.json();
-      playlistTitle = plData.items?.[0]?.snippet?.title ?? '플레이리스트';
+      const plData = await plRes.json().catch(() => ({}));
+      checkApiError(plRes, plData);
+      playlistTitle = plData.items?.[0]?.snippet?.title ?? '재생목록';
     }
 
-    let itemsUrl = `${BASE}/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&key=${apiKey}`;
+    let itemsUrl = `${BASE}/playlistItems?part=snippet&playlistId=${encodeURIComponent(playlistId)}&maxResults=50&key=${encodeURIComponent(apiKey)}`;
     if (pageToken) itemsUrl += `&pageToken=${encodeURIComponent(pageToken)}`;
 
     const itemsRes = await fetch(itemsUrl);
-    const itemsData = await itemsRes.json();
+    const itemsData = await itemsRes.json().catch(() => ({}));
+    checkApiError(itemsRes, itemsData);
 
     return {
       playlistTitle,
@@ -972,18 +1039,38 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     };
   }
 
-  function showApiKeyModal() {
-    const saved = localStorage.getItem(API_KEY_STORAGE) || '';
-    const key = prompt('YouTube API 키를 입력해주세요:\n(Google Cloud Console에서 생성할 수 있습니다)', saved);
-    if (key !== null) {
-      localStorage.setItem(API_KEY_STORAGE, key.trim());
-      showPlError('API 키가 저장되었습니다. 다시 시도해주세요.');
-    }
+  // 키가 필요하거나 틀렸을 때: 이유를 보여 주고 'API 키 설정' 버튼을 꺼낸다
+  function showApiKeyNeeded(msg) {
+    showPlError(msg);
+    const b = document.getElementById('plApiKeyBtn');
+    b.style.display = 'inline-flex';
+    b.focus();
+  }
+
+  async function showApiKeyModal() {
+    let saved = '';
+    try { saved = localStorage.getItem(API_KEY_STORAGE) || ''; } catch {}
+    const key = await VUI.prompt(
+      'YouTube API 키 만드는 방법\n' +
+      '① console.cloud.google.com에 로그인해 프로젝트를 하나 만듭니다.\n' +
+      '② ‘API 및 서비스 → 라이브러리’에서 YouTube Data API v3를 찾아 ‘사용’을 누릅니다.\n' +
+      '③ ‘사용자 인증 정보 → 사용자 인증 정보 만들기 → API 키’로 키를 만들어 아래에 붙여넣습니다.\n' +
+      '키는 이 브라우저에만 저장돼요. 비우고 저장하면 지워집니다.',
+      { title: 'API 키 설정', value: saved, placeholder: 'AIza…로 시작하는 키', ok: '저장하고 다시 불러오기' });
+    if (key === null) return;
+    const k = key.trim();
+    try {
+      if (k) localStorage.setItem(API_KEY_STORAGE, k);
+      else localStorage.removeItem(API_KEY_STORAGE);
+    } catch {}
+    if (!k) { VUI.toast('API 키를 지웠어요.'); return; }
+    VUI.toast('API 키를 저장했어요. 재생목록을 다시 불러올게요.');
+    fetchPlaylist();
   }
 
   function renderPlaylist() {
     if (!plItems.length) {
-      showPlError('영상이 없는 플레이리스트입니다.');
+      showPlError('이 재생목록에는 볼 수 있는 영상이 없어요.');
       return;
     }
 
@@ -991,11 +1078,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     container.innerHTML = `
       <div class="pl-header">
         <div class="pl-title">${escHtml(plTitle)}</div>
-        <div class="pl-meta">총 ${plItems.length}개 영상</div>
+        <div class="pl-meta">영상 ${plItems.length}개</div>
       </div>
       <div class="pl-actions">
-        <button type="button" class="hero-btn" onclick="openInMdEditor()">📋 MD로 정리</button>
-        <button type="button" class="hero-btn hero-btn-ghost" id="zipBtn" onclick="downloadZip()">📦 다운로드(ZIP)</button>
+        <button type="button" class="hero-btn" id="zipBtn" onclick="downloadZip()">${VUI.icon('download')} 썸네일 모두 받기(ZIP)</button>
+        <button type="button" class="hero-btn hero-btn-ghost" onclick="openInMdEditor()">${VUI.icon('file-text')} 문서로 정리하기</button>
       </div>
       <div class="pl-list">
         ${plItems.map((item, i) => `
@@ -1027,13 +1114,30 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     window.open(`/apps/md-editor/#share=${encoded}`, '_blank');
   }
 
+  // JSZip은 ZIP 받기를 누를 때만 불러온다(file-tools와 같은 주소·버전)
+  let jszipPromise = null;
+  function loadJSZip() {
+    if (window.JSZip) return Promise.resolve(window.JSZip);
+    if (!jszipPromise) {
+      jszipPromise = new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        s.onload = () => window.JSZip ? res(window.JSZip) : rej(new Error('JSZip'));
+        s.onerror = () => { jszipPromise = null; rej(new Error('JSZip')); };
+        document.head.appendChild(s);
+      });
+    }
+    return jszipPromise;
+  }
+
   async function downloadZip() {
     const btn = document.getElementById('zipBtn');
-    if (!window.JSZip) {
-      alert('압축 도구를 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침해 주세요.');
+    btn.disabled = true;
+    try { await loadJSZip(); } catch {
+      btn.disabled = false;
+      VUI.alert('압축 도구를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.', { title: 'ZIP을 만들 수 없어요' });
       return;
     }
-    btn.disabled = true;
 
     const zip = new JSZip();
     const folder = zip.folder(sanitizeFilename(plTitle || 'playlist'));
@@ -1045,7 +1149,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     const progress = document.createElement('div');
     progress.className = 'progress-wrap';
     progress.innerHTML = `
-      <div id="zipProgressText" role="status" aria-live="polite">썸네일 다운로드 중 (0 / ${plItems.length})</div>
+      <div id="zipProgressText" role="status" aria-live="polite">썸네일 받는 중 (0 / ${plItems.length})</div>
       <div class="progress-bar-bg">
         <div class="progress-bar-fill" id="zipProgressBar" style="width:0%"></div>
       </div>
@@ -1073,7 +1177,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           const pct = Math.round((done / plItems.length) * 100);
           const el = document.getElementById('zipProgressText');
           const bar = document.getElementById('zipProgressBar');
-          if (el) el.textContent = `썸네일 다운로드 중 (${done} / ${plItems.length})`;
+          if (el) el.textContent = `썸네일 받는 중 (${done} / ${plItems.length})`;
           if (bar) bar.style.width = `${pct}%`;
         }
       };
@@ -1081,7 +1185,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
       // 한 장도 받지 못했으면 빈 ZIP을 내려받지 않고 오류 안내
       if (saved === 0) {
-        alert('썸네일을 한 장도 받지 못했습니다. 잠시 후 다시 시도해 주세요.');
+        VUI.toast('썸네일을 한 장도 받지 못했어요. 잠시 뒤 다시 해 주세요.', 'error');
         return;
       }
 
@@ -1093,10 +1197,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 
       if (saved < plItems.length) {
-        alert(`썸네일 ${plItems.length}장 중 ${saved}장만 받았습니다. 나머지 ${plItems.length - saved}장은 ZIP에 빠져 있습니다.`);
+        VUI.toast(`썸네일 ${plItems.length}장 중 ${saved}장만 받았어요. 나머지 ${plItems.length - saved}장은 ZIP에 빠져 있어요.`, 'error');
+      } else {
+        VUI.toast(`썸네일 ${saved}장을 ZIP으로 저장했어요.`);
       }
     } catch {
-      alert('ZIP 파일을 만들지 못했습니다. 다시 시도해 주세요.');
+      VUI.toast('ZIP 파일을 만들지 못했어요. 다시 해 주세요.', 'error');
     } finally {
       progress.remove();
       btn.disabled = false;
@@ -1105,8 +1211,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
   function buildMarkdown() {
     const lines = [
-      `# ${plTitle || '플레이리스트'}`,
-      `> 총 ${plItems.length}개 영상 | [플레이리스트 열기](${plUrl})`,
+      `# ${plTitle || '재생목록'}`,
+      `> 영상 ${plItems.length}개 | [재생목록 열기](${plUrl})`,
       '',
       '---',
       '',
@@ -1132,7 +1238,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     document.getElementById('plResult').innerHTML = `
       <div class="loading-box" role="status">
         <div class="spinner" aria-hidden="true"></div>
-        <span>${msg}</span>
+        <span>${escHtml(String(msg))}</span>
       </div>
     `;
   }

@@ -1,10 +1,10 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<AppLayout 
-  icons
+<AppLayout
   title="채점표 — eduin VIVES"
-  description="온라인 채점 양식을 만들고 링크 하나로 공유하세요. 공동 채점, 실시간 결과 수합, xlsx 다운로드까지 한 번에."
+  description="채점 양식을 만들어 링크로 나눠 주고, 채점자들이 보낸 결과 링크를 붙여 넣어 한 표로 합칩니다. 엑셀(xlsx) 내려받기·인쇄 지원."
   image="https://eduin.info/og-images/scoring-table.png"
   bodyShell="column"
   bodyWidth="wide"
@@ -16,6 +16,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     * { box-sizing: border-box; }
     body {
       min-height: 100vh;
+      min-height: 100dvh;
       padding: 56px 1rem 5rem;
       font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', 'Segoe UI', sans-serif;
     }
@@ -98,7 +99,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       display:inline-flex; align-items:center; justify-content:center; gap:6px;
       padding:9px 16px; border-radius:9px; border:none;
       font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
-      transition:all .15s; min-height:40px; white-space:nowrap;
+      transition:all .15s; min-height:44px; white-space:nowrap;
     }
     .st-btn:disabled { opacity:.4; cursor:not-allowed; }
     .st-btn-primary { background:var(--primary); color:#fff; }
@@ -109,6 +110,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .st-btn-danger { background:rgba(243,18,96,.1); color:var(--danger); border:1px solid rgba(243,18,96,.2); }
     .st-btn-danger:hover { background:rgba(243,18,96,.18); }
     .st-btn-sm { padding:5px 11px; font-size:12px; min-height:40px; border-radius:7px; }
+    @media (pointer:coarse) { .st-btn-sm { min-height:44px; } .stp-btn { width:44px; height:44px; } .stp-inp { height:44px; } }
+    .tab-btn { display:inline-flex; align-items:center; gap:6px; }
+    .st-grid td.award-td .ic { color:var(--primary); width:16px; height:16px; }
+    /* 수합표에서 직접 고친 총점(영역 점수 합과 다를 수 있음) */
+    .st-grid td.cl-ov { background:rgba(245,165,36,.18) !important; }
+    .cl-ov-note { font-size:12px; color:var(--fg-muted); margin:8px 2px 0; line-height:1.5; }
+    .cl-ov-note .swatch { display:inline-block; width:12px; height:12px; border-radius:3px; background:rgba(245,165,36,.35); vertical-align:-1px; margin-right:4px; }
+    .award-help { flex-basis:100%; font-size:12px; color:var(--fg-muted); margin:0; }
     .act-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 
     /* ── Input ── */
@@ -118,6 +127,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       font-family:inherit; transition:border-color .2s;
     }
     .st-input:focus { border-color:var(--primary); }
+    /* iOS는 16px 미만 입력칸에서 화면을 확대한다 */
+    @media (pointer:coarse), (max-width:600px) {
+      .st-input, .stp-inp, .score-num, .st-grid td[contenteditable=true] { font-size:16px; }
+    }
 
     /* ── Table ── */
     .tbl-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
@@ -238,7 +251,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       .settings-row { gap:12px; }
     }
   </style>
-  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"채점표","description":"온라인 채점 양식을 만들고 링크 하나로 공유하세요. 공동 채점, 실시간 결과 수합, xlsx 다운로드까지 한 번에.","url":"https://eduin.info/apps/scoring-table/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"채점표","description":"채점 양식을 만들어 링크로 나눠 주고, 채점자들이 보낸 결과 링크를 붙여 넣어 한 표로 합칩니다. 엑셀(xlsx) 내려받기·인쇄 지원.","url":"https://eduin.info/apps/scoring-table/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
 
@@ -246,20 +259,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
 <div class="wrap">
   <header class="app-header">
-    <span class="app-badge">◆ 업무경감</span>
-    <h1 class="app-title">
-  <div class="card-emoji sub-edu-work" style="margin-bottom: 0; transform: scale(1.0);">
-        <i data-lucide="award"></i>
-      </div>
-  <span>채점표</span>
-</h1>
-    <p class="app-desc">대회·발표 채점 양식 배포, 공동 채점, 결과 수합 — 서버 없이 링크 하나로</p>
+    <span class="app-badge">업무경감</span>
+    <h1 class="app-title">채점표 <span class="app-title-en">Scoring Table</span></h1>
+    <p class="app-desc">대회·발표 채점 양식 배포, 공동 채점, 결과 수합 — 결과 링크를 붙여 넣어 한 표로 합치기</p>
   </header>
 
   <div class="tabs no-print" role="tablist" aria-label="채점표 단계">
-    <button type="button" class="tab-btn active" id="tab-make" role="tab" aria-selected="true" aria-controls="panel-make" data-tab="make" onclick="switchTab('make')">📋 표 만들기</button>
-    <button type="button" class="tab-btn" id="tab-score" role="tab" aria-selected="false" aria-controls="panel-score" tabindex="-1" data-tab="score" onclick="switchTab('score')">✏️ 채점하기</button>
-    <button type="button" class="tab-btn" id="tab-collect" role="tab" aria-selected="false" aria-controls="panel-collect" tabindex="-1" data-tab="collect" onclick="switchTab('collect')">📊 수합하기</button>
+    <button type="button" class="tab-btn active" id="tab-make" role="tab" aria-selected="true" aria-controls="panel-make" data-tab="make" onclick="switchTab('make')"><Icon name="table" /> 표 만들기</button>
+    <button type="button" class="tab-btn" id="tab-score" role="tab" aria-selected="false" aria-controls="panel-score" tabindex="-1" data-tab="score" onclick="switchTab('score')"><Icon name="pencil" /> 채점하기</button>
+    <button type="button" class="tab-btn" id="tab-collect" role="tab" aria-selected="false" aria-controls="panel-collect" tabindex="-1" data-tab="collect" onclick="switchTab('collect')"><Icon name="chart-column" /> 수합하기</button>
   </div>
 
   <!-- ═══════════════════════════════════════
@@ -283,7 +291,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <div class="settings-row" style="align-items:flex-start">
         <div class="sf">
           <label class="sf-label" for="sc-scorer">채점자 이름</label>
-          <input id="sc-scorer" class="st-input" type="text" placeholder="예) 김선생님, 이선생님, 박선생님" style="width:200px">
+          <input id="sc-scorer" class="st-input" type="text" placeholder="예) 김선생님 (내 이름 한 명)" style="width:220px">
         </div>
         <div class="sf" style="flex:1;min-width:240px">
           <label class="sf-label" for="sc-form-url">채점 양식 링크</label>
@@ -297,7 +305,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <div style="margin-top:16px;padding:14px 16px;background:rgba(0,111,238,.05);border:1px solid rgba(0,111,238,.15);border-radius:10px;font-size:12.5px;line-height:1.7;color:var(--fg-muted)">
         <strong style="color:var(--fg)">이 탭은 채점자용입니다.</strong><br>
         ① 주최자가 <b>표 만들기</b> 탭에서 만든 <b>채점 양식 링크</b>를 받아 엽니다.<br>
-        ② <b>채점자 이름</b>을 입력하고 참가자별 점수를 매깁니다. (규칙에 따른 자동배점도 가능)<br>
+        ② <b>채점자 이름</b>을 입력하고 참가자별 점수를 매깁니다.<br>
         ③ 입력이 끝나면 <b>수합자에게 공유</b> 버튼으로 결과 링크를 만들어 전달하거나, 엑셀로 내려받습니다.<br>
         <span style="display:inline-block;margin-top:6px">아직 양식이 없다면, 위 입력란에 받은 링크를 붙여넣고 <b>불러오기</b>를 눌러주세요.</span>
       </div>
@@ -319,8 +327,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
 예) https://go.eduin.info/Ab3xZ"></textarea>
         <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
-          <button class="st-btn st-btn-primary" id="cl-merge-btn" onclick="clMergeFromInput()">🧩 합치기</button>
-          <button class="st-btn st-btn-danger st-btn-sm" onclick="clClearAll()">초기화</button>
+          <button class="st-btn st-btn-primary" id="cl-merge-btn" onclick="clMergeFromInput()"><Icon name="merge" /> 합치기</button>
+          <button class="st-btn st-btn-danger st-btn-sm" onclick="clClearAll()"><Icon name="refresh-ccw" /> 처음부터</button>
           <span id="cl-merge-status" role="status" aria-live="polite" style="font-size:12px;color:var(--fg-muted);text-align:center"></span>
         </div>
       </div>
@@ -409,6 +417,19 @@ function switchTab(id) {
   });
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + id));
   currentTab = id;
+  // 인쇄 CSS(body[data-print=score|collect])가 지금 탭의 표만 인쇄하게
+  document.body.dataset.print = id;
+}
+function printTab() {
+  document.body.dataset.print = currentTab;
+  window.print();
+}
+// Ctrl+P로 인쇄해도 지금 탭 기준
+window.addEventListener('beforeprint', () => { document.body.dataset.print = currentTab; });
+const PRINT_BTN = `<button class="st-btn st-btn-ghost st-btn-sm" onclick="printTab()">${VUI.icon('printer')} 인쇄</button>`;
+// 시상 인원 표시: 경계에서 동점이면 함께 시상하므로 실제 인원도 보여 준다
+function awardLabel(awardN, actual) {
+  return actual > awardN ? `시상 ${awardN}명 (동점 포함 ${actual}명)` : `시상 ${awardN}명`;
 }
 // 탭 키보드: ←/→/Home/End로 탭 이동
 document.querySelector('.tabs').addEventListener('keydown', (e) => {
@@ -443,8 +464,8 @@ function decodeSharePayload(encoded) {
 async function doShare(data, permission) {
   const longURL = buildShareURL(data, permission);
   await VUI.share.link(longURL, permission === 'form'
-    ? { title: '🔗 채점 양식 공유', desc: '채점자에게 이 링크를 보내 주세요. 열면 채점하기 탭에 양식이 들어가요.' }
-    : { title: '🔗 채점 결과 공유', desc: '수합하는 분에게 이 링크를 보내 주세요.' });
+    ? { title: '채점 양식 공유', desc: '채점자에게 이 링크를 보내 주세요. 열면 채점하기 탭에 양식이 들어가요.' }
+    : { title: '채점 결과 공유', desc: '수합하는 분에게 이 링크를 보내 주세요.' });
 }
 
 // 단축 주소 → 원래 주소(#share=…). 실패하면 Error(한국어 message)
@@ -454,7 +475,7 @@ async function resolveShortURL(url) {
 }
 
 // ════════════════════════════════════════════════════════
-//  점수 분배 알고리즘
+//  연습용 무작위 점수 (실제 채점이 아님 — 표 모양·시상 표시를 미리 보는 용도)
 // ════════════════════════════════════════════════════════
 function distributeScore(target, areas) {
   const n = areas.length;
@@ -501,14 +522,11 @@ function computeRanksAwards(rows, ratio) {
   const awardN = Math.round(rows.length * ratio / 100);
   const sorted = [...rows].sort((a, b) => rowTotal(b) - rowTotal(a));
   const rankMap = new Map();
-  let rank = 1, prev = -1, prevRank = 1;
-  sorted.forEach((r, i) => {
-    const t = rowTotal(r);
-    if (t !== prev) { prevRank = rank; }
-    rankMap.set(r, prevRank);
-    prev = t; rank++;
-  });
-  const awardSet = new Set(sorted.slice(0, awardN));
+  const ranks = tieRanks(sorted.map(rowTotal));   // 동점은 같은 석차(1, 1, 3 …)
+  sorted.forEach((r, i) => rankMap.set(r, ranks[i]));
+  // 시상 경계(awardN번째)와 같은 점수인 사람은 모두 시상. 0점은 시상하지 않음(아직 채점 전)
+  const cut = awardN > 0 ? rowTotal(sorted[awardN - 1]) : Infinity;
+  const awardSet = new Set(sorted.filter(r => { const t = rowTotal(r); return t >= cut && t > 0; }));
   return { rankMap, awardSet };
 }
 
@@ -542,11 +560,15 @@ function mkStep(field, delta) {
   mkSetField(field, clamp(cur + delta * c.step, c.min, c.max));
 }
 function mkStepAward(field, delta) {
-  mk.awardRange[field] = clamp(mk.awardRange[field] + delta * 5, 0, 100);
-  document.getElementById(`mk-${field}-inp`).value = mk.awardRange[field];
-  document.getElementById(`mk-${field}-val`).textContent = mk.awardRange[field];
+  mkSetAward(field, mk.awardRange[field] + delta * 5);
 }
-function mkSetField(field, raw) {
+function mkSetAward(field, v) {
+  mk.awardRange[field] = clamp(v, 0, 100);
+  document.getElementById(`mk-${field}-inp`).value = mk.awardRange[field];
+  document.getElementById(`mk-${field}-val`).textContent = mk.awardRange[field] + '%';
+  mkSaveLocal();
+}
+async function mkSetField(field, raw) {
   const lim = { count: [1, 300], ratio: [0, 100], areaCount: [1, 12] }[field];
   const cur = field === 'count' ? mk.rows.length : field === 'areaCount' ? mk.areas.length : mk.ratio;
   // 칸을 비우거나 숫자가 아니면 바꾸지 않는다(예전: 빈칸 → 0명 → 전원 삭제 후 저장)
@@ -558,11 +580,11 @@ function mkSetField(field, raw) {
   // 줄이면서 입력된 점수가 사라지면 먼저 확인
   if (field === 'count' && val < mk.rows.length) {
     const lost = mk.rows.slice(val).filter(r => r.scores.some(s => s != null)).length;
-    if (lost && !confirm(`점수가 입력된 참가자 ${lost}명이 표에서 빠집니다. 계속할까요?`)) { renderMkSettings(); return; }
+    if (lost && !(await VUI.confirm(`점수가 입력된 참가자 ${lost}명이 표에서 빠집니다. 계속할까요?`, { ok: '줄이기', danger: true }))) { renderMkSettings(); return; }
   }
   if (field === 'areaCount' && val < mk.areas.length) {
     const lost = mk.rows.some(r => r.scores.slice(val).some(s => s != null));
-    if (lost && !confirm('줄어드는 영역에 입력된 점수가 지워집니다. 계속할까요?')) { renderMkSettings(); return; }
+    if (lost && !(await VUI.confirm('줄어드는 영역에 입력된 점수가 지워집니다. 계속할까요?', { ok: '줄이기', danger: true }))) { renderMkSettings(); return; }
   }
   if (val === cur && field !== 'ratio') { renderMkSettings(); return; }
   if (field === 'count') {
@@ -593,7 +615,7 @@ function mkUpdateInfoBadge() {
   const el = document.getElementById('mk-info-badge');
   if (el) {
     const awardN = Math.round(mk.rows.length * mk.ratio / 100);
-    el.textContent = `총 ${mk.rows.length}명 · 시상 ${awardN}명`;
+    el.textContent = `총 ${mk.rows.length}명 · ${awardLabel(awardN, computeRanksAwards(mk.rows, mk.ratio).awardSet.size)}`;
   }
 }
 
@@ -605,12 +627,21 @@ function mkOnAreaName(i, v)  { mk.areas[i].name = v; renderMkTableHead(); mkSave
 function mkOnAreaMax(i, inp) {
   mk.areas[i].max = clamp(+inp.value, 1, 200);
   inp.value = mk.areas[i].max;
+  mkClampAreaScores(i);
   mkUpdateMaxTotal(); renderMkTableHead(); mkSaveLocal();
 }
 function mkAreaMaxStep(i, delta) {
   mk.areas[i].max = clamp(mk.areas[i].max + delta * 5, 1, 200);
   document.getElementById(`mk-amax-inp-${i}`).value = mk.areas[i].max;
+  mkClampAreaScores(i);
   mkUpdateMaxTotal(); renderMkTableHead(); mkSaveLocal();
+}
+// 만점을 낮추면 이미 입력한 점수가 만점을 넘지 않게 맞춘다(총점이 만점 합계를 넘던 문제)
+function mkClampAreaScores(i) {
+  const max = mk.areas[i].max;
+  let n = 0;
+  mk.rows.forEach(r => { if (r.scores[i] != null && r.scores[i] > max) { r.scores[i] = max; n++; } });
+  if (n) showToast(`만점보다 큰 점수 ${n}개를 ${max}점으로 낮췄어요.`);
 }
 
 // ── 설정 패널 렌더 ──
@@ -630,28 +661,28 @@ function renderMkSettings() {
       <div class="sf">
         <span class="sf-label">참가 인원</span>
         <div class="stepper">
-          <button type="button" class="stp-btn" onclick="mkStep('count',-1)" aria-label="참가 인원 줄이기">−</button>
+          <button type="button" class="stp-btn" onclick="mkStep('count',-1)" aria-label="참가 인원 줄이기">${VUI.icon('minus')}</button>
           <input class="stp-inp" id="mk-count-inp" aria-label="참가 인원" type="number" min="1" max="300" value="${mk.count}"
             onchange="mkSetField('count',this.value)" style="width:56px">
-          <button type="button" class="stp-btn" onclick="mkStep('count',1)" aria-label="참가 인원 늘리기">+</button>
+          <button type="button" class="stp-btn" onclick="mkStep('count',1)" aria-label="참가 인원 늘리기">${VUI.icon('plus')}</button>
         </div>
       </div>
       <div class="sf">
         <span class="sf-label">시상 비율 (<span id="mk-ratio-val">${mk.ratio}</span>%)</span>
         <div class="stepper">
-          <button type="button" class="stp-btn" onclick="mkStep('ratio',-1)" aria-label="시상 비율 줄이기">−</button>
+          <button type="button" class="stp-btn" onclick="mkStep('ratio',-1)" aria-label="시상 비율 줄이기">${VUI.icon('minus')}</button>
           <input class="stp-inp" id="mk-ratio-inp" aria-label="시상 비율(%)" type="number" min="0" max="100" step="5" value="${mk.ratio}"
             onchange="mkSetField('ratio',this.value)">
-          <button type="button" class="stp-btn" onclick="mkStep('ratio',1)" aria-label="시상 비율 늘리기">+</button>
+          <button type="button" class="stp-btn" onclick="mkStep('ratio',1)" aria-label="시상 비율 늘리기">${VUI.icon('plus')}</button>
         </div>
       </div>
       <div class="sf">
         <span class="sf-label">영역 수</span>
         <div class="stepper">
-          <button type="button" class="stp-btn" onclick="mkStep('areaCount',-1)" aria-label="영역 수 줄이기">−</button>
+          <button type="button" class="stp-btn" onclick="mkStep('areaCount',-1)" aria-label="영역 수 줄이기">${VUI.icon('minus')}</button>
           <input class="stp-inp" id="mk-acount-inp" aria-label="영역 수" type="number" min="1" max="12" value="${mk.areaCount}"
             onchange="mkSetField('areaCount',this.value)">
-          <button type="button" class="stp-btn" onclick="mkStep('areaCount',1)" aria-label="영역 수 늘리기">+</button>
+          <button type="button" class="stp-btn" onclick="mkStep('areaCount',1)" aria-label="영역 수 늘리기">${VUI.icon('plus')}</button>
         </div>
       </div>
     </div>
@@ -665,10 +696,10 @@ function renderMkSettings() {
             style="width:130px" oninput="mkOnAreaName(${i},this.value)">
           <span style="font-size:12px;font-weight:600;color:var(--fg-muted)">만점</span>
           <div class="stepper">
-            <button type="button" class="stp-btn" onclick="mkAreaMaxStep(${i},-1)" aria-label="영역 ${i + 1} 만점 줄이기">−</button>
+            <button type="button" class="stp-btn" onclick="mkAreaMaxStep(${i},-1)" aria-label="영역 ${i + 1} 만점 줄이기">${VUI.icon('minus')}</button>
             <input class="stp-inp" id="mk-amax-inp-${i}" aria-label="영역 ${i + 1} 만점" type="number" min="1" max="200" value="${a.max}"
               onchange="mkOnAreaMax(${i},this)" style="width:56px">
-            <button type="button" class="stp-btn" onclick="mkAreaMaxStep(${i},1)" aria-label="영역 ${i + 1} 만점 늘리기">+</button>
+            <button type="button" class="stp-btn" onclick="mkAreaMaxStep(${i},1)" aria-label="영역 ${i + 1} 만점 늘리기">${VUI.icon('plus')}</button>
           </div>
         </div>
       `).join('')}
@@ -678,26 +709,27 @@ function renderMkSettings() {
       <label class="award-toggle-label">
         <input type="checkbox" class="st-checkbox" id="mk-award-chk"
           ${mk.awardRange.enabled ? 'checked' : ''} onchange="mkToggleAwardRange(this.checked)">
-        시상자 점수 범위 지정
+        연습용 무작위 점수: 시상자 점수 범위 정하기
       </label>
       <div class="award-range-row ${mk.awardRange.enabled ? '' : 'disabled'}" id="mk-award-fields">
         <span style="font-size:12px;font-weight:600;color:var(--fg-muted)">최저</span>
         <div class="stepper">
-          <button type="button" class="stp-btn" onclick="mkStepAward('min',-1)" aria-label="시상 최저 비율 줄이기">−</button>
+          <button type="button" class="stp-btn" onclick="mkStepAward('min',-1)" aria-label="시상 최저 비율 줄이기">${VUI.icon('minus')}</button>
           <input class="stp-inp" id="mk-min-inp" aria-label="시상 최저 비율(%)" type="number" min="0" max="100" step="5" value="${mk.awardRange.min}"
-            onchange="mk.awardRange.min=clamp(this.value,0,100);this.value=mk.awardRange.min;document.getElementById('mk-min-val').textContent=mk.awardRange.min">
-          <button type="button" class="stp-btn" onclick="mkStepAward('min',1)" aria-label="시상 최저 비율 늘리기">+</button>
+            onchange="mkSetAward('min',this.value)">
+          <button type="button" class="stp-btn" onclick="mkStepAward('min',1)" aria-label="시상 최저 비율 늘리기">${VUI.icon('plus')}</button>
         </div>
         <span id="mk-min-val" style="font-size:12px;color:var(--fg-muted)">${mk.awardRange.min}%</span>
         <span style="font-size:12px;font-weight:600;color:var(--fg-muted)">최고</span>
         <div class="stepper">
-          <button type="button" class="stp-btn" onclick="mkStepAward('max',-1)" aria-label="시상 최고 비율 줄이기">−</button>
+          <button type="button" class="stp-btn" onclick="mkStepAward('max',-1)" aria-label="시상 최고 비율 줄이기">${VUI.icon('minus')}</button>
           <input class="stp-inp" id="mk-max-inp" aria-label="시상 최고 비율(%)" type="number" min="0" max="100" step="5" value="${mk.awardRange.max}"
-            onchange="mk.awardRange.max=clamp(this.value,0,100);this.value=mk.awardRange.max;document.getElementById('mk-max-val').textContent=mk.awardRange.max">
-          <button type="button" class="stp-btn" onclick="mkStepAward('max',1)" aria-label="시상 최고 비율 늘리기">+</button>
+            onchange="mkSetAward('max',this.value)">
+          <button type="button" class="stp-btn" onclick="mkStepAward('max',1)" aria-label="시상 최고 비율 늘리기">${VUI.icon('plus')}</button>
         </div>
         <span id="mk-max-val" style="font-size:12px;color:var(--fg-muted)">${mk.awardRange.max}%</span>
       </div>
+      <p class="award-help">표의 <b>연습용 무작위 점수</b> 버튼으로 점수를 채울 때만 쓰여요(만점 합계의 %). 실제 채점·시상에는 영향이 없어요.</p>
     </div>
   `;
 }
@@ -706,6 +738,7 @@ function mkToggleAwardRange(on) {
   mk.awardRange.enabled = on;
   const f = document.getElementById('mk-award-fields');
   if (f) f.classList.toggle('disabled', !on);
+  mkSaveLocal();
 }
 
 // ── 표 렌더 ──
@@ -721,7 +754,7 @@ function renderMkTable() {
     sortMode === 'name' ? a.name.localeCompare(b.name, 'ko')
     : sortMode === 'asc' ? rowTotal(a) - rowTotal(b)
     : rowTotal(b) - rowTotal(a));
-  const sortLabel = sortMode === 'name' ? '이름순 ⇅' : sortMode === 'asc' ? '낮은순 ↑' : '높은순 ↓';
+  const sortLabel = sortLabelOf(sortMode);
 
   const thead = `<thead><tr>
     <th class="rank-td">순위</th>
@@ -748,7 +781,7 @@ function renderMkTable() {
           onblur="mkScoreBlur(this)">${v != null ? v : ''}</td>`;
       }).join('')}
       <td class="total-td">${total}</td>
-      <td class="award-td">${isAward ? '🏅' : ''}</td>
+      <td class="award-td">${isAward ? AWARD_ICON : ''}</td>
     </tr>`;
   }).join('')}</tbody>`;
 
@@ -757,18 +790,26 @@ function renderMkTable() {
     <div class="tbl-header no-print">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span style="font-size:13px;font-weight:700">채점 결과</span>
-        <span class="info-badge" id="mk-info-badge">총 ${rows.length}명 · 시상 ${awardN}명</span>
-        <button class="st-btn st-btn-ghost st-btn-sm on" onclick="mkCycleSort()">${sortLabel}</button>
+        <span class="info-badge" id="mk-info-badge">총 ${rows.length}명 · ${awardLabel(awardN, awardSet.size)}</span>
+        <button class="st-btn st-btn-ghost st-btn-sm on" onclick="mkCycleSort()" aria-label="정렬 바꾸기(지금: ${sortMode === 'name' ? '이름순' : sortMode === 'asc' ? '낮은순' : '높은순'})">${sortLabel}</button>
       </div>
       <div class="act-row mk-btn-row">
-        <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkRandom()">🎲 점수 랜덤</button>
-        <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkShareForm()">🔗 양식 공유</button>
-        <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkExportXlsx()">📥 xlsx</button>
-        <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkSaveLocal(true)">💾 임시저장</button>
+        <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkShareForm()">${VUI.icon('link')} 양식 공유</button>
+        <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkExportXlsx()">${VUI.icon('download')} 엑셀(xlsx)</button>
+        ${PRINT_BTN}
+        <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkSaveLocal(true)">${VUI.icon('save')} 임시저장</button>
+        <button class="st-btn st-btn-ghost st-btn-sm" onclick="mkRandom()">${VUI.icon('dices')} 연습용 무작위 점수</button>
       </div>
     </div>
     <div class="grid-wrap"><table class="st-grid">${thead}${tbody}</table></div>
   `;
+}
+
+const AWARD_ICON = VUI.icon('medal', { label: '시상' });
+function sortLabelOf(mode) {
+  return mode === 'name' ? VUI.icon('arrow-up-down') + ' 이름순'
+    : mode === 'asc' ? VUI.icon('arrow-up') + ' 낮은순'
+    : VUI.icon('arrow-down') + ' 높은순';
 }
 
 function renderMkTableHead() {
@@ -781,12 +822,13 @@ function mkCycleSort() {
   renderMkTable();
 }
 
-function mkRandom() {
+async function mkRandom() {
   const hasScore = mk.rows.some(r => r.scores.some(s => s != null));
-  if (hasScore && !confirm('지금 입력된 점수를 모두 무작위 점수로 바꿀까요?\n(되돌릴 수 없어요)')) return;
+  if (hasScore && !(await VUI.confirm('지금 입력된 점수를 모두 연습용 무작위 점수로 바꿀까요?\n(되돌릴 수 없어요)', { title: '연습용 무작위 점수', ok: '바꾸기', danger: true }))) return;
   generateScores(mk.rows, mk.areas, mk.ratio, mk.awardRange);
   renderMkTable();
   mkSaveLocal();
+  showToast('연습용 무작위 점수를 채웠어요. 실제 채점 결과가 아니에요.');
 }
 
 // contenteditable 핸들러
@@ -826,9 +868,10 @@ function mkUpdateRanksAwards() {
     if (!row) return;
     tr.querySelector('.rank-td').textContent = rankMap.get(row) ?? '';
     const isAward = awardSet.has(row);
-    tr.querySelector('.award-td').textContent = isAward ? '🏅' : '';
+    tr.querySelector('.award-td').innerHTML = isAward ? AWARD_ICON : '';
     tr.classList.toggle('award-row', isAward);
   });
+  mkUpdateInfoBadge();
 }
 
 // 양식 공유 — 제목·이름 목록·시상 규칙 포함 (점수는 비움)
@@ -851,7 +894,7 @@ function mkSaveLocal(notify) {
       areaCount: mk.areaCount, areas: mk.areas, rows: mk.rows,
       awardRange: mk.awardRange, sortMode: mk.sortMode,
     }));
-    if (notify) showToast('표 만들기 내용을 임시저장했습니다 💾');
+    if (notify) showToast('표 만들기 내용을 임시저장했어요.');
   } catch {}
 }
 function mkLoadLocal() {
@@ -961,20 +1004,29 @@ function scSaveDraft(notify) {
       scorerName: sc.scorer, title: sc.title, ratio: sc.ratio,
       awardRange: sc.awardRange, areas: sc.areas, rows: sc.rows,
     }));
-    if (notify === true) showToast('채점 내용을 임시저장했습니다 💾');
+    if (notify === true) showToast('채점 내용을 임시저장했어요.');
   } catch {
     if (notify === true) showToast('저장 공간이 부족해 임시저장하지 못했어요.');
   }
 }
-function scClearAll() {
-  if (!confirm('채점 내용을 초기화할까요?')) return;
+async function scClearAll() {
+  if (!(await VUI.confirm('채점한 점수와 불러온 양식을 모두 지우고 처음부터 할까요?', { title: '처음부터', ok: '모두 지우기', danger: true }))) return;
   try { localStorage.removeItem(SC_KEY); } catch {}
   sc.loaded = false; sc.rows = []; sc.scorer = '';
   document.getElementById('sc-content-wrap').style.display = 'none';
   document.getElementById('sc-setup-card').style.display = '';
   document.getElementById('sc-scorer').value = '';
   document.getElementById('sc-form-url').value = '';
-  showToast('초기화되었습니다.');
+  showToast('채점 내용을 지웠어요.');
+}
+// 다른 양식 불러오기: 지금 채점 내용은 그대로 두고 링크 입력 카드를 다시 보여 준다
+function scShowSetup() {
+  const card = document.getElementById('sc-setup-card');
+  card.style.display = '';
+  card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  const inp = document.getElementById('sc-form-url');
+  inp.value = '';
+  inp.focus({ preventScroll: true });
 }
 
 function scUpdateProgress() {
@@ -1029,24 +1081,27 @@ function renderScTable() {
     </div>
     <div class="grid-wrap"><table class="st-grid">${thead}${tbody}</table></div>
     <div class="act-row sc-btn-row no-print" style="margin-top:12px;gap:8px">
-      <button class="st-btn st-btn-primary" onclick="scSubmit()">🔗 수합자에게 공유</button>
-      <button class="st-btn st-btn-ghost" onclick="scExportXlsx()">📥 xlsx</button>
-      <button class="st-btn st-btn-ghost" onclick="scAutoFill()">🎲 규칙에 따른 자동배점</button>
-      <button class="st-btn st-btn-ghost" onclick="scSaveDraft(true)">💾 임시저장</button>
-      <button class="st-btn st-btn-danger st-btn-sm" onclick="scClearAll()">초기화</button>
+      <button class="st-btn st-btn-primary" onclick="scSubmit()">${VUI.icon('link')} 수합자에게 공유</button>
+      <button class="st-btn st-btn-ghost" onclick="scExportXlsx()">${VUI.icon('download')} 엑셀(xlsx)</button>
+      ${PRINT_BTN}
+      <button class="st-btn st-btn-ghost" onclick="scSaveDraft(true)">${VUI.icon('save')} 임시저장</button>
+      <button class="st-btn st-btn-ghost" onclick="scShowSetup()">${VUI.icon('folder-open')} 다른 양식 불러오기</button>
+      <button class="st-btn st-btn-ghost" onclick="scAutoFill()">${VUI.icon('dices')} 연습용 무작위 점수</button>
+      <button class="st-btn st-btn-danger st-btn-sm" onclick="scClearAll()">${VUI.icon('refresh-ccw')} 처음부터</button>
     </div>
   `;
   scUpdateProgress();
 }
 
-function scAutoFill() {
+// 연습용 무작위 점수 — 실제 채점이 아니라 표·공유 흐름을 미리 해 볼 때
+async function scAutoFill() {
   if (!sc.rows.length) return;
   const hasScore = sc.rows.some(r => r.scores.some(s => s != null));
-  if (hasScore && !confirm('지금 입력한 점수를 모두 자동배점 점수로 바꿀까요?\n(되돌릴 수 없어요)')) return;
+  if (hasScore && !(await VUI.confirm('지금 입력한 점수를 모두 연습용 무작위 점수로 바꿀까요?\n(되돌릴 수 없어요)', { title: '연습용 무작위 점수', ok: '바꾸기', danger: true }))) return;
   generateScores(sc.rows, sc.areas, sc.ratio, sc.awardRange);
   renderScTable();
   scSaveDraft();
-  showToast('규칙에 따라 점수를 자동배점했습니다');
+  showToast('연습용 무작위 점수를 채웠어요. 실제 채점 결과가 아니에요.');
 }
 
 function scOnInput(inp) {
@@ -1075,7 +1130,7 @@ async function scSubmit() {
   if (inline) sc.scorer = inline.value.trim();
   if (!sc.scorer) { showToast('채점자 이름을 입력해 주세요.'); return; }
   const hasEmpty = sc.rows.some(r => r.scores.some(s => s == null));
-  if (hasEmpty && !confirm('미입력 칸이 있습니다. 계속 진행할까요?')) return;
+  if (hasEmpty && !(await VUI.confirm('아직 점수를 넣지 않은 칸이 있어요. 빈칸은 0점으로 보내요. 계속할까요?', { ok: '계속' }))) return;
   const data = {
     scorer: sc.scorer,
     ratio:  sc.ratio,
@@ -1140,7 +1195,7 @@ async function clMergeFromInput() {
   clSaveLocal();
   if (ok) {
     document.getElementById('cl-url-input').value = '';
-    showToast(`✓ ${ok}명 수합 완료${fail ? ` (실패 ${fail}건)` : ''}`);
+    showToast(`${ok}명 수합했어요${fail ? ` (읽지 못한 링크 ${fail}건)` : ''}`, fail ? 'error' : undefined);
   } else {
     showToast('읽을 수 있는 결과 링크가 없습니다.', 'error');
   }
@@ -1151,7 +1206,7 @@ function clSaveLocal(notify) {
     localStorage.setItem(CL_KEY, JSON.stringify({
       results: cl.results, aggregateBy: cl.aggregateBy, sortMode: cl.sortMode,
     }));
-    if (notify) showToast('수합 내용을 임시저장했습니다 💾');
+    if (notify) showToast('수합 내용을 임시저장했어요.');
   } catch {}
 }
 function clLoadLocal() {
@@ -1166,15 +1221,15 @@ function clLoadLocal() {
   } catch { return false; }
 }
 
-function clClearAll() {
-  if (cl.results.length && !confirm('수합 내용을 초기화할까요?')) return;
+async function clClearAll() {
+  if (cl.results.length && !(await VUI.confirm('합친 채점 결과를 모두 지우고 처음부터 할까요?', { title: '처음부터', ok: '모두 지우기', danger: true }))) return;
   cl.results = [];
   cl.aggregateBy = 'avg';
   cl.sortMode = 'desc';
   try { localStorage.removeItem(CL_KEY); } catch {}
   renderClChips();
   renderClTable();
-  showToast('초기화되었습니다.');
+  showToast('수합 내용을 지웠어요.');
 }
 
 // 결과 링크·저장본 → 검증된 결과 항목 (점수는 영역 만점 범위의 정수)
@@ -1213,10 +1268,14 @@ function clAddResult(data, silent) {
 
 function clRemoveResult(idx) {
   if (!cl.results[idx]) return;
-  cl.results.splice(idx, 1);
+  const [removed] = cl.results.splice(idx, 1);
   renderClChips();
   renderClTable();
   clSaveLocal();
+  VUI.toast(`${removed.scorer} 결과를 뺐어요.`, { action: { label: '되돌리기', onClick: () => {
+    cl.results.splice(Math.min(idx, cl.results.length), 0, removed);
+    renderClChips(); renderClTable(); clSaveLocal();
+  } } });
 }
 
 // 채점자 이름은 외부 데이터 — 인라인 onclick 대신 data-idx + 이벤트 위임
@@ -1224,7 +1283,7 @@ function renderClChips() {
   const el = document.getElementById('cl-chip-list');
   el.innerHTML = cl.results.map((r, i) =>
     `<span class="chip">${esc(r.scorer)}
-      <button type="button" class="chip-del" data-idx="${i}" title="제거" aria-label="${esc(r.scorer)} 결과 제거">×</button>
+      <button type="button" class="chip-del" data-idx="${i}" aria-label="${esc(r.scorer)} 결과 빼기">${VUI.icon('x')}</button>
     </span>`
   ).join('');
 }
@@ -1251,6 +1310,7 @@ function clAggregate() {
   // 전체 참가자 합집합 (순서 보존)
   const nameSet = new Map();   // key → 표시 이름
   const scoreMap = new Map();  // key → { scorer: total }
+  const ovMap = new Map();     // key → { scorer: true } 수합표에서 직접 고친 총점
   cl.results.forEach(r => {
     const keys = rowKeys(r);
     r.rows.forEach((row, i) => {
@@ -1262,6 +1322,7 @@ function clAggregate() {
       if (!scoreMap.has(key)) scoreMap.set(key, {});
       const ov = r._ov && r._ov[key];
       scoreMap.get(key)[r.scorer] = ov != null ? ov : row.scores.reduce((s, v) => s + (v ?? 0), 0);
+      if (ov != null) { if (!ovMap.has(key)) ovMap.set(key, {}); ovMap.get(key)[r.scorer] = true; }
     });
   });
   const names = [...nameSet.values()];
@@ -1272,7 +1333,8 @@ function clAggregate() {
     const filled = vals.filter(v => v != null);
     const sum = filled.reduce((s, v) => s + v, 0);
     const avg = filled.length ? sum / filled.length : 0;
-    return { key, name, vals, sum, avg };
+    const ovs = ovMap.get(key) || {};
+    return { key, name, vals, sum, avg, ov: scorerList.map(s => !!ovs[s]) };
   });
 
   return { names, scorerList, aggRows, ratio };
@@ -1300,7 +1362,9 @@ function renderClTable() {
   const ranks = tieRanks(rankSorted.map(rankVal));
   const rankMap = new Map();
   rankSorted.forEach((r, i) => rankMap.set(r.key, ranks[i]));
-  const awardNames = new Set(rankSorted.slice(0, awardN).map(r => r.key));
+  // 시상 경계와 동점이면 함께 시상(0점 제외)
+  const cut = awardN > 0 ? rankVal(rankSorted[awardN - 1]) : Infinity;
+  const awardNames = new Set(rankSorted.filter(r => rankVal(r) >= cut && rankVal(r) > 0).map(r => r.key));
 
   const thead = `<thead><tr>
     <th class="rank-td">순위</th>
@@ -1316,12 +1380,12 @@ function renderClTable() {
     return `<tr data-name="${esc(row.key)}" class="${isAward ? 'award-row' : ''}">
       <td class="rank-td">${rankMap.get(row.key) ?? ''}</td>
       <td class="name-td">${esc(row.name)}</td>
-      ${row.vals.map((v, si) => `<td class="score-td cl-score-cell"
+      ${row.vals.map((v, si) => `<td class="score-td cl-score-cell${row.ov[si] ? ' cl-ov' : ''}"
         contenteditable="true" role="textbox" inputmode="numeric" aria-label="${esc(row.name)} 점수" data-name="${esc(row.key)}" data-si="${si}"
         oninput="clOnScoreEdit(this)" onblur="clOnScoreBlur(this)">${v != null ? v : '-'}</td>`).join('')}
       <td class="total-td">${row.sum}</td>
       <td>${row.avg.toFixed(1)}</td>
-      <td class="award-td">${isAward ? '🏅' : ''}</td>
+      <td class="award-td">${isAward ? AWARD_ICON : ''}</td>
     </tr>`;
   }).join('')}</tbody>`;
 
@@ -1329,19 +1393,19 @@ function renderClTable() {
     <div class="tbl-header no-print">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span style="font-size:13px;font-weight:700">종합 결과</span>
-        <span class="info-badge">채점자 ${scorerList.length}명 · 참가자 ${aggRows.length}명 · 시상 ${awardN}명</span>
+        <span class="info-badge" id="cl-info-badge">채점자 ${scorerList.length}명 · 참가자 ${aggRows.length}명 · ${awardLabel(awardN, awardNames.size)}</span>
         <button class="st-btn st-btn-ghost st-btn-sm ${cl.aggregateBy==='avg'?'on':''}" onclick="clSetAggregate('avg')">평균 기준</button>
         <button class="st-btn st-btn-ghost st-btn-sm ${cl.aggregateBy==='sum'?'on':''}" onclick="clSetAggregate('sum')">합계 기준</button>
-        <button class="st-btn st-btn-ghost st-btn-sm ${cl.sortMode!=='name'?'on':''}" onclick="clCycleSort()">
-          ${ cl.sortMode === 'name' ? '이름순 ⇅' : cl.sortMode === 'asc' ? '낮은순 ↑' : '높은순 ↓' }
-        </button>
+        <button class="st-btn st-btn-ghost st-btn-sm ${cl.sortMode!=='name'?'on':''}" onclick="clCycleSort()">${sortLabelOf(cl.sortMode)}</button>
       </div>
       <div class="act-row cl-btn-row">
-        <button class="st-btn st-btn-ghost st-btn-sm" onclick="clExportXlsx()">📥 xlsx</button>
-        <button class="st-btn st-btn-ghost st-btn-sm" onclick="clSaveLocal(true)">💾 임시저장</button>
+        <button class="st-btn st-btn-ghost st-btn-sm" onclick="clExportXlsx()">${VUI.icon('download')} 엑셀(xlsx)</button>
+        ${PRINT_BTN}
+        <button class="st-btn st-btn-ghost st-btn-sm" onclick="clSaveLocal(true)">${VUI.icon('save')} 임시저장</button>
       </div>
     </div>
     <div class="grid-wrap"><table class="st-grid">${thead}${tbody}</table></div>
+    <p class="cl-ov-note no-print">채점자 점수 칸을 눌러 총점을 고칠 수 있어요. <span class="swatch" aria-hidden="true"></span>색칠된 칸은 직접 고친 총점이라 채점자별 상세(영역 점수)의 합과 다를 수 있어요.</p>
 
     <!-- 채점자별 상세 -->
     <div class="detail-section" id="cl-detail-section">
@@ -1371,7 +1435,7 @@ function clBuildDetailTables() {
     </tr>`).join('')}</tbody>`;
     return `<div style="margin-bottom:20px">
       <div class="detail-scorer-name" style="font-size:12px;font-weight:700;color:var(--fg-muted);margin:10px 0 6px">
-        ◆ ${esc(r.scorer)}
+        ${VUI.icon('user')} ${esc(r.scorer)}
       </div>
       <div class="grid-wrap"><table class="st-grid">${thead}${tbody}</table></div>
     </div>`;
@@ -1411,6 +1475,7 @@ function clOnScoreBlur(el) {
     result._ov = result._ov || {};
     if (val == null) delete result._ov[name]; else result._ov[name] = val;
   }
+  el.classList.toggle('cl-ov', val != null);
   _clRefreshRowTotals(el.closest('tr'));
   clUpdateAllRanksAwards();
   clSaveLocal();
@@ -1447,13 +1512,18 @@ function clUpdateAllRanksAwards() {
   const sorted = [...rowData].sort((a, b) => b.val - a.val);
   const awardN = Math.round(trs.length * ratio / 100);
   const ranks = tieRanks(sorted.map(d => d.val));   // 동점은 같은 석차
-  sorted.forEach(({ tr }, i) => {
+  const cut = awardN > 0 && sorted[awardN - 1] ? sorted[awardN - 1].val : Infinity;
+  let awarded = 0;
+  sorted.forEach(({ tr, val }, i) => {
     const rank = ranks[i];
-    const isAward = i < awardN;
+    const isAward = val >= cut && val > 0;   // 경계 동점자도 함께 시상
+    if (isAward) awarded++;
     tr.querySelector('.rank-td').textContent = rank;
-    tr.querySelector('.award-td').textContent = isAward ? '🏅' : '';
+    tr.querySelector('.award-td').innerHTML = isAward ? AWARD_ICON : '';
     tr.classList.toggle('award-row', isAward);
   });
+  const badge = document.getElementById('cl-info-badge');
+  if (badge) badge.textContent = badge.textContent.replace(/시상 .*$/, awardLabel(awardN, awarded));
 }
 
 function clExportXlsx() {
@@ -1466,7 +1536,8 @@ function clExportXlsx() {
   const rankVal = r => cl.aggregateBy === 'sum' ? r.sum : Math.round(r.avg * 10) / 10;
   const sorted = [...aggRows].sort((a, b) => getSortVal(b) - getSortVal(a));
   const awardN = Math.round(aggRows.length * ratio / 100);
-  const awardNames = new Set(sorted.slice(0, awardN).map(r => r.key));
+  const cut = awardN > 0 ? rankVal(sorted[awardN - 1]) : Infinity;
+  const awardNames = new Set(sorted.filter(r => rankVal(r) >= cut && rankVal(r) > 0).map(r => r.key));
   const ranks = tieRanks(sorted.map(rankVal));
   const rankMap = new Map(sorted.map((r, i) => [r.key, ranks[i]]));
 
@@ -1522,6 +1593,7 @@ function scInitRestore() {
 }
 
 (function init() {
+  document.body.dataset.print = currentTab;
   // 탭 1 — 임시저장 복구 또는 기본값
   if (!mkLoadLocal()) mkInit();
   renderMkSettings();
@@ -1541,7 +1613,7 @@ function scInitRestore() {
       if (payload.permission === 'form') {
         switchTab('score');
         scApplyForm(payload.data);
-        showToast('채점 양식을 불러왔습니다');
+        showToast('채점 양식을 불러왔어요.');
         return;
       }
       if (payload.permission === 'result') {

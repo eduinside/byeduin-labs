@@ -7,7 +7,7 @@
      <script src="/common/theme.js"></script>
      ...
      <div class="top-overlay">
-       <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()">💻</button>
+       <button id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()"></button>
        <a href="/" class="overlay-btn">
          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2.5"
@@ -15,7 +15,7 @@
            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
            <polyline points="9 22 9 12 15 12 15 22"/>
          </svg>
-         <span>Home</span>
+         <span>홈</span>
        </a>
      </div>
    ===================================================== */
@@ -23,12 +23,23 @@
 (function () {
   var KEY = 'vives-theme'; // localStorage key
 
-  var ICONS = { auto: '💻', light: '☀️', dark: '🌙' };
-  var LABELS = { auto: '자동 (시스템)', light: '라이트 모드', dark: '다크 모드' };
+  // lucide 아이콘 이름(스프라이트 /common/icons.svg) — @icons monitor sun moon
+  var ICONS = { auto: 'monitor', light: 'sun', dark: 'moon' };
+  var LABELS = { auto: '화면 모드: 자동', light: '화면 모드: 밝게', dark: '화면 모드: 어둡게' };
+
+  // <html data-theme-lock="light">: 앱이 화면 모드를 고정(시뮬레이션 등). 저장된 선택을 무시하고 버튼도 숨긴다.
+  var LOCK = document.documentElement.getAttribute('data-theme-lock');
 
   // 저장소가 막힌 환경(일부 시크릿 창·학교 정책)에서도 스크립트가 멈추지 않게
   function getStoredTheme() {
+    if (LOCK === 'light' || LOCK === 'dark') return LOCK;
     try { return localStorage.getItem(KEY) || 'auto'; } catch (e) { return 'auto'; }
+  }
+
+  function iconHtml(theme) {
+    var n = ICONS[theme] || 'monitor';
+    if (window.VUI && window.VUI.icon) return window.VUI.icon(n);
+    return '<svg class="ic" aria-hidden="true" focusable="false"><use href="/common/icons.svg#' + n + '"></use></svg>';
   }
 
   function resolveTheme(theme) {
@@ -46,11 +57,15 @@
   function updateIcon(theme) {
     var btn = document.getElementById('themeToggleBtn');
     if (!btn) return;
-    btn.textContent = ICONS[theme] || '💻';
-    btn.title = LABELS[theme] || '테마 변경';
+    if (LOCK) { btn.hidden = true; return; }
+    var label = LABELS[theme] || LABELS.auto;
+    btn.innerHTML = iconHtml(theme);
+    btn.title = label + ' (누르면 바뀜)';
+    btn.setAttribute('aria-label', label);
   }
 
   function cycleTheme() {
+    if (LOCK) return;
     var current = getStoredTheme();
     var next = current === 'auto' ? 'light' : current === 'light' ? 'dark' : 'auto';
     try { localStorage.setItem(KEY, next); } catch (e) {}
@@ -64,7 +79,7 @@
   // 시스템 테마 변경 감지 (auto 모드일 때만 반응)
   // (옛 Safari는 MediaQueryList.addEventListener가 없어 addListener로 대체 — 여기서 멈추면 cycleTheme가 노출되지 않음)
   var mq = window.matchMedia('(prefers-color-scheme: dark)');
-  var onScheme = function () { if (getStoredTheme() === 'auto') applyTheme('auto'); };
+  var onScheme = function () { if (!LOCK && getStoredTheme() === 'auto') applyTheme('auto'); };
   if (mq.addEventListener) mq.addEventListener('change', onScheme);
   else if (mq.addListener) mq.addListener(onScheme);
 
@@ -108,15 +123,15 @@
   // 클립보드 복사 + 피드백. 복사가 안 되면 링크 창(ui.js)으로 보여 준다.
   function _copyWithFallback(url) {
     if (window.VUI && window.VUI.share) {
-      window.VUI.share.copyOrShow(url, { title: '🔗 이 페이지 공유' });
+      window.VUI.share.copyOrShow(url, { title: '이 페이지 공유' });
       return;
     }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(url)
-        .then(function() { _shareToast('링크가 복사되었습니다 ✓'); })
-        .catch(function() { _shareToast('URL: ' + url); });
+        .then(function() { _shareToast('링크를 복사했어요 ✓'); })
+        .catch(function() { _shareToast('주소: ' + url); });
     } else {
-      _shareToast('URL: ' + url);
+      _shareToast('주소: ' + url);
     }
   }
 
@@ -125,7 +140,9 @@
     var url = window.location.href;
     var title = document.title;
     if (navigator.share) {
-      navigator.share({ title: title, url: url }).catch(function() {
+      navigator.share({ title: title, url: url }).catch(function(e) {
+        // 사용자가 공유 시트를 닫은 경우는 아무것도 하지 않는다
+        if (e && e.name === 'AbortError') return;
         _copyWithFallback(url);
       });
     } else {

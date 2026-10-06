@@ -1,10 +1,13 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
+
+const DESC = "대구광역시교육청이 학교에 보낸 업무 매뉴얼·지침을 AI에게 묻고, 답변과 근거 문서(쪽)를 함께 확인해요. AI 답변은 틀릴 수 있으니 원문으로 확인하세요.";
 ---
 <AppLayout 
   sync
   title="에듀서치 — eduin VIVES"
-  description="교육과정, 고시, 훈령 등 교육 문서를 Gemini AI가 분석하여 정확한 답변을 제공합니다."
+  description={DESC}
   image="https://eduin.info/og-images/search.png"
   bodyShell="sidebar"
 >
@@ -25,6 +28,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .app-layout {
       display: flex;
       height: 100vh;
+      height: 100dvh; /* 모바일 주소창 높이를 빼고 — 입력창이 주소창 밑으로 밀리지 않게 */
       background: var(--bg);
       overflow: hidden;
     }
@@ -46,8 +50,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       position: relative;
     }
 
-    @media (prefers-color-scheme: dark) {
-      .app-sidebar {
+    /* 다크: 화면 모드 버튼(data-theme)을 따른다 — OS 설정(prefers-color-scheme)이 아니라 */
+    @media all {
+      [data-theme="dark"] .app-sidebar {
         background-color: rgba(255, 255, 255, 0.02);
       }
     }
@@ -157,17 +162,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       border-color: var(--border);
     }
 
-    @media (prefers-color-scheme: dark) {
-      .sidebar-tab {
+    /* 다크: 화면 모드 버튼(data-theme)을 따른다 — OS 설정(prefers-color-scheme)이 아니라 */
+    @media all {
+      [data-theme="dark"] .sidebar-tab {
         background: rgba(255, 255, 255, 0.04);
       }
 
-      .sidebar-tab.active {
+      [data-theme="dark"] .sidebar-tab.active {
         background: rgba(255, 255, 255, 0.1);
         color: var(--fg);
       }
 
-      .sidebar-tab:hover {
+      [data-theme="dark"] .sidebar-tab:hover {
         background: rgba(255, 255, 255, 0.07);
       }
     }
@@ -365,8 +371,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       background-position: 0 0, 0 0;
     }
 
-    @media (prefers-color-scheme: dark) {
-      .welcome-wrap {
+    /* 다크: 화면 모드 버튼(data-theme)을 따른다 — OS 설정(prefers-color-scheme)이 아니라 */
+    @media all {
+      [data-theme="dark"] .welcome-wrap {
         background-image:
           repeating-linear-gradient(
             0deg,
@@ -547,8 +554,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       background-position: 0 0, 0 0;
     }
 
-    @media (prefers-color-scheme: dark) {
-      .chat-messages {
+    /* 다크: 화면 모드 버튼(data-theme)을 따른다 — OS 설정(prefers-color-scheme)이 아니라 */
+    @media all {
+      [data-theme="dark"] .chat-messages {
         background-image:
           repeating-linear-gradient(
             0deg,
@@ -1057,6 +1065,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         left: 0;
         top: 0;
         height: 100vh;
+        height: 100dvh;
         transform: translateX(-260px);
         transition: transform 0.3s ease;
         z-index: 999;
@@ -1084,13 +1093,48 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       .chat-messages { padding: 16px; }
       .doc-body { padding: 16px; }
       .welcome-wrap { padding: 56px 20px 24px; }
+      [data-theme="dark"] .app-sidebar { background-color: var(--bg); }
+      .sidebar-toggle-btn { display: flex; align-items: center; justify-content: center; }
+      /* 드로어 바깥(어두운 곳)을 누르면 닫힘 */
+      .drawer-backdrop { position: fixed; inset: 0; z-index: 998; background: rgba(0,0,0,0.5); }
+      .app-sidebar.sidebar-open { box-shadow: none; }
     }
+    .drawer-backdrop[hidden] { display: none; }
 
     @media (min-width: 641px) {
       .sidebar-header { display: flex; }
+      .drawer-backdrop { display: none; }
     }
+
+    /* iOS는 16px 미만 입력칸에서 화면을 확대한다 → 휴대폰·태블릿에서는 16px */
+    @media (max-width: 768px), (pointer: coarse) {
+      .welcome-input, .chat-input-bar input, .question-input { font-size: 16px; }
+    }
+
+    /* 제목 영문 병기 */
+    .welcome-title .app-title-en { display: block; margin-top: 4px; font-size: 0.55em; font-weight: 600; color: var(--fg-muted); letter-spacing: 0; }
+    .welcome-icon { color: var(--primary); line-height: 1; }
+    .welcome-icon .ic { width: 52px; height: 52px; }
+    .welcome-note { display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .sidebar-brand, .sidebar-tab, .doc-action-btn, .chat-sources-label, .chat-document-card-type, .sidebar-label-btn, .tree-cat-header > span:nth-child(2) {
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .sidebar-tab, .doc-action-btn { justify-content: center; }
+    .chat-sources-label { display: flex; }
+    .tree-cat-header .arrow { display: inline-flex; }
+    .tree-cat-header .arrow .ic { width: 12px; height: 12px; }
+    .question-modal-close .ic { width: 20px; height: 20px; }
+
+    /* 오래 걸리는 검색: 안내 + 취소 */
+    .chat-thinking .slow-note { color: var(--fg-muted); }
+    .chat-thinking .cancel-btn {
+      margin-left: 6px; min-height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--fg); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .chat-thinking .cancel-btn:hover { border-color: var(--danger); color: var(--danger); }
+    @media (pointer: coarse) { .chat-thinking .cancel-btn { min-height: 44px; } }
   </style>
-  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"에듀서치","description":"교육과정, 고시, 훈령 등 교육 문서를 Gemini AI가 분석하여 정확한 답변을 제공합니다.","url":"https://eduin.info/apps/search/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"에듀서치","description":"대구광역시교육청이 학교에 보낸 업무 매뉴얼·지침을 AI에게 묻고, 답변과 근거 문서(쪽)를 함께 확인해요.","url":"https://eduin.info/apps/search/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
 
@@ -1098,58 +1142,50 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <!-- 자체 사이드바 구현 보유 → 셸 sidebar CSS(.app-aside 등) 미매칭, 레이아웃 그대로. 크롬도 기존 마크업 유지(주입 자동 스킵) -->
   <!-- 좌상단: 삼선 + 홈 -->
   <div class="top-overlay-left">
-    <button type="button" id="sidebarToggleBtn" class="sidebar-toggle-btn" onclick="toggleSidebar()" title="사이드바" aria-label="사이드바 열기·닫기" aria-expanded="false">☰</button>
-    <a href="/" class="overlay-btn" title="홈">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-        <polyline points="9 22 9 12 15 12 15 22"></polyline>
-      </svg>
-      <span>Home</span>
+    <button type="button" id="sidebarToggleBtn" class="sidebar-toggle-btn" onclick="toggleSidebar()" title="최근 질문·문서 목록" aria-label="최근 질문·문서 목록 열기" aria-expanded="false" aria-controls="searchSidebar"><Icon name="menu" /></button>
+    <a href="/" class="overlay-btn" title="홈으로" aria-label="홈으로">
+      <Icon name="house" />
+      <span>홈</span>
     </a>
   </div>
 
-  <!-- 우상단: 테마 + 공유 -->
+  <!-- 우상단: 화면 모드 + 공유 -->
   <div class="top-overlay">
-    <button type="button" id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="보기 모드" aria-label="보기 모드 바꾸기">💻</button>
-    <button class="overlay-btn" onclick="shareCurrentPage()" title="공유">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
-        <polyline points="16 6 12 2 8 6"></polyline>
-        <line x1="12" x2="12" y1="2" y2="15"></line>
-      </svg>
+    <button type="button" id="themeToggleBtn" class="overlay-btn" onclick="cycleTheme()" title="화면 모드" aria-label="화면 모드"><Icon name="monitor" /></button>
+    <button type="button" class="overlay-btn" onclick="shareCurrentPage()" title="이 페이지 공유" aria-label="이 페이지 공유">
+      <Icon name="share-2" />
       <span>공유</span>
     </button>
   </div>
 
+  <div class="drawer-backdrop" id="drawerBackdrop" hidden onclick="closeSidebar()"></div>
+
   <div class="app-layout">
     <!-- ═══════════ 사이드바 ═══════════ -->
-    <aside class="app-sidebar">
-      <!-- Home 버튼 영역 확보 -->
+    <aside class="app-sidebar" id="searchSidebar">
+      <!-- 홈 버튼 영역 확보 -->
       <div class="sidebar-top-pad"></div>
 
       <!-- 사이드바 헤더: 에듀서치 + 새 대화 버튼 -->
       <div class="sidebar-header">
-        <div class="sidebar-brand">🔎 에듀서치</div>
+        <div class="sidebar-brand"><Icon name="search" />에듀서치</div>
         <button type="button" class="new-chat-btn-icon" onclick="newChat()" title="새 대화" aria-label="새 대화">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
+          <Icon name="plus" size={16} />
         </button>
       </div>
 
-      <!-- 탭 버튼 -->
-      <div class="sidebar-tabs" role="tablist" aria-label="사이드바">
-        <button type="button" class="sidebar-tab active" id="tabBtnConv" role="tab" aria-selected="true" aria-controls="conversations-tab" data-tab="conversations" onclick="switchTab('conversations')">💬 대화</button>
-        <button type="button" class="sidebar-tab" id="tabBtnDocs" role="tab" aria-selected="false" aria-controls="documents-tab" tabindex="-1" data-tab="documents" onclick="switchTab('documents')">📁 문서</button>
+      <!-- 탭 버튼 (←/→ 키로 옮김) -->
+      <div class="sidebar-tabs" role="tablist" aria-label="최근 질문·문서">
+        <button type="button" class="sidebar-tab active" id="tabBtnConv" role="tab" aria-selected="true" aria-controls="conversations-tab" data-tab="conversations" onclick="switchTab('conversations')"><Icon name="message-circle" />최근 질문</button>
+        <button type="button" class="sidebar-tab" id="tabBtnDocs" role="tab" aria-selected="false" aria-controls="documents-tab" tabindex="-1" data-tab="documents" onclick="switchTab('documents')"><Icon name="folder" />문서</button>
       </div>
 
       <div class="sidebar-scrollable">
-        <!-- 대화 목록 탭 -->
+        <!-- 최근 질문 탭 -->
         <div id="conversations-tab" class="sidebar-tab-content active" role="tabpanel" aria-labelledby="tabBtnConv">
           <div class="sidebar-section-label">
-            <span>대화 목록</span>
-            <button type="button" class="sidebar-label-btn" onclick="clearHistory()" aria-label="대화 목록 지우기">지우기</button>
+            <span>최근 질문</span>
+            <button type="button" class="sidebar-label-btn" onclick="clearHistory()" aria-label="최근 질문 모두 지우기">지우기</button>
           </div>
           <div id="convList"></div>
         </div>
@@ -1158,7 +1194,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         <div id="documents-tab" class="sidebar-tab-content" role="tabpanel" aria-labelledby="tabBtnDocs">
           <div class="sidebar-section-label">
             <span>문서 목록</span>
-            <button class="sidebar-label-btn refresh" onclick="refreshAll(this)" title="문서 목록 새로고침">↻ 새로고침</button>
+            <button type="button" class="sidebar-label-btn refresh" onclick="refreshAll(this)" aria-label="문서 목록 새로고침"><Icon name="refresh-cw" />새로고침</button>
           </div>
           <div id="treePanel">
             <div class="tree-loading"></div>
@@ -1173,12 +1209,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <!-- 🏠 환영 화면 (기본) -->
       <div id="welcomeView" class="main-view active">
         <div class="welcome-wrap">
-          <div class="welcome-icon">🔎</div>
-          <h1 class="welcome-title">에듀서치</h1>
+          <div class="welcome-icon" aria-hidden="true"><Icon name="search" /></div>
+          <h1 class="welcome-title">에듀서치 <span class="app-title-en">EduSearch</span></h1>
           <p class="welcome-desc">
             대구광역시교육청이 학교에 보낸 매뉴얼·지침을<br>
             자연어로 묻고, AI 답변과 근거(문서·쪽)를 함께 확인하세요.<br>
-            <span style="font-size: 11px; color: var(--fg-muted); margin-top: 8px; display: block;">⚠️ AI는 실수를 할 수 있습니다. 중요한 판단은 원본 문서로 확인하세요.</span>
+            <span class="welcome-note" style="font-size: 12px; color: var(--fg-muted); margin-top: 8px;"><Icon name="triangle-alert" />AI는 실수를 할 수 있습니다. 중요한 판단은 원본 문서로 확인하세요.</span>
           </p>
           <div class="welcome-input-box">
             <input type="text" id="welcomeInput" class="welcome-input" aria-label="질문" placeholder="무엇이 궁금하신가요?" onkeydown="if(event.key==='Enter')startFromWelcome()">
@@ -1194,7 +1230,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <div class="recent-docs-wrap" id="recentDocsWrap">
             <div class="recent-docs-label">
               <span>등록된 매뉴얼</span>
-              <button class="sidebar-label-btn refresh" onclick="refreshAll(this)" title="문서 목록 새로고침" style="text-transform:none">↻ 새로고침</button>
+              <button type="button" class="sidebar-label-btn refresh" onclick="refreshAll(this)" aria-label="문서 목록 새로고침" style="text-transform:none"><Icon name="refresh-cw" />새로고침</button>
             </div>
             <div id="recentDocsList"><div style="padding: 12px 16px; font-size: 12px; color: var(--fg-muted); text-align: center;">로드 중...</div></div>
           </div>
@@ -1230,15 +1266,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
         <!-- 하단: 버튼들 중앙 배치 -->
         <div style="flex-shrink: 0; display: flex; justify-content: center; gap: 8px; padding: 12px 20px 16px; border-top: 1px solid var(--border);">
-          <button class="doc-action-btn" onclick="summarizeDoc()" title="AI로 문서 요약">📝 요약</button>
-          <button class="doc-action-btn" onclick="askAboutDoc()" title="이 문서에 대해 질문">💬 질문</button>
-          <button class="doc-action-btn" id="docOpenBtn" title="원본 파일 열기">📑 원문 보기</button>
+          <button type="button" class="doc-action-btn" onclick="summarizeDoc()"><Icon name="notebook-pen" />AI 요약</button>
+          <button type="button" class="doc-action-btn" onclick="askAboutDoc()"><Icon name="message-circle" />이 문서에 질문</button>
+          <button type="button" class="doc-action-btn" id="docOpenBtn"><Icon name="file-text" />원문 보기</button>
         </div>
       </div>
 
       <!-- 텍스트 선택 팝업 -->
       <div class="selection-popup" id="selectionPopup">
-        <button class="selection-popup-btn" onclick="askAboutSelection()">선택 부분에 대해 질문</button>
+        <button type="button" class="selection-popup-btn" onmousedown="event.preventDefault()" onclick="askAboutSelection()">선택 부분에 대해 질문</button>
       </div>
 
       <!-- 문서 질문 모달 -->
@@ -1247,14 +1283,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         <div class="question-modal-content">
           <div class="question-modal-header">
             <h2 id="questionModalTitle">이 문서에 대해 질문</h2>
-            <button type="button" class="question-modal-close" onclick="closeQuestionModal()" aria-label="닫기">✕</button>
+            <button type="button" class="question-modal-close" onclick="closeQuestionModal()" aria-label="닫기"><Icon name="x" /></button>
           </div>
           <div class="question-modal-body">
             <input type="text" id="questionInput" class="question-input" aria-labelledby="questionModalTitle" placeholder="무엇이 궁금하신가요?" onkeydown="if(event.key==='Enter') submitQuestion()">
           </div>
           <div class="question-modal-footer">
-            <button class="question-btn-cancel" onclick="closeQuestionModal()">취소</button>
-            <button class="question-btn-submit" onclick="submitQuestion()">질문하기</button>
+            <button type="button" class="question-btn-cancel" onclick="closeQuestionModal()">취소</button>
+            <button type="button" class="question-btn-submit" id="questionSubmitBtn" onclick="submitQuestion()">질문하기</button>
           </div>
         </div>
       </div>
@@ -1291,11 +1327,38 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     /* ─────────────────────────────────────────
        사이드바 토글 (모바일)
     ───────────────────────────────────────── */
-    function toggleSidebar() {
+    // @icons menu x refresh-cw paperclip file-text download circle-help
+    // @icons wallet shield stethoscope book users folder chevron-right
+    const ic = (n) => VUI.icon(n);
+    const isDrawerMode = () => window.matchMedia('(max-width: 640px)').matches;
+    function setSidebar(open) {
       const sidebar = document.querySelector('.app-sidebar');
-      const open = sidebar.classList.toggle('sidebar-open');
-      document.getElementById('sidebarToggleBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
+      sidebar.classList.toggle('sidebar-open', open);
+      const btn = document.getElementById('sidebarToggleBtn');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.innerHTML = ic(open ? 'x' : 'menu');
+      btn.setAttribute('aria-label', open ? '최근 질문·문서 목록 닫기' : '최근 질문·문서 목록 열기');
+      document.getElementById('drawerBackdrop').hidden = !open;
     }
+    function toggleSidebar() {
+      setSidebar(!document.querySelector('.app-sidebar').classList.contains('sidebar-open'));
+    }
+    function closeSidebar() {
+      if (document.querySelector('.app-sidebar').classList.contains('sidebar-open')) setSidebar(false);
+    }
+    // 모바일 드로어: 항목(질문·문서·새 대화)을 고르거나 Esc를 누르면 닫힘
+    document.querySelector('.app-sidebar').addEventListener('click', (e) => {
+      if (!isDrawerMode()) return;
+      if (e.target.closest('.conv-item, .tree-file, .new-chat-btn-icon')) closeSidebar();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && document.querySelector('.app-sidebar').classList.contains('sidebar-open')
+          && !document.getElementById('questionModal').classList.contains('active')) {
+        closeSidebar();
+        document.getElementById('sidebarToggleBtn').focus();
+      }
+    });
+    window.addEventListener('resize', () => { if (!isDrawerMode()) closeSidebar(); });
 
     /* ─────────────────────────────────────────
        사이드바 탭 전환
@@ -1318,6 +1381,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         }
       });
     }
+    // 탭 키보드: ←/→/Home/End로 탭 옮기기(선택된 탭만 Tab 순서에 들어감)
+    document.querySelector('.sidebar-tabs').addEventListener('keydown', (e) => {
+      const tabs = [...document.querySelectorAll('.sidebar-tab')];
+      const i = tabs.indexOf(document.activeElement);
+      if (i < 0) return;
+      let n = -1;
+      if (e.key === 'ArrowRight') n = (i + 1) % tabs.length;
+      else if (e.key === 'ArrowLeft') n = (i - 1 + tabs.length) % tabs.length;
+      else if (e.key === 'Home') n = 0;
+      else if (e.key === 'End') n = tabs.length - 1;
+      if (n < 0) return;
+      e.preventDefault();
+      switchTab(tabs[n].dataset.tab);
+      tabs[n].focus();
+    });
 
     /* ─────────────────────────────────────────
        문서 질문 모달
@@ -1350,6 +1428,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         input.placeholder = '무엇이 궁금하신가요?';
       }
 
+      // 요약 창에서는 제출 버튼도 "요약하기"
+      document.getElementById('questionSubmitBtn').textContent = (type === 'summarize' && !selection) ? '요약하기' : '질문하기';
       input.value = '';
       questionM.open();
     }
@@ -1417,7 +1497,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const el = document.createElement('div');
       el.className = 'chat-turn';
 
-      const typeLabel = type === 'summarize' ? '📄 요약' : '❓ 질문';
+      const typeLabel = type === 'summarize' ? ic('file-text') + '요약' : ic('circle-help') + '질문';
 
       el.innerHTML = `
         <div class="chat-document-card">
@@ -1515,12 +1595,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     async function refreshAll(btn) {
-      if (btn) { btn.disabled = true; btn.dataset.orig = btn.textContent; btn.textContent = '새로고침 중…'; }
+      const orig = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.textContent = '새로고침 중…'; }
       try {
         const ok = await loadDocs(true);
-        showToast(ok ? '문서를 새로고침했습니다' : '새로고침하지 못했어요. 기존 목록을 그대로 둘게요.', ok ? undefined : 'error');
+        showToast(ok ? '문서 목록을 새로고침했어요' : '새로고침하지 못했어요. 기존 목록을 그대로 둘게요.', ok ? undefined : 'error');
       } finally {
-        if (btn) { btn.disabled = false; btn.textContent = btn.dataset.orig || '↻ 새로고침'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = orig || (ic('refresh-cw') + '새로고침'); }
       }
     }
 
@@ -1547,14 +1628,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       panel.innerHTML = names.map(cat => `
         <div class="tree-category">
           <div class="tree-cat-header" role="button" tabindex="0" aria-expanded="false" data-cat="${escHtml(cat)}" onclick="toggleCatTree(this)">
-            <span class="arrow" aria-hidden="true">▶</span>
-            <span>${catIcon(cat)} ${escHtml(cat)}</span>
+            <span class="arrow" aria-hidden="true">${ic('chevron-right')}</span>
+            <span>${catIcon(cat)}${escHtml(cat)}</span>
             <span style="margin-left:auto;font-size:10px;opacity:.4">${cats[cat].length}</span>
           </div>
           <div class="tree-files">
             ${cats[cat].map(d => `
               <div class="tree-file" role="button" tabindex="0" data-path="${escHtml(d.id)}" onclick="openFile(this)" title="${escHtml(d.title)}">
-                <span style="font-size:11px;flex-shrink:0;margin-top:1px" aria-hidden="true">📄</span>
+                <span style="flex-shrink:0;margin-top:1px;color:var(--fg-muted)" aria-hidden="true">${ic('file-text')}</span>
                 <span style="flex:1;overflow-wrap:anywhere">${escHtml(d.title)}</span>
               </div>
             `).join('')}
@@ -1573,7 +1654,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     function catIcon(name) {
-      return { '학교회계': '💰', '안전': '🦺', '보건': '🩺', '학사': '📘', '인사': '👥' }[name] || '📁';
+      return ic({ '학교회계': 'wallet', '안전': 'shield', '보건': 'stethoscope', '학사': 'book', '인사': 'users' }[name] || 'folder');
     }
 
     function toggleCatTree(header) {
@@ -1627,7 +1708,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           `<p style="font-size:12px;color:var(--fg-muted)">${escHtml([doc.dept, doc.pages && `${doc.pages}쪽`].filter(Boolean).join(' · '))} · 원본에서 자동 추출한 본문이라 표·서식이 원문과 다를 수 있습니다.</p>` + html;
         const openBtn = document.getElementById('docOpenBtn');
         openBtn.style.display = doc.hasFile ? '' : 'none';
-        openBtn.textContent = doc.fileType === 'pdf' ? '📑 원문 PDF' : '⬇️ 원문 내려받기';
+        openBtn.innerHTML = doc.fileType === 'pdf' ? ic('file-text') + '원문 PDF' : ic('download') + '원문 내려받기';
         openBtn.onclick = () => window.open(`${MANUAL_API}?file=${encodeURIComponent(id)}`, '_blank');
         scrollToPage(page);
       } catch (err) {
@@ -1649,14 +1730,24 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     // 문서 본문 텍스트 선택 → "선택 부분에 대해 질문" 팝업
-    document.getElementById('docBody').addEventListener('mouseup', () => {
-      const selected = window.getSelection().toString().trim();
-      if (selected.length > 0) {
-        const rect = window.getSelection().getRangeAt(0).getBoundingClientRect();
+    // 마우스는 mouseup, 터치(길게 눌러 선택·손잡이 조절)는 selectionchange가 끝난 뒤에 띄운다
+    function checkDocSelection() {
+      const sel = window.getSelection();
+      const selected = sel ? sel.toString().trim() : '';
+      const body = document.getElementById('docBody');
+      if (selected.length > 0 && sel.rangeCount && body.contains(sel.anchorNode)) {
+        const rect = sel.getRangeAt(0).getBoundingClientRect();
         showSelectionPopup(rect.left + window.scrollX, rect.bottom + window.scrollY);
       } else {
         hideSelectionPopup();
       }
+    }
+    document.getElementById('docBody').addEventListener('mouseup', checkDocSelection);
+    let selTimer = 0;
+    document.addEventListener('selectionchange', () => {
+      if (!document.getElementById('docView').classList.contains('active')) return;
+      clearTimeout(selTimer);
+      selTimer = setTimeout(checkDocSelection, 450);
     });
 
     /* ─────────────────────────────────────────
@@ -1688,7 +1779,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       btn.disabled = true;
 
       appendUserMsg(query);
-      const thinkingEl = appendThinking();
+      const ctrl = window.AbortController ? new AbortController() : null;
+      const thinkingEl = appendThinking(ctrl);
       input.value = '';
 
       try {
@@ -1696,6 +1788,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         const data = await VUI.apiFetch('/api/search', {
           json: { query, history: activeMessages.slice(-8) },
           timeout: SEARCH_TIMEOUT,
+          signal: ctrl ? ctrl.signal : undefined,
         });
         if (!data || typeof data.answer !== 'string') throw new Error('답변을 받지 못했어요. 잠시 후 다시 시도해 주세요.');
 
@@ -1706,10 +1799,15 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         activeMessages.push({ role: 'ai', content: data.answer });
         saveHistory(query, data.answer, data.sources || []);
       } catch (err) {
-        console.error('[search]', err && err.code, err && err.message);
         thinkingEl.remove();
-        const errorMsg = `⚠️ ${fetchErrorMessage(err)}`;
-        appendAiMsg(query, errorMsg, []);
+        if (err && err.code === 'abort') {
+          // 사용자가 취소함 — 질문을 입력창에 돌려놓아 고쳐 다시 물을 수 있게
+          input.value = query;
+          showToast('검색을 취소했어요');
+        } else {
+          console.error('[search]', err && err.code, err && err.message);
+          appendAiMsg(query, fetchErrorMessage(err), []);
+        }
       } finally {
         isSearching = false;
         btn.disabled = false;
@@ -1726,13 +1824,31 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       return el;
     }
 
-    function appendThinking() {
+    // ctrl(AbortController)을 주면 15초가 지나도 답이 없을 때 "길어지고 있어요" 안내와 [취소] 버튼을 보여 준다
+    const SLOW_AFTER_MS = 15000;
+    function appendThinking(ctrl) {
       const area = document.getElementById('chatArea');
       const el = document.createElement('div');
       el.className = 'chat-thinking';
-      el.innerHTML = `<div class="thinking-dot" aria-hidden="true"></div><div class="thinking-dot" aria-hidden="true"></div><div class="thinking-dot" aria-hidden="true"></div><span>검색 중...</span>`;
+      if (!ctrl && window.AbortController) ctrl = new AbortController();
+      el.ctrl = ctrl;
+      el.innerHTML = `<div class="thinking-dot" aria-hidden="true"></div><div class="thinking-dot" aria-hidden="true"></div><div class="thinking-dot" aria-hidden="true"></div><span class="thinking-text">검색 중...</span>`;
       area.appendChild(el);
       el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      const timer = setTimeout(() => {
+        if (!el.isConnected) return;
+        el.querySelector('.thinking-text').textContent = '답변이 길어지고 있어요. 조금만 더 기다려 주세요…';
+        if (ctrl) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'cancel-btn';
+          b.textContent = '취소';
+          b.addEventListener('click', () => ctrl.abort());
+          el.appendChild(b);
+        }
+      }, SLOW_AFTER_MS);
+      const origRemove = el.remove.bind(el);
+      el.remove = () => { clearTimeout(timer); origRemove(); };
       return el;
     }
 
@@ -1749,7 +1865,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const showSources = sources.length > 0 && !allProvided;
       const sourceHtml = showSources ? `
         <div class="chat-sources">
-          <div class="chat-sources-label">📎 근거</div>
+          <div class="chat-sources-label">${ic('paperclip')}근거</div>
           ${sources.map(s => sourceChip(s)).join('')}
         </div>` : '';
 
@@ -1761,7 +1877,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         </div>
         <div class="chat-actions">
           <button type="button" class="chat-action-btn" data-act="copy" aria-label="답변 복사">복사</button>
-          <button type="button" class="chat-action-btn" data-act="share">MD Editor로 공유</button>
+          <button type="button" class="chat-action-btn" data-act="share">편집기에서 열기</button>
         </div>`;
 
       el.querySelector('[data-act="copy"]').addEventListener('click', (e) => copyAnswer(e.currentTarget, answer));
@@ -1793,7 +1909,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
        액션
     ───────────────────────────────────────── */
     function copyAnswer(btn, answer) {
-      VUI.copy(answer, '답변을 복사했어요 ✓').then(ok => {
+      VUI.copy(answer, '답변을 복사했어요').then(ok => {
         if (!ok) { showToast('복사하지 못했어요. 답변을 직접 선택해 복사해 주세요.', 'error'); return; }
         const orig = btn.textContent;
         btn.textContent = '복사됨!';
@@ -1811,6 +1927,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       let safeContent = content;
       if (new Blob([content]).size > 7500) {
         safeContent = content.slice(0, 7000) + '\n\n*(내용이 잘렸습니다.)*';
+        // 말없이 잘리지 않게 알린다
+        showToast('답변이 길어 앞부분만 편집기로 보냈어요. 전체는 [복사]로 옮겨 주세요.');
       }
       // md-editor 공유 형식({data, permission}) — UTF-8 base64url(VUI.share.encode, md-editor는 옛 형식도 읽음)
       const encoded = VUI.share.encode({ data: { content: safeContent, filename }, permission: 'clone' });
@@ -1827,7 +1945,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       try {
         localStorage.setItem(LS_HISTORY, JSON.stringify(list));
       } catch {
-        showToast('저장 공간이 부족해 대화 기록을 저장하지 못했어요', 'error');
+        showToast('저장 공간이 부족해 최근 질문을 저장하지 못했어요', 'error');
       }
       renderConvList();
     }
@@ -1843,7 +1961,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const list = getHistory().slice(0, 20);
       const container = document.getElementById('convList');
       if (list.length === 0) {
-        container.innerHTML = '<div class="conv-item-empty">대화 없음</div>';
+        container.innerHTML = '<div class="conv-item-empty">아직 질문이 없어요</div>';
         return;
       }
       container.innerHTML = list.map(item =>
@@ -1879,11 +1997,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       showView('chat');
     }
 
-    function clearHistory() {
-      if (!confirm('대화 이력을 모두 지울까요?')) return;
-      try { localStorage.removeItem(LS_HISTORY); } catch {}
+    async function clearHistory() {
+      if (!getHistory().length) { showToast('지울 질문이 없어요'); return; }
+      const ok = await VUI.confirm('이 기기에 저장된 최근 질문과 답변을 모두 지울까요?', { title: '최근 질문 지우기', ok: '모두 지우기', danger: true });
+      if (!ok) return;
+      let backup = null;
+      try { backup = localStorage.getItem(LS_HISTORY); localStorage.removeItem(LS_HISTORY); } catch {}
       renderConvList();
       newChat();
+      if (backup) VUI.toast('최근 질문을 지웠어요', { action: { label: '되돌리기', onClick: () => {
+        try { localStorage.setItem(LS_HISTORY, backup); } catch {}
+        renderConvList();
+      } } });
     }
 
     /* ─────────────────────────────────────────
@@ -1891,7 +2016,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     ───────────────────────────────────────── */
     function shareCurrentPage() {
       // 복사가 안 되면 링크·QR 창(공용 VUI)
-      VUI.share.copyOrShow(window.location.href, { title: '🔗 에듀서치 공유' });
+      VUI.share.copyOrShow(window.location.href, { title: '에듀서치 공유' });
     }
 
     /* ─────────────────────────────────────────
@@ -1927,19 +2052,20 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           history: activeMessages.slice(-8)
         };
 
-        const data = await VUI.apiFetch('/api/search', { json: payload, timeout: SEARCH_TIMEOUT });
+        const data = await VUI.apiFetch('/api/search', { json: payload, timeout: SEARCH_TIMEOUT, signal: thinkingEl.ctrl || undefined });
         if (!data || typeof data.answer !== 'string') throw new Error('답변을 받지 못했어요. 잠시 후 다시 시도해 주세요.');
 
         thinkingEl.remove();
-        const label = type === 'summarize' ? `📄 [요약] ${docTitle(docPath)}` : `❓ [질문] ${docTitle(docPath)}`;
+        const label = type === 'summarize' ? `[요약] ${docTitle(docPath)}` : `[질문] ${docTitle(docPath)}`;
         appendAiMsg(label, data.answer, data.sources || []);
         // 문서 질문/요약도 맥락 버퍼에 반영 → 이어지는 자유 질문이 맥락 유지
         activeMessages.push({ role: 'user', content: `${label}${question ? ' — ' + question : ''}` });
         activeMessages.push({ role: 'ai', content: data.answer });
         saveHistory(label, data.answer, data.sources || []);
       } catch (err) {
-        console.error('[doc-request]', err && err.code, err && err.message);
         thinkingEl.remove();
+        if (err && err.code === 'abort') { showToast('요청을 취소했어요'); return; }
+        console.error('[doc-request]', err && err.code, err && err.message);
         appendAiMsg('문서 요청', `오류 발생: ${fetchErrorMessage(err)}`, []);
       }
     }
@@ -1978,7 +2104,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (!window.marked || !window.DOMPurify) {
         return `<div style="white-space:pre-wrap;overflow-wrap:anywhere">${escHtml(raw)}</div>`;
       }
-      const src = raw.replace(/(?<!~)~(?!~)/g, TILDE_SENTINEL);
+      // 연속되지 않은 ~ 하나만 바꾼다(lookbehind는 iOS 16.4 미만 Safari에서 문법 오류라 쓰지 않음)
+      const src = raw.replace(/~+/g, (m) => (m.length === 1 ? TILDE_SENTINEL : m));
       const html = marked.parse(src).split(TILDE_SENTINEL).join('~');
       return DOMPurify.sanitize(html, { FORBID_TAGS: ['style', 'form'] });
     }
@@ -2009,11 +2136,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     loadDocs();
     renderConvList();
 
-    // 선택 동기화: 헤더 '동기화' 버튼 (검색 기록을 코드 하나로 기기 간 이어쓰기)
+    // 선택 동기화: 헤더 '동기화' 버튼 (최근 질문을 코드 하나로 기기 간 이어쓰기)
     if (window.VivesSync) VivesSync.mountDocSync({
       apiUrl: '/api/search-sync',
       keys: [LS_HISTORY],
-      appName: '검색 기록',
+      appName: '최근 질문',
       onApplied: renderConvList,
     });
   </script>

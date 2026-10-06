@@ -4,6 +4,8 @@
    - 막대·꺾은선은 공용 VGraph(/common/vgraph.js), 나머지는 여기서 SVG로 그림.
    - 조사하기(손들기 집계) → 표 → 그래프, 직접 그리기, 평균 고르게 하기, 미션 10개.
    - localStorage `graph-maker:v1`, 공유는 #share=(표·종류·설정만, 개인정보 없음)
+   - 두 모드: 그래프 만들기(표·그래프 / 조사하기) ↔ 그래프 공부하기(미션). 인트로에서 고르고 조작판 위에서 바꾼다.
+   - 아이콘: SimKit.icon(lucide). 동적 이름 @icons chart-column trophy arrow-left-right
    계획: docs/graph-maker-plan.md
    ================================================================ */
 (function () {
@@ -12,7 +14,27 @@
   const SK = window.SimKit, VUI = window.VUI, VG = window.VGraph;
   const $ = (id) => document.getElementById(id);
   const NS = "http://www.w3.org/2000/svg";
-  const reduceMotion = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const IC = (n) => SK.icon(n);
+  const starIcons = (n) => Array.from({ length: n }, () => IC("star")).join("");
+  // 시간 기준 애니메이션 하나(SimKit.loop: 화면 재생률과 무관, 탭을 숨기면 멈춤, 움직임 줄이기면 바로 끝)
+  const tween = (() => {
+    let onFrame = null, onDone = null, el = 0, dur = 1;
+    const lp = SK.loop((dt) => {
+      el += dt * 1000;
+      const k = Math.min(1, el / dur);
+      const fn = onFrame;
+      if (fn && fn(k) === false) { lp.stop(); onFrame = onDone = null; return; }
+      if (k >= 1) { lp.stop(); const d = onDone; onFrame = onDone = null; if (d) d(); }
+    });
+    return {
+      run(ms, frame, done) {
+        lp.stop(); onFrame = onDone = null;
+        if (!ms || SK.motion.reduced()) { frame(1); if (done) done(); return; }
+        onFrame = frame; onDone = done; el = 0; dur = ms; lp.start();
+      },
+      stop() { lp.stop(); onFrame = onDone = null; },
+    };
+  })();
   const isObj = (v) => v && typeof v === "object" && !Array.isArray(v);
   const randInt = (n) => Math.floor(Math.random() * n);
   const pick = (a) => a[randInt(a.length)];
@@ -346,7 +368,7 @@
       if (total(t) === 0) { msg = "값을 넣으면 백분율을 계산해요."; }
       else if (s !== 100) { msg = "반올림해서 백분율의 합계가 " + fmtN(s) + "%예요. ‘합계 100으로 맞추기’를 켤 수 있어요."; warn = true; }
       else msg = "백분율의 합계: 100%";
-    } else if (state.draw && !state.draw.checked) msg = "막대 끝(꺾은선은 점)을 손가락으로 끌어 표의 값만큼 그려 보세요.";
+    } else if (state.draw && !state.draw.checked) msg = "막대 끝(꺾은선은 점)을 누르거나 끌어 표의 값만큼 그려 보세요.";
     else if (state.level && state.levelText) msg = state.levelText;
     note(msg, warn);
   }
@@ -358,7 +380,13 @@
     if (state.mode === "mission" && mDraw) return mDraw;
     return null;
   }
-  function drawSnap(t) { return t.rows.every((r) => Number.isInteger(r.value)) ? 1 : 0.5; }
+  // 표 값이 정수면 1, 0.5 단위면 0.5, 그 밖의 소수(예: 22.3)면 0.1 — 어떤 표 값이든 그려서 맞출 수 있게
+  function drawSnap(t) {
+    if (t.rows.every((r) => Number.isInteger(r.value))) return 1;
+    if (t.rows.every((r) => Number.isInteger(r.value * 2))) return 0.5;
+    return 0.1;
+  }
+  const snapTo = (v, snap) => Math.round(Math.round(v / snap) * snap * 10) / 10;
   function eventToSvg(svg, e) { const m = svg.getScreenCTM(); if (!m) return null; return new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()); }
   function colAt(info, kind, p) {
     const f = info.frame, pl = f.plot, n = f.items.length;
@@ -370,7 +398,7 @@
     const f = info.frame, S = info.scale;
     let v = kind === "bar" && f.horizontal ? S.inv(p.x) : S.inv(p.y);
     v = Math.max(f.from || 0, Math.min(f.top, v));
-    return Math.round(v / snap) * snap;
+    return snapTo(v, snap);
   }
   function bubble(text, x, y) {
     let b = stage.querySelector(".draw-bubble");
@@ -420,7 +448,7 @@
       e.preventDefault();
       const f = T.render.info.frame;
       const cur = T.vals[kbCol] == null ? (f.from || 0) : T.vals[kbCol];
-      T.vals[kbCol] = Math.max(f.from || 0, Math.min(f.top, cur + (e.key === "ArrowUp" ? T.snap : -T.snap)));
+      T.vals[kbCol] = snapTo(Math.max(f.from || 0, Math.min(f.top, cur + (e.key === "ArrowUp" ? T.snap : -T.snap))), T.snap);
       if (T.onEdit) T.onEdit(); T.rerender(); liveSay(fmtN(T.vals[kbCol]));
     }
   });
@@ -442,7 +470,7 @@
     }
   }
   function setType(id) {
-    cancelAnimationFrame(levelAnim);
+    tween.stop();
     state.type = id; state.draw = null; state.level = null;
     for (const b of $("typeBar").children) b.setAttribute("aria-pressed", b.dataset.type === id ? "true" : "false");
     persist(); renderOpts(); renderMake();
@@ -453,7 +481,12 @@
     const box = $("presets"); box.textContent = "";
     PRESETS.forEach((p) => {
       const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = p.name;
-      b.addEventListener("click", () => { state.table = cleanTable(p.t); state.draw = null; state.level = null; renderTable(); setType(p.type); });
+      // 예시 자료는 지금 표를 덮어쓰므로 되돌리기 토스트
+      b.addEventListener("click", () => {
+        const before = { table: JSON.parse(JSON.stringify(state.table)), type: state.type };
+        state.table = cleanTable(p.t); state.draw = null; state.level = null; renderTable(); setType(p.type);
+        undoToast("예시 자료 '" + p.name + "'로 바꿨어요.", () => { state.table = before.table; state.draw = null; state.level = null; renderTable(); setType(before.type); });
+      });
       box.appendChild(b);
     });
   }
@@ -467,12 +500,16 @@
       const name = document.createElement("input"); name.className = "inp"; name.value = r.label; name.maxLength = 20; name.setAttribute("aria-label", (i + 1) + "번째 항목 이름");
       name.addEventListener("input", () => { r.label = name.value.slice(0, 20) || ""; persist(); renderMake(); });
       name.addEventListener("change", () => { if (!r.label.trim()) { r.label = "항목"; name.value = r.label; } });
-      const minus = sq("−", () => { r.value = Math.max(0, Math.round((r.value - 1) * 10) / 10); onTableChange(); }, r.label + " 1 줄이기");
+      const minus = sqIcon("minus", () => { r.value = Math.max(0, Math.round((r.value - 1) * 10) / 10); onTableChange(); }, r.label + " 1 줄이기");
       const val = document.createElement("button"); val.type = "button"; val.className = "val"; val.textContent = fmtN(r.value);
       val.setAttribute("aria-label", r.label + " 값 " + fmtN(r.value) + ", 눌러서 입력");
       val.addEventListener("click", () => openKeypad(val, r.label, r.value, (v) => { r.value = v; onTableChange(); }));
-      const plus = sq("＋", () => { r.value = Math.min(9999, Math.round((r.value + 1) * 10) / 10); onTableChange(); }, r.label + " 1 늘리기");
-      const del = sq("✕", () => { if (t.rows.length <= 1) return; t.rows.splice(i, 1); onTableChange(); }, r.label + " 빼기");
+      const plus = sqIcon("plus", () => { r.value = Math.min(9999, Math.round((r.value + 1) * 10) / 10); onTableChange(); }, r.label + " 1 늘리기");
+      const del = sqIcon("x", () => {
+        if (t.rows.length <= 1) return;
+        const [gone] = t.rows.splice(i, 1); onTableChange();
+        undoToast("'" + gone.label + "' 항목을 뺐어요.", () => { t.rows.splice(Math.min(i, t.rows.length), 0, gone); onTableChange(); });
+      }, r.label + " 빼기");
       del.classList.add("del"); del.disabled = t.rows.length <= 1;
       row.append(name, minus, val, plus, del);
       box.appendChild(row);
@@ -481,8 +518,14 @@
     $("tTotal").textContent = fmtN(total(t)) + (t.unit || "");
   }
   function sq(text, fn, label) { const b = document.createElement("button"); b.type = "button"; b.className = "sq"; b.textContent = text; b.setAttribute("aria-label", label); b.addEventListener("click", fn); return b; }
+  function sqIcon(name, fn, label) { const b = sq("", fn, label); b.innerHTML = IC(name); return b; }
+  // 덮어쓰기·지우기 뒤 되돌리기(공용 VUI.toast action)
+  function undoToast(msg, restore) {
+    if (VUI && VUI.toast) VUI.toast(msg, { action: { label: "되돌리기", onClick: restore } });
+    else SK.toast(msg);
+  }
   function onTableChange() {
-    cancelAnimationFrame(levelAnim);
+    tween.stop();
     if (state.draw) state.draw = { vals: state.table.rows.map(() => null), checked: false };
     state.level = null;
     persist(); renderTable(); renderOpts(); renderMake();
@@ -518,6 +561,7 @@
     const box = $("kpKeys");
     ["7", "8", "9", "⌫", "4", "5", "6", ".", "1", "2", "3", "0", "취소", "확인"].forEach((k) => {
       const b = document.createElement("button"); b.type = "button"; b.textContent = k;
+      if (k === "⌫") { b.innerHTML = IC("delete"); b.setAttribute("aria-label", "지우기"); }
       if (k === "확인") { b.className = "ok"; b.style.gridColumn = "span 2"; }
       if (k === "취소") b.style.gridColumn = "span 2";
       b.addEventListener("click", () => kpKey(k));
@@ -558,7 +602,11 @@
     wrap.append(l, set);
     return wrap;
   }
-  function toggleBtn(label, on, fn) { const b = document.createElement("button"); b.type = "button"; b.className = "gm-btn sm"; b.textContent = label; b.setAttribute("aria-pressed", on ? "true" : "false"); b.addEventListener("click", fn); return b; }
+  function toggleBtn(label, on, fn, icon) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "sk-btn sk-btn--sm";
+    b.textContent = label; if (icon) b.insertAdjacentHTML("afterbegin", IC(icon) + " ");
+    b.setAttribute("aria-pressed", on ? "true" : "false"); b.addEventListener("click", fn); return b;
+  }
   function renderOpts() {
     const box = $("opts"); box.textContent = "";
     const type = state.type, o = state.opts[type];
@@ -579,12 +627,12 @@
       if (type === "line") {
         const mn = Math.min(...state.table.rows.map((r) => r.value));
         const wrap = document.createElement("div"); wrap.className = "row";
-        wrap.appendChild(toggleBtn("〰 물결선", o.wave, () => { o.wave = !o.wave; if (o.wave && !o.from) o.from = suggestFrom(state.table, o.step); upd(); }));
+        wrap.appendChild(toggleBtn("물결선", o.wave, () => { o.wave = !o.wave; if (o.wave && !o.from) o.from = suggestFrom(state.table, o.step); upd(); }));
         if (o.wave) {
           const lab = document.createElement("span"); lab.className = "hint-text"; lab.style.fontWeight = "800"; lab.textContent = "시작값";
-          const minus = sq("−", () => { o.from = Math.max(0, o.from - (o.step || 1)); upd(); }, "시작값 줄이기");
+          const minus = sqIcon("minus", () => { o.from = Math.max(0, o.from - (o.step || 1)); upd(); }, "시작값 줄이기");
           const v = document.createElement("span"); v.style.fontWeight = "900"; v.style.minWidth = "40px"; v.style.textAlign = "center"; v.textContent = fmtN(o.from);
-          const plus = sq("＋", () => { o.from = Math.min(mn, o.from + (o.step || 1)); upd(); }, "시작값 늘리기");
+          const plus = sqIcon("plus", () => { o.from = Math.min(mn, o.from + (o.step || 1)); upd(); }, "시작값 늘리기");
           minus.style.width = plus.style.width = "44px";
           wrap.append(lab, minus, v, plus);
         }
@@ -595,17 +643,17 @@
       row.appendChild(toggleBtn("평균선", o.avg, () => { o.avg = !o.avg; state.level = null; upd(); }));
       box.appendChild(row);
       const row2 = document.createElement("div"); row2.className = "row";
-      row2.appendChild(toggleBtn("✏️ 직접 그리기", !!state.draw, () => {
+      row2.appendChild(toggleBtn("직접 그리기", !!state.draw, () => {
         state.level = null;
         state.draw = state.draw ? null : { vals: state.table.rows.map(() => (type === "bar" ? 0 : null)), checked: false };
         renderOpts(); renderMake(); stage.focus();
-      }));
+      }, "pencil"));
       if (state.draw) {
-        const chk = document.createElement("button"); chk.type = "button"; chk.className = "gm-btn sm primary"; chk.textContent = "✔ 맞게 그렸나 확인";
+        const chk = document.createElement("button"); chk.type = "button"; chk.className = "sk-btn sk-btn--sm sk-btn--primary"; chk.innerHTML = IC("circle-check") + " 맞게 그렸나 확인하기";
         chk.addEventListener("click", checkDraw);
         row2.appendChild(chk);
       } else if (type === "bar" && o.avg && !o.horizontal) {
-        row2.appendChild(toggleBtn(state.level ? "↺ 원래대로" : "⚖ 고르게 하기", false, levelOff));
+        row2.appendChild(state.level ? toggleBtn("원래대로", false, levelOff, "rotate-ccw") : toggleBtn("고르게 하기", false, levelOff, "scale"));
       }
       box.appendChild(row2);
     }
@@ -615,7 +663,7 @@
       row.appendChild(toggleBtn("합계 100으로 맞추기", o.fix, () => { o.fix = !o.fix; upd(); }));
       box.appendChild(row);
       const h = document.createElement("p"); h.className = "hint-text"; h.style.marginTop = "8px";
-      h.textContent = "백분율 = 항목의 값 ÷ 합계 × 100. 합계 맞추기를 켜면 반올림으로 생긴 차이를 버린 부분이 큰 항목부터 1씩 더해요.";
+      h.textContent = "백분율 = 항목의 값 ÷ 합계 × 100. 합계 맞추기를 켜면 반올림으로 생긴 차이를 버린 부분이 큰 항목부터 " + (o.dec ? "0.1" : "1") + "씩 더해요.";
       box.appendChild(h);
     }
   }
@@ -629,29 +677,21 @@
     d.checked = true;
     const wrong = state.table.rows.filter((r, i) => d.vals[i] !== r.value).map((r) => r.label);
     renderMake();
-    if (!wrong.length) { SK.toast("모두 맞게 그렸어요! 👏"); if (SK.sound) SK.sound.play("done"); note("모두 맞게 그렸어요! 👏"); }
+    if (!wrong.length) { SK.toast("모두 맞게 그렸어요!"); if (SK.sound) SK.sound.play("done"); note("모두 맞게 그렸어요!"); }
     else { SK.toast("다시 볼까요? " + wrong.join(", "), "no"); if (SK.sound) SK.sound.play("wrong"); note("주황색 항목을 다시 그려 보세요: " + wrong.join(", "), true); }
   }
 
   // 평균: 막대 고르게 하기
-  let levelAnim = 0;
   function levelOff() {
-    if (state.level) { state.level = null; state.levelText = ""; renderOpts(); renderMake(); return; }
+    if (state.level) { tween.stop(); state.level = null; state.levelText = ""; renderOpts(); renderMake(); return; }
     const t = state.table, avg = avgOf(t);
     const from = t.rows.map((r) => r.value);
     state.levelText = "평균 = (" + t.rows.map((r) => fmtN(r.value)).join(" + ") + ") ÷ " + t.rows.length + " = " + fmtN(total(t)) + " ÷ " + t.rows.length + " = " + fmtN(Math.round(avg * 100) / 100);
-    const dur = reduceMotion() ? 0 : 1100, t0 = performance.now();
-    cancelAnimationFrame(levelAnim);
-    const stepF = (now) => {
-      const k = dur ? Math.min(1, (now - t0) / dur) : 1;
+    tween.run(1100, (k) => {
       const e = 1 - Math.pow(1 - k, 3);
       state.level = from.map((v) => v + (avg - v) * e);
       renderMake();
-      if (k < 1) levelAnim = requestAnimationFrame(stepF);
-      else { renderOpts(); if (SK.sound) SK.sound.play("done"); }
-    };
-    levelAnim = requestAnimationFrame(stepF);
-    if (!dur) stepF(performance.now());
+    }, () => { renderOpts(); if (SK.sound) SK.sound.play("done"); });
   }
 
   // 붙여넣기
@@ -726,9 +766,9 @@
       const mk = document.createElement("span"); mk.className = "marks"; mk.textContent = tallyMarks(it.n);
       b.append(nm, ct, mk);
       b.setAttribute("aria-label", it.name + " " + it.n + ", 누르면 1 늘어요");
-      // 손가락·마우스는 누르는 순간(pointerdown) 세고, 키보드·화면 낭독기의 click(detail 0)도 센다
-      b.addEventListener("pointerdown", (e) => { if (e.button > 0) return; e.preventDefault(); bump(i); });
-      b.addEventListener("click", (e) => { if (e.detail === 0) bump(i); });
+      // 누른 뒤 떼었을 때(click) 센다 — 태블릿에서 단추 위로 화면을 밀어 스크롤하면 세지 않는다
+      // (예전: pointerdown에서 세어 스크롤을 시작하기만 해도 수가 올라감). 키보드·화면 낭독기도 click.
+      b.addEventListener("click", () => bump(i));
       g.appendChild(b);
     });
     stage.appendChild(g);
@@ -746,7 +786,11 @@
       const row = document.createElement("div"); row.className = "row";
       const inp = document.createElement("input"); inp.className = "inp"; inp.style.flex = "1"; inp.value = it.name; inp.maxLength = 12; inp.setAttribute("aria-label", (i + 1) + "번째 항목 이름");
       inp.addEventListener("input", () => { it.name = inp.value.slice(0, 12); persist(); renderSurveyStage(); });
-      const del = sq("✕", () => { if (state.survey.items.length <= 1) return; state.survey.items.splice(i, 1); state.surveyHist = []; persist(); renderSurveyPanel(); renderSurveyStage(); }, it.name + " 빼기");
+      const del = sqIcon("x", () => {
+        if (state.survey.items.length <= 1) return;
+        const [gone] = state.survey.items.splice(i, 1); state.surveyHist = []; persist(); renderSurveyPanel(); renderSurveyStage();
+        undoToast("'" + gone.name + "' 항목을 뺐어요.", () => { state.survey.items.splice(Math.min(i, state.survey.items.length), 0, gone); persist(); renderSurveyPanel(); renderSurveyStage(); });
+      }, it.name + " 빼기");
       del.style.width = "44px"; del.disabled = state.survey.items.length <= 1;
       row.append(inp, del);
       box.appendChild(row);
@@ -755,7 +799,13 @@
   }
   $("sAdd").addEventListener("click", () => { if (state.survey.items.length >= 8) return; state.survey.items.push({ name: "항목 " + (state.survey.items.length + 1), n: 0 }); persist(); renderSurveyPanel(); renderSurveyStage(); });
   $("sUndo").addEventListener("click", () => { const i = state.surveyHist.pop(); if (i == null || !state.survey.items[i]) return; state.survey.items[i].n = Math.max(0, state.survey.items[i].n - 1); persist(); renderSurveyStage(); });
-  $("sReset").addEventListener("click", () => { state.survey.items.forEach((x) => { x.n = 0; }); state.surveyHist = []; persist(); renderSurveyStage(); });
+  // 모두 0으로: 센 수가 사라지므로 되돌리기 토스트
+  $("sReset").addEventListener("click", () => {
+    const before = state.survey.items.map((x) => x.n), hist = state.surveyHist.slice();
+    if (!before.some((n) => n > 0)) return;
+    state.survey.items.forEach((x) => { x.n = 0; }); state.surveyHist = []; persist(); renderSurveyStage();
+    undoToast("모두 0으로 바꿨어요.", () => { state.survey.items.forEach((x, k) => { if (before[k] != null) x.n = before[k]; }); state.surveyHist = hist; persist(); renderSurveyStage(); });
+  });
   $("sToTable").addEventListener("click", () => {
     const t = cleanTable({ title: "우리 반 조사", unit: "명", rows: state.survey.items.map((x) => [x.name, x.n]) });
     if (!t) return;
@@ -765,25 +815,39 @@
   });
 
   /* ═══════════════ 모드 ═══════════════ */
+  // 큰 모드 두 가지: 그래프 만들기(make·survey) / 그래프 공부하기(mission)
+  let lastMake = "make";
+  function renderModeHead() {
+    const learn = state.mode === "mission";
+    $("modeBadge").innerHTML = learn
+      ? IC("trophy") + " 그래프 공부하기 <small>미션</small>"
+      : IC("chart-column") + " 그래프 만들기 <small>내 자료로</small>";
+    $("btnSwitchMode").innerHTML = IC("arrow-left-right") + (learn ? " 그래프 만들기로" : " 그래프 공부하기로");
+    $("btnSwitchMode").setAttribute("aria-label", "모드 바꾸기: " + (learn ? "그래프 만들기로" : "그래프 공부하기로"));
+    $("makeTabs").hidden = learn;
+  }
   function setMode(m) {
     if (state.mode === "mission" && m !== "mission" && mc) mc.stop();
+    if (m !== "mission") lastMake = m;
     state.mode = m;
     closeKeypad(false);
+    tween.stop();
     for (const b of document.querySelectorAll(".mode-tab")) { const on = b.dataset.mode === m; b.classList.toggle("active", on); b.setAttribute("aria-pressed", on ? "true" : "false"); }
     $("paneMake").hidden = m !== "make"; $("paneSurvey").hidden = m !== "survey"; $("paneMission").hidden = m !== "mission";
     $("typeBar").hidden = m !== "make";
+    renderModeHead();
     stage.textContent = ""; stageSvg = null; mDraw = null; mSymbol = null; mStage = null;
     if (m === "make") { renderOpts(); renderMake(); }
     else if (m === "survey") { renderSurveyPanel(); renderSurveyStage(); }
     else { const i = mc.current(); mc.start(i >= 0 ? i : undefined); }
   }
-  document.querySelector(".mode-tabs").addEventListener("click", (e) => { const b = e.target.closest(".mode-tab"); if (b) setMode(b.dataset.mode); });
+  $("makeTabs").addEventListener("click", (e) => { const b = e.target.closest(".mode-tab"); if (b) setMode(b.dataset.mode); });
+  // 모드 바꾸기(미션 기록은 그대로)
+  $("btnSwitchMode").addEventListener("click", () => setMode(state.mode === "mission" ? lastMake : "mission"));
   let rz = 0;
   function rerender() { if (state.mode === "make") renderMake(); else if (state.mode === "survey") renderSurveyStage(); else if (mStage) mStage(); }
   if (window.ResizeObserver) new ResizeObserver(() => { cancelAnimationFrame(rz); rz = requestAnimationFrame(rerender); }).observe(stage);
   window.addEventListener("resize", () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(rerender); });
-  if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => setTimeout(rerender, 30));
-  new MutationObserver(() => setTimeout(rerender, 30)).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
   /* ═══════════════ 미션 ═══════════════ */
   const MISSIONS = [
@@ -883,7 +947,7 @@
       mDraw = draw;
       return {
         info: missionTableHtml(t),
-        q: "표를 보고 막대그래프를 그려요. 막대를 손가락으로 끌어 올리세요.",
+        q: "표를 보고 막대그래프를 그려요. 막대 자리를 누르거나 끌어 올리세요.",
         stage: () => draw.rerender(),
         answer: { type: "draw", correct: t.rows.map((r) => r.value) },
         explain: t.rows.map((r) => r.label + " " + r.value + "권").join(", "),
@@ -891,12 +955,15 @@
     },
     m6(n, prev) {
       let t = prev && prev.t;
-      if (!t) {
+      // 가장 높은 기온·가장 많이 오른 구간이 하나뿐인 자료만 쓴다(동점이면 같은 값인데 하나만 정답이 되던 문제)
+      const uniqueMax = (arr) => arr.filter((x) => x === Math.max(...arr)).length === 1;
+      while (!t) {
         const base = 14 + 2 * randInt(4);
         const hours = ["9시", "10시", "11시", "12시", "13시"];
         let v = base; const rows = [];
         hours.forEach((h, k) => { rows.push({ label: h, value: v }); v += k === 3 ? -2 * randInt(2) : 2 * (1 + randInt(3)); });
-        t = { title: "하루 동안의 기온", unit: "°C", rows };
+        const vals = rows.map((r) => r.value), rises = vals.slice(1).map((x, k) => x - vals[k]);
+        if (uniqueMax(vals) && uniqueMax(rises)) t = { title: "하루 동안의 기온", unit: "°C", rows };
       }
       const from = Math.floor((Math.min(...t.rows.map((r) => r.value)) - 4) / 2) * 2;
       const opts = optsWith("line", { wave: true, from, step: 2, values: false });
@@ -910,7 +977,7 @@
         const cand = shuffle([mid, mid - 2, mid + 2, mid + 4]).map(fmtN);
         qObj = { q: label + "의 기온은 약 몇 °C였을까요? (두 점 사이의 가운데를 보세요)", opts: cand.map((x) => x + "°C"), correct: fmtN(mid) + "°C", explain: t.rows[k].label + "(" + t.rows[k].value + "°C)과 " + t.rows[k + 1].label + "(" + t.rows[k + 1].value + "°C)의 가운데쯤이라 약 " + fmtN(mid) + "°C" };
       } else {
-        let best = 0; for (let k = 1; k < t.rows.length - 1; k++) if (t.rows[k + 1].value - t.rows[k].value > t.rows[best + 1].value - t.rows[best].value) best = k;
+        let best = 0; for (let k = 1; k < t.rows.length - 1; k++) if (t.rows[k + 1].value - t.rows[k].value > t.rows[best + 1].value - t.rows[best].value) best = k; // 자료 만들 때 가장 큰 상승은 하나뿐
         const pairs = t.rows.slice(0, -1).map((r, k) => r.label + "~" + t.rows[k + 1].label);
         qObj = { q: "기온이 가장 많이 오른 때는 언제와 언제 사이일까요? (선이 가장 가파른 곳)", opts: pairs, correct: pairs[best], explain: pairs[best] + "에 " + (t.rows[best + 1].value - t.rows[best].value) + "°C 올랐어요." };
       }
@@ -935,8 +1002,8 @@
     m8(n, prev) {
       let ctx = prev && prev.ctx;
       if (!ctx) {
-        let ps; do { ps = [5 * (4 + randInt(6)), 5 * (2 + randInt(5)), 5 * (1 + randInt(4))]; } while (ps.reduce((a, b) => a + b, 0) >= 95);
-        ps.push(100 - ps.reduce((a, b) => a + b, 0));
+        // 네 항목의 비율이 모두 달라야 '가장 적은 간식'의 정답이 하나뿐
+        let ps; do { ps = [5 * (4 + randInt(6)), 5 * (2 + randInt(5)), 5 * (1 + randInt(4))]; ps.push(100 - ps.reduce((a, b) => a + b, 0)); } while (ps[3] < 5 || new Set(ps).size < 4);
         const names = distinctNames(["떡볶이", "김밥", "라면", "피자", "치킨"], 4);
         ctx = { ps, total: pick([200, 300, 400]), t: { title: "좋아하는 간식", unit: "%", rows: names.map((x, k) => ({ label: x, value: ps[k] })) } };
       }
@@ -977,13 +1044,13 @@
       const [q, a] = mq.pool[n % mq.pool.length];
       return {
         q: q + " 어떤 그래프가 가장 알맞을까요?",
-        stage: () => { stage.textContent = ""; stageSvg = null; const d = document.createElement("div"); d.className = "stage-msg"; d.textContent = "📈 변화는 꺾은선 · 📊 크기 비교는 막대 · ◔ 부분과 전체는 원(띠)"; stage.appendChild(d); },
+        stage: () => { stage.textContent = ""; stageSvg = null; const d = document.createElement("div"); d.className = "stage-msg"; d.innerHTML = IC("chart-line") + " 변화는 꺾은선 · " + IC("chart-column") + " 크기 비교는 막대 · " + IC("chart-pie") + " 부분과 전체는 원(띠)"; stage.appendChild(d); },
         answer: { type: "opts", opts: ["막대그래프", "꺾은선그래프", "원그래프"].map((x) => ({ label: x, ok: x === a })) },
         explain: a === "꺾은선그래프" ? "시간에 따른 변화는 꺾은선그래프가 잘 보여 줘요." : a === "막대그래프" ? "여러 항목의 크기를 비교할 때는 막대그래프가 좋아요." : "전체에 대한 부분의 비율은 원그래프(띠그래프)가 잘 보여 줘요.",
       };
     },
   };
-  function note2(text) { const p = document.createElement("p"); p.className = "hint-text"; p.textContent = "💡 " + text; return p; }
+  function note2(text) { const p = document.createElement("p"); p.className = "hint-text"; p.innerHTML = IC("lightbulb") + " "; p.appendChild(document.createTextNode(text)); return p; }
 
   function buildMissions() {
     mc = SK.missions({
@@ -1037,6 +1104,7 @@
       const kpd = document.createElement("div"); kpd.className = "keypad";
       ["7", "8", "9", "⌫", "4", "5", "6", ".", "1", "2", "3", "0"].forEach((k) => {
         const btn = document.createElement("button"); btn.type = "button"; btn.textContent = k;
+        if (k === "⌫") { btn.innerHTML = IC("delete"); btn.setAttribute("aria-label", "지우기"); }
         btn.addEventListener("click", () => { if (k === "⌫") ans.val = ans.val.slice(0, -1); else if (k === ".") { if (!ans.val.includes(".")) ans.val = (ans.val || "0") + "."; } else if (ans.val.length < 6) ans.val = (ans.val === "0" ? "" : ans.val) + k; b.textContent = ans.val; });
         kpd.appendChild(btn);
       });
@@ -1056,13 +1124,13 @@
         const row = document.createElement("div"); row.className = "counter-row";
         const l = document.createElement("span"); l.className = "lbl"; l.textContent = k.emoji + " " + k.name;
         const v = document.createElement("span"); v.className = "v"; v.textContent = "0";
-        const m = sq("−", () => { ans.counts[ix] = Math.max(0, ans.counts[ix] - 1); v.textContent = ans.counts[ix]; }, k.name + " 줄이기");
-        const p = sq("＋", () => { ans.counts[ix] = Math.min(20, ans.counts[ix] + 1); v.textContent = ans.counts[ix]; }, k.name + " 늘리기");
+        const m = sqIcon("minus", () => { ans.counts[ix] = Math.max(0, ans.counts[ix] - 1); v.textContent = ans.counts[ix]; }, k.name + " 줄이기");
+        const p = sqIcon("plus", () => { ans.counts[ix] = Math.min(20, ans.counts[ix] + 1); v.textContent = ans.counts[ix]; }, k.name + " 늘리기");
         row.append(l, m, v, p); box.appendChild(row);
       });
     } else {
       const p = document.createElement("p"); p.className = "hint-text";
-      p.textContent = a.type === "symbol" ? "👉 칸을 누르면 그 높이까지 ○가 채워져요. 맨 위 ○를 다시 누르면 하나 빠져요." : "👉 막대를 위아래로 끌어 높이를 맞춰요. 키보드는 ←→로 막대를 고르고 ↑↓로 높여요.";
+      p.textContent = a.type === "symbol" ? "칸을 누르면 그 높이까지 ○가 채워져요. 맨 위 ○를 다시 누르면 하나 빠져요." : "막대 자리를 누르거나 위아래로 끌어 높이를 맞춰요. (키보드: 화살표 키로 막대를 고르고 높이를 바꿔요)";
       box.appendChild(p);
     }
   }
@@ -1093,7 +1161,7 @@
     if (r.ok) {
       mq.answered = true;
       mq.res[mq.n] = mq.attempt === 0 ? "ok" : "late";
-      fb.show("ok", pick(["맞았어요! 👏", "정확해요! 🎉", "그래프 박사네요! ⭐"]) + " " + Q.explain);
+      fb.show("ok", pick(["맞았어요!", "정확해요!", "그래프 박사네요!"]) + " " + Q.explain);
       if (SK.sound) SK.sound.play("done");
       markOpts(true);
       if (Q.level) playLevel(Q.t);
@@ -1134,16 +1202,13 @@
     // 평균 정답 뒤: 막대를 평균 높이로 고르게
     const opts = optsWith("bar", { values: true, avg: true });
     const avg = avgOf(t), from = t.rows.map((r) => r.value);
-    const dur = reduceMotion() ? 0 : 1100, t0 = performance.now();
     const myQ = mq && mq.Q;
-    const frame = (now) => {
-      if (state.mode !== "mission" || !mq || mq.Q !== myQ) return; // 다음 문제로 넘어가면 멈춤
-      const k = dur ? Math.min(1, (now - t0) / dur) : 1, e = 1 - Math.pow(1 - k, 3);
+    tween.run(1100, (k) => {
+      if (state.mode !== "mission" || !mq || mq.Q !== myQ) return false; // 다음 문제로 넘어가면 멈춤
+      const e = 1 - Math.pow(1 - k, 3);
       const vals = from.map((v) => v + (avg - v) * e);
       mStage = chartStage("bar", t, opts, () => ({ drawValues: vals })); mStage();
-      if (k < 1) requestAnimationFrame(frame);
-    };
-    requestAnimationFrame(frame);
+    });
   }
   function after(M) {
     $("mCheck").hidden = true;
@@ -1152,7 +1217,7 @@
     if (M.qn === 1) stars = mq.res[0] === "ok" ? 3 : mq.res[0] === "late" ? 2 : 1;
     else { const first = mq.res.filter((x) => x === "ok").length; stars = first >= 3 ? 3 : first === 2 ? 2 : 1; }
     const last = $("mFeedback").textContent;
-    mc.complete({ stars, message: (last ? last + "  " : "") + "— 미션 완료! " + SK.stars.text(stars, 3), tone: mq.res[mq.n] === "no" ? "warn" : "ok" });
+    mc.complete({ stars, message: (last ? last + "  " : "") + "— 미션 완료! (별 " + stars + "개)", tone: mq.res[mq.n] === "no" ? "warn" : "ok" });
     if (SK.sound) SK.sound.play("star");
     if (mc.current() < MISSIONS.length - 1 || mc.firstIncomplete() >= 0) { $("mNextMission").hidden = false; $("mNextMission").focus(); }
     $("mResult").hidden = !mc.allDone();
@@ -1187,14 +1252,14 @@
       const s = mc.starsOf(i); tot += s;
       const c = document.createElement("div"); c.className = "result-cell"; c.setAttribute("role", "listitem");
       const a = document.createElement("span"); a.textContent = (i + 1) + ". " + M.title;
-      const b = document.createElement("span"); b.className = "stars"; b.textContent = SK.stars.text(s, 3, "—"); b.setAttribute("aria-label", "별 3개 중 " + s + "개");
+      const b = document.createElement("span"); b.className = "stars"; if (s > 0) b.innerHTML = starIcons(s); else b.textContent = "—"; b.setAttribute("aria-label", "별 3개 중 " + s + "개");
       c.append(a, b); grid.appendChild(c);
     });
     $("resultSub").textContent = "별 " + tot + " / " + MISSIONS.length * 3;
     screens.show("screenResult");
   }
-  $("btnRetry").addEventListener("click", () => { screens.show("screenMain"); setMode("mission"); mc.go(0); });
-  $("btnToMake").addEventListener("click", () => { screens.show("screenMain"); setMode("make"); });
+  $("btnRetry").addEventListener("click", () => { start("mission"); mc.go(0); });
+  $("btnToMake").addEventListener("click", () => start("make"));
 
   /* ───── 시작 ───── */
   let shared = false;
@@ -1206,12 +1271,15 @@
     state.table = t; state.type = TYPE_IDS.includes(p.type) ? p.type : "bar"; state.opts = cleanOpts(p.opts);
     shared = true;
   })();
-  function start() {
+  let started = false;
+  function start(mode) {
     screens.show("screenMain");
-    renderTypeBar(); renderPresets(); renderTable();
-    setMode("make");
+    if (!started) { renderTypeBar(); renderPresets(); renderTable(); started = true; }
+    setMode(mode || "make");
   }
-  $("btnStart").addEventListener("click", start);
+  // 인트로에서 모드 고르기: ① 그래프 만들기(내 자료) ② 그래프 공부하기(미션)
+  $("btnStartMake").addEventListener("click", () => start("make"));
+  $("btnStartLearn").addEventListener("click", () => start("mission"));
   buildMissions();
-  if (shared) start();
+  if (shared) start("make");
 })();

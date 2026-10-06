@@ -1,11 +1,13 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<AppLayout 
+<AppLayout
   title="발명 아이디어 공작소 — eduin VIVES"
   description="합치기·나누기·크기 바꾸기·재료 바꾸기 4가지 발명 마법으로 아이디어를 떠올리고, AI 코치의 질문으로 다듬어 이름 짓고 그림까지 완성하는 초등 저학년 창의 발명 학습 앱."
   image="https://eduin.info/og-images/idea-lab.png"
   bodyShell="immersive"
+  theme="light"
 >
   <Fragment slot="head">
     <script is:inline src="/common/sim-kit.js"></script>
@@ -14,6 +16,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       --il-accent: #f59e0b;
       --il-accent-h: #d97706;
       --il-accent-fg: #1c1207;
+      /* 흰 글자를 얹는 주황(제목 띠·배지) — 대비 4.5:1 이상 */
+      --il-accent-deep: #b45309;
+      --il-accent-deeper: #92400e;
       --il-warm-bg: rgba(245, 158, 11, 0.1);
       --il-warm-border: rgba(245, 158, 11, 0.35);
     }
@@ -29,7 +34,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     @keyframes ilFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
     .il-intro-screen {
       flex-direction: column; align-items: center; justify-content: center;
-      min-height: 100vh; padding: 24px; text-align: center; animation: ilFadeUp 0.6s ease;
+      min-height: 100vh; min-height: 100dvh; padding: 24px; text-align: center; animation: ilFadeUp 0.6s ease;
       background:
         radial-gradient(circle at 20% 30%, rgba(245,158,11,0.10) 0, transparent 40%),
         radial-gradient(circle at 80% 70%, rgba(245,158,11,0.06) 0, transparent 35%),
@@ -38,12 +43,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .il-intro-screen.active { display: flex; }
     .intro-tag {
       display: inline-block; background: var(--il-accent);
-      color: #fff; font-size: 14px; font-weight: 700;
+      color: var(--il-accent-fg); font-size: 14px; font-weight: 700;
       padding: 5px 14px; border-radius: 99px;
       margin-bottom: 18px; letter-spacing: 0.05em;
     }
     .intro-emoji { font-size: 80px; line-height: 1; margin-bottom: 12px; animation: ilFloat 2.4s ease-in-out infinite; }
-    .il-intro-screen h1 { font-size: 32px; font-weight: 800; margin-bottom: 6px; }
+    .il-intro-screen h1.app-title { font-size: 32px; font-weight: 800; margin-bottom: 6px; justify-content: center; gap: 4px 10px; }
     .intro-sub { font-size: 15px; color: var(--fg-muted); line-height: 1.7; margin-bottom: 20px; }
     .intro-card {
       background: var(--card-bg); border: 2px dashed var(--il-accent); border-radius: 16px;
@@ -56,7 +61,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .il-work {
       display: none;
       grid-template-columns: 1fr 400px;
-      width: 100%; height: 100vh;
+      width: 100%; height: 100vh; height: 100dvh;
     }
     body.il-in-work .il-work { display: grid; }
     .il-stage {
@@ -80,24 +85,38 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       box-shadow: -4px 0 24px rgba(0,0,0,0.06);
     }
     .il-side-head {
-      background: linear-gradient(135deg, var(--il-accent) 0%, var(--il-accent-h) 100%);
+      background: linear-gradient(135deg, var(--il-accent-deep) 0%, var(--il-accent-deeper) 100%);
       color: #fff; padding: 16px 20px 14px; flex-shrink: 0;
     }
-    .il-side-head h2 { font-size: 17px; font-weight: 800; margin: 0; }
-    .il-side-sub { font-size: 14px; opacity: 0.85; margin-top: 2px; }
+    .il-side-head h2 { font-size: 17px; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 6px; }
+    .il-side-sub { font-size: 14px; margin-top: 2px; }
     .il-side-body { padding: 16px; flex: 1; }
+    /* 넓은 화면: 오른쪽 위 떠 있는 버튼(내 작품집 등)이 주황 제목 띠를 가리지 않게 아래로 내린다 */
+    @media (min-width: 801px) {
+      .il-side-head { padding-top: 64px; }
+    }
     @media (max-width: 800px) {
-      .il-work { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; min-height: 100vh; }
+      .il-work { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; min-height: 100vh; min-height: 100dvh; }
       .il-stage { position: sticky; top: 0; z-index: 40; min-height: 220px; height: 34vh; padding: 48px 16px 16px; }
       .il-stage-emoji { font-size: 64px; }
       .il-side { border-left: none; border-top: 2px solid var(--border); }
+      /* 글자를 쓰는 동안(화상 키보드)·낮은 화면에서는 무대를 작게 줄이고 따라 붙지 않게 → 입력칸이 보이도록 */
+      body.il-typing .il-stage { position: relative; height: auto; min-height: 0; padding: 52px 16px 10px; gap: 6px; }
+      body.il-typing .il-stage-emoji { font-size: 40px; animation: none; }
+      body.il-typing .il-stage-chips,
+      body.il-typing .il-stage-art { display: none; }
+    }
+    @media (max-width: 800px) and (max-height: 500px) {
+      .il-stage { position: relative; height: auto; min-height: 0; padding: 52px 16px 12px; gap: 8px; }
+      .il-stage-emoji { font-size: 48px; }
+      .il-stage-art { width: min(40%, 200px); }
     }
 
     .il-actions { display: flex; align-items: center; }
     .il-count-badge {
       display: inline-flex; align-items: center; justify-content: center;
-      min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
-      background: var(--il-accent); color: #fff; font-size: 10px; font-weight: 800; margin-left: 4px;
+      min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px;
+      background: var(--il-accent-deep); color: #fff; font-size: 12px; font-weight: 800; margin-left: 4px;
     }
 
     /* ── 진행 표시 ── */
@@ -122,17 +141,32 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .il-btn-ghost {
       background: var(--card-bg); color: var(--fg); border: 1px solid var(--border);
     }
-    .il-btn-ghost:hover { border-color: var(--il-accent); color: var(--il-accent-h); }
+    .il-btn-ghost:hover { border-color: var(--il-accent); color: var(--il-accent-deep); }
     .il-btn-row { display: flex; gap: 10px; margin-top: 18px; }
     .il-btn-row .il-btn { width: auto; flex: 1; }
+    .il-back-btn { margin-bottom: 14px; }
+    /* 지우기는 줄 끝에 따로(빨간 테두리 = hero-btn-danger) */
+    .il-danger-row { display: flex; justify-content: flex-end; margin-top: 18px; }
 
     .il-tts-btn {
       display: inline-flex; align-items: center; justify-content: center;
       width: 44px; height: 44px; min-height: 44px; border-radius: 999px;
       background: var(--card-bg); border: 1px solid var(--border); color: var(--fg-muted);
-      cursor: pointer; font-size: 16px; flex-shrink: 0;
+      cursor: pointer; font-size: 18px; flex-shrink: 0; font-family: inherit;
     }
-    .il-tts-btn:hover { border-color: var(--il-accent); color: var(--il-accent-h); }
+    .il-tts-btn:hover { border-color: var(--il-accent); color: var(--il-accent-deep); }
+    .il-no-tts .il-tts-btn { display: none !important; }
+    .il-say-row { display: flex; align-items: flex-start; gap: 10px; }
+    .il-say-row > :first-child { flex: 1; min-width: 0; }
+    .il-final-name-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 12px; }
+    .il-final-name-row .il-final-name { margin: 0; }
+    .il-num {
+      display: inline-flex; align-items: center; justify-content: center; flex: none;
+      width: 24px; height: 24px; border-radius: 999px; font-size: 14px; font-weight: 800;
+      background: var(--il-accent-deep); color: #fff;
+    }
+    .il-feedback .ic { margin-right: 4px; }
+    .il-offline-note .ic { margin-right: 4px; }
 
     /* ── 카드 공통 ── */
     .il-card {
@@ -232,7 +266,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       font-size: 13px; font-weight: 800; padding: 4px 10px; border-radius: 999px;
       background: var(--il-accent); color: var(--il-accent-fg);
     }
-    .il-final-name { font-size: 24px; font-weight: 900; margin: 6px 0 12px; }
+    .il-final-name { font-size: 24px; font-weight: 900; margin: 6px 0 12px; word-break: keep-all; }
     .il-final-art { width: 100%; max-width: 320px; margin: 0 auto 14px; border-radius: 1rem; overflow: hidden; background: var(--bg-sec); }
     .il-final-art img { display: block; width: 100%; height: auto; }
     .il-emoji-art {
@@ -260,7 +294,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     .il-privacy-note { font-size: 14px; color: var(--fg-muted); text-align: center; margin: 10px 0 0; }
     .il-attempt-note { font-size: 14px; color: var(--fg-muted); text-align: center; margin-top: 8px; }
-    .il-answers { text-align: left; font-size: 14px; color: var(--il-accent-h); font-weight: 600; }
+    .il-answers { text-align: left; font-size: 14px; color: var(--il-accent-deeper); font-weight: 600; }
+    .il-custom-row .hero-input { font-size: 16px; }
   </style>
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"발명 아이디어 공작소","description":"합치기·나누기·크기 바꾸기·재료 바꾸기 4가지 발명 마법으로 아이디어를 떠올리고, AI 코치의 질문으로 다듬어 이름 짓고 그림까지 완성하는 초등 저학년 창의 발명 학습 앱.","url":"https://eduin.info/apps/idea-lab/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
@@ -268,8 +303,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
   <!-- 플로팅 크롬(홈·테마·공유)은 app-shell.js가 주입합니다 -->
   <div class="app-actions il-actions">
-    <button class="overlay-btn" onclick="showScreen('collection')" title="내 작품집">
-      📂 <span>내 작품집</span><span id="ilCollectionCount" class="il-count-badge" hidden="">0</span>
+    <button class="overlay-btn" onclick="showScreen('collection')">
+      <Icon name="folder-open" /> <span>내 작품집</span><span id="ilCollectionCount" class="il-count-badge" hidden="">0</span>
     </button>
   </div>
 
@@ -277,7 +312,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <section class="screen active il-intro-screen" id="scr-intro">
     <div class="intro-tag">통합교과 1~2학년 · 발명 · AI</div>
     <div class="intro-emoji" aria-hidden="true">🧙‍♀️</div>
-    <h1>발명 아이디어 공작소</h1>
+    <h1 class="app-title">발명 아이디어 공작소 <span class="app-title-en">Idea Lab</span></h1>
     <p class="intro-sub">4가지 발명 마법 · AI 코치와 발명품 만들기</p>
 
     <div class="intro-card">
@@ -291,8 +326,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       </div>
     </div>
 
-    <button class="il-btn il-intro-start" onclick="startExplore()">발명 마법 배우러 가기 →</button>
-    <p class="il-privacy-note">내 이름·친구 이름은 쓰지 않아요 🙂</p>
+    <button class="il-btn il-intro-start" onclick="startExplore()">발명 마법 배우러 가기 <Icon name="arrow-right" /></button>
+    <p class="il-privacy-note">내 이름·친구 이름은 쓰지 않아요.</p>
   </section>
 
   <!-- 작업 화면: 좌측 무대 + 우측 사이드바 -->
@@ -306,7 +341,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     <div class="il-side">
       <div class="il-side-head">
-        <h2>💡 발명 아이디어 공작소</h2>
+        <h2><Icon name="lightbulb" /> 발명 아이디어 공작소</h2>
         <div class="il-side-sub">4가지 발명 마법 · AI 코치</div>
       </div>
       <div class="il-side-body">
@@ -317,37 +352,45 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <div class="il-card il-explore-card">
         <div class="il-explore-emoji" id="exploreEmoji"></div>
         <div class="il-explore-title" id="exploreTitle"></div>
-        <div class="il-explore-q">이 발명품은 어떤 마법을 썼을까요?</div>
+        <div class="il-say-row" style="align-items:center;margin-bottom:12px">
+          <div class="il-explore-q" id="exploreQ" style="margin-bottom:0">이 발명품은 어떤 마법을 썼을까요?</div>
+          <button type="button" class="il-tts-btn" data-tts="exploreTitle exploreQ exploreFeedback" aria-label="소리로 읽어주기"><Icon name="volume-2" /></button>
+        </div>
         <div class="il-magic-grid" id="exploreMagicGrid"></div>
         <div class="il-feedback" id="exploreFeedback" role="status" aria-live="polite"></div>
       </div>
-      <button class="il-btn" id="exploreNextBtn" onclick="goNextExplore()" hidden="">다음 →</button>
+      <button class="il-btn" id="exploreNextBtn" onclick="goNextExplore()" hidden="">다음 <Icon name="arrow-right" /></button>
     </section>
 
     <!-- 2. 내 발명 만들기 -->
     <section class="screen" id="scr-build">
       <div class="il-card">
-        <p class="il-headline">내 발명품을 만들어 봐요</p>
-        <p class="il-sub">물건을 고르고, 발명 마법 카드를 골라보세요.</p>
+        <div class="il-say-row">
+          <div>
+            <p class="il-headline" id="buildHeadline">내 발명품을 만들어 봐요</p>
+            <p class="il-sub" id="buildSub">물건을 고르고, 발명 마법 카드를 골라보세요.</p>
+          </div>
+          <button type="button" class="il-tts-btn" data-tts="buildHeadline buildSub" aria-label="소리로 읽어주기"><Icon name="volume-2" /></button>
+        </div>
 
-        <div class="il-section-title" id="itemTitle">1️⃣ 물건 고르기</div>
+        <div class="il-section-title" id="itemTitle"><span class="il-num" aria-hidden="true">1</span>물건 고르기</div>
         <div class="il-item-grid" id="itemGrid" role="group" aria-labelledby="itemTitle"></div>
         <div class="il-custom-row">
           <input class="hero-input" id="itemCustomInput" placeholder="또는 직접 써 보기 (최대 20자)" maxlength="20" aria-label="물건 이름 직접 쓰기 (최대 20자)">
         </div>
 
-        <div class="il-section-title" id="magicTitle">2️⃣ 발명 마법 카드 고르기 (최대 2개)</div>
+        <div class="il-section-title" id="magicTitle"><span class="il-num" aria-hidden="true">2</span>발명 마법 카드 고르기 (최대 2개)</div>
         <div class="il-magic-grid" id="magicPickGrid" role="group" aria-labelledby="magicTitle"></div>
 
         <div id="item2Wrap" hidden="">
-          <div class="il-section-title" id="item2Title">3️⃣ 무엇과 합칠까요?</div>
+          <div class="il-section-title" id="item2Title"><span class="il-num" aria-hidden="true">3</span>무엇과 합칠까요?</div>
           <div class="il-item-grid" id="item2Grid" role="group" aria-labelledby="item2Title"></div>
           <div class="il-custom-row">
             <input class="hero-input" id="item2CustomInput" placeholder="또는 직접 써 보기 (최대 20자)" maxlength="20" aria-label="합칠 물건 이름 직접 쓰기 (최대 20자)">
           </div>
         </div>
 
-        <button class="il-btn" style="margin-top:20px" onclick="goToCoach()">AI 코치와 궁리하러 가기 →</button>
+        <button class="il-btn" style="margin-top:20px" onclick="goToCoach()">AI 코치와 궁리하러 가기 <Icon name="arrow-right" /></button>
       </div>
     </section>
 
@@ -363,13 +406,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <div id="coachOfflineNote"></div>
           <div class="il-question-row">
             <div class="il-question-text" id="coachQuestion" tabindex="-1"></div>
-            <button class="il-tts-btn" id="coachTtsBtn" onclick="ttsSpeak(getEl('coachQuestion').textContent)" title="질문 읽어주기" aria-label="질문 소리로 읽어주기">🔊</button>
+            <button type="button" class="il-tts-btn" id="coachTtsBtn" data-tts="coachQuestion" aria-label="질문 소리로 읽어주기"><Icon name="volume-2" /></button>
           </div>
           <div class="il-choice-list" id="coachChoices"></div>
           <div class="il-custom-row" style="margin-top:10px">
             <input class="hero-input" id="coachCustomInput" placeholder="또는 직접 써 보기 (최대 100자)" maxlength="100" aria-label="내 생각 직접 쓰기 (최대 100자)">
             <button class="il-btn" style="width:auto;flex:0 0 auto;padding:.75rem 1.1rem" onclick="submitCoachCustom()">확인</button>
           </div>
+          <button type="button" class="il-btn il-btn-ghost" id="coachBackBtn" style="margin-top:14px" onclick="goPrevCoach()" hidden=""><Icon name="arrow-left" /> 앞 질문</button>
         </div>
       </div>
     </section>
@@ -382,7 +426,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <div class="il-loading-text">발명품 이름을 생각하고 있어요…</div>
         </div>
         <div id="nameBody" hidden="">
-          <p class="il-headline" id="nameHeadline" tabindex="-1">이름을 지어줘요!</p>
+          <div class="il-say-row">
+            <p class="il-headline" id="nameHeadline" tabindex="-1">이름을 지어줘요!</p>
+            <button type="button" class="il-tts-btn" data-tts="nameHeadline nameSummaryPreview" aria-label="소리로 읽어주기"><Icon name="volume-2" /></button>
+          </div>
           <p class="il-final-summary" id="nameSummaryPreview" style="margin-bottom:16px"></p>
           <div id="coachOfflineNote2"></div>
           <div class="il-choice-list" id="nameChoices"></div>
@@ -401,13 +448,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         <div class="il-loading" id="drawLoading" role="status">
           <div class="il-spinner"></div>
           <div class="il-loading-text">그림을 그리고 있어요…</div>
-          <div class="il-loading-sub">10~20초 정도 걸려요. 조금만 기다려 주세요 🎨</div>
+          <div class="il-loading-sub">10~20초 정도 걸려요. 조금만 기다려 주세요.</div>
         </div>
         <div id="drawBody" hidden="" style="text-align:center">
           <div class="il-final-art" id="drawArtWrap"></div>
           <div class="il-btn-row">
-            <button class="il-btn il-btn-ghost" id="drawRegenBtn" onclick="startDraw(true)">🔄 다시 그리기</button>
-            <button class="il-btn" onclick="goToCompleted()">완성! →</button>
+            <button class="il-btn il-btn-ghost" id="drawRegenBtn" onclick="startDraw(true)"><Icon name="rotate-ccw" /> 다시 그리기</button>
+            <button class="il-btn" onclick="goToCompleted()">완성! <Icon name="arrow-right" /></button>
           </div>
           <p class="il-attempt-note" id="drawAttemptNote" aria-live="polite"></p>
         </div>
@@ -416,10 +463,16 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     <!-- 6. 발명 카드 완성 -->
     <section class="screen" id="scr-card">
+      <!-- 작품집에서 열었을 때만 보임 -->
+      <button type="button" class="il-btn il-btn-ghost il-back-btn" id="cardBackBtn" onclick="showScreen('collection')" hidden=""><Icon name="arrow-left" /> 작품집으로 돌아가기</button>
       <div class="il-final-card" id="finalCardRoot"></div>
       <div class="il-btn-row">
-        <button class="il-btn il-btn-ghost" onclick="shareWork()">🔗 공유하기</button>
-        <button class="il-btn" onclick="startOver()">✨ 새 발명품 만들기</button>
+        <button type="button" class="il-btn il-btn-ghost" onclick="shareWork()"><Icon name="link" /> 공유하기</button>
+        <button type="button" class="il-btn" id="cardNewBtn" onclick="startOver()"><Icon name="sparkles" /> 새 발명품 만들기</button>
+        <button type="button" class="il-btn il-btn-ghost" id="cardRedrawBtn" onclick="redrawCollectionWork()" hidden=""><Icon name="palette" /> <span id="cardRedrawLabel">그림 다시 그리기</span></button>
+      </div>
+      <div class="il-danger-row" id="cardDeleteRow" hidden="">
+        <button type="button" class="hero-btn hero-btn-danger" onclick="deleteCollectionWork()"><Icon name="trash-2" /> 지우기</button>
       </div>
     </section>
 
@@ -427,18 +480,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     <section class="screen" id="scr-shared">
       <div class="il-final-card" id="sharedCardRoot"></div>
       <div class="il-btn-row">
-        <button class="il-btn il-btn-ghost" onclick="regenSharedImage()">🔄 그림 다시 그리기</button>
-        <button class="il-btn" onclick="cloneSharedToCollection()">📂 내 작품집에 저장</button>
+        <button type="button" class="il-btn il-btn-ghost" id="sharedDrawBtn" onclick="regenSharedImage()"><Icon name="palette" /> <span id="sharedDrawLabel">그림 그리기</span></button>
+        <button type="button" class="il-btn" onclick="cloneSharedToCollection()"><Icon name="folder-plus" /> 내 작품집에 저장</button>
       </div>
-      <button class="il-btn il-btn-ghost" style="margin-top:10px" onclick="startOver()">✨ 나도 발명해보기</button>
+      <button type="button" class="il-btn il-btn-ghost" style="margin-top:10px" onclick="startOver()"><Icon name="sparkles" /> 나도 발명해보기</button>
     </section>
 
     <!-- 8. 내 작품집 -->
     <section class="screen" id="scr-collection">
-      <p class="il-headline" style="margin-bottom:14px">📂 내 작품집</p>
+      <p class="il-headline" style="margin-bottom:14px;display:flex;align-items:center;gap:8px"><Icon name="folder-open" /> 내 작품집</p>
       <div id="collectionGrid" class="il-collection-grid"></div>
       <div class="il-empty" id="collectionEmpty" hidden="">아직 만든 발명품이 없어요.<br>지금 첫 발명품을 만들어 볼까요?</div>
-      <button class="il-btn il-btn-ghost" style="margin-top:16px" onclick="showScreen('intro')">← 처음으로</button>
+      <button type="button" class="il-btn il-btn-ghost" style="margin-top:16px" onclick="showScreen('intro')"><Icon name="arrow-left" /> 처음으로</button>
     </section>
 
       </div><!-- /.il-side-body -->
@@ -557,16 +610,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       return c.signal;
     }
     // 실패 이유별 안내(429는 '오프라인'이 아니라 '사용자가 많음')
+    // @icons hourglass timer wrench wifi-off
     function fallbackNoteText(err, what) {
-      if (err && err.status === 429) return `⏳ 지금 쓰는 친구가 많아요. 준비된 ${what} 계속할게요`;
-      if (err && (err.name === 'TimeoutError' || err.name === 'AbortError')) return `⏱️ 응답이 늦어서 준비된 ${what} 계속할게요`;
-      if (err && err.status) return `🛠️ 코치 선생님이 잠깐 쉬고 있어요. 준비된 ${what} 계속할게요`;
-      return `📴 인터넷 연결이 불안정해서 준비된 ${what} 계속할게요`;
+      if (err && err.status === 429) return { icon: 'hourglass', text: `지금 쓰는 친구가 많아요. 준비된 ${what} 계속할게요` };
+      if (err && (err.name === 'TimeoutError' || err.name === 'AbortError')) return { icon: 'timer', text: `응답이 늦어서 준비된 ${what} 계속할게요` };
+      if (err && err.status) return { icon: 'wrench', text: `코치 선생님이 잠깐 쉬고 있어요. 준비된 ${what} 계속할게요` };
+      return { icon: 'wifi-off', text: `인터넷 연결이 불안정해서 준비된 ${what} 계속할게요` };
     }
-    function noteSpan(text) {
+    function noteSpan(note) {
       const span = document.createElement('span');
       span.className = 'il-offline-note';
-      span.textContent = text;
+      span.innerHTML = SimKit.icon(note.icon);
+      span.appendChild(document.createTextNode(note.text));
       return span;
     }
     function showToast(msg) { SimKit.toast(msg); }
@@ -577,6 +632,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (target) target.classList.add('active');
       currentScreenId = id;
       document.body.classList.toggle('il-in-work', id !== 'intro');
+      document.body.classList.remove('il-typing');
       const side = document.querySelector('.il-side');
       if (side) side.scrollTop = 0;
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -631,12 +687,41 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     document.addEventListener('click', () => setTimeout(() => updateStage(currentScreenId), 0));
     document.addEventListener('input', () => setTimeout(() => updateStage(currentScreenId), 0));
     function ttsSpeak(text) { SimKit.speak(text); }
-    // TTS 미지원 브라우저는 버튼 자동 숨김
-    if (!SimKit.speak.supported()) {
-      document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.il-tts-btn').forEach(b => b.hidden = true);
-      });
-    }
+    // TTS 미지원 브라우저는 읽어주기 버튼을 모두 숨김(나중에 그리는 카드 버튼 포함)
+    if (!SimKit.speak.supported()) document.documentElement.classList.add('il-no-tts');
+    // 읽어주기 버튼: data-tts="요소id 요소id" 글을 차례로, data-tts="card"는 그 카드의 이름+설명
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest && e.target.closest('[data-tts]');
+      if (!btn) return;
+      let parts;
+      if (btn.dataset.tts === 'card') {
+        const card = btn.closest('.il-final-card');
+        parts = card ? [card.querySelector('.il-final-name'), card.querySelector('.il-final-summary')] : [];
+      } else {
+        parts = btn.dataset.tts.split(' ').map(id => getEl(id));
+      }
+      const text = parts.map(el => (el && !el.hidden ? el.textContent.trim() : '')).filter(Boolean).join(' ');
+      ttsSpeak(text);
+    });
+    // 글자 입력 중(화상 키보드)에는 좁은 화면의 무대를 줄여 입력칸이 가려지지 않게
+    const narrowMQ = window.matchMedia ? window.matchMedia('(max-width: 800px)') : null;
+    document.addEventListener('focusin', (e) => {
+      const t = e.target;
+      if (!t || !t.matches || !t.matches('.il-side input, .il-side textarea')) return;
+      document.body.classList.add('il-typing');
+      if (narrowMQ && narrowMQ.matches) {
+        setTimeout(() => { try { t.scrollIntoView({ block: 'center' }); } catch {} }, 300);
+      }
+    });
+    document.addEventListener('focusout', (e) => {
+      const t = e.target;
+      if (!t || !t.matches || !t.matches('.il-side input, .il-side textarea')) return;
+      // 바로 되돌리면 옆 "확인" 버튼을 누르는 중에 화면이 밀려 눌림이 빗나갈 수 있어 조금 늦춘다
+      setTimeout(() => {
+        const a = document.activeElement;
+        if (!(a && a.matches && a.matches('.il-side input, .il-side textarea'))) document.body.classList.remove('il-typing');
+      }, 250);
+    });
 
     const TEXT_TIMEOUT_MS = 15000;
     async function callIdeaLab(action, payload, timeoutMs) {
@@ -745,14 +830,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       });
       const fb = getEl('exploreFeedback');
       if (key === ex.magic) {
-        fb.textContent = '정답이에요! 멋져요 🎉';
+        fb.innerHTML = SimKit.icon('circle-check') + '정답이에요! 멋져요!';
         fb.className = 'il-feedback ok';
       } else {
-        fb.textContent = `아쉬워요! 정답은 "${MAGIC_BY_KEY[ex.magic].label}"이었어요.`;
+        fb.innerHTML = SimKit.icon('circle-x') + escHtml(`아쉬워요! 정답은 "${MAGIC_BY_KEY[ex.magic].label}"${josa(MAGIC_BY_KEY[ex.magic].label, '이었어요', '였어요')}.`);
         fb.className = 'il-feedback no';
       }
       getEl('exploreNextBtn').hidden = false;
-      getEl('exploreNextBtn').textContent = state.exploreIdx < EXPLORE_EXAMPLES.length - 1 ? '다음 →' : '내 발명 만들러 가기 →';
+      getEl('exploreNextBtn').innerHTML = (state.exploreIdx < EXPLORE_EXAMPLES.length - 1 ? '다음 ' : '내 발명 만들러 가기 ') + SimKit.icon('arrow-right');
       // 누른 버튼이 잠겼으니 "다음" 버튼으로 초점을 옮긴다
       getEl('exploreNextBtn').focus({ preventScroll: true });
     }
@@ -856,7 +941,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (!state.build.magics.length) { showToast('발명 마법 카드를 골라주세요!'); return; }
       if (state.build.magics.includes('combine') && !state.build.item2) { showToast('무엇과 합칠지 골라주세요!'); return; }
       state.workId = uid();
-      state.coach = { step: 1, answers: [] };
+      state.coach = { step: 1, answers: [], qs: {} };
       state.refineFlags = 0;
       state.summary = '';
       state.finalName = '';
@@ -945,7 +1030,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         back.type = 'button';
         back.className = 'il-btn il-btn-ghost';
         back.style.marginTop = '8px';
-        back.textContent = '← 물건 다시 고르기';
+        back.innerHTML = SimKit.icon('arrow-left') + ' 물건 다시 고르기';
         back.addEventListener('click', () => { setupBuildScreen(); showScreen('build'); });
         div.appendChild(document.createElement('br'));
         div.appendChild(back);
@@ -955,9 +1040,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       getEl('coachLoading').hidden = true;
       getEl('coachBody').hidden = false;
       renderCoachProgress();
+      updateCoachBack();
     }
     function restartCoach(msg) {
-      state.coach = { step: 1, answers: [] };
+      state.coach = { step: 1, answers: [], qs: {} };
       state.summary = '';
       state.refineFlags = 0;
       showScreen('coach');
@@ -1022,8 +1108,34 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       list.querySelectorAll('.il-choice-btn').forEach((btn, i) => {
         btn.addEventListener('click', () => pickCoachAnswer(choices[i]));
       });
+      // "앞 질문"으로 돌아왔을 때 같은 질문을 다시 보여 주려고 단계별로 기억해 둔다
+      if (!state.coach.qs) state.coach.qs = {};
+      state.coach.qs[state.coach.step] = { question, choices, note: getEl('coachOfflineNote').innerHTML };
+      updateCoachBack();
       // 새 질문이 나오면 질문으로 초점을 옮겨 읽게 한다(앞 버튼은 사라짐)
       getEl('coachQuestion').focus({ preventScroll: true });
+    }
+    function updateCoachBack() {
+      getEl('coachBackBtn').hidden = !(state.coach.step > 1);
+    }
+    // 앞 질문으로: 그 질문에 냈던 답을 지우고, 기억해 둔 질문을 다시 보여 준다(없으면 다시 받아 옴)
+    function goPrevCoach() {
+      if (state.coach.step <= 1) return;
+      state.coach.step--;
+      const prevAnswer = state.coach.answers.splice(state.coach.step - 1).shift();
+      const saved = state.coach.qs && state.coach.qs[state.coach.step];
+      if (!saved) { fetchCoachStep(); return; }
+      renderCoachProgress();
+      getEl('coachLoading').hidden = true;
+      getEl('coachBody').hidden = false;
+      getEl('coachOfflineNote').innerHTML = saved.note || '';
+      renderCoachQuestion(saved.question, saved.choices, false);
+      // 골랐던 답은 표시, 직접 썼던 답은 입력칸에 돌려준다
+      if (prevAnswer) {
+        const i = saved.choices.indexOf(prevAnswer);
+        if (i >= 0) getEl('coachChoices').querySelectorAll('.il-choice-btn')[i].classList.add('picked');
+        else getEl('coachCustomInput').value = prevAnswer;
+      }
     }
     function pickCoachAnswer(text) {
       state.coach.answers.push(text);
@@ -1248,8 +1360,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       };
       const saved = upsertWork(work);
       renderFinalCard(getEl('finalCardRoot'), work, state.image.b64, {});
+      setCardMode(false);
       showScreen('card');
-      if (saved === 'full') showToast('내 작품집에 저장되었어요! 📂');
+      if (saved === 'full') showToast('내 작품집에 저장되었어요!');
       else if (saved === 'slim') showToast(SLIM_SAVED_MSG);
     }
     function badgesHtml(magicKeys) {
@@ -1268,7 +1381,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       
       root.innerHTML = `
         ${badgesHtml(work.magic)}
-        <div class="il-final-name">${escHtml(work.name || '이름 없는 발명품')}</div>
+        <div class="il-final-name-row">
+          <div class="il-final-name">${escHtml(work.name || '이름 없는 발명품')}</div>
+          <button type="button" class="il-tts-btn" data-tts="card" aria-label="발명 카드 소리로 읽어주기">${SimKit.icon('volume-2')}</button>
+        </div>
         ${art}
         <div class="il-final-summary">${escHtml(work.summary)}</div>
         <div class="il-final-details">
@@ -1277,7 +1393,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             <span>${work.itemEmoji || '💡'} ${escHtml(work.item)}${combine ? ` + ${work.item2Emoji || '💡'} ${escHtml(work.item2)}` : ''}</span>
           </div>
           <div class="il-detail-row">
-            <strong>발상 기법</strong>
+            <strong>쓴 마법</strong>
             <span>${escHtml(magicNames)}</span>
           </div>
           ${work.answers && work.answers.length ? `
@@ -1312,7 +1428,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     async function shareWork() {
       const longURL = buildShareURL();
       if (!longURL) { showToast('공유할 발명품이 없어요.'); return; }
-      await SimKit.share.send(longURL, { shorten: true, native: false, title: '🔗 발명 아이디어 공작소', copiedMessage: '링크를 복사했어요 ✓' });
+      await SimKit.share.send(longURL, { shorten: true, native: false, title: '발명 아이디어 공작소', copiedMessage: '링크를 복사했어요.' });
     }
     // 공유 링크(#share=)로 들어온 값은 믿지 않는다: 허용한 글자 필드만 길이를 잘라 복사, 그림(b64)은 받지 않음
     function sanitizeShared(d) {
@@ -1337,19 +1453,25 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const s = state.shared;
       const work = { item: s.item, itemEmoji: emojiFor(s.item), item2: s.item2 || '', item2Emoji: emojiFor(s.item2), magic: s.magic || [], summary: s.summary, name: s.name };
       renderFinalCard(getEl('sharedCardRoot'), work, null, {});
+      // 공유 링크에는 그림이 없으므로 처음에는 "그림 그리기"
+      getEl('sharedDrawLabel').textContent = '그림 그리기';
       showScreen('shared');
     }
     async function regenSharedImage() {
       const root = getEl('sharedCardRoot');
+      const btn = getEl('sharedDrawBtn');
       const artWrap = root.querySelector('.il-final-art');
       if (artWrap) artWrap.innerHTML = '<div class="il-loading" style="padding:16px"><div class="il-spinner" style="width:32px;height:32px;margin-bottom:8px"></div><div class="il-loading-sub">그림을 그리고 있어요…</div></div>';
+      btn.disabled = true;
       try {
         const data = await callIdeaLab('image', { summary: state.shared.summary }, DRAW_TIMEOUT_MS);
         renderFinalCard(getEl('sharedCardRoot'), { ...state.shared, itemEmoji: emojiFor(state.shared.item), item2Emoji: emojiFor(state.shared.item2) }, data.b64, {});
+        if (isB64Png(data.b64)) getEl('sharedDrawLabel').textContent = '그림 다시 그리기';
       } catch {
         showToast('그림 생성에 실패했어요.');
         renderFinalCard(getEl('sharedCardRoot'), { ...state.shared, itemEmoji: emojiFor(state.shared.item), item2Emoji: emojiFor(state.shared.item2) }, null, {});
       }
+      btn.disabled = false;
     }
     function cloneSharedToCollection() {
       const s = state.shared;
@@ -1384,29 +1506,52 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (!work) return;
       state.workId = id;
       renderFinalCard(getEl('finalCardRoot'), work, work.b64, {});
-      const root = getEl('finalCardRoot');
-      const btnRow = document.createElement('div');
-      btnRow.className = 'il-btn-row';
-      btnRow.innerHTML = `
-        <button class="il-btn il-btn-ghost" id="collRedraw">🔄 그림 다시 그리기</button>
-        <button class="il-btn il-btn-ghost" id="collDelete" style="background:var(--danger);color:#fff">🗑 삭제</button>
-      `;
-      root.appendChild(btnRow);
-      getEl('collRedraw').addEventListener('click', async () => {
-        const artWrap = root.querySelector('.il-final-art');
-        artWrap.innerHTML = '<div class="il-loading" style="padding:16px"><div class="il-spinner" style="width:32px;height:32px;margin-bottom:8px"></div><div class="il-loading-sub">그림을 그리고 있어요…</div></div>';
-        try {
-          const data = await callIdeaLab('image', { summary: work.summary }, DRAW_TIMEOUT_MS);
-          work.b64 = data.b64;
-          if (upsertWork(work) === 'slim') showToast(SLIM_SAVED_MSG);
-          renderFinalCard(root, work, data.b64, {});
-          root.appendChild(btnRow);
-        } catch { showToast('그림 생성에 실패했어요.'); renderFinalCard(root, work, work.b64, {}); root.appendChild(btnRow); }
-      });
-      getEl('collDelete').addEventListener('click', () => {
-        if (confirm('이 발명품을 삭제할까요?')) { deleteWork(id); showScreen('collection'); }
-      });
+      setCardMode(true, work);
       showScreen('card');
+    }
+    // 완성 카드 화면의 버튼 구성: 방금 만든 카드(공유·새 발명품) / 작품집에서 연 카드(돌아가기·공유·그림·지우기)
+    let collectionWork = null;
+    function setCardMode(fromCollection, work) {
+      collectionWork = fromCollection ? work : null;
+      getEl('cardBackBtn').hidden = !fromCollection;
+      getEl('cardNewBtn').hidden = fromCollection;
+      getEl('cardRedrawBtn').hidden = !fromCollection;
+      getEl('cardDeleteRow').hidden = !fromCollection;
+      getEl('cardRedrawBtn').disabled = false;
+      if (fromCollection) getEl('cardRedrawLabel').textContent = isB64Png(work.b64) ? '그림 다시 그리기' : '그림 그리기';
+    }
+    async function redrawCollectionWork() {
+      const work = collectionWork;
+      if (!work) return;
+      const root = getEl('finalCardRoot');
+      const btn = getEl('cardRedrawBtn');
+      const artWrap = root.querySelector('.il-final-art');
+      if (artWrap) artWrap.innerHTML = '<div class="il-loading" style="padding:16px"><div class="il-spinner" style="width:32px;height:32px;margin-bottom:8px"></div><div class="il-loading-sub">그림을 그리고 있어요…</div></div>';
+      btn.disabled = true;
+      try {
+        const data = await callIdeaLab('image', { summary: work.summary }, DRAW_TIMEOUT_MS);
+        if (!isB64Png(data.b64)) throw new Error('이미지 생성 실패');
+        work.b64 = data.b64;
+        if (upsertWork(work) === 'slim') showToast(SLIM_SAVED_MSG);
+        if (collectionWork === work) {
+          renderFinalCard(root, work, data.b64, {});
+          getEl('cardRedrawLabel').textContent = '그림 다시 그리기';
+        }
+      } catch {
+        showToast('그림 생성에 실패했어요.');
+        if (collectionWork === work) renderFinalCard(root, work, work.b64, {});
+      }
+      btn.disabled = false;
+    }
+    async function deleteCollectionWork() {
+      const work = collectionWork;
+      if (!work) return;
+      const ok = await VUI.confirm('이 발명품을 작품집에서 지울까요? 지우면 되돌릴 수 없어요.', { title: '발명품 지우기', ok: '지우기', danger: true });
+      if (!ok) return;
+      deleteWork(work.id);
+      collectionWork = null;
+      showScreen('collection');
+      showToast('작품집에서 지웠어요.');
     }
 
     /* ══════════════════════ 처음으로 ══════════════════════ */

@@ -1,5 +1,6 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
 ---
 <AppLayout
   title="받아쓰기 도우미 — eduin VIVES"
@@ -16,6 +17,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
     body {
       min-height: 100vh;
+      min-height: 100dvh;
       padding: 54px 1rem 5rem;
       font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', 'Segoe UI', sans-serif;
     }
@@ -54,7 +56,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .dt-step.active .dt-step-num { background: var(--primary); color: #fff; }
     .dt-step.done .dt-step-num { background: var(--success); color: #fff; }
     .dt-step:disabled { opacity: 0.45; cursor: not-allowed; }
-    .dt-step-sep { color: var(--fg-muted); font-size: 14px; user-select: none; }
+    .dt-step-sep { color: var(--fg-muted); font-size: 14px; user-select: none; display: inline-flex; }
 
     /* ── 카드 · 섹션 ── */
     .dt-card {
@@ -87,6 +89,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .dt-btn.ghost { background: none; }
     .dt-btn.success { background: rgba(23,201,100,0.10); border-color: transparent; color: var(--success); }
     .dt-btn.success:hover { background: rgba(23,201,100,0.20); }
+    .dt-btn.danger { background: none; border-color: var(--danger); color: var(--danger); }
+    .dt-btn.danger:hover { background: rgba(243,18,96,0.08); color: var(--danger); }
     .dt-btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
     .dt-btn-row .grow { flex: 1; }
 
@@ -146,6 +150,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--border);
       background: var(--bg); color: var(--fg); font-size: 17px; font-weight: 700;
       cursor: pointer; font-family: inherit; transition: all 0.15s;
+      display: inline-flex; align-items: center; justify-content: center;
     }
     .dt-count-btn:hover {
       background: var(--primary);
@@ -208,6 +213,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .dt-progress-fill { height: 100%; width: 0%; background: var(--primary); border-radius: 99px; transition: width 0.3s ease; }
     .dt-read-counter { text-align: center; font-size: 14px; font-weight: 700; color: var(--fg-muted); margin-top: 8px; }
     .dt-read-ctrl { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+    .dt-kbd-hint { text-align: center; font-size: 14px; color: var(--fg-muted); margin: 10px 0 0; }
+    .dt-kbd-hint kbd {
+      display: inline-block; min-width: 22px; padding: 0 5px; border: 1px solid var(--border);
+      border-radius: 5px; background: var(--bg); font-family: inherit; font-size: 13px; line-height: 20px;
+    }
+    @media (hover: none) { .dt-kbd-hint { display: none; } }
+    .dt-sheet-note { font-size: 14px; color: var(--fg-muted); margin: -4px 0 12px; line-height: 1.5; }
 
     /* ── 채점 입력 그리드 ── */
     .dt-grade-grid { display: flex; flex-direction: column; gap: 8px; }
@@ -220,7 +232,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .dt-grade-row .dt-input:focus { border-color: var(--primary); }
     .dt-grade-row .dt-input.ok { border-color: var(--success); background: rgba(23,201,100,0.06); }
     .dt-grade-row .dt-input.bad { border-color: var(--danger); background: rgba(243,18,96,0.05); }
-    .dt-grade-mark { flex: none; width: 24px; text-align: center; font-size: 17px; font-weight: 700; }
+    .dt-grade-mark { flex: none; width: 24px; text-align: center; font-size: 17px; font-weight: 700; display: inline-flex; justify-content: center; }
     .dt-grade-mark.ok { color: var(--success); }
     .dt-grade-mark.bad { color: var(--danger); }
     .dt-diff-line { font-size: 14px; color: var(--fg-muted); padding: 0 0 2px 38px; margin-top: -2px; line-height: 1.6; }
@@ -278,6 +290,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     @media (max-width: 540px) {
+      .dt-select, .dt-number { font-size: 16px; }   /* iOS 확대 방지 */
       .dt-read-text { font-size: 24px; }
       .dt-rule-row { grid-template-columns: 88px 1fr 44px; }
     }
@@ -322,7 +335,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     .dt-modal {
       background: var(--card-bg); border: 1px solid var(--border);
       border-radius: 18px; padding: 24px; max-width: 560px; width: 92vw;
-      max-height: 80vh; overflow-y: auto; position: relative;
+      max-height: 80vh; max-height: 80dvh; overflow-y: auto; position: relative;
       animation: fadeUp 0.25s ease both; box-shadow: 0 12px 40px rgba(0,0,0,0.15);
     }
     .dt-modal-close {
@@ -380,6 +393,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     .dt-ai-empty { text-align: center; padding: 40px 20px; color: var(--fg-muted); font-size: 15px; line-height: 1.7; }
+    .dt-ai-empty.err { color: var(--danger); }
+    .dt-modal h3 .ic, .dt-modal h4 .ic, .dt-section-title .ic { color: var(--primary); }
   </style>
   </Fragment>
 
@@ -387,30 +402,30 @@ import AppLayout from '../../../layouts/AppLayout.astro';
   <main class="app-main">
     <div class="dt-root">
       <div class="app-header" style="position:relative;">
-        <div class="app-badge">◆ 학습지원</div>
-        <h1 class="app-title">✏️ 받아쓰기 도우미</h1>
+        <div class="app-badge">학습지원</div>
+        <h1 class="app-title">받아쓰기 도우미 <span class="app-title-en">Dictation</span></h1>
         <p class="app-desc">급수표를 만들어 인쇄하고, 정확한 발음으로 불러주고, 음운규칙별로 오류를 분석합니다.</p>
         <div class="app-actions">
-          <button id="btnHelp" class="overlay-btn" aria-label="도움말" title="도움말">❓ 도움말</button>
+          <button id="btnHelp" class="overlay-btn" aria-label="도움말" title="도움말"><Icon name="circle-help" /> 도움말</button>
         </div>
       </div>
 
       <!-- ── 모드 탭 ── -->
       <div class="dt-mode-tabs" role="group" aria-label="모드">
-        <button class="dt-mode-tab active" data-mode="textbook" aria-pressed="true">📖 교과서 모드</button>
-        <button class="dt-mode-tab" data-mode="ai" aria-pressed="false">🤖 AI 맞춤 학습</button>
+        <button class="dt-mode-tab active" data-mode="textbook" aria-pressed="true"><Icon name="book-open" /> 교과서 모드</button>
+        <button class="dt-mode-tab" data-mode="ai" aria-pressed="false"><Icon name="bot" /> AI 맞춤 학습</button>
       </div>
 
       <!-- ── 스텝 내비 ── -->
       <nav class="dt-steps" aria-label="진행 단계">
         <button class="dt-step active" data-goto="setup" aria-current="step"><span class="dt-step-num">1</span>출제</button>
-        <span class="dt-step-sep" aria-hidden="true">›</span>
+        <span class="dt-step-sep" aria-hidden="true"><Icon name="chevron-right" /></span>
         <button class="dt-step" data-goto="sheet" disabled><span class="dt-step-num">2</span>급수표</button>
-        <span class="dt-step-sep" aria-hidden="true">›</span>
+        <span class="dt-step-sep" aria-hidden="true"><Icon name="chevron-right" /></span>
         <button class="dt-step" data-goto="read" disabled><span class="dt-step-num">3</span>불러주기</button>
-        <span class="dt-step-sep" aria-hidden="true">›</span>
+        <span class="dt-step-sep" aria-hidden="true"><Icon name="chevron-right" /></span>
         <button class="dt-step" data-goto="grade" disabled><span class="dt-step-num">4</span>채점</button>
-        <span class="dt-step-sep" aria-hidden="true">›</span>
+        <span class="dt-step-sep" aria-hidden="true"><Icon name="chevron-right" /></span>
         <button class="dt-step" data-goto="result" disabled><span class="dt-step-num">5</span>결과</button>
       </nav>
 
@@ -422,7 +437,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <div class="dt-field">
             <label class="dt-label" for="unitSelect">단원</label>
             <select id="unitSelect" class="dt-select">
-              <optgroup label="📚 규칙별 연습 (학년 통합)">
+              <optgroup label="규칙별 연습 (학년 통합)">
                 <option value="rule-전체">전체 규칙 종합 연습</option>
                 <option value="rule-연음화">연음화 집중 연습</option>
                 <option value="rule-경음화">경음화 집중 연습</option>
@@ -493,10 +508,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <div class="dt-field">
             <label class="dt-label" for="countInput">문항 수</label>
             <div class="dt-count-wrap">
-              <button type="button" class="dt-count-btn" data-count="-1" aria-label="문항 수 줄이기">−</button>
-              <input id="countInput" class="dt-number" type="number" min="1" max="40" value="10" inputmode="numeric">
-              <button type="button" class="dt-count-btn" data-count="1" aria-label="문항 수 늘리기">＋</button>
+              <button type="button" class="dt-count-btn" data-count="-1" aria-label="문항 수 줄이기"><Icon name="minus" /></button>
+              <input id="countInput" class="dt-number" type="number" min="1" max="40" value="10" inputmode="numeric" aria-describedby="countHint">
+              <button type="button" class="dt-count-btn" data-count="1" aria-label="문항 수 늘리기"><Icon name="plus" /></button>
             </div>
+            <p id="countHint" class="dt-sheet-note" style="margin:6px 0 0;">1~40문항</p>
           </div>
 
           <div class="dt-field">
@@ -518,12 +534,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         <div class="dt-card">
           <h2 class="dt-section-title">급수표 <span id="sheetUnitLabel" style="text-transform:none; letter-spacing:0;"></span></h2>
 
+          <p class="dt-sheet-note">정답은 가려져 있어요. 학생이 보지 않을 때 '정답 보기'를 눌러 확인하세요.</p>
           <div class="dt-toolbar">
-            <button id="btnReshuffle" class="dt-btn ghost">🔄 다시 뽑기</button>
-            <button id="btnToggleAnswer" class="dt-btn ghost" aria-pressed="true">정답 숨기기</button>
+            <button id="btnReshuffle" class="dt-btn ghost"><Icon name="refresh-cw" /> 다시 뽑기</button>
+            <button id="btnToggleAnswer" class="dt-btn ghost" aria-pressed="false"><Icon name="eye" /> 정답 보기</button>
             <span class="spacer"></span>
-            <button id="btnPrintSheet" class="dt-btn">🖨 급수표 인쇄</button>
-            <button id="btnPrintAnswer" class="dt-btn">🖨 답안지 인쇄</button>
+            <button id="btnPrintSheet" class="dt-btn"><Icon name="printer" /> 급수표 인쇄</button>
+            <button id="btnPrintAnswer" class="dt-btn"><Icon name="printer" /> 답안지 인쇄</button>
           </div>
 
           <div id="sheetList" class="dt-list" aria-live="polite">
@@ -531,7 +548,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           </div>
 
           <div class="dt-btn-row" style="margin-top: 16px;">
-            <button class="dt-btn primary grow" data-goto="read">📢 불러주기 시작</button>
+            <button class="dt-btn primary grow" data-goto="read"><Icon name="megaphone" /> 불러주기 시작</button>
             <button class="dt-btn grow" data-goto="grade">바로 채점하기</button>
           </div>
         </div>
@@ -543,7 +560,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <h2 class="dt-section-title">불러주기 — 교사 낭독</h2>
 
           <div class="dt-read-note">
-            ⚠️ 이 화면은 선생님만 보세요. 프로젝터·화면 공유에 띄우지 마세요.
+            <Icon name="triangle-alert" /> 이 화면은 선생님만 보세요. 프로젝터·화면 공유에 띄우지 마세요.
           </div>
 
           <div class="dt-read-card" aria-live="polite" aria-atomic="true">
@@ -559,13 +576,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           </div>
 
           <div class="dt-read-ctrl">
-            <button id="btnReadPrev" class="dt-btn">← 이전</button>
-            <button id="btnReadRestart" class="dt-btn ghost">처음부터</button>
-            <button id="btnReadNext" class="dt-btn primary">다음 →</button>
+            <button id="btnReadPrev" class="dt-btn"><Icon name="arrow-left" /> 이전</button>
+            <button id="btnReadRestart" class="dt-btn ghost"><Icon name="rotate-ccw" /> 처음부터</button>
+            <button id="btnReadNext" class="dt-btn primary">다음 <Icon name="arrow-right" /></button>
           </div>
+          <p class="dt-kbd-hint">키보드 <kbd>←</kbd> <kbd>→</kbd> 로도 넘길 수 있어요</p>
 
           <div class="dt-btn-row" style="margin-top: 18px;">
-            <button class="dt-btn success grow" data-goto="grade">불러주기 끝 — 채점으로 →</button>
+            <button class="dt-btn success grow" data-goto="grade">불러주기 끝 — 채점으로 <Icon name="arrow-right" /></button>
           </div>
         </div>
       </section>
@@ -581,7 +599,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           </div>
 
           <div class="dt-btn-row" style="margin-top: 16px;">
-            <button id="btnGrade" class="dt-btn primary grow">채점하기</button>
+            <button id="btnGrade" class="dt-btn primary grow"><Icon name="circle-check" /> 채점하기</button>
           </div>
           <div id="gradeLive" class="visually-hidden" role="status" aria-live="polite"></div>
         </div>
@@ -597,6 +615,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             <div class="dt-score-tile"><div class="v good" id="resCorrect">—</div><div class="k">맞은 문항</div></div>
             <div class="dt-score-tile"><div class="v warn" id="resWrong">—</div><div class="k">틀린 문항</div></div>
           </div>
+          <div class="dt-btn-row" style="margin-top: 14px;">
+            <button id="btnNextStudent" class="dt-btn primary grow"><Icon name="user-round-pen" /> 다음 학생 채점</button>
+          </div>
+          <p class="dt-sheet-note" style="margin:8px 0 0;">같은 급수표로 다음 학생의 답을 입력해요. 이 학생의 결과는 이 기기의 채점 기록에 저장되어 있어요.</p>
         </div>
 
         <div class="dt-card">
@@ -619,7 +641,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             <div class="dt-empty">오답률이 높은 규칙에 대한 지도 문구가 표시됩니다</div>
           </div>
           <div class="dt-btn-row" style="margin-top: 14px;">
-            <button id="btnReviewSheet" class="dt-btn success grow">🔁 이 규칙으로 복습 급수표 만들기</button>
+            <button id="btnReviewSheet" class="dt-btn success grow"><Icon name="repeat" /> 이 규칙으로 복습 급수표 만들기</button>
             <button class="dt-btn grow" data-goto="setup">처음으로</button>
           </div>
         </div>
@@ -628,18 +650,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       <!-- ══ AI 맞춤 학습 모드 뷰 ══ -->
       <section id="view-ai" class="dt-ai-view" hidden>
         <div class="dt-card">
-          <h2 class="dt-section-title">나의 약점 분석</h2>
-          <p class="app-desc" style="margin: -4px 0 14px;">그동안 채점한 기록을 바탕으로 자주 틀리는 음운 규칙을 분석합니다.</p>
+          <h2 class="dt-section-title">이 기기의 채점 기록 분석</h2>
+          <p class="app-desc" style="margin: -4px 0 14px;">이 기기(브라우저)에서 채점한 기록을 모두 모아 자주 틀리는 음운 규칙을 분석합니다. 여러 학생을 채점했다면 그 기록이 함께 합쳐진 결과예요. 한 학생만 보려면 채점 기록을 지운 뒤 그 학생만 채점하세요.</p>
           <div id="aiWeakSummary">
             <div class="dt-ai-empty">
-              <div style="font-size:32px; margin-bottom:12px;">📊</div>
+              <div style="font-size:32px; margin-bottom:12px; color:var(--primary);"><Icon name="chart-column" /></div>
               <div style="font-weight:700; font-size:15px; color:var(--fg); margin-bottom:8px;">아직 채점 기록이 없습니다</div>
               <div style="font-size:14px; line-height:1.6; max-width:340px; margin:0 auto 20px; color:var(--fg-muted);">
                 교과서 모드에서 받아쓰기를 연습하고 채점하면, 이곳에 취약 음운규칙 오답 분석 보고서가 자동으로 누적됩니다.
               </div>
               <div style="text-align:left; background:var(--bg-sec); padding:16px; border-radius:12px; max-width:420px; margin:0 auto; font-size:14px; border:1px solid var(--border);">
                 <div style="font-weight:700; margin-bottom:8px; color:var(--fg); display:flex; align-items:center; gap:6px;">
-                  <span>💡</span> AI 맞춤 학습 로드맵
+                  <Icon name="lightbulb" /> AI 맞춤 학습 로드맵
                 </div>
                 <ul style="margin:0; padding-left:18px; line-height:1.75; color:var(--fg-muted);">
                   <li><strong>1단계</strong>: 교과서 모드에서 단원을 선택해 받아쓰기 시작</li>
@@ -658,8 +680,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             <div class="dt-ai-empty">아래 버튼을 눌러 AI 선생님께 약점 분석과 학습 조언을 받아보세요.</div>
           </div>
           <div class="dt-btn-row" style="margin-top: 14px;">
-            <button id="btnAskAI" class="dt-btn primary grow">🤖 AI에게 물어보기</button>
-            <button id="btnClearAttempts" class="dt-btn" type="button">🗑 채점 기록 지우기</button>
+            <button id="btnAskAI" class="dt-btn primary grow"><Icon name="bot" /> AI에게 물어보기</button>
+            <button id="btnClearAttempts" class="dt-btn danger" type="button"><Icon name="trash-2" /> 채점 기록 지우기</button>
           </div>
           <p class="app-desc" style="font-size: 14px; margin: 10px 0 0;">
             버튼을 누르면 약점 규칙 통계와 최근 틀린 문항(문제 낱말)만 AI 분석 서버로 보내요. 학생이 쓴 답과 이름은 보내지 않아요.
@@ -671,7 +693,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           <p class="app-desc" style="margin: -4px 0 14px;">AI가 분석한 약점 규칙으로 급수표를 만들어 연습해 보세요.</p>
           <div id="aiRecommendRules"></div>
           <div class="dt-btn-row" style="margin-top: 14px;">
-            <button id="btnAiToSheet" class="dt-btn success grow">📝 추천 규칙으로 급수표 만들기</button>
+            <button id="btnAiToSheet" class="dt-btn success grow"><Icon name="notebook-pen" /> 추천 규칙으로 급수표 만들기</button>
             <button id="btnAiBackToTextbook" class="dt-btn grow">교과서 모드로 돌아가기</button>
           </div>
         </div>
@@ -685,21 +707,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
   <div id="helpModal" class="dt-modal-overlay">
     <div class="dt-modal">
-      <button class="dt-modal-close" id="btnHelpClose" aria-label="도움말 닫기" data-vui-close>✕</button>
-      <h3>📖 받아쓰기 도우미 — 도움말</h3>
-      <h4>📋 활용 방법</h4>
+      <button class="dt-modal-close" id="btnHelpClose" aria-label="도움말 닫기" data-vui-close><Icon name="x" /></button>
+      <h3><Icon name="book-open" /> 받아쓰기 도우미 — 도움말</h3>
+      <h4><Icon name="clipboard-list" /> 활용 방법</h4>
       <ul>
         <li><strong>출제</strong> — 단원·유형·난이도·문항 수를 선택하여 급수표를 생성합니다.</li>
         <li><strong>급수표</strong> — 생성된 문항을 확인하고 급수표/답안지를 A4로 인쇄합니다.</li>
         <li><strong>불러주기</strong> — 교사가 화면을 보며 한 문항씩 불러줍니다.</li>
         <li><strong>채점</strong> — 학생이 쓴 답을 입력하여 자동 채점합니다.</li>
-        <li><strong>결과</strong> — 음운규칙별 오답률과 맞춤 지도 제안을 확인합니다.</li>
+        <li><strong>결과</strong> — 음운규칙별 오답률과 맞춤 지도 제안을 확인합니다. '다음 학생 채점'을 누르면 같은 급수표로 다음 학생을 채점합니다.</li>
       </ul>
-      <h4>📚 규칙별 연습 모드</h4>
+      <h4><Icon name="library" /> 규칙별 연습 모드</h4>
       <p>단원 선택 대신 "규칙별 연습"을 선택하면, 전 단원에서 해당 규칙 문항만 모아 연습할 수 있습니다.</p>
-      <h4>🤖 AI 맞춤 학습</h4>
-      <p>모드 탭에서 "AI 맞춤 학습"을 선택하면, 채점 기록 기반으로 AI가 약점 분석과 조언을 제공합니다.</p>
-      <h4>📊 전체 키워드 통계</h4>
+      <h4><Icon name="bot" /> AI 맞춤 학습</h4>
+      <p>모드 탭에서 "AI 맞춤 학습"을 선택하면, 이 기기에 쌓인 채점 기록(여러 학생의 기록이 합쳐짐)을 바탕으로 AI가 약점 분석과 조언을 제공합니다.</p>
+      <h4><Icon name="chart-column" /> 음운 규칙별 문항 수</h4>
       <div id="helpStats"><p style="color:var(--fg-muted); font-size: 14px;">데이터 로딩 중...</p></div>
     </div>
   </div>
@@ -739,12 +761,14 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       items: [],           // 이번 급수표 문항 (정규화된 Item[])
       inputs: [],          // 채점 입력값
       results: null,       // 채점 결과 {score, corrects, wrongCount, byRule}
-      showAnswers: true,
+      showAnswers: false,   // 급수표 정답은 기본으로 가림(화면을 띄워도 노출되지 않게)
       readIndex: 0,
       currentMode: 'textbook', // 'textbook' | 'ai'
       aiRecommendedRules: [],  // AI가 추천한 규칙 목록
       lastTextbookView: 'setup', // 모드 전환 시 복귀할 교과서 모드 스텝
       confirmedEmptyGrade: false, // 빈칸 채점 2회 클릭 확인 플래그
+      gradeDirty: false,   // 채점 칸에 입력했지만 아직 채점하지 않음(이탈 경고용)
+      redraw: null,        // '다시 뽑기' — 지금 급수표를 만든 문항 풀(단원·규칙·복습·AI)에서 다시 뽑는 함수
     };
 
     const $ = (sel) => document.querySelector(sel);
@@ -760,6 +784,23 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     ];
 
     const RULE_TAGS = ['연음화', '경음화', '격음화', '비음화', '겹받침_단순화', '받침없음/규칙없음'];
+    // 화면에 보이는 규칙 이름(데이터·저장 키는 그대로 두고 표시만 바꿈)
+    const RULE_LABELS = { '겹받침_단순화': '겹받침 단순화', '받침없음/규칙없음': '받침 없음/규칙 없음' };
+    function ruleLabel(t) { return RULE_LABELS[t] || String(t); }
+    // AI가 표시 이름(띄어쓴 이름)으로 돌려줘도 데이터 키로 맞춤
+    function ruleKey(r) {
+      const s = String(r).trim();
+      return RULE_TAGS.find(t => t === s || ruleLabel(t) === s || t.replace(/_/g, ' ') === s) || s;
+    }
+    function tagHtml(t) {
+      return '<span class="dt-tag' + (t.indexOf('없음') >= 0 ? ' none' : '') + '">' + esc(ruleLabel(t)) + '</span>';
+    }
+    const COUNT_MIN = 1, COUNT_MAX = 40;
+    function clampCount(v) {
+      const n = parseInt(v, 10);
+      if (!Number.isFinite(n)) return 10;
+      return Math.min(COUNT_MAX, Math.max(COUNT_MIN, n));
+    }
 
     // 토스트: 공용 VUI(글자 수에 맞춘 표시 시간, 스크린리더 알림)
     function showToast(msg, type) { VUI.toast(msg, type); }
@@ -826,8 +867,17 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     $$('.dt-count-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const el = $('#countInput');
-        el.value = Math.min(40, Math.max(1, (parseInt(el.value, 10) || 10) + parseInt(btn.dataset.count, 10)));
+        el.value = clampCount((parseInt(el.value, 10) || 10) + parseInt(btn.dataset.count, 10));
       });
+    });
+    // 직접 입력한 값도 1~40으로 맞춤
+    $('#countInput').addEventListener('change', (e) => {
+      const before = e.target.value;
+      const v = clampCount(before);
+      if (String(v) !== before) {
+        e.target.value = v;
+        showToast('문항 수는 ' + COUNT_MIN + '~' + COUNT_MAX + '개로 정할 수 있어요. ' + v + '문항으로 맞췄어요.');
+      }
     });
 
     /* ── 데이터 로더 (단일 단원) ── */
@@ -841,8 +891,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           state.bank = bank;
           state.unitBank = bank;
           state.unitBankCode = unitCode;
-          state.unit = unitCode;
-          showToast(bank.unit + ' 데이터를 로드했습니다.');
+          state.unit = unitCode;   // 성공은 조용히(단원을 바꿀 때마다 토스트를 띄우지 않음)
         })
         .catch(err => {
           if (myToken !== unitLoadToken) return;
@@ -881,6 +930,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           showToast('단원 데이터를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.', 'error');
           return merged;
         }
+        if (loaded < ALL_UNIT_CODES.length) {
+          showToast((ALL_UNIT_CODES.length - loaded) + '개 단원은 불러오지 못해 빼고 모았어요.', 'error');
+        }
         state.allBanks = merged;
         renderHelpStats(); // 통계 모달 업데이트
         return merged;
@@ -895,8 +947,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         // 규칙별 모드: 전체 데이터 로드
         loadAllUnits().then(() => {
           state.unit = val;
-          state.bank = { unit: val === 'rule-전체' ? '전체 규칙 종합 연습' : val.replace('rule-', '') + ' 집중 연습' };
-          showToast(state.bank.unit + ' 모드 준비 완료.');
+          state.bank = { unit: val === 'rule-전체' ? '전체 규칙 종합 연습' : ruleLabel(val.replace('rule-', '')) + ' 집중 연습' };
         });
       } else {
         loadUnit(val);
@@ -914,7 +965,9 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     }
 
     /* ── 급수표 생성 ── */
-    function generateItems() {
+    // opts.label: 급수표 이름을 따로 줄 때(AI 추천)
+    function generateItems(opts) {
+      opts = opts || {};
       const unitVal = $('#unitSelect').value;
       const isRuleMode = unitVal.startsWith('rule-');
 
@@ -931,7 +984,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       // Read filter options
       const kinds = $$('#kindChips .dt-chip.on input').map(el => el.value);
       const diffs = $$('#diffChips .dt-chip.on input').map(el => el.value);
-      const count = parseInt($('#countInput').value, 10) || 10;
+      const count = clampCount($('#countInput').value);
+      $('#countInput').value = count;
       const order = $('#orderChips .dt-chip.on input').value;
 
       if (kinds.length === 0) { showToast('최소 하나의 유형을 선택해 주세요.'); return; }
@@ -950,7 +1004,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
             pool.push(Object.assign({}, item, { kind: k }));
           });
         });
-        state.bank = { unit: ruleFilter === '전체' ? '전체 규칙 종합 연습' : ruleFilter + ' 집중 연습' };
+        state.bank = { unit: opts.label || (ruleFilter === '전체' ? '전체 규칙 종합 연습' : ruleLabel(ruleFilter) + ' 집중 연습') };
       } else {
         // Textbook mode: use loaded unit bank
         // (복습 급수표·규칙 모드가 state.bank 이름을 바꿔도 원래 단원 문항은 unitBank에 남아 있음)
@@ -971,6 +1025,22 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         return;
       }
 
+      // 다시 뽑기: 같은 풀·같은 조건으로(단원 선택을 바꿔도 지금 급수표 기준)
+      const bank = state.bank, unitCode = state.unit;
+      state.redraw = () => {
+        state.bank = bank; state.unit = unitCode;
+        drawFromPool(pool, count, order);
+        showToast('같은 조건으로 ' + state.items.length + '문항을 다시 뽑았어요.');
+      };
+      drawFromPool(pool, count, order);
+      if (pool.length < count) {
+        showToast('조건에 맞는 문항이 ' + pool.length + '개뿐이라 ' + state.items.length + '문항으로 만들었어요.');
+      } else {
+        showToast('급수표 ' + state.items.length + '문항을 만들었어요.');
+      }
+    }
+
+    function drawFromPool(pool, count, order) {
       let selected;
       if (order === 'shuffle') {
         selected = shuffleArray(pool).slice(0, count);
@@ -984,27 +1054,28 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         }
       }
 
-      state.items = selected;
-      state.inputs = selected.map(() => '');
+      setItems(selected);
+    }
+
+    // 새 문항으로 급수표·불러주기·채점 칸을 다시 그림
+    function setItems(items) {
+      state.items = items;
+      state.inputs = items.map(() => '');
       state.results = null;
       state.readIndex = 0;
+      state.gradeDirty = false;
 
       renderSheet();
       renderGradeGrid();
       renderReadCard();
       unlockSteps('grade');
       goto('sheet');
-      if (pool.length < count) {
-        showToast('조건에 맞는 문항이 ' + pool.length + '개뿐이라 ' + state.items.length + '문항으로 만들었어요.');
-      } else {
-        showToast('급수표 ' + state.items.length + '문항 생성 완료.');
-      }
     }
 
-    $('#btnGenerate').addEventListener('click', generateItems);
+    $('#btnGenerate').addEventListener('click', () => generateItems());
     $('#btnReshuffle').addEventListener('click', () => {
-      generateItems();
-      showToast('다시 뽑기 완료.');
+      if (state.redraw) state.redraw();
+      else generateItems();
     });
 
     /* ── 급수표 렌더링 ── */
@@ -1017,16 +1088,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
           '<span class="dt-item-text' + (state.showAnswers ? '' : ' masked') + '">' +
             (state.showAnswers ? esc(it.text) : '●●●●●') + '</span>' +
           '<span class="dt-item-meta">' +
-            it.tags.map((t) => '<span class="dt-tag' + (t.indexOf('없음') >= 0 ? ' none' : '') + '">' + esc(t) + '</span>').join('') +
+            it.tags.map(tagHtml).join('') +
             '<span class="dt-diff ' + DIFF_CLASS[it.difficulty] + '">' + it.difficulty + '</span>' +
           '</span>' +
         '</div>'
       ).join('');
     }
-    $('#btnToggleAnswer').addEventListener('click', (e) => {
+    // @icons eye eye-off
+    function renderAnswerToggle() {
+      const btn = $('#btnToggleAnswer');
+      btn.innerHTML = VUI.icon(state.showAnswers ? 'eye-off' : 'eye') + ' ' + (state.showAnswers ? '정답 가리기' : '정답 보기');
+      btn.setAttribute('aria-pressed', String(state.showAnswers));
+    }
+    $('#btnToggleAnswer').addEventListener('click', () => {
       state.showAnswers = !state.showAnswers;
-      e.currentTarget.textContent = state.showAnswers ? '정답 숨기기' : '정답 보이기';
-      e.currentTarget.setAttribute('aria-pressed', String(state.showAnswers));
+      renderAnswerToggle();
       renderSheet();
     });
 
@@ -1037,8 +1113,12 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const area = $('#' + id);
       area.querySelector('[id$="Rows"]').innerHTML = rowsHtml;
       area.classList.add('printing');
+      // 모바일 브라우저는 print()가 바로 돌아오기도 하므로 인쇄 창이 닫힌 뒤(afterprint)에 지움
+      window.addEventListener('afterprint', function done() {
+        window.removeEventListener('afterprint', done);
+        area.classList.remove('printing');
+      });
       window.print();
-      area.classList.remove('printing');
     }
     $('#btnPrintSheet').addEventListener('click', () => {
       if (!state.bank) return;
@@ -1061,8 +1141,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       $('#readKind').textContent = it.kind + ' · 난이도 ' + it.difficulty;
       $('#readText').textContent = it.text;
       $('#readPron').innerHTML = '<span class="lbl">발음</span>' + esc(it.pron || '[' + it.text.replace(/[.,!?…"""\\'()·]/g, '') + ']');
-      $('#readTags').innerHTML = it.tags.map((t) =>
-        '<span class="dt-tag' + (t.indexOf('없음') >= 0 ? ' none' : '') + '">' + esc(t) + '</span>').join('');
+      $('#readTags').innerHTML = it.tags.map(tagHtml).join('');
       $('#readProgress').style.width = ((state.readIndex + 1) / n * 100) + '%';
       $('#readCounter').textContent = (state.readIndex + 1) + ' / ' + n;
       $('#btnReadPrev').disabled = state.readIndex === 0;
@@ -1073,7 +1152,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
     $('#btnReadRestart').addEventListener('click', () => { state.readIndex = 0; renderReadCard(); });
 
     document.addEventListener('keydown', (e) => {
-      if ($('#view-read').hidden) return;
+      if ($('#view-read').hidden || state.currentMode !== 'textbook') return;
       if (e.key === 'ArrowRight') $('#btnReadNext').click();
       else if (e.key === 'ArrowLeft') $('#btnReadPrev').click();
     });
@@ -1090,6 +1169,33 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         '<div class="dt-diff-line" id="dt-diff-' + i + '" data-diff="' + i + '" hidden></div>'
       ).join('');
     }
+
+    // 채점 칸에 쓰는 중이면 창을 닫거나 새로고침할 때 경고
+    $('#gradeGrid').addEventListener('input', () => {
+      state.gradeDirty = $$('#gradeGrid .dt-input').some((el) => el.value.trim());
+    });
+    window.addEventListener('beforeunload', (e) => {
+      if (!state.gradeDirty) return;
+      e.preventDefault();
+      e.returnValue = '';
+    });
+
+    // 다음 학생 채점: 같은 급수표 그대로, 입력·결과만 비움(앞 학생 기록은 이미 저장됨)
+    $('#btnNextStudent').addEventListener('click', () => {
+      if (!state.items.length) return;
+      state.inputs = state.items.map(() => '');
+      state.results = null;
+      state.gradeDirty = false;
+      renderGradeGrid();
+      unlockSteps('grade');
+      goto('grade');
+      showToast('다음 학생의 답을 입력하세요.');
+      // 터치 기기에서는 화상 키보드가 바로 뜨지 않게 자동 포커스하지 않음
+      if (!window.matchMedia || !window.matchMedia('(hover: none)').matches) {
+        const first = $('#gradeGrid .dt-input');
+        if (first) first.focus({ preventScroll: true });
+      }
+    });
 
     // Enter 키로 다음 입력 칸 이동(마지막 칸에서는 채점 실행)
     $('#gradeGrid').addEventListener('keydown', (e) => {
@@ -1152,7 +1258,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         input.classList.toggle('bad', !ok);
         input.setAttribute('aria-invalid', String(!ok));
         const mark = document.querySelector('[data-mark="' + i + '"]');
-        mark.textContent = ok ? '○' : '✕';
+        // @icons circle x
+        mark.innerHTML = VUI.icon(ok ? 'circle' : 'x');
         mark.className = 'dt-grade-mark ' + (ok ? 'ok' : 'bad');
         mark.setAttribute('role', 'img');
         mark.setAttribute('aria-label', ok ? '맞음' : '틀림');
@@ -1211,6 +1318,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       renderResult(ruleErrors);
       renderBreakdown(byKind, byDiff);
       saveAttempt();
+      state.gradeDirty = false;
       unlockSteps('result');
       goto('result');
       // 스크린리더: 채점 결과를 바로 읽어 줌
@@ -1251,7 +1359,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
       const listHtml = rows.map(row =>
         '<div class="dt-rule-row">' +
-          '<span class="name">' + esc(row.name) + '</span>' +
+          '<span class="name">' + esc(ruleLabel(row.name)) + '</span>' +
           '<span class="bar"><i class="' + (row.pct < 34 ? 'low' : '') + '" style="width:' + row.pct + '%"></i></span>' +
           '<span class="pct">' + row.pct + '%</span>' +
         '</div>'
@@ -1265,7 +1373,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       if (weakRows.length === 0) {
         $('#guideBox').innerHTML =
           '<div class="dt-guide">' +
-            '<div class="g-rule">🎉 오답 없음</div>' +
+            '<div class="g-rule">' + VUI.icon('party-popper') + ' 오답 없음</div>' +
             '<div class="g-text">이번 급수표는 모두 맞혔어요! 다음에는 난이도를 높이거나 새 단원으로 도전해 보세요.</div>' +
           '</div>';
         return;
@@ -1274,7 +1382,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       $('#guideBox').innerHTML = weakRows.slice(0, 2).map(row => {
         const guide = GUIDE_TEMPLATES[row.name] || GUIDE_TEMPLATES['받침없음/규칙없음'];
         return '<div class="dt-guide">' +
-          '<div class="g-rule">' + esc(row.name) + ' — 오답률 ' + row.pct + '%</div>' +
+          '<div class="g-rule">' + esc(ruleLabel(row.name)) + ' — 오답률 ' + row.pct + '%</div>' +
           '<div class="g-text">' + esc(guide.text) + '</div>' +
         '</div>';
       }).join('');
@@ -1371,20 +1479,20 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         .filter(it => !excludeKeys.has(itemKey(it)) && it.tags && it.tags.some(t => weakTags.includes(t)));
 
       const targetCount = Math.max(10, wrongItems.length);
-      const filler = shuffleArray(candidatePool).slice(0, Math.max(0, targetCount - wrongItems.length));
-
-      state.items = shuffleArray(wrongItems.concat(filler));
-      state.inputs = state.items.map(() => '');
-      state.results = null;
-      state.readIndex = 0;
-      state.bank = { unit: weakTags.join('·') + ' 복습 급수표' };
-
-      renderSheet();
-      renderGradeGrid();
-      renderReadCard();
-      unlockSteps('grade');
-      goto('sheet');
-      showToast('약점 규칙(' + weakTags.join(', ') + ')로 복습 급수표 ' + state.items.length + '문항을 만들었습니다.');
+      const bank = { unit: weakTags.map(ruleLabel).join('·') + ' 복습 급수표' };
+      const unitCode = state.unit;
+      // 틀린 문항은 그대로 두고, 채워 넣는 문항만 같은 풀에서 다시 뽑음
+      const draw = () => {
+        const filler = shuffleArray(candidatePool).slice(0, Math.max(0, targetCount - wrongItems.length));
+        state.bank = bank; state.unit = unitCode;
+        setItems(shuffleArray(wrongItems.concat(filler)));
+      };
+      state.redraw = () => {
+        draw();
+        showToast('복습 급수표 ' + state.items.length + '문항을 다시 뽑았어요.');
+      };
+      draw();
+      showToast('약점 규칙(' + weakTags.map(ruleLabel).join(', ') + ')로 복습 급수표 ' + state.items.length + '문항을 만들었어요.');
     });
 
     /* ══════════════════════════════════════════════
@@ -1418,7 +1526,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         const c = tagCounts[tag];
         const pct = Math.round(c / maxCount * 100);
         html += '<div class="stat-bar-row">' +
-          '<span class="label">' + esc(tag) + '</span>' +
+          '<span class="label">' + esc(ruleLabel(tag)) + '</span>' +
           '<span class="bar"><i style="width:' + pct + '%"></i></span>' +
           '<span class="val">' + c + '</span>' +
         '</div>';
@@ -1466,11 +1574,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       return { weakRules, wrongItems, totalAttempts: attempts.length };
     }
 
+    // 기록이 없을 때 보여 줄 처음 안내(4단계 로드맵) — 짧은 문구로 덮어쓰지 않고 그대로 되살림
+    const aiEmptyHtml = $('#aiWeakSummary').innerHTML;
     function renderAiMode() {
       const analysis = analyzeAttempts();
 
       if (!analysis || analysis.weakRules.length === 0) {
-        $('#aiWeakSummary').innerHTML = '<div class="dt-ai-empty">📊 채점 기록이 없습니다.<br>교과서 모드에서 먼저 받아쓰기를 연습해 보세요!</div>';
+        $('#aiWeakSummary').innerHTML = aiEmptyHtml;
         $('#aiAskCard').hidden = true;
         $('#aiRecommendCard').hidden = true;
         return;
@@ -1482,13 +1592,13 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         summaryHtml += '<div class="dt-ai-summary-row">' +
           '<span class="rank ' + (rankClasses[i] || 'r3') + '">' + (i + 1) + '</span>' +
           '<span class="info">' +
-            '<div class="name">' + esc(r.rule) + '</div>' +
+            '<div class="name">' + esc(ruleLabel(r.rule)) + '</div>' +
             '<div class="detail">오답률 ' + r.errorRate + '% · ' + r.wrong + '/' + r.count + '회 틀림</div>' +
           '</span>' +
         '</div>';
       });
       summaryHtml += '</div>';
-      summaryHtml += '<p style="font-size:14px; color:var(--fg-muted);">총 ' + analysis.totalAttempts + '회 채점 기록 기반</p>';
+      summaryHtml += '<p style="font-size:14px; color:var(--fg-muted);">이 기기에 저장된 채점 ' + analysis.totalAttempts + '회(여러 학생 포함)를 합친 결과</p>';
       $('#aiWeakSummary').innerHTML = summaryHtml;
 
       $('#aiAskCard').hidden = false;
@@ -1503,7 +1613,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 
       const btn = $('#btnAskAI');
       btn.disabled = true;
-      btn.textContent = '⏳ AI 분석 중...';
+      btn.textContent = 'AI 분석 중…';
       $('#aiResponseArea').innerHTML = '<div class="dt-ai-loading"><div class="spinner"></div><div>AI 선생님이 분석 중입니다...</div></div>';
 
       const area = $('#aiResponseArea');
@@ -1520,10 +1630,10 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       .then(data => {
         area.removeAttribute('aria-busy');
         btn.disabled = false;
-        btn.textContent = '🤖 AI에게 다시 물어보기';
+        btn.innerHTML = VUI.icon('bot') + ' AI에게 다시 물어보기';
 
         if (!data || typeof data !== 'object' || data.error) {
-          area.innerHTML = '<div class="dt-ai-empty">⚠️ ' + esc((data && typeof data.error === 'string' && data.error) || 'AI가 답을 만들지 못했어요. 잠시 후 다시 해 주세요.') + '</div>';
+          area.innerHTML = '<div class="dt-ai-empty err">' + VUI.icon('triangle-alert') + ' ' + esc((data && typeof data.error === 'string' && data.error) || 'AI가 답을 만들지 못했어요. 잠시 후 다시 해 주세요.') + '</div>';
           return;
         }
 
@@ -1533,7 +1643,7 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         if (Array.isArray(data.tips) && data.tips.length) {
           html += '<div class="ai-tips">';
           data.tips.forEach(tip => {
-            html += '<div class="ai-tip"><span class="icon" aria-hidden="true">💡</span><span>' + esc(tip) + '</span></div>';
+            html += '<div class="ai-tip"><span class="icon" aria-hidden="true">' + VUI.icon('lightbulb') + '</span><span>' + esc(tip) + '</span></div>';
           });
           html += '</div>';
         }
@@ -1541,11 +1651,11 @@ import AppLayout from '../../../layouts/AppLayout.astro';
         area.innerHTML = html;
 
         if (Array.isArray(data.recommendedRules) && data.recommendedRules.length) {
-          state.aiRecommendedRules = data.recommendedRules.map(String);
+          state.aiRecommendedRules = data.recommendedRules.map(ruleKey);
           $('#aiRecommendCard').hidden = false;
           let rulesHtml = '<div style="display:flex; gap:6px; flex-wrap:wrap;">';
           state.aiRecommendedRules.forEach(r => {
-            rulesHtml += '<span class="dt-tag">' + esc(r) + '</span>';
+            rulesHtml += '<span class="dt-tag">' + esc(ruleLabel(r)) + '</span>';
           });
           rulesHtml += '</div>';
           $('#aiRecommendRules').innerHTML = rulesHtml;
@@ -1554,17 +1664,21 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       .catch(err => {
         area.removeAttribute('aria-busy');
         btn.disabled = false;
-        btn.textContent = '🤖 AI에게 물어보기';
-        area.innerHTML = '<div class="dt-ai-empty">⚠️ ' + esc(err && err.message ? err.message : 'AI에 연결하지 못했어요.') + '</div>';
+        btn.innerHTML = VUI.icon('bot') + ' AI에게 물어보기';
+        area.innerHTML = '<div class="dt-ai-empty err">' + VUI.icon('triangle-alert') + ' ' + esc(err && err.message ? err.message : 'AI에 연결하지 못했어요.') + '</div>';
       });
     });
 
     // 채점 기록 지우기 (이 기기에 저장된 기록 전체)
     $('#btnClearAttempts').addEventListener('click', () => {
-      if (!confirm('이 기기에 저장된 채점 기록을 모두 지울까요? 지운 기록은 되살릴 수 없어요.')) return;
-      VUI.storage.remove('dictation:attempts');
-      renderAiMode();
-      showToast('채점 기록을 지웠어요.');
+      VUI.confirm('이 기기에 저장된 채점 기록(모든 학생)을 지울까요? 지운 기록은 되살릴 수 없어요.', {
+        title: '채점 기록 지우기', ok: '지우기', danger: true
+      }).then((ok) => {
+        if (!ok) return;
+        VUI.storage.remove('dictation:attempts');
+        renderAiMode();
+        showToast('채점 기록을 지웠어요.');
+      });
     });
 
     // 추천 규칙으로 급수표 만들기
@@ -1579,17 +1693,18 @@ import AppLayout from '../../../layouts/AppLayout.astro';
       const firstRule = state.aiRecommendedRules[0];
       const ruleVal = 'rule-' + firstRule;
       const unitSelect = $('#unitSelect');
-      const opt = unitSelect.querySelector('option[value="' + ruleVal + '"]');
+      const opt = RULE_TAGS.indexOf(firstRule) >= 0 && unitSelect.querySelector('option[value="' + ruleVal + '"]');
+      const label = opt ? ruleLabel(firstRule) + ' 집중 연습 (AI 추천)' : '전체 규칙 종합 연습 (AI 추천)';
       if (opt) {
         unitSelect.value = ruleVal;
       } else {
         unitSelect.value = 'rule-전체';
+        showToast('추천 규칙(' + ruleLabel(firstRule) + ')에 맞는 연습이 없어 전체 규칙으로 만들어요.');
       }
 
       loadAllUnits().then(() => {
         state.unit = unitSelect.value;
-        state.bank = { unit: firstRule + ' 집중 연습 (AI 추천)' };
-        generateItems();
+        generateItems({ label: label });
       });
     });
 

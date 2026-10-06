@@ -40,20 +40,24 @@ function sanitizeBooks(arr) {
   return arr.slice(0, 1000).filter(b => b && typeof b === 'object').map(sanitizeBook);
 }
 
-/* ── 링크 파싱 ── */
+/* ── 링크 파싱 ──
+   줄바꿈·공백·쉼표로 나눈다(공유 링크의 base64 데이터에는 공백·쉼표가 없다).
+   링크 모양이 아닌 토막은 skipped로 세어 알린다. */
 function parseLinks(text) {
-  const lines = text.split(/[\n\r]+/).filter(l => l.trim());
   const links = [];
+  let skipped = 0;
 
-  for (const line of lines) {
-    const trimmed = line.trim();
+  for (const tok of text.split(/[\s,]+/)) {
+    if (!tok) continue;
     // 단축URL 또는 공유 링크 형태
-    if (/^https?:\/\//.test(trimmed) || trimmed.startsWith('#share=')) {
-      links.push(trimmed);
+    if (/^https?:\/\//i.test(tok) || tok.startsWith('#share=')) {
+      links.push(tok);
+    } else {
+      skipped++;
     }
   }
 
-  return [...new Set(links)]; // 중복 제거
+  return { links: [...new Set(links)], skipped }; // 중복 제거
 }
 
 /* ── Short.io API를 통한 URL 역추적 (실패하면 한국어 message의 Error) ── */
@@ -62,7 +66,8 @@ async function resolveShortURL(shortURL) {
   return (data && typeof data.resolvedURL === 'string') ? data.resolvedURL : '';
 }
 
-/* ── 링크 처리 및 책 정보 추출 ── */
+/* ── 링크 처리 및 책 정보 추출 ──
+   책을 하나도 얻지 못하면 이유(한국어)를 담은 Error를 던진다 → '실패 N건'과 실패 목록에 들어감 */
 async function resolveAndDecodeLink(link) {
   // 단축코드 추출 (단축URL에서)
   let shortCode = '';
@@ -75,39 +80,61 @@ async function resolveAndDecodeLink(link) {
   if (link.includes('#share=')) {
     const encoded = link.split('#share=')[1];
     const data = sanitizeBooks(decodeShareData(encoded));
+    if (!data.length) throw new Error('링크 내용을 읽을 수 없어요(잘린 링크일 수 있어요)');
     // 공유 링크의 경우 source는 전체 링크
     return data.map(b => ({ ...b, _source: link }));
   }
 
   // 단축URL 형태
-  if (/^https?:\/\//.test(link)) {
+  if (/^https?:\/\//i.test(link)) {
+    let resolvedURL;
     try {
-      const resolvedURL = await resolveShortURL(link);
-
-      // 최종 URL에서 공유 데이터 추출
-      if (resolvedURL.includes('#share=')) {
-        const encoded = resolvedURL.split('#share=')[1];
-        const data = sanitizeBooks(decodeShareData(encoded));
-        // 단축코드를 source로 저장
-        return data.map(b => ({ ...b, _source: shortCode }));
-      }
+      resolvedURL = await resolveShortURL(link);
     } catch (e) {
       console.error('링크 처리 오류:', link, e);
+      throw new Error((e && e.message) || '단축 주소를 확인하지 못했어요');
     }
+
+    // 최종 URL에서 공유 데이터 추출
+    if (!resolvedURL || !resolvedURL.includes('#share=')) {
+      throw new Error('도서 정보 나눔의 공유 링크가 아니에요');
+    }
+    const encoded = resolvedURL.split('#share=')[1];
+    const data = sanitizeBooks(decodeShareData(encoded));
+    if (!data.length) throw new Error('링크 내용을 읽을 수 없어요');
+    // 단축코드를 source로 저장
+    return data.map(b => ({ ...b, _source: shortCode }));
   }
 
-  return [];
+  throw new Error('링크 형식이 아니에요');
+}
+
+/* ── 실패한 링크 목록 표시 ── */
+function renderFailures(failed) {
+  const box = document.getElementById('failBox');
+  if (!box) return;
+  if (!failed.length) { box.hidden = true; box.innerHTML = ''; return; }
+  box.innerHTML =
+    `<p class="fail-box-title">${VUI.icon('triangle-alert')} 가져오지 못한 링크 ${failed.length}건</p>` +
+    '<ul>' + failed.map(f =>
+      `<li><span class="fail-link">${escHtml(f.link)}</span> <span class="fail-why">— ${escHtml(f.reason)}</span></li>`
+    ).join('') + '</ul>';
+  box.hidden = false;
 }
 
 /* ── 데이터 수집 및 병합 ── */
 async function startGather() {
   const linkText = document.getElementById('linkInput').value;
-  const links = parseLinks(linkText);
+  const { links, skipped } = parseLinks(linkText);
+  const skippedMsg = skipped ? `링크가 아닌 글자 ${skipped}건 건너뜀` : '';
 
   if (links.length === 0) {
-    showToast('유효한 링크가 없습니다.');
+    showToast(skipped
+      ? `붙여넣은 내용에 링크가 없어요(${skippedMsg}). https://로 시작하는 주소를 넣어 주세요.`
+      : '공유 링크를 붙여넣어 주세요.', 'error');
     return;
   }
+  renderFailures([]);
 
   const gatherBtn = document.getElementById('gatherBtn');
   gatherBtn.disabled = true;
@@ -115,7 +142,7 @@ async function startGather() {
   const pw = document.getElementById('gatherProgressWrap');
   pw.classList.add('visible');
 
-  let collected = 0, errors = 0;
+  const failed = [];   // { link, reason }
   const collectedBooks = [];
 
   for (let i = 0; i < links.length; i++) {
@@ -123,12 +150,9 @@ async function startGather() {
 
     try {
       const books = await resolveAndDecodeLink(links[i]);
-      if (Array.isArray(books) && books.length > 0) {
-        collectedBooks.push(...books);
-        collected++;
-      }
+      collectedBooks.push(...books);
     } catch (e) {
-      errors++;
+      failed.push({ link: links[i], reason: (e && e.message) || '알 수 없는 오류' });
       console.error('링크 처리 실패:', links[i], e);
     }
 
@@ -163,21 +187,28 @@ async function startGather() {
   // 결과 표시
   gatherBtn.disabled = false;
   pw.classList.remove('visible');
+  renderFailures(failed);
+
+  const extra = [];
+  if (failed.length) extra.push(`실패 ${failed.length}건(아래 목록)`);
+  if (skippedMsg) extra.push(skippedMsg);
 
   if (uniqueBooks.length > 0) {
     // 이 기기에 저장된 목록(도서 정보 나눔과 같은 저장소)을 바꾸기 전에 확인
-    if (list.length > 0 && !confirm(`수집한 ${uniqueBooks.length}권으로 목록을 바꿀까요?
-지금 이 기기에 저장된 목록(${list.length}권)은 지워져요.`)) {
-      showToast('기존 목록을 그대로 두었어요.');
+    if (list.length > 0 && !(await VUI.confirm(
+      `지금 이 기기에 저장된 목록(${list.length}줄)은 지워져요. 도서 정보 나눔 화면의 목록도 같은 목록이에요.`,
+      { title: `수집한 ${uniqueBooks.length}권으로 목록을 바꿀까요?`, ok: '수집한 목록으로 바꾸기', cancel: '기존 목록 유지' }))) {
+      showToast('기존 목록을 그대로 두었어요.' + (extra.length ? ' · ' + extra.join(' · ') : ''));
       return;
     }
     list = uniqueBooks.map(b => { const { _source, ...rest } = b; return rest; });
     saveList();
     renderTable();
     document.getElementById('tableSection').style.display = '';
-    showToast(`✓ ${uniqueBooks.length}권 수집 완료${errors ? ` (실패 ${errors}건)` : ''}`);
+    // 실패가 섞이면 성공색을 쓰지 않는다(기본 토스트)
+    showToast([`링크 ${links.length - failed.length}개에서 ${uniqueBooks.length}권 수집`, ...extra].join(' · '));
   } else {
-    showToast('수집된 책이 없습니다.', 'error');
+    showToast(['수집된 책이 없어요', ...extra].join(' · '), 'error');
   }
 }
 
@@ -197,14 +228,18 @@ function renderTable() {
   const validList = list.filter(b => !b.error);
   const errorList = list.filter(b => b.error);
 
+  const empty = document.getElementById('emptyState');
+
   if (list.length === 0) {
     section.style.display = 'none';
     arrow.style.display = 'none';
+    if (empty) empty.style.display = '';
     return;
   }
 
   section.style.display = '';
   arrow.style.display = '';
+  if (empty) empty.style.display = 'none';
 
   // 행 렌더링
   let num = 0;
@@ -212,12 +247,12 @@ function renderTable() {
     if (!b.error) num++;
     return `<tr class="${b.error ? 'error-row' : ''}">
       <td class="num">${b.error ? '–' : num}</td>
-      <td class="title">${escHtml(b.title)}</td>
-      <td>${escHtml(b.author || '')}</td>
-      <td>${escHtml(b.publisher)}</td>
+      <td class="title">${escHtml(b.title)}${b.isbn13 ? `<span class="isbn">ISBN ${escHtml(b.isbn13)}</span>` : ''}</td>
+      <td class="author">${escHtml(b.author || '')}</td>
+      <td class="publisher">${escHtml(b.publisher)}</td>
       <td class="price">${b.priceStandard ? b.priceStandard.toLocaleString() + '원' : '–'}</td>
       <td class="qty">${b.error ? '' : `<input class="qty-input" type="number" min="0" max="999" value="${b.qty}" data-idx="${idx}" aria-label="${escHtml(b.title)} 주문수량" onchange="updateQty(this)">`}</td>
-      <td class="del"><button type="button" class="del-btn" title="삭제" aria-label="${escHtml(b.title)} 삭제" onclick="deleteRow(${idx})">✕</button></td>
+      <td class="del"><button type="button" class="del-btn" title="삭제" aria-label="${escHtml(b.title)} 삭제" onclick="deleteRow(${idx})">${VUI.icon('x')}</button></td>
     </tr>`;
   }).join('');
 
@@ -228,7 +263,7 @@ function renderTable() {
     `<span>총 <strong>${validList.length}종</strong></span>` +
     `<span>주문수량 <strong>${totalQty}권</strong></span>` +
     `<span>합계 <strong>${totalPrice.toLocaleString()}원</strong></span>` +
-    (errorList.length ? `<span style="color:var(--danger)">조회 실패 <strong>${errorList.length}건</strong></span>` : '');
+    (errorList.length ? `<span class="fail-stat">조회 실패 <strong>${errorList.length}건</strong></span>` : '');
 }
 
 /* ── 수량 업데이트 ── */
@@ -261,11 +296,39 @@ function saveList() {
   }
 }
 
-/* ── 엑셀 내보내기 (index.html에서 복사) ── */
-function exportExcel() {
-  if (typeof XLSX === 'undefined') { showToast('SheetJS 로딩 중...'); return; }
+/* ── SheetJS: 엑셀 내려받기를 누를 때만 불러온다(첫 화면을 막지 않게) ── */
+const XLSX_SRC = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+let xlsxLoading = null;
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (!xlsxLoading) {
+    xlsxLoading = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = XLSX_SRC;
+      s.async = true;
+      s.onload = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('XLSX 없음'));
+      s.onerror = () => { s.remove(); reject(new Error('불러오기 실패')); };
+      document.head.appendChild(s);
+    }).catch(e => { xlsxLoading = null; throw e; }); // 실패하면 다음 클릭 때 다시 시도
+  }
+  return xlsxLoading;
+}
+
+/* ── 엑셀 내보내기 (book-share index와 같은 형식 + 출처 열) ── */
+async function exportExcel() {
   const valid = list.filter(b => !b.error);
-  if (valid.length === 0) { showToast('내보낼 항목이 없습니다.'); return; }
+  if (valid.length === 0) { showToast('내려받을 책이 없어요.'); return; }
+
+  const btn = document.getElementById('excelBtn');
+  if (btn) btn.disabled = true;
+  try {
+    await loadXLSX();
+  } catch {
+    showToast('엑셀 도구를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.', 'error');
+    return;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 
   const rows = valid.map((b, i) => ({
     '순번': i + 1,
@@ -296,7 +359,7 @@ function exportExcel() {
   XLSX.utils.book_append_sheet(wb, ws, '도서 정보');
   const today = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(wb, `도서 정보_${today}.xlsx`);
-  showToast('엑셀 파일을 내려받았습니다.');
+  showToast('엑셀 파일을 내려받았어요.');
 }
 
 /* ── 유틸리티 ── */
@@ -321,7 +384,7 @@ function goHome() {
 /* ── 링크로 공유 ── */
 async function shareList() {
   const validList = list.filter(b => !b.error);
-  if (validList.length === 0) { showToast('공유할 책이 없습니다.'); return; }
+  if (validList.length === 0) { showToast('공유할 책이 없어요.'); return; }
 
   // UTF-8 base64url(VUI.share.encode) — 받는 쪽(book-share)은 옛 형식도 읽는다
   const longUrl = `${window.location.origin}/apps/book-share/#share=${VUI.share.encode(validList)}`;
@@ -331,7 +394,7 @@ async function shareList() {
   if (btn) btn.disabled = true;
   try {
     await VUI.share.link(longUrl, {
-      title: '🔗 수집한 목록 공유',
+      title: '수집한 목록 공유',
       desc: `링크를 연 사람은 이 목록(${validList.length}권)을 도서 정보 나눔에서 볼 수 있어요.`,
     });
   } finally {
@@ -340,15 +403,19 @@ async function shareList() {
 }
 
 /* ── 전체 초기화 ── */
-function confirmReset() {
-  if (confirm('정말로 모든 데이터를 삭제하시겠습니까?')) {
-    list = [];
-    try { localStorage.removeItem(LS_ITEMS); } catch {}
-    renderTable();
-    document.getElementById('tableSection').style.display = 'none';
-    document.getElementById('linkInput').value = '';
-    showToast('초기화 완료');
-  }
+// 저장소(LS_ITEMS)를 도서 정보 나눔과 함께 쓰므로 그쪽 목록도 비워진다 — 확인 문구에 밝힌다
+async function confirmReset() {
+  const ok = await VUI.confirm(
+    `수집한 목록 ${list.length}줄과 입력한 링크를 모두 지울까요? 되돌릴 수 없어요.\n도서 정보 나눔 화면의 목록도 같은 저장 공간을 써서 함께 지워져요.`,
+    { title: '전체 초기화', ok: '모두 지우기', danger: true });
+  if (!ok) return;
+  list = [];
+  try { localStorage.removeItem(LS_ITEMS); } catch {}
+  renderTable();
+  renderFailures([]);
+  document.getElementById('tableSection').style.display = 'none';
+  document.getElementById('linkInput').value = '';
+  showToast('목록을 모두 지웠어요.');
 }
 
 /* ── 초기화 ── */
