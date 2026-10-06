@@ -1,0 +1,396 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+---
+<AppLayout
+  title="그래프 그리기 — eduin VIVES"
+  description="조사한 자료를 표로 정리하고 ○그래프, 그림그래프, 막대·꺾은선그래프, 띠·원그래프로 바꿔 보세요. 눈금 읽기, 평균, 알맞은 그래프 고르기 미션까지. 초등 수학 자료와 가능성."
+  image="https://eduin.info/og-images/graph-maker.png"
+  bodyShell="immersive"
+>
+  <Fragment slot="head">
+    <link rel="stylesheet" href="/common/sim-kit.css">
+    <script is:inline src="/common/sim-kit.js"></script>
+    <script is:inline src="/common/vgraph.js"></script>
+    <style is:global="">
+/* ══════════════════════════════════════════════
+   graph-maker — 그래프 그리기 (immersive, 태블릿 손가락 조작 전제)
+   계획: docs/graph-maker-plan.md
+   ══════════════════════════════════════════════ */
+:root {
+  --gm-primary: #6d28d9;
+  --gm-primary-h: #5b21b6;
+  --gm-primary-soft: rgba(109,40,217,0.10);
+  --gm-bg: #f6f5fb;
+  --gm-paper: #ffffff;
+  --gm-panel: #ffffff;
+  --gm-border: #e4e2ee;
+  --gm-text: #1e1b2e;
+  --gm-muted: #6b6880;
+  --gm-grid: #ebe9f3;
+  --gm-axis: #4b4860;
+  --gm-btn: #f3f2f8;
+  --gm-btn-h: #e8e6f2;
+  --gm-ok: #15803d;
+  --gm-no: #c2410c;
+  --gm-avg: #d97706;
+  --gm-line: #e11d48;
+  --gm-bar: #6d28d9;
+  --sk-accent: var(--gm-primary);
+}
+[data-theme="dark"] {
+  --gm-primary: #a78bfa;
+  --gm-primary-h: #c4b5fd;
+  --gm-primary-soft: rgba(167,139,250,0.14);
+  --gm-bg: #0e0c16;
+  --gm-paper: #16131f;
+  --gm-panel: #131020;
+  --gm-border: #2a2540;
+  --gm-text: #ece9f8;
+  --gm-muted: #a29db8;
+  --gm-grid: #26213a;
+  --gm-axis: #b5b0cc;
+  --gm-btn: #1d1930;
+  --gm-btn-h: #27223e;
+  --gm-ok: #4ade80;
+  --gm-no: #fdba74;
+  --gm-avg: #fbbf24;
+  --gm-line: #fb7185;
+  --gm-bar: #a78bfa;
+  --sk-accent-fg: #0e0c16;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', 'Segoe UI', sans-serif;
+  background: var(--gm-bg); color: var(--gm-text); min-height: 100vh; overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+button, input, textarea { font-family: inherit; }
+.screen { display: none; }
+.screen.active { display: flex; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.gm-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 48px; padding: 0 18px;
+  border-radius: 14px; border: 1px solid var(--gm-border); background: var(--gm-btn); color: var(--gm-text);
+  font-size: 15.5px; font-weight: 800; cursor: pointer; touch-action: manipulation; transition: background .15s, transform .08s;
+}
+.gm-btn:hover { background: var(--gm-btn-h); }
+.gm-btn:active { transform: scale(.96); }
+.gm-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.gm-btn.primary { background: var(--gm-primary); border-color: var(--gm-primary); color: #fff; }
+[data-theme="dark"] .gm-btn.primary { color: #0e0c16; }
+.gm-btn.primary:hover { background: var(--gm-primary-h); }
+.gm-btn.big { min-height: 60px; padding: 0 36px; font-size: 19px; border-radius: 99px; }
+.gm-btn.sm { min-height: 44px; padding: 0 12px; font-size: 14px; border-radius: 12px; }
+.gm-btn.block { width: 100%; }
+.gm-btn[aria-pressed="true"] { border-color: var(--gm-primary); background: var(--gm-primary-soft); color: var(--gm-primary); }
+
+/* ══════════ 인트로 ══════════ */
+.intro-screen, .result-screen {
+  flex-direction: column; align-items: center; height: 100vh; height: 100dvh; padding: 64px 20px 28px;
+  text-align: center; overflow-y: auto; animation: fadeUp .45s ease;
+  background: radial-gradient(circle at 20% 25%, rgba(109,40,217,.10) 0, transparent 40%),
+              radial-gradient(circle at 80% 75%, rgba(225,29,72,.07) 0, transparent 38%), var(--gm-bg);
+}
+.intro-screen > :first-child, .result-screen > :first-child { margin-top: auto; }
+.intro-screen > :last-child, .result-screen > :last-child { margin-bottom: auto; }
+.intro-tag { display: inline-block; background: var(--gm-primary); color: #fff; font-size: 14px; font-weight: 800; padding: 6px 14px; border-radius: 99px; margin-bottom: 14px; }
+[data-theme="dark"] .intro-tag { color: #0e0c16; }
+.intro-art { font-size: 84px; line-height: 1; margin-bottom: 6px; }
+.intro-screen h1, .result-screen h1 { font-size: 34px; font-weight: 900; letter-spacing: -.02em; margin-bottom: 6px; }
+.intro-sub { font-size: 16px; color: var(--gm-muted); line-height: 1.7; margin-bottom: 18px; }
+.intro-types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: min(560px, 100%); margin-bottom: 22px; }
+.intro-types div { background: var(--gm-panel); border: 1px solid var(--gm-border); border-radius: 14px; padding: 12px 8px; font-weight: 800; font-size: 15px; }
+.intro-types small { display: block; color: var(--gm-muted); font-weight: 700; font-size: 12.5px; margin-top: 2px; }
+
+/* ══════════ 본 화면 ══════════ */
+.main-screen { width: 100vw; height: 100vh; height: 100dvh; animation: fadeUp .35s ease; }
+.main-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; width: 100%; height: 100%; }
+.zone { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: 60px 14px 14px; gap: 10px; }
+.type-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; flex-shrink: 0; }
+.type-bar[hidden] { display: none; }
+.type-btn {
+  flex: 0 0 auto; min-height: 52px; padding: 4px 14px; border-radius: 14px; border: 2px solid var(--gm-border); background: var(--gm-panel);
+  color: var(--gm-text); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: manipulation;
+}
+.type-btn b { font-size: 15px; font-weight: 900; }
+.type-btn small { font-size: 11.5px; color: var(--gm-muted); font-weight: 700; }
+.type-btn[aria-pressed="true"] { border-color: var(--gm-primary); background: var(--gm-primary-soft); }
+.type-btn[aria-pressed="true"] b { color: var(--gm-primary); }
+.stage {
+  position: relative; flex: 1; min-height: 0; border-radius: 18px; background: var(--gm-paper); border: 1px solid var(--gm-border);
+  overflow: hidden; display: flex; align-items: center; justify-content: center;
+}
+.stage > svg { display: block; touch-action: none; }
+.stage-note { position: absolute; left: 12px; bottom: 10px; right: 12px; font-size: 13.5px; color: var(--gm-muted); font-weight: 700; pointer-events: none; text-align: center; }
+.stage-note.warn { color: var(--gm-no); }
+.stage-msg { font-size: 18px; font-weight: 800; color: var(--gm-muted); text-align: center; padding: 20px; line-height: 1.6; }
+.draw-bubble { position: absolute; z-index: 5; pointer-events: none; padding: 6px 12px; border-radius: 10px; background: var(--gm-text); color: var(--gm-bg); font-weight: 900; font-size: 18px; transform: translate(-50%, -120%); }
+
+/* 조사하기 */
+.tally-grid { width: 100%; height: 100%; padding: 14px; display: grid; gap: 12px; }
+.tally {
+  border-radius: 18px; border: 2px solid var(--gm-border); background: var(--gm-panel); color: var(--gm-text); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px; touch-action: manipulation;
+  user-select: none; -webkit-user-select: none; min-height: 110px; transition: transform .06s, border-color .15s;
+}
+.tally:active { transform: scale(.97); border-color: var(--gm-primary); }
+.tally .nm { font-size: clamp(18px, 2.4vw, 28px); font-weight: 900; }
+.tally .ct { font-size: clamp(30px, 5vw, 64px); font-weight: 900; color: var(--gm-primary); font-variant-numeric: tabular-nums; line-height: 1; }
+.tally .marks { font-size: clamp(16px, 2vw, 24px); color: var(--gm-muted); font-weight: 800; letter-spacing: .08em; min-height: 1.3em; word-break: break-all; text-align: center; }
+
+/* 미션 무대 */
+.cards { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-content: center; padding: 18px; max-width: 760px; }
+.cards span { font-size: clamp(36px, 6vw, 64px); line-height: 1; }
+
+/* ── 패널 ── */
+.panel { background: var(--gm-panel); border-left: 1px solid var(--gm-border); overflow-y: auto; display: flex; flex-direction: column; min-height: 0; }
+.panel-head { padding: 60px 16px 10px; border-bottom: 1px solid var(--gm-border); }
+.panel-head h2 { font-size: 20px; font-weight: 900; }
+.mode-tabs { display: flex; gap: 6px; padding: 12px 14px 0; }
+.mode-tab { flex: 1; min-height: 48px; border-radius: 12px; border: 2px solid var(--gm-border); background: var(--gm-btn); font-size: 15px; font-weight: 800; color: var(--gm-muted); cursor: pointer; touch-action: manipulation; }
+.mode-tab.active { border-color: var(--gm-primary); background: var(--gm-primary-soft); color: var(--gm-primary); }
+.panel-body { padding: 14px; flex: 1; }
+.pane[hidden] { display: none; }
+.group { border: 1px solid var(--gm-border); border-radius: 16px; padding: 12px; margin-bottom: 12px; background: var(--gm-bg); }
+.group-title { font-size: 13.5px; font-weight: 800; color: var(--gm-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.group-title .sp { flex: 1; }
+.row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.row + .row { margin-top: 8px; }
+.inp {
+  min-height: 44px; border-radius: 10px; border: 1px solid var(--gm-border); background: var(--gm-panel); color: var(--gm-text);
+  padding: 0 10px; font-size: 15px; font-weight: 700; min-width: 0;
+}
+.inp:focus { outline: none; border-color: var(--gm-primary); }
+.chipset { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  min-height: 40px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--gm-border); background: var(--gm-panel); color: var(--gm-text);
+  font-size: 13.5px; font-weight: 800; cursor: pointer; touch-action: manipulation;
+}
+.chip[aria-pressed="true"] { border-color: var(--gm-primary); background: var(--gm-primary-soft); color: var(--gm-primary); }
+.trow { display: grid; grid-template-columns: minmax(0, 1fr) 44px 64px 44px 40px; gap: 5px; align-items: center; }
+.trow + .trow { margin-top: 6px; }
+.trow .val {
+  min-height: 44px; border-radius: 10px; border: 1px solid var(--gm-border); background: var(--gm-panel); color: var(--gm-text);
+  font-size: 17px; font-weight: 900; cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.trow .val.focus { border-color: var(--gm-primary); box-shadow: 0 0 0 3px var(--gm-primary-soft); }
+.sq { min-height: 44px; border-radius: 10px; border: 1px solid var(--gm-border); background: var(--gm-btn); color: var(--gm-text); font-size: 20px; font-weight: 800; cursor: pointer; touch-action: manipulation; }
+.sq.del { font-size: 15px; color: var(--gm-muted); }
+.ttotal { display: flex; justify-content: space-between; font-weight: 800; font-size: 14.5px; margin-top: 8px; color: var(--gm-muted); }
+.hint-text { font-size: 13.5px; color: var(--gm-muted); line-height: 1.6; }
+.toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+/* 숫자 입력판 */
+.keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 8px; }
+.keypad button { min-height: 50px; border-radius: 10px; border: 1px solid var(--gm-border); background: var(--gm-panel); color: var(--gm-text); font-size: 20px; font-weight: 900; cursor: pointer; touch-action: manipulation; }
+.keypad button.ok { background: var(--gm-primary); color: #fff; border-color: var(--gm-primary); font-size: 16px; }
+[data-theme="dark"] .keypad button.ok { color: #0e0c16; }
+.kp-pop { position: fixed; z-index: 9000; width: 260px; background: var(--gm-panel); border: 1px solid var(--gm-border); border-radius: 16px; padding: 10px; box-shadow: 0 12px 34px rgba(0,0,0,.2); }
+.kp-pop[hidden] { display: none; }
+.kp-pop .kp-head { display: flex; align-items: center; gap: 8px; font-weight: 800; }
+.kp-pop .kp-val { flex: 1; text-align: right; font-size: 26px; font-weight: 900; padding: 4px 8px; border-radius: 10px; background: var(--gm-bg); min-height: 44px; font-variant-numeric: tabular-nums; }
+
+/* 미션 */
+.m-title { font-size: 18px; font-weight: 900; margin: 10px 0 4px; }
+.m-grade { display: inline-block; font-size: 12px; font-weight: 800; color: var(--gm-primary); background: var(--gm-primary-soft); border-radius: 99px; padding: 2px 8px; margin-left: 6px; vertical-align: 2px; }
+.m-q { font-size: 17px; font-weight: 800; line-height: 1.5; margin: 6px 0 10px; }
+.m-step { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 800; color: var(--gm-muted); margin-bottom: 8px; }
+.m-step .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--gm-border); }
+.m-step .dot.ok { background: var(--gm-ok); } .m-step .dot.no { background: var(--gm-no); } .m-step .dot.cur { background: var(--gm-primary); }
+.opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.opt { min-height: 58px; border-radius: 14px; border: 2px solid var(--gm-border); background: var(--gm-panel); color: var(--gm-text); font-size: 17px; font-weight: 900; cursor: pointer; padding: 6px; touch-action: manipulation; }
+.opt.right { border-color: var(--gm-ok); background: rgba(22,163,74,.12); }
+.opt.wrong { border-color: var(--gm-no); background: rgba(234,88,12,.10); }
+.num-answer { display: flex; align-items: center; gap: 8px; }
+.num-answer .box { flex: 1; min-height: 56px; border-radius: 12px; border: 2px solid var(--gm-primary); background: var(--gm-panel); font-size: 28px; font-weight: 900; display: flex; align-items: center; justify-content: flex-end; padding: 0 14px; font-variant-numeric: tabular-nums; }
+.num-answer .box:empty::before { content: '?'; color: var(--gm-muted); }
+.num-answer .unit { font-size: 18px; font-weight: 900; }
+.counter-row { display: grid; grid-template-columns: 1fr 48px 56px 48px; gap: 6px; align-items: center; margin-bottom: 6px; }
+.counter-row .lbl { font-size: 18px; font-weight: 900; }
+.counter-row .v { text-align: center; font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.m-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.m-actions .gm-btn { flex: 1; }
+.m-actions [hidden] { display: none; }
+#mFeedback { margin-top: 10px; font-size: 15.5px; }
+#mFeedback:empty { display: none; }
+.sk-mnav { gap: 6px; flex-wrap: wrap; }
+.mtable { width: 100%; border-collapse: collapse; margin: 6px 0 4px; font-size: 15px; }
+.mtable th, .mtable td { border: 1px solid var(--gm-border); padding: 6px 4px; text-align: center; }
+.mtable th { background: var(--gm-bg); font-weight: 800; }
+
+/* 모달 */
+.gm-modal { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; padding: 16px; }
+.gm-modal.open { display: flex; }
+.gm-mbox { background: var(--gm-panel); color: var(--gm-text); border-radius: 20px; padding: 22px; width: min(520px, 100%); max-height: calc(100vh - 32px); overflow: auto; border: 1px solid var(--gm-border); }
+.gm-mbox h2 { font-size: 19px; font-weight: 900; margin-bottom: 6px; }
+.gm-mbox p { font-size: 14px; color: var(--gm-muted); line-height: 1.6; margin-bottom: 10px; }
+.gm-mbox textarea { width: 100%; height: 200px; border-radius: 12px; border: 1px solid var(--gm-border); background: var(--gm-bg); color: var(--gm-text); padding: 10px; font-size: 15px; line-height: 1.6; }
+.mfoot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
+
+/* 결과 */
+.result-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: min(560px, 100%); margin: 12px 0 18px; }
+.result-cell { background: var(--gm-panel); border: 1px solid var(--gm-border); border-radius: 14px; padding: 10px; font-size: 14px; font-weight: 700; text-align: left; display: flex; justify-content: space-between; gap: 8px; }
+.result-cell .stars { color: #f59e0b; white-space: nowrap; }
+.result-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* 인쇄: 그래프 한 장 */
+#printArea { display: none; }
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body { overflow: visible !important; background: #fff !important; }
+  body > *:not(#printArea) { display: none !important; }
+  #printArea { display: block !important; }
+  #printArea svg { width: 100%; height: auto; }
+  #printArea .mtable th, #printArea .mtable td { border: 1px solid #999; color: #000; background: #fff; }
+}
+
+/* ══════════ 반응형 ══════════ */
+@media (max-width: 900px), (orientation: portrait) and (max-width: 1100px) {
+  body { overflow-y: auto; }
+  .main-screen { height: auto; min-height: 100dvh; }
+  .main-layout { display: flex; flex-direction: column; height: auto; min-height: 100dvh; }
+  .zone { height: 58vh; height: 58dvh; min-height: 360px; flex-shrink: 0; padding-top: 56px; }
+  .panel { border-left: 0; border-top: 1px solid var(--gm-border); overflow: visible; }
+  .panel-head { padding-top: 14px; }
+}
+@media (max-width: 560px) {
+  .intro-types { grid-template-columns: repeat(2, 1fr); }
+  .intro-screen h1 { font-size: 28px; }
+}
+    </style>
+  </Fragment>
+
+<!-- ============ 인트로 ============ -->
+<div id="screenIntro" class="screen intro-screen active">
+  <div class="intro-tag">수학 1~6학년 · 자료와 가능성</div>
+  <div class="intro-art" aria-hidden="true">📊</div>
+  <h1>그래프 그리기</h1>
+  <p class="intro-sub">조사한 자료를 표로 정리하고<br>여러 가지 그래프로 바꿔 보며 무엇이 잘 보이는지 비교해요.</p>
+  <div class="intro-types" aria-hidden="true">
+    <div>○ 그래프<small>1~2학년</small></div>
+    <div>🍎 그림그래프<small>3~4학년</small></div>
+    <div>📊 막대그래프<small>3~4학년</small></div>
+    <div>📈 꺾은선그래프<small>3~4학년</small></div>
+    <div>▬ 띠그래프<small>5~6학년</small></div>
+    <div>◔ 원그래프<small>5~6학년</small></div>
+  </div>
+  <button type="button" class="gm-btn primary big" id="btnStart">시작하기</button>
+</div>
+
+<!-- ============ 본 화면 ============ -->
+<div id="screenMain" class="screen main-screen">
+  <div class="main-layout">
+    <div class="zone">
+      <div class="type-bar" id="typeBar" role="group" aria-label="그래프 종류"></div>
+      <div class="stage" id="stage"></div>
+    </div>
+
+    <aside class="panel" aria-label="조작판">
+      <div class="panel-head"><h2>📊 그래프 그리기</h2></div>
+      <div class="mode-tabs" role="group" aria-label="모드">
+        <button type="button" class="mode-tab active" data-mode="make" aria-pressed="true">📋 만들기</button>
+        <button type="button" class="mode-tab" data-mode="survey" aria-pressed="false">🗳 조사하기</button>
+        <button type="button" class="mode-tab" data-mode="mission" aria-pressed="false">🏆 미션</button>
+      </div>
+      <div class="panel-body">
+        <!-- 만들기 -->
+        <div class="pane" id="paneMake">
+          <div class="group">
+            <div class="group-title">예시 자료</div>
+            <div class="chipset" id="presets"></div>
+          </div>
+          <div class="group">
+            <div class="group-title">표<span class="sp"></span><button type="button" class="chip" id="btnPaste">📋 붙여넣기</button></div>
+            <div class="row"><input class="inp" id="tTitle" style="flex:1" maxlength="30" placeholder="제목 (예: 좋아하는 계절)" aria-label="그래프 제목"><input class="inp" id="tUnit" style="width:84px" maxlength="6" placeholder="단위" aria-label="단위 (예: 명)"></div>
+            <div id="rows" style="margin-top:10px"></div>
+            <div class="row" style="margin-top:8px"><button type="button" class="gm-btn sm" id="btnAddRow">＋ 항목 추가</button></div>
+            <div class="ttotal"><span>합계</span><span id="tTotal">0</span></div>
+          </div>
+          <div class="group" id="optGroup">
+            <div class="group-title" id="optTitle">설정</div>
+            <div id="opts"></div>
+          </div>
+          <div class="group">
+            <div class="group-title">내보내기</div>
+            <div class="row">
+              <button type="button" class="gm-btn sm" id="btnPng">🖼 그림 저장</button>
+              <button type="button" class="gm-btn sm" id="btnPrint">🖨 인쇄</button>
+              <button type="button" class="gm-btn sm" id="btnShare">🔗 링크</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 조사하기 -->
+        <div class="pane" id="paneSurvey" hidden>
+          <p class="hint-text" style="margin-bottom:10px">항목 단추를 누를 때마다 1씩 늘어요. 손을 든 친구 수를 세거나, 한 명씩 나와서 눌러요.</p>
+          <div class="group">
+            <div class="group-title">항목 (최대 8개)</div>
+            <div id="sItems"></div>
+            <div class="row" style="margin-top:8px"><button type="button" class="gm-btn sm" id="sAdd">＋ 항목 추가</button></div>
+          </div>
+          <div class="row">
+            <button type="button" class="gm-btn sm" id="sUndo">↶ 하나 취소</button>
+            <button type="button" class="gm-btn sm" id="sReset">모두 0으로</button>
+          </div>
+          <button type="button" class="gm-btn primary block" id="sToTable" style="margin-top:12px">📋 표로 정리하기</button>
+        </div>
+
+        <!-- 미션 -->
+        <div class="pane" id="paneMission" hidden>
+          <div class="sk-mnav" id="missionNav" aria-label="미션 번호"></div>
+          <h3 class="m-title" id="mTitle"></h3>
+          <div class="m-step" id="mStep"></div>
+          <div id="mInfo"></div>
+          <p class="m-q" id="mQ"></p>
+          <div id="mAnswer"></div>
+          <div id="mFeedback"></div>
+          <div class="m-actions">
+            <button type="button" class="gm-btn primary" id="mCheck">확인</button>
+            <button type="button" class="gm-btn primary" id="mNextQ" hidden>다음 문제 →</button>
+            <button type="button" class="gm-btn primary" id="mNextMission" hidden>다음 미션 →</button>
+            <button type="button" class="gm-btn" id="mResult" hidden>🏆 결과 보기</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ============ 결과 ============ -->
+<div id="screenResult" class="screen result-screen">
+  <div style="font-size:64px" aria-hidden="true">🏆</div>
+  <h1>미션 결과</h1>
+  <p class="intro-sub" id="resultSub"></p>
+  <div class="result-grid" id="resultGrid" role="list"></div>
+  <div class="result-btns">
+    <button type="button" class="gm-btn primary" id="btnRetry">다시 도전</button>
+    <button type="button" class="gm-btn" id="btnToMake">그래프 만들기로</button>
+  </div>
+</div>
+
+<!-- 값 입력판(표) -->
+<div class="kp-pop" id="kpPop" hidden role="dialog" aria-label="값 입력">
+  <div class="kp-head"><span id="kpLabel"></span><div class="kp-val" id="kpVal"></div></div>
+  <div class="keypad" id="kpKeys"></div>
+</div>
+
+<!-- 표 붙여넣기 -->
+<div class="gm-modal" id="pasteModal">
+  <div class="gm-mbox" role="dialog" aria-labelledby="pasteTitle">
+    <h2 id="pasteTitle">표 붙여넣기</h2>
+    <p>엑셀·구글 시트에서 <b>항목</b>과 <b>값</b> 두 열을 복사해 붙여 넣으세요. 쉼표로 적어도 돼요. (예: 봄, 7)</p>
+    <textarea id="pasteText" spellcheck="false" aria-label="붙여 넣을 표"></textarea>
+    <div class="mfoot">
+      <button type="button" class="gm-btn sm" data-vui-close>취소</button>
+      <button type="button" class="gm-btn sm primary" id="pasteApply">적용</button>
+    </div>
+  </div>
+</div>
+
+<div id="printArea"></div>
+
+<script is:inline src="/apps/graph-maker/app.js"></script>
+</AppLayout>
