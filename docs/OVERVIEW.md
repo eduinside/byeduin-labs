@@ -12,7 +12,7 @@
 src/
 ├── pages/
 │   ├── index.astro        ← 홈 (카테고리 트리 사이드바)
-│   └── apps/<id>/index.astro ← 앱 페이지 (공개 38개 + `_<id>/` 비공개 5개는 빌드 제외)
+│   └── apps/<id>/index.astro ← 앱 페이지 (공개 39개 + `_<id>/` 비공개 5개는 빌드 제외)
 └── layouts/AppLayout.astro ← 공통 헤드(SEO 메타·공통 CSS/JS)와 <body data-shell> 래퍼
 
 public/                    ← 빌드 시 dist/로 그대로 복사 (경로 유지)
@@ -40,7 +40,7 @@ docs/                  ← 개발 문서
 
 ## 앱 목록
 
-### 교육 · 시뮬레이션 (`edu-sim`, 17종 — 주제순: 수학 → 천체·우주 → 지구과학 → 전기 → 생태 → 실과 → 세계 → 창의·AI)
+### 교육 · 시뮬레이션 (`edu-sim`, 18종 — 주제순: 수학 → 천체·우주 → 지구과학 → 전기 → 생태 → 실과 → 세계 → 창의·AI)
 | ID | 이름 | 설명 |
 |---|---|---|
 | `break-make` | 가르기 모으기 | 구슬 조작으로 수 가르기·모으기 + 도전 모드·도감 |
@@ -54,6 +54,7 @@ docs/                  ← 개발 문서
 | `moon-phase-v2` | 달의 위상 3D | 달을 직접 돌려 위상 이해 + 일식·월식 |
 | `moon-phase` | Moon Phase | 오늘의 달 위상 시뮬레이터(월령 자동 계산) |
 | `solar-system` | 태양계 여행 | 여덟 행성 공전·크기·거리 비교 + 행성 도감 |
+| `sun-shadow` | 태양과 그림자 | 하루 동안 태양 고도·그림자·기온(평년값), 계절별 남중 고도·낮의 길이, 빛 실험, 자전축 0° 비교 · 미션 8개 |
 | `volcano` | 화산 탐험대 | 3D 위성지도로 세계의 산 11곳 탐험(화산 7·화산 아닌 산 4) |
 | `circuit-lab` | 전기회로 공작소 | 전지·전구·스위치 연결로 직렬·병렬 밝기 비교 |
 | `eco-web` | 생태계 탐험대 | 먹이그물 잇기·피라미드·평형 시나리오 종합 실험 |
@@ -136,7 +137,7 @@ docs/                  ← 개발 문서
 | `split` | 2-페인 (입력 \| 미리보기) | md-editor, notion-styler |
 | `sidebar` | 내비 사이드바 + 메인 | search |
 | `gallery` | 반응형 카드 그리드 | blocks-universe, chalkboard, bubble-chat |
-| `immersive` | 풀뷰포트 (크롬만 주입) | edu-sim 17종 전체(moon-phase, volcano, step-squad, break-make, clubs, fraction-bar, shape-move, chance-lab, clock, graph-maker, moon-phase-v2, solar-system, circuit-lab, eco-web, food-bike, world-landmarks, idea-lab) |
+| `immersive` | 풀뷰포트 (크롬만 주입) | edu-sim 18종 전체(moon-phase, volcano, step-squad, break-make, clubs, fraction-bar, shape-move, chance-lab, clock, graph-maker, moon-phase-v2, solar-system, sun-shadow, circuit-lab, eco-web, food-bike, world-landmarks, idea-lab) |
 
 **폭 플래그** (`data-width`): `narrow`(480px) · `medium`(720px) · `wide`(1120px)  
 **기능 플래그**: `data-focus`(아이템→전체화면 `enterFocus()`) · `data-print`(A4 인쇄 베이스라인)
@@ -209,7 +210,8 @@ docs/                  ← 개발 문서
 - **홈 검색창 헤더 이동**: 768px 이상은 로고 · 검색창 · 테마/공유 버튼을 한 줄(테마/공유는 헤더 안 정적 배치), 768px 미만은 로고 아래 전체 폭 검색창 + 우상단 떠 있는 버튼(종전과 같음). 계획 `docs/home-search-header-plan.md`.
 - **뽑기·모둠(`picker`) 신규** — 업무경감. 학급 목록 → 뽑기·순서·모둠·명단 탭, 결과 상자 '크게 보기'(전체화면, 글자 자동 맞춤). 공평 뽑기(한 바퀴 동안 중복 없음, 방금 뽑기 취소), 연출 슬롯·카드·룰렛, 오늘 결석(다음 날 자동 해제), 모둠 나누기(모둠 수/모둠당 인원·남는 학생 처리, 떨어뜨릴 쌍·성별 섞기·지난 모둠 피하기·고정, 끌어 놓기/누르기 교환, 모둠장, A4 인쇄). 난수는 `crypto.getRandomValues`. 자리 배치 명단은 읽기만. 저장 `vives-picker-v1`(서버·공유 없음). 계획 `docs/picker-plan.md`.
 - **시계 보기(`clock`) 신규** — 시뮬레이션(수학 1~3학년 「시각과 시간」, [2수03-07~09]·[4수03-13~14]). immersive + SimKit. 바늘 끌기(분침 한 바퀴 = 1시간, 시침을 끌면 분침도 함께), 학년별 단위 제한 하나(정각·30분/10분/5분/1분/1초)가 끌기 맞춤·버튼·미션 문제·입력판에 모두 적용, 교사용 잠금 링크(`#share=` `{v:1,unit,lock:true}`, 저장하지 않음). 도움 표시(분 숫자·작은 눈금·시침 자리 색칠·오전/오후 띠·초침), 미션 6종(읽기·맞추기·헷갈리는 시침·걸린 시간·오전오후·더하고 빼기, 단위별 기록), 큰 시계(정답 가리기·무작위 시각). 앱 안 숫자 입력판(화면 키보드 없음). 계획 `docs/clock-plan.md`.
-- **그래프 그리기(`graph-maker`) 신규** — 시뮬레이션(수학 「자료와 가능성」, [2수04-02~03]·[4수04-01~03]·[6수04-01~03]). 같은 표를 ○그래프·그림그래프·막대·꺾은선(물결선)·띠·원그래프로 바로 바꿔 보기, 표 편집(앱 안 숫자 입력판·붙여넣기), 백분율 반올림 안내와 합계 100 맞추기(최대 나머지), 직접 그리기(막대·꺾은선 끌기, 확인), 평균선·고르게 하기, 조사하기(누를 때마다 +1, 正 표시) → 표로 정리, PNG·인쇄·공유 링크, 미션 10개(학년 표시). 공용 모듈 **`public/common/vgraph.js`**(`window.VGraph` — 막대·꺾은선·눈금 자동·물결선·평균선, 태양과 그림자에서 재사용 예정). 계획 `docs/graph-maker-plan.md`.
+- **그래프 그리기(`graph-maker`) 신규** — 시뮬레이션(수학 「자료와 가능성」, [2수04-02~03]·[4수04-01~03]·[6수04-01~03]). 같은 표를 ○그래프·그림그래프·막대·꺾은선(물결선)·띠·원그래프로 바로 바꿔 보기, 표 편집(앱 안 숫자 입력판·붙여넣기), 백분율 반올림 안내와 합계 100 맞추기(최대 나머지), 직접 그리기(막대·꺾은선 끌기, 확인), 평균선·고르게 하기, 조사하기(누를 때마다 +1, 正 표시) → 표로 정리, PNG·인쇄·공유 링크, 미션 10개(학년 표시). 공용 모듈 **`public/common/vgraph.js`**(`window.VGraph` — 막대·꺾은선·눈금 자동·물결선·평균선, 태양과 그림자에서도 사용). 계획 `docs/graph-maker-plan.md`.
+- **태양과 그림자(`sun-shadow`) 신규** — 시뮬레이션(과학 6 「계절의 변화」, [6과13-01~03]). 하루 관찰(남쪽을 본 하늘·운동장, 태양 끌기·재생, 1m 막대 그림자, 옆에서 본 태양 고도 측정기, 측정 기록 → VGraph 꺾은선), 계절 비교(하지·춘추분·동지 경로, 남중 고도·낮의 길이 표와 월별 그래프, 손전등 빛 실험), 계절의 원인(공전 궤도·옆에서 본 지구, 자전축 23.5°/0°), 미션 8개. 태양 위치는 The Astronomical Almanac 저정밀식(PyEphem과 1분·0.1° 이내), 기온은 기상청 평년값(1991~2020) 대구·서울·제주(`public/apps/sun-shadow/climate.json`). 계획 `docs/sun-shadow-plan.md`.
 
 ### 2026-10 — 3단계: 공용 모듈·홈 개편·접근성, 자리 배치 신규
 - **공용 모듈**: `public/common/ui.js`(`window.VUI` — 토스트·모달 접근성·공유 인코딩/단축/링크·QR 대화상자·apiFetch·조사·저장, 문서 `docs/common-ui.md`), `public/common/sim-kit.{js,css}`(`window.SimKit` — 미션 컨트롤러·피드백·저장·공유·타이머·효과음, 문서 `docs/sim-kit.md`). 시뮬레이션 12개 앱과 일반 앱 전부 이관.
