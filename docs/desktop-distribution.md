@@ -1,6 +1,6 @@
 # byeduin 데스크톱 앱 배포 규약
 
-작성: 2026-10-09 · 상태: 첫 적용(Login Helper) 준비 — Function 구현, 실제 R2 업로드·배포 전
+작성: 2026-10-09 · 상태: 첫 적용(에듀나비 교원업무지원 자동 로그인) — R2 업로드 완료(0.5.2, 2026-10-10), 사이트 배포 전
 
 byeduin에서 내놓는 Windows 앱(첫 사례: Login Helper, `apps.json` id `login-helper`)을 같은 방식으로 배포·업데이트하기 위한 규약. 앱 쪽 계획: `D:\Proj\local-edunavi-cowork\docs\02-plan-csharp.md` §3.3.
 
@@ -64,10 +64,11 @@ apps/{id}/
 
 ## 사이트 연결 (앱 완성 후)
 
-`public/apps.json`의 해당 항목(모달) `href`를 `/downloads/apps/{id}/setup`으로, `linkLabel`을 "프로그램 다운로드 ⬇"로. Login Helper는 앱 1.0.0 공개 때 교체(현재 `https://blog.eduin.info/450`).
+앱마다 안내 페이지 `src/pages/apps/{id}/index.astro`(AppLayout·공용 카드/버튼)를 두고, `apps.json` 항목은 모달이 아닌 일반 페이지(`href: /apps/{id}/`)로 둔다. 페이지의 내려받기 버튼은 고정 주소 `/downloads/apps/{id}/setup`·`/portable`, 버전·날짜·크기는 `latest.json`을 읽어 표시. 첫 사례: `/apps/login-helper/`.
 
 ## 상태
 
 - [x] Function 구현 + 로컬 시험(`scripts/test-desktop-dist.mjs`)
-- [ ] 실제 R2 업로드·Pages 배포 (사람 확인 후)
-- [ ] `apps.json` 버튼 교체 (앱 1.0.0)
+- [x] 실제 R2 업로드: login-helper 0.5.2 (2026-10-10)
+- [x] 안내 페이지 `/apps/login-helper/` + `apps.json` 일반 페이지로 전환
+- [ ] main 병합·Pages 배포 (사람 확인 후)
