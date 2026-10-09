@@ -2,7 +2,7 @@
    음높이 실험실 — pitch-lab (eduin VIVES)
    - 관찰: 마이크·소리 발생기 → YIN 음높이 → 시간–음높이 그래프, 떨림 모양, 세기 막대
    - 음 보정: 녹음(최대 8초) 또는 예시 노래 → 가장 가까운 음계 음으로 옮김(TD-PSOLA) → 원래/고친 소리 듣기
-   - 미션 6개. 마이크 없이도 모두 풀 수 있음(소리 발생기·예시 노래)
+   - 미션 5개. 마이크 없이도 모두 풀 수 있음(소리 발생기·예시 노래)
    - 마이크 소리는 기기 안에서만 계산. 저장·전송 없음
    계산: dsp.js (window.PitchDSP) · 계획: docs/pitch-lab-plan.md
    ================================================================ */
@@ -696,25 +696,7 @@
         return { ok: Math.abs(c) <= 25, hint: c < 0 ? "아직 낮아요. 그래프에서 ‘도’ 줄을 하나 더 올라가 보세요." : "너무 높아요. 조금 내려 보세요.",
           msg: "한 옥타브 높은 도는 523Hz예요. 처음 도(262Hz)의 딱 2배! 1초에 떨리는 수가 2배가 되면 한 옥타브 높아져요.", reveal() { setGenF(C5); } };
       } },
-    { id: "m5", title: "어긋난 음 고치기", view: "clip", tune: true,
-      q: "예시 노래 ‘학교 종’의 음이 조금씩 어긋나 있어요. 음계를 ‘도레미’로 두고 보정 세기와 속도를 바꿔 파란 곡선이 음 줄에 딱 맞으면 ‘확인하기’를 눌러요.",
-      controls(box) {
-        const grp = document.createElement("div"); grp.className = "group"; box.appendChild(grp); tuneControls(grp, { shift: false });
-        const d = document.createElement("div"); d.className = "src-btns";
-        const o = btn("play", "원래 소리", () => {}); o.dataset.play = "orig";
-        const f = btn("play", "고친 소리", () => {}, "sk-btn--primary"); f.dataset.play = "fix";
-        d.append(o, f); box.appendChild(d);
-        const e = document.createElement("div"); e.className = "err-box"; e.dataset.err = ""; e.hidden = true; box.appendChild(e);
-      },
-      setup() { Object.assign(mT.cfg, { scale: "major", strength: 0, speed: 120, shift: 0 }); mT.clip = null; mT.fixed = null; loadDemo(mT, () => syncTuneUI()); },
-      check() {
-        const er = mT.fixed ? D.meanError(mT.fixed.target, "major") : 99;
-        const ok = mT.cfg.scale === "major" && er <= 12;
-        return { ok, hint: mT.cfg.scale !== "major" ? "음계를 ‘도레미’로 바꿔 보세요. 이 노래는 도레미 음으로만 되어 있어요." : "아직 어긋난 곳이 있어요(" + Math.round(er) + "센트). 보정 세기를 올리고 속도를 빠르게 해 보세요.",
-          msg: "파란 곡선이 음 줄에 맞았어요! 어긋난 음을 가장 가까운 도레미 음으로 옮긴 거예요. ‘고친 소리’를 들어 보세요.",
-          reveal() { Object.assign(mT.cfg, { scale: "major", strength: 100, speed: 20 }); tuneControls(document.querySelector("#mControls .group"), { shift: false }); process(mT); } };
-      } },
-    { id: "m6", title: "오토튠의 원리", view: "clip", tune: true,
+    { id: "m5", title: "오토튠의 원리", view: "clip", tune: true,
       q: "무대의 주황 곡선(원래 소리)과 파란 곡선(고친 소리)을 비교해 보세요. 오토튠(음 보정)은 어떻게 음을 고칠까요?",
       controls(box) {
         const d = document.createElement("div"); d.className = "src-btns";
