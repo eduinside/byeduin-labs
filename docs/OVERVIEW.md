@@ -40,7 +40,7 @@ docs/                  ← 개발 문서
 
 ## 앱 목록
 
-### 교육 · 시뮬레이션 (`edu-sim`, 18종 — 주제순: 수학 → 천체·우주 → 지구과학 → 전기 → 생태 → 실과 → 세계 → 창의·AI)
+### 교육 · 시뮬레이션 (`edu-sim`, 19종 — 주제순: 수학 → 천체·우주 → 지구과학 → 소리 → 전기 → 생태 → 실과 → 세계 → 창의·AI)
 | ID | 이름 | 설명 |
 |---|---|---|
 | `break-make` | 가르기 모으기 | 구슬 조작으로 수 가르기·모으기 + 도전 모드·도감 |
@@ -56,6 +56,7 @@ docs/                  ← 개발 문서
 | `solar-system` | 태양계 여행 | 여덟 행성 공전·크기·거리 비교 + 행성 도감 |
 | `sun-shadow` | 태양과 그림자 | 하루 동안 태양 고도·그림자·기온(평년값), 계절별 남중 고도·낮의 길이, 빛 실험, 자전축 0° 비교 · 미션 8개 |
 | `volcano` | 화산 탐험대 | 3D 위성지도로 세계의 산 11곳 탐험(화산 7·화산 아닌 산 4) |
+| `pitch-lab` | 음높이 실험실 | 마이크·소리 발생기 음높이 그래프(YIN)·떨림 모양·세기, 녹음(8초)·예시 노래 음 보정(오토튠, TD-PSOLA) · 미션 6개 |
 | `circuit-lab` | 전기회로 공작소 | 전지·전구·스위치 연결로 직렬·병렬 밝기 비교 |
 | `eco-web` | 생태계 탐험대 | 먹이그물 잇기·피라미드·평형 시나리오 종합 실험 |
 | `food-bike` | 식품구성자전거 | 음식을 담아 바퀴를 채우는 균형 식단 게임 |
@@ -137,7 +138,7 @@ docs/                  ← 개발 문서
 | `split` | 2-페인 (입력 \| 미리보기) | md-editor, notion-styler |
 | `sidebar` | 내비 사이드바 + 메인 | search |
 | `gallery` | 반응형 카드 그리드 | blocks-universe, chalkboard, bubble-chat |
-| `immersive` | 풀뷰포트 (크롬만 주입) | edu-sim 18종 전체(moon-phase, volcano, step-squad, break-make, clubs, fraction-bar, shape-move, chance-lab, clock, graph-maker, moon-phase-v2, solar-system, sun-shadow, circuit-lab, eco-web, food-bike, world-landmarks, idea-lab) |
+| `immersive` | 풀뷰포트 (크롬만 주입) | edu-sim 19종 전체(moon-phase, volcano, step-squad, break-make, clubs, fraction-bar, shape-move, chance-lab, clock, graph-maker, moon-phase-v2, solar-system, sun-shadow, pitch-lab, circuit-lab, eco-web, food-bike, world-landmarks, idea-lab) |
 
 **폭 플래그** (`data-width`): `narrow`(480px) · `medium`(720px) · `wide`(1120px)  
 **기능 플래그**: `data-focus`(아이템→전체화면 `enterFocus()`) · `data-print`(A4 인쇄 베이스라인)
@@ -205,6 +206,13 @@ docs/                  ← 개발 문서
 ---
 
 ## 주요 변경 이력
+
+### 2026-10 — 음높이 실험실(`pitch-lab`) 신규 (`docs/pitch-lab-plan.md`)
+- 시뮬레이션(과학 3~4 「소리의 성질」 [4과07-01·02], 음악 [4음03-03]). immersive + SimKit 규약 v2.
+- **관찰**: 마이크 또는 소리 발생기(100~1000Hz, 반음 버튼, 도~높은 도, 세기) → YIN 음높이 → 최근 8초 시간–음높이 그래프(계이름/CDE 줄, 가운데 도), 계이름·Hz·튜너 바늘, 0.02초 떨림 모양, 세기 막대.
+- **음 보정(오토튠)**: 녹음(최대 8초, 메모리에만) 또는 합성 예시 노래(음이 어긋난 "학교 종") → 음계(반음 모두/도레미/5음)·보정 세기·고치는 속도·높이 옮기기(±12반음) → TD-PSOLA로 빠르기는 두고 높이만 바꿈. 원래/고친 곡선 겹쳐 보기, 원래/고친 소리 듣기, 벗어난 정도(센트).
+- **미션 6개**: 더 높은 소리, 목소리로 솔 1초 유지, 크게 내면 높아질까, 한 옥타브 위의 도(진동수 2배), 어긋난 음 고치기, 오토튠의 원리. 마이크 없이도 모두 풀 수 있음.
+- 계산 `public/apps/pitch-lab/dsp.js`(`window.PitchDSP`, node에서도 시험 가능): 예시 노래 원래 33센트 → 보정 후 0~8센트, +5반음 옮기기 실측 5.01반음.
 
 ### 2026-10 — 스마트 타이머 개편 + AI 기본 모델 `openai/gpt-5.6-luna` (`docs/timer-plan.md`)
 - **AI 기본 모델**: `_ai.js` `DEFAULT_TIMELY_MODEL = 'openai/gpt-5.6-luna'`(byeduin 전체 Timely 텍스트 기본). `generateContent`에 `images`(사진 입력)·`json`·`timeoutMs` 추가. search는 긴 답변용 75초. 실측·주의점은 `docs/timely-ai-pattern.md` 8장.

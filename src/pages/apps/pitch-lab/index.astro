@@ -1,0 +1,318 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
+---
+<AppLayout
+  title="음높이 실험실 — eduin VIVES"
+  description="마이크로 들어온 목소리의 높낮이를 실시간 그래프로 보고, 녹음한 노래의 어긋난 음을 오토튠처럼 보정해 들어 봐요. 소리의 세기와 높낮이, 진동수를 탐구하는 초등 과학 3~4학년 소리의 성질."
+  image="https://eduin.info/og-images/pitch-lab.png"
+  bodyShell="immersive"
+  theme="light"
+  toast="top"
+>
+  <Fragment slot="head">
+    <link rel="stylesheet" href="/common/sim-kit.css">
+    <script is:inline src="/common/sim-kit.js"></script>
+    <style is:global="">
+/* ══════════════════════════════════════════════
+   pitch-lab — 음높이 실험실 (immersive, 태블릿 손가락 조작 전제)
+   계획: docs/pitch-lab-plan.md
+   ══════════════════════════════════════════════ */
+:root {
+  --pl-primary: #6d28d9;
+  --pl-primary-soft: rgba(109,40,217,0.10);
+  --pl-bg: #f7f5fc;
+  --pl-panel: #ffffff;
+  --pl-border: #e4def3;
+  --pl-text: #1f1a2e;
+  --pl-muted: #6b6382;
+  --pl-btn: #f2eefa;
+  --pl-orig: #ea580c;
+  --pl-fix: #2563eb;
+  --pl-ok: #15803d;
+  --pl-no: #c2410c;
+  --sk-accent: var(--pl-primary);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', 'Segoe UI', sans-serif;
+  background: var(--pl-bg); color: var(--pl-text); min-height: 100vh; overflow: hidden; -webkit-tap-highlight-color: transparent;
+}
+button, input { font-family: inherit; }
+.screen { display: none; }
+.screen.active { display: flex; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.sk-btn.big { min-height: 60px; padding: 0 36px; font-size: 19px; border-radius: 99px; }
+.mode-tab .ic { width: 1.1em; height: 1.1em; vertical-align: -0.15em; margin-right: 3px; }
+.intro-cards b .ic, .panel-head h2 .ic, .group-title .ic, .summary h3 .ic { width: 1.1em; height: 1.1em; vertical-align: -0.15em; margin-right: 4px; }
+
+/* ══════════ 인트로·결과 ══════════ */
+.intro-screen, .result-screen {
+  text-align: center;
+  animation: fadeUp .45s ease;
+  background: radial-gradient(circle at 75% 20%, rgba(109,40,217,.16) 0, transparent 40%), radial-gradient(circle at 20% 80%, rgba(37,99,235,.13) 0, transparent 40%), var(--pl-bg);
+}
+.intro-tag { display: inline-block; background: var(--pl-primary); color: #fff; font-size: 14px; font-weight: 800; padding: 6px 14px; border-radius: 99px; margin-bottom: 14px; }
+.intro-art { font-size: 84px; line-height: 1; margin-bottom: 6px; }
+.intro-screen h1, .result-screen h1 { font-size: 34px; font-weight: 900; margin-bottom: 6px; }
+.intro-sub { font-size: 16px; color: var(--pl-muted); line-height: 1.7; margin-bottom: 18px; }
+.intro-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: min(640px, 100%); margin-bottom: 22px; text-align: left; }
+.intro-cards div { background: var(--pl-panel); border: 1px solid var(--pl-border); border-radius: 16px; padding: 14px; font-size: 14px; line-height: 1.55; color: var(--pl-muted); }
+.intro-cards b { display: block; color: var(--pl-text); font-size: 16px; margin-bottom: 4px; }
+.intro-note { font-size: 13.5px; color: var(--pl-muted); margin-top: 14px; max-width: 520px; line-height: 1.6; }
+
+/* ══════════ 본 화면 ══════════ */
+.main-screen { width: 100vw; height: 100vh; height: 100dvh; animation: fadeUp .35s ease; }
+.main-layout { display: grid; grid-template-columns: minmax(0, 1fr) 390px; width: 100%; height: 100%; }
+.scene { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #fff; }
+.scene canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.readout {
+  position: absolute; left: 58px; top: var(--sk-stage-top, 60px); z-index: 3; pointer-events: none;
+  background: rgba(255,255,255,.94); border: 1px solid var(--pl-border); border-radius: 16px; padding: 8px 14px 10px; min-width: 170px;
+  box-shadow: 0 4px 14px rgba(40,20,90,.08);
+}
+.readout[hidden] { display: none; }
+.ro-note { font-size: 40px; font-weight: 900; line-height: 1.1; color: var(--pl-primary); font-variant-numeric: tabular-nums; }
+.ro-note small { font-size: 15px; color: var(--pl-muted); font-weight: 800; margin-left: 6px; }
+.ro-hz { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.tuner { position: relative; height: 14px; margin-top: 6px; border-radius: 99px; background: linear-gradient(90deg, #fde2d2, #e9f8ee 40%, #e9f8ee 60%, #fde2d2); }
+.tuner::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--pl-ok); }
+.tuner i { position: absolute; top: -4px; width: 6px; height: 22px; margin-left: -3px; border-radius: 3px; background: var(--pl-text); left: 50%; transition: left .08s linear; }
+.tuner-txt { font-size: 13px; font-weight: 800; color: var(--pl-muted); margin-top: 4px; }
+.scene-msg {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2; text-align: center; pointer-events: none;
+  font-size: 17px; font-weight: 800; color: var(--pl-muted); line-height: 1.6; max-width: 86%;
+}
+.scene-msg[hidden] { display: none; }
+.legend { position: absolute; right: 12px; bottom: 10px; z-index: 3; display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none; }
+.legend[hidden] { display: none; }
+.legend span { background: rgba(255,255,255,.94); border: 1px solid var(--pl-border); border-radius: 99px; padding: 4px 10px; font-size: 13px; font-weight: 800; }
+.legend b { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+
+.panel { background: var(--pl-panel); border-left: 1px solid var(--pl-border); overflow-y: auto; display: flex; flex-direction: column; min-height: 0; }
+.panel-head { padding: 60px 16px 10px; border-bottom: 1px solid var(--pl-border); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.panel-head h2 { font-size: 20px; font-weight: 900; flex: 1; min-width: 140px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { min-height: 40px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--pl-border); background: var(--pl-panel); color: var(--pl-text); font-size: 14px; font-weight: 800; cursor: pointer; touch-action: manipulation; }
+.chip[aria-pressed="true"] { border-color: var(--pl-primary); background: var(--pl-primary-soft); color: var(--pl-primary); }
+.mode-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 12px 14px 0; }
+.mode-tab { min-height: 48px; border-radius: 12px; border: 2px solid var(--pl-border); background: var(--pl-btn); font-size: 14.5px; font-weight: 800; color: var(--pl-muted); cursor: pointer; touch-action: manipulation; }
+.mode-tab.active { border-color: var(--pl-primary); background: var(--pl-primary-soft); color: var(--pl-primary); }
+.panel-body { padding: 14px; flex: 1; }
+.pane[hidden] { display: none; }
+.group { border: 1px solid var(--pl-border); border-radius: 16px; padding: 12px; margin-bottom: 12px; background: var(--pl-bg); }
+.group[hidden] { display: none; }
+.group-title { font-size: 13.5px; font-weight: 800; color: var(--pl-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.group-title .sp { flex: 1; }
+.row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.row + .row { margin-top: 8px; }
+.big-val { font-size: 20px; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--pl-text); }
+.slider-row { display: grid; grid-template-columns: 56px 1fr 56px; gap: 6px; align-items: center; }
+.slider-row.lab { grid-template-columns: 74px 1fr 64px; }
+.slider-row + .slider-row { margin-top: 6px; }
+.slider-row .lbl { font-size: 14px; font-weight: 800; color: var(--pl-muted); }
+.slider-row .val { font-size: 15px; font-weight: 900; text-align: right; font-variant-numeric: tabular-nums; }
+.sq { min-height: 48px; border-radius: 12px; border: 1px solid var(--pl-border); background: var(--pl-btn); color: var(--pl-text); font-size: 14px; font-weight: 900; cursor: pointer; touch-action: manipulation; }
+input[type="range"] { width: 100%; height: 44px; accent-color: var(--pl-primary); cursor: pointer; }
+.src-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.src-btns .sk-btn { width: 100%; }
+.sk-btn[aria-pressed="true"] { border-color: var(--pl-primary); background: var(--pl-primary-soft); color: var(--pl-primary); }
+.notes { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 8px; }
+.notes button { min-height: 44px; border-radius: 10px; border: 1px solid var(--pl-border); background: var(--pl-panel); font-size: 14px; font-weight: 900; color: var(--pl-text); cursor: pointer; touch-action: manipulation; padding: 0; }
+.hint-text { font-size: 13.5px; color: var(--pl-muted); line-height: 1.6; }
+.hint-text + .hint-text { margin-top: 4px; }
+.rec-state { font-size: 14px; font-weight: 800; color: var(--pl-muted); margin-top: 8px; font-variant-numeric: tabular-nums; }
+.err-box { margin-top: 8px; background: var(--pl-panel); border: 1px solid var(--pl-border); border-radius: 12px; padding: 8px 10px; font-size: 14px; font-weight: 800; }
+.err-box[hidden] { display: none; }
+.err-box b { font-size: 18px; font-variant-numeric: tabular-nums; }
+
+/* 미션 */
+.m-title { font-size: 18px; font-weight: 900; margin: 10px 0 4px; }
+.m-q { font-size: 17px; font-weight: 800; line-height: 1.5; margin: 6px 0 10px; }
+.opts { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 10px; }
+.opt { min-height: 56px; border-radius: 14px; border: 2px solid var(--pl-border); background: var(--pl-panel); color: var(--pl-text); font-size: 16px; font-weight: 800; cursor: pointer; padding: 8px 10px; text-align: left; touch-action: manipulation; }
+.opt.right { border-color: var(--pl-ok); background: rgba(22,163,74,.12); }
+.opt.wrong { border-color: var(--pl-no); background: rgba(234,88,12,.10); }
+.m-actions { margin-top: 12px; }
+.m-actions [hidden] { display: none; }
+.m-top { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+#mFeedback { margin: 0 0 10px; font-size: 15.5px; }
+#mFeedback:empty { display: none; }
+#mControls > * + * { margin-top: 8px; }
+.hold { height: 18px; border-radius: 99px; background: var(--pl-btn); border: 1px solid var(--pl-border); overflow: hidden; }
+.hold i { display: block; height: 100%; width: 0; background: var(--pl-ok); transition: width .1s linear; }
+.sk-mnav { gap: 6px; flex-wrap: wrap; }
+
+.result-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: min(560px, 100%); margin: 12px 0 18px; }
+.result-cell { background: var(--pl-panel); border: 1px solid var(--pl-border); border-radius: 14px; padding: 10px; font-size: 14px; font-weight: 700; text-align: left; display: flex; justify-content: space-between; gap: 8px; }
+.result-cell .stars { color: #f59e0b; white-space: nowrap; }
+.summary { background: var(--pl-panel); border: 1px solid var(--pl-border); border-radius: 18px; padding: 16px 20px; width: min(560px, 100%); text-align: left; margin-bottom: 16px; }
+.summary h3 { font-size: 16px; color: var(--pl-primary); margin-bottom: 6px; }
+.summary li { font-size: 15px; line-height: 1.7; margin-left: 18px; }
+.result-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+@media (max-width: 900px), (orientation: portrait) and (max-width: 1100px) {
+  body { overflow-y: auto; }
+  .main-screen { height: auto; min-height: 100dvh; }
+  .main-layout { display: flex; flex-direction: column; height: auto; min-height: 100dvh; }
+  .scene { height: 52vh; height: 52dvh; min-height: 320px; flex-shrink: 0; }
+  .panel { border-left: 0; border-top: 1px solid var(--pl-border); overflow: visible; }
+  .panel-head { padding-top: 14px; }
+}
+@media (max-height: 520px), (max-width: 900px) and (max-height: 820px) {
+  .readout { min-width: 0; padding: 4px 10px 6px; border-radius: 12px; }
+  .ro-note { font-size: 26px; }
+  .ro-hz { font-size: 13px; }
+  .tuner { height: 10px; margin-top: 4px; }
+  .tuner i { height: 16px; top: -3px; }
+  .tuner-txt { display: none; }
+}
+@media (max-width: 560px) {
+  .intro-cards { grid-template-columns: 1fr; }
+  .intro-screen h1 { font-size: 28px; }
+  .mode-tab { font-size: 13px; }
+  .notes { grid-template-columns: repeat(4, 1fr); }
+}
+    </style>
+  </Fragment>
+
+<!-- ============ 인트로 ============ -->
+<div id="screenIntro" class="screen intro-screen sk-screen active">
+  <div class="intro-tag">과학 3~4학년 · 소리의 성질</div>
+  <div class="intro-art" aria-hidden="true">🎤</div>
+  <h1>음높이 실험실</h1>
+  <p class="intro-sub">내 목소리는 얼마나 높을까요? 음높이를 그래프로 보고,<br>어긋난 음을 오토튠처럼 고쳐 들어 봐요.</p>
+  <div class="intro-cards">
+    <div><b><Icon name="mic" />음높이 보기</b>마이크나 소리 발생기로 소리를 내면 높낮이와 떨림 모양이 보여요.</div>
+    <div><b><Icon name="music" />음 보정</b>녹음한 노래의 어긋난 음을 가장 가까운 음으로 옮겨요.</div>
+    <div><b><Icon name="trophy" />미션</b>높은 소리와 큰 소리는 어떻게 다를까요?</div>
+  </div>
+  <button type="button" class="sk-btn sk-btn--primary big" id="btnStart">시작하기</button>
+  <p class="intro-note">마이크 소리는 이 기기 안에서만 계산하고 어디에도 보내거나 저장하지 않아요. 마이크가 없어도 소리 발생기와 예시 노래로 할 수 있어요.</p>
+</div>
+
+<!-- ============ 본 화면 ============ -->
+<div id="screenMain" class="screen main-screen">
+  <div class="main-layout">
+    <div class="scene" id="scene">
+      <canvas id="cv" aria-label="음높이 그래프" role="img"></canvas>
+      <div class="readout" id="readout" aria-live="off">
+        <div class="ro-note" id="roNote">—</div>
+        <div class="ro-hz" id="roHz">소리를 내 보세요</div>
+        <div class="tuner" aria-hidden="true"><i id="roNeedle"></i></div>
+        <div class="tuner-txt" id="roTune">&nbsp;</div>
+      </div>
+      <div class="legend" id="legend" hidden>
+        <span><b style="background:var(--pl-orig)"></b>원래 소리</span>
+        <span><b style="background:var(--pl-fix)"></b>고친 소리</span>
+      </div>
+      <div class="scene-msg" id="sceneMsg" hidden></div>
+    </div>
+
+    <aside class="panel" aria-label="조작판">
+      <div class="panel-head">
+        <h2><Icon name="mic" />음높이 실험실</h2>
+        <div class="chips" id="names" role="group" aria-label="음 이름 표시">
+          <button type="button" class="chip" data-names="solfa" aria-pressed="true">도레미</button>
+          <button type="button" class="chip" data-names="abc" aria-pressed="false">CDE</button>
+        </div>
+      </div>
+      <div class="mode-tabs" role="group" aria-label="모드">
+        <button type="button" class="mode-tab active" data-mode="live" aria-pressed="true"><Icon name="mic" />관찰</button>
+        <button type="button" class="mode-tab" data-mode="tune" aria-pressed="false"><Icon name="music" />음 보정</button>
+        <button type="button" class="mode-tab" data-mode="mission" aria-pressed="false"><Icon name="trophy" />미션</button>
+      </div>
+      <div class="panel-body">
+        <!-- 관찰 -->
+        <div class="pane" id="paneLive">
+          <div class="group">
+            <div class="group-title">소리 고르기</div>
+            <div class="src-btns" data-src-btns>
+              <button type="button" class="sk-btn" data-src="mic" aria-pressed="false"><Icon name="mic" />마이크</button>
+              <button type="button" class="sk-btn" data-src="gen" aria-pressed="false"><Icon name="volume-2" />소리 발생기</button>
+            </div>
+            <p class="hint-text" style="margin-top:8px" id="srcHint">마이크를 켜고 "아—" 하고 길게 소리를 내 보세요. 높게, 낮게, 크게, 작게도 내 보세요.</p>
+          </div>
+          <div class="group" id="genGroup" hidden>
+            <div class="group-title">소리 발생기</div>
+            <div data-gen-ctl></div>
+          </div>
+          <div class="group">
+            <div class="group-title"><Icon name="info" />눈여겨볼 것</div>
+            <p class="hint-text"><b>음높이 그래프</b>: 위로 갈수록 높은 소리예요. 가로줄 하나가 음 하나(도·레·미…)예요.</p>
+            <p class="hint-text"><b>떨림 모양</b>(아래 띠): 같은 시간 동안 높은 소리는 더 <b>촘촘하게</b>, 큰 소리는 더 <b>크게</b> 흔들려요.</p>
+            <p class="hint-text"><b>세기</b> 막대는 소리의 크기예요. 크게 낸다고 음이 높아지지는 않아요.</p>
+          </div>
+        </div>
+
+        <!-- 음 보정 -->
+        <div class="pane" id="paneTune" hidden>
+          <div class="group">
+            <div class="group-title">소리 준비</div>
+            <div class="src-btns">
+              <button type="button" class="sk-btn sk-btn--primary" id="tRec"><Icon name="mic" />녹음하기 (8초)</button>
+              <button type="button" class="sk-btn" id="tDemo"><Icon name="list-music" />예시 노래</button>
+            </div>
+            <div class="rec-state" id="tState">녹음하거나 예시 노래를 불러오세요.</div>
+          </div>
+          <div class="group" data-tune-ctl></div>
+          <div class="group">
+            <div class="group-title">듣기</div>
+            <div class="src-btns">
+              <button type="button" class="sk-btn" data-play="orig" disabled><Icon name="play" />원래 소리</button>
+              <button type="button" class="sk-btn sk-btn--primary" data-play="fix" disabled><Icon name="play" />고친 소리</button>
+            </div>
+            <div class="err-box" data-err hidden></div>
+            <p class="hint-text" style="margin-top:8px">오토튠은 소리의 높이를 재서, 정해 둔 음계에서 가장 가까운 음으로 옮겨요. 빠르기는 그대로이고 높이만 바뀌어요.</p>
+          </div>
+        </div>
+
+        <!-- 미션 -->
+        <div class="pane" id="paneMission" hidden>
+          <div class="m-top">
+            <button type="button" class="sk-btn sk-btn--sm" id="mExit"><Icon name="arrow-left" />자유 탐험으로</button>
+          </div>
+          <div class="sk-mnav" id="missionNav" aria-label="미션 번호"></div>
+          <h3 class="m-title" id="mTitle"></h3>
+          <p class="m-q" id="mQ"></p>
+          <div id="mFeedback"></div>
+          <div id="mControls"></div>
+          <div id="mAnswer"></div>
+          <div class="m-actions sk-actions">
+            <button type="button" class="sk-btn sk-btn--primary" id="mCheck"><Icon name="circle-check" />확인하기</button>
+            <button type="button" class="sk-btn sk-btn--primary" id="mNextMission" hidden><Icon name="arrow-right" />다음 미션</button>
+            <button type="button" class="sk-btn" id="mResult" hidden><Icon name="award" />결과 보기</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ============ 결과 ============ -->
+<div id="screenResult" class="screen result-screen sk-screen">
+  <div style="font-size:64px;line-height:1;color:#f59e0b"><Icon name="trophy" /></div>
+  <h1>미션 결과</h1>
+  <p class="intro-sub" id="resultSub"></p>
+  <div class="result-grid" id="resultGrid" role="list"></div>
+  <div class="summary">
+    <h3><Icon name="book-open" />배움 정리</h3>
+    <ul>
+      <li>소리가 나는 물체는 떨려요. <b>빠르게</b> 떨수록 <b>높은</b> 소리, 천천히 떨수록 낮은 소리예요.</li>
+      <li>소리의 <b>세기</b>(크고 작음)와 <b>높낮이</b>는 서로 달라요. 크게 낸다고 높아지지 않아요.</li>
+      <li>한 옥타브 높은 음은 1초에 떨리는 수(진동수)가 <b>2배</b>예요.</li>
+      <li>오토튠은 음높이를 재서 가장 가까운 음으로 옮겨 주는 계산이에요.</li>
+    </ul>
+  </div>
+  <div class="result-btns">
+    <button type="button" class="sk-btn sk-btn--primary" id="btnRetry"><Icon name="rotate-ccw" />다시 하기</button>
+    <button type="button" class="sk-btn" id="btnToLive"><Icon name="arrow-left" />자유 탐험으로</button>
+  </div>
+</div>
+
+<script is:inline src="/apps/pitch-lab/dsp.js"></script>
+<script is:inline src="/apps/pitch-lab/app.js"></script>
+</AppLayout>
