@@ -82,7 +82,7 @@ apps/{id}/
 | `gnote` | G노트 | kit 0.9.0 준비 — R2 업로드 전 |
 | `login-helper` | 에듀나비 | Velopack (kit 로 옮길 예정, 같은 경로) |
 | `edu-dic` | 어린이 쉬운 사전 | 옮길 예정 (지금 `edu-dic-downloads` + dic.dgedu.link 함수) |
-| `edu-team` | 에듀팀 | 옮길 예정 (지금 `edu-team-downloads` + team.dgedu.link) |
+| `edu-team` | 에듀팀 데스크탑 | kit 0.8.0 준비 — 함수 허용 목록 추가(2026-10-11), R2 업로드 전. 안내·단추는 team.dgedu.link 마이페이지 |
 | (`rec-note`) | Rec Note v2 | byeduin 계열 — 준비만, 아직 배포 안 함 |
 | (`music-to-score`) | 악보 만들기 | byeduin 계열 — 준비만, 아직 배포 안 함 |
 | (`keyvault`) | 키 관리 | byeduin 계열 — 준비만, 아직 배포 안 함 |
@@ -107,6 +107,22 @@ apps/gnote/
 - 페이지: `/apps/gnote/`(안내), `/apps/gnote/terms/`(이용 안내 — `src/pages/apps/gnote/_terms.md` 는 local-law `docs/terms.md` 복사본)
 - [x] 함수 허용 목록 `gnote`, apps.json, 안내·이용 안내 페이지, Pages 배포 (2026-10-11 — latest.json 없으면 ‘준비 중’)
 - [x] R2 첫 업로드 0.9.1 (2026-10-11) — `/setup` 으로 받아 실제 설치까지 확인
+
+## 에듀팀 데스크탑 (`edu-team`) — 공용 모듈 DesktopKit (2026-10-11)
+
+옛 방식(team.dgedu.link Worker + R2 `edu-team-downloads`, 폴더 바꿔치기)에서 옮겨 온다. 계획: `DGEDU-LINK/dgedu-team/docs/plan-2026-10-11-desktop-kit.md`.
+
+```
+apps/edu-team/
+├── latest.json                 kit 1 매니페스트
+├── EduTeam-<판>-Setup.exe       설치 파일(net48, 약 0.14MB) — 고정 주소 /downloads/apps/edu-team/setup (team.dgedu.link 마이페이지 단추)
+└── pack-<sha256>.zip            팩(app 약 0.6MB · web 1.3MB · runtime 71MB)
+```
+
+- 올리기: `DGEDU-LINK/dgedu-team/desktop-net/tools/release.ps1 -Upload` (이 폴더의 wrangler). 다리 판 기간(0.8.0 + 다음 판)엔 `-Bridge` 로 옛 버킷에도 같은 판을 올린다 — 옛 판이 그것으로 다리 판을 받고, 다리 판이 이 설치 파일로 옮긴다.
+- 사용 통계: 앱 설정 › 업데이트 › ‘사용 통계 보내기’ + 이용 안내(앱 설정·team.dgedu.link 도움말).
+- [x] 함수 허용 목록 `edu-team` (2026-10-11)
+- [ ] R2 첫 업로드 0.8.0
 
 ## 사용자 수 (DesktopKit kit 0.2, 2026-10-11~)
 
