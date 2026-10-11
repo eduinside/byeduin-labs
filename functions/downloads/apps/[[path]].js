@@ -8,7 +8,7 @@
  */
 
 // 새 데스크톱 앱은 여기에 apps.json의 id만 추가한다.
-export const DESKTOP_APPS = ['login-helper'];
+export const DESKTOP_APPS = ['login-helper', 'gnote'];
 
 const FILE_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const ALIASES = { setup: 'setup', portable: 'portable' };

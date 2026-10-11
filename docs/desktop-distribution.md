@@ -72,3 +72,33 @@ apps/{id}/
 - [x] 실제 R2 업로드: login-helper 0.5.2 (2026-10-10)
 - [x] 안내 페이지 `/apps/login-helper/` + `apps.json` 일반 페이지로 전환
 - [ ] main 병합·Pages 배포 (사람 확인 후)
+
+## 데스크톱 앱 저장소는 여기 하나 (2026-10-11 결정)
+
+공용 설치·업데이트 모듈 **DesktopKit**(`LOCAL/local-desktop-kit`)를 쓰는 앱은 dgedu 계열이어도 **모두 이 R2(`byeduin-media` `apps/<id>/`)와 이 서빙 함수**로 배포한다. 각 앱의 웹페이지(eduin.info·dic.dgedu.link·team.dgedu.link)는 **내려받기 단추만** 단다 — `https://eduin.info/downloads/apps/<id>/setup`.
+
+| id | 앱 | 상태 |
+|---|---|---|
+| `gnote` | G노트 | kit 0.9.0 준비 — R2 업로드 전 |
+| `login-helper` | 에듀나비 | Velopack (kit 로 옮길 예정, 같은 경로) |
+| `edu-dic` | 어린이 쉬운 사전 | 옮길 예정 (지금 `edu-dic-downloads` + dic.dgedu.link 함수) |
+| `edu-team` | 에듀팀 | 옮길 예정 (지금 `edu-team-downloads` + team.dgedu.link) |
+
+예외: 에듀포털(교내 설치형·인증 배포) — 이 저장소를 쓰지 않는다.
+
+## G노트 (`gnote`) — 공용 모듈 DesktopKit (2026-10-11)
+
+G노트는 Velopack 대신 공용 설치·업데이트 모듈(`LOCAL/local-desktop-kit`, docs/spec.md)을 쓴다. 같은 서빙 함수·같은 R2 경로 규칙, 파일만 다르다.
+
+```
+apps/gnote/
+├── latest.json                kit 1 매니페스트 (byeduin latest.json 확장 — version·date·files.setup 은 같음, packs·sig 추가)
+├── GNote-<판>-Setup.exe        설치 파일(net48, 약 0.1MB) — 고정 주소 /downloads/apps/gnote/setup
+└── pack-<sha256>.zip           팩(app·lib·runtime·tools). 내용 주소라 판이 바뀌어도 같은 팩은 다시 올리지 않음
+```
+
+- 올리기: `LOCAL/local-law/tools/release.ps1 -Upload` (이 폴더의 wrangler 로 팩 → 설치 파일 → latest.json)
+- 정리: 최근 2판의 latest.json 이 가리키지 않는 팩·설치 파일은 손으로 지운다
+- 페이지: `/apps/gnote/`(안내), `/apps/gnote/terms/`(이용 안내 — `src/pages/apps/gnote/_terms.md` 는 local-law `docs/terms.md` 복사본)
+- [x] 함수 허용 목록 `gnote`, apps.json, 안내·이용 안내 페이지 (빌드 확인)
+- [ ] R2 첫 업로드 (0.9.0) · main 병합·Pages 배포 (사람 확인 후)

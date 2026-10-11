@@ -1,0 +1,153 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
+
+// G노트 설치 파일·팩은 R2 byeduin-media apps/gnote/ (docs/desktop-distribution.md, 공용 모듈 LOCAL/local-desktop-kit).
+// 고정 주소 /setup 이 latest.json 의 최신 설치 파일로 보낸다 — 판이 바뀌어도 이 페이지는 그대로.
+// 원본 앱: LOCAL/local-law (G노트). 이용 안내는 그 저장소 docs/terms.md 를 _terms.md 로 복사해 쓴다.
+const DL = '/downloads/apps/gnote';
+---
+<AppLayout
+  title="G노트 — 공문·법령·지침 업무 노트 — eduin VIVES"
+  description="공문·법령·지침·내 문서를 노트북에 모으고 근거를 찾아 답하는 교사용 Windows 업무 노트. 공문 마감 모으기·회신 초안·법령 개정 소식. 자료는 내 PC 에만."
+  bodyShell="column"
+  bodyWidth="medium"
+>
+  <Fragment slot="head">
+    <style is:global>
+      .gn-hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 24px; align-items: center; padding: 22px; }
+      .gn-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; padding: 0; list-style: none; }
+      .gn-chips li { font-size: 0.75rem; color: var(--fg-muted); border: 1px solid var(--border); background: var(--bg); border-radius: 99px; padding: 2px 10px; }
+      .gn-dl { display: flex; flex-direction: column; gap: 8px; max-width: 360px; }
+      .gn-dl .hero-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; font-size: 1rem; text-decoration: none; }
+      .gn-dl-sub { font-size: 0.8rem; color: var(--fg-muted); }
+      .gn-dl-sub a { color: var(--primary); text-decoration: none; }
+      .gn-side { font-size: 0.86rem; line-height: 1.7; color: var(--fg-muted); }
+      .gn-side b { color: var(--fg); }
+      .gn-section { margin-top: 28px; }
+      .gn-section > h2 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+      .gn-section > h2 .ic { color: var(--primary); }
+      .gn-features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .gn-feat { padding: 14px 16px; }
+      .gn-feat b { display: flex; align-items: center; gap: 7px; font-size: 0.92rem; margin-bottom: 4px; }
+      .gn-feat b .ic { color: var(--primary); }
+      .gn-feat p { margin: 0; font-size: 0.83rem; color: var(--fg-muted); line-height: 1.6; }
+      .gn-steps { padding: 16px 20px; }
+      .gn-steps ol { margin: 0; padding-left: 1.2rem; }
+      .gn-steps li { margin: 7px 0; font-size: 0.9rem; line-height: 1.6; }
+      .gn-note { display: flex; gap: 8px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 0.84rem; line-height: 1.6;
+        background: color-mix(in srgb, var(--warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent); }
+      .gn-note .ic { flex: none; margin-top: 3px; color: var(--warning); }
+      .gn-safe { padding: 16px 20px; font-size: 0.88rem; line-height: 1.65; }
+      .gn-safe table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.84rem; }
+      .gn-safe th, .gn-safe td { border-top: 1px solid var(--border); padding: 7px 8px; text-align: left; vertical-align: top; }
+      .gn-safe th { color: var(--fg-muted); font-weight: 600; }
+      .gn-faq details { border: 1px solid var(--border); border-radius: 12px; background: var(--card-bg); padding: 0 16px; margin-bottom: 8px; }
+      .gn-faq summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; padding: 12px 0; min-height: 44px; display: flex; align-items: center; }
+      .gn-faq details p { margin: 0 0 12px; font-size: 0.86rem; color: var(--fg-muted); line-height: 1.65; }
+      .gn-foot { margin-top: 28px; font-size: 0.78rem; color: var(--fg-muted); line-height: 1.6; }
+      .gn-foot a { color: var(--primary); }
+      @media (max-width: 760px) {
+        .gn-hero { grid-template-columns: 1fr; padding: 16px; }
+        .gn-features { grid-template-columns: 1fr; }
+        .gn-safe table { font-size: 0.8rem; }
+      }
+    </style>
+  </Fragment>
+
+<main class="app-main wrap">
+  <div class="app-header">
+    <div class="app-badge">업무경감</div>
+    <h1 class="app-title">G노트 — 공문·법령·지침 업무 노트</h1>
+    <p class="app-desc">공문·법령·지침·내 문서를 노트북에 모아 두고, 근거를 찾아 답하는 교사용 Windows 프로그램입니다. 공문의 보고·제출 마감을 모아 알려 주고, 회신·기안 초안을 만들어 줍니다. 자료는 모두 내 PC 에만 있어요.</p>
+  </div>
+
+  <div class="hero-card gn-hero">
+    <div>
+      <ul class="gn-chips" aria-label="사용 환경">
+        <li>Windows 10·11 (64비트)</li><li>무료</li><li>관리자 권한 없이 설치</li><li>자동 업데이트</li>
+      </ul>
+      <div class="gn-dl">
+        <a class="hero-btn" href={`${DL}/setup`} id="gnSetup"><Icon name="download" /> 설치 파일 내려받기</a>
+        <div class="gn-dl-sub"><span id="gnVersion">최신 판</span>{' · '}<a href="/apps/gnote/terms/">이용 안내 · 약관</a></div>
+      </div>
+    </div>
+    <div class="gn-side">
+      설치 파일은 작고(약 0.1 MB), 실행하면 필요한 부분을 받아 설치해요(처음 한 번 약 160 MB — .NET·문서 도구 포함).
+      그 뒤 업데이트는 <b>바뀐 부분만</b>(보통 몇 MB) 저절로 받아 다음에 켤 때 바뀝니다.
+    </div>
+  </div>
+
+  <section class="gn-section" aria-labelledby="gnWhat">
+    <h2 id="gnWhat"><Icon name="sparkles" /> 이런 일을 합니다</h2>
+    <div class="gn-features">
+      <div class="hero-card gn-feat"><b><Icon name="inbox" /> 공문 자동 가져오기</b><p>공문서 시스템에서 내려받은 본문·첨부를 같은 접수번호끼리 묶어 노트북에 넣습니다.</p></div>
+      <div class="hero-card gn-feat"><b><Icon name="calendar" /> 마감 · 달력</b><p>공문의 보고·제출 기한을 찾아 모으고 알려 줍니다. 구글·아웃룩·에듀팀 달력(ICS)도 함께 봅니다.</p></div>
+      <div class="hero-card gn-feat"><b><Icon name="scale" /> 법령 찾기</b><p>법제처 원문을 조·항 단위로 보고, 담은 법령이 개정되면 신구대조로 알려 줍니다.</p></div>
+      <div class="hero-card gn-feat"><b><Icon name="message-square-text" /> 근거 찾아 답하기</b><p>담은 자료에서만 근거를 찾아 [n] 번호와 함께 답합니다(AI 서버는 직접 고름).</p></div>
+      <div class="hero-card gn-feat"><b><Icon name="pen-line" /> 회신 · 양식 초안</b><p>받은 공문에 회신 기안문, 첨부 양식의 빈칸을 근거와 함께 채워 한글(HWPX)로.</p></div>
+      <div class="hero-card gn-feat"><b><Icon name="lock" /> 공개 구분 지키기</b><p>외부 AI 에는 공개 공문은 전체, 부분공개는 본문만, 비공개는 보내지 않습니다.</p></div>
+    </div>
+  </section>
+
+  <section class="gn-section" aria-labelledby="gnInstall">
+    <h2 id="gnInstall"><Icon name="list-ordered" /> 설치 방법</h2>
+    <div class="hero-card gn-steps">
+      <ol>
+        <li><b>설치 파일 내려받기</b>를 눌러 받은 <b>GNote-판-Setup.exe</b> 를 실행합니다. 관리자 권한은 필요 없어요.</li>
+        <li>필요한 부분을 받아 설치하고 G노트가 켜집니다. 시작 메뉴와 바탕 화면에 <b>G노트</b>가 생겨요.</li>
+        <li>처음에는 <b>설정 → 연결 · AI</b> 에서 법제처 OC(무료 신청)와, 원하면 AI 서버 키를 넣으세요. 키 없이도 공문 모으기·마감·메모는 됩니다.</li>
+        <li>예전에 zip(포터블)으로 쓰던 분은 첫 화면의 <b>‘예전 G노트를 쓰셨나요?’</b>에서 <b>G노트-데이터</b> 폴더를 고르면 그대로 이어 씁니다.</li>
+      </ol>
+      <div class="gn-note" role="note"><Icon name="triangle-alert" /><span>"Windows의 PC 보호" 창이 뜨면 <b>추가 정보 → 실행</b>을 누르세요. 개인이 만든 무료 프로그램이라 처음 한 번 표시됩니다. 화면 엔진(Microsoft Edge WebView2)이 없는 일부 Windows 10 PC 는 설치 파일이 받는 곳을 안내합니다. 학교 PC 는 정보보안 담당 선생님께 설치 가능 여부를 확인해 주세요.</span></div>
+    </div>
+  </section>
+
+  <section class="gn-section" aria-labelledby="gnSafe">
+    <h2 id="gnSafe"><Icon name="shield-check" /> 내 자료는 어디로 가나요?</h2>
+    <div class="hero-card gn-safe">
+      G노트에는 개인정보를 모으는 서버가 없어요. 노트북·공문·메모·설정은 모두 이 PC(<b>문서 › G노트</b>)에만 있고, 키는 Windows 계정으로 암호화해 둡니다.
+      <table>
+        <thead><tr><th>어디로</th><th>무엇을</th><th>언제</th></tr></thead>
+        <tbody>
+          <tr><td>법제처 국가법령정보센터</td><td>검색어 · 내 OC</td><td>법령 찾기·열기·개정 확인</td></tr>
+          <tr><td>고른 AI 서버</td><td>질문과 근거 자료 (공문은 공개 구분대로)</td><td>AI 기능을 쓸 때 — 로컬 AI(Ollama)를 고르면 PC 밖으로 나가지 않음</td></tr>
+          <tr><td>corepin (선택)</td><td>문서 파일</td><td>키를 넣었고 문서 도구로 못 읽을 때</td></tr>
+          <tr><td>더한 외부 달력</td><td>달력 받기 요청</td><td>ICS 달력을 더했을 때</td></tr>
+          <tr><td>eduin.info</td><td>새 판 확인 요청 (사용자 정보 없음)</td><td>하루 한 번 (끌 수 있음)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="gn-section gn-faq" aria-labelledby="gnFaq">
+    <h2 id="gnFaq"><Icon name="circle-help" /> 자주 묻는 것</h2>
+    <details><summary>법제처 OC 는 어떻게 받나요?</summary><p>open.law.go.kr 에 가입한 뒤 ‘OPEN API 활용신청’을 하면 아이디(이메일 앞부분)가 OC 가 됩니다. 본인 것만 넣어 주세요. 승인 전에도 공문 모으기·마감·메모는 쓸 수 있어요.</p></details>
+    <details><summary>AI 키가 꼭 있어야 하나요?</summary><p>아니요. 검색·열람·공문 모으기·마감·메모·내보내기는 키 없이 됩니다. 근거 찾아 답하기·요약·초안에 AI 서버(구글·OpenAI·Claude·OpenRouter, 또는 PC 안의 Ollama)를 골라 씁니다. 요금은 각자의 키로.</p></details>
+    <details><summary>업데이트는 어떻게 되나요?</summary><p>하루 한 번 새 판을 확인해 바뀐 부분만 받아 두고, 다음에 켤 때 바뀝니다. 설정 › 데이터에서 끄거나 ‘지금 확인’할 수 있어요.</p></details>
+    <details><summary>지우고 싶어요</summary><p>Windows 설정 → 앱에서 <b>G노트</b>를 제거합니다. 내 자료(문서 › G노트)와 백업은 남겨 두니 필요 없으면 직접 지워 주세요.</p></details>
+  </section>
+
+  <p class="gn-foot">법령 자료의 출처는 국가법령정보센터(법제처)입니다. AI 답은 법률 자문이 아니라 근거를 정리한 것이니 원문을 확인해 주세요. <a href="/apps/gnote/terms/">이용 안내 · 약관</a></p>
+</main>
+
+<script is:inline>
+  // 최신 판·날짜·크기 (latest.json). 실패해도 버튼은 고정 주소라 그대로 동작한다.
+  // 아직 올리기 전(latest.json 없음)이면 단추를 ‘준비 중’으로 — 받지 못하는 단추를 누르지 않게
+  function notYet() {
+    var b = document.getElementById('gnSetup');
+    if (b) { b.removeAttribute('href'); b.setAttribute('aria-disabled', 'true'); b.style.opacity = '0.55'; b.style.pointerEvents = 'none'; b.lastChild.textContent = ' 설치 파일 준비 중'; }
+    var el = document.getElementById('gnVersion');
+    if (el) el.textContent = '곧 내려받을 수 있어요';
+  }
+  fetch('/downloads/apps/gnote/latest.json', { cache: 'no-cache' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (m) {
+      if (!m || !m.version) { notYet(); return; }
+      var el = document.getElementById('gnVersion');
+      if (el) el.textContent = '최신 ' + m.version + (m.date ? ' · ' + m.date : '');
+    })
+    .catch(notYet);
+</script>
+
+</AppLayout>
