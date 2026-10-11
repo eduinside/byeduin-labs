@@ -82,7 +82,7 @@ apps/{id}/
 | `gnote` | G노트 | kit 0.9.0 준비 — R2 업로드 전 |
 | `login-helper` | 에듀나비 | kit 0.6.0(+ Velopack 다리 판) — R2 업로드·페이지 배포 (2026-10-12). 같은 경로, 아래 ‘에듀나비’ |
 | `edu-dic` | 어린이 쉬운 사전 | kit 0.6.0(다리 판) 준비 — 함수 허용 목록 추가(2026-10-12), R2 업로드 전. 옛 `edu-dic-downloads` 는 두 판 동안 다리 판에 머묾. 안내·단추는 dic.dgedu.link (`dgedu-dic/docs/plan-desktop-kit.md`) |
-| `edu-team` | 에듀팀 데스크탑 | kit 0.8.0 준비 — 함수 허용 목록 추가(2026-10-11), R2 업로드 전. 안내·단추는 team.dgedu.link 마이페이지 |
+| `edu-team` | 에듀팀 데스크탑 | kit 0.8.0 배포(2026-10-12). 안내·단추는 team.dgedu.link 마이페이지. 옛 `edu-team-downloads` 는 다리 판 기간 유지 |
 | (`rec-note`) | Rec Note v2 | byeduin 계열 — 준비만, 아직 배포 안 함 |
 | (`music-to-score`) | 악보 만들기 | byeduin 계열 — 준비만, 아직 배포 안 함 |
 | (`keyvault`) | 키 관리 | byeduin 계열 — 준비만, 아직 배포 안 함 |
@@ -122,7 +122,7 @@ apps/edu-team/
 - 올리기: `DGEDU-LINK/dgedu-team/desktop-net/tools/release.ps1 -Upload` (이 폴더의 wrangler). 다리 판 기간(0.8.0 + 다음 판)엔 `-Bridge` 로 옛 버킷에도 같은 판을 올린다 — 옛 판이 그것으로 다리 판을 받고, 다리 판이 이 설치 파일로 옮긴다.
 - 사용 통계: 앱 설정 › 업데이트 › ‘사용 통계 보내기’ + 이용 안내(앱 설정·team.dgedu.link 도움말).
 - [x] 함수 허용 목록 `edu-team` (2026-10-11)
-- [ ] R2 첫 업로드 0.8.0
+- [x] R2 첫 업로드 0.8.0 (2026-10-12) — `/setup` 302 → 설치 파일 해시가 서명 매니페스트와 같음, 팩 3개 200, team.dgedu.link 단추 배포
 
 ## 에듀나비 (`login-helper`) — Velopack → DesktopKit (0.6.0, 2026-10-12)
 
