@@ -83,6 +83,11 @@ apps/{id}/
 | `login-helper` | 에듀나비 | Velopack (kit 로 옮길 예정, 같은 경로) |
 | `edu-dic` | 어린이 쉬운 사전 | 옮길 예정 (지금 `edu-dic-downloads` + dic.dgedu.link 함수) |
 | `edu-team` | 에듀팀 | 옮길 예정 (지금 `edu-team-downloads` + team.dgedu.link) |
+| (`rec-note`) | Rec Note v2 | byeduin 계열 — 준비만, 아직 배포 안 함 |
+| (`music-to-score`) | 악보 만들기 | byeduin 계열 — 준비만, 아직 배포 안 함 |
+| (`keyvault`) | 키 관리 | byeduin 계열 — 준비만, 아직 배포 안 함 |
+
+안내 페이지는 계열별로 나뉜다 — byeduin(eduin.info/apps/…): G노트·에듀나비(+ 준비 중 3개), dgedu: 사전(dic.dgedu.link)·에듀팀(team.dgedu.link). 수업꾸러미(dgedu-kit)는 앱이 아니라 해당 없음.
 
 예외: 에듀포털(교내 설치형·인증 배포) — 이 저장소를 쓰지 않는다.
 
