@@ -80,7 +80,7 @@ apps/{id}/
 | id | 앱 | 상태 |
 |---|---|---|
 | `gnote` | G노트 | kit 0.9.0 준비 — R2 업로드 전 |
-| `login-helper` | 에듀나비 | Velopack (kit 로 옮길 예정, 같은 경로) |
+| `login-helper` | 에듀나비 | kit 0.6.0(+ Velopack 다리 판) 준비 — 로컬 실측 끝, R2 업로드 전. 같은 경로, 아래 ‘에듀나비’ |
 | `edu-dic` | 어린이 쉬운 사전 | kit 0.6.0(다리 판) 준비 — 함수 허용 목록 추가(2026-10-12), R2 업로드 전. 옛 `edu-dic-downloads` 는 두 판 동안 다리 판에 머묾. 안내·단추는 dic.dgedu.link (`dgedu-dic/docs/plan-desktop-kit.md`) |
 | `edu-team` | 에듀팀 데스크탑 | kit 0.8.0 준비 — 함수 허용 목록 추가(2026-10-11), R2 업로드 전. 안내·단추는 team.dgedu.link 마이페이지 |
 | (`rec-note`) | Rec Note v2 | byeduin 계열 — 준비만, 아직 배포 안 함 |
@@ -123,6 +123,26 @@ apps/edu-team/
 - 사용 통계: 앱 설정 › 업데이트 › ‘사용 통계 보내기’ + 이용 안내(앱 설정·team.dgedu.link 도움말).
 - [x] 함수 허용 목록 `edu-team` (2026-10-11)
 - [ ] R2 첫 업로드 0.8.0
+
+## 에듀나비 (`login-helper`) — Velopack → DesktopKit (0.6.0, 2026-10-12)
+
+같은 폴더에 kit 파일을 더하고, 옛 Velopack 파일은 다리 판 기간 동안 그대로 둔다. 계획·실측: `LOCAL/local-edunavi-cowork/docs/03-plan-desktopkit.md`.
+
+```
+apps/login-helper/
+├── latest.json                        kit 1 매니페스트 + files.portable (사이트·/setup·/portable·포터블 0.5.x 의 새 판 안내가 읽음)
+├── LoginHelper-<판>-Setup.exe          kit 설치 파일(net48, 약 0.1MB) — 고정 주소 /setup
+├── LoginHelper-<판>-win-Portable.zip   포터블 — 고정 주소 /portable (files.portable)
+├── pack-<sha256>.zip                   팩(app 0.8MB · web 0.4MB · runtime 65MB)
+├── releases.win.json · LoginHelper-*.nupkg   Velopack 피드 — 0.5.x 설치판이 읽음. 0.6.0(다리)에서 멈추고 2027-04까지 유지
+└── LoginHelper-0.5.x-win-Setup.exe     옛 Velopack 설치 파일 — 0.6.0 올린 뒤 지워도 됨
+```
+
+- 옛 판이 읽는 것: Velopack 판(0.5.2~0.5.4)은 `releases.win.json`·nupkg 만(`latest.json` 은 읽지 않음), 포터블 0.5.x 는 `latest.json` 의 `version`·`files.portable` 만 → `latest.json` 을 kit 형식으로 바꿔도 깨지지 않는다.
+- 올리는 순서(`local-edunavi-cowork/scripts/release.ps1 -Bridge -Upload`): 팩 → 설치 파일 → 포터블 → **latest.json** → 다리 nupkg → **releases.win.json**. 다리 판은 kit `latest.json` 을 읽어 옮기므로 이 순서. 0.6.1~ 은 `-Bridge` 없이(`releases.win.json` 그대로).
+- 사용 통계: 앱 설정 → 추가 설정 → 업데이트 → ‘사용 통계 보내기’ + 안내 페이지 ‘사용 통계’ 칸(`/apps/login-helper/#lhStats`). `DESKTOP_APPS` 에 이미 있음.
+- [x] 안내 페이지: 설치(관리자 권한 없음·약 66MB)·옛 설치판 자동 옮김·사용 통계 칸, 받는 양 = 팩 합계
+- [ ] R2 업로드 0.6.0 (사람 확인 뒤)
 
 ## 사용자 수 (DesktopKit kit 0.2, 2026-10-11~)
 
