@@ -41,7 +41,7 @@ const call = (path, init = {}) => {
 };
 const body = async (res) => new Uint8Array(await res.arrayBuffer());
 
-assert.deepEqual(DESKTOP_APPS, ['login-helper', 'gnote']);
+assert.deepEqual(DESKTOP_APPS, ['login-helper', 'gnote', 'edu-team', 'edu-dic']);
 
 let res = await call('/downloads/apps/login-helper/setup');
 assert.equal(res.status, 302);
@@ -93,6 +93,8 @@ assert.equal(pings[0].v[0], 'login-helper');
 assert.equal(pings[0].v[2], await instHash('login-helper', id));
 assert.equal(pings[0].v[2].length, 16);
 assert.equal(pings[0].v[3], '0.6.0');
+// 같은 날 다시 오면(업데이트 뒤) 줄을 더하지 않고 판만 새로 — SQLite 동작은 로컬 D1 로 확인함
+assert.match(pings[0].q, /ON CONFLICT \(app, day, inst\) DO UPDATE SET version = excluded\.version/);
 assert.ok(!JSON.stringify(sql).includes(id), '설치 번호 원문은 저장하지 않는다');
 sql.length = 0;
 await call('/downloads/apps/login-helper/setup');

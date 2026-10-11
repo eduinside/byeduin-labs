@@ -117,7 +117,8 @@ const today = () => new Date().toISOString().slice(0, 10);
 async function recordPing(env, app, inst, version) {
   const db = env.BYEDUIN_DB;
   if (!db) return;
-  await db.prepare('INSERT OR IGNORE INTO desktop_pings (app, day, inst, version) VALUES (?, ?, ?, ?)')
+  // 하루 한 줄 — 같은 날 다시 오면(업데이트 뒤 다시 켬) 판만 새 것으로
+  await db.prepare('INSERT INTO desktop_pings (app, day, inst, version) VALUES (?, ?, ?, ?) ON CONFLICT (app, day, inst) DO UPDATE SET version = excluded.version WHERE excluded.version <> \'\'')
     .bind(app, today(), await instHash(app, inst), version).run();
   // 가끔(약 1/200) 90일 지난 줄을 날짜별 합계로 접고 지운다
   if (Math.random() < 0.005) {
