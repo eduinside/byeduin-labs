@@ -80,7 +80,7 @@ apps/{id}/
 | id | 앱 | 상태 |
 |---|---|---|
 | `gnote` | G노트 | kit 0.9.0 준비 — R2 업로드 전 |
-| `login-helper` | 에듀나비 | kit 0.6.0(+ Velopack 다리 판) 준비 — 로컬 실측 끝, R2 업로드 전. 같은 경로, 아래 ‘에듀나비’ |
+| `login-helper` | 에듀나비 | kit 0.6.0(+ Velopack 다리 판) — R2 업로드·페이지 배포 (2026-10-12). 같은 경로, 아래 ‘에듀나비’ |
 | `edu-dic` | 어린이 쉬운 사전 | kit 0.6.0(다리 판) 준비 — 함수 허용 목록 추가(2026-10-12), R2 업로드 전. 옛 `edu-dic-downloads` 는 두 판 동안 다리 판에 머묾. 안내·단추는 dic.dgedu.link (`dgedu-dic/docs/plan-desktop-kit.md`) |
 | `edu-team` | 에듀팀 데스크탑 | kit 0.8.0 준비 — 함수 허용 목록 추가(2026-10-11), R2 업로드 전. 안내·단추는 team.dgedu.link 마이페이지 |
 | (`rec-note`) | Rec Note v2 | byeduin 계열 — 준비만, 아직 배포 안 함 |
@@ -142,7 +142,7 @@ apps/login-helper/
 - 올리는 순서(`local-edunavi-cowork/scripts/release.ps1 -Bridge -Upload`): 팩 → 설치 파일 → 포터블 → **latest.json** → 다리 nupkg → **releases.win.json**. 다리 판은 kit `latest.json` 을 읽어 옮기므로 이 순서. 0.6.1~ 은 `-Bridge` 없이(`releases.win.json` 그대로).
 - 사용 통계: 앱 설정 → 추가 설정 → 업데이트 → ‘사용 통계 보내기’ + 안내 페이지 ‘사용 통계’ 칸(`/apps/login-helper/#lhStats`). `DESKTOP_APPS` 에 이미 있음.
 - [x] 안내 페이지: 설치(관리자 권한 없음·약 66MB)·옛 설치판 자동 옮김·사용 통계 칸, 받는 양 = 팩 합계
-- [ ] R2 업로드 0.6.0 (사람 확인 뒤)
+- [x] R2 업로드 0.6.0 (2026-10-12) — 팩·설치 파일·포터블을 eduin.info 에서 받아 해시 확인 → latest.json → 다리 nupkg → releases.win.json. `/setup`·`/portable` 302, Velopack 피드에 0.6.0 확인
 
 ## 사용자 수 (DesktopKit kit 0.2, 2026-10-11~)
 
