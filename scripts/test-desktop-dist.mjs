@@ -1,7 +1,7 @@
 // functions/downloads/apps/[[path]].js 로컬 시험 — R2를 메모리 객체로 흉내 낸다.
 //   node scripts/test-desktop-dist.mjs
 import assert from 'node:assert/strict';
-import { onRequest, parseRange, DESKTOP_APPS } from '../functions/downloads/apps/[[path]].js';
+import { onRequest, parseRange, DESKTOP_APPS, versionOf, instHash } from '../functions/downloads/apps/[[path]].js';
 
 const store = new Map();
 const put = (key, body) => store.set(key, new TextEncoder().encode(body));
@@ -24,19 +24,24 @@ const obj = (key, bytes, range) => {
   }
   return { size: bytes.length, httpEtag: `"${key.length}"`, range: r, body: slice, text: async () => new TextDecoder().decode(bytes) };
 };
+// D1 흉내: 실행한 SQL·값만 모아 둔다 (사용자 수 — kit 0.2)
+const sql = [];
+const stmt = (q) => ({ bind: (...v) => ({ run: async () => { sql.push({ q, v }); }, q, v }) });
 const env = {
+  BYEDUIN_DB: { prepare: stmt, batch: async (list) => { for (const s of list) sql.push({ q: s.q, v: s.v }); } },
   MEDIA_R2: {
     get: async (key, opts) => (store.has(key) ? obj(key, store.get(key), opts?.range) : null),
     head: async (key) => (store.has(key) ? obj(key, store.get(key)) : null),
   },
 };
+const waits = [];
 const call = (path, init = {}) => {
   const segs = path.replace('/downloads/apps/', '').split('/').filter(Boolean);
-  return onRequest({ request: new Request(`https://eduin.info${path}`, init), env, params: { path: segs } });
+  return onRequest({ request: new Request(`https://eduin.info${path}`, init), env, params: { path: segs }, waitUntil: (p) => waits.push(p) });
 };
 const body = async (res) => new Uint8Array(await res.arrayBuffer());
 
-assert.deepEqual(DESKTOP_APPS, ['login-helper']);
+assert.deepEqual(DESKTOP_APPS, ['login-helper', 'gnote']);
 
 let res = await call('/downloads/apps/login-helper/setup');
 assert.equal(res.status, 302);
@@ -74,5 +79,26 @@ assert.deepEqual(parseRange('bytes=0-'), { offset: 0 });
 assert.deepEqual(parseRange('bytes=-5'), { suffix: 5 });
 assert.equal(parseRange('bytes=5-1'), null);
 assert.equal(parseRange('items=0-1'), null);
+
+// 사용자 수: 설치 번호가 있으면 해시만, 없거나 형식이 틀리면 아무것도
+sql.length = 0;
+const id = '0123456789abcdef0123456789abcdef';
+await call('/downloads/apps/login-helper/latest.json', { headers: { 'X-Kit-Install': id, 'User-Agent': 'login-helper/0.6.0' } });
+await call('/downloads/apps/login-helper/latest.json', { headers: { 'X-Kit-Install': 'NOT-AN-ID' } });
+await call('/downloads/apps/login-helper/latest.json');
+await Promise.all(waits);
+const pings = sql.filter((s) => s.q.includes('desktop_pings (app'));
+assert.equal(pings.length, 1);
+assert.equal(pings[0].v[0], 'login-helper');
+assert.equal(pings[0].v[2], await instHash('login-helper', id));
+assert.equal(pings[0].v[2].length, 16);
+assert.equal(pings[0].v[3], '0.6.0');
+assert.ok(!JSON.stringify(sql).includes(id), '설치 번호 원문은 저장하지 않는다');
+sql.length = 0;
+await call('/downloads/apps/login-helper/setup');
+await Promise.all(waits);
+assert.equal(sql.filter((s) => s.q.includes('desktop_downloads')).length, 1);
+assert.equal(versionOf('gnote/0.9.1', 'gnote'), '0.9.1');
+assert.equal(versionOf('Mozilla/5.0', 'gnote'), '');
 
 console.log('desktop distribution function: all checks passed');

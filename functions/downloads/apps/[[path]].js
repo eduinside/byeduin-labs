@@ -39,8 +39,15 @@ export async function onRequest(ctx) {
   const [app, name] = segs;
   if (!DESKTOP_APPS.includes(app) || !FILE_RE.test(name) || name.includes('..')) return text('Not Found', 404);
 
+  // 사용자 수 (DesktopKit kit 0.2): 매니페스트 요청의 익명 설치 번호 → 해시만 D1 에. 응답을 늦추지 않게 waitUntil, 실패는 무시
+  if (name === 'latest.json' && request.method === 'GET') {
+    const inst = request.headers.get('X-Kit-Install');
+    if (inst && INSTALL_RE.test(inst)) later(ctx, recordPing(env, app, inst, versionOf(request.headers.get('User-Agent'), app)).catch(() => {}));
+  }
+
   // 고정 별칭: 버전이 바뀌어도 사이트 버튼 주소는 그대로.
   if (ALIASES[name]) {
+    if (request.method === 'GET') later(ctx, recordDownload(env, app).catch(() => {}));
     const manifest = await r2.get(`apps/${app}/latest.json`);
     if (!manifest) return text('아직 배포된 버전이 없습니다.', 404);
     let latest;
@@ -83,6 +90,50 @@ export async function onRequest(ctx) {
   }
   headers.set('Content-Length', String(obj.size));
   return new Response(obj.body, { status: 200, headers });
+}
+
+// ───────── 사용자 수 (docs/desktop-distribution.md · LOCAL/local-desktop-kit docs/spec.md §6.1) ─────────
+// 저장하는 것: (앱, 날짜, SHA-256(app:installId) 앞 16자, 판). 설치 번호 원문·IP·User-Agent 원문은 저장하지 않는다.
+
+const INSTALL_RE = /^[0-9a-f]{32}$/;
+const KEEP_DAYS = 90;
+
+/** 응답 뒤에 (Pages 는 ctx.waitUntil, 시험 등 없으면 그냥 실행) */
+const later = (ctx, p) => (ctx.waitUntil ? ctx.waitUntil(p) : p);
+
+/** "gnote/0.9.1" 꼴 User-Agent 에서 판만 (형식이 다르면 빈 값) */
+export function versionOf(ua, app) {
+  const m = new RegExp(`(?:^|\\s)${app.replace(/[^a-z0-9-]/gi, '')}\\/(\\d+\\.\\d+\\.\\d+)`).exec(ua || '');
+  return m ? m[1] : '';
+}
+
+export async function instHash(app, inst) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${app}:${inst}`));
+  return [...new Uint8Array(buf)].slice(0, 8).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+async function recordPing(env, app, inst, version) {
+  const db = env.BYEDUIN_DB;
+  if (!db) return;
+  await db.prepare('INSERT OR IGNORE INTO desktop_pings (app, day, inst, version) VALUES (?, ?, ?, ?)')
+    .bind(app, today(), await instHash(app, inst), version).run();
+  // 가끔(약 1/200) 90일 지난 줄을 날짜별 합계로 접고 지운다
+  if (Math.random() < 0.005) {
+    const cutoff = new Date(Date.now() - KEEP_DAYS * 86400000).toISOString().slice(0, 10);
+    await db.batch([
+      db.prepare('INSERT OR REPLACE INTO desktop_daily (app, day, users) SELECT app, day, COUNT(*) FROM desktop_pings WHERE day < ? GROUP BY app, day').bind(cutoff),
+      db.prepare('DELETE FROM desktop_pings WHERE day < ?').bind(cutoff),
+    ]);
+  }
+}
+
+async function recordDownload(env, app) {
+  const db = env.BYEDUIN_DB;
+  if (!db) return;
+  await db.prepare('INSERT INTO desktop_downloads (app, day, n) VALUES (?, ?, 1) ON CONFLICT (app, day) DO UPDATE SET n = n + 1')
+    .bind(app, today()).run();
 }
 
 /** "bytes=100-199" → { offset, length }, "bytes=100-" → { offset }, "bytes=-50" → { suffix }. */
