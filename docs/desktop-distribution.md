@@ -105,5 +105,14 @@ apps/gnote/
 - 올리기: `LOCAL/local-law/tools/release.ps1 -Upload` (이 폴더의 wrangler 로 팩 → 설치 파일 → latest.json)
 - 정리: 최근 2판의 latest.json 이 가리키지 않는 팩·설치 파일은 손으로 지운다
 - 페이지: `/apps/gnote/`(안내), `/apps/gnote/terms/`(이용 안내 — `src/pages/apps/gnote/_terms.md` 는 local-law `docs/terms.md` 복사본)
-- [x] 함수 허용 목록 `gnote`, apps.json, 안내·이용 안내 페이지 (빌드 확인)
-- [ ] R2 첫 업로드 (0.9.0) · main 병합·Pages 배포 (사람 확인 후)
+- [x] 함수 허용 목록 `gnote`, apps.json, 안내·이용 안내 페이지, Pages 배포 (2026-10-11 — latest.json 없으면 ‘준비 중’)
+- [ ] R2 첫 업로드 (0.9.1 — `release\gnote\upload` 준비됨, 사람 확인 후)
+
+## 사용자 수 (DesktopKit kit 0.2, 2026-10-11~)
+
+앱이 `latest.json` 요청에 `X-Kit-Install`(무작위 32자 16진수)을 붙이면 서빙 함수가 D1 `desktop_pings(app, day, inst, version)` 에 하루 한 줄 — `inst` 는 SHA-256(`app:번호`) 앞 16자, **번호 원문·IP·User-Agent 는 저장하지 않는다**. `/setup` 고정 주소는 `desktop_downloads(app, day, n)` +1. 90일 지난 줄은 가끔(약 1/200 요청) `desktop_daily(app, day, users)` 로 접는다. 기록은 `waitUntil` + 실패 무시라 표가 없어도 내려받기는 정상.
+
+- 표: `migrations/0015_desktop_stats.sql`. **원격 적용은 `npx wrangler d1 execute byeduin --remote --file migrations/0015_desktop_stats.sql`** — ⚠ `d1 migrations apply --remote` 는 쓰지 말 것: 원격 추적표(`d1_migrations`)에 0001 만 기록돼 있어 0002~0014 를 다시 돌린다(0014 는 색인 삭제).
+- 새 앱: `DESKTOP_APPS` 에 id 를 더하고, 그 앱 이용 안내에 ‘무엇을·왜·얼마나·끄는 법’을 먼저 적는다(kit docs/integrate.md §2-6).
+- 보기: `npx wrangler d1 execute byeduin --remote --command "SELECT app, day, COUNT(*) AS users FROM desktop_pings GROUP BY app, day ORDER BY day DESC LIMIT 30"`
+- [ ] 원격 D1 에 0015 적용 (사람이)
