@@ -81,7 +81,7 @@ apps/{id}/
 |---|---|---|
 | `gnote` | G노트 | kit 0.9.0 준비 — R2 업로드 전 |
 | `login-helper` | 에듀나비 | kit 0.6.0(+ Velopack 다리 판) — R2 업로드·페이지 배포 (2026-10-12). 같은 경로, 아래 ‘에듀나비’ |
-| `edu-dic` | 어린이 쉬운 사전 | kit 0.6.0(다리 판) 준비 — 함수 허용 목록 추가(2026-10-12), R2 업로드 전. 옛 `edu-dic-downloads` 는 두 판 동안 다리 판에 머묾. 안내·단추는 dic.dgedu.link (`dgedu-dic/docs/plan-desktop-kit.md`) |
+| `edu-dic` | 어린이 쉬운 사전 | **kit 0.6.0(다리 판) 배포됨 (2026-10-12)** — R2 `apps/edu-dic/`, dic.dgedu.link 단추는 `…/edu-dic/setup`. 옛 `edu-dic-downloads` 는 다리 판 객체만 남겨 0.6.2 뒤 비움. 안내·단추는 dic.dgedu.link (`dgedu-dic/docs/plan-desktop-kit.md`) |
 | `edu-team` | 에듀팀 데스크탑 | kit 0.8.0 배포(2026-10-12). 안내·단추는 team.dgedu.link 마이페이지. 옛 `edu-team-downloads` 는 다리 판 기간 유지 |
 | (`rec-note`) | Rec Note v2 | byeduin 계열 — 준비만, 아직 배포 안 함 |
 | (`music-to-score`) | 악보 만들기 | byeduin 계열 — 준비만, 아직 배포 안 함 |
