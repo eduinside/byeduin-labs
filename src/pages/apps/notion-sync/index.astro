@@ -1,0 +1,160 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
+
+// 노션 폴더 동기화 설치 파일·팩은 R2 byeduin-media apps/notion-sync/ (docs/desktop-distribution.md, 공용 모듈 LOCAL/local-desktop-kit).
+// 고정 주소 /setup 이 latest.json 의 최신 설치 파일로 보낸다 — 판이 바뀌어도 이 페이지는 그대로.
+// 원본 앱: LOCAL/local-notion-sync (docs/phase4.md). 사이트 분류: 유틸리티 › 노션도구.
+const DL = '/downloads/apps/notion-sync';
+---
+<AppLayout
+  title="노션 폴더 동기화 — 노션 페이지 ↔ PC 폴더 — eduin VIVES"
+  description="노션 페이지 하나를 PC 폴더처럼. 하위 페이지는 폴더, 첨부파일은 파일, 페이지 글은 메모로 양방향 동기화하는 무료 Windows 프로그램."
+  bodyShell="column"
+  bodyWidth="medium"
+>
+  <Fragment slot="head">
+    <style is:global>
+      .ns-hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 24px; align-items: center; padding: 22px; }
+      .ns-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; padding: 0; list-style: none; }
+      .ns-chips li { font-size: 0.75rem; color: var(--fg-muted); border: 1px solid var(--border); background: var(--bg); border-radius: 99px; padding: 2px 10px; }
+      .ns-dl { display: flex; flex-direction: column; gap: 8px; max-width: 360px; }
+      .ns-dl .hero-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; font-size: 1rem; text-decoration: none; }
+      .ns-dl-sub { font-size: 0.8rem; color: var(--fg-muted); }
+      .ns-side { font-size: 0.86rem; line-height: 1.7; color: var(--fg-muted); }
+      .ns-side b { color: var(--fg); }
+      .ns-map { display: grid; grid-template-columns: auto auto auto; gap: 6px 10px; align-items: center; margin-top: 12px; font-size: 0.84rem; color: var(--fg); }
+      .ns-map .ic { color: var(--primary); }
+      .ns-map span:nth-child(3n+2) { color: var(--fg-muted); text-align: center; }
+      .ns-section { margin-top: 28px; }
+      .ns-section > h2 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+      .ns-section > h2 .ic { color: var(--primary); }
+      .ns-features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .ns-feat { padding: 14px 16px; }
+      .ns-feat > b { display: flex; align-items: center; gap: 7px; font-size: 0.92rem; margin-bottom: 4px; }
+      .ns-feat > b .ic { color: var(--primary); }
+      .ns-feat p { margin: 0; font-size: 0.83rem; color: var(--fg-muted); line-height: 1.6; }
+      .ns-steps { padding: 16px 20px; }
+      .ns-steps ol { margin: 0; padding-left: 1.2rem; }
+      .ns-steps li { margin: 7px 0; font-size: 0.9rem; line-height: 1.6; }
+      .ns-steps a { color: var(--primary); }
+      .ns-note { display: flex; gap: 8px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 0.84rem; line-height: 1.6;
+        background: color-mix(in srgb, var(--warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent); }
+      .ns-note .ic { flex: none; margin-top: 3px; color: var(--warning); }
+      .ns-safe { padding: 16px 20px; font-size: 0.88rem; line-height: 1.65; }
+      .ns-safe table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.84rem; }
+      .ns-safe th, .ns-safe td { border-top: 1px solid var(--border); padding: 7px 8px; text-align: left; vertical-align: top; }
+      .ns-safe th { color: var(--fg-muted); font-weight: 600; }
+      .ns-faq details { border: 1px solid var(--border); border-radius: 12px; background: var(--card-bg); padding: 0 16px; margin-bottom: 8px; }
+      .ns-faq summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; padding: 12px 0; min-height: 44px; display: flex; align-items: center; }
+      .ns-faq details p { margin: 0 0 12px; font-size: 0.86rem; color: var(--fg-muted); line-height: 1.65; }
+      .ns-foot { margin-top: 28px; font-size: 0.78rem; color: var(--fg-muted); line-height: 1.6; }
+      @media (max-width: 760px) {
+        .ns-hero { grid-template-columns: 1fr; padding: 16px; }
+        .ns-features { grid-template-columns: 1fr; }
+        .ns-safe table { font-size: 0.8rem; }
+      }
+    </style>
+  </Fragment>
+
+<main class="app-main wrap">
+  <div class="app-header">
+    <div class="app-badge">노션도구</div>
+    <h1 class="app-title">노션 폴더 동기화</h1>
+    <p class="app-desc">노션 페이지 하나를 PC 폴더처럼 씁니다. 하위 페이지는 폴더, 페이지 안 첨부파일은 파일, 페이지 글은 메모 파일이 되어 양쪽이 저절로 맞춰져요. PC에서 파일을 넣으면 노션에, 노션에서 올리면 PC에 생깁니다.</p>
+  </div>
+
+  <div class="hero-card ns-hero">
+    <div>
+      <ul class="ns-chips" aria-label="사용 환경">
+        <li>Windows 10·11 (64비트)</li><li>무료</li><li>관리자 권한 없이 설치</li><li>자동 업데이트</li>
+      </ul>
+      <div class="ns-dl">
+        <a class="hero-btn" href={`${DL}/setup`} id="nsSetup"><Icon name="download" /> 설치 파일 내려받기</a>
+        <div class="ns-dl-sub"><span id="nsVersion">최신 판</span></div>
+      </div>
+    </div>
+    <div class="ns-side">
+      설치 파일은 작고(약 0.1 MB), 실행하면 필요한 부분을 받아 설치해요(처음 한 번 약 70 MB — .NET 포함).
+      그 뒤 업데이트는 <b>바뀐 부분만</b>(보통 1 MB 안쪽) 저절로 받아 다음에 켤 때 바뀝니다.
+      <div class="ns-map" aria-label="노션과 PC 폴더가 맞춰지는 방식">
+        <span>노션 페이지</span><span>↔</span><span><Icon name="folder-sync" /> PC 폴더</span>
+        <span>하위 페이지</span><span>↔</span><span>하위 폴더</span>
+        <span>첨부파일</span><span>↔</span><span>파일</span>
+        <span>페이지 글</span><span>↔</span><span>_메모.md</span>
+      </div>
+    </div>
+  </div>
+
+  <section class="ns-section" aria-labelledby="nsWhat">
+    <h2 id="nsWhat"><Icon name="sparkles" /> 이런 일을 합니다</h2>
+    <div class="ns-features">
+      <div class="hero-card ns-feat"><b><Icon name="folder-tree" /> 페이지 = 폴더</b><p>등록한 페이지 아래 하위 페이지가 그대로 폴더가 됩니다. 폴더를 만들거나 이름을 바꾸면 노션 페이지도 따라 바뀌어요.</p></div>
+      <div class="hero-card ns-feat"><b><Icon name="paperclip" /> 파일은 파일로</b><p>노션에 첨부한 파일을 PC로 받고, PC 폴더에 넣은 파일은 노션 페이지에 첨부합니다. 20MB 넘는 큰 파일도 나눠 올려요.</p></div>
+      <div class="hero-card ns-feat"><b><Icon name="notebook-pen" /> 페이지 글은 메모로</b><p>페이지의 글이 <b>_메모.md</b>로 오갑니다. PC에서 고치면 바뀐 줄만 노션에 반영하고, 파일·하위 페이지 자리는 그대로 둬요.</p></div>
+      <div class="hero-card ns-feat"><b><Icon name="refresh-cw" /> 저절로 맞춤</b><p>PC에서 바꾸면 20초 뒤에, 노션 변경은 5분마다(바꿀 수 있음) 가져옵니다. 알림 영역에서 조용히 돌아요.</p></div>
+      <div class="hero-card ns-feat"><b><Icon name="trash-2" /> 지울 땐 휴지통으로만</b><p>지운 것은 노션 휴지통·Windows 휴지통으로만 보내 되살릴 수 있어요. 한 번에 많이 지워지면 멈추고 먼저 물어봅니다.</p></div>
+      <div class="hero-card ns-feat"><b><Icon name="copy" /> 충돌은 둘 다 남김</b><p>같은 파일을 양쪽에서 고치면 덮어쓰지 않고 <b>‘PC 사본’</b>으로 두 버전을 모두 남겨요. 기록 창에서 모아 봅니다.</p></div>
+    </div>
+  </section>
+
+  <section class="ns-section" aria-labelledby="nsInstall">
+    <h2 id="nsInstall"><Icon name="list-ordered" /> 설치와 연결</h2>
+    <div class="hero-card ns-steps">
+      <ol>
+        <li><b>설치 파일 내려받기</b>를 눌러 받은 <b>NotionSync-판-Setup.exe</b>를 실행합니다. 관리자 권한은 필요 없어요. 설치가 끝나면 <b>노션 폴더 동기화</b> 창이 열립니다.</li>
+        <li>노션에서 <a href="https://www.notion.so/profile/integrations" rel="noopener" target="_blank">통합(Integrations)</a> 화면을 열고 <b>새 통합</b>을 만듭니다(유형: 내부). 기능은 <b>콘텐츠 읽기·업데이트·삽입</b>을 켜고, <b>내부 통합 시크릿</b>(ntn_로 시작)을 복사하세요.</li>
+        <li>앱의 <b>노션 연결</b> 칸에 붙여 넣고 <b>저장·확인</b>을 누릅니다. 워크스페이스 이름이 보이면 연결된 거예요.</li>
+        <li>동기화할 노션 페이지에서 <b>··· → 연결 → 방금 만든 통합</b>을 추가한 뒤, 앱의 <b>폴더 추가…</b>에 그 페이지 주소(링크 복사)를 붙여 넣고 PC 폴더를 고르면 첫 동기화가 시작됩니다.</li>
+      </ol>
+      <div class="ns-note" role="note"><Icon name="triangle-alert" /><span>"Windows의 PC 보호" 창이 뜨면 <b>추가 정보 → 실행</b>을 누르세요. 개인이 만든 무료 프로그램이라 처음 한 번 표시됩니다. 동기화 폴더는 <b>내 PC의 로컬 디스크</b>에 두세요 — Google Drive·OneDrive 같은 클라우드 가상 드라이브는 파일 변경을 제때 알려 주지 않아요. 학교 PC는 정보보안 담당 선생님께 설치 가능 여부를 확인해 주세요.</span></div>
+    </div>
+  </section>
+
+  <section class="ns-section" aria-labelledby="nsSafe">
+    <h2 id="nsSafe"><Icon name="shield-check" /> 내 자료는 어디로 가나요?</h2>
+    <div class="hero-card ns-safe">
+      이 프로그램에는 자료를 모으는 서버가 없어요. 노션 통합 토큰은 이 PC의 Windows 계정으로 암호화해 두고(다른 PC·계정에서는 읽을 수 없음), 설정과 동기화 기록도 이 PC에만 있습니다.
+      <table>
+        <thead><tr><th>어디로</th><th>무엇을</th><th>언제</th></tr></thead>
+        <tbody>
+          <tr><td>노션 (api.notion.com)</td><td>동기화 폴더의 파일·메모·폴더 이름 — 내 토큰으로, 통합을 연결한 페이지에만</td><td>동기화할 때</td></tr>
+          <tr><td>eduin.info</td><td>새 판 확인 요청(판 번호만 — 사용 통계는 보내지 않음)</td><td>하루 한 번 (끌 수 있음)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="ns-section ns-faq" aria-labelledby="nsFaq">
+    <h2 id="nsFaq"><Icon name="circle-help" /> 자주 묻는 것</h2>
+    <details><summary>무료 노션 요금제에서도 되나요?</summary><p>네. 다만 노션 무료 워크스페이스는 파일 하나에 5 MB까지만 올릴 수 있어서, 그보다 큰 PC 파일은 올리지 않고 알려 드려요(PC에는 그대로 있음). 유료·교육 요금제는 파일 하나 5 GB까지 됩니다.</p></details>
+    <details><summary>한글(hwp·hwpx) 파일도 되나요?</summary><p>노션이 hwp·hwpx 형식을 직접 받지 않아서, 이 프로그램이 <b>zip으로 감싸</b> 올리고 캡션에 표시해 둡니다. 노션 웹에서 받으면 zip 안에 원래 파일이 있고, 이 프로그램이 PC로 받을 때는 저절로 풀어 원래 이름으로 저장해요.</p></details>
+    <details><summary>양쪽에서 같은 파일을 고치면요?</summary><p>어느 쪽도 덮어쓰지 않아요. 원래 이름에는 노션 버전, <b>‘이름 (PC 사본 날짜).확장자’</b>에는 PC 버전을 두고 둘 다 노션에도 올립니다. 창의 <b>충돌·주의만…</b>에서 모아 볼 수 있어요.</p></details>
+    <details><summary>실수로 폴더를 통째로 지우면요?</summary><p>한 번에 많이(10개 넘게, 또는 전체의 20% 넘게) 지워지게 되면 아무것도 지우지 않고 멈춘 뒤 확인을 받습니다. 진행해도 노션 휴지통·Windows 휴지통으로만 가니 되살릴 수 있어요.</p></details>
+    <details><summary>노션 데이터베이스(표·보드)도 되나요?</summary><p>아직은 일반 페이지와 그 안의 파일·글만 동기화해요. 데이터베이스, 북마크·임베드 같은 블록은 노션에 그대로 남고 PC로는 오지 않습니다.</p></details>
+    <details><summary>지우고 싶어요</summary><p>Windows 설정 → 앱에서 <b>노션 폴더 동기화</b>를 제거합니다. 동기화하던 PC 폴더와 노션 페이지, 설정·토큰(LocalAppData\byeduin\NotionSync)은 남겨 두니 필요 없으면 직접 지워 주세요.</p></details>
+  </section>
+
+  <p class="ns-foot">Notion은 Notion Labs, Inc.의 상표입니다. 이 프로그램은 노션 공식 앱이 아니며, 노션이 공개한 API로 내 워크스페이스에만 접근합니다.</p>
+</main>
+
+<script is:inline>
+  // 최신 판·날짜 (latest.json). 실패해도 버튼은 고정 주소라 그대로 동작한다.
+  // 아직 올리기 전(latest.json 없음)이면 단추를 ‘준비 중’으로 — 받지 못하는 단추를 누르지 않게
+  function notYet() {
+    var b = document.getElementById('nsSetup');
+    if (b) { b.removeAttribute('href'); b.setAttribute('aria-disabled', 'true'); b.style.opacity = '0.55'; b.style.pointerEvents = 'none'; b.lastChild.textContent = ' 설치 파일 준비 중'; }
+    var el = document.getElementById('nsVersion');
+    if (el) el.textContent = '곧 내려받을 수 있어요';
+  }
+  fetch('/downloads/apps/notion-sync/latest.json', { cache: 'no-cache' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (m) {
+      if (!m || !m.version) { notYet(); return; }
+      var el = document.getElementById('nsVersion');
+      if (el) el.textContent = '최신 ' + m.version + (m.date ? ' · ' + m.date : '');
+    })
+    .catch(notYet);
+</script>
+
+</AppLayout>

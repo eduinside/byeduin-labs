@@ -82,12 +82,13 @@ apps/{id}/
 | `gnote` | G노트 | kit 0.9.0 준비 — R2 업로드 전 |
 | `login-helper` | 에듀나비 | kit 0.6.0(+ Velopack 다리 판) — R2 업로드·페이지 배포 (2026-10-12). 같은 경로, 아래 ‘에듀나비’ |
 | `edu-dic` | 어린이 쉬운 사전 | **kit 0.6.0(다리 판) 배포됨 (2026-10-12)** — R2 `apps/edu-dic/`, dic.dgedu.link 단추는 `…/edu-dic/setup`. 옛 `edu-dic-downloads` 는 다리 판 객체만 남겨 0.6.2 뒤 비움. 안내·단추는 dic.dgedu.link (`dgedu-dic/docs/plan-desktop-kit.md`) |
+| `notion-sync` | 노션 폴더 동기화 | kit 0.1.0 준비 — 함수 허용 목록·apps.json(유틸리티 › 노션도구)·안내 페이지 (2026-10-19). R2 업로드 전, 아래 ‘노션 폴더 동기화’ |
 | `edu-team` | 에듀팀 데스크탑 | kit 0.8.0 배포(2026-10-12). 안내·단추는 team.dgedu.link 마이페이지. 옛 `edu-team-downloads` 는 다리 판 기간 유지 |
 | (`rec-note`) | Rec Note v2 | byeduin 계열 — 준비만, 아직 배포 안 함 |
 | (`music-to-score`) | 악보 만들기 | byeduin 계열 — 준비만, 아직 배포 안 함 |
 | (`keyvault`) | 키 관리 | byeduin 계열 — 준비만, 아직 배포 안 함 |
 
-안내 페이지는 계열별로 나뉜다 — byeduin(eduin.info/apps/…): G노트·에듀나비(+ 준비 중 3개), dgedu: 사전(dic.dgedu.link)·에듀팀(team.dgedu.link). 수업꾸러미(dgedu-kit)는 앱이 아니라 해당 없음.
+안내 페이지는 계열별로 나뉜다 — byeduin(eduin.info/apps/…): G노트·에듀나비·노션 폴더 동기화(+ 준비 중 3개), dgedu: 사전(dic.dgedu.link)·에듀팀(team.dgedu.link). 수업꾸러미(dgedu-kit)는 앱이 아니라 해당 없음.
 
 예외: 에듀포털(교내 설치형·인증 배포) — 이 저장소를 쓰지 않는다.
 
@@ -107,6 +108,23 @@ apps/gnote/
 - 페이지: `/apps/gnote/`(안내), `/apps/gnote/terms/`(이용 안내 — `src/pages/apps/gnote/_terms.md` 는 local-law `docs/terms.md` 복사본)
 - [x] 함수 허용 목록 `gnote`, apps.json, 안내·이용 안내 페이지, Pages 배포 (2026-10-11 — latest.json 없으면 ‘준비 중’)
 - [x] R2 첫 업로드 0.9.1 (2026-10-11) — `/setup` 으로 받아 실제 설치까지 확인
+
+## 노션 폴더 동기화 (`notion-sync`) — 공용 모듈 DesktopKit (2026-10-19)
+
+노션 페이지를 PC 폴더처럼 양방향 동기화하는 트레이 앱(`LOCAL/local-notion-sync`, 계획 `docs/phase4.md`). 안내 페이지는 **유틸리티 › 노션도구(`util-notion`)** 아래(노션 수식 꾸미기·노션 이미지 내려받기와 같은 곳).
+
+```
+apps/notion-sync/
+├── latest.json                     kit 1 매니페스트
+├── NotionSync-<판>-Setup.exe        설치 파일(net48, 약 0.1MB) — 고정 주소 /downloads/apps/notion-sync/setup
+└── pack-<sha256>.zip                팩(app·data·runtime). 처음 설치 약 66MB, 업데이트는 보통 app 팩(0.3MB)만
+```
+
+- 올리기: `LOCAL/local-notion-sync/scripts/release.ps1 -Upload` (이 폴더의 wrangler 로 팩 → 설치 파일 → latest.json)
+- 페이지: `/apps/notion-sync/` — latest.json 이 없으면 단추가 ‘준비 중’
+- 사용 통계: 0.1.0 은 보내지 않음(`X-Kit-Install` 없음)
+- [x] 함수 허용 목록 `notion-sync`, apps.json, 안내 페이지 (2026-10-19, 브랜치 `feat/notion-sync-page` — main 병합·Pages 배포 전)
+- [ ] R2 첫 업로드 → `/setup` 으로 받아 실제 설치 확인
 
 ## 에듀팀 데스크탑 (`edu-team`) — 공용 모듈 DesktopKit (2026-10-11)
 

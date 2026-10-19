@@ -41,7 +41,7 @@ const call = (path, init = {}) => {
 };
 const body = async (res) => new Uint8Array(await res.arrayBuffer());
 
-assert.deepEqual(DESKTOP_APPS, ['login-helper', 'gnote', 'edu-team', 'edu-dic']);
+assert.deepEqual(DESKTOP_APPS, ['login-helper', 'gnote', 'edu-team', 'edu-dic', 'notion-sync']);
 
 let res = await call('/downloads/apps/login-helper/setup');
 assert.equal(res.status, 302);
