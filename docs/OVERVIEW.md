@@ -12,7 +12,7 @@
 src/
 ├── pages/
 │   ├── index.astro        ← 홈 (카테고리 트리 사이드바)
-│   └── apps/<id>/index.astro ← 앱 페이지 (공개 39개 + `_<id>/` 비공개 5개는 빌드 제외)
+│   └── apps/<id>/index.astro ← 앱 페이지 (`_<id>/` 비공개 6개는 빌드 제외)
 └── layouts/AppLayout.astro ← 공통 헤드(SEO 메타·공통 CSS/JS)와 <body data-shell> 래퍼
 
 public/                    ← 빌드 시 dist/로 그대로 복사 (경로 유지)
@@ -82,7 +82,7 @@ docs/                  ← 개발 문서
 | `file-tools` | 파일 도구 | 스캔 이미지·PPTX 이미지 최적화 |
 | `timer` | 타이머 | 반복 알람 타이머 |
 | `allowance-calculator` | 수당 계산기 | 세전·세후 수당·기타소득 세금 자동 계산 |
-| `search` | 교육문서 검색 | AI 기반 교육문서 검색·출처 확인 |
+| `search` | 에듀서치 (비공개) | AI 기반 교육문서 검색·출처 확인 |
 | `login-helper` | 에듀나비 로그인 | 에듀나비 교원업무지원 로그인 도우미 (모달·외부 링크) |
 | `seating` | 자리 배치 | 여러 학급 자리표 · 조건 지켜 랜덤 배치(떨어뜨릴 쌍·앞줄·성별·이전 짝) · 끌어 놓기 · A4 인쇄 (브라우저 저장만) |
 | `picker` | 뽑기·모둠 | 공평 뽑기(한 바퀴 중복 없음·결석 제외, 슬롯·카드·룰렛) · 발표 순서 · 모둠 나누기(떨어뜨릴 쌍·성별·지난 모둠·고정) · 크게 보기 · 자리 배치 명단 가져오기 (브라우저 저장만) |
@@ -188,7 +188,7 @@ docs/                  ← 개발 문서
 >
 > **출처 검사·요청 상한 (`functions/api/_guard.js`)**: AI·외부 프록시·동기화 쓰기 엔드포인트는 공용 가드를 거친다. ① 요청 호스트·Origin(없으면 Referer)이 `eduin.info`·`*.byeduin-labs.pages.dev`(미리보기)·localhost일 때만 처리(CORS `*` 없음), ② Cache API 카운터로 IP당 분·일 한도 + 사이트 전체 일 상한(값은 `_guard.js`의 `LIMITS`, colo별 근사치), ③ 본문 크기 상한 읽기, ④ 외부 원문 오류는 로그에만. 학교는 공인 IP 하나를 함께 쓰므로 IP당 한도는 넉넉히 두고 비용은 사이트 일 상한으로 막는다. 외부 `fetch`에는 모두 `AbortSignal.timeout`.
 >
-> **비공개 앱 API**: `madang*`·`signage*`는 `functions/api/_closed.js`로 410을 돌려준다(코드는 보존, `APP_CLOSED` 플래그).
+> **비공개 앱 API**: `madang*`·`signage*`·`search`·`search-sync`·`manual`은 `functions/api/_closed.js`로 410을 돌려준다(코드는 보존, `APP_CLOSED` 플래그).
 
 ---
 
@@ -251,6 +251,7 @@ docs/                  ← 개발 문서
 - 배포: Actions 워크플로 삭제, Cloudflare Git 연동 빌드만 사용.
 
 ### 2026-10 — 전체 점검 후속 조치 (`docs/audit-2026-10.md`)
+- **에듀서치(search) 비공개 (2026-10-31)**: 같은 방식으로 페이지 폴더를 `src/pages/apps/_search/`로 옮기고 `apps.json`에 `hidden: true`, `/api/search`·`/api/search-sync`·`/api/manual`은 410. 사이트맵 재생성. D1 `manual_*` 표와 R2 `manual/` 원본은 그대로 둔다. 다시 공개할 때는 폴더 이름의 `_`를 떼고 세 API의 `APP_CLOSED`를 false로.
 - **숨김 앱 5개 비공개**: bubble-chat·madang·signage-maker·embed·shortcut 페이지 폴더를 `src/pages/apps/_<id>/`로 옮겨 빌드에서 제외(주소로도 404), 사이트맵·404 추천 제외, 관련 API 410. `hidden: true`는 이제 "비공개"를 뜻한다.
 - **공통**: `astro.config`에 `site` 설정(canonical·og:url localhost 문제), 앱별 중복 canonical 제거, 동기화 코드 화면 가림(`AB••••`, 패널에서 '보기'), 공용 `public/common/safe.js`(VSafe.esc·safeUrl·num·int), lucide 자체 호스팅(`public/vendor/`), 로고 축소본, `public/_headers`(캐시·최소 CSP).
 - **보안**: 공유 링크·QR·AI 답변이 HTML로 들어가던 경로 차단(md-editor·search는 DOMPurify, 인라인 onclick → data-* 위임, 공유 데이터 디코드 직후 형식 검증). 서버 공용 가드(위 API 절).

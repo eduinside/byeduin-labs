@@ -6,6 +6,9 @@
  * 목록·본문(JSON) 성공 응답은 엣지 캐시(caches.default)에 5분 보관 → 요청마다 D1을 읽지 않는다.
  * 오류 응답은 캐시하지 않는다. 적재(scripts/manual-ingest.mjs) 후 최대 5분 뒤 반영된다.
  */
+import { appClosed } from './_closed.js';
+const APP_CLOSED = true;
+
 const CACHE_SEC = 300;
 const json = (data, status = 200, maxAge = CACHE_SEC) => new Response(JSON.stringify(data), {
   status,
@@ -17,6 +20,7 @@ const json = (data, status = 200, maxAge = CACHE_SEC) => new Response(JSON.strin
 const MIME = { pdf: 'application/pdf', hwpx: 'application/hwp+zip', hwp: 'application/x-hwp' };
 
 export async function onRequestGet(ctx) {
+  if (APP_CLOSED) return appClosed(); // 비공개 앱 — functions/api/_closed.js 참고
   const { request, env } = ctx;
   const db = env.BYEDUIN_DB;
   if (!db) return json({ error: '문서 저장소가 설정되지 않았습니다.' }, 500);

@@ -12,6 +12,8 @@
 import { generateContent, DEFAULT_TIMELY_MODEL } from './_ai.js';
 import { toMatchQuery } from './_manual-text.js';
 import { checkOrigin, rateLimit, readJson, json } from './_guard.js';
+import { appClosed } from './_closed.js';
+const APP_CLOSED = true;
 
 const TOP_K = 6;             // bm25 상위 조각 수
 const EXPAND = 3;            // 상위 몇 개에 이웃(앞뒤) 조각을 붙일지
@@ -134,6 +136,7 @@ async function summarize({ docId, query, env, request }) {
 }
 
 export async function onRequestPost({ request, env }) {
+  if (APP_CLOSED) return appClosed(); // 비공개 앱 — functions/api/_closed.js 참고
   const denied = checkOrigin(request);
   if (denied) return denied;
   if (!env.BYEDUIN_DB) return json({ error: '문서 저장소가 설정되지 않았습니다.' }, 500);

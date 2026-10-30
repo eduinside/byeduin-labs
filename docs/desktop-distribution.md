@@ -162,6 +162,10 @@ apps/login-helper/
 - [x] 안내 페이지: 설치(관리자 권한 없음·약 66MB)·옛 설치판 자동 옮김·사용 통계 칸, 받는 양 = 팩 합계
 - [x] R2 업로드 0.6.0 (2026-10-12) — 팩·설치 파일·포터블을 eduin.info 에서 받아 해시 확인 → latest.json → 다리 nupkg → releases.win.json. `/setup`·`/portable` 302, Velopack 피드에 0.6.0 확인
 
+## 옛 판 파일 정리 (2026-10-31)
+
+기존 이용자가 거의 없어 현재 매니페스트가 가리키지 않고 옛 판 업데이트도 읽지 않는 파일을 지운다. `scripts/prune-r2-desktop-old.ps1` (`-WhatIf`로 목록 확인). 지운 것: login-helper 0.5.x 설치 파일 3개·포터블 zip 3개, gnote 0.9.1~0.9.3 설치 파일 3개·옛 팩 5개(약 443MB). 남긴 것: `releases.win.json`과 모든 nupkg(Velopack 0.5.x 판이 읽음), edu-dic·edu-team·notion-sync 전부(모두 현재 판 파일).
+
 ## 사용자 수 (DesktopKit kit 0.2, 2026-10-11~)
 
 앱이 `latest.json` 요청에 `X-Kit-Install`(무작위 32자 16진수)을 붙이면 서빙 함수가 D1 `desktop_pings(app, day, inst, version)` 에 하루 한 줄 — `inst` 는 SHA-256(`app:번호`) 앞 16자, **번호 원문·IP·User-Agent 는 저장하지 않는다**. `/setup` 고정 주소는 `desktop_downloads(app, day, n)` +1. 90일 지난 줄은 가끔(약 1/200 요청) `desktop_daily(app, day, users)` 로 접는다. 기록은 `waitUntil` + 실패 무시라 표가 없어도 내려받기는 정상.
