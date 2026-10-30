@@ -27,7 +27,6 @@
   var sharedTree = null; // 보기만 고른 복제 허용 맵(나중에 '내 목록에 담기')
   var saveTimer = 0;
   var warnedMax = false;
-  var aiTree = null;
   var importName = '';
 
   function $(id) { return document.getElementById(id); }
@@ -449,25 +448,17 @@
     setTimeout(function () { if (mind) mind.selectNode(rootEl()); }, 60);
   }
 
-  /* AI 초안 */
+  /* AI 초안: 받으면 바로 새 맵으로 열고, 고치기는 맵에서(미리보기 단계 없음) */
   function openAi() {
-    aiTree = null;
-    $('ai-preview').hidden = true;
-    $('ai-use').hidden = true;
     $('ai-run').textContent = '초안 만들기';
     modals.ai.open();
-  }
-  function treeHtml(t) {
-    function ul(list) {
-      return list && list.length ? '<ul>' + list.map(function (c) { return '<li>' + esc(c.topic) + ul(c.children) + '</li>'; }).join('') + '</ul>' : '';
-    }
-    return '<ul><li><b>' + esc(t.topic) + '</b>' + ul(t.children) + '</li></ul>';
   }
   async function runAi() {
     var topic = $('ai-topic').value.trim();
     if (!topic) { toast('주제를 적어 주세요.'); $('ai-topic').focus(); return; }
     var btn = $('ai-run');
-    btn.disabled = true; $('ai-use').disabled = true;
+    if (btn.disabled) return;
+    btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> 만드는 중…';
     try {
       var data = await VUI.apiFetch('/api/mindmap-draft', {
@@ -476,25 +467,18 @@
       });
       var r = data && typeof data.markdown === 'string' ? MD.fromMd(data.markdown, topic) : null;
       if (!r || r.count < 3) throw new Error('AI가 초안을 만들지 못했어요. 주제를 조금 바꿔 다시 해 주세요.');
-      aiTree = r.tree;
-      $('ai-preview').innerHTML = treeHtml(aiTree);
-      $('ai-preview').hidden = false;
-      $('ai-use').hidden = false;
-      btn.textContent = '다시 만들기';
+      var rec = addRecord(newRecord(r.tree));
+      if (!rec) return;
+      closeModal('ai');
+      $('ai-topic').value = '';
+      open(rec.id);
+      toast('AI 초안으로 마인드맵을 만들었어요. 살펴보고 고쳐 주세요.', 'success');
     } catch (e) {
       if (e.code !== 'abort') toast(e.message || 'AI 초안을 만들지 못했어요.', 'error');
-      btn.textContent = aiTree ? '다시 만들기' : '초안 만들기';
     } finally {
-      btn.disabled = false; $('ai-use').disabled = false;
+      btn.disabled = false;
+      btn.textContent = '초안 만들기';
     }
-  }
-  function useAi() {
-    if (!aiTree) return;
-    var rec = addRecord(newRecord(aiTree));
-    if (!rec) return;
-    closeModal('ai');
-    open(rec.id);
-    toast('초안으로 마인드맵을 만들었어요. 살펴보고 고쳐 주세요.', 'success');
   }
 
   /* 마크다운 가져오기 */
@@ -549,7 +533,7 @@
     addChild: addChild, addSibling: addSibling, removeNode: removeNode, undo: undo,
     fit: fit, zoom: zoom, toggleDirection: toggleDirection, toggleTheme: toggleTheme,
     share: share, sendToMd: sendToMd, duplicate: duplicate, takeShared: takeShared, toggleMore: toggleMore,
-    openNew: openNew, createNew: createNew, openAi: openAi, runAi: runAi, useAi: useAi,
+    openNew: openNew, createNew: createNew, openAi: openAi, runAi: runAi,
     openImport: openImport, doImport: doImport, closeModal: closeModal,
   };
 
