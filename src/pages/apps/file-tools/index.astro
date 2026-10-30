@@ -3,8 +3,8 @@ import AppLayout from '../../../layouts/AppLayout.astro';
 import Icon from '../../../components/Icon.astro';
 ---
 <AppLayout
-  title="파일 용량 줄이기 (File Tools) — eduin VIVES"
-  description="PDF·JPG·PNG·TIFF와 PPTX의 용량을 줄여요. PDF는 글자를 그대로 두고 안에 든 그림만 줄이고, 모두 브라우저 안에서 처리합니다."
+  title="파일 용량 줄이기 (File Tools) | eduin VIVES"
+  description="PDF·JPG·PNG·TIFF와 PPTX·DOCX·XLSX·HWPX 문서의 용량을 줄여요. 글자와 서식은 그대로 두고 안에 든 그림을 줄이고, 모두 브라우저 안에서 처리합니다."
   image="https://eduin.info/og-images/file-tools.png"
   bodyShell="column"
   bodyWidth="medium"
@@ -18,14 +18,13 @@ import Icon from '../../../components/Icon.astro';
       .toggle-group button { min-height: 44px; }
       .action-btn { min-height: 44px; }
       .dropzone:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; border-color: var(--primary); }
-      .tab-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: -4px; }
       .opt-field .opt-label {
         font-size: 0.75rem; font-weight: 600; color: var(--fg-muted);
         text-transform: uppercase; letter-spacing: 0.04em;
       }
     </style>
   <!-- jszip·UTIF·pdf.js·pdf-lib는 app.js가 필요할 때 버전 고정 주소로 지연 로드 -->
-  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"파일 용량 줄이기 (File Tools)","description":"PDF·JPG·PNG·TIFF와 PPTX의 용량을 줄여요. PDF는 글자를 그대로 두고 안에 든 그림만 줄이고, 모두 브라우저 안에서 처리합니다.","url":"https://eduin.info/apps/file-tools/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
+  <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"파일 용량 줄이기 (File Tools)","description":"PDF·JPG·PNG·TIFF와 PPTX·DOCX·XLSX·HWPX 문서의 용량을 줄여요. 글자와 서식은 그대로 두고 안에 든 그림을 줄이고, 모두 브라우저 안에서 처리합니다.","url":"https://eduin.info/apps/file-tools/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
 
 
@@ -35,23 +34,18 @@ import Icon from '../../../components/Icon.astro';
   <div class="app-header">
     <div class="app-badge">업무경감</div>
     <h1 class="app-title">파일 용량 줄이기 <span class="app-title-en">File Tools</span></h1>
-    <p class="app-desc">PDF·이미지와 PPTX의 용량을 줄여요. PDF는 글자는 그대로 두고 안에 든 그림만 줄여요. 파일은 서버로 보내는 대신 이 브라우저 안에서 처리합니다.</p>
+    <p class="app-desc">PDF·그림과 PPTX·DOCX·XLSX·HWPX 문서의 용량을 줄여요. 글자와 서식은 그대로 두고 안에 든 그림을 줄여요. 파일은 서버로 보내는 대신 이 브라우저 안에서 처리합니다.</p>
   </div>
 
   <div class="file-card">
-    <div class="tabs" role="tablist" aria-label="도구 고르기">
-      <button class="tab-btn active" id="tab-scan" data-tab="scan" role="tab" aria-selected="true" aria-controls="panel-scan" onclick="switchTab('scan')"><Icon name="file-image" /> PDF·이미지 줄이기</button>
-      <button class="tab-btn" id="tab-pptx" data-tab="pptx" role="tab" aria-selected="false" aria-controls="panel-pptx" tabindex="-1" onclick="switchTab('pptx')"><Icon name="presentation" /> PPTX 줄이기</button>
-    </div>
-
     <div class="card-body">
-      <!-- ─────────────── Tab 1: PDF·이미지 줄이기 ─────────────── -->
-      <section class="panel active" id="panel-scan" role="tabpanel" aria-labelledby="tab-scan">
-        <div class="dropzone" id="scanDrop" role="button" tabindex="0" aria-label="이미지·PDF 파일 고르기" aria-describedby="scanDropHint">
+      <section class="panel active" id="panel-scan" aria-label="파일 줄이기">
+        <div class="dropzone" id="scanDrop" role="button" tabindex="0" aria-label="줄일 파일 고르기" aria-describedby="scanDropHint">
           <div class="dropzone-icon" aria-hidden="true"><Icon name="upload" /></div>
-          <div class="dropzone-label">PDF·TIFF·JPG·PNG 파일을 끌어다 놓거나 눌러서 고르기</div>
+          <div class="dropzone-label">줄일 파일을 끌어다 놓거나 눌러서 고르기</div>
+          <div class="dropzone-types">PDF · JPG · PNG · HEIC · TIFF · PPTX · DOCX · XLSX · HWPX</div>
           <div class="dropzone-hint" id="scanDropHint">여러 개 함께 넣을 수 있어요 · 넣으면 바로 줄이기 시작해요 · 캡처한 그림은 Ctrl+V로 붙여넣기</div>
-          <input type="file" id="scanInput" accept=".tif,.tiff,.pdf,.jpg,.jpeg,.png,application/pdf,image/tiff,image/jpeg,image/png" multiple="" style="display:none">
+          <input type="file" id="scanInput" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.tif,.tiff,.pptx,.docx,.xlsx,.hwpx,.hwp,application/pdf,image/jpeg,image/png,image/heic,image/heif,image/tiff" multiple="" style="display:none">
         </div>
 
         <div class="options-grid">
@@ -66,14 +60,14 @@ import Icon from '../../../components/Icon.astro';
             <p class="opt-note" id="scanLevelNote"></p>
             <div class="target-row" id="scanTargetRow" hidden>
               <label class="target-input" for="scanTargetMB">
-                <input type="number" id="scanTargetMB" min="0.05" max="2000" step="0.1" value="2" inputmode="decimal">
+                <input type="number" id="scanTargetMB" min="0.05" max="2000" step="0.1" value="5" inputmode="decimal">
                 <span>MB 이하</span>
               </label>
               <div class="target-chips" id="scanTargetChips" role="group" aria-label="자주 쓰는 용량">
                 <button type="button" data-mb="1">1MB</button>
-                <button type="button" data-mb="2">2MB</button>
-                <button type="button" data-mb="5">5MB</button>
-                <button type="button" data-mb="10">10MB</button>
+                <button type="button" data-mb="5">업무관리(5MB)</button>
+                <button type="button" data-mb="10">네이버 메일(10MB)</button>
+                <button type="button" data-mb="25">Gmail(25MB)</button>
               </div>
             </div>
           </div>
@@ -87,6 +81,13 @@ import Icon from '../../../components/Icon.astro';
             <p class="opt-note" id="scanFormatNote"></p>
             <label class="check-row" id="scanMergeRow" hidden><input type="checkbox" id="scanMerge"> 여러 파일을 PDF 하나로 합치기</label>
           </div>
+          <div class="opt-field" style="grid-column: 1 / -1;">
+            <span class="opt-label">추가 설정</span>
+            <label class="check-row"><input type="checkbox" id="scanStrip" checked> 사진 위치·기기 정보와 작성자 정보 지우기</label>
+            <p class="opt-note">줄이면서 다시 만든 사진은 위치·기기 정보(EXIF)가 저절로 빠져요. 체크하면 그대로 둔 사진과 문서·PDF의 작성자·회사 정보도 지워요.</p>
+            <label class="check-row"><input type="checkbox" id="scanGray"> 회색으로 (글자 스캔)</label>
+            <p class="opt-note">PDF·그림을 흑백으로 만들어 더 줄여요. 문서 파일(PPTX 등)에는 쓰지 않아요.</p>
+          </div>
         </div>
 
         <div class="job-list" id="scanJobs"></div>
@@ -98,42 +99,23 @@ import Icon from '../../../components/Icon.astro';
         </div>
       </section>
 
-      <!-- ─────────────── Tab 2: PPTX 압축 ─────────────── -->
-      <section class="panel" id="panel-pptx" role="tabpanel" aria-labelledby="tab-pptx">
-        <div class="dropzone" id="pptxDrop" role="button" tabindex="0" aria-label="PPTX 파일 고르기" aria-describedby="pptxDropHint">
-          <div class="dropzone-icon" aria-hidden="true"><Icon name="upload" /></div>
-          <div class="dropzone-label">PPTX 파일을 끌어다 놓거나 눌러서 고르기</div>
-          <div class="dropzone-hint" id="pptxDropHint">.pptx · 한 번에 한 파일 · 슬라이드 안의 그림을 줄여요</div>
-          <input type="file" id="pptxInput" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none">
-        </div>
-        <div class="file-list" id="pptxFileList"></div>
-
-        <div class="options-grid" id="pptxOptionsGrid" style="display:none">
-          <div class="opt-field" style="grid-column: 1 / -1;">
-            <label for="pptxTargetMB">목표 용량 (MB)</label>
-            <div class="range-row">
-              <input type="range" id="pptxTargetMB" min="0.05" max="10" step="0.01" value="3">
-              <span class="range-val" id="pptxTargetMBVal" aria-hidden="true">3.00</span>
-            </div>
-            <div class="range-ends"><span id="pptxTargetMin">최소</span><span id="pptxTargetMax">최대</span></div>
+      <!-- 쪽 정리 창: app.js가 VUI.modal로 연다 -->
+      <div class="pages-modal" id="pagesModal" hidden>
+        <div class="pages-box">
+          <div class="pages-head">
+            <h2 id="pagesTitle">쪽 정리</h2>
+            <button type="button" class="file-list-remove" data-vui-close aria-label="닫기" title="닫기"><Icon name="x" /></button>
+          </div>
+          <p class="pages-help">쪽을 누르면 빼기로 표시되고, 한 번 더 누르면 다시 넣어요. 거의 흰 쪽은 처음 열 때 빼기로 표시해 둬요.</p>
+          <div class="pages-grid" id="pagesGrid"></div>
+          <div class="pages-foot">
+            <span class="pages-count" id="pagesCount" role="status" aria-live="polite"></span>
+            <button type="button" class="action-btn secondary" id="pagesReset">처음대로</button>
+            <button type="button" class="action-btn" id="pagesApply">적용</button>
           </div>
         </div>
+      </div>
 
-        <div class="estimate" id="pptxEstimate" style="display:none" aria-live="polite"></div>
-
-        <div class="action-row">
-          <button class="action-btn" id="pptxRunBtn" onclick="runPptx()" disabled=""><Icon name="download" /> 줄여서 내려받기</button>
-          <button class="action-btn secondary" onclick="clearPptx()"><Icon name="x" /> 파일 빼기</button>
-        </div>
-
-        <div class="progress" id="pptxProgress" style="display:none">
-          <div class="progress-msg" id="pptxProgressMsg">처리 중…</div>
-          <div class="progress-bar" id="pptxProgressBar" role="progressbar" aria-labelledby="pptxProgressMsg" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-bar-fill" id="pptxProgressFill"></div></div>
-          <div class="visually-hidden" id="pptxProgressLive" role="status" aria-live="polite"></div>
-        </div>
-
-        <div class="result" id="pptxResult" style="display:none" role="status" aria-live="polite"></div>
-      </section>
     </div>
   </div>
 </main>

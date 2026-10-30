@@ -16,19 +16,17 @@ function showToast(msg, type) {
   else console.log('[file-tools]', msg);
 }
 // 아이콘(공용 스프라이트). VUI가 없으면 빈 문자열
-// @icons x download circle-check triangle-alert circle-x chart-column
+// @icons x download rotate-cw layout-grid
 function ic(name) { return window.VUI ? VUI.icon(name) : ''; }
 
-// 목표 용량 표시: MB 소수 둘째 자리
-function fmtMB(v) { return (+v).toFixed(2); }
-// 화질 0.75 → "75%"
-function fmtQ(q) { return Math.round(q * 100) + '%'; }
-
-// 파일 확장자로 탭별 지원 여부 판단
-const SCAN_EXTS = ['pdf', 'tif', 'tiff', 'jpg', 'jpeg', 'png'];
+// 파일 확장자로 다룰 수 있는지 판단
+const PAGE_EXTS = ['pdf', 'tif', 'tiff', 'jpg', 'jpeg', 'png', 'heic', 'heif'];   // PDF·그림
+const DOC_EXTS = ['pptx', 'docx', 'xlsx', 'hwpx'];                // 그림이 든 문서(zip)
 function extOf(f) { return f.name.split('.').pop().toLowerCase(); }
-function isScanFile(f) { return SCAN_EXTS.includes(extOf(f)); }
-function isPptxFile(f) { return extOf(f) === 'pptx'; }
+const isDocFile = f => DOC_EXTS.includes(extOf(f));
+const isSupported = f => PAGE_EXTS.includes(extOf(f)) || isDocFile(f);
+const isHwp = f => extOf(f) === 'hwp';                 // 옛 한글 형식: 줄이는 대신 HWPX로 바꾸는 방법을 안내
+const isHeic = f => ['heic', 'heif'].includes(extOf(f));
 // 못 쓰는 파일을 뺐다고 알림(조용히 빈 결과를 만들지 않게)
 function reportSkipped(skipped, hint) {
   if (!skipped.length) return;
@@ -47,48 +45,6 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-function switchTab(tab, focus) {
-  document.querySelectorAll('.tab-btn').forEach(b => {
-    const on = b.dataset.tab === tab;
-    b.classList.toggle('active', on);
-    b.setAttribute('aria-selected', String(on));
-    b.tabIndex = on ? 0 : -1;
-    if (on && focus) b.focus();
-  });
-  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
-}
-// 탭: 왼쪽·오른쪽 화살표로 옮겨 다님(WAI-ARIA 탭 패턴)
-document.querySelector('.tabs')?.addEventListener('keydown', e => {
-  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return;
-  const tabs = Array.from(document.querySelectorAll('.tab-btn'));
-  const cur = tabs.findIndex(b => b.classList.contains('active'));
-  let next = cur;
-  if (e.key === 'ArrowLeft') next = (cur - 1 + tabs.length) % tabs.length;
-  else if (e.key === 'ArrowRight') next = (cur + 1) % tabs.length;
-  else if (e.key === 'Home') next = 0;
-  else next = tabs.length - 1;
-  e.preventDefault();
-  switchTab(tabs[next].dataset.tab, true);
-});
-
-// 진행 표시: 막대(progressbar) 값과, 단계가 바뀔 때만 스크린리더에 읽어 줄 문구
-const _progressPhase = {};
-function setProgressUI(prefix, pct, msg) {
-  const v = Math.round(Math.max(0, Math.min(100, pct)));
-  document.getElementById(prefix + 'Progress').style.display = 'block';
-  document.getElementById(prefix + 'ProgressFill').style.width = v + '%';
-  document.getElementById(prefix + 'ProgressMsg').textContent = msg;
-  const bar = document.getElementById(prefix + 'ProgressBar');
-  if (bar) { bar.setAttribute('aria-valuenow', String(v)); bar.setAttribute('aria-valuetext', v + '% · ' + msg); }
-  // "시도 2/6 - 이미지 3/20"처럼 자주 바뀌는 뒷부분은 빼고 앞부분이 바뀔 때만 알림
-  const phase = String(msg).split(' - ')[0];
-  if (_progressPhase[prefix] !== phase) {
-    _progressPhase[prefix] = phase;
-    const live = document.getElementById(prefix + 'ProgressLive');
-    if (live) live.textContent = phase;
-  }
-}
-
 // ─────────────── 외부 라이브러리 지연 로드 (버전 고정) ───────────────
 // 첫 화면에서는 아무것도 받지 않고, 실제로 필요한 순간에 한 번만 불러옵니다.
 const PDFJS_VER = '3.11.174';
@@ -104,6 +60,7 @@ const LIBS = {
     },
   },
   pdflib: { src: 'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js', ready: () => window.PDFLib },
+  heic2any: { src: 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js', ready: () => window.heic2any },
 };
 const _libPromises = {};
 function loadLib(name) {
@@ -151,32 +108,7 @@ function canvasToBlob(canvas, mime, quality) {
   return new Promise(res => canvas.toBlob(res, mime, quality));
 }
 
-// 다운스케일 캔버스 만들기
-function downscaleToCanvas(bitmap, maxWidth) {
-  const w = bitmap.width, h = bitmap.height;
-  const scale = w > maxWidth ? maxWidth / w : 1;
-  const cw = Math.round(w * scale), ch = Math.round(h * scale);
-  const c = document.createElement('canvas');
-  c.width = cw; c.height = ch;
-  c.getContext('2d').drawImage(bitmap, 0, 0, cw, ch);
-  return c;
-}
-
-// PNG에 alpha가 실제로 쓰이는지 검사
-async function pngHasAlpha(blob) {
-  const bmp = await createImageBitmap(blob);
-  const c = document.createElement('canvas');
-  c.width = Math.min(bmp.width, 64);
-  c.height = Math.min(bmp.height, 64);
-  const ctx = c.getContext('2d');
-  ctx.drawImage(bmp, 0, 0, c.width, c.height);
-  bmp.close?.();
-  const data = ctx.getImageData(0, 0, c.width, c.height).data;
-  for (let i = 3; i < data.length; i += 4) if (data[i] < 250) return true;
-  return false;
-}
-
-// ─────────────── 목표 용량 탐색 (공통) ───────────────
+// ─────────────── 목표 용량 탐색 ───────────────
 // 설정 후보를 "예상 용량이 작은 것 → 큰 것" 순으로 늘어놓고 이진 탐색합니다.
 // 목표 이하이면 더 높은 품질 쪽을, 초과면 더 낮은 쪽을 시도해
 // "목표 용량 안에서 가장 좋은 품질"을 고릅니다.
@@ -205,12 +137,38 @@ async function searchBestUnderTarget(ladder, targetBytes, evaluate) {
   return best ? { ...best, reached: true } : { ...smallest, reached: false };
 }
 
-// ─────────────── Tab 1: PDF·이미지 줄이기 ───────────────
+// 전체 내용 SHA-256 (같은 그림 판정용). 사용할 수 없는 환경이면 null
+async function hashBlob(blob) {
+  try {
+    if (!window.crypto?.subtle) return null;
+    const buf = await blob.arrayBuffer();
+    const digest = await crypto.subtle.digest('SHA-256', buf);
+    return blob.size + ':' + Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+  } catch { return null; }
+}
+
+// 동시에 처리할 개수 제한 (큰 문서에서 메모리 폭증 방지)
+async function mapLimit(items, limit, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+// ─────────────── 줄이기 ───────────────
+// PDF·그림·문서를 한곳에 넣는다. 파일을 넣거나 설정을 바꾸면 바로 시작하고,
+// 결과는 파일마다 보여 준 뒤 저장한다.
 // PDF는 글자·도형은 그대로 두고 안에 든 그림만 다시 압축한다(기본).
 // 쪽을 통째로 그림으로 바꾸는 방식은 파일 줄의 버튼으로만 쓴다.
-// 파일을 넣거나 설정을 바꾸면 바로 시작하고, 결과는 파일마다 보여 준 뒤 저장한다.
+// 문서(PPTX·DOCX·XLSX·HWPX)는 안의 그림을 그려진 크기에 맞춰 줄이고 형식은 그대로.
 
-// dpi: 쪽 긴 변 기준 해상도(낱장 그림은 A4 긴 변으로 환산), q: JPEG 화질
+// dpi: 그려진 크기(또는 쪽 긴 변) 기준 해상도, q: JPEG 화질
 const SCAN_PRESETS = {
   light:  { dpi: 100, q: 0.5 },
   normal: { dpi: 150, q: 0.65 },
@@ -236,7 +194,10 @@ const scanState = {
   files: [],          // { id, file }
   jobs: [],           // { id, entries, status: wait|run|done|error, pct, result, error }
   raster: new Set(),  // 쪽을 그림으로 바꾸기로 한 작업 id
-  level: 'normal', format: 'keep', targetMB: 2, merge: false,
+  edits: new Map(),   // 쪽 정리: 작업 id → { removed: Set(쪽 번호), rot: Map(쪽 번호 → 90·180·270) }
+  level: 'normal', format: 'keep', targetMB: 5, merge: false,
+  strip: true,        // 개인정보(사진 위치·기기, 문서 작성자) 지우기
+  gray: false,        // 회색으로(글자 스캔)
   running: false,
 };
 let _scanSeq = 0;
@@ -249,25 +210,31 @@ function loadScanPrefs() {
     if (['keep', 'pdf', 'jpg'].includes(p.format)) scanState.format = p.format;
     if (+p.targetMB >= 0.05) scanState.targetMB = +p.targetMB;
     scanState.merge = !!p.merge;
+    if (typeof p.strip === 'boolean') scanState.strip = p.strip;
+    scanState.gray = !!p.gray;
   } catch { /* 저장소를 못 쓰면 기본값 */ }
 }
 function saveScanPrefs() {
-  const { level, format, targetMB, merge } = scanState;
-  try { localStorage.setItem(SCAN_PREF_KEY, JSON.stringify({ level, format, targetMB, merge })); } catch { /* 무시 */ }
+  const { level, format, targetMB, merge, strip, gray } = scanState;
+  try { localStorage.setItem(SCAN_PREF_KEY, JSON.stringify({ level, format, targetMB, merge, strip, gray })); } catch { /* 무시 */ }
 }
 
 const isTif = f => ['tif', 'tiff'].includes(extOf(f));
 const stemOf = f => f.name.replace(/\.[^.]+$/, '');
-const mergeActive = () => scanState.format === 'pdf' && scanState.merge && scanState.files.length > 1;
+const pageEntries = () => scanState.files.filter(e => !isDocFile(e.file) && !isHwp(e.file));
+const mergeActive = () => scanState.format === 'pdf' && scanState.merge && pageEntries().length > 1;
 const newScanJob = (id, entries) => ({ id, entries, status: 'wait', pct: 0, result: null, error: null });
 
 // ── 그리기 도우미 ──
 // 긴 변이 maxLong을 넘으면 비율대로 줄인 캔버스. white: JPEG처럼 투명을 못 담을 때 흰 바탕
 function drawFit(src, w, h, maxLong, white) {
   const s = Math.max(w, h) > maxLong ? maxLong / Math.max(w, h) : 1;
+  return drawScaled(src, Math.round(w * s), Math.round(h * s), white);
+}
+function drawScaled(src, cw, ch, white) {
   const c = document.createElement('canvas');
-  c.width = Math.max(1, Math.round(w * s));
-  c.height = Math.max(1, Math.round(h * s));
+  c.width = Math.max(1, cw);
+  c.height = Math.max(1, ch);
   const g = c.getContext('2d');
   g.imageSmoothingQuality = 'high';
   if (white) { g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); }
@@ -280,6 +247,91 @@ function a4Pt(w, h) {
   return { w: w * s, h: h * s };
 }
 function freeCanvas(c) { c.width = 0; c.height = 0; }
+
+// 글자 스캔용 회색: 밝기(0.299R + 0.587G + 0.114B)로 바꾼 뒤 종이 색은 흰색으로, 글자는 더 진하게 펴 준다.
+// 용량은 회색보다 바탕의 얼룩·잡티가 사라지는 데서 크게 준다(캔버스는 3채널 JPEG만 만듦)
+function toGray(c) {
+  const g = c.getContext('2d');
+  const img = g.getImageData(0, 0, c.width, c.height);
+  const d = img.data;
+  const hist = new Uint32Array(256);
+  for (let i = 0; i < d.length; i += 4) {
+    const y = (d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8;
+    d[i] = y;
+    hist[y]++;
+  }
+  // 종이 색: 밝은 쪽(128 이상)에서 가장 많은 밝기. 흰 점은 그보다 조금 어둡게, 검은 점은 어두운 쪽 2%
+  let paper = 255;
+  for (let v = 128, best = -1; v < 256; v++) if (hist[v] > best) { best = hist[v]; paper = v; }
+  const total = d.length / 4;
+  let black = 0;
+  for (let v = 0, acc = 0; v < 256; v++) { acc += hist[v]; if (acc >= total * 0.02) { black = v; break; } }
+  const white = Math.max(black + 40, paper - 18);
+  black = Math.min(black, white - 40);
+  const lut = new Uint8ClampedArray(256);
+  for (let v = 0; v < 256; v++) lut[v] = ((v - black) * 255) / (white - black);
+  for (let i = 0; i < d.length; i += 4) d[i] = d[i + 1] = d[i + 2] = lut[d[i]];
+  g.putImageData(img, 0, 0);
+  return c;
+}
+
+// 그림 파일 열기. HEIC는 브라우저가 못 열면 그때 변환 도구를 불러 PNG로 바꿔 연다
+async function openBitmap(file) {
+  if (!isHeic(file)) return createImageBitmap(file);
+  try { return await createImageBitmap(file); } catch { /* Safari 말고는 대개 직접 못 엶 */ }
+  await loadLib('heic2any');
+  const out = await heic2any({ blob: file, toType: 'image/png' });
+  return createImageBitmap(Array.isArray(out) ? out[0] : out);
+}
+
+// JPEG에서 EXIF·XMP(APP1)·IPTC(APP13)·주석(COM)을 뺀 사본. 뺄 것이 없으면 null
+function stripJpegMeta(b) {
+  if (b[0] !== 0xFF || b[1] !== 0xD8) return null;
+  const keep = [b.subarray(0, 2)];
+  let i = 2, removed = false;
+  while (i + 4 <= b.length && b[i] === 0xFF) {
+    const m = b[i + 1];
+    if (m === 0xFF) { i++; continue; }   // 채움 바이트
+    if (m === 0xDA) break;               // 영상 데이터부터는 그대로
+    const end = i + 2 + ((b[i + 2] << 8) | b[i + 3]);
+    if (m === 0xE1 || m === 0xED || m === 0xFE) removed = true;
+    else keep.push(b.subarray(i, end));
+    i = end;
+  }
+  if (!removed) return null;
+  keep.push(b.subarray(i));
+  return new Blob(keep, { type: 'image/jpeg' });
+}
+// PNG에서 eXIf·글 조각(tEXt·zTXt·iTXt)·시각(tIME)을 뺀 사본
+function stripPngMeta(b) {
+  if ([137, 80, 78, 71, 13, 10, 26, 10].some((v, k) => b[k] !== v)) return null;
+  const drop = new Set(['eXIf', 'tEXt', 'zTXt', 'iTXt', 'tIME']);
+  const keep = [b.subarray(0, 8)];
+  let i = 8, removed = false;
+  while (i + 12 <= b.length) {
+    const len = ((b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]) >>> 0;
+    const type = String.fromCharCode(b[i + 4], b[i + 5], b[i + 6], b[i + 7]);
+    const end = i + 12 + len;
+    if (end > b.length) return null;
+    if (drop.has(type)) removed = true; else keep.push(b.subarray(i, end));
+    i = end;
+    if (type === 'IEND') break;
+  }
+  return removed ? new Blob(keep, { type: 'image/png' }) : null;
+}
+async function stripImageMeta(blob, ext) {
+  const b = new Uint8Array(await blob.arrayBuffer());
+  return ext === 'png' ? stripPngMeta(b) : stripJpegMeta(b);
+}
+// PDF 작성자 정보(Info의 Author·Creator·Producer, XMP) 지우기. 지운 것이 있으면 true
+function stripPdfMeta(doc) {
+  const N = k => PDFLib.PDFName.of(k);
+  const info = doc.getInfoDict();
+  let removed = false;
+  for (const k of ['Author', 'Creator', 'Producer']) if (info.has(N(k))) { info.delete(N(k)); removed = true; }
+  if (doc.catalog.has(N('Metadata'))) { doc.catalog.delete(N('Metadata')); removed = true; }
+  return removed;
+}
 
 // 파일의 쪽을 하나씩 캔버스로 그려 onPage(canvas, 쪽 크기 pt, 쪽 번호, 쪽 수)에 넘긴다
 async function forEachPage(file, p, ctx, prog, onPage) {
@@ -298,6 +350,7 @@ async function forEachPage(file, p, ctx, prog, onPage) {
         const g = c.getContext('2d');
         g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
         await page.render({ canvasContext: g, viewport: vp }).promise;
+        if (p.gray) toGray(c);
         await onPage(c, { w: vp1.width, h: vp1.height }, i, doc.numPages);
         freeCanvas(c);
         page.cleanup();
@@ -320,15 +373,17 @@ async function forEachPage(file, p, ctx, prog, onPage) {
       src.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rgba.buffer, rgba.byteOffset, w * h * 4), w, h), 0, 0);
       const c = drawFit(src, w, h, maxLong, true);
       freeCanvas(src);   // 원본 크기 캔버스 메모리 바로 반납
+      if (p.gray) toGray(c);
       await onPage(c, a4Pt(c.width, c.height), i + 1, ifds.length);
       freeCanvas(c);
       prog((i + 1) / ifds.length);
     }
     return;
   }
-  const bmp = await createImageBitmap(file);
+  const bmp = await openBitmap(file);
   const c = drawFit(bmp, bmp.width, bmp.height, maxLong, true);
   bmp.close?.();
+  if (p.gray) toGray(c);
   await onPage(c, a4Pt(c.width, c.height), 1, 1);
   freeCanvas(c);
   prog(1);
@@ -336,11 +391,12 @@ async function forEachPage(file, p, ctx, prog, onPage) {
 
 // 낱장 JPG·PNG를 같은 형식으로 줄이기(PNG는 크기만 줄어듦)
 async function shrinkImage(file, p, ctx, mime) {
-  const bmp = await createImageBitmap(file);
+  const bmp = await openBitmap(file);
   ctx.check();
   const jpeg = mime === 'image/jpeg';
   const c = drawFit(bmp, bmp.width, bmp.height, Math.round(A4_LONG_IN * p.dpi), jpeg);
   bmp.close?.();
+  if (p.gray) toGray(c);
   const blob = await canvasToBlob(c, mime, jpeg ? p.q : undefined);
   freeCanvas(c);
   if (!blob || !blob.size) throw new Error('그림을 만들지 못했어요.');
@@ -427,7 +483,7 @@ function countColors(rgba, limit) {
 }
 
 // 그림 하나를 다시 압축. 바꿀 만하면 { dict, bytes }, 아니면 null
-async function recompressPdfImage(o, capPx, q) {
+async function recompressPdfImage(o, capPx, q, gray) {
   const { PDFName, PDFArray, PDFDict, PDFNumber, decodePDFRawStream } = PDFLib;
   const N = k => PDFName.of(k);
   const d = o.dict;
@@ -464,6 +520,7 @@ async function recompressPdfImage(o, capPx, q) {
   }
   const c = drawFit(source, W, H, capPx, true);
   if (source.close) source.close(); else freeCanvas(source);
+  if (gray) toGray(c);
   const blob = await canvasToBlob(c, 'image/jpeg', q);
   const cw = c.width, ch = c.height;
   freeCanvas(c);
@@ -510,7 +567,7 @@ async function recompressPdfImages(doc, p, ctx, prog) {
     try {
       // 상한을 조금 넘는 정도면 크기는 두고 화질만 조절
       const W = pdfNum(o.dict.lookup(N('Width'))), H = pdfNum(o.dict.lookup(N('Height')));
-      const rep = await recompressPdfImage(o, Math.max(W, H) > capOver ? capPx : Infinity, p.q);
+      const rep = await recompressPdfImage(o, Math.max(W, H) > capOver ? capPx : Infinity, p.q, p.gray);
       if (rep) {
         doc.context.assign(ref, PDFRawStream.of(rep.dict, rep.bytes));
         stats.changed++;
@@ -533,6 +590,7 @@ async function pdfFromEntries(entries, p, raster, ctx, prog) {
   if (entries.length === 1 && extOf(entries[0].file) === 'pdf' && !raster) {
     const doc = await loadPdfLibDoc(entries[0].file);
     const stats = await recompressPdfImages(doc, p, ctx, prog);
+    if (p.strip) stats.stripped = stripPdfMeta(doc);
     ctx.check();
     return { bytes: await doc.save(), stats };
   }
@@ -560,6 +618,366 @@ async function pdfFromEntries(entries, p, raster, ctx, prog) {
   return { bytes: await out.save(), stats };
 }
 
+// ── 문서(PPTX·DOCX·XLSX·HWPX) 안의 그림 줄이기 ──
+const EMU_PER_IN = 914400;     // OOXML 길이 단위
+const HWPUNIT_PER_IN = 7200;   // 한글 길이 단위
+const DOC_MEDIA_DIR = { pptx: 'ppt/media/', docx: 'word/media/', xlsx: 'xl/media/', hwpx: 'BinData/' };
+const NS_R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+
+const parseXml = s => new DOMParser().parseFromString(s, 'application/xml');
+const byLocal = (root, name) => Array.from(root.getElementsByTagNameNS('*', name));
+const childByLocal = (el, name) => Array.from(el?.children || []).find(c => c.localName === name) || null;
+const numAttr = (el, name) => +(el?.getAttribute(name) || 0);
+
+// 문서 안 경로 합치기: base 폴더 기준 상대 경로(../ 포함), '/'로 시작하면 문서 맨 위 기준
+function resolvePart(baseDir, target) {
+  const parts = (target.startsWith('/') ? target.slice(1) : baseDir + target).split('/');
+  const out = [];
+  for (const s of parts) {
+    if (s === '..') out.pop();
+    else if (s && s !== '.') out.push(s);
+  }
+  return out.join('/');
+}
+const dirOf = path => path.slice(0, path.lastIndexOf('/') + 1);
+
+// 파트의 관계 파일(_rels/이름.rels): Id → 문서 안 경로
+async function readRels(zip, partPath) {
+  const relsPath = dirOf(partPath) + '_rels/' + partPath.slice(partPath.lastIndexOf('/') + 1) + '.rels';
+  const f = zip.file(relsPath);
+  const map = new Map();
+  if (!f) return map;
+  for (const r of byLocal(parseXml(await f.async('text')), 'Relationship')) {
+    if (r.getAttribute('TargetMode') === 'External') continue;
+    map.set(r.getAttribute('Id'), resolvePart(dirOf(partPath), r.getAttribute('Target') || ''));
+  }
+  return map;
+}
+
+// 잘라 쓴 그림(a:srcRect, 1/100000 단위)이면 보이는 비율만큼 그림 전체 크기를 키워 계산
+function cropScale(blipFill) {
+  const r = childByLocal(blipFill, 'srcRect');
+  if (!r) return { w: 1, h: 1 };
+  const v = k => numAttr(r, k) / 100000;
+  return { w: Math.max(0.05, 1 - v('l') - v('r')), h: Math.max(0.05, 1 - v('t') - v('b')) };
+}
+
+// OOXML: a:blip마다 그려진 크기(인치)를 찾아 uses(경로 → [{wIn, hIn}])에 모은다
+async function collectOoxmlUses(zip, kind, uses, fallbackIn) {
+  const partRe = {
+    pptx: /^ppt\/(slides|slideLayouts|slideMasters)\/[^/]+\.xml$/,
+    docx: /^word\/(document|header\d*|footer\d*)\.xml$/,
+    xlsx: /^xl\/drawings\/[^/]+\.xml$/,
+  }[kind];
+  for (const path of Object.keys(zip.files).filter(n => partRe.test(n))) {
+    const doc = parseXml(await zip.file(path).async('text'));
+    const rels = await readRels(zip, path);
+    for (const blip of byLocal(doc, 'blip')) {
+      const target = rels.get(blip.getAttributeNS(NS_R, 'embed') || blip.getAttribute('r:embed') || '');
+      if (!target) continue;
+      const fill = blip.parentElement;
+      const crop = cropScale(fill);
+      let cx = 0, cy = 0;
+      if (kind === 'docx') {
+        let a = fill;
+        while (a && a.localName !== 'inline' && a.localName !== 'anchor') a = a.parentElement;
+        const ext = childByLocal(a, 'extent');
+        cx = numAttr(ext, 'cx'); cy = numAttr(ext, 'cy');
+      } else {
+        const owner = fill?.parentElement;   // p:pic·p:sp·xdr:pic, 배경이면 p:bgPr
+        const ext = childByLocal(childByLocal(childByLocal(owner, 'spPr'), 'xfrm'), 'ext');
+        cx = numAttr(ext, 'cx'); cy = numAttr(ext, 'cy');
+        // XLSX는 크기를 앵커(xdr:oneCellAnchor·absoluteAnchor)의 xdr:ext에 두기도 함
+        if (kind === 'xlsx' && !(cx && cy)) {
+          let a = owner;
+          while (a && !/^(oneCellAnchor|absoluteAnchor)$/.test(a.localName)) a = a.parentElement;
+          const ax = childByLocal(a, 'ext');
+          cx = numAttr(ax, 'cx'); cy = numAttr(ax, 'cy');
+        }
+      }
+      const use = cx && cy
+        ? { wIn: cx / EMU_PER_IN / crop.w, hIn: cy / EMU_PER_IN / crop.h }
+        : { wIn: fallbackIn.w, hIn: fallbackIn.h };   // 배경 등 크기를 못 찾으면 쪽 전체로
+      (uses.get(target) || uses.set(target, []).get(target)).push(use);
+    }
+  }
+}
+
+// HWPX: hp:pic의 hc:img(binaryItemIDRef) → content.hpf의 경로, 크기는 hp:curSz(없으면 hp:sz)
+async function collectHwpxUses(zip, uses) {
+  const hpf = zip.file('Contents/content.hpf');
+  const idToPath = new Map();
+  if (hpf) {
+    for (const it of byLocal(parseXml(await hpf.async('text')), 'item')) {
+      if (it.getAttribute('href')) idToPath.set(it.getAttribute('id'), resolvePart('', it.getAttribute('href')));
+    }
+  }
+  for (const path of Object.keys(zip.files).filter(n => /^Contents\/section\d+\.xml$/.test(n))) {
+    const doc = parseXml(await zip.file(path).async('text'));
+    for (const pic of byLocal(doc, 'pic')) {
+      const img = childByLocal(pic, 'img');
+      const target = idToPath.get(img?.getAttribute('binaryItemIDRef'));
+      if (!target) continue;
+      let sz = childByLocal(pic, 'curSz');
+      if (!numAttr(sz, 'width')) sz = childByLocal(pic, 'sz');
+      const w = numAttr(sz, 'width'), h = numAttr(sz, 'height');
+      if (!w || !h) continue;
+      const clip = childByLocal(pic, 'imgClip'), dim = childByLocal(pic, 'imgDim');
+      const dw = numAttr(dim, 'dimwidth'), dh = numAttr(dim, 'dimheight');
+      const fw = clip && dw ? Math.max(0.05, (numAttr(clip, 'right') - numAttr(clip, 'left')) / dw) : 1;
+      const fh = clip && dh ? Math.max(0.05, (numAttr(clip, 'bottom') - numAttr(clip, 'top')) / dh) : 1;
+      (uses.get(target) || uses.set(target, []).get(target)).push({ wIn: w / HWPUNIT_PER_IN / fw, hIn: h / HWPUNIT_PER_IN / fh });
+    }
+  }
+}
+
+// JPEG의 EXIF 회전 값(없으면 0)
+function jpegOrientation(b) {
+  if (b[0] !== 0xFF || b[1] !== 0xD8) return 0;
+  let i = 2;
+  while (i + 10 < b.length && b[i] === 0xFF) {
+    const marker = b[i + 1], len = (b[i + 2] << 8) | b[i + 3];
+    if (marker === 0xDA) return 0;
+    if (marker === 0xE1 && b[i + 4] === 0x45 && b[i + 5] === 0x78 && b[i + 6] === 0x69 && b[i + 7] === 0x66) {
+      const t = i + 10, le = b[t] === 0x49;
+      const r16 = o => (le ? b[o] | (b[o + 1] << 8) : (b[o] << 8) | b[o + 1]);
+      const r32 = o => (le ? (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) : ((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3])) >>> 0;
+      const ifd = t + r32(t + 4);
+      if (ifd + 2 > b.length) return 0;
+      for (let k = 0, n = r16(ifd); k < n; k++) {
+        const e = ifd + 2 + k * 12;
+        if (e + 10 > b.length) return 0;
+        if (r16(e) === 0x0112) return r16(e + 8);
+      }
+      return 0;
+    }
+    i += 2 + len;
+  }
+  return 0;
+}
+
+// 문서를 한 번 열어 그림 목록·쓰임을 정리(시도마다 다시 쓰도록 작업에 보관)
+async function prepareDoc(file) {
+  const kind = extOf(file);
+  const buf = await file.arrayBuffer();
+  const zip = await JSZip.loadAsync(buf);
+  // 쓰임을 못 찾은 그림의 상한: 슬라이드 크기(PPTX) 또는 A4
+  let fallbackIn = { w: 8.27, h: A4_LONG_IN };
+  if (kind === 'pptx' && zip.file('ppt/presentation.xml')) {
+    const sz = byLocal(parseXml(await zip.file('ppt/presentation.xml').async('text')), 'sldSz')[0];
+    if (numAttr(sz, 'cx') && numAttr(sz, 'cy')) fallbackIn = { w: numAttr(sz, 'cx') / EMU_PER_IN, h: numAttr(sz, 'cy') / EMU_PER_IN };
+  }
+  const uses = new Map();
+  try {
+    if (kind === 'hwpx') await collectHwpxUses(zip, uses);
+    else await collectOoxmlUses(zip, kind, uses, fallbackIn);
+  } catch (e) {
+    console.warn('[file-tools] 그림 쓰임을 다 찾지 못했어요', e);   // 못 찾은 그림은 상한으로만 줄인다
+  }
+  const dir = DOC_MEDIA_DIR[kind];
+  const media = [];
+  const byHash = new Map();
+  for (const name of Object.keys(zip.files)) {
+    if (!name.startsWith(dir) || zip.files[name].dir) continue;
+    const ext = name.split('.').pop().toLowerCase();
+    if (!['jpg', 'jpeg', 'png'].includes(ext)) continue;   // 영상·벡터(emf·svg) 등은 손대지 않음
+    const blob = await zip.file(name).async('blob');
+    const hash = await hashBlob(blob);
+    const item = { name, ext, blob, uses: (uses.get(name) || []).slice(), dupOf: null, kind: null };
+    if (hash && byHash.has(hash)) {
+      item.dupOf = byHash.get(hash);
+      item.dupOf.uses.push(...item.uses);   // 같은 그림은 가장 크게 그려진 곳 기준
+    } else if (hash) byHash.set(hash, item);
+    media.push(item);
+  }
+  // 원래 무압축이던 항목(HWPX mimetype 등)은 다시 묶을 때도 무압축
+  const stored = Object.keys(zip.files).filter(n => zip.files[n]._data?.compression?.magic === '\x00\x00');
+  if (kind === 'hwpx' && zip.file('mimetype') && !stored.includes('mimetype')) stored.push('mimetype');
+  return { kind, buf, media, fallbackIn, stored };
+}
+
+// PNG가 사진인지(색이 많고 투명하지 않음) 표본으로 판단
+function classifyPng(bmp) {
+  const s = Math.min(1, 512 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(bmp.width * s));
+  c.height = Math.max(1, Math.round(bmp.height * s));
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;   // 섞인 색이 새로 생기지 않게 가장 가까운 픽셀로
+  g.drawImage(bmp, 0, 0, c.width, c.height);
+  const data = g.getImageData(0, 0, c.width, c.height).data;
+  freeCanvas(c);
+  for (let i = 3; i < data.length; i += 4) if (data[i] < 250) return 'alpha';
+  return countColors(data, 257) > 256 ? 'photo' : 'graphic';
+}
+
+// 그림 하나 줄이기. 바꿀 만하면 { blob, ext }, 아니면 null
+async function shrinkDocImage(m, prep, p) {
+  if (m.ext !== 'png') {
+    const head = new Uint8Array(await m.blob.slice(0, 65536).arrayBuffer());
+    if (jpegOrientation(head) > 1) return null;   // 회전 처리가 프로그램마다 달라 건너뜀
+  }
+  const bmp = await createImageBitmap(m.blob);
+  try {
+    const W = bmp.width, H = bmp.height;
+    // 필요한 배율: 그려진 곳 중 가장 큰 곳 기준. 쓰임을 못 찾으면 쪽 전체 기준
+    const uses = m.uses.length ? m.uses : [prep.fallbackIn.w >= prep.fallbackIn.h
+      ? { wIn: prep.fallbackIn.w, hIn: prep.fallbackIn.w * H / W }
+      : { wIn: prep.fallbackIn.h * W / H, hIn: prep.fallbackIn.h }];
+    const need = Math.max(...uses.map(u => Math.max(u.wIn * p.dpi / W, u.hIn * p.dpi / H)));
+    const resize = need < 1 / 1.2;   // 1.2배 넘게 클 때만 크기를 줄임
+    const cw = resize ? Math.max(1, Math.round(W * need)) : W;
+    const ch = resize ? Math.max(1, Math.round(H * need)) : H;
+    let mime = 'image/jpeg';
+    if (m.ext === 'png') {
+      if (!m.kind) m.kind = classifyPng(bmp);
+      if (m.kind !== 'photo') {
+        if (!resize) return null;   // 도표·투명 그림은 PNG 그대로, 크기를 줄일 때만 다시 만듦
+        mime = 'image/png';
+      }
+    }
+    const c = drawScaled(bmp, cw, ch, mime === 'image/jpeg');
+    const blob = await canvasToBlob(c, mime, mime === 'image/jpeg' ? p.q : undefined);
+    freeCanvas(c);
+    if (!blob || !blob.size || blob.size > m.blob.size * 0.9) return null;   // 10% 넘게 줄 때만
+    return { blob, ext: mime === 'image/png' ? 'png' : (m.ext === 'png' ? 'jpg' : m.ext) };
+  } finally {
+    bmp.close?.();
+  }
+}
+
+// JPEG로 바뀐 PNG의 새 이름(같은 이름이 있으면 _2, _3…)
+function renamedPath(zip, name, ext, taken) {
+  const base = name.replace(/\.[^.]+$/, '');
+  for (let i = 1; ; i++) {
+    const cand = `${base}${i > 1 ? '_' + i : ''}.${ext}`;
+    if (!zip.file(cand) && !taken.has(cand)) return cand;
+  }
+}
+
+// 바뀐 그림 이름을 참조하는 곳 고치기
+async function applyRenames(zip, kind, renames) {
+  if (!renames.size) return;
+  const baseName = p => p.slice(p.lastIndexOf('/') + 1);
+  if (kind === 'hwpx') {
+    for (const path of ['Contents/content.hpf', 'META-INF/manifest.xml']) {
+      const f = zip.file(path);
+      if (!f) continue;
+      let s = await f.async('text');
+      for (const [from, to] of renames) {
+        s = s.split(`"${from}"`).join(`"${to}"`);
+        // content.hpf의 그림 형식 표시도 맞춤
+        s = s.replace(new RegExp(`(href="${to.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*media-type=")image/png(")`), '$1image/jpg$2');
+      }
+      zip.file(path, s, { createFolders: false });
+    }
+    return;
+  }
+  // OOXML: 모든 관계 파일의 Target, [Content_Types].xml의 Override·Default
+  for (const relsPath of Object.keys(zip.files).filter(n => n.endsWith('.rels'))) {
+    const s = await zip.file(relsPath).async('text');
+    const partDir = dirOf(relsPath).replace(/_rels\/$/, '');   // ppt/slides/_rels/x.rels → ppt/slides/, _rels/.rels → ''
+    let changed = false;
+    const out = s.replace(/(<Relationship\b[^>]*?\bTarget=")([^"]+)(")/g, (all, a, target, b) => {
+      if (/TargetMode="External"/.test(all)) return all;
+      const to = renames.get(resolvePart(partDir, target));
+      if (!to) return all;
+      changed = true;
+      return a + target.slice(0, target.length - baseName(target).length) + baseName(to) + b;
+    });
+    if (changed) zip.file(relsPath, out, { createFolders: false });
+  }
+  const ct = zip.file('[Content_Types].xml');
+  if (ct) {
+    let s = await ct.async('text');
+    for (const [from, to] of renames) s = s.split(`PartName="/${from}"`).join(`PartName="/${to}"`);
+    if (!/<Default\b[^>]*Extension="jpg"/i.test(s)) s = s.replace('</Types>', '<Default Extension="jpg" ContentType="image/jpeg"/></Types>');
+    zip.file('[Content_Types].xml', s, { createFolders: false });
+  }
+}
+
+// 문서 속성에서 작성자·마지막 저장한 사람·회사·관리자 지우기. 지운 것이 있으면 true
+async function stripDocProps(zip, kind) {
+  const targets = kind === 'hwpx'
+    ? [['Contents/content.hpf', /(<opf:meta\b[^>]*\bname="(?:creator|lastsaveby)"[^>]*>)[^<]+(<\/opf:meta>)/g]]
+    : [['docProps/core.xml', /(<(dc:creator|cp:lastModifiedBy)\b[^>]*>)[^<]+(<\/\2>)/g],
+       ['docProps/app.xml', /(<(Company|Manager)\b[^>]*>)[^<]+(<\/\2>)/g]];
+  let changed = false;
+  for (const [path, re] of targets) {
+    const f = zip.file(path);
+    if (!f) continue;
+    const s = await f.async('text');
+    const out = s.replace(re, (all, open, ...rest) => open + rest.find(x => typeof x === 'string' && x.startsWith('</')));
+    if (out !== s) { zip.file(path, out, { createFolders: false }); changed = true; }
+  }
+  return changed;
+}
+
+// 정한 설정 p로 문서 하나 다시 만들기(시도마다 원본에서 새로 시작)
+async function buildDocOutput(job, p, ctx, prog) {
+  const file = job.entries[0].file;
+  if (!job.prep) job.prep = await prepareDoc(file);
+  const prep = job.prep;
+  ctx.check();
+  const uniques = prep.media.filter(m => !m.dupOf);
+  const results = new Map();   // name → { blob, ext }
+  let done = 0;
+  await mapLimit(uniques, 3, async (m) => {
+    ctx.check();
+    try {
+      const r = await shrinkDocImage(m, prep, p);
+      if (r) results.set(m.name, r);
+    } catch (e) {
+      if (e === CANCELLED) throw e;
+      console.warn('[file-tools] 그림 줄이기 실패', m.name, e);
+    }
+    prog(0.85 * (++done / Math.max(1, uniques.length)));
+  });
+  for (const m of prep.media) if (m.dupOf && results.has(m.dupOf.name)) results.set(m.name, results.get(m.dupOf.name));
+  ctx.check();
+
+  const zip = await JSZip.loadAsync(prep.buf);
+  const renames = new Map();
+  const taken = new Set();
+  for (const [name, r] of results) {
+    if (r.ext === name.split('.').pop().toLowerCase()) { zip.file(name, r.blob, { createFolders: false }); continue; }
+    const to = renamedPath(zip, name, r.ext, taken);
+    taken.add(to);
+    renames.set(name, to);
+    zip.remove(name);
+    zip.file(to, r.blob, { createFolders: false });   // 원본에 없던 폴더 항목을 만들지 않게
+  }
+  await applyRenames(zip, prep.kind, renames);
+  let stripped = false;
+  if (p.strip) {
+    stripped = await stripDocProps(zip, prep.kind);
+    // 그대로 둔 그림의 EXIF도 지움(다시 그린 그림은 이미 빠짐)
+    const plain = new Map();
+    for (const m of prep.media) {
+      if (results.has(m.name)) continue;
+      const src = m.dupOf || m;
+      if (!plain.has(src.name)) plain.set(src.name, await stripImageMeta(src.blob, src.ext));
+      const b = plain.get(src.name);
+      if (b) { zip.file(m.name, b, { createFolders: false }); stripped = true; }
+    }
+  }
+  for (const n of prep.stored) {
+    const f = zip.file(n);
+    if (f) zip.file(n, await f.async('uint8array'), { compression: 'STORE', createFolders: false });
+  }
+  prog(0.9);
+  const blob = await zip.generateAsync({
+    type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 }, mimeType: file.type || undefined,
+  });
+  prog(1);
+  const images = uniques.length;
+  const changed = uniques.filter(m => results.has(m.name)).length;
+  return {
+    blob, name: `${stemOf(file)}_compressed.${extOf(file)}`, same: true, stripped,
+    note: images ? `그림 ${images}개 중 ${changed}개를 줄였어요. 글자와 서식은 그대로예요.` : '이 문서에는 줄일 그림이 없어요.',
+  };
+}
+
 // 같은 이름이 겹치면 (2), (3)을 붙임
 function uniqueNames(items) {
   const used = new Map();
@@ -579,6 +997,8 @@ async function buildScanOutput(job, fmt, p, raster, ctx, base, span) {
   const ext = extOf(first);
   const stem = stemOf(first) + (entries.length > 1 ? `_외${entries.length - 1}개` : '');
 
+  if (isDocFile(first)) return buildDocOutput(job, p, ctx, prog);
+
   if (fmt === 'jpg') {
     const shots = [];
     for (let i = 0; i < entries.length; i++) {
@@ -596,9 +1016,10 @@ async function buildScanOutput(job, fmt, p, raster, ctx, base, span) {
     return { blob, name: stem + '_compressed.zip', same: false, note: `그림 ${shots.length}장을 ZIP 파일 하나로 묶었어요.` };
   }
 
-  if (fmt === 'keep' && entries.length === 1 && ['jpg', 'jpeg', 'png'].includes(ext)) {
+  if (fmt === 'keep' && entries.length === 1 && ['jpg', 'jpeg', 'png', 'heic', 'heif'].includes(ext)) {
     const blob = await shrinkImage(first, p, ctx, ext === 'png' ? 'image/png' : 'image/jpeg');
     prog(1);
+    if (isHeic(first)) return { blob, name: `${stemOf(first)}_compressed.jpg`, same: false, note: '아이폰 사진(HEIC)을 JPG로 바꿨어요.' };
     return { blob, name: `${stemOf(first)}_compressed.${ext}`, same: true };
   }
 
@@ -610,10 +1031,11 @@ async function buildScanOutput(job, fmt, p, raster, ctx, base, span) {
   else if (entries.length > 1) note = `파일 ${entries.length}개를 PDF 하나로 합쳤어요.`;
   else if (same) note = stats.images ? `그림 ${stats.images}개 중 ${stats.changed}개를 줄였어요. 글자는 그대로예요.` : '이 PDF에는 줄일 그림이 없어요.';
   else if (isTif(first)) note = '브라우저에서는 TIFF로 저장할 수 없어서 PDF로 만들었어요.';
-  return { blob, name: stem + '_compressed.pdf', same, note };
+  return { blob, name: stem + '_compressed.pdf', same, note, stripped: !!stats.stripped };
 }
 
 function libsForScanJob(job, fmt, raster) {
+  if (isDocFile(job.entries[0].file)) return ['jszip'];
   const hasPdf = job.entries.some(e => extOf(e.file) === 'pdf');
   const need = [];
   if (fmt === 'jpg') need.push('jszip'); else need.push('pdflib');
@@ -625,19 +1047,21 @@ function libsForScanJob(job, fmt, raster) {
 async function runScanJob(job, ctx) {
   const { level, format, targetMB } = scanState;
   const raster = scanState.raster.has(job.id);
+  const isDoc = isDocFile(job.entries[0].file);
+  const extra = { strip: scanState.strip, gray: scanState.gray && !isDoc };   // 회색은 PDF·그림에만
   const origSize = job.entries.reduce((n, e) => n + e.file.size, 0);
   await loadLibs(libsForScanJob(job, format, raster));
   ctx.check();
 
   let out, params, reached = null;
   if (level !== 'target') {
-    params = SCAN_PRESETS[level];
+    params = { ...SCAN_PRESETS[level], ...extra };
     out = await buildScanOutput(job, format, params, raster, ctx, 0, 1);
   } else {
     const targetBytes = targetMB * 1024 * 1024;
     const onlyPng = format === 'keep' && job.entries.length === 1 && extOf(job.entries[0].file) === 'png';
     const ladder = buildLadder([72, 100, 130, 150, 180, 220, 260, 300], [0.4, 0.55, 0.7, 0.85], onlyPng)
-      .map(a => ({ dpi: a.w, q: a.q }));
+      .map(a => ({ dpi: a.w, q: a.q, ...extra }));
     const outs = new Map();
     const found = await searchBestUnderTarget(ladder, targetBytes, async (pp, n, max) => {
       const o = await buildScanOutput(job, format, pp, raster, ctx, (n - 1) / max, 1 / max);
@@ -649,15 +1073,57 @@ async function runScanJob(job, ctx) {
     reached = found.reached;
   }
 
-  // 같은 형식인데 줄지 않았으면 원본을 그대로 쓴다
+  // 같은 형식인데 줄지 않았으면 원본을 그대로 쓴다. 개인정보 지우기를 켰으면 지운 사본
   if (out.same && out.blob.size >= origSize) {
     const f = job.entries[0].file;
+    let clean = null;
+    if (scanState.strip && out.stripped) clean = { blob: out.blob, note: (out.note ? out.note + ' ' : '') + '작성자 정보를 지웠어요.' };
+    else if (scanState.strip && ['jpg', 'jpeg', 'png'].includes(extOf(f))) {
+      const b = await stripImageMeta(f, extOf(f) === 'png' ? 'png' : 'jpg');
+      if (b) clean = { blob: b, note: '화질은 그대로 두고 사진 속 위치·기기 정보를 지웠어요.' };
+    }
+    if (clean) {
+      return {
+        blob: clean.blob, name: out.name, size: clean.blob.size, origSize, kept: false, privacyOnly: true, params, note: clean.note,
+        reached: reached === null ? null : clean.blob.size <= targetMB * 1024 * 1024,
+      };
+    }
     return {
       blob: f, name: f.name, size: f.size, origSize, kept: true, params, note: out.note,
       reached: reached === null ? null : f.size <= targetMB * 1024 * 1024,
     };
   }
   return { blob: out.blob, name: out.name, size: out.blob.size, origSize, kept: false, params, note: out.note, reached };
+}
+
+// 쪽 정리(빼기·돌리기)를 줄인 PDF에 적용. 정리할 것이 없거나 PDF가 아니면 그대로
+async function applyPageEdits(job, base) {
+  const ed = scanState.edits.get(job.id);
+  if (!ed || (!ed.removed.size && !ed.rot.size) || !/\.pdf$/i.test(base.name)) return base;
+  await loadLib('pdflib');
+  const src = await PDFLib.PDFDocument.load(await base.blob.arrayBuffer(), { updateMetadata: false });
+  const n = src.getPageCount();
+  const keep = src.getPageIndices().filter(i => !ed.removed.has(i));
+  if (!keep.length) return base;
+  // 남길 쪽만 새 문서로 옮겨야 뺀 쪽의 그림까지 빠져 용량이 준다
+  const out = await PDFLib.PDFDocument.create({ updateMetadata: false });
+  const title = src.getTitle();
+  if (title) out.setTitle(title);
+  const pages = await out.copyPages(src, keep);
+  let rotated = 0;
+  pages.forEach((pg, k) => {
+    const r = ed.rot.get(keep[k]) || 0;
+    if (r) { pg.setRotation(PDFLib.degrees((pg.getRotation().angle + r) % 360)); rotated++; }
+    out.addPage(pg);
+  });
+  const blob = new Blob([await out.save()], { type: 'application/pdf' });
+  const parts = [];
+  if (n - keep.length) parts.push(`${n}쪽 중 ${n - keep.length}쪽 뺌`);
+  if (rotated) parts.push(`${rotated}쪽 회전`);
+  return {
+    ...base, blob, size: blob.size, kept: false, privacyOnly: false, edited: parts.join('·'),
+    name: base.kept ? `${stemOf({ name: base.name })}_compressed.pdf` : base.name,
+  };
 }
 
 function friendlyScanError(e) {
@@ -684,7 +1150,8 @@ async function pumpScan() {
         progress(f) { if (alive()) { job.pct = f; paintScanProgress(job); } },
       };
       try {
-        job.result = await runScanJob(job, ctx);
+        job.base = await runScanJob(job, ctx);
+        job.result = await applyPageEdits(job, job.base);
         job.status = 'done';
       } catch (e) {
         if (e === CANCELLED || !alive()) continue;
@@ -692,6 +1159,7 @@ async function pumpScan() {
         job.status = 'error';
         job.error = friendlyScanError(e);
       }
+      job.prep = null;   // 문서 원본 메모리 반납
       if (alive()) renderScanJobs();
     }
   } finally {
@@ -702,28 +1170,35 @@ async function pumpScan() {
 
 // 파일 목록·설정에서 작업 목록을 다시 만든다. resetAll: 끝난 결과도 모두 다시
 function rebuildScanJobs(resetAll) {
+  const old = new Map(scanState.jobs.map(j => [j.id, j]));
+  const keep = e => isHwp(e.file)
+    ? { ...newScanJob(e.id, [e]), status: 'hwp' }
+    : (!resetAll && old.get(e.id)) || newScanJob(e.id, [e]);
   if (mergeActive()) {
-    scanState.jobs = [newScanJob('merge', scanState.files.slice())];
+    // 합치기는 PDF·그림만. 문서·HWP 파일은 따로
+    scanState.jobs = [newScanJob('merge', pageEntries()), ...scanState.files.filter(e => isDocFile(e.file) || isHwp(e.file)).map(keep)];
   } else {
-    const old = new Map(scanState.jobs.map(j => [j.id, j]));
-    scanState.jobs = scanState.files.map(e => (!resetAll && old.get(e.id)) || newScanJob(e.id, [e]));
+    scanState.jobs = scanState.files.map(keep);
   }
   renderScanJobs();
   pumpScan();
 }
 
 function addScanFiles(files) {
-  const ok = files.filter(isScanFile);
-  const skipped = files.filter(f => !isScanFile(f));
-  reportSkipped(skipped, skipped.some(isPptxFile) ? '‘PPTX 줄이기’ 탭에서 넣어 주세요.' : '');
+  const ok = files.filter(f => isSupported(f) || isHwp(f));
+  reportSkipped(files.filter(f => !ok.includes(f)), '');
   if (!ok.length) return;
   ok.forEach(file => scanState.files.push({ id: 'f' + (++_scanSeq), file }));
+  if (ok.some(f => !isDocFile(f) && !isHwp(f))) scanState.edits.delete('merge');   // 합치는 쪽이 바뀜
   rebuildScanJobs(false);
 }
 
 function removeScanFile(fileId) {
-  scanState.files = scanState.files.filter(e => e.id !== fileId);
+  const e = scanState.files.find(x => x.id === fileId);
+  scanState.files = scanState.files.filter(x => x.id !== fileId);
   scanState.raster.delete(fileId);
+  scanState.edits.delete(fileId);
+  if (e && !isDocFile(e.file) && !isHwp(e.file)) scanState.edits.delete('merge');
   rebuildScanJobs(false);
 }
 
@@ -739,6 +1214,7 @@ function clearScan() {
   scanState.files = [];
   scanState.jobs = [];
   scanState.raster.clear();
+  scanState.edits.clear();
   renderScanJobs();
 }
 
@@ -747,10 +1223,26 @@ function scanJobRowHtml(j) {
   const merged = j.id === 'merge';
   const orig = j.entries.reduce((n, e) => n + e.file.size, 0);
   const title = merged ? `PDF 하나로 합치기 · 파일 ${j.entries.length}개` : j.entries[0].file.name;
+  const isDoc = !merged && isDocFile(j.entries[0].file);
   const canRaster = scanState.format !== 'jpg' && j.entries.some(e => extOf(e.file) === 'pdf');
   const raster = scanState.raster.has(j.id);
   let cls = '', meta = '', notes = [], link = '';
 
+  if (j.status === 'hwp') {
+    return `<div class="job is-info" data-id="${j.id}">
+    <div class="job-main">
+      <div class="job-name">${escHtml(title)}</div>
+      <div class="job-meta">${fmtBytes(orig)} · 옛 한글 형식(HWP)은 바로 줄일 수 없어요</div>
+      <ol class="job-steps">
+        <li>한글에서 이 파일을 열어요.</li>
+        <li><b>파일</b> → <b>다른 이름으로 저장하기</b>를 눌러요.</li>
+        <li><b>파일 형식</b>에서 <b>HWPX 문서 (*.hwpx)</b>를 골라 저장해요.</li>
+        <li>저장한 HWPX 파일을 여기에 넣으면 줄여 드려요.</li>
+      </ol>
+    </div>
+    <div class="job-acts"><button type="button" class="file-list-remove" data-act="remove-file" data-file="${j.entries[0].id}" aria-label="${escHtml(title)} 빼기" title="빼기">${ic('x')}</button></div>
+  </div>`;
+  }
   if (j.status === 'wait') meta = `${fmtBytes(orig)} · 기다리는 중`;
   else if (j.status === 'run') meta = `${fmtBytes(orig)} · 줄이는 중 <span class="job-pct">${Math.round(j.pct * 100)}%</span>`;
   else if (j.status === 'error') {
@@ -765,9 +1257,15 @@ function scanJobRowHtml(j) {
     if (r.kept) meta = `${fmtBytes(orig)} · 원본 그대로`;
     else meta = `${fmtBytes(orig)} → <strong>${fmtBytes(r.size)}</strong> <span class="job-badge${grew ? ' up' : ''}">${grew ? `${-pct}% 커짐` : `${pct}% 줄어듦`}</span>`;
     if (r.note) notes.push(escHtml(r.note));
+    if (r.edited) notes.push(escHtml(`쪽 정리: ${r.edited}.`));
     if (r.kept) notes.push('더 줄어들지 않아서 원본을 그대로 둬요. 저장하면 원본을 받아요.');
-    if (grew) { cls = 'is-warn'; notes.push('형식을 바꾸면서 원본보다 커졌어요.'); }
-    if (r.reached === false) { cls = 'is-warn'; notes.push(`가장 작게 해도 목표 용량(${fmtBytes(scanState.targetMB * 1024 * 1024)})보다 커요.`); }
+    if (grew && r.privacyOnly) notes.push('정보를 지우며 다시 묶느라 크기가 조금 달라졌어요.');
+    else if (grew) { cls = 'is-warn'; notes.push('형식을 바꾸면서 원본보다 커졌어요.'); }
+    if (r.reached === false) {
+      cls = 'is-warn';
+      notes.push(`가장 작게 해도 목표 용량(${fmtBytes(scanState.targetMB * 1024 * 1024)})보다 커요.`);
+      if (isDoc) notes.push('영상·소리·글꼴처럼 그림이 아닌 내용은 줄일 수 없어요.');
+    }
   }
   if (canRaster && (j.status === 'done' || j.status === 'error')) {
     if (raster) link = `<button type="button" class="job-link" data-act="unraster">글자를 살리는 원래 방식으로 되돌리기</button>`;
@@ -776,6 +1274,11 @@ function scanJobRowHtml(j) {
       link = `<button type="button" class="job-link" data-act="raster">쪽을 그림으로 바꿔 더 줄이기</button>`;
     }
   }
+  // 쪽 정리: 결과가 PDF일 때
+  if (j.status === 'done' && /\.pdf$/i.test(j.base?.name || '')) {
+    link = `<button type="button" class="job-link" data-act="pages">${ic('layout-grid')} 쪽 정리</button>` + link;
+  }
+  if (link) link = `<div class="job-links">${link}</div>`;
   const files = merged
     ? `<ul class="job-files">${j.entries.map(e => `<li><span>${escHtml(e.file.name)}</span><button type="button" class="file-list-remove" data-act="remove-file" data-file="${e.id}" aria-label="${escHtml(e.file.name)} 빼기" title="빼기">${ic('x')}</button></li>`).join('')}</ul>`
     : '';
@@ -813,14 +1316,14 @@ function paintScanProgress(job) {
 
 let _scanSummaryText = '';
 function renderScanJobs() {
-  const jobs = scanState.jobs;
-  document.getElementById('scanJobs').innerHTML = jobs.map(scanJobRowHtml).join('');
+  document.getElementById('scanJobs').innerHTML = scanState.jobs.map(scanJobRowHtml).join('');
+  const jobs = scanState.jobs.filter(j => j.status !== 'hwp');
+  document.getElementById('scanActions').hidden = !scanState.jobs.length;
   const done = jobs.filter(j => j.status === 'done');
   const busy = jobs.some(j => j.status === 'wait' || j.status === 'run');
-  document.getElementById('scanActions').hidden = !jobs.length;
   const saveAll = document.getElementById('scanSaveAll');
   saveAll.disabled = busy || !done.length;
-  saveAll.innerHTML = `${ic('download')} ${done.length > 1 ? `모두 저장 (ZIP)` : '저장'}`;
+  saveAll.innerHTML = `${ic('download')} ${done.length > 1 ? '모두 저장 (ZIP)' : '저장'}`;
 
   let text = '';
   if (busy) text = `${jobs.length}개 중 ${done.length}개 끝남 · 줄이는 중…`;
@@ -873,9 +1376,13 @@ function syncScanControls() {
   setPressed('#scanFormatToggle', 'fmt', s.format);
   document.getElementById('scanLevelNote').textContent = SCAN_LEVEL_NOTES[s.level];
   document.getElementById('scanTargetRow').hidden = s.level !== 'target';
-  document.getElementById('scanFormatNote').textContent = SCAN_FORMAT_NOTES[s.format];
+  const hasDoc = s.files.some(e => isDocFile(e.file));
+  document.getElementById('scanFormatNote').textContent = SCAN_FORMAT_NOTES[s.format] +
+    (hasDoc ? ' 문서 파일(PPTX·DOCX·XLSX·HWPX)은 형식은 그대로 두고 안의 그림을 줄여요.' : '');
   document.getElementById('scanMergeRow').hidden = s.format !== 'pdf';
   document.getElementById('scanMerge').checked = s.merge;
+  document.getElementById('scanStrip').checked = s.strip;
+  document.getElementById('scanGray').checked = s.gray;
   const t = document.getElementById('scanTargetMB');
   if (document.activeElement !== t) t.value = String(+s.targetMB.toFixed(2));
   document.querySelectorAll('#scanTargetChips button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.mb === s.targetMB)));
@@ -890,24 +1397,10 @@ function changeScanSetting(patch) {
 // ── 연결 ──
 loadScanPrefs();
 
-bindDropzone(
-  document.getElementById('scanDrop'),
-  document.getElementById('scanInput'),
-  (files) => {
-    // PPTX 파일만 들어오면 PPTX 탭으로 이동
-    if (files.every(isPptxFile)) {
-      switchTab('pptx');
-      setPptxFile(files[0]);
-      if (files.length > 1) showToast('PPTX는 한 번에 한 파일만 줄일 수 있어요. 첫 파일만 넣었어요.');
-      return;
-    }
-    addScanFiles(files);
-  }
-);
+bindDropzone(document.getElementById('scanDrop'), document.getElementById('scanInput'), addScanFiles);
 
 // 캡처한 그림을 Ctrl+V로 붙여넣기
 document.addEventListener('paste', e => {
-  if (!document.getElementById('panel-scan').classList.contains('active')) return;
   if (e.target.closest?.('input, textarea, [contenteditable]')) return;
   const files = Array.from(e.clipboardData?.files || []);
   if (!files.length) return;
@@ -924,6 +1417,8 @@ document.getElementById('scanFormatToggle').addEventListener('click', e => {
   if (b && b.dataset.fmt !== scanState.format) changeScanSetting({ format: b.dataset.fmt });
 });
 document.getElementById('scanMerge').addEventListener('change', e => changeScanSetting({ merge: e.target.checked }));
+document.getElementById('scanStrip').addEventListener('change', e => changeScanSetting({ strip: e.target.checked }));
+document.getElementById('scanGray').addEventListener('change', e => changeScanSetting({ gray: e.target.checked }));
 
 let _scanTargetTimer;
 document.getElementById('scanTargetMB').addEventListener('input', e => {
@@ -950,343 +1445,160 @@ document.getElementById('scanJobs').addEventListener('click', e => {
   else if (act === 'save' && job?.result) downloadBlob(job.result.blob, job.result.name);
   else if (act === 'raster') { scanState.raster.add(id); resetScanJob(id); }
   else if (act === 'unraster') { scanState.raster.delete(id); resetScanJob(id); }
+  else if (act === 'pages' && job) openPages(job);
 });
+// ── 쪽 정리 창: 썸네일을 누르면 빼기, ↻로 90도 회전, 거의 흰 쪽은 처음 열 때 빼기로 표시 ──
+const pagesUI = { job: null, doc: null, removed: new Set(), rot: new Map(), blank: new Set(), total: 0, seq: 0, observer: null };
+const pagesModal = window.VUI?.modal?.bind('#pagesModal', { backdropClose: true, onClose: () => closePages(true) });
+
+async function openPages(job) {
+  const seq = ++pagesUI.seq;
+  const saved = scanState.edits.get(job.id);
+  Object.assign(pagesUI, {
+    job, removed: new Set(saved?.removed || []), rot: new Map(saved?.rot || []), blank: new Set(), autoBlank: !saved,
+  });
+  const grid = document.getElementById('pagesGrid');
+  grid.innerHTML = '';
+  document.getElementById('pagesTitle').textContent = '쪽 정리 · ' + (job.id === 'merge' ? '합친 PDF' : job.entries[0].file.name);
+  document.getElementById('pagesCount').textContent = '쪽을 불러오는 중…';
+  document.getElementById('pagesApply').disabled = true;
+  showPagesModal(true);
+  try {
+    await loadLib('pdfjs');
+    const doc = await pdfjsLib.getDocument({ data: await job.base.blob.arrayBuffer() }).promise;
+    if (seq !== pagesUI.seq) { doc.destroy(); return; }
+    pagesUI.doc = doc;
+    pagesUI.total = doc.numPages;
+    grid.innerHTML = Array.from({ length: doc.numPages }, (_, i) => `
+      <div class="pg" data-i="${i}">
+        <button type="button" class="pg-thumb" data-pg="toggle" aria-pressed="false" aria-label="${i + 1}쪽 빼기"><canvas width="1" height="1"></canvas><span class="pg-no">${i + 1}</span><span class="pg-tag">빈 쪽</span></button>
+        <button type="button" class="pg-rot" data-pg="rot" aria-label="${i + 1}쪽 90도 돌리기" title="90도 돌리기">${ic('rotate-cw')}</button>
+      </div>`).join('');
+    paintPages();
+    renderThumbs(seq);
+  } catch (e) {
+    console.error(e);
+    document.getElementById('pagesCount').textContent = '쪽을 불러오지 못했어요.';
+  }
+}
+
+// 보이는 쪽부터 차례로 그림(거의 흰 쪽 찾기도 함께)
+async function renderThumbs(seq) {
+  const grid = document.getElementById('pagesGrid');
+  const visible = new Set();
+  pagesUI.observer?.disconnect();
+  pagesUI.observer = new IntersectionObserver(es => es.forEach(en => {
+    const i = +en.target.dataset.i;
+    if (en.isIntersecting) visible.add(i); else visible.delete(i);
+  }), { root: grid, rootMargin: '200px' });
+  grid.querySelectorAll('.pg').forEach(el => pagesUI.observer.observe(el));
+  const done = new Set();
+  while (seq === pagesUI.seq && done.size < pagesUI.total) {
+    await new Promise(r => setTimeout(r, 0));
+    let i = [...visible].sort((a, b) => a - b).find(x => !done.has(x));
+    if (i === undefined) for (let k = 0; k < pagesUI.total; k++) if (!done.has(k)) { i = k; break; }
+    done.add(i);
+    try {
+      const page = await pagesUI.doc.getPage(i + 1);
+      const vp1 = page.getViewport({ scale: 1 });
+      const vp = page.getViewport({ scale: 150 / Math.max(vp1.width, vp1.height) });
+      const c = grid.querySelector(`.pg[data-i="${i}"] canvas`);
+      if (!c || seq !== pagesUI.seq) return;
+      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+      const g = c.getContext('2d');
+      g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+      await page.render({ canvasContext: g, viewport: vp }).promise;
+      page.cleanup();
+      // 거의 흰 쪽: 어두운 점이 0.3% 미만
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      let ink = 0;
+      for (let k = 0; k < d.length; k += 4) if (d[k] * 77 + d[k + 1] * 150 + d[k + 2] * 29 < 200 * 256) ink++;
+      if (ink < (d.length / 4) * 0.003) {
+        pagesUI.blank.add(i);
+        // 처음 열 때만 빼기로 표시. 모든 쪽을 뺄 수는 없게
+        if (pagesUI.autoBlank && pagesUI.removed.size < pagesUI.total - 1) pagesUI.removed.add(i);
+      }
+    } catch (e) { console.warn('[file-tools] 썸네일 실패', i, e); }
+    paintPages();
+  }
+}
+
+function paintPages() {
+  const grid = document.getElementById('pagesGrid');
+  grid.querySelectorAll('.pg').forEach(el => {
+    const i = +el.dataset.i;
+    const off = pagesUI.removed.has(i);
+    el.classList.toggle('is-off', off);
+    el.classList.toggle('is-blank', pagesUI.blank.has(i));
+    const t = el.querySelector('.pg-thumb');
+    t.setAttribute('aria-pressed', String(off));
+    t.setAttribute('aria-label', `${i + 1}쪽 ${off ? '다시 넣기' : '빼기'}`);
+    // 옆으로 돌린 쪽은 상자 안에 들어가게 줄여서 보여 줌
+    const cv = el.querySelector('canvas');
+    const r = pagesUI.rot.get(i) || 0;
+    const fit = r % 180 && cv.clientWidth && cv.clientHeight
+      ? Math.min(cv.clientWidth, cv.clientHeight) / Math.max(cv.clientWidth, cv.clientHeight) : 1;
+    cv.style.transform = `rotate(${r}deg) scale(${fit})`;
+  });
+  const rot = [...pagesUI.rot.values()].filter(Boolean).length;
+  const parts = [`${pagesUI.total}쪽`];
+  if (pagesUI.removed.size) parts.push(`${pagesUI.removed.size}쪽 빼기`);
+  if (rot) parts.push(`${rot}쪽 회전`);
+  if (pagesUI.blank.size) parts.push(`빈 쪽 ${pagesUI.blank.size}개 찾음`);
+  document.getElementById('pagesCount').textContent = parts.join(' · ');
+  document.getElementById('pagesApply').disabled = !pagesUI.total || pagesUI.removed.size >= pagesUI.total;
+}
+
+function showPagesModal(on) {
+  const el = document.getElementById('pagesModal');
+  if (pagesModal) { if (on) pagesModal.open(); else pagesModal.close(); }
+  else el.hidden = !on;
+}
+
+function closePages(fromVui) {
+  pagesUI.seq++;
+  pagesUI.observer?.disconnect();
+  pagesUI.doc?.destroy();
+  pagesUI.doc = null;
+  if (!fromVui) showPagesModal(false);
+}
+
+document.getElementById('pagesGrid').addEventListener('click', e => {
+  const b = e.target.closest('button[data-pg]');
+  if (!b) return;
+  const i = +b.closest('.pg').dataset.i;
+  if (b.dataset.pg === 'toggle') {
+    if (pagesUI.removed.has(i)) pagesUI.removed.delete(i);
+    else if (pagesUI.removed.size < pagesUI.total - 1) pagesUI.removed.add(i);
+    else {   // 토스트는 창 뒤에 가려지므로 창 안 상태 줄에 알림
+      document.getElementById('pagesCount').textContent = '모든 쪽을 뺄 수는 없어요. 한 쪽은 남겨 주세요.';
+      return;
+    }
+  } else {
+    const r = ((pagesUI.rot.get(i) || 0) + 90) % 360;
+    if (r) pagesUI.rot.set(i, r); else pagesUI.rot.delete(i);
+  }
+  paintPages();
+});
+document.getElementById('pagesReset').addEventListener('click', () => {
+  pagesUI.removed.clear(); pagesUI.rot.clear(); pagesUI.autoBlank = false;
+  paintPages();
+});
+document.getElementById('pagesApply').addEventListener('click', async () => {
+  const job = pagesUI.job;
+  scanState.edits.set(job.id, { removed: new Set(pagesUI.removed), rot: new Map(pagesUI.rot) });
+  closePages(false);
+  if (!scanState.jobs.includes(job) || job.status !== 'done') return;
+  try {
+    job.result = await applyPageEdits(job, job.base);
+  } catch (e) {
+    console.error(e);
+    showToast('쪽 정리를 적용하지 못했어요.', 'error');
+  }
+  renderScanJobs();
+});
+
 document.getElementById('scanSaveAll').addEventListener('click', saveAllScan);
 document.getElementById('scanClear').addEventListener('click', clearScan);
 
 renderScanJobs();
-
-// ─────────────── Tab 2: PPTX 압축 ───────────────
-// analyzing: 그림 목록을 살펴보는 중(실행 버튼 잠금). userTarget: 사용자가 정한 목표(MB)
-const pptxState = { file: null, mediaInfo: null, minMB: 0.05, maxMB: 10, analyzing: false, userTarget: null, seq: 0 };
-
-function setPptxFile(file) {
-  pptxState.file = file;
-  pptxState.mediaInfo = null;
-  document.getElementById('pptxResult').style.display = 'none';
-  renderPptxList();
-  scanPptxMedia();
-}
-
-bindDropzone(
-  document.getElementById('pptxDrop'),
-  document.getElementById('pptxInput'),
-  (files) => {
-    // 스캔 타입 파일이 들어오면 스캔 탭으로 이동
-    if (files.every(isScanFile)) {
-      switchTab('scan');
-      addScanFiles(files);
-      return;
-    }
-    const pptx = files.filter(isPptxFile);
-    reportSkipped(files.filter(f => !isPptxFile(f)), '');
-    if (!pptx.length) return;
-    if (pptx.length > 1) showToast('PPTX는 한 번에 한 파일만 줄일 수 있어요. 첫 파일만 넣었어요.');
-    setPptxFile(pptx[0]);
-  }
-);
-
-document.getElementById('pptxTargetMB').addEventListener('input', () => {
-  const v = +document.getElementById('pptxTargetMB').value;
-  pptxState.userTarget = v;
-  document.getElementById('pptxTargetMBVal').textContent = fmtMB(v);
-  updatePptxEstimate();
-});
-
-function renderPptxList() {
-  const el = document.getElementById('pptxFileList');
-  const grid = document.getElementById('pptxOptionsGrid');
-  if (!pptxState.file) {
-    el.innerHTML = '';
-    grid.style.display = 'none';
-    document.getElementById('pptxRunBtn').disabled = true;
-    return;
-  }
-  const f = pptxState.file;
-  el.innerHTML = `<div class="file-list-item">
-       <span class="name">${escHtml(f.name)}</span>
-       <span class="meta">${fmtBytes(f.size)} <button type="button" class="file-list-remove" onclick="window.clearPptx()" title="빼기" aria-label="${escHtml(f.name)} 빼기">${ic('x')}</button></span>
-     </div>`;
-  grid.style.display = 'grid';
-  // 그림 목록을 다 살펴본 뒤에만 실행할 수 있다
-  document.getElementById('pptxRunBtn').disabled = pptxState.analyzing || !pptxState.mediaInfo;
-}
-
-window.clearPptx = () => {
-  pptxState.seq++;   // 살펴보는 중이던 결과는 버린다
-  pptxState.file = null; pptxState.mediaInfo = null; pptxState.analyzing = false; pptxState.userTarget = null;
-  renderPptxList();
-  document.getElementById('pptxEstimate').style.display = 'none';
-  document.getElementById('pptxResult').style.display = 'none';
-  document.getElementById('pptxProgress').style.display = 'none';
-};
-
-async function scanPptxMedia() {
-  if (!pptxState.file) return;
-  const seq = ++pptxState.seq;
-  pptxState.analyzing = true;
-  renderPptxList();
-  const est = document.getElementById('pptxEstimate');
-  est.style.display = 'block';
-  est.textContent = 'PPTX 안의 그림을 살펴보는 중…';
-  try {
-    await loadLib('jszip');
-    const zip = await JSZip.loadAsync(pptxState.file);
-    const mediaFiles = Object.keys(zip.files).filter(n => n.startsWith('ppt/media/') && !zip.files[n].dir);
-    let totalBytes = 0;
-    const items = [];
-    for (const name of mediaFiles) {
-      const ext = name.split('.').pop().toLowerCase();
-      const blob = await zip.files[name].async('blob');
-      totalBytes += blob.size;
-      items.push({ name, ext, size: blob.size });
-    }
-    if (seq !== pptxState.seq) return;   // 그사이 다른 파일로 바뀜
-    pptxState.mediaInfo = { items, totalBytes };
-
-    // 슬라이더 범위 설정:
-    // 최소 = 현재 파일의 2.5%(0.05MB 아래로는 안 내림), 최대 = 현재 크기
-    const fileMB = pptxState.file.size / 1024 / 1024;
-
-    pptxState.minMB = Math.max(0.05, fileMB * 0.025); // 현재 파일의 2.5%
-    pptxState.maxMB = Math.max(pptxState.minMB, fileMB);
-
-    const slider = document.getElementById('pptxTargetMB');
-    slider.min = fmtMB(pptxState.minMB);
-    slider.max = fmtMB(pptxState.maxMB);
-    // 기본값: 50% 또는 3MB 중 작은 값. 사용자가 정한 값이 있으면 그 값(범위 안으로만 맞춤)
-    const want = pptxState.userTarget != null ? pptxState.userTarget : Math.min(3, fileMB * 0.5);
-    slider.value = fmtMB(Math.min(Math.max(want, pptxState.minMB), pptxState.maxMB));
-    document.getElementById('pptxTargetMBVal').textContent = fmtMB(slider.value);
-
-    document.getElementById('pptxTargetMin').textContent = '최소 ' + fmtBytes(pptxState.minMB * 1024 * 1024);
-    document.getElementById('pptxTargetMax').textContent = '최대 ' + fmtBytes(pptxState.maxMB * 1024 * 1024);
-
-    updatePptxEstimate();
-  } catch (e) {
-    if (seq !== pptxState.seq) return;
-    console.error(e);
-    est.style.display = 'none';
-    showToast(/불러오지 못했어요/.test(e?.message || '') ? e.message : 'PPTX 파일을 열 수 없어요. 파일이 손상되지 않았는지 확인해 주세요.', 'error');
-  } finally {
-    if (seq === pptxState.seq) {
-      pptxState.analyzing = false;
-      renderPptxList();
-    }
-  }
-}
-
-function updatePptxEstimate() {
-  if (!pptxState.mediaInfo) return;
-  const info = pptxState.mediaInfo;
-  const targetMB = +document.getElementById('pptxTargetMB').value;
-  const targetBytes = targetMB * 1024 * 1024;
-  document.getElementById('pptxEstimate').style.display = 'block';
-  document.getElementById('pptxEstimate').innerHTML =
-    `${ic('chart-column')} 그림 ${info.items.length}개 · 합계 ${fmtBytes(info.totalBytes)} (PPTX의 ${(info.totalBytes / pptxState.file.size * 100).toFixed(0)}%)<br>` +
-    `목표 용량: <strong>${fmtBytes(targetBytes)}</strong> - 그림의 크기와 화질을 자동으로 조절해요`;
-}
-
-function setPptxProgress(pct, msg) { setProgressUI('pptx', pct, msg); }
-
-// 전체 내용 SHA-256 (같은 그림 판정용). 사용할 수 없는 환경이면 null
-async function hashBlob(blob) {
-  try {
-    if (!window.crypto?.subtle) return null;
-    const buf = await blob.arrayBuffer();
-    const digest = await crypto.subtle.digest('SHA-256', buf);
-    return blob.size + ':' + Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
-  } catch { return null; }
-}
-
-// 동시에 처리할 이미지 수 제한 (큰 PPTX에서 메모리 폭증 방지)
-async function mapLimit(items, limit, fn) {
-  const out = new Array(items.length);
-  let next = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const i = next++;
-      out[i] = await fn(items[i], i);
-    }
-  });
-  await Promise.all(workers);
-  return out;
-}
-
-// 원본 미디어를 한 번만 읽어 둠: 원본 Blob, 같은 그림 묶음, PNG 투명도 여부
-async function preparePptxMedia(baseZip) {
-  const mediaNames = Object.keys(baseZip.files).filter(n => n.startsWith('ppt/media/') && !baseZip.files[n].dir);
-  const media = [];
-  const byHash = new Map();   // hash → 대표 항목
-  for (const name of mediaNames) {
-    const ext = name.split('.').pop().toLowerCase();
-    if (!['jpg', 'jpeg', 'png'].includes(ext)) continue;   // 영상·벡터 등은 손대지 않음
-    const blob = await baseZip.files[name].async('blob');
-    const hash = await hashBlob(blob);
-    const item = { name, ext, blob, hash, dupOf: null, hasAlpha: null };
-    if (hash && byHash.has(hash)) item.dupOf = byHash.get(hash);
-    else if (hash) byHash.set(hash, item);
-    media.push(item);
-  }
-  return media;
-}
-
-// 매번 "원본" 이미지에서 다시 압축 → 시도가 반복돼도 화질 손실이 쌓이지 않음
-async function recompressPptxMedia(media, quality, maxWidth, onProgress) {
-  const result = new Map();   // name → blob
-  const uniques = media.filter(m => !m.dupOf);
-  let done = 0;
-  await mapLimit(uniques, 4, async (m) => {
-    let outBlob = m.blob;
-    try {
-      if (m.ext === 'jpg' || m.ext === 'jpeg') {
-        const bmp = await createImageBitmap(m.blob);
-        const c = downscaleToCanvas(bmp, maxWidth);
-        bmp.close?.();
-        const recomp = await canvasToBlob(c, 'image/jpeg', quality);
-        c.width = 0; c.height = 0;
-        if (recomp && recomp.size > 0 && recomp.size < m.blob.size) outBlob = recomp;
-      } else if (m.ext === 'png') {
-        if (m.hasAlpha === null) m.hasAlpha = await pngHasAlpha(m.blob);   // 한 번만 검사
-        const bmp = await createImageBitmap(m.blob);
-        const c = downscaleToCanvas(bmp, maxWidth);
-        bmp.close?.();
-        // 투명 영역이 없는 PNG는 JPEG 데이터로 바꿔 넣음(파일 이름은 그대로 — 기존 동작 유지)
-        const recomp = m.hasAlpha
-          ? await canvasToBlob(c, 'image/png')
-          : await canvasToBlob(c, 'image/jpeg', quality);
-        c.width = 0; c.height = 0;
-        if (recomp && recomp.size > 0 && recomp.size < m.blob.size) outBlob = recomp;
-      }
-    } catch (e) {
-      console.warn('이미지 재압축 실패:', m.name, e);
-    }
-    result.set(m.name, outBlob);
-    onProgress?.(++done, uniques.length);
-  });
-  // 내용이 완전히 같은 그림은 같은 결과를 씀
-  for (const m of media) if (m.dupOf) result.set(m.name, result.get(m.dupOf.name));
-  return result;
-}
-
-// XML 정리: 줄바꿈이 낀 들여쓰기 공백과 주석만 지움.
-// (글자 사이 공백만 있는 텍스트 조각 <a:t> </a:t> 등은 내용이므로 건드리지 않음)
-function minifyXml(xml) {
-  return xml
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/>[ \t]*\r?\n\s*</g, '><')
-    .trim();
-}
-
-async function runPptx() {
-  if (!pptxState.file || pptxState.analyzing) return;
-  document.getElementById('pptxRunBtn').disabled = true;
-  document.getElementById('pptxTargetMB').disabled = true;
-  document.getElementById('pptxResult').style.display = 'none';
-
-  const targetMB = +document.getElementById('pptxTargetMB').value;
-  const targetBytes = targetMB * 1024 * 1024;
-  const origSize = pptxState.file.size;
-
-  try {
-    setPptxProgress(3, '처리 도구 불러오는 중…');
-    await loadLib('jszip');
-    const fileBuf = await pptxState.file.arrayBuffer();
-
-    // 목표 용량에 따라 탐색 범위 결정
-    const ratio = targetBytes / origSize;
-
-    let widths, qualities;
-    if (ratio < 0.05) {
-      widths = [300, 400, 500, 600, 800];
-      qualities = [0.2, 0.25, 0.3, 0.35, 0.4];
-    } else if (ratio < 0.1) {
-      widths = [400, 600, 800, 1000, 1200];
-      qualities = [0.3, 0.4, 0.45, 0.5, 0.6];
-    } else if (ratio < 0.2) {
-      widths = [600, 800, 1000, 1200, 1400, 1600];
-      qualities = [0.35, 0.45, 0.55, 0.65, 0.75];
-    } else {
-      widths = [1000, 1200, 1400, 1600, 1800];
-      qualities = [0.55, 0.65, 0.75, 0.8, 0.85];
-    }
-    const ladder = buildLadder(widths, qualities, false);
-
-    setPptxProgress(8, 'PPTX 파일 여는 중…');
-    const baseZip = await JSZip.loadAsync(fileBuf);
-
-    setPptxProgress(12, '그림 확인하는 중…');
-    const media = await preparePptxMedia(baseZip);
-
-    // 문서 내용(XML) 미리 정리해서 캐시
-    setPptxProgress(18, '문서 내용 정리하는 중…');
-    const minifiedXmlCache = new Map();
-    for (const fileName of Object.keys(baseZip.files)) {
-      if ((fileName.endsWith('.xml') || fileName.endsWith('.rels')) && !baseZip.files[fileName].dir) {
-        try {
-          const xmlText = await baseZip.files[fileName].async('text');
-          minifiedXmlCache.set(fileName, minifyXml(xmlText));
-        } catch (e) {
-          // 읽을 수 없는 파일은 원본 유지
-        }
-      }
-    }
-
-    const found = await searchBestUnderTarget(ladder, targetBytes, async ({ w, q }, n, maxSteps) => {
-      const base = 20 + ((n - 1) / maxSteps) * 75;
-      const span = 75 / maxSteps;
-      setPptxProgress(base, `알맞은 크기 찾는 중 (${n}/${maxSteps}번째) - 폭 ${w}px · 화질 ${fmtQ(q)}`);
-
-      // 시도마다 원본 PPTX에서 새로 시작
-      const zip = await JSZip.loadAsync(fileBuf);
-      const outMedia = await recompressPptxMedia(media, q, w, (d, t) =>
-        setPptxProgress(base + span * 0.8 * (d / Math.max(1, t)), `알맞은 크기 찾는 중 (${n}/${maxSteps}번째) - 그림 ${d}/${t}`));
-      for (const [name, blob] of outMedia) zip.file(name, blob);
-      for (const [fileName, minified] of minifiedXmlCache) zip.file(fileName, minified);
-
-      setPptxProgress(base + span * 0.85, `알맞은 크기 찾는 중 (${n}/${maxSteps}번째) - 파일 다시 묶는 중…`);
-      return zip.generateAsync({
-        type: 'blob',
-        compression: 'DEFLATE',
-        compressionOptions: { level: 9 },
-        mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-      });
-    });
-
-    setPptxProgress(100, '끝났어요');
-
-    const { blob: bestBlob, params: bestParams, reached } = found;
-    const fname = pptxState.file.name.replace(/\.pptx$/i, '') + '_compressed.pptx';
-
-    const compressionRatio = ((1 - bestBlob.size / origSize) * 100).toFixed(1);
-    const r = document.getElementById('pptxResult');
-    r.className = 'result' + (reached ? '' : ' warning');
-    r.style.display = 'block';
-    r.innerHTML = `<span class="res-head">${ic(reached ? 'circle-check' : 'triangle-alert')} ${escHtml(fname)}</span> 내려받기를 시작했어요<br>
-      원본 ${fmtBytes(origSize)} → 결과 ${fmtBytes(bestBlob.size)} (${compressionRatio}% 줄어듦)<br>
-      적용: 폭 ${bestParams.w}px · 화질 ${fmtQ(bestParams.q)}<br>
-      <span style="font-size:0.78rem; color:var(--fg-muted)">그림의 크기·화질을 줄이고 파일을 다시 묶었어요</span>
-      <span class="res-note">${reached
-        ? '목표 용량 안에서 가장 좋은 화질로 만들었어요.'
-        : '가장 작게 줄여도 목표 용량보다 커요. 시도한 것 중 가장 작은 파일을 내려받았어요. 영상·글꼴처럼 줄일 수 없는 내용이 많으면 이렇게 될 수 있어요.'}</span>`;
-
-    // 줄인 PPTX 자동 내려받기
-    downloadBlob(bestBlob, fname);
-    showToast(reached ? '다 만들었어요. 내려받기를 시작했어요.' : '목표 용량보다 큰 파일이 나왔어요. 결과 안내를 확인해 주세요.', reached ? 'success' : undefined);
-  } catch (e) {
-    console.error(e);
-    const r = document.getElementById('pptxResult');
-    r.className = 'result error';
-    r.style.display = 'block';
-    r.innerHTML = `${ic('circle-x')} 줄이지 못했어요: <span></span>`;
-    r.querySelector('span').textContent = e.message || String(e);
-    showToast('줄이지 못했어요', 'error');
-  } finally {
-    document.getElementById('pptxRunBtn').disabled = !pptxState.mediaInfo;
-    document.getElementById('pptxTargetMB').disabled = false;
-    setTimeout(() => { document.getElementById('pptxProgress').style.display = 'none'; }, 1500);
-  }
-}
-
-window.runPptx = runPptx;
-window.switchTab = switchTab;
