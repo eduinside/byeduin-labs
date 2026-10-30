@@ -36,8 +36,8 @@
   - **무상태(stateless) AI 프록시만 신설** — `functions/api/idea-lab.js`. 프로젝트 기존 관행([_ai.js](../functions/api/_ai.js)를 쓰는 signage·flash-recommend·bu-recommend)과 동일 구조.
   - **DB·세션·업로드 없음**. 아이의 작품 저장은 전부 `localStorage`. 서버는 "질문 생성기·그림 생성기"일 뿐 아무것도 기억하지 않는다.
 - AI 엔진(모두 기존 `_ai.js` 재사용, 신규 키 불필요):
-  - 텍스트: `generateContent` — 기본 flash-lite(가장 저렴·빠름, 기존 호출부와 동일 기본값). 코치 질문은 짧아서 충분.
-  - 이미지: `generateImage` — Timely 경유 `gemini-2.5-flash-image`(폴백 gemini flash image preview). **"퀄리티보다 속도" 요구에 정확히 부합하는 기존 파이프라인**(signage-image에서 검증됨).
+  - 텍스트: `generateContent` — 기본 모델(2026-10-06부터 Timely `openai/gpt-5.6-luna`, 직접 Gemini 폴백은 flash-lite). 기존 호출부와 같은 기본값이고, 코치 질문은 짧아서 충분.
+  - 이미지: `generateImage` — Timely 경유 `google/gemini-2.5-flash-image`(폴백은 직접 Gemini의 `gemini-2.5-flash-image`). **"퀄리티보다 속도" 요구에 정확히 부합하는 기존 파이프라인**(signage-image에서 검증됨).
 
 ---
 

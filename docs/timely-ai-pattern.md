@@ -2,6 +2,7 @@
 
 > 작성: 2026-08-18 · 대상: `functions/api/_ai.js`를 통해 AI를 호출하는 모든 앱(idea-lab, search, signage-maker, spell-checker, flash-deck, blocks-universe 등)
 > 목적: Timely 연동 관련 노하우를 한 곳에 모아 신규 AI 프록시 앱을 만들 때 이 문서만 보면 되도록 함
+> 공식 자료: [timely-hub/timely-gpt-sdk](https://github.com/timely-hub/timely-gpt-sdk) 저장소(기본 브랜치 `master`)의 `OPENAI_SDK_GUIDE.md`가 브릿지 모드 가이드다. README는 Timely 자체 SDK용이라 브릿지 모델명과 다르다. 2026-10-31에 가이드와 실시간 모델 목록을 다시 대조했다(§6).
 
 ---
 
@@ -28,7 +29,7 @@ Content-Type: application/json
 ```
 
 - **API 키를 그대로 Bearer로 사용**한다. JWT 교환 등 별도 인증 절차 불필요(Timely 공식 문서에서 명시적으로 확인됨 — 네이티브 SDK 모드의 JWT 1일 만료 토큰 발급 흐름은 이 브릿지 모드와 무관).
-- 모델명은 `제공자/모델명` 형식(예: `google/gemini-2.5-flash-lite`, `google/gemini-2.5-flash-image`, `openai/gpt-4.1-mini`, `anthropic/claude-sonnet-4.6`). 실시간 지원 모델 목록은 `GET /api/v2/chat/bridge/info/models`에서 조회 가능하나, **이 프로젝트에서는 아직 자동 조회를 붙이지 않고 하드코딩된 모델명을 씀**(§5 참고 — 요청 경로에 넣기엔 CF Pages 무료 CPU 예산이 빠듯함).
+- 모델명은 `제공자/모델명` 형식(예: `google/gemini-2.5-flash-lite`, `google/gemini-2.5-flash-image`, `openai/gpt-4.1-mini`, `anthropic/claude-sonnet-4.6`). 실시간 지원 모델 목록은 `GET /api/v2/chat/bridge/info/models`에서 조회 가능하나(§6), **이 프로젝트에서는 아직 자동 조회를 붙이지 않고 하드코딩된 모델명을 씀**(§5 참고 — 요청 경로에 넣기엔 CF Pages 무료 CPU 예산이 빠듯함).
 
 ---
 
@@ -53,6 +54,9 @@ Timely 쪽 요청 제한은 **크레딧 잔액에 따라 동적으로 낮아진�
 | 404 | 모델명 오류 | 즉시 Gemini 폴백 + 경고 로그(모델명 오탈자 의심) |
 | 5xx | Timely 쪽 일시 장애 | 즉시 Gemini 폴백 |
 
+- 크레딧이 2 미만이면 분당 한도와 상관없이 API 자체가 막힌다(공식 가이드). 이때도 402로 보이므로 위 표의 402 처리와 같다.
+- 동시 실행 제한은 크레딧 5만 미만 3개, 1만 미만 2개, 5천 미만 1개다. 크레딧이 충분하면 제한이 없다.
+
 이 분기는 `_ai.js`의 `callTimely()` 헬퍼에 구현돼 있다. **새 AI 프록시를 만들 때는 이 fetch 로직을 복붙하지 말고 반드시 `generateContent`/`generateImage`를 통해서만 호출**할 것 — 헬퍼가 바뀌면 전체 앱에 자동 반영된다.
 
 ---
@@ -75,11 +79,28 @@ Timely 쪽 요청 제한은 **크레딧 잔액에 따라 동적으로 낮아진�
 
 ---
 
+## 6. 지원 모델 목록·종료 모델·호스트 (2026-10-31 확인)
+
+**모델 목록 확인**: `GET https://hello.timelygpt.co.kr/api/v2/chat/bridge/info/models` (공식 가이드는 인증 없이 조회된다고 안내). 허용 모델은 수시로 바뀌므로 모델을 바꾸기 전에 이 목록부터 본다. 목록에 없는 이름은 404다.
+
+- 2026-10-31 목록: `openai/gpt-5.6-sol`·`-terra`·`-luna`, `openai/gpt-5.5`, `openai/gpt-5.3-codex`, `openai/gpt-5.1-codex-mini`, `openai/gpt-5-mini`·`-nano`, `openai/gpt-4.1-mini`, `openai/gpt-4o-mini`, `openai/gpt-5-image-mini`, `anthropic/claude-sonnet-5`·`claude-opus-4.7`·`claude-sonnet-4.6`·`claude-haiku-4.5`, `google/gemini-3.8-flash`·`3.7-flash`·`3-flash-preview`·`2.5-flash-lite`·`2.5-flash-image`, `x-ai/grok-4.3`. 일부는 `:batch` 접미사 변형도 있다.
+- 우리 코드가 쓰는 Timely 모델은 `openai/gpt-5.6-luna`(텍스트 기본), `google/gemini-2.5-flash-image`(그림), `google/gemini-2.5-flash-lite`(`scripts/translate-bu-episodes.cjs`)이고 모두 위 목록에 있다.
+- 이미지 생성이 되는 모델은 `google/gemini-2.5-flash-image`와 `openai/gpt-5-image-mini` 둘이다. 2.5 계열이 목록에서 빠지면 `gpt-5-image-mini`를 후보로 본다(이미지 크기·비용은 실측 필요).
+- 직접 Gemini 폴백 모델명(`gemini-flash-latest`, `gemini-flash-lite-latest`)은 Timely 목록과 무관하다. Google 쪽 별칭이다.
+
+**종료된 모델**: OpenAI가 2026-08-10에 `gpt-5.2-chat-latest`, `gpt-5.3-chat-latest`를 API에서 제거했다(공식 대체 `gpt-5.6-sol`). Timely는 이런 이름이 들어오면 대체 모델로 자동 치환하지만, 예기치 않은 동작을 막으려면 목록의 명시적 모델명을 쓴다. `openai/gpt-5.3-codex`는 종료 대상이 아니다. 우리 코드에는 종료된 이름이 없다.
+
+**호스트**: `https://hello.timelygpt.co.kr/api/v2/chat/bridge/openai`(현재 사용)와 `https://hello.timelyai.io/api/v2/chat/bridge/openai`(동일 응답)가 공개 호스트다. 스페이스 접속 주소 같은 다른 도메인은 API 경로가 열려 있지 않다. 두 번째 호스트는 아직 코드에 쓰지 않았고 직접 호출해 확인하지도 않았다. 연결 오류 때 Gemini로 가기 전 한 단계 더 두는 안은 필요해지면 검토한다.
+
+**인증 오류 구분**: `Incorrect API key provided: tgpt_sk_...`는 요청이 OpenAI로 갔다는 뜻이라 baseURL 문제다. 한글 `유효하지 않은 API 키입니다`는 Timely가 거절한 것이라 키 문제이고, 재발급하면 기존 키는 무효가 된다. `Missing Authorization header`는 키가 요청에 실리지 않은 경우다.
+
+---
+
 ## 7. 이미지 생성 — 크기(`image_config`)와 폴백 실전 노트 (2026-08-19 실측)
 
 `generateImage()`가 쓰는 `google/gemini-2.5-flash-image`는 `image_config: { image_size, aspect_ratio }`로 크기를 지정할 수 있다. **Timely 게이트웨이 자체의 검증 스키마는 `image_size`로 `"0.5K"`/`"1K"`/`"2K"`/`"4K"`만 허용**하고(그 외 값은 Timely 단에서 바로 400), 이 값을 뒤에서 실제 모델에 맞게 변환해 전달하는 구조다.
 
-- **`gemini-2.5-flash-image`의 실측 최솟값은 `"1K"`**다. `"0.5K"`를 보내면 Timely 검증은 통과하지만 Google 쪽에서 "이 모델은 0.5K 미지원"으로 재차 400을 반환한다(모델별로 실제 지원 크기가 다름 — Timely 에러 메시지가 "이 모델은 0.5K 지원"이라고 알려준 대체 모델(`google/gemini-3.1-flash-image-preview-*`)로 시도해봐도 `"0.5K"`·`"512"` 둘 다 400 — 프리뷰 모델 쪽 검증이 불안정하므로 신뢰하지 말 것.
+- **`gemini-2.5-flash-image`의 실측 최솟값은 `"1K"`**다. `"0.5K"`를 보내면 Timely 검증은 통과하지만 Google 쪽에서 "이 모델은 0.5K 미지원"으로 재차 400을 반환한다(모델별로 실제 지원 크기가 다름 — Timely 에러 메시지가 "이 모델은 0.5K 지원"이라고 알려준 대체 모델(`google/gemini-3.1-flash-image-preview-*`)로 시도해봐도 `"0.5K"`·`"512"` 둘 다 400 — 프리뷰 모델 쪽 검증이 불안정하므로 신뢰하지 말 것. 이 프리뷰 모델은 2026-10-31 현재 Timely 모델 목록에도 없다. 공식 가이드의 이미지 예시는 `modalities: ["image","text"]`이고 우리 코드는 `["image"]`인데, 실측에서 동작하므로 그대로 둔다.
 - **크기를 줄여도 용량은 별로 안 줄어든다**: `"1K"`로 고정해도 실측 PNG(base64)가 **~1.1~1.8MB**. 이 모델은 "크레파스 그림" 같은 텍스처 많은 스타일을 저해상도에서도 노이즈가 많게 그려서 PNG 압축률이 나쁜 것으로 보인다. **"이미지가 작아도 됨(화면에 보이기만 하면 됨)"이라는 요구사항이 있어도, 현재 API로는 이보다 더 못 줄인다** — 진짜로 더 줄이려면 Worker 쪽에서 리사이즈/재인코딩(추가 CPU 비용 발생, §5 예산과 상충)이나 다른 이미지 모델 채택이 필요.
 - 그래도 `image_size: '1K'`를 명시하는 이유: 파라미터를 생략하면 provider가 기본값으로 2K/4K를 골라 더 큰 페이로드가 나올 수 있어, **"1K로 상한을 고정"하는 효과**는 있다. `aspect_ratio: '1:1'`은 카드 레이아웃 일관성 목적.
 - **Gemini 직접 폴백 모델명 주의**: 예전 `imagen-3.0-generate-002`(`:predict` 엔드포인트, `instances`/`predictions` 스키마)는 이 프로젝트 키에서 **더 이상 존재하지 않음**(404 확인, 2026-08-19). 현재는 `gemini-2.5-flash-image`를 표준 `:generateContent` + `generationConfig.responseModalities: ["IMAGE"]`로 호출하고, 응답은 `candidates[0].content.parts[].inlineData.data`에서 추출해야 한다(`_ai.js` 반영 완료). **모델 목록은 조용히 바뀌므로, 폴백 경로가 오래 안 쓰였다면 배포 전에 `GET /v1beta/models?key=...`로 실제 지원 모델을 재확인할 것.**
@@ -91,16 +112,16 @@ Timely 쪽 요청 제한은 **크레딧 잔액에 따라 동적으로 낮아진�
 
 1. `functions/api/<app>.js`에서 `_ai.js`의 `generateContent`/`generateImage`를 import해서 쓴다. Timely fetch 로직을 새로 작성하지 않는다.
 2. `request` 파라미터를 반드시 넘겨서 IP 레이트리밋이 적용되게 한다(텍스트/이미지 기본값은 §3 표 참고, 필요시 `checkRateLimit` 한도 조정은 `_ai.js` 공통 로직에 영향을 주므로 신중히).
-3. 모델은 기본값(`flash-lite`)을 우선 쓰고, 답변 품질이 중요한 경로만 `timelyModel`/`geminiModel` 오버라이드로 승격한다(예: `search.js`의 2단계 라우터 패턴).
+3. 모델은 기본값(`DEFAULT_TIMELY_MODEL`, 지금은 `openai/gpt-5.6-luna`)을 우선 쓴다. 다른 모델이 꼭 필요한 경로만 `timelyModel`/`geminiModel`로 바꾸고, 바꾸기 전에 §6의 실시간 목록에서 이름을 확인한다. 직접 Gemini 폴백 기본값은 `gemini-flash-lite-latest`이고, `search`·`timer-vision`·`dictation-ai`만 `gemini-flash-latest`로 올려 쓴다.
 4. 새 실패 케이스를 발견하면(예: 새로운 상태코드, Timely 응답 스키마 변경) `callTimely()` 한 곳만 고치면 전체 앱에 반영된다는 걸 기억하고, 개별 앱 파일에 예외 처리를 중복 작성하지 않는다.
 5. 이미지 생성이 필요하면 §7을 먼저 읽을 것 — 크기 파라미터의 실제 한계와 폴백 모델명이 언제든 바뀔 수 있다는 점을 전제로 설계.
 
 ---
 
-## 8. 기본 모델: `openai/gpt-5.6-luna` (2026-10-06 운영자 결정)
+## 9. 기본 모델: `openai/gpt-5.6-luna` (2026-10-06 운영자 결정)
 
 - `_ai.js`의 `DEFAULT_TIMELY_MODEL = 'openai/gpt-5.6-luna'`가 byeduin 전체 Timely 텍스트 기본값이다. 호출부에서 `timelyModel`을 넘기지 않으면 이 모델을 쓴다(search·dictation-ai도 기본값으로 바꿈). 직접 Gemini 폴백 모델(`geminiModel`)은 호출부별 그대로.
-- 모델 목록에서 확인한 이름: `openai/gpt-5.6-luna`(그 밖에 `-terra`, `-sol`, `:batch` 변형). `GET /api/v2/chat/bridge/info/models`.
+- 모델 목록에서 확인한 이름: `openai/gpt-5.6-luna`(그 밖에 `-terra`, `-sol`, `:batch` 변형). `GET /api/v2/chat/bridge/info/models`. 2026-10-31에도 목록에 있음(§6).
 - 실측(2026-10-06, Timely 경유):
   | 요청 | 결과 |
   |---|---|

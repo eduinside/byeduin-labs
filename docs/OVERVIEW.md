@@ -238,7 +238,7 @@ docs/                  ← 개발 문서
 - 계산 `public/apps/pitch-lab/dsp.js`(`window.PitchDSP`, node에서도 시험 가능): 예시 노래 원래 33센트 → 보정 후 0~8센트, +5반음 옮기기 실측 5.01반음.
 
 ### 2026-10 — 스마트 타이머 개편 + AI 기본 모델 `openai/gpt-5.6-luna` (`docs/timer-plan.md`)
-- **AI 기본 모델**: `_ai.js` `DEFAULT_TIMELY_MODEL = 'openai/gpt-5.6-luna'`(byeduin 전체 Timely 텍스트 기본). `generateContent`에 `images`(사진 입력)·`json`·`timeoutMs` 추가. search는 긴 답변용 75초. 실측·주의점은 `docs/timely-ai-pattern.md` 8장.
+- **AI 기본 모델**: `_ai.js` `DEFAULT_TIMELY_MODEL = 'openai/gpt-5.6-luna'`(byeduin 전체 Timely 텍스트 기본). `generateContent`에 `images`(사진 입력)·`json`·`timeoutMs` 추가. search는 긴 답변용 75초. 실측·주의점은 `docs/timely-ai-pattern.md` 9장(지원 모델 목록·종료 모델·호스트는 6장).
 - **스마트 타이머**(`src/pages/apps/timer`): 탭 4개(카운트다운·시정·알람·음악).
   - 카운트다운(전체화면, 막대/원, 마지막 10초, 새로고침해도 이어짐), 자주 쓰는 타이머(최대 20).
   - 시정 만들기·여러 개 저장·사용하기(종은 시정에서 실시간 계산), 초등·중학교 기본 틀, 수업 시간 일괄 변경, 공유 링크.
