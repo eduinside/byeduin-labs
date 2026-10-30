@@ -40,6 +40,7 @@ export const LIMITS = {
   'bu-recommend':      { perMin: 30,  perDay: 300,   siteDay: 1000 },
   'flash-recommend':   { perMin: 30,  perDay: 300,   siteDay: 1000 },
   'mindmap-draft':     { perMin: 30,  perDay: 300,   siteDay: 1000 },
+  'mindmap-ask':       { perMin: 60,  perDay: 600,   siteDay: 2000 },  // 가지마다 묻기(초안보다 자주)
   'spell-check':       { perMin: 60,  perDay: 1000,  siteDay: 3000 },
   'dictation-ai':      { perMin: 60,  perDay: 600,   siteDay: 2000 },
   'idea-lab':          { perMin: 300, perDay: 3000,  siteDay: 8000 },  // 한 반 30명 × 질문 5회 안팎

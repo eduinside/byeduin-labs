@@ -171,6 +171,7 @@ docs/                  ← 개발 문서
 | `POST /api/signage-prompt` | 사이니지 이미지 AI 생성 |
 | `POST /api/flash-recommend` | 플래시덱 카드 AI 추천 |
 | `POST /api/mindmap-draft` | 마인드맵 AI 초안(마크다운 개요) |
+| `POST /api/mindmap-ask` | 마인드맵 가지에서 AI에게 묻기(작은 가지 추천·설명·예시·질문) |
 | `GET /api/yt-playlist` | 유튜브 재생목록 파싱 |
 | `GET /api/yt-video-info` | 유튜브 영상 정보 |
 | `POST /api/shorten` | 단축 URL 생성 (short.io) |

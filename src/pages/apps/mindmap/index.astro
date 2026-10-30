@@ -47,6 +47,7 @@ import Icon from '../../../components/Icon.astro';
         <button class="tb-btn" onclick="MM.addChild()" aria-label="작은 가지 추가 (Tab)" title="작은 가지 추가 (Tab)"><Icon name="plus" /><span class="tb-label">가지</span></button>
         <button id="btn-sibling" class="tb-btn" onclick="MM.addSibling()" disabled aria-label="옆 가지 추가 (Enter)" title="옆 가지 추가 (Enter)"><Icon name="list-plus" /><span class="tb-label">옆 가지</span></button>
         <button class="tb-btn" onclick="MM.removeNode()" aria-label="고른 가지 지우기 (Delete)" title="고른 가지 지우기 (Delete)"><Icon name="trash-2" /></button>
+        <button id="btn-ask" class="tb-btn" onclick="MM.openAsk()" aria-label="고른 가지를 AI에게 묻기" title="고른 가지를 AI에게 묻기 (가지 오른쪽 클릭)" disabled><Icon name="sparkles" /><span class="tb-label">AI에게 묻기</span></button>
         <button class="tb-btn" onclick="MM.undo()" aria-label="되돌리기 (Ctrl+Z)" title="되돌리기 (Ctrl+Z)"><Icon name="undo-2" /></button>
         <button class="tb-btn tb-wide" onclick="MM.toggleDirection()" aria-label="가지 방향 바꾸기" title="가지 방향 바꾸기"><Icon name="arrow-left-right" /></button>
       </div>
@@ -115,6 +116,35 @@ import Icon from '../../../components/Icon.astro';
       <div class="mm-modal-actions">
         <button class="mm-btn mm-btn-ghost" onclick="MM.closeModal('ai')">취소</button>
         <button id="ai-run" class="mm-btn mm-btn-primary" onclick="MM.runAi()">초안 만들기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 가지에서 AI에게 묻기 -->
+  <div class="mm-modal-bg" id="modal-ask">
+    <div class="mm-modal mm-modal-wide" role="dialog" aria-modal="true" aria-labelledby="ask-title">
+      <h2 id="ask-title" class="mm-modal-title"><Icon name="sparkles" /> AI에게 묻기</h2>
+      <p id="ask-path" class="ask-path"></p>
+      <div class="ask-quick">
+        <button class="mm-btn mm-btn-ghost mm-btn-sm" data-mode="expand" onclick="MM.ask('expand')"><Icon name="plus" /> 작은 가지 추천</button>
+        <button class="mm-btn mm-btn-ghost mm-btn-sm" data-mode="explain" onclick="MM.ask('explain')">쉽게 설명</button>
+        <button class="mm-btn mm-btn-ghost mm-btn-sm" data-mode="example" onclick="MM.ask('example')">예시 들기</button>
+        <select id="ask-level" class="mm-input ask-level" aria-label="대상">
+          <option value="low">초등 저학년</option>
+          <option value="high" selected>초등 고학년</option>
+          <option value="middle">중학생</option>
+          <option value="adult">고등학생·일반</option>
+        </select>
+      </div>
+      <div class="ask-row">
+        <input id="ask-q" class="mm-input" maxlength="300" placeholder="이 가지에 대해 궁금한 것을 적어 보세요" autocomplete="off">
+        <button id="ask-send" class="mm-btn mm-btn-primary" onclick="MM.ask('ask')">묻기</button>
+      </div>
+      <div id="ask-answer" class="ask-answer" aria-live="polite" hidden></div>
+      <p class="mm-note">작은 가지 추천은 바로 붙어요(Ctrl+Z로 되돌리기). AI 답은 틀릴 수 있으니 살펴보고 쓰세요.</p>
+      <div class="mm-modal-actions">
+        <button class="mm-btn mm-btn-ghost" onclick="MM.closeModal('ask')">닫기</button>
+        <button id="ask-insert" class="mm-btn mm-btn-primary" onclick="MM.insertAnswer()" hidden><Icon name="plus" /> 가지로 넣기</button>
       </div>
     </div>
   </div>

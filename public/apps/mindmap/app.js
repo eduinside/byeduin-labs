@@ -141,7 +141,7 @@
       editable: editable,
       draggable: editable,
       before: editable ? DEPTH_GUARD : {},
-      contextMenu: editable ? { locale: KO, focus: true, link: true } : false,
+      contextMenu: editable ? { locale: KO, focus: true, link: true, extend: [{ name: 'AI에게 묻기', onclick: function () { openAsk(); } }] } : false,
       toolBar: false,
       keypress: editable,
       allowUndo: true,
@@ -152,12 +152,20 @@
     var err = mind.init({ nodeData: data.nodeData, direction: data.direction, arrows: data.arrows || [], summaries: data.summaries || [] });
     if (err) { toast('마인드맵을 열지 못했어요.', 'error'); return false; }
     if (editable) {
+      // 되돌리기·다시 하기는 'operation' 알림이 없어 저장이 안 되므로 감싸서 저장한다(버튼·Ctrl+Z 모두)
+      ['undo', 'redo'].forEach(function (k) {
+        var orig = mind[k];
+        if (typeof orig === 'function') mind[k] = function () { var r = orig.apply(this, arguments); scheduleSave(); updateTools(); return r; };
+      });
       mind.bus.addListener('operation', scheduleSave);
       mind.bus.addListener('operation', updateTools);
       mind.bus.addListener('selectNodes', updateTools);
       mind.bus.addListener('unselectNodes', updateTools);
     }
     updateTools();
+    // 오른쪽 클릭 메뉴에서 'AI에게 묻기'를 맨 위로(라이브러리는 덧붙인 항목을 맨 아래에 둔다)
+    var aiItem = Array.prototype.find.call($('mm-map').querySelectorAll('.context-menu li'), function (li) { return li.textContent.trim() === 'AI에게 묻기'; });
+    if (aiItem) aiItem.parentElement.insertBefore(aiItem, aiItem.parentElement.firstChild);
     applyTheme();
     $('tb-title').textContent = data.nodeData.topic || '';
     setTimeout(fit, 30);
@@ -255,6 +263,7 @@
   function updateTools() {
     var n = mind && mind.currentNode;
     $('btn-sibling').disabled = !n || !!(n.nodeObj && n.nodeObj.root) || !(n.nodeObj && n.nodeObj.parent);
+    $('btn-ask').disabled = !n;
   }
   function addChild() {
     if (!mind || viewOnly) return;
@@ -434,6 +443,7 @@
     new: VUI.modal.bind('#modal-new', { className: 'open', backdropClose: true, dialog: '.mm-modal', initialFocus: '#new-topic' }),
     ai: VUI.modal.bind('#modal-ai', { className: 'open', backdropClose: true, dialog: '.mm-modal', initialFocus: '#ai-topic' }),
     import: VUI.modal.bind('#modal-import', { className: 'open', backdropClose: true, dialog: '.mm-modal', initialFocus: '#import-text' }),
+    ask: VUI.modal.bind('#modal-ask', { className: 'open', backdropClose: true, dialog: '.mm-modal', initialFocus: '#ask-q' }),
   };
   function closeModal(name) { modals[name].close(); }
 
@@ -480,6 +490,90 @@
       btn.textContent = '초안 만들기';
     }
   }
+
+  /* 가지에서 AI에게 묻기 (오른쪽 클릭 메뉴·상단 막대) */
+  var LEVEL_KEY = 'mindmap-ai-level'; // 대상 학년(이 기기 편의 설정)
+  var askNode = null;   // 물어본 가지(nodeObj)
+  var askItems = [];    // 마지막 답(가지로 넣을 목록)
+  var askBusy = false;
+  function pathOf(obj) {
+    var list = [];
+    while (obj) { list.unshift(obj.topic || ''); obj = obj.parent; }
+    return list;
+  }
+  function openAsk() {
+    var n = mind && mind.currentNode;
+    if (!n || viewOnly) { toast('물어볼 가지를 먼저 눌러 고르세요.'); return; }
+    askNode = n.nodeObj;
+    askItems = [];
+    var path = pathOf(askNode);
+    $('ask-path').innerHTML = path.slice(0, -1).map(esc).concat('<b>' + esc(path[path.length - 1]) + '</b>').join(' › ');
+    $('ask-answer').hidden = true;
+    $('ask-insert').hidden = true;
+    $('ask-q').value = '';
+    try { var lv = localStorage.getItem(LEVEL_KEY); if (lv) $('ask-level').value = lv; } catch (e) {}
+    modals.ask.open();
+  }
+  async function ask(mode) {
+    if (askBusy || !askNode) return;
+    var q = $('ask-q').value.trim();
+    if (mode === 'ask' && !q) { toast('궁금한 것을 적어 주세요.'); $('ask-q').focus(); return; }
+    if (mode === 'expand' && levelOf(askNode) >= MD.MAX_DEPTH) { tooDeep(); return; }
+    var level = $('ask-level').value;
+    try { localStorage.setItem(LEVEL_KEY, level); } catch (e) {}
+    var btn = mode === 'ask' ? $('ask-send') : document.querySelector('#modal-ask [data-mode="' + mode + '"]');
+    var label = btn.innerHTML;
+    askBusy = true;
+    document.querySelectorAll('#modal-ask .ask-quick button, #ask-send').forEach(function (b) { b.disabled = true; });
+    btn.innerHTML = '<span class="spinner"></span> 묻는 중…';
+    try {
+      var data = await VUI.apiFetch('/api/mindmap-ask', {
+        json: {
+          path: pathOf(askNode),
+          children: (askNode.children || []).map(function (c) { return c.topic; }),
+          mode: mode, question: q, level: level,
+        },
+        timeout: 45000,
+      });
+      var items = data && Array.isArray(data.items) ? data.items.filter(function (s) { return typeof s === 'string' && s.trim(); }) : [];
+      if (!items.length) throw new Error('AI가 답을 만들지 못했어요. 다시 물어봐 주세요.');
+      if (mode === 'expand') {
+        var added = await insertItems(items);
+        if (added) { closeModal('ask'); toast('작은 가지 ' + added + '개를 붙였어요. 마음에 안 들면 Ctrl+Z로 되돌리세요.', 'success'); }
+        return;
+      }
+      askItems = items;
+      var head = mode === 'ask' ? q : (mode === 'explain' ? '쉽게 설명' : '예시');
+      $('ask-answer').innerHTML = '<p class="ask-q">' + esc(head) + '</p><ul>' + items.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>';
+      $('ask-answer').hidden = false;
+      $('ask-insert').hidden = levelOf(askNode) >= MD.MAX_DEPTH;
+    } catch (e) {
+      if (e.code !== 'abort') toast(e.message || 'AI에게 묻지 못했어요.', 'error');
+    } finally {
+      askBusy = false;
+      btn.innerHTML = label;
+      document.querySelectorAll('#modal-ask .ask-quick button, #ask-send').forEach(function (b) { b.disabled = false; });
+    }
+  }
+  // 물어본 가지 아래에 항목들을 작은 가지로 붙인다(지워졌거나 5단계면 안내)
+  async function insertItems(items) {
+    var el = mind && askNode && mind.findEle(askNode.id);
+    if (!el) { toast('물어본 가지를 찾을 수 없어요. 지워졌는지 확인해 주세요.', 'error'); return 0; }
+    if (levelOf(askNode) >= MD.MAX_DEPTH) { tooDeep(); return 0; }
+    var n = 0;
+    for (var i = 0; i < items.length; i++) {
+      await mind.addChild(el, { id: 'n' + nid(), topic: MD.plain(items[i]) });
+      n++;
+    }
+    mind.selectNode(el);
+    return n;
+  }
+  async function insertAnswer() {
+    if (!askItems.length) return;
+    var added = await insertItems(askItems);
+    if (added) { closeModal('ask'); toast('답을 가지 ' + added + '개로 붙였어요.', 'success'); }
+  }
+  $('ask-q').addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) ask('ask'); });
 
   /* 마크다운 가져오기 */
   function openImport() { $('import-text').value = ''; importName = ''; modals.import.open(); }
@@ -533,7 +627,7 @@
     addChild: addChild, addSibling: addSibling, removeNode: removeNode, undo: undo,
     fit: fit, zoom: zoom, toggleDirection: toggleDirection, toggleTheme: toggleTheme,
     share: share, sendToMd: sendToMd, duplicate: duplicate, takeShared: takeShared, toggleMore: toggleMore,
-    openNew: openNew, createNew: createNew, openAi: openAi, runAi: runAi,
+    openNew: openNew, createNew: createNew, openAi: openAi, runAi: runAi, openAsk: openAsk, ask: ask, insertAnswer: insertAnswer,
     openImport: openImport, doImport: doImport, closeModal: closeModal,
   };
 
