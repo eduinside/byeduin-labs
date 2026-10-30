@@ -458,17 +458,67 @@
     setTimeout(function () { if (mind) mind.selectNode(rootEl()); }, 60);
   }
 
-  /* AI 초안: 받으면 바로 새 맵으로 열고, 고치기는 맵에서(미리보기 단계 없음) */
+  /* AI 초안: '초안 만들기' → 아래에 예시안(작은 마인드맵) → '이렇게 마인드맵 만들기'로 맵 화면 */
+  var aiTree = null;
+  var previewMind = null;
+  function clearPreview() {
+    if (previewMind) { try { previewMind.destroy(); } catch (e) {} previewMind = null; }
+    $('ai-preview-map').innerHTML = '';
+    $('ai-preview').hidden = true;
+  }
+  function setAiStep(hasDraft) {
+    $('ai-use').hidden = !hasDraft;
+    $('ai-run').textContent = hasDraft ? '다시 만들기' : '초안 만들기';
+    $('ai-run').classList.toggle('mm-btn-primary', !hasDraft);
+    $('ai-run').classList.toggle('mm-btn-ghost', hasDraft);
+  }
+  function showPreview(tree) {
+    var L = lib();
+    clearPreview();
+    $('ai-preview').hidden = false; // 보이는 상태에서 그려야 크기가 맞는다
+    $('ai-preview-count').textContent = '가지 ' + (countNodes(tree) - 1) + '개';
+    if (!L) return;
+    previewMind = new L({
+      el: '#ai-preview-map', direction: 2, editable: false, draggable: false,
+      contextMenu: false, toolBar: false, keypress: false, theme: themeOf('light'), alignment: 'root',
+    });
+    previewMind.init({ nodeData: treeToNode(tree, true) });
+    fitPreview(0);
+  }
+  // scaleFit은 그릴 칸 높이로 나누므로 칸 크기가 잡힌 뒤에 맞춘다(0이면 배율 0이 되어 안 보임)
+  function fitPreview(tries) {
+    requestAnimationFrame(function () {
+      var m = previewMind;
+      if (!m) return;
+      if (!m.container.offsetHeight || !m.nodes.offsetHeight) { if (tries < 20) setTimeout(function () { fitPreview(tries + 1); }, 50); return; }
+      m.scaleFit();
+      if (!(m.scaleVal > 0)) m.scale(0.6);
+      m.toCenter();
+    });
+  }
   function openAi() {
-    $('ai-run').textContent = '초안 만들기';
+    aiTree = null;
+    clearPreview();
+    setAiStep(false);
     modals.ai.open();
+  }
+  function useAi() {
+    if (!aiTree) return;
+    var rec = addRecord(newRecord(aiTree));
+    if (!rec) return;
+    closeModal('ai');
+    clearPreview();
+    aiTree = null;
+    $('ai-topic').value = '';
+    open(rec.id);
+    toast('AI 초안으로 마인드맵을 만들었어요. 살펴보고 고쳐 주세요.', 'success');
   }
   async function runAi() {
     var topic = $('ai-topic').value.trim();
     if (!topic) { toast('주제를 적어 주세요.'); $('ai-topic').focus(); return; }
     var btn = $('ai-run');
     if (btn.disabled) return;
-    btn.disabled = true;
+    btn.disabled = true; $('ai-use').disabled = true;
     btn.innerHTML = '<span class="spinner"></span> 만드는 중…';
     try {
       var data = await VUI.apiFetch('/api/mindmap-draft', {
@@ -477,17 +527,13 @@
       });
       var r = data && typeof data.markdown === 'string' ? MD.fromMd(data.markdown, topic) : null;
       if (!r || r.count < 3) throw new Error('AI가 초안을 만들지 못했어요. 주제를 조금 바꿔 다시 해 주세요.');
-      var rec = addRecord(newRecord(r.tree));
-      if (!rec) return;
-      closeModal('ai');
-      $('ai-topic').value = '';
-      open(rec.id);
-      toast('AI 초안으로 마인드맵을 만들었어요. 살펴보고 고쳐 주세요.', 'success');
+      aiTree = r.tree;
+      showPreview(aiTree);
     } catch (e) {
       if (e.code !== 'abort') toast(e.message || 'AI 초안을 만들지 못했어요.', 'error');
     } finally {
-      btn.disabled = false;
-      btn.textContent = '초안 만들기';
+      btn.disabled = false; $('ai-use').disabled = false;
+      setAiStep(!!aiTree);
     }
   }
 
@@ -627,7 +673,7 @@
     addChild: addChild, addSibling: addSibling, removeNode: removeNode, undo: undo,
     fit: fit, zoom: zoom, toggleDirection: toggleDirection, toggleTheme: toggleTheme,
     share: share, sendToMd: sendToMd, duplicate: duplicate, takeShared: takeShared, toggleMore: toggleMore,
-    openNew: openNew, createNew: createNew, openAi: openAi, runAi: runAi, openAsk: openAsk, ask: ask, insertAnswer: insertAnswer,
+    openNew: openNew, createNew: createNew, openAi: openAi, runAi: runAi, useAi: useAi, openAsk: openAsk, ask: ask, insertAnswer: insertAnswer,
     openImport: openImport, doImport: doImport, closeModal: closeModal,
   };
 
