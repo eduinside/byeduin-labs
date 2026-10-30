@@ -69,6 +69,7 @@ docs/                  ← 개발 문서
 | `blocks-universe` | Blocks Universe | BBC 블록스 4개 시리즈 372편 · AI 검색 · 재생목록 |
 | `flash-deck` | 플래시덱 | 플래시카드 덱 제작 및 학습 |
 | `chalkboard` | 칠판 | 텍스트·선으로 자유 판서 |
+| `mindmap` | 마인드맵 | 가지로 생각 정리(Mind Elixir) · AI 초안 · 공유 · MD 편집기와 주고받기 |
 | `math-sheet` | 연산연습지 | 사칙연산 세로셈 학습지 생성·PDF 출력·공유 |
 | `read-tree` | Read Tree | ORT 읽기 진도를 코드 하나로 기록(로그인 없음) |
 | `dictation` | 받아쓰기 도우미 | 받아쓰기 급수표 생성·인쇄, 발음 표기 불러주기, 오류 분석 |
@@ -137,7 +138,7 @@ docs/                  ← 개발 문서
 | `column` | 중앙 단일 컬럼 | qr, timer, math-sheet 등 다수 |
 | `split` | 2-페인 (입력 \| 미리보기) | md-editor, notion-styler |
 | `sidebar` | 내비 사이드바 + 메인 | search |
-| `gallery` | 반응형 카드 그리드 | blocks-universe, chalkboard, bubble-chat |
+| `gallery` | 반응형 카드 그리드 | blocks-universe, chalkboard, mindmap, bubble-chat |
 | `immersive` | 풀뷰포트 (크롬만 주입) | edu-sim 19종 전체(moon-phase, volcano, step-squad, break-make, clubs, fraction-bar, shape-move, chance-lab, clock, graph-maker, moon-phase-v2, solar-system, sun-shadow, pitch-lab, circuit-lab, eco-web, food-bike, world-landmarks, idea-lab) |
 
 **폭 플래그** (`data-width`): `narrow`(480px) · `medium`(720px) · `wide`(1120px)  
@@ -169,6 +170,7 @@ docs/                  ← 개발 문서
 | `POST /api/bu-recommend` | 에피소드 AI 추천 검색 |
 | `POST /api/signage-prompt` | 사이니지 이미지 AI 생성 |
 | `POST /api/flash-recommend` | 플래시덱 카드 AI 추천 |
+| `POST /api/mindmap-draft` | 마인드맵 AI 초안(마크다운 개요) |
 | `GET /api/yt-playlist` | 유튜브 재생목록 파싱 |
 | `GET /api/yt-video-info` | 유튜브 영상 정보 |
 | `POST /api/shorten` | 단축 URL 생성 (short.io) |
@@ -176,7 +178,7 @@ docs/                  ← 개발 문서
 | `GET /api/manual` | 에듀서치 매뉴얼 목록 · `?doc=` 본문 조각 · `?file=` 원본(R2 `manual/`) |
 | `GET /api/notices` | 공지사항 |
 | `GET·PUT·DELETE /api/readtree` | Read Tree 읽음 기록 동기화 (D1, set 모드) |
-| `GET·PUT·DELETE /api/flash-deck`·`/api/blocks-universe`·`/api/timer`·`/api/search-sync`·`/api/chalkboard`·`/api/signage` | 앱 상태 코드 동기화 (D1, doc 모드) |
+| `GET·PUT·DELETE /api/flash-deck`·`/api/blocks-universe`·`/api/timer`·`/api/search-sync`·`/api/chalkboard`·`/api/mindmap`·`/api/signage` | 앱 상태 코드 동기화 (D1, doc 모드) |
 | `GET·PUT·DELETE /api/math-sheet`·`/api/md-editor` | 코드별 다중 문서 라이브러리 (D1, set 모드) |
 | `GET·POST /api/madang` | 마당 — 실시간 응답 보드 (D1, `board_id` 파티션·HMAC 소유권·OpenAI 검열, rev 조건부 폴링) |
 | `POST /api/madang-upload` | 마당 사진·그림 카드 업로드 (R2 `byeduin-media`, 400KB/보드당 60MB 상한) |
@@ -200,7 +202,7 @@ docs/                  ← 개발 문서
 - **서버**: [`functions/api/_sync.js`](../functions/api/_sync.js) — `createDocSync`(코드당 문서 1개)·`createSetSync`(코드당 다수 항목). LWW 머지·멱등 upsert·정규식 검증·용량 상한 내장.
 - **클라이언트**: [`public/common/sync.js`](../public/common/sync.js) → 전역 `VivesSync`. 통합 코드 `vives:code` 공유. 헬퍼: `mountDocSync`(상태 자동 동기화 + 헤더 버튼)·`mountCodeButton`(코드 버튼만)·`docStore`(다중 문서)·`createSet`(항목).
 - **원칙**: 로컬(localStorage/IndexedDB) 우선, 서버는 백업·다기기 채널. 오프라인·장애 시 조용히 무시(앱은 항상 동작).
-- **적용 앱(9)**: read-tree·flash-deck·blocks-universe·timer·search·chalkboard·signage-maker·math-sheet·md-editor.
+- **적용 앱(10)**: read-tree·flash-deck·blocks-universe·timer·search·chalkboard·mindmap·signage-maker·math-sheet·md-editor.
 - 상세: [`docs/d1-sync-pattern.md`](d1-sync-pattern.md)
 
 ---

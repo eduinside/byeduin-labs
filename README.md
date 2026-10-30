@@ -41,6 +41,7 @@
 | **Blocks Universe** | `/apps/blocks-universe/` | 블록스 4개 시리즈 372편 에피소드 탐색 · AI 검색 · 순차재생 |
 | **Flash Deck** | `/apps/flash-deck/` | 플래시카드 덱 제작 및 학습 |
 | **Chalkboard** | `/apps/chalkboard/` | 칠판 위에 텍스트와 선으로 생각을 자유롭게 펼쳐보세요 (코드 동기화) |
+| **Mind Map** | `/apps/mindmap/` | 주제를 가지로 펼쳐 생각 정리 (AI 초안·링크 공유·MD 주고받기, 코드 동기화) |
 | **Read Tree** | `/apps/read-tree/` | ORT(옥스포드 리딩 트리) 읽기 진도를 코드 하나로 기록·관리 (로그인·개인정보 없음) |
 | **연산연습지** | `/apps/math-sheet/` | 사칙연산 세로셈 학습지 생성·PDF 출력·링크/QR 공유 (코드 동기화) |
 | **받아쓰기 도우미** | `/apps/dictation/` | 받아쓰기 급수표 생성·인쇄, 발음 표기 불러주기, 음운규칙별 오류 분석 |
@@ -159,7 +160,7 @@ public/common/
 - **저장소**: byeduin 전용 Cloudflare **D1** 1개(`BYEDUIN_DB`, [`wrangler.toml`](wrangler.toml)) — 앱별 테이블 접두사로 공유. 스키마는 [`migrations/`](migrations/).
 - **서버**: [`functions/api/_sync.js`](functions/api/_sync.js) — `createDocSync`(문서 1개)·`createSetSync`(다수 항목). LWW 머지·멱등 upsert·검증·용량 상한 내장. 각 앱 엔드포인트는 한 줄 래퍼.
 - **클라이언트**: [`public/common/sync.js`](public/common/sync.js) → 전역 `VivesSync`. 헬퍼: `mountDocSync`(상태 자동 동기화)·`mountCodeButton`(코드 버튼)·`docStore`(다중 문서)·`createSet`(항목). 로컬 우선, 오프라인·장애 시 무시.
-- **적용 앱(9)**: read-tree · flash-deck · blocks-universe · timer · search · chalkboard · signage-maker(메타데이터만) · math-sheet · md-editor.
+- **적용 앱(10)**: read-tree · flash-deck · blocks-universe · timer · search · chalkboard · mindmap · signage-maker(메타데이터만) · math-sheet · md-editor.
 - **상세 설계·적용 가이드**: [`docs/d1-sync-pattern.md`](docs/d1-sync-pattern.md)
 
 ---

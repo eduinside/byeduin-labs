@@ -1,0 +1,139 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
+---
+<AppLayout
+  sync
+  bodyShell="gallery"
+  bodyWidth="medium"
+>
+  <Fragment slot="head">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mind-elixir@5.15.1/dist/MindElixir.css">
+    <script src="https://cdn.jsdelivr.net/npm/mind-elixir@5.15.1/dist/MindElixir.iife.js" defer is:inline=""></script>
+    <link rel="stylesheet" href="./styles.css?v=20261031">
+  </Fragment>
+
+  <!-- 홈(목록) -->
+  <div id="view-home" class="mm-view active">
+    <div class="mm-home-wrap">
+      <div class="app-header">
+        <div class="app-badge">학습지원</div>
+        <h1 class="app-title">마인드맵 <span class="app-title-en">Mind Map</span></h1>
+        <p class="app-desc">주제를 가지로 펼쳐 생각 정리하기</p>
+      </div>
+      <div class="home-top">
+        <div class="mm-section-title">내 마인드맵</div>
+        <div class="home-actions">
+          <button class="mm-btn mm-btn-ghost" onclick="MM.openImport()"><Icon name="file-text" /> 마크다운 가져오기</button>
+          <button class="mm-btn mm-btn-ghost" onclick="MM.openAi()"><Icon name="sparkles" /> AI로 초안 만들기</button>
+          <button class="mm-btn mm-btn-primary" onclick="MM.openNew()"><Icon name="plus" /> 새 마인드맵</button>
+        </div>
+      </div>
+      <div id="map-list" class="map-list"></div>
+      <p class="home-tip">마인드맵을 열면 화면 가득 보여요. 끌어서 움직이고 오른쪽 아래 +/−로 크기를 바꿔요.</p>
+    </div>
+  </div>
+
+  <!-- 맵 화면(편집·보기) -->
+  <div id="view-map" class="mm-view" aria-label="마인드맵">
+    <div id="mm-tb" role="toolbar" aria-label="마인드맵 도구">
+      <button id="btn-back" class="tb-btn" onclick="MM.goHome()" aria-label="마인드맵 목록으로"><Icon name="x" /></button>
+      <span id="tb-title" class="tb-title"></span>
+      <span id="tb-status" class="tb-status" aria-live="polite"></span>
+      <div class="tb-sep"></div>
+      <div class="tb-edit">
+        <button class="tb-btn" onclick="MM.addChild()" aria-label="작은 가지 추가 (Tab)" title="작은 가지 추가 (Tab)"><Icon name="plus" /><span class="tb-label">가지</span></button>
+        <button class="tb-btn" onclick="MM.addSibling()" aria-label="옆 가지 추가 (Enter)" title="옆 가지 추가 (Enter)"><Icon name="list-plus" /><span class="tb-label">옆 가지</span></button>
+        <button class="tb-btn" onclick="MM.removeNode()" aria-label="고른 가지 지우기 (Delete)" title="고른 가지 지우기 (Delete)"><Icon name="trash-2" /></button>
+        <button class="tb-btn" onclick="MM.undo()" aria-label="되돌리기 (Ctrl+Z)" title="되돌리기 (Ctrl+Z)"><Icon name="undo-2" /></button>
+        <button class="tb-btn tb-wide" onclick="MM.toggleDirection()" aria-label="가지 방향 바꾸기" title="가지 방향 바꾸기"><Icon name="arrow-left-right" /></button>
+      </div>
+      <button class="tb-btn" onclick="MM.fit()" aria-label="화면에 맞추기" title="화면에 맞추기"><Icon name="scan" /></button>
+      <button id="btn-type" class="tb-btn" onclick="MM.toggleTheme()" aria-label="지금 화이트보드 - 눌러서 칠판으로 바꾸기">
+        <span class="type-dot" aria-hidden="true"></span><span id="type-label" class="tb-label">화이트보드</span>
+      </button>
+      <button class="tb-btn" onclick="MM.toggleMore(event)" aria-label="공유·보내기" aria-haspopup="true" aria-expanded="false" id="btn-more"><Icon name="share-2" /><span class="tb-label">공유</span></button>
+      <button id="btn-take" class="tb-btn" onclick="MM.takeShared()" aria-label="내 목록에 담기" title="내 목록에 담기" hidden><Icon name="download" /><span class="tb-label">내 목록에 담기</span></button>
+    </div>
+    <div id="more-menu" class="mm-menu" role="menu">
+      <button role="menuitem" onclick="MM.share('view')"><Icon name="eye" /> 공유 - 보기 전용 링크</button>
+      <button role="menuitem" onclick="MM.share('clone')"><Icon name="copy" /> 공유 - 복제 허용 링크</button>
+      <button role="menuitem" onclick="MM.sendToMd()"><Icon name="file-text" /> MD 편집기로 보내기</button>
+      <button role="menuitem" onclick="MM.duplicate()"><Icon name="copy-plus" /> 복사본 만들기</button>
+      <button role="menuitem" onclick="window.print()"><Icon name="printer" /> 인쇄·PDF</button>
+    </div>
+    <div id="mm-stage"><div id="mm-map"></div></div>
+    <p id="mm-keys" class="mm-keys">끌어서 이동 · Tab 작은 가지 · Enter 옆 가지 · 두 번 눌러 고치기 · Delete 지우기 · Ctrl+Z 되돌리기</p>
+
+    <!-- 배율(지도 앱처럼 오른쪽 아래) -->
+    <div id="zoom-ctl" role="group" aria-label="배율">
+      <button onclick="MM.zoom(1)" aria-label="크게 보기" title="크게 보기"><Icon name="plus" /></button>
+      <button onclick="MM.zoom(-1)" aria-label="작게 보기" title="작게 보기"><Icon name="minus" /></button>
+    </div>
+  </div>
+
+  <!-- 새 마인드맵 -->
+  <div class="mm-modal-bg" id="modal-new">
+    <div class="mm-modal" role="dialog" aria-modal="true" aria-labelledby="new-title">
+      <h2 id="new-title" class="mm-modal-title">새 마인드맵</h2>
+      <label class="mm-label" for="new-topic">가운데 주제</label>
+      <input id="new-topic" class="mm-input" maxlength="100" placeholder="예: 광합성, 우리 동네, 독서 계획" autocomplete="off">
+      <div class="mm-modal-actions">
+        <button class="mm-btn mm-btn-ghost" onclick="MM.closeModal('new')">취소</button>
+        <button class="mm-btn mm-btn-primary" onclick="MM.createNew()">만들기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI 초안 -->
+  <div class="mm-modal-bg" id="modal-ai">
+    <div class="mm-modal mm-modal-wide" role="dialog" aria-modal="true" aria-labelledby="ai-title">
+      <h2 id="ai-title" class="mm-modal-title"><Icon name="sparkles" /> AI로 초안 만들기</h2>
+      <label class="mm-label" for="ai-topic">주제</label>
+      <input id="ai-topic" class="mm-input" maxlength="200" placeholder="예: 물의 순환, 조선의 건국, 환경 보호 실천" autocomplete="off">
+      <div class="mm-row">
+        <div>
+          <label class="mm-label" for="ai-level">대상</label>
+          <select id="ai-level" class="mm-input">
+            <option value="low">초등 저학년</option>
+            <option value="high" selected>초등 고학년</option>
+            <option value="middle">중학생</option>
+            <option value="adult">고등학생·일반</option>
+          </select>
+        </div>
+        <div>
+          <label class="mm-label" for="ai-depth">가지 단계</label>
+          <select id="ai-depth" class="mm-input">
+            <option value="2" selected>2단계 (간단히)</option>
+            <option value="3">3단계 (자세히)</option>
+          </select>
+        </div>
+      </div>
+      <div id="ai-preview" class="ai-preview" hidden></div>
+      <p class="mm-note">AI가 만든 내용은 틀릴 수 있어요. 수업에 쓰기 전에 꼭 살펴보고 고쳐 주세요.</p>
+      <div class="mm-modal-actions">
+        <button class="mm-btn mm-btn-ghost" onclick="MM.closeModal('ai')">취소</button>
+        <button id="ai-run" class="mm-btn mm-btn-ghost" onclick="MM.runAi()">초안 만들기</button>
+        <button id="ai-use" class="mm-btn mm-btn-primary" onclick="MM.useAi()" hidden>이대로 만들기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 마크다운 가져오기 -->
+  <div class="mm-modal-bg" id="modal-import">
+    <div class="mm-modal mm-modal-wide" role="dialog" aria-modal="true" aria-labelledby="import-title">
+      <h2 id="import-title" class="mm-modal-title"><Icon name="file-text" /> 마크다운 가져오기</h2>
+      <p class="mm-note">제목(#)과 목록(-)을 가지로 바꿔요. 문단·표·코드는 빼고 가져와요.</p>
+      <textarea id="import-text" class="mm-input mm-textarea" placeholder={"# 광합성\n- 재료\n  - 이산화탄소\n  - 물\n- 결과물\n  - 포도당\n  - 산소"}></textarea>
+      <div class="mm-modal-actions">
+        <label class="mm-btn mm-btn-ghost mm-file"><Icon name="upload" /> 파일 고르기<input type="file" id="import-file" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden></label>
+        <div class="tb-sep"></div>
+        <button class="mm-btn mm-btn-ghost" onclick="MM.closeModal('import')">취소</button>
+        <button class="mm-btn mm-btn-primary" onclick="MM.doImport()">가져오기</button>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline src="./md.js?v=20261031"></script>
+  <script is:inline src="./app.js?v=20261031"></script>
+</AppLayout>

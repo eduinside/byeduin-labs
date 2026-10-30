@@ -1,0 +1,225 @@
+/* =====================================================
+   마인드맵 (/apps/mindmap/) — 계획: docs/mindmap-plan.md
+   홈(카드 목록)은 칠판 홈과 같은 모양, 맵 화면은 화면 전체를 쓴다.
+   ===================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+
+.mm-view { display: none; }
+.mm-view.active { display: block; }
+
+/* ── 홈 ── */
+.mm-home-wrap { max-width: 860px; margin: 0 auto; padding: 68px 20px 80px; }
+.home-top { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.mm-section-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--fg-muted);
+  display: flex; align-items: center; gap: 8px; flex: 1; margin: 0; min-width: 120px;
+}
+.mm-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.home-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.home-tip { margin-top: 18px; font-size: 13px; color: var(--fg-muted); text-align: center; }
+
+.mm-btn {
+  height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid transparent;
+  cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  white-space: nowrap; transition: background 0.15s, border-color 0.15s;
+}
+.mm-btn:disabled { opacity: 0.55; cursor: default; }
+.mm-btn-primary { background: var(--primary); color: #fff; }
+.mm-btn-primary:hover:not(:disabled) { background: var(--primary-h); }
+.mm-btn-ghost { background: var(--card-bg); color: var(--fg); border-color: var(--border); }
+.mm-btn-ghost:hover:not(:disabled) { border-color: var(--primary); }
+.mm-btn-sm { height: 34px; padding: 0 12px; font-size: 12px; border-radius: 8px; }
+
+.map-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.map-card {
+  position: relative; background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden; display: flex; flex-direction: column;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+.map-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,111,238,0.1); }
+.map-thumb {
+  height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; padding: 10px 12px; overflow: hidden;
+  background: linear-gradient(135deg, rgba(124,106,247,0.10), rgba(0,111,238,0.06));
+}
+.map-thumb.dark { background: #1a3323; }
+.thumb-root {
+  font-size: 15px; font-weight: 800; padding: 4px 12px; border-radius: 999px;
+  background: var(--primary); color: #fff; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.thumb-kids { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; max-height: 44px; overflow: hidden; }
+.thumb-kid {
+  font-size: 11px; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--card-bg); color: var(--fg); max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.map-thumb.dark .thumb-kid { background: #122418; color: #c8ddd0; border-color: rgba(255,255,255,0.15); }
+.map-info { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.map-open {
+  all: unset; display: block; max-width: 100%; cursor: pointer;
+  font-size: 14px; font-weight: 700; color: var(--fg);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.map-open::after { content: ''; position: absolute; inset: 0; border-radius: 14px; }
+.map-open:focus-visible::after { outline: 2px solid var(--primary); outline-offset: -2px; }
+.map-meta { font-size: 11px; color: var(--fg-muted); margin-top: 2px; }
+.map-actions { display: flex; gap: 6px; align-items: center; position: relative; z-index: 1; margin-top: auto; }
+.map-actions .mm-btn { flex: 1; }
+.map-del {
+  width: 34px; height: 34px; border: none; background: none; cursor: pointer; color: var(--fg-muted);
+  border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.map-del:hover { color: var(--danger); background: rgba(255,0,0,0.06); }
+
+.empty-state { grid-column: 1/-1; text-align: center; padding: 56px 0; color: var(--fg-muted); font-size: 14px; line-height: 1.7; }
+.empty-state .ic { width: 44px; height: 44px; opacity: 0.45; margin-bottom: 10px; }
+
+/* ── 맵 화면 ── */
+#view-map { position: fixed; inset: 0; z-index: 500; display: none; flex-direction: column; background: var(--mm-bg, #f7f7fb); }
+#view-map.active { display: flex; }
+body.in-map { overflow: hidden; }
+/* 맵 화면에서는 사이트 위쪽 버튼(홈·동기화·공유)을 숨긴다(칠판과 같음) */
+body.in-map .top-overlay, body.in-map .top-overlay-left { display: none !important; }
+/* ── 상단 막대: 칠판 앱(#cb-tb)과 같은 모양·색 ──
+   밝은 색 = 칠판 앱 '화이트보드', 칠판 색 = '칠판'(사이트 화면 모드와 상관없이 맵 색을 따른다) */
+#view-map {
+  --tb-bg: #ebebea; --tb-border: rgba(0,0,0,0.07); --tb-fg: rgba(0,0,0,0.6); --tb-name: #444;
+  --tb-hover: rgba(0,0,0,0.07); --dd-bg: rgba(240,240,238,0.98); --dd-fg: #222;
+  --dd-shadow: 0 4px 20px rgba(0,0,0,0.12); --mm-bg: #f7f7f4;
+}
+body.mm-dark #view-map {
+  --tb-bg: #122418; --tb-border: rgba(255,255,255,0.07); --tb-fg: rgba(255,255,255,0.8); --tb-name: #c8ddd0;
+  --tb-hover: rgba(255,255,255,0.1); --dd-bg: rgba(12,26,18,0.96); --dd-fg: rgba(255,255,255,0.85);
+  --dd-shadow: 0 4px 20px rgba(0,0,0,0.45); --mm-bg: #1a3323;
+}
+
+#mm-tb {
+  height: 52px; display: flex; align-items: center; gap: 6px; padding: 0 14px;
+  background: var(--tb-bg); border-bottom: 1px solid var(--tb-border); flex-shrink: 0; z-index: 100;
+}
+.tb-btn {
+  height: 40px; min-width: 40px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--tb-border);
+  background: transparent; color: var(--tb-fg); cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
+  transition: background 0.15s;
+}
+.tb-btn:hover { background: var(--tb-hover); }
+.tb-btn .ic { width: 15px; height: 15px; flex-shrink: 0; }
+#btn-back { width: 40px; padding: 0; }
+#btn-back .ic { width: 18px; height: 18px; }
+.tb-edit { display: contents; }
+.tb-title { font-size: 14px; font-weight: 600; color: var(--tb-name); max-width: 32vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 4px; }
+.tb-status { font-size: 12px; font-weight: 600; color: var(--tb-fg); opacity: 0.55; white-space: nowrap; }
+.tb-sep { flex: 1; }
+.tb-btn[hidden] { display: none; }
+/* 칠판·화이트보드 전환 버튼의 지금 색 점(칠판 앱과 같음) */
+.type-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; border: 1px solid rgba(127,127,127,0.6); background: var(--mm-bg); }
+body.is-view-only .tb-edit, body.is-view-only #btn-more, body.is-view-only #mm-keys, body.is-view-only .tb-status { display: none; }
+
+.mm-menu {
+  position: fixed; display: none; flex-direction: column; gap: 3px; padding: 6px; min-width: 220px;
+  background: var(--dd-bg); color: var(--dd-fg); border: 1px solid var(--tb-border); border-radius: 10px;
+  box-shadow: var(--dd-shadow); z-index: 9500;
+}
+.mm-menu.open { display: flex; }
+.mm-menu button {
+  min-height: 44px; padding: 0 12px; border: none; border-radius: 7px; background: transparent; color: inherit;
+  cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; display: flex; align-items: center; gap: 8px; text-align: left;
+  transition: background 0.15s;
+}
+.mm-menu button:hover, .mm-menu button:focus-visible { background: var(--tb-hover); outline: none; }
+
+/* Mind Elixir가 #mm-map에 position:relative를 직접 넣으므로 flex로 높이를 채운다 */
+#mm-stage { flex: 1; position: relative; min-height: 0; display: flex; }
+#mm-map { flex: 1; min-width: 0; min-height: 0; }
+#mm-map .map-container { font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Malgun Gothic', sans-serif; }
+/* 빈 곳을 왼쪽 버튼으로 끌면 화면 이동 — 손 모양 커서. 가지 위에서는 누르는 손가락 */
+#mm-map .map-container { cursor: grab; }
+#mm-map.is-panning .map-container, #mm-map.is-panning .map-container * { cursor: grabbing; }
+#mm-map me-tpc { cursor: pointer; }
+#mm-map me-tpc.mm-drop-root { outline: 3px dashed var(--primary, #006fee); outline-offset: 4px; }
+.mm-keys {
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); margin: 0;
+  font-size: 12px; color: var(--tb-fg); background: var(--tb-bg); border: 1px solid var(--tb-border);
+  border-radius: 999px; padding: 6px 14px; white-space: nowrap; pointer-events: none; opacity: 0.92;
+}
+
+/* ── 배율 +/− (지도 앱처럼 오른쪽 아래) ── */
+#zoom-ctl {
+  position: absolute; right: 16px; bottom: 16px; z-index: 20; display: flex; flex-direction: column;
+  border-radius: 10px; overflow: hidden; background: var(--tb-bg); border: 1px solid var(--tb-border);
+  box-shadow: var(--dd-shadow);
+}
+#zoom-ctl button {
+  width: 44px; height: 44px; border: none; background: transparent; color: var(--tb-fg); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: background 0.15s;
+}
+#zoom-ctl button + button { border-top: 1px solid var(--tb-border); }
+#zoom-ctl button:hover { background: var(--tb-hover); }
+#zoom-ctl .ic { width: 20px; height: 20px; }
+
+/* ── 모달 ── */
+.mm-modal-bg {
+  position: fixed; inset: 0; z-index: 9000; display: none; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.45); padding: 16px;
+}
+.mm-modal-bg.open { display: flex; }
+.mm-modal {
+  width: 100%; max-width: 400px; max-height: 90vh; overflow: auto;
+  background: var(--card-bg); color: var(--fg); border-radius: 16px; padding: 22px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.mm-modal-wide { max-width: 560px; }
+.mm-modal-title { font-size: 17px; font-weight: 800; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
+.mm-label { display: block; font-size: 12px; font-weight: 700; color: var(--fg-muted); margin: 10px 0 6px; }
+.mm-input {
+  width: 100%; height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--bg, #fff); color: var(--fg); font-size: 15px; font-family: inherit;
+}
+.mm-input:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+.mm-textarea { height: 220px; padding: 10px 12px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 13px; line-height: 1.6; }
+.mm-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mm-note { font-size: 12px; color: var(--fg-muted); margin: 10px 0 0; line-height: 1.6; }
+.mm-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; align-items: center; flex-wrap: wrap; }
+.mm-file { cursor: pointer; }
+.ai-preview {
+  margin-top: 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+  max-height: 260px; overflow: auto; font-size: 13px; line-height: 1.7; background: rgba(127,127,127,0.05);
+}
+.ai-preview ul { margin: 0; padding-left: 18px; }
+.ai-preview > ul { padding-left: 0; list-style: none; }
+.ai-preview > ul > li > b { font-size: 15px; }
+.spinner {
+  width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent;
+  display: inline-block; animation: mm-spin 0.8s linear infinite;
+}
+@keyframes mm-spin { to { transform: rotate(360deg); } }
+
+/* ── 좁은 화면 ── */
+/* 중간 폭(칠판 앱과 같은 900px): 상단 막대 버튼은 글자를 빼고 아이콘만. 이름은 aria-label·title로 */
+@media (max-width: 900px) {
+  #mm-tb .tb-label, .tb-status { display: none; }
+  #mm-tb .tb-btn { padding: 0 8px; }
+  .mm-keys { display: none; }
+}
+@media (max-width: 720px) {
+  .tb-wide { display: none; }
+  #mm-tb { padding: 0 8px; gap: 4px; }
+  .tb-title { max-width: 28vw; }
+  .home-actions { width: 100%; }
+  .home-actions .mm-btn { flex: 1; padding: 0 10px; }
+  #zoom-ctl { right: 10px; bottom: 10px; }
+}
+/* 터치 기기: 누르는 영역 44px(칠판 앱과 같음) */
+@media (pointer: coarse) {
+  #mm-tb { height: 56px; }
+  #mm-tb .tb-btn { height: 44px; min-width: 44px; }
+  #btn-back { width: 44px; }
+}
+
+/* ── 인쇄: 맵만 ── */
+@media print {
+  #mm-tb, #mm-keys, #zoom-ctl, .mm-menu { display: none !important; }
+  #view-map { position: static; }
+  #mm-stage { height: 95vh; }
+}

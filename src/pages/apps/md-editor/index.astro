@@ -14,6 +14,8 @@ import Icon from '../../../components/Icon.astro';
     <!-- 화면 그리기를 막지 않도록 defer. 준비되면 DOMContentLoaded에서 미리보기를 다시 그린다 -->
     <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js" defer is:inline=""></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js" defer is:inline=""></script>
+    <!-- 마인드맵 판단·변환(마인드맵 앱과 같은 규칙) -->
+    <script src="/apps/mindmap/md.js?v=20261031" defer is:inline=""></script>
   <style is:global="">
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
 
@@ -656,6 +658,10 @@ import Icon from '../../../components/Icon.astro';
   <button class="share-opt" onclick="doShare('clone')">
     <Icon name="copy" />
     복제 허용
+  </button>
+  <button class="share-opt" id="share-to-mindmap" onclick="sendToMindmap()" hidden>
+    <Icon name="network" />
+    마인드맵으로 보내기
   </button>
 </div>
 
@@ -1739,6 +1745,8 @@ import Icon from '../../../components/Icon.astro';
     const rect = e.currentTarget.getBoundingClientRect();
     dd.style.top = (rect.bottom + 6) + 'px';
     dd.style.right = (window.innerWidth - rect.right) + 'px';
+    // 제목·목록으로 된 글(또는 마인드맵에서 온 글)일 때만 '마인드맵으로 보내기'를 보인다
+    document.getElementById('share-to-mindmap').hidden = !(window.MindmapMD && MindmapMD.isMindmap(mdContent));
     _shareMenuOpen = !_shareMenuOpen;
     dd.classList.toggle('open', _shareMenuOpen);
     if (_shareMenuOpen) {
@@ -1763,6 +1771,14 @@ import Icon from '../../../components/Icon.astro';
     await VUI.share.link(result.url, permission === 'view'
       ? { title: '보기 전용 링크', desc: '링크를 연 사람은 이 문서를 읽기만 할 수 있어요.' }
       : { title: '복제 허용 링크', desc: '링크를 연 사람은 이 문서를 자기 편집기로 가져갈 수 있어요.' });
+  }
+
+  // ── 마인드맵으로 보내기 (같은 사이트라 단축 없이 바로 이동, 마인드맵 앱이 새 맵으로 담는다) ──
+  function sendToMindmap() {
+    _closeShareMenu();
+    const name = (currentFilename || '').replace(/\.(md|markdown|txt)$/i, '');
+    const encoded = VUI.share.encode({ data: { md: mdContent, name }, permission: 'clone', from: 'md-editor' });
+    location.href = '/apps/mindmap/#share=' + encoded;
   }
 
   // ── 보기 전용 진입 ──
