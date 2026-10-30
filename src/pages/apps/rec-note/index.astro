@@ -1,0 +1,166 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
+
+// Rec Note 설치 파일·팩은 R2 byeduin-media apps/rec-note/ (docs/desktop-distribution.md, 공용 모듈 LOCAL/local-desktop-kit).
+// 고정 주소 /setup 이 latest.json 의 최신 설치 파일로 보낸다 - 판이 바뀌어도 이 페이지는 그대로.
+// 원본 앱: LOCAL/local-rec-note-v2 (Rec Note v2).
+const DL = '/downloads/apps/rec-note';
+---
+<AppLayout
+  title="Rec Note - 회의·연수 녹음 전사·요약 노트 - eduin VIVES"
+  description="회의·연수·화상회의 소리를 녹음하고 Gemini로 받아 적어 요약·번역·결과 보고서까지 만드는 교사용 Windows 프로그램. 녹음 파일·유튜브 영상도 전사, 녹음만 저장해 두고 나중에 전사."
+  bodyShell="column"
+  bodyWidth="medium"
+>
+  <Fragment slot="head">
+    <style is:global>
+      .rn-hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 24px; align-items: center; padding: 22px; }
+      .rn-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; padding: 0; list-style: none; }
+      .rn-chips li { font-size: 0.75rem; color: var(--fg-muted); border: 1px solid var(--border); background: var(--bg); border-radius: 99px; padding: 2px 10px; }
+      .rn-dl { display: flex; flex-direction: column; gap: 8px; max-width: 360px; }
+      .rn-dl .hero-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; font-size: 1rem; text-decoration: none; }
+      .rn-dl-sub { font-size: 0.8rem; color: var(--fg-muted); }
+      .rn-side { font-size: 0.86rem; line-height: 1.7; color: var(--fg-muted); }
+      .rn-side b { color: var(--fg); }
+      .rn-section { margin-top: 28px; }
+      .rn-section > h2 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+      .rn-section > h2 .ic { color: var(--primary); }
+      .rn-features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .rn-feat { padding: 14px 16px; }
+      .rn-feat b { display: flex; align-items: center; gap: 7px; font-size: 0.92rem; margin-bottom: 4px; }
+      .rn-feat b .ic { color: var(--primary); }
+      .rn-feat p { margin: 0; font-size: 0.83rem; color: var(--fg-muted); line-height: 1.6; }
+      .rn-steps { padding: 16px 20px; }
+      .rn-steps ol { margin: 0; padding-left: 1.2rem; }
+      .rn-steps li { margin: 7px 0; font-size: 0.9rem; line-height: 1.6; }
+      .rn-steps p { margin: 0 0 8px; font-size: 0.9rem; line-height: 1.65; }
+      .rn-steps a { color: var(--primary); }
+      .rn-note { display: flex; gap: 8px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 0.84rem; line-height: 1.6;
+        background: color-mix(in srgb, var(--warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent); }
+      .rn-note .ic { flex: none; margin-top: 3px; color: var(--warning); }
+      .rn-safe { padding: 16px 20px; font-size: 0.88rem; line-height: 1.65; }
+      .rn-safe table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.84rem; }
+      .rn-safe th, .rn-safe td { border-top: 1px solid var(--border); padding: 7px 8px; text-align: left; vertical-align: top; }
+      .rn-safe th { color: var(--fg-muted); font-weight: 600; }
+      .rn-faq details { border: 1px solid var(--border); border-radius: 12px; background: var(--card-bg); padding: 0 16px; margin-bottom: 8px; }
+      .rn-faq summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; padding: 12px 0; min-height: 44px; display: flex; align-items: center; }
+      .rn-faq details p { margin: 0 0 12px; font-size: 0.86rem; color: var(--fg-muted); line-height: 1.65; }
+      .rn-faq a { color: var(--primary); }
+      .rn-foot { margin-top: 28px; font-size: 0.78rem; color: var(--fg-muted); line-height: 1.6; }
+      @media (max-width: 760px) {
+        .rn-hero { grid-template-columns: 1fr; padding: 16px; }
+        .rn-features { grid-template-columns: 1fr; }
+        .rn-safe table { font-size: 0.8rem; }
+      }
+    </style>
+  </Fragment>
+
+<main class="app-main wrap">
+  <div class="app-header">
+    <div class="app-badge">업무경감</div>
+    <h1 class="app-title">Rec Note - 녹음·전사 노트</h1>
+    <p class="app-desc">회의·연수·화상회의 소리를 녹음하고, Gemini로 받아 적어 요약·번역하고 결과 보고서까지 만드는 Windows 프로그램입니다. 녹음 파일과 유튜브 영상도 전사할 수 있어요. 노트와 녹음은 내 PC 에 저장됩니다.</p>
+  </div>
+
+  <div class="hero-card rn-hero">
+    <div>
+      <ul class="rn-chips" aria-label="사용 환경">
+        <li>Windows 10·11 (64비트)</li><li>무료 프로그램</li><li>Gemini API 키 필요</li><li>관리자 권한 없이 설치</li><li>자동 업데이트</li>
+      </ul>
+      <div class="rn-dl">
+        <a class="hero-btn" href={`${DL}/setup`} id="rnSetup"><Icon name="download" /> 설치 파일 내려받기</a>
+        <div class="rn-dl-sub"><span id="rnVersion">최신 판</span></div>
+      </div>
+    </div>
+    <div class="rn-side">
+      설치 파일은 작고(약 0.1 MB), 실행하면 필요한 부분을 받아 설치해요(처음 한 번 약 100 MB - .NET 포함).
+      그 뒤 업데이트는 <b>바뀐 부분만</b>(보통 1 MB 안팎) 저절로 받아 다음에 켤 때 바뀝니다.
+    </div>
+  </div>
+
+  <section class="rn-section" aria-labelledby="rnWhat">
+    <h2 id="rnWhat"><Icon name="sparkles" /> 이런 일을 합니다</h2>
+    <div class="rn-features">
+      <div class="hero-card rn-feat"><b><Icon name="mic" /> 녹음</b><p>마이크, 컴퓨터 소리, 또는 둘 다(화상회의). 화상회의는 내 목소리와 상대 소리를 따로 녹음해 누가 말했는지 나눕니다.</p></div>
+      <div class="hero-card rn-feat"><b><Icon name="save" /> 녹음만 저장</b><p>지금은 녹음 파일만 저장해 두고, 전사는 나중에 노트 화면에서 시작할 수 있어요.</p></div>
+      <div class="hero-card rn-feat"><b><Icon name="file-text" /> 전사</b><p>문장마다 시간이 붙어, 문장을 누르면 그 부분부터 다시 들을 수 있어요. 용어 사전으로 교과 용어·이름을 바르게 고칩니다.</p></div>
+      <div class="hero-card rn-feat"><b><Icon name="list-checks" /> 요약 · 질문하기 · 번역</b><p>자동 요약과 제목, 전사문에 물어보면 근거 시각과 함께 알려 주기, 두 언어 자막 만들기.</p></div>
+      <div class="hero-card rn-feat"><b><Icon name="file-pen-line" /> 문서 만들기</b><p>연수 결과 보고서·회의록 같은 문서 초안을 만들어 Word·PDF·HTML 로 저장합니다.</p></div>
+      <div class="hero-card rn-feat"><b><Icon name="tv" /> 파일 · 유튜브 · 실시간 자막</b><p>MP3·M4A·WAV·MP4 와 유튜브 주소도 전사·요약. 녹음하면서 실시간 자막과 번역도 볼 수 있어요.</p></div>
+    </div>
+  </section>
+
+  <section class="rn-section" aria-labelledby="rnInstall">
+    <h2 id="rnInstall"><Icon name="list-ordered" /> 설치 방법</h2>
+    <div class="hero-card rn-steps">
+      <ol>
+        <li><b>설치 파일 내려받기</b>를 눌러 받은 <b>RecNote-판-Setup.exe</b> 를 실행합니다. 관리자 권한은 필요 없어요.</li>
+        <li>필요한 부분을 받아 설치하고 Rec Note 가 켜집니다. 시작 메뉴와 바탕 화면에 <b>Rec Note</b> 가 생겨요.</li>
+        <li>처음에는 <b>설정 → Gemini API 키</b> 에 키를 넣으세요(아래 안내).</li>
+        <li>첫 화면에서 마이크·컴퓨터 소리를 켜고 녹음 단추를 누르면 시작합니다. 소리가 안 잡히면 왼쪽 <b>점검</b> 화면에서 장치를 확인하세요.</li>
+      </ol>
+      <div class="rn-note" role="note"><Icon name="triangle-alert" /><span>"Windows의 PC 보호" 창이 뜨면 <b>추가 정보 → 실행</b>을 누르세요. 개인이 만든 무료 프로그램이라 아직 이용 기록이 적어 처음에 표시됩니다. <b>V3 등 백신</b>이 '평판 정보가 없는 파일'로 막으면 백신의 검역소(치료함)에서 파일을 복원하고 예외로 등록한 뒤 다시 실행해 주세요. 학교·기관 PC 는 정보보안 담당 선생님께 설치 가능 여부를 먼저 확인해 주세요. 화면 엔진(Microsoft Edge WebView2)이 없는 일부 Windows 10 PC 는 설치 파일이 받는 곳을 안내합니다.</span></div>
+    </div>
+  </section>
+
+  <section class="rn-section" aria-labelledby="rnKey">
+    <h2 id="rnKey"><Icon name="key-round" /> Gemini API 키 넣기</h2>
+    <div class="hero-card rn-steps">
+      <p>전사·요약·번역은 Google Gemini 로 합니다. 키는 각자 발급해 넣고, 요금도 각자의 Google 계정으로 나갑니다.</p>
+      <ol>
+        <li><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> 에 Google 계정으로 들어가 <b>API 키 만들기</b>를 누릅니다.</li>
+        <li>결제(청구 계정)를 연결한 키를 쓰세요. 결제를 연결하지 않은 무료 키는 보낸 내용이 Google 의 모델 개선에 쓰일 수 있어 회의·연수 녹음에는 맞지 않습니다.</li>
+        <li>Rec Note <b>설정 → Gemini API 키</b> 입력란에 붙여 넣고 <b>키 저장</b>을 누릅니다. <b>점검</b> 화면의 'AI 연결'에서 키가 잘 되는지 확인할 수 있어요.</li>
+      </ol>
+      <div class="rn-note" role="note"><Icon name="lock" /><span>키는 이 PC 의 <b>문서 › RecNote › secrets.bin</b> 에 Windows 계정으로 암호화해 저장합니다. 다른 계정이나 다른 PC 에서는 풀 수 없어서, PC 를 바꾸면 키를 다시 넣어야 해요. 설정 화면의 <b>키 삭제</b>로 언제든 지울 수 있습니다. 키를 다른 사람과 나눠 쓰지 마세요.</span></div>
+      <p style="margin-top:12px">비용은 대략 1시간 녹음 전사에 약 640원입니다(요약은 몇 원). 설정 화면에서 기능별 예상 비용을, 노트마다 쓴 비용을 원화로 볼 수 있어요.</p>
+    </div>
+  </section>
+
+  <section class="rn-section" aria-labelledby="rnSafe">
+    <h2 id="rnSafe"><Icon name="shield-check" /> 내 자료는 어디로 가나요?</h2>
+    <div class="hero-card rn-safe">
+      Rec Note 에는 개인정보를 모으는 서버가 없어요. 노트·녹음·설정은 이 PC 의 <b>문서 › RecNote</b> 에 있습니다.
+      <table>
+        <thead><tr><th>어디로</th><th>무엇을</th><th>언제</th></tr></thead>
+        <tbody>
+          <tr><td>Google Gemini</td><td>녹음 소리, 전사문·질문</td><td>전사·요약·번역·질문하기·실시간 자막을 쓸 때 ('이 PC에서 전사'를 고르면 소리는 PC 밖으로 나가지 않음)</td></tr>
+          <tr><td>YouTube</td><td>넣은 영상 주소</td><td>유튜브 요약을 쓸 때</td></tr>
+          <tr><td>eduin.info</td><td>새 판 확인 요청 (사용 통계는 보내지 않음)</td><td>하루 한 번 (설정 › 업데이트에서 끌 수 있음)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="rn-section rn-faq" aria-labelledby="rnFaq">
+    <h2 id="rnFaq"><Icon name="circle-help" /> 자주 묻는 것</h2>
+    <details><summary>녹음은 해 두고 전사는 나중에 하고 싶어요</summary><p>녹음 화면의 <b>녹음만 저장</b>을 누르면 소리 파일을 저장하고 전사는 하지 않습니다. 나중에 그 노트를 열어 <b>Gemini로 전사</b>를 누르면 됩니다. 알림 영역 아이콘 메뉴에도 '녹음만 저장'이 있어요.</p></details>
+    <details><summary>인터넷 없이 전사할 수 있나요?</summary><p>설정 › 전사에서 '이 PC에서(오프라인)'를 고르고 Whisper 모델 파일(ggml-*.bin, 따로 받음)을 지정하면 됩니다. 소리가 PC 밖으로 나가지 않는 대신 느립니다(25분 강의 약 4분, 그래픽 카드 기준). 요약·번역은 Gemini 가 필요해요.</p></details>
+    <details><summary>업데이트는 어떻게 되나요?</summary><p>하루 한 번 새 판을 확인해 바뀐 부분만 받아 두고, 다음에 켤 때 바뀝니다. 설정 › 업데이트에서 끄거나 '지금 확인'할 수 있어요.</p></details>
+    <details><summary>지우고 싶어요</summary><p>Windows 설정 → 앱에서 <b>Rec Note</b> 를 제거합니다. 노트·녹음·설정·키(문서 › RecNote)는 남겨 두니 필요 없으면 직접 지워 주세요.</p></details>
+  </section>
+
+  <p class="rn-foot">전사·요약은 AI 가 만든 것이라 틀릴 수 있어요. 공식 문서에 쓰기 전에 녹음과 대조해 확인해 주세요. 다른 사람의 말을 녹음할 때는 미리 알리고 동의를 받아 주세요.</p>
+</main>
+
+<script is:inline>
+  // 최신 판·날짜 (latest.json). 실패해도 버튼은 고정 주소라 그대로 동작한다.
+  // 아직 올리기 전(latest.json 없음)이면 단추를 '준비 중'으로 - 받지 못하는 단추를 누르지 않게
+  function notYet() {
+    var b = document.getElementById('rnSetup');
+    if (b) { b.removeAttribute('href'); b.setAttribute('aria-disabled', 'true'); b.style.opacity = '0.55'; b.style.pointerEvents = 'none'; b.lastChild.textContent = ' 설치 파일 준비 중'; }
+    var el = document.getElementById('rnVersion');
+    if (el) el.textContent = '준비가 끝나면 내려받을 수 있어요';
+  }
+  fetch('/downloads/apps/rec-note/latest.json', { cache: 'no-cache' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (m) {
+      if (!m || !m.version) { notYet(); return; }
+      var el = document.getElementById('rnVersion');
+      if (el) el.textContent = '최신 ' + m.version + (m.date ? ' · ' + m.date : '');
+    })
+    .catch(notYet);
+</script>
+
+</AppLayout>

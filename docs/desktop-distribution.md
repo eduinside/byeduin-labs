@@ -84,11 +84,11 @@ apps/{id}/
 | `edu-dic` | 어린이 쉬운 사전 | **kit 0.6.0(다리 판) 배포됨 (2026-10-12)** — R2 `apps/edu-dic/`, dic.dgedu.link 단추는 `…/edu-dic/setup`. 옛 `edu-dic-downloads` 는 다리 판 객체만 남겨 0.6.2 뒤 비움. 안내·단추는 dic.dgedu.link (`dgedu-dic/docs/plan-desktop-kit.md`) |
 | `notion-sync` | 노션 폴더 동기화 | **kit 0.1.0 배포됨 (2026-10-19)** — R2 `apps/notion-sync/`, 안내 `/apps/notion-sync/`(유틸리티 › 노션도구). 아래 ‘노션 폴더 동기화’ |
 | `edu-team` | 에듀팀 데스크탑 | kit 0.8.0 배포(2026-10-12). 안내·단추는 team.dgedu.link 마이페이지. 옛 `edu-team-downloads` 는 다리 판 기간 유지 |
-| (`rec-note`) | Rec Note v2 | byeduin 계열 — 준비만, 아직 배포 안 함 |
+| `rec-note` | Rec Note | **kit 0.6.0 배포됨 (2026-10-31)** — R2 `apps/rec-note/`, 안내 `/apps/rec-note/`(교육 › 업무경감). 아래 ‘Rec Note’ |
 | (`music-to-score`) | 악보 만들기 | byeduin 계열 — 준비만, 아직 배포 안 함 |
 | (`keyvault`) | 키 관리 | byeduin 계열 — 준비만, 아직 배포 안 함 |
 
-안내 페이지는 계열별로 나뉜다 — byeduin(eduin.info/apps/…): G노트·에듀나비·노션 폴더 동기화(+ 준비 중 3개), dgedu: 사전(dic.dgedu.link)·에듀팀(team.dgedu.link). 수업꾸러미(dgedu-kit)는 앱이 아니라 해당 없음.
+안내 페이지는 계열별로 나뉜다 — byeduin(eduin.info/apps/…): G노트·에듀나비·노션 폴더 동기화·Rec Note(+ 준비 중 2개), dgedu: 사전(dic.dgedu.link)·에듀팀(team.dgedu.link). 수업꾸러미(dgedu-kit)는 앱이 아니라 해당 없음.
 
 예외: 에듀포털(교내 설치형·인증 배포) — 이 저장소를 쓰지 않는다.
 
@@ -125,6 +125,23 @@ apps/notion-sync/
 - 사용 통계: 0.1.0 은 보내지 않음(`X-Kit-Install` 없음)
 - [x] 함수 허용 목록 `notion-sync`, apps.json, 안내 페이지 — main 병합·Pages 배포 (2026-10-19)
 - [x] R2 첫 업로드 0.1.0 (2026-10-19) — `/setup` 으로 받아(해시 일치) 실제 설치·실행까지 확인
+
+## Rec Note (`rec-note`) — 공용 모듈 DesktopKit (2026-10-31)
+
+회의·연수 녹음 → Gemini 전사·요약·문서 Windows 앱(`LOCAL/local-rec-note-v2`, 계획 `docs/plan.md` §3.14). 안내 페이지는 **교육 › 업무경감(`edu-work`)**, G노트 옆.
+
+```
+apps/rec-note/
+├── latest.json                  kit 1 매니페스트
+├── RecNote-<판>-Setup.exe        설치 파일(net48, 약 0.07MB) — 고정 주소 /downloads/apps/rec-note/setup
+└── pack-<sha256>.zip             팩(app 0.5 · lib 5.3 · whisper 17.9 · winsdk 6.0 · runtime 70.2 MB). 처음 설치 약 100MB, 업데이트는 보통 app 팩만
+```
+
+- 올리기: `LOCAL/local-rec-note-v2/tools/release.ps1 -Upload` (이 폴더의 wrangler 로 팩 → 설치 파일 → latest.json)
+- 사용자가 자기 Gemini 키를 넣는다 — 페이지에 발급·저장 위치(문서 › RecNote › secrets.bin, DPAPI) 안내
+- 사용 통계: 보내지 않음(`X-Kit-Install` 없음)
+- [x] 함수 허용 목록 `rec-note`, apps.json, 안내 페이지 (2026-10-31)
+- [x] R2 첫 업로드 0.6.0 (2026-10-31)
 
 ## 에듀팀 데스크탑 (`edu-team`) — 공용 모듈 DesktopKit (2026-10-11)
 
