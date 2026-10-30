@@ -152,7 +152,13 @@
     });
     var err = mind.init({ nodeData: data.nodeData, direction: data.direction, arrows: data.arrows || [], summaries: data.summaries || [] });
     if (err) { toast('마인드맵을 열지 못했어요.', 'error'); return false; }
-    if (editable) mind.bus.addListener('operation', scheduleSave);
+    if (editable) {
+      mind.bus.addListener('operation', scheduleSave);
+      mind.bus.addListener('operation', updateTools);
+      mind.bus.addListener('selectNodes', updateTools);
+      mind.bus.addListener('unselectNodes', updateTools);
+    }
+    updateTools();
     applyTheme();
     $('tb-title').textContent = data.nodeData.topic || '';
     setTimeout(fit, 30);
@@ -246,6 +252,11 @@
 
   /* ── 편집 도구 ── */
   function rootEl() { return mind && mind.findEle(mind.nodeData.id); }
+  // 가운데 주제를 골랐거나 아무것도 안 골랐으면 '옆 가지'는 쓸 수 없다
+  function updateTools() {
+    var n = mind && mind.currentNode;
+    $('btn-sibling').disabled = !n || !!(n.nodeObj && n.nodeObj.root) || !(n.nodeObj && n.nodeObj.parent);
+  }
   function addChild() {
     if (!mind || viewOnly) return;
     if (!mind.currentNode) mind.selectNode(rootEl());
