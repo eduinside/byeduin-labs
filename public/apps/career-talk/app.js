@@ -728,7 +728,8 @@
     var job = JOBS[r.jobId];
     var place = job.facts.place.split(',')[0].trim();
     return {
-      story: '10년 뒤 나는 ' + place + '에서 하루를 시작해요. ' + job.line + '. 힘든 날도 있지만 ' + job.facts.joy.split(',')[0].trim() + ' 가장 뿌듯해요. 오늘도 내가 좋아하는 일을 해서 행복해요.',
+      // 서버(career-talk.js)의 대체 글과 같은 '~합니다'체
+      story: '10년 뒤 나는 ' + SimKit.josa(job.name, '으로/로') + ' 일합니다. ' + place + '에서 하루를 시작합니다. 힘든 날도 있지만 ' + job.facts.joy.split(',')[0].trim() + ' 가장 뿌듯합니다. 오늘도 내가 좋아하는 일을 해서 행복합니다.',
       scene: '',
     };
   }

@@ -89,6 +89,8 @@ function hasBatchim(word) {
   return c >= 0 && c <= 11171 && c % 28 !== 0;
 }
 const gwaWa = (w) => w + (hasBatchim(w) ? '과' : '와');
+// 받침이 없거나 ㄹ이면 '로'
+const euroRo = (w) => { const c = String(w).trim().slice(-1).charCodeAt(0) - 0xac00; return w + (hasBatchim(w) && c % 28 !== 8 ? '으로' : '로'); };
 
 function cleanTurns(arr, max) {
   if (!Array.isArray(arr)) return [];
@@ -405,8 +407,9 @@ export async function onRequest(ctx) {
 
       if (!turns.some((t) => t.who === 'me')) return json({ error: '먼저 직업인과 이야기를 나눠 보세요.' }, 400);
       const fallbackStory = () => ({
-        story: `10년 뒤 나는 ${job.facts.place.split(',')[0].trim()}에서 하루를 시작해요. ${job.line}. 힘든 날도 있지만 ${job.facts.joy} 가장 뿌듯해요. 오늘도 내가 좋아하는 일을 해서 행복해요.`,
-        scene: `한 어린이가 ${job.facts.place.split(',')[0].trim()}에서 ${job.facts.tools[0]}${hasBatchim(job.facts.tools[0]) ? '을' : '를'} 들고 웃는 모습`,
+        story: `10년 뒤 나는 ${euroRo(who)} 일합니다. ${job.facts.place.split(',')[0].trim()}에서 하루를 시작합니다. 힘든 날도 있지만 ${job.facts.joy.split(',')[0].trim()} 가장 뿌듯합니다. 오늘도 내가 좋아하는 일을 해서 행복합니다.`,
+        // 도구를 손에 쥐게 하지 않는다(요리사 '칼'처럼 그림에 날붙이가 들어갈 수 있음)
+        scene: `한 어린이가 ${job.facts.place.split(',')[0].trim()}에서 웃으며 일하는 모습`,
       });
       const verdict = await checkStudent(env, '', [...turns, ...rturns]);
       if (verdict) return json(fallbackStory());
@@ -414,7 +417,7 @@ export async function onRequest(ctx) {
       const systemPrompt = [
         `학생이 가상의 ${who}와 나눈 대화를 바탕으로 '10년 뒤 나의 하루' 글을 쓴다.`,
         '학생이 주인공이고 1인칭("나는")으로 쓴다. 이름·학교·성별·외모는 쓰지 않는다. 4문장 안팎, 밝고 희망찬 장면.',
-        `[말투] 문장마다 ${L.rule} ${STYLE_RULE}`,
+        `[말투] 문장마다 ${L.rule} 문장은 모두 '~합니다'·'~입니다'로 끝낸다(예: 나는 소방서에서 하루를 시작합니다.). '~해요'·'~했어요'로 끝내지 않는다. 쉬운 우리말로 쓰고 긴 줄표(—)는 쓰지 않는다.`,
         '대화에서 학생이 말한 관심·좋아하는 것을 넣는다. 직업은 이 직업이나 대화에서 학생이 관심을 보인 직업. 연봉·숫자는 쓰지 않는다.',
         `직업 메모: ${factsText(job)}`,
         'scene은 그림으로 그릴 장면 한 줄, 70자 이내. 사람은 \'한 어린이\'로만 쓰고 성별·외모·피부색은 쓰지 않는다. 장소·도구·동작 중심, 글자·간판 없음.',
