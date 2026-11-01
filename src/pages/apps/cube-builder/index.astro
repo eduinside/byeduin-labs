@@ -1,0 +1,922 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
+---
+<AppLayout
+  theme="light"
+  toast="top"
+  title="큐브 만들기 - eduin VIVES"
+  description="가로·세로·높이를 넣으면 단위 정육면체로 쌓은 3D 모형이 생깁니다. 두 입체의 개수를 나란히 비교하며 초등 6학년 직육면체의 부피를 눈으로 익히는 무료 학습 시뮬레이션."
+  image="https://eduin.info/og-images/cube-builder.png"
+  bodyShell="immersive"
+>
+  <Fragment slot="head">
+    <link rel="stylesheet" href="/common/sim-kit.css">
+    <script is:inline src="/common/sim-kit.js"></script>
+    <style is:global>
+/* ══════════════════════════════════════════════
+   cube-builder - 큐브 만들기
+   immersive 셸: 왼쪽(위) 3D 무대 + 오른쪽(아래) 조작판
+   ══════════════════════════════════════════════ */
+:root {
+  --cb-a: #2563eb;
+  --cb-a-soft: #dbeafe;
+  --cb-b: #e11d48;
+  --cb-b-soft: #ffe4e6;
+  --cb-stage: #eef3f8;
+  --cb-panel-w: 360px;
+  --sk-accent: #2563eb;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--cb-stage);
+  color: var(--fg, #11181c);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cb-app {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--cb-panel-w);
+}
+
+/* ── 무대 ── */
+.cb-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 35%, #ffffff 0%, var(--cb-stage) 70%);
+}
+.cb-stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.cb-stage canvas:active { cursor: grabbing; }
+
+.cb-hud {
+  position: absolute;
+  top: 12px;
+  left: 64px;
+  right: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.cb-eqs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.cb-eq {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e2e8f0;
+  border-left: 5px solid var(--cb-a);
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  pointer-events: auto;
+}
+.cb-eq[data-key="b"] { border-left-color: var(--cb-b); }
+.cb-eq[hidden] { display: none; }
+.cb-eq-name { font-size: 13px; font-weight: 800; color: var(--cb-a); white-space: nowrap; }
+.cb-eq[data-key="b"] .cb-eq-name { color: var(--cb-b); }
+.cb-eq-pow {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--cb-a-soft);
+  color: var(--cb-a);
+}
+.cb-eq[data-key="b"] .cb-eq-pow { background: var(--cb-b-soft); color: var(--cb-b); }
+.cb-eq-pow[hidden] { display: none; }
+.cb-eq-expr { font-size: 18px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cb-eq-expr b { font-weight: 800; }
+.cb-eq-val {
+  min-width: 52px;
+  height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--cb-a-soft);
+  color: var(--cb-a);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+.cb-eq[data-key="b"] .cb-eq-val { background: var(--cb-b-soft); color: var(--cb-b); }
+.cb-eq-val.is-hidden { cursor: pointer; outline: 2px dashed currentColor; outline-offset: -4px; }
+
+.cb-compare {
+  max-width: 100%;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e2e8f0;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  word-break: keep-all;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+.cb-compare[hidden] { display: none; }
+.cb-compare .a { color: var(--cb-a); }
+.cb-compare .b { color: var(--cb-b); }
+.cb-compare em { font-style: normal; color: #b45309; }
+
+.cb-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -100%);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--cb-a);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.cb-tag[data-key="b"] { background: var(--cb-b); }
+.cb-tag[hidden] { display: none; }
+
+.cb-zoom {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cb-zoom button {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--fg, #11181c);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+.cb-zoom button:hover { border-color: var(--cb-a); }
+.cb-zoom .ic { width: 20px; height: 20px; }
+.cb-hint {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  font-size: 12px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+/* ── 조작판 ── */
+.cb-panel {
+  min-height: 0;
+  overflow-y: auto;
+  background: #fff;
+  border-left: 1px solid #e2e8f0;
+  padding: 64px 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cb-title { margin: 0; font-size: 20px; font-weight: 800; }
+.cb-sub { margin: 2px 0 0; font-size: 13px; color: #64748b; word-break: keep-all; }
+
+.cb-seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #f1f5f9;
+}
+.cb-seg button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #475569;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cb-seg button[aria-pressed="true"] { background: #fff; color: var(--cb-a); box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12); }
+
+.cb-card {
+  border: 1px solid #e2e8f0;
+  border-top: 4px solid var(--cb-a);
+  border-radius: 14px;
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cb-card[data-key="b"] { border-top-color: var(--cb-b); }
+.cb-card[hidden] { display: none; }
+.cb-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cb-card-name { font-size: 15px; font-weight: 800; color: var(--cb-a); }
+.cb-card[data-key="b"] .cb-card-name { color: var(--cb-b); }
+.cb-card-total { font-size: 13px; font-weight: 700; color: #64748b; font-variant-numeric: tabular-nums; }
+
+.cb-row { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 4px 10px; }
+.cb-row label { font-size: 14px; font-weight: 700; }
+.cb-step { display: flex; align-items: center; gap: 6px; justify-self: end; }
+.cb-step button {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.cb-step button:hover { border-color: var(--cb-a); }
+.cb-step input {
+  width: 64px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  text-align: center;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.cb-step input:focus { outline: 2px solid var(--cb-a); outline-offset: 1px; }
+.cb-row input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--cb-a); }
+.cb-card[data-key="b"] .cb-row input[type="range"] { accent-color: var(--cb-b); }
+.cb-card[data-key="b"] .cb-step input:focus { outline-color: var(--cb-b); }
+@media (pointer: coarse) {
+  .cb-step button { width: 44px; height: 44px; }
+  .cb-step input { height: 44px; }
+}
+
+.cb-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.cb-presets[hidden] { display: none; }
+.cb-presets button {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+}
+.cb-presets button:hover { border-color: var(--cb-a); color: var(--cb-a); }
+.cb-card[data-key="b"] .cb-presets button:hover { border-color: var(--cb-b); color: var(--cb-b); }
+
+.cb-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cb-tools .sk-btn { padding: 0 8px; }
+.cb-tools .cb-wide { grid-column: 1 / -1; }
+.cb-note { margin: 0; font-size: 12px; color: #64748b; word-break: keep-all; }
+
+/* 좁은 화면: 위 무대, 아래 조작판 */
+@media (max-width: 820px) {
+  .cb-app { grid-template-columns: 1fr; grid-template-rows: minmax(260px, 52dvh) minmax(0, 1fr); }
+  .cb-panel { border-left: 0; border-top: 1px solid #e2e8f0; padding-top: 16px; }
+  .cb-hud { top: 10px; left: 56px; right: 56px; }
+  .cb-eq { gap: 6px; padding: 6px 8px 6px 10px; }
+  .cb-eq-expr { font-size: 15px; }
+  .cb-eq-val { font-size: 18px; height: 34px; min-width: 44px; }
+  .cb-hint { display: none; }
+}
+/* 폰 가로: 다시 옆으로 */
+@media (max-width: 920px) and (max-height: 500px) and (orientation: landscape) {
+  .cb-app { grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: 1fr; }
+  .cb-panel { border-top: 0; border-left: 1px solid #e2e8f0; padding-top: 60px; }
+}
+    </style>
+  </Fragment>
+
+  <div class="cb-app">
+    <div class="cb-stage" id="stage">
+      <div class="cb-hud">
+        <div class="cb-eqs">
+          <div class="cb-eq" data-key="a">
+            <span class="cb-eq-name">큐브 A</span>
+            <span class="cb-eq-pow"></span>
+            <span class="cb-eq-expr"></span>
+            <span aria-hidden="true">=</span>
+            <button type="button" class="cb-eq-val"></button>
+          </div>
+          <div class="cb-eq" data-key="b" hidden>
+            <span class="cb-eq-name">큐브 B</span>
+            <span class="cb-eq-pow"></span>
+            <span class="cb-eq-expr"></span>
+            <span aria-hidden="true">=</span>
+            <button type="button" class="cb-eq-val"></button>
+          </div>
+        </div>
+        <div class="cb-compare" id="compare" aria-live="polite" hidden></div>
+      </div>
+      <div class="cb-tag" data-key="a" hidden>A</div>
+      <div class="cb-tag" data-key="b" hidden>B</div>
+      <div class="cb-zoom">
+        <button type="button" id="zoomIn" aria-label="크게 보기" title="크게 보기"><Icon name="zoom-in" /></button>
+        <button type="button" id="zoomOut" aria-label="작게 보기" title="작게 보기"><Icon name="zoom-out" /></button>
+        <button type="button" id="viewReset" aria-label="처음 시점" title="처음 시점"><Icon name="focus" /></button>
+      </div>
+      <p class="cb-hint">끌어서 돌리기 · 휠이나 두 손가락으로 확대</p>
+    </div>
+
+    <aside class="cb-panel" aria-label="조작판">
+      <div>
+        <h1 class="cb-title">🧊 큐브 만들기</h1>
+        <p class="cb-sub">숫자를 넣으면 단위 정육면체(쌓기나무)로 입체를 쌓아요.</p>
+      </div>
+
+      <div class="cb-seg" role="group" aria-label="보기 방식">
+        <button type="button" data-mode="one" aria-pressed="true">하나 보기</button>
+        <button type="button" data-mode="cmp" aria-pressed="false">둘 비교</button>
+      </div>
+      <div class="cb-seg" role="group" aria-label="모양">
+        <button type="button" data-shape="cube" aria-pressed="true">정육면체</button>
+        <button type="button" data-shape="box" aria-pressed="false">직육면체</button>
+      </div>
+
+      <section class="cb-card" data-key="a" aria-label="큐브 A">
+        <div class="cb-card-head"><span class="cb-card-name">큐브 A</span><span class="cb-card-total"></span></div>
+        <div class="cb-rows"></div>
+        <div class="cb-presets"></div>
+      </section>
+      <section class="cb-card" data-key="b" aria-label="큐브 B" hidden>
+        <div class="cb-card-head"><span class="cb-card-name">큐브 B</span><span class="cb-card-total"></span></div>
+        <div class="cb-rows"></div>
+        <div class="cb-presets"></div>
+      </section>
+
+      <div class="cb-tools">
+        <button type="button" class="sk-btn sk-btn--primary cb-wide" id="btnBuild"><Icon name="layers" /> <span>한 층씩 쌓기</span></button>
+        <button type="button" class="sk-btn sk-btn--sm" id="btnExplode" aria-pressed="false"><Icon name="expand" /> 틈 벌리기</button>
+        <button type="button" class="sk-btn sk-btn--sm" id="btnAuto" aria-pressed="false"><Icon name="rotate-3d" /> 자동 회전</button>
+        <button type="button" class="sk-btn sk-btn--sm cb-wide" id="btnHide" aria-pressed="false"><Icon name="eye-off" /> 개수 가리기</button>
+      </div>
+      <p class="cb-note">틈 벌리기로 속까지 꽉 찼는지 살펴보고, 개수 가리기로 먼저 어림해 본 뒤 숫자를 눌러 확인해요.</p>
+    </aside>
+  </div>
+
+  <script>
+    import {
+      WebGLRenderer, Scene, PerspectiveCamera, HemisphereLight, DirectionalLight,
+      BoxGeometry, EdgesGeometry, Mesh, InstancedMesh, LineSegments, LineBasicMaterial,
+      MeshStandardMaterial, CanvasTexture, SRGBColorSpace, RepeatWrapping, GridHelper,
+      Group, Matrix4, Vector3, Box3, Sphere, MathUtils,
+    } from 'three';
+    import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+
+    const MAX = 50;
+    const GAP = 0.32; // 틈 벌리기 간격(단위 정육면체 한 변 = 1)
+    const COLORS = { a: 0x3b82f6, b: 0xf43f5e };
+    const EDGE_COLORS = { a: 0x1e40af, b: 0x9f1239 };
+    const PRESETS = [2, 3, 5, 10, 20];
+    const DEFAULT_DIR = new Vector3(0.8, 0.75, 1.4).normalize();
+    const SimKit = (window as any).SimKit;
+    const reduced = () => !!SimKit?.motion?.reduced();
+
+    type Dims = { w: number; d: number; h: number };
+    type Key = 'a' | 'b';
+    const state = {
+      shape: 'cube' as 'cube' | 'box',
+      mode: 'one' as 'one' | 'cmp',
+      a: { w: 3, d: 3, h: 3 } as Dims,
+      b: { w: 2, d: 2, h: 2 } as Dims,
+      explode: false,
+      auto: false,
+      hide: false,
+      revealed: { a: false, b: false },
+    };
+
+    const clamp = (n: number) => Math.min(MAX, Math.max(1, Math.round(n) || 1));
+    const fmt = (n: number) => n.toLocaleString('ko-KR');
+    const count = (k: Key) => state[k].w * state[k].d * state[k].h;
+
+    /* ── 주소(해시)에 상태 기록: 셸 공유 버튼이 그대로 공유 ── */
+    function readHash() {
+      const p = new URLSearchParams(location.hash.slice(1));
+      if (p.get('s') === 'box') state.shape = 'box';
+      if (p.get('m') === 'cmp') state.mode = 'cmp';
+      for (const k of ['a', 'b'] as Key[]) {
+        const v = (p.get(k) || '').split(',').map(Number);
+        if (v.length === 3 && v.every((n) => n >= 1)) state[k] = { w: clamp(v[0]), d: clamp(v[1]), h: clamp(v[2]) };
+        if (state.shape === 'cube') state[k].d = state[k].h = state[k].w;
+      }
+    }
+    function writeHash() {
+      const d = (k: Key) => `${state[k].w},${state[k].d},${state[k].h}`;
+      const h = `#s=${state.shape}&m=${state.mode}&a=${d('a')}` + (state.mode === 'cmp' ? `&b=${d('b')}` : '');
+      history.replaceState(null, '', h);
+    }
+
+    /* ── 3D 무대 ── */
+    const stage = document.getElementById('stage')!;
+    const renderer = new WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    stage.prepend(renderer.domElement);
+
+    const scene = new Scene();
+    const camera = new PerspectiveCamera(35, 1, 0.1, 5000);
+    camera.position.copy(DEFAULT_DIR).multiplyScalar(14);
+    scene.add(new HemisphereLight(0xffffff, 0xb8c4d6, 1.5));
+    const sun = new DirectionalLight(0xffffff, 1.7);
+    sun.position.set(4, 10, 6);
+    scene.add(sun);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.12;
+    controls.enablePan = false;
+    controls.minDistance = 2;
+    controls.maxDistance = 2000;
+    controls.maxPolarAngle = Math.PI * 0.495; // 바닥 아래로는 내려가지 않음
+    controls.autoRotateSpeed = 1.6;
+
+    // 단위 정육면체 한 면 무늬: 흰 바탕 + 테두리. 재질 색과 곱해져 색 큐브가 된다.
+    function faceTexture() {
+      const c = document.createElement('canvas');
+      c.width = c.height = 128;
+      const g = c.getContext('2d')!;
+      g.fillStyle = '#fff';
+      g.fillRect(0, 0, 128, 128);
+      const shade = g.createLinearGradient(0, 0, 128, 128);
+      shade.addColorStop(0, 'rgba(255,255,255,0)');
+      shade.addColorStop(1, 'rgba(0,0,0,0.07)');
+      g.fillStyle = shade;
+      g.fillRect(0, 0, 128, 128);
+      g.strokeStyle = 'rgba(15,23,42,0.42)';
+      g.lineWidth = 8; // 가장자리에 반씩 그려져 이웃 칸과 합쳐 8px
+      g.strokeRect(0, 0, 128, 128);
+      const t = new CanvasTexture(c);
+      t.colorSpace = SRGBColorSpace;
+      t.wrapS = t.wrapT = RepeatWrapping;
+      t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      return t;
+    }
+    const baseTex = faceTexture();
+    const unitGeo = new BoxGeometry(1, 1, 1);
+    const unitEdges = new EdgesGeometry(unitGeo);
+
+    class Block {
+      key: Key;
+      group = new Group();
+      textures: CanvasTexture[];
+      solid: Mesh;
+      edges: LineSegments;
+      instMat: MeshStandardMaterial;
+      inst: InstancedMesh | null = null;
+      instFor = '';
+      constructor(key: Key) {
+        this.key = key;
+        this.textures = Array.from({ length: 6 }, () => {
+          const t = baseTex.clone();
+          t.needsUpdate = true;
+          return t;
+        });
+        const mats = this.textures.map((t) => new MeshStandardMaterial({ color: COLORS[key], map: t, roughness: 0.65 }));
+        this.solid = new Mesh(unitGeo, mats);
+        this.edges = new LineSegments(unitEdges, new LineBasicMaterial({ color: EDGE_COLORS[key] }));
+        this.instMat = new MeshStandardMaterial({ color: COLORS[key], map: baseTex, roughness: 0.65 });
+        this.group.add(this.solid, this.edges);
+        scene.add(this.group);
+      }
+      get dims() { return state[this.key]; }
+      /** 바닥 위 차지하는 크기(틈 벌리기 포함) */
+      size() {
+        const { w, d, h } = this.dims;
+        const s = state.explode ? 1 + GAP : 1;
+        const off = state.explode ? GAP : 0;
+        return { x: w * s - off, y: h * s - off, z: d * s - off };
+      }
+      /** layers: 보이는 층 수(쌓기 중), 없으면 전부 */
+      update(layers?: number) {
+        const { w, d, h } = this.dims;
+        const L = layers == null ? h : Math.max(0, Math.min(h, layers));
+        if (!state.explode) {
+          if (this.inst) this.inst.visible = false;
+          const show = L > 0;
+          this.solid.visible = this.edges.visible = show;
+          this.solid.scale.set(w, Math.max(L, 0.001), d);
+          this.solid.position.set(0, L / 2, 0);
+          this.edges.scale.copy(this.solid.scale);
+          this.edges.position.copy(this.solid.position);
+          // BoxGeometry 면 순서: +x, -x, +y, -y, +z, -z
+          const rep: [number, number][] = [[d, L], [d, L], [w, d], [w, d], [w, L], [w, L]];
+          this.textures.forEach((t, i) => t.repeat.set(rep[i][0], Math.max(rep[i][1], 1)));
+        } else {
+          this.solid.visible = this.edges.visible = false;
+          this.ensureInstances();
+          this.inst!.visible = true;
+          this.inst!.count = w * d * L;
+        }
+      }
+      ensureInstances() {
+        const { w, d, h } = this.dims;
+        const id = `${w},${d},${h}`;
+        if (this.inst && this.instFor === id) return;
+        if (this.inst) {
+          this.group.remove(this.inst);
+          this.inst.dispose();
+        }
+        const m = new InstancedMesh(unitGeo, this.instMat, w * d * h);
+        const mat = new Matrix4();
+        const s = 1 + GAP;
+        let i = 0;
+        // 아래층부터 채워서 count로 층을 잘라 보일 수 있게
+        for (let y = 0; y < h; y++)
+          for (let z = 0; z < d; z++)
+            for (let x = 0; x < w; x++) {
+              mat.makeTranslation((x - (w - 1) / 2) * s, y * s + 0.5, (z - (d - 1) / 2) * s);
+              m.setMatrixAt(i++, mat);
+            }
+        m.instanceMatrix.needsUpdate = true;
+        m.frustumCulled = false;
+        this.inst = m;
+        this.instFor = id;
+        this.group.add(m);
+      }
+    }
+    const blocks = { a: new Block('a'), b: new Block('b') };
+    const active = (): Block[] => (state.mode === 'cmp' ? [blocks.a, blocks.b] : [blocks.a]);
+
+    let grid: GridHelper | null = null;
+    let gridSize = 0;
+    function updateGrid(extent: number) {
+      const size = Math.max(10, Math.ceil(extent * 1.8 / 2) * 2);
+      if (size === gridSize) return;
+      if (grid) {
+        scene.remove(grid);
+        grid.geometry.dispose();
+      }
+      gridSize = size;
+      grid = new GridHelper(size, Math.min(size, 120), 0xc5d0de, 0xdde4ee);
+      grid.position.y = -0.01;
+      scene.add(grid);
+    }
+
+    /* ── 시점 맞추기(부드럽게) ── */
+    const fit = { on: false, target: new Vector3(), dist: 14, dir: null as Vector3 | null };
+    const view = { free: 1 }; // 식 카드에 가리지 않는 무대 높이 비율
+    function frame(resetDir = false) {
+      const box = new Box3();
+      for (const b of active()) box.expandByObject(b.group);
+      if (box.isEmpty()) return;
+      const sphere = box.getBoundingSphere(new Sphere());
+      const tanV = Math.tan(MathUtils.degToRad(camera.fov) / 2);
+      // 위쪽 식 카드가 가리는 높이를 빼고 남은 영역에 맞춘다(setViewOffset으로 그 영역 가운데가 화면 중심)
+      const vHalf = Math.atan(tanV * view.free);
+      const hHalf = Math.atan(tanV * camera.aspect);
+      const half = Math.min(vHalf, hHalf);
+      fit.target.copy(sphere.center);
+      fit.dist = (sphere.radius / Math.sin(half)) * 1.12;
+      fit.dir = resetDir ? DEFAULT_DIR.clone() : null;
+      fit.on = true;
+    }
+    function stepFit(dt: number) {
+      const k = reduced() ? 1 : 1 - Math.exp(-dt * 7);
+      const dir = camera.position.clone().sub(controls.target).normalize();
+      if (fit.dir) dir.lerp(fit.dir, k).normalize();
+      const cur = camera.position.distanceTo(controls.target);
+      const dist = cur + (fit.dist - cur) * k;
+      controls.target.lerp(fit.target, k);
+      camera.position.copy(controls.target).addScaledVector(dir, dist);
+      const done = Math.abs(dist - fit.dist) < 0.01 * fit.dist && controls.target.distanceTo(fit.target) < 0.01
+        && (!fit.dir || dir.distanceTo(fit.dir) < 0.002);
+      if (done) fit.on = false;
+    }
+    controls.addEventListener('start', () => { fit.on = false; });
+    controls.addEventListener('change', () => { dirty = true; });
+
+    function zoom(f: number) {
+      fit.target.copy(controls.target);
+      fit.dist = MathUtils.clamp(camera.position.distanceTo(controls.target) * f, controls.minDistance, controls.maxDistance);
+      fit.dir = null;
+      fit.on = true;
+    }
+
+    /* ── 배치 ── */
+    function layout(layers?: number) {
+      blocks.b.group.visible = state.mode === 'cmp';
+      for (const b of active()) b.update(layers);
+      const sa = blocks.a.size();
+      let extent = Math.max(sa.x, sa.z);
+      if (state.mode === 'cmp') {
+        const sb = blocks.b.size();
+        const gap = Math.max(1.5, 0.2 * Math.max(sa.x, sb.x));
+        blocks.a.group.position.x = -(gap / 2 + sa.x / 2);
+        blocks.b.group.position.x = gap / 2 + sb.x / 2;
+        extent = sa.x + sb.x + gap + 2 * Math.max(sa.z, sb.z) * 0.3;
+        extent = Math.max(extent, sa.z, sb.z);
+      } else {
+        blocks.a.group.position.x = 0;
+      }
+      updateGrid(extent);
+      dirty = true;
+    }
+
+    /* ── 위쪽 식 카드·비교 문장 ── */
+    const eqEls = {
+      a: document.querySelector('.cb-eq[data-key="a"]') as HTMLElement,
+      b: document.querySelector('.cb-eq[data-key="b"]') as HTMLElement,
+    };
+    const compareEl = document.getElementById('compare')!;
+    const tags = {
+      a: document.querySelector('.cb-tag[data-key="a"]') as HTMLElement,
+      b: document.querySelector('.cb-tag[data-key="b"]') as HTMLElement,
+    };
+
+    function shown(k: Key) { return !state.hide || state.revealed[k]; }
+
+    function renderHud(layer?: number) {
+      for (const k of ['a', 'b'] as Key[]) {
+        const el = eqEls[k];
+        el.hidden = k === 'b' && state.mode !== 'cmp';
+        const { w, d, h } = state[k];
+        const pow = el.querySelector('.cb-eq-pow') as HTMLElement;
+        const expr = el.querySelector('.cb-eq-expr') as HTMLElement;
+        const val = el.querySelector('.cb-eq-val') as HTMLButtonElement;
+        let n = w * d * h;
+        if (layer != null) {
+          const L = Math.min(layer, h);
+          n = w * d * L;
+          pow.hidden = true;
+          expr.innerHTML = `<b>${fmt(w * d)}</b>개씩 × <b>${L}</b>층`;
+        } else {
+          pow.hidden = state.shape !== 'cube';
+          pow.innerHTML = `${w}<sup>3</sup>`;
+          expr.textContent = `${w} × ${d} × ${h}`;
+        }
+        const vis = shown(k) || layer != null;
+        val.textContent = vis ? fmt(n) : '?';
+        val.classList.toggle('is-hidden', !vis);
+        val.setAttribute('aria-label', vis ? `${fmt(n)}개` : '개수 보기');
+        val.title = vis ? '' : '눌러서 개수 보기';
+      }
+      if (state.mode !== 'cmp' || layer != null) {
+        compareEl.hidden = true;
+        return;
+      }
+      compareEl.hidden = false;
+      if (!shown('a') || !shown('b')) {
+        compareEl.textContent = '어느 쪽 큐브가 더 많을까요?';
+        return;
+      }
+      const na = count('a'), nb = count('b');
+      if (na === nb) {
+        compareEl.innerHTML = `<span class="a">A</span>와 <span class="b">B</span>의 개수가 같아요 (${fmt(na)}개)`;
+        return;
+      }
+      const [big, small] = na > nb ? ['a', 'b'] : ['b', 'a'];
+      const nBig = Math.max(na, nb), nSmall = Math.min(na, nb);
+      const r = nBig / nSmall;
+      const ratio = Number.isInteger(r) ? `${r}배` : `약 ${parseFloat(r.toFixed(1))}배`;
+      compareEl.innerHTML = `<span class="${big}">${big.toUpperCase()}</span>가 <span class="${small}">${small.toUpperCase()}</span>보다 <em>${fmt(nBig - nSmall)}개</em> 더 많아요 · ${ratio}`;
+    }
+
+    for (const k of ['a', 'b'] as Key[]) {
+      eqEls[k].querySelector('.cb-eq-val')!.addEventListener('click', () => {
+        if (!state.hide || state.revealed[k]) return;
+        state.revealed[k] = true;
+        renderHud();
+        renderPanel();
+      });
+    }
+
+    function placeTags() {
+      const cmp = state.mode === 'cmp';
+      const rect = renderer.domElement.getBoundingClientRect();
+      for (const k of ['a', 'b'] as Key[]) {
+        const tag = tags[k];
+        tag.hidden = !cmp;
+        if (!cmp) continue;
+        const b = blocks[k];
+        const sz = b.size();
+        const p = new Vector3(b.group.position.x, sz.y + 0.3, sz.z / 2).project(camera);
+        tag.style.transform = `translate(${((p.x + 1) / 2) * rect.width}px, ${((1 - p.y) / 2) * rect.height}px) translate(-50%, -100%)`;
+      }
+    }
+
+    /* ── 조작판 ── */
+    const cards = {
+      a: document.querySelector('.cb-card[data-key="a"]') as HTMLElement,
+      b: document.querySelector('.cb-card[data-key="b"]') as HTMLElement,
+    };
+    const FIELDS_BOX: [keyof Dims, string][] = [['w', '가로'], ['d', '세로'], ['h', '높이']];
+    const FIELDS_CUBE: [keyof Dims, string][] = [['w', '한 변']];
+    const minusIcon = SimKit.icon('minus');
+    const plusIcon = SimKit.icon('plus');
+
+    function buildRows() {
+      const fields = state.shape === 'cube' ? FIELDS_CUBE : FIELDS_BOX;
+      for (const k of ['a', 'b'] as Key[]) {
+        const rows = cards[k].querySelector('.cb-rows')!;
+        rows.innerHTML = fields.map(([f, label]) => `
+          <div class="cb-row">
+            <label for="in-${k}-${f}">${label}</label>
+            <div class="cb-step">
+              <button type="button" data-f="${f}" data-step="-1" aria-label="${label} 1 줄이기">${minusIcon}</button>
+              <input id="in-${k}-${f}" data-f="${f}" type="number" inputmode="numeric" min="1" max="${MAX}">
+              <button type="button" data-f="${f}" data-step="1" aria-label="${label} 1 늘리기">${plusIcon}</button>
+            </div>
+            <input type="range" data-f="${f}" min="1" max="${MAX}" aria-label="${label} 슬라이더">
+          </div>`).join('');
+        const presets = cards[k].querySelector('.cb-presets') as HTMLElement;
+        presets.hidden = state.shape !== 'cube';
+        presets.innerHTML = PRESETS.map((n) => `<button type="button" data-preset="${n}">${n}×${n}×${n}</button>`).join('');
+      }
+    }
+
+    function renderPanel() {
+      document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)));
+      document.querySelectorAll<HTMLButtonElement>('[data-shape]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.shape === state.shape)));
+      cards.b.hidden = state.mode !== 'cmp';
+      for (const k of ['a', 'b'] as Key[]) {
+        cards[k].querySelectorAll<HTMLInputElement>('input[data-f]').forEach((inp) => {
+          const v = String(state[k][inp.dataset.f as keyof Dims]);
+          if (inp.value !== v && document.activeElement !== inp) inp.value = v;
+          if (inp.type === 'range') inp.value = v;
+        });
+        (cards[k].querySelector('.cb-card-total') as HTMLElement).textContent = shown(k) ? `${fmt(count(k))}개` : '? 개';
+      }
+      setPressed('btnExplode', state.explode);
+      setPressed('btnAuto', state.auto);
+      setPressed('btnHide', state.hide);
+    }
+    function setPressed(id: string, on: boolean) {
+      document.getElementById(id)!.setAttribute('aria-pressed', String(on));
+    }
+
+    function setDim(k: Key, f: keyof Dims, v: number) {
+      v = clamp(v);
+      if (state.shape === 'cube') state[k] = { w: v, d: v, h: v };
+      else state[k][f] = v;
+      state.revealed[k] = false;
+      changed();
+    }
+
+    function changed(refit = true) {
+      stopBuild();
+      layout();
+      renderHud();
+      renderPanel();
+      writeHash();
+      if (refit) frame();
+    }
+
+    for (const k of ['a', 'b'] as Key[]) {
+      const card = cards[k];
+      card.addEventListener('click', (e) => {
+        const t = (e.target as HTMLElement).closest('button');
+        if (!t) return;
+        if (t.dataset.step) {
+          const f = t.dataset.f as keyof Dims;
+          setDim(k, f, state[k][f] + Number(t.dataset.step));
+        } else if (t.dataset.preset) {
+          setDim(k, 'w', Number(t.dataset.preset));
+        }
+      });
+      card.addEventListener('input', (e) => {
+        const inp = e.target as HTMLInputElement;
+        if (!inp.dataset.f) return;
+        if (inp.type === 'number' && inp.value === '') return; // 지우는 중
+        setDim(k, inp.dataset.f as keyof Dims, Number(inp.value));
+      });
+      card.addEventListener('change', (e) => {
+        const inp = e.target as HTMLInputElement;
+        if (inp.type === 'number') inp.value = String(state[k][inp.dataset.f as keyof Dims]);
+      });
+    }
+
+    document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => b.addEventListener('click', () => {
+      if (state.mode === b.dataset.mode) return;
+      state.mode = b.dataset.mode as 'one' | 'cmp';
+      changed();
+    }));
+    document.querySelectorAll<HTMLButtonElement>('[data-shape]').forEach((b) => b.addEventListener('click', () => {
+      if (state.shape === b.dataset.shape) return;
+      state.shape = b.dataset.shape as 'cube' | 'box';
+      if (state.shape === 'cube') {
+        for (const k of ['a', 'b'] as Key[]) state[k] = { w: state[k].w, d: state[k].w, h: state[k].w };
+      }
+      buildRows();
+      changed();
+    }));
+
+    document.getElementById('btnExplode')!.addEventListener('click', () => {
+      state.explode = !state.explode;
+      changed();
+    });
+    document.getElementById('btnAuto')!.addEventListener('click', () => {
+      state.auto = !state.auto;
+      controls.autoRotate = state.auto;
+      renderPanel();
+    });
+    document.getElementById('btnHide')!.addEventListener('click', () => {
+      state.hide = !state.hide;
+      state.revealed = { a: false, b: false };
+      renderHud();
+      renderPanel();
+    });
+    document.getElementById('zoomIn')!.addEventListener('click', () => zoom(0.8));
+    document.getElementById('zoomOut')!.addEventListener('click', () => zoom(1.25));
+    document.getElementById('viewReset')!.addEventListener('click', () => frame(true));
+
+    /* ── 한 층씩 쌓기 ── */
+    const buildBtn = document.getElementById('btnBuild')!;
+    const buildLabel = buildBtn.querySelector('span')!;
+    let build: { t: number; per: number; maxH: number; layer: number } | null = null;
+    function startBuild() {
+      const maxH = Math.max(...active().map((b) => b.dims.h));
+      build = { t: 0, per: MathUtils.clamp(3.5 / maxH, 0.12, 0.7), maxH, layer: 1 };
+      layout(1);
+      renderHud(1);
+      buildLabel.textContent = '쌓기 멈추기';
+      buildBtn.setAttribute('aria-pressed', 'true');
+    }
+    function stopBuild() {
+      if (!build) return;
+      build = null;
+      layout();
+      renderHud();
+      buildLabel.textContent = '한 층씩 쌓기';
+      buildBtn.removeAttribute('aria-pressed');
+    }
+    function stepBuild(dt: number) {
+      if (!build) return;
+      build.t += dt;
+      const layer = Math.min(build.maxH, 1 + Math.floor(build.t / build.per));
+      if (layer !== build.layer) {
+        build.layer = layer;
+        layout(layer);
+        renderHud(layer);
+      }
+      // 다 쌓고 잠깐 보여 준 뒤 원래 식으로
+      if (build.t > build.per * build.maxH + 1.6) stopBuild();
+    }
+    buildBtn.addEventListener('click', () => (build ? stopBuild() : startBuild()));
+
+    /* ── 그리기 ── */
+    let dirty = true;
+    const hud = document.querySelector('.cb-hud') as HTMLElement;
+    function resize() {
+      const w = stage.clientWidth, h = stage.clientHeight;
+      if (!w || !h) return;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      const cover = Math.min(h * 0.45, hud.offsetTop + hud.offsetHeight + 8);
+      view.free = (h - cover) / h;
+      camera.setViewOffset(w, h, 0, -cover / 2, w, h);
+      camera.updateProjectionMatrix();
+      dirty = true;
+    }
+    const ro = new ResizeObserver(() => { resize(); frame(); });
+    ro.observe(stage);
+    ro.observe(hud);
+
+    let last = performance.now();
+    function tick(now: number) {
+      requestAnimationFrame(tick);
+      const dt = Math.min(0.1, (now - last) / 1000);
+      last = now;
+      let moving = false;
+      if (fit.on) { stepFit(dt); moving = true; }
+      if (build) { stepBuild(dt); moving = true; }
+      controls.autoRotate = state.auto && !reduced();
+      if (controls.update(dt)) moving = true;
+      if (dirty || moving) {
+        renderer.render(scene, camera);
+        placeTags();
+        dirty = false;
+      }
+    }
+
+    readHash();
+    buildRows();
+    layout();
+    renderHud();
+    renderPanel();
+    resize();
+    frame(true);
+    // 첫 화면은 바로 맞춘 시점으로
+    camera.position.copy(fit.target).addScaledVector(DEFAULT_DIR, fit.dist);
+    controls.target.copy(fit.target);
+    fit.on = false;
+    requestAnimationFrame(tick);
+  </script>
+</AppLayout>

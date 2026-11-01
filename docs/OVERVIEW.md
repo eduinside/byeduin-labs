@@ -48,6 +48,7 @@ docs/                  ← 개발 문서
 | `clubs` | 넘버블록스 클럽 | 1~100 수의 클럽 탐색 + 퀴즈 |
 | `fraction-bar` | 분수 막대 | 막대·피자를 자르고 칠하며 분수 크기 비교 |
 | `shape-move` | 도형의 이동 | 밀기·뒤집기·돌리기로 도형 이동 애니메이션 |
+| `cube-builder` | 큐브 만들기 | 숫자로 정육면체·직육면체를 단위 큐브로 쌓은 3D 모형(three.js) · 두 입체 개수 비교 · 한 층씩 쌓기 · 틈 벌리기 |
 | `chance-lab` | 가능성 실험실 | 동전·주사위·회전판 1000번 실험으로 가능성 체험 |
 | `clock` | 시계 보기 | 바늘을 끌어 돌리며 시각 읽기 · 학년별 단위 제한(정각·30분/10분/5분/1분/1초)과 잠금 링크 · 미션 6종 · 전자칠판 큰 시계 |
 | `graph-maker` | 그래프 그리기 | 같은 표를 ○·그림·막대·꺾은선·띠·원그래프로 바꿔 보기 · 조사하기(손들기 집계) · 직접 그리기 · 평균 고르게 하기 · 미션 10개 |
@@ -139,7 +140,7 @@ docs/                  ← 개발 문서
 | `split` | 2-페인 (입력 \| 미리보기) | md-editor, notion-styler |
 | `sidebar` | 내비 사이드바 + 메인 | search |
 | `gallery` | 반응형 카드 그리드 | blocks-universe, chalkboard, mindmap, bubble-chat |
-| `immersive` | 풀뷰포트 (크롬만 주입) | edu-sim 19종 전체(moon-phase, volcano, step-squad, break-make, clubs, fraction-bar, shape-move, chance-lab, clock, graph-maker, moon-phase-v2, solar-system, sun-shadow, pitch-lab, circuit-lab, eco-web, food-bike, world-landmarks, idea-lab) |
+| `immersive` | 풀뷰포트 (크롬만 주입) | edu-sim 20종 전체(cube-builder, moon-phase, volcano, step-squad, break-make, clubs, fraction-bar, shape-move, chance-lab, clock, graph-maker, moon-phase-v2, solar-system, sun-shadow, pitch-lab, circuit-lab, eco-web, food-bike, world-landmarks, idea-lab) |
 
 **폭 플래그** (`data-width`): `narrow`(480px) · `medium`(720px) · `wide`(1120px)  
 **기능 플래그**: `data-focus`(아이템→전체화면 `enterFocus()`) · `data-print`(A4 인쇄 베이스라인)
