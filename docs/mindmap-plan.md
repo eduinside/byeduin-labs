@@ -164,3 +164,16 @@ MD → 마인드맵 (받을 때):
 3. **이름**: '마인드맵'으로 진행(바꾸려면 apps.json·앱 헤더)
 4. **원격 D1 마이그레이션 0016** 적용은 구현 후 운영자 확인 받고 실행
 5. 1단계에서 뺀 것: PNG 저장, 노드 색·아이콘·메모 공유, 여러 사람 동시 편집 - 나중에 필요하면 추가
+
+## 11. XMind 파일 가져오기·저장 (2026-11-01 운영자 요청, 공유는 필요 없음)
+
+- 변환기: `public/apps/mindmap/xmind.js` (`window.MindmapXmind = { fromFile(buf, name), toBlob(tree) }`). JSZip 3.10.1(cdnjs, file-tools와 같은 버전)을 쓸 때 한 번만 불러온다
+- **가져오기**: 가져오기 모달의 '파일 고르기'에서 `.xmind`를 고르면 바로 새 마인드맵으로 추가
+  - XMind 2020 이후(Zen): zip 안 `content.json` → 첫 시트 `rootTopic` → `children.attached`
+  - XMind 8: `content.xml` → 첫 `sheet > topic` → `children > topics[type=attached] > topic`
+  - 첫 시트만, 붙은 가지(attached)만. 떠 있는 가지·관계선·묶음·색·아이콘·메모·그림은 버림
+  - 가지 단계는 md.js와 같이 `MAX_DEPTH`(5)까지, 더 깊은 가지는 마지막 단계에 붙임. 가지 500개 상한
+  - 암호를 건 파일은 읽지 못한다고 안내
+- **저장**: 편집 화면 '공유' 메뉴에 'XMind 파일로 저장' → `제목.xmind` 내려받기
+  - `content.json`(Zen) + `content.xml`(XMind 8) + `metadata.json` + `manifest.json` + `META-INF/manifest.xml`를 함께 넣어 두 버전에서 모두 열리게 함
+  - 가지 글과 계층만 저장(화살표·묶음 표시는 빠진다고 안내)

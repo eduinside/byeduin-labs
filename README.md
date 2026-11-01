@@ -41,7 +41,7 @@
 | **Blocks Universe** | `/apps/blocks-universe/` | 블록스 4개 시리즈 372편 에피소드 탐색 · AI 검색 · 순차재생 |
 | **Flash Deck** | `/apps/flash-deck/` | 플래시카드 덱 제작 및 학습 |
 | **Chalkboard** | `/apps/chalkboard/` | 칠판 위에 텍스트와 선으로 생각을 자유롭게 펼쳐보세요 (코드 동기화) |
-| **Mind Map** | `/apps/mindmap/` | 주제를 가지로 펼쳐 생각 정리 (AI 초안·링크 공유·MD 주고받기, 코드 동기화) |
+| **Mind Map** | `/apps/mindmap/` | 주제를 가지로 펼쳐 생각 정리 (AI 초안·링크 공유·MD 주고받기·XMind 파일 가져오기·저장, 코드 동기화) |
 | **Read Tree** | `/apps/read-tree/` | ORT(옥스포드 리딩 트리) 읽기 진도를 코드 하나로 기록·관리 (로그인·개인정보 없음) |
 | **연산연습지** | `/apps/math-sheet/` | 사칙연산 세로셈 학습지 생성·PDF 출력·링크/QR 공유 (코드 동기화) |
 | **받아쓰기 도우미** | `/apps/dictation/` | 받아쓰기 급수표 생성·인쇄, 발음 표기 불러주기, 음운규칙별 오류 분석 |

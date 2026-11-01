@@ -69,7 +69,7 @@ docs/                  ← 개발 문서
 | `blocks-universe` | Blocks Universe | BBC 블록스 4개 시리즈 372편 · AI 검색 · 재생목록 |
 | `flash-deck` | 플래시덱 | 플래시카드 덱 제작 및 학습 |
 | `chalkboard` | 칠판 | 텍스트·선으로 자유 판서 |
-| `mindmap` | 마인드맵 | 가지로 생각 정리(Mind Elixir) · AI 초안 · 공유 · MD 편집기와 주고받기 |
+| `mindmap` | 마인드맵 | 가지로 생각 정리(Mind Elixir) · AI 초안 · 공유 · MD 편집기와 주고받기 · XMind 파일 가져오기·저장 |
 | `math-sheet` | 연산연습지 | 사칙연산 세로셈 학습지 생성·PDF 출력·공유 |
 | `read-tree` | Read Tree | ORT 읽기 진도를 코드 하나로 기록(로그인 없음) |
 | `dictation` | 받아쓰기 도우미 | 받아쓰기 급수표 생성·인쇄, 발음 표기 불러주기, 오류 분석 |

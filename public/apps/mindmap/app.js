@@ -12,6 +12,7 @@
   var MAP_MAX = 100;
   var SHARE_URL_MAX = 8000;
   var MD = window.MindmapMD;
+  var XM = window.MindmapXmind;
 
   // Mind Elixir 오른쪽 클릭 메뉴 글(내장 한국어 대신 화면 글투에 맞춘 문구)
   var KO = {
@@ -396,6 +397,26 @@
     var encoded = VUI.share.encode({ data: { content: MD.toMd(tree), filename: safeName(tree.topic) + '.md' }, permission: 'clone' });
     location.href = '/apps/md-editor/#share=' + encoded;
   }
+  function saveXmind() {
+    closeMenu();
+    var tree = currentTree();
+    if (!tree) return;
+    var d = mind.getData();
+    var extras = (d.arrows && d.arrows.length) || (d.summaries && d.summaries.length);
+    XM.toBlob(tree).then(function (blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = safeName(tree.topic) + '.xmind';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+      toast(extras ? 'XMind 파일로 저장했어요. 화살표·묶음 표시는 빠져요.' : 'XMind 파일로 저장했어요.', extras ? { duration: 6000 } : 'success');
+    }).catch(function (err) {
+      toast(err && err.message || 'XMind 파일을 만들지 못했어요.', 'error');
+    });
+  }
   function duplicate() {
     closeMenu();
     var tree = currentTree();
@@ -627,11 +648,26 @@
     var f = e.target.files && e.target.files[0];
     e.target.value = '';
     if (!f) return;
+    if (/\.xmind$/i.test(f.name)) { importXmind(f); return; }
     if (f.size > 1024 * 1024) { toast('1MB보다 작은 파일을 골라 주세요.', 'error'); return; }
     var fr = new FileReader();
     fr.onload = function () { $('import-text').value = String(fr.result || ''); importName = f.name; };
     fr.readAsText(f, 'utf-8');
   });
+  /* XMind 가져오기: 고르면 바로 새 마인드맵 */
+  function importXmind(f) {
+    if (f.size > 20 * 1024 * 1024) { toast('20MB보다 작은 파일을 골라 주세요.', 'error'); return; }
+    toast('XMind 파일을 읽고 있어요.');
+    f.arrayBuffer().then(function (buf) { return XM.fromFile(buf, f.name); }).then(function (r) {
+      var rec = addRecord(newRecord(r.tree));
+      if (!rec) return;
+      closeModal('import');
+      open(rec.id);
+      toast(r.dropped ? '가지가 많아 앞쪽 ' + NODE_MAX + '개만 가져왔어요.' : 'XMind 파일을 마인드맵으로 가져왔어요.', r.dropped ? { duration: 6000 } : 'success');
+    }).catch(function (err) {
+      toast(err && err.message || 'XMind 파일을 읽지 못했어요.', 'error');
+    });
+  }
   function importMd(text, name) {
     var r = MD.fromMd(text, name || '가져온 마인드맵');
     if (r.count < 2) return null;
@@ -672,7 +708,7 @@
     open: open, remove: removeMap, goHome: goHome,
     addChild: addChild, addSibling: addSibling, removeNode: removeNode, undo: undo,
     fit: fit, zoom: zoom, toggleDirection: toggleDirection, toggleTheme: toggleTheme,
-    share: share, sendToMd: sendToMd, duplicate: duplicate, takeShared: takeShared, toggleMore: toggleMore,
+    share: share, sendToMd: sendToMd, saveXmind: saveXmind, duplicate: duplicate, takeShared: takeShared, toggleMore: toggleMore,
     openNew: openNew, createNew: createNew, openAi: openAi, runAi: runAi, useAi: useAi, openAsk: openAsk, ask: ask, insertAnswer: insertAnswer,
     openImport: openImport, doImport: doImport, closeModal: closeModal,
   };
