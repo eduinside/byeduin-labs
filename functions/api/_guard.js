@@ -44,6 +44,8 @@ export const LIMITS = {
   'spell-check':       { perMin: 60,  perDay: 1000,  siteDay: 3000 },
   'dictation-ai':      { perMin: 60,  perDay: 600,   siteDay: 2000 },
   'idea-lab':          { perMin: 300, perDay: 3000,  siteDay: 8000 },  // 한 반 30명 × 질문 5회 안팎
+  'career-talk':       { perMin: 300, perDay: 3000,  siteDay: 8000 },  // 진로 탐험대: 대화 1회 약 18번 호출 × 한 반 30명
+  'career-talk-image': { perMin: 30,  perDay: 300,   siteDay: 300 },   // 진로 탐험대 그림(대화당 1회, ai-image 600의 절반)
   'timer-vision':      { perMin: 6,   perDay: 60,    siteDay: 400 },   // 시정표 사진 인식(이미지 입력 — 교사만, 가끔)
 
   // 외부 유료·쿼터 API 프록시
