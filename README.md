@@ -144,8 +144,9 @@ public/common/
 프로젝트에는 개발 편의성과 SEO 배포 자동화를 위해 아래와 같은 패키지 스크립트들이 준비되어 있습니다:
 
 - **로컬 개발 서버 실행**: `npm run dev`
-- **신규 미니 앱 스캐폴딩 생성**: `npm run scaffold` — 베이스/폭/플래그/카테고리·서브카테고리를 고르면 `src/pages/apps/<id>/index.astro`(AppLayout 래핑) 생성 + `apps.json` 등록 + **og·sitemap 자동 실행**(한 커맨드). 비대화형: `node scripts/scaffold-app.cjs --id ... --base column --width narrow --category edu --subcategory edu-work ...`. 모달/외부 항목: `--kind modal`. (정적 SEO 메타는 AppLayout이 담당하므로 별도 inject 단계 없음)
-- **OG 이미지 빌드 (전체 또는 `--id <id>` 단일, 홈 기본 `og-default.png`)**: `npm run og` / `node scripts/generate-og.cjs --id <id>`
+- **신규 미니 앱 스캐폴딩 생성**: `npm run scaffold` — 베이스/폭/플래그/카테고리·서브카테고리를 고르면 `src/pages/apps/<id>/index.astro`(AppLayout 래핑) 생성 + `apps.json` 등록 + **sitemap 자동 실행**(한 커맨드). 비대화형: `node scripts/scaffold-app.cjs --id ... --base column --width narrow --category edu --subcategory edu-work ...`. 모달/외부 항목: `--kind modal`. (정적 SEO 메타는 AppLayout이 담당하므로 별도 inject 단계 없음)
+- **앱 공유(OG) 이미지**: 따로 실행할 것 없음 — `npm run build` 때 `apps.json` 앱마다 `/og/<id>.png` 생성(템플릿 `src/components/og-card.ts`, 개발 서버에서는 `/og/<id>.png`로 바로 확인)
+- **홈 기본 OG 이미지 재생성 (소스 `brand/logo-seo.png`)**: `npm run og`
 - **브랜드 로고·파비콘 재생성 (소스 `brand/logo.png`)**: `node scripts/generate-icons.cjs`
 - **`sitemap.xml` 재생성 및 업데이트**: `npm run sitemap`
 

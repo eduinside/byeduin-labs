@@ -27,7 +27,6 @@ public/                    ← 빌드 시 dist/로 그대로 복사 (경로 유�
 │   ├── init.js
 │   ├── sync.js
 │   └── seo-injector.js    ← 런타임 앱 헤더 아이콘 블롭 주입 + 보조 메타(AppLayout이 로드)
-├── og-images/         ← 앱별 OG 이미지 (1200×630)
 ├── downloads/         ← 크롬 확장 zip 등 다운로드 파일
 └── apps.json          ← 앱 메타데이터 단일 소스
 
@@ -212,6 +211,12 @@ docs/                  ← 개발 문서
 ---
 
 ## 주요 변경 이력
+
+### 2026-11-02 — 앱 공유(OG) 이미지 새 디자인·빌드 자동 생성 (`docs/og-image-plan.md`)
+- node-canvas로 손으로 만들어 커밋하던 `public/og-images/*.png`(이모지 깨짐·한글 대체 글꼴·옛 이름)를 없애고, 빌드 때 `src/pages/og/[id].png.ts`가 `apps.json` 앱마다 `/og/<id>.png`를 만든다(Satori → sharp, 글꼴 Pretendard, 아이콘은 `lucideIcon`). 앱 이름·설명을 바꾸면 다음 배포에 반영.
+- 디자인: 밝은 바탕 + 분류(subcategory) 색 번짐, 아이콘 타일·배지·제목(괄호·` - ` 뒤는 회색 부제)·설명·주소. 템플릿은 `src/components/og-card.ts`.
+- `apps.json`의 앱별 `ogImage` 필드, 앱 페이지 46개의 `image=` 지정, 스캐폴드의 og 단계 삭제. 옛 주소 `/og-images/*`는 `public/_redirects`로 `/og/*`에 301.
+- `canvas` 의존성 제거 — `generate-og-default.cjs`·`generate-icons.cjs`도 sharp로 옮김.
 
 ### 2026-11-01 — 진로 탐험대(`career-talk`) 신규 (`docs/career-talk-plan.md`)
 - 초등 AI 진로 체험: 직업 104개(주니어 커리어넷 관심주제 12개로 분류, 예시 12개)의 가상 직업인과 선택지형 인터뷰(학생 턴 12, 쉬운 말 8) → 길잡이 선생님과 돌아보기(최대 4턴) → 대화에서 보인 관심으로 더 알아볼 직업 3개 → 10년 뒤 나의 하루 글 + 그림(대화당 1회, 실패 때만 1회 더) → 탐험 카드(인쇄·공유, 대화 원문은 공유하지 않음). 눈높이 3종(쉬운 말·보통·자세히). 읽어주기(TTS)는 두지 않음(운영자 결정).

@@ -17,20 +17,16 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { createCanvas, loadImage } = require('canvas');
+const sharp = require('sharp');
 
 const ROOT = path.join(__dirname, '..');
 const SRC = process.argv[2] || path.join(ROOT, 'brand', 'logo.png');
 const PUB = path.join(ROOT, 'public');
 
-function render(img, size, matte) {
-  const c = createCanvas(size, size);
-  const ctx = c.getContext('2d');
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  if (matte) { ctx.fillStyle = matte; ctx.fillRect(0, 0, size, size); }
-  ctx.drawImage(img, 0, 0, size, size);
-  return c;
+/** size×size로 줄인 sharp 파이프라인. matte가 있으면 투명 부분을 그 색으로 채운다. */
+function render(size, matte) {
+  const p = sharp(SRC).resize(size, size, { fit: 'fill', kernel: 'lanczos3' });
+  return matte ? p.flatten({ background: matte }) : p;
 }
 
 /** Minimal PNG-in-ICO container (Vista+; all current browsers support it). */
@@ -60,20 +56,20 @@ function buildIco(entries) {
 
 (async () => {
   if (!fs.existsSync(SRC)) { console.error('✗ source not found:', SRC); process.exit(1); }
-  const img = await loadImage(SRC);
+  const img = await sharp(SRC).metadata();
   const out = (f) => path.join(PUB, f);
   const kb = (b) => (b.length / 1024).toFixed(0) + ' KB';
 
   // 1) main logo
-  const logoPng = render(img, 512).toBuffer('image/png');
+  const logoPng = await render(512).png().toBuffer();
   fs.writeFileSync(out('logo.png'), logoPng);
 
   // 2) header logo (no alpha → white matte, matches source background)
-  const logoJpg = render(img, 512, '#ffffff').toBuffer('image/jpeg', { quality: 0.92 });
+  const logoJpg = await render(512, '#ffffff').jpeg({ quality: 92 }).toBuffer();
   fs.writeFileSync(out('logo.jpg'), logoJpg);
 
   // 3) favicon.svg with embedded raster (keeps all existing /favicon.svg refs valid)
-  const favPng = render(img, 128).toBuffer('image/png');
+  const favPng = await render(128).png().toBuffer();
   const svg =
     '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">\n' +
     '  <image width="128" height="128" href="data:image/png;base64,' + favPng.toString('base64') + '"/>\n' +
@@ -81,7 +77,7 @@ function buildIco(entries) {
   fs.writeFileSync(out('favicon.svg'), svg);
 
   // 4) favicon.ico (multi-size)
-  const ico = buildIco([16, 32, 48].map((s) => ({ size: s, buffer: render(img, s).toBuffer('image/png') })));
+  const ico = buildIco(await Promise.all([16, 32, 48].map(async (s) => ({ size: s, buffer: await render(s).png().toBuffer() }))));
   fs.writeFileSync(out('favicon.ico'), ico);
 
   console.log('✓ source      ', SRC, img.width + 'x' + img.height);

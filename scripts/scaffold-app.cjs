@@ -108,7 +108,6 @@ function buildAstro(opts) {
   const layoutProps = [
     'title="' + escapeAttr(opts.name) + ' — eduin VIVES"',
     'description="' + escapeAttr(opts.seoDesc) + '"',
-    'image="https://eduin.info/og-images/' + opts.id + '.png"',
     'bodyShell="' + opts.base + '"',
   ];
   if (opts.base === 'column' || opts.base === 'gallery') layoutProps.push('bodyWidth="' + opts.width + '"');
@@ -238,7 +237,6 @@ async function main() {
       category, subcategory,
       badge,
       seo: { title: seoTitle, description: seoDesc, keywords: [] },
-      ogImage: '/og-images/' + id + '.png',
     };
   }
 
@@ -250,11 +248,8 @@ async function main() {
   fs.writeFileSync(APPS_JSON, JSON.stringify(data, null, 2) + '\n', 'utf8');
   console.log('   📋 apps.json 등록 (subcategory=' + (subcategory || '없음') + ')');
 
-  // 후처리 — 정적 SEO는 AppLayout이 담당하므로 inject 없음. 모달은 페이지가 없으니 og 생략.
+  // 후처리 — 정적 SEO는 AppLayout, 공유 이미지(/og/<id>.png)는 빌드가 담당한다.
   console.log('\n── 후처리 ──');
-  if (kind !== 'modal' && kind !== 'external') {
-    runStep('og(' + id + ')', ['scripts/generate-og.cjs', '--id', id]);
-  }
   runStep('sitemap', ['scripts/generate-sitemap.cjs']);
 
   console.log('\n✅ "' + name + '" 스캐폴드 완료!');

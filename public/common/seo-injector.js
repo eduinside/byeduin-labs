@@ -189,7 +189,8 @@
     var siteUrl = (site.url || 'https://eduin.info').replace(/\/$/, '');
     var fullTitle = seo.title + ' | ' + (site.name || 'eduin VIVES');
     var description = seo.description || '';
-    var ogImage = absUrl(siteUrl, app.ogImage || site.ogImage || '');
+    // 앱 공유 이미지는 빌드 때 /og/<id>.png로 만든다(src/pages/og/[id].png.ts)
+    var ogImage = absUrl(siteUrl, '/og/' + app.id + '.png');
     var canonicalUrl = siteUrl + app.href;
 
     // ── Twitter Card ──
@@ -203,7 +204,7 @@
 
     // ── OG image (update existing or add) ──
     var existingOgImage = document.querySelector('meta[property="og:image"]');
-    if (existingOgImage && app.ogImage) {
+    if (existingOgImage) {
       existingOgImage.setAttribute('content', ogImage);
     } else if (!existingOgImage) {
       addMeta('property', 'og:image', ogImage);
