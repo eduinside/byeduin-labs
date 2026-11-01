@@ -19,12 +19,14 @@ export interface AppEntry {
   badge?: string;
   subcategory?: string;
   lucideIcon?: string;
-  ogImage?: string;
   seo?: { title?: string; description?: string };
 }
 
 export const site: { name?: string; url?: string; ogImage?: string } = (appsData as any).site || {};
-const apps: AppEntry[] = (appsData as any).apps || [];
+export const apps: AppEntry[] = (appsData as any).apps || [];
+
+/** 앱 공유 이미지 주소 — 빌드 때 src/pages/og/[id].png.ts가 만든다. */
+export const ogImagePath = (id: string) => `/og/${id}.png`;
 
 export const SITE_URL = (site.url || 'https://eduin.info').replace(/\/$/, '');
 export const SITE_NAME = site.name || 'eduin VIVES';
@@ -93,8 +95,13 @@ const esc = (s: unknown) =>
 const toPascal = (name: string) =>
   name.replace(/(^\w|-\w)/g, (m) => m.replace('-', '').toUpperCase());
 
+/** lucide 아이콘의 [태그, 속성] 목록 (og-card.ts도 씀) */
+export function lucideNodes(name: string) {
+  return loadLucide()[toPascal(name)] || null;
+}
+
 export function lucideSvg(name: string): string | null {
-  const node = loadLucide()[toPascal(name)];
+  const node = lucideNodes(name);
   if (!node) return null;
   const attrs: Record<string, string | number> = {
     xmlns: 'http://www.w3.org/2000/svg', width: 24, height: 24, viewBox: '0 0 24 24',

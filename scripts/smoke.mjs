@@ -44,7 +44,7 @@ function listPages() {
   (function walk(dir) {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, e.name);
-      if (e.isDirectory()) { if (!['_astro', 'vendor', 'data', 'og-images', 'downloads'].includes(e.name)) walk(full); continue; }
+      if (e.isDirectory()) { if (!['_astro', 'vendor', 'data', 'og', 'downloads'].includes(e.name)) walk(full); continue; }
       if (!e.name.endsWith('.html') || e.name === '404.html') continue;
       let rel = '/' + path.relative(DIST, full).split(path.sep).join('/');
       rel = rel.replace(/index\.html$/, '');

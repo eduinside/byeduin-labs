@@ -55,7 +55,7 @@ node scripts/scaffold-app.js --id my-app --name "내 앱" --base column --width 
 ### 결과물 (한 커맨드로 완결)
 - **디렉토리 생성**: `public/apps/[app-id]/index.html` — 선택한 베이스의 셸 골격
 - **레지스트리 등록**: [apps.json](file:///d:/Hwan/Documents/Web/byeduin-labs/public/apps.json) `apps` 배열에 `subcategory` 포함 메타데이터 추가
-- **후처리 자동 실행**: `inject-seo` → `generate-og --id <id>` → `generate-sitemap` 순차 실행 (canvas 미설치 시 OG만 경고 후 계속)
+- **후처리 자동 실행**: `generate-sitemap`. 공유(OG) 이미지는 빌드 때 `apps.json`으로 `/og/<id>.png`가 만들어지므로 따로 할 일 없음
 
 ---
 
@@ -74,7 +74,7 @@ node scripts/scaffold-app.js --id my-app --name "내 앱" --base column --width 
   <meta name="description" content="SEO 설명 문구">
   <meta property="og:title" content="SEO 타이틀 | eduin VIVES">
   <meta property="og:description" content="SEO 설명 문구">
-  <meta property="og:image" content="/og-images/앱-ID.png">
+  <meta property="og:image" content="/og/앱-ID.png">
   <meta property="og:type" content="website">
   
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -200,4 +200,4 @@ npm run sitemap
 - [ ] `apps.json`에 적힌 `seo.title`과 `seo.description`이 앱의 기획 의도를 명확히 드러내고 있는가?
 - [ ] `npm run inject` 실행 후 `[app-id]/index.html` 헤더에 Canonical 및 JSON-LD, `seo-injector.js` 태그들이 정상 주입되었는지 확인했는가?
 - [ ] `npm run sitemap` 실행 후 `public/sitemap.xml`에 새로운 앱의 URL 경로가 누락 없이 기재되어 있는가?
-- [ ] `public/og-images/[app-id].png` 파일이 정상적으로 만들어져 들어갔는가?
+- [ ] 개발 서버에서 `/og/[app-id].png`를 열어 공유 이미지의 제목·설명·아이콘이 맞게 나오는가?

@@ -49,7 +49,7 @@ function walk(dir) {
   for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, ent.name);
     if (ent.isDirectory()) {
-      if (['vendor', 'node_modules', 'og-images'].includes(ent.name)) continue;
+      if (['vendor', 'node_modules'].includes(ent.name)) continue;
       walk(p);
     } else if (/\.(astro|ts|js|mjs|html)$/.test(ent.name)) {
       const text = fs.readFileSync(p, 'utf8');
