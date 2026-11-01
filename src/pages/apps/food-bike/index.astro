@@ -166,6 +166,12 @@ body {
 }
 /* SVG 요소에는 hidden 속성이 적용되지 않는 브라우저가 있어 직접 숨긴다(내린 상태의 라이더·걷는 사람) */
 .bike-body-svg [hidden] { display: none; }
+/* 라이더 눈 깜빡임(움직임 줄이기에서는 끔) */
+.fb-eyes { transform-box: fill-box; transform-origin: center; animation: fbBlink 4.2s infinite; }
+@keyframes fbBlink {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
+}
 .fb-icon { font-size: 11.5px; text-anchor: middle; dominant-baseline: central; transition: opacity 0.3s; }
 
 /* 짐칸 짐(유지·당류를 너무 많이 담았을 때) */
@@ -406,7 +412,7 @@ body {
 
 /* 움직임 줄이기: 주행 루프는 JS가 멈추고(멈춘 자세 한 장), 남은 CSS 움직임도 끈다 */
 @media (prefers-reduced-motion: reduce) {
-  .intro-emoji, .fb-luggage-box { animation: none; }
+  .intro-emoji, .fb-luggage-box, .fb-eyes { animation: none; }
   .fb-bell.ring { animation: none; }
 }
   </style>
@@ -1118,12 +1124,17 @@ const REAR = { x: 95, y: 145, r: 55 };  // r: 바닥에 닿는 바깥 반지름
 const FRONT = { x: 262, y: 162, r: 38 };
 const GROUND = 200;
 const CRANK = { x: 165, y: 155, len: 13 };
-const HIP = { x: 142, y: 84 };
-const LEG = 45;                     // 허벅지 = 정강이 길이
+// 라이더 뼈대(기본 자세). 팔·다리는 2관절로 손잡이·페달에 맞춰 매 프레임 계산한다
+const HIP = { x: 142, y: 82 };
+const SHOULDER = { x: 170, y: 46 };
+const HEAD_OFF = { x: 11, y: -21 };  // 어깨 → 머리 중심
+const GRIP = { x: 213, y: 50 };      // 손잡이를 잡은 손
+const THIGH = 45, SHIN = 45, UPPER_ARM = 25, FOREARM = 24;
+const SKIN = '#f5c6a0', SKIN_DARK = '#dfa57d', SHORTS = '#3b6ea8', SHORTS_FAR = '#2c5282', SHOE = '#37474f', HAIR = '#4a3426';
+const FACE_OF = { stop: 'worried', idle: 'smile', wobble: 'worried', heavy: 'tired', run: 'smile', go: 'happy' };
 const SECTOR_R = 46;                // 뒷바퀴 식품군 자리 최대 반지름
 const FINISH = 700;                 // 미션 4 결승선까지 거리
 const GROUP_ICONS = { 1: '🌾', 2: '🍗', 3: '🥬', 4: '🍎', 5: '🥛', 6: '🧈' };
-const FACES = { stop: '😊', idle: '😊', wobble: '😮', heavy: '😓', run: '😊', go: '😄' };
 const reduceMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 
 function fillOf(counts, g) { return Math.min(1, (counts[g] || 0) / MEAL_TARGET[g]); }
@@ -1214,15 +1225,19 @@ function bikeSvgMarkup() {
       <line x1="0" y1="70" x2="70" y2="70"></line><line x1="10" y1="96" x2="64" y2="96"></line><line x1="0" y1="122" x2="44" y2="122"></line>
     </g>
     <g class="fb-body">
-      <g class="fb-rider-back"><path class="fb-leg-far" d="M0 0" stroke="#3b6ea8" stroke-opacity="0.45" stroke-width="6" fill="none" stroke-linejoin="round" stroke-linecap="round"></path></g>
+      <!-- 라이더 먼 쪽 다리(프레임 뒤) -->
+      <g class="fb-rider-back" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path data-part="farShin" d="M0 0" stroke="${SKIN_DARK}" stroke-width="6.5"></path>
+        <path data-part="farThigh" d="M0 0" stroke="${SHORTS_FAR}" stroke-width="10"></path>
+        <path data-part="farShoe" d="M0 0" stroke="#263238" stroke-width="6"></path>
+      </g>
       <!-- 프레임 (뒷바퀴 중심 95,145 / BB 165,155 / 시트포스트 145,95 / 헤드튜브 235,75 / 앞바퀴 중심 262,162) -->
       <path d="M 95 145 L 165 155 L 145 95 Z" ${fg} stroke-width="6"></path>
       <path d="M 165 155 L 235 75 L 145 95" ${fg} stroke-width="6"></path>
       <path d="M 235 75 L 262 162" ${fg} stroke-width="6"></path>
       <path d="M 235 75 L 230 50 L 215 50" ${fg} stroke-width="5"></path>
       <path d="M 145 95 L 142 85 M 130 85 L 155 85" ${fg} stroke-width="5"></path>
-      <path d="M 95 145 L 75 110 L 125 110 L 145 95" ${fg} stroke-width="4"></path>
-      <g class="fb-luggage"></g>
+      <path d="M 95 145 L 78 86 L 128 86 L 144 92" ${fg} stroke-width="4"></path>
       <!-- 뒷바퀴: 식품군 자리는 고정, 바퀴살·타이어 무늬만 돈다 -->
       <g class="fb-rear">
         <circle cx="${REAR.x}" cy="${REAR.y}" r="50" fill="var(--bg-sec)"></circle>
@@ -1237,6 +1252,9 @@ function bikeSvgMarkup() {
           <circle cx="${REAR.x - 4}" cy="${REAR.y}" r="1.6" fill="#fff"></circle>
         </g>
       </g>
+      <!-- 짐받이(뒷바퀴 위) 짐: 바퀴에 가리지 않게 바퀴 다음에 그린다 -->
+      <path d="M 78 86 L 128 86" ${fg} stroke-width="4"></path>
+      <g class="fb-luggage"></g>
       <!-- 앞바퀴(물): 바람이 빠지면 바닥 쪽으로 납작해진다 -->
       <g class="fb-front">
         <circle class="fb-water" cx="${FRONT.x}" cy="${FRONT.y}" r="34" fill="var(--group-water)" fill-opacity="0"></circle>
@@ -1250,15 +1268,21 @@ function bikeSvgMarkup() {
       <!-- 체인링·크랭크·페달 -->
       <circle cx="${CRANK.x}" cy="${CRANK.y}" r="14" ${fg} stroke-width="4"></circle>
       <path class="fb-crank" d="M0 0" ${fg} stroke-width="4"></path>
-      <!-- 라이더(다리는 페달 위치로 계산) -->
-      <g class="fb-rider">
-        <path class="fb-leg-near" d="M0 0" stroke="#3b6ea8" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="6"></path>
-        <path d="M ${HIP.x} ${HIP.y} C 146 72, 160 62, 172 52" stroke="var(--fb-accent)" stroke-width="12" stroke-linecap="round" fill="none"></path>
-        <path d="M 172 52 L 195 62 L 215 50" ${fg} stroke-width="4"></path>
-        <text class="fb-head" x="182" y="38" font-size="28" text-anchor="middle">😊</text>
+      <!-- 라이더(자세는 render()가 매 프레임 계산) -->
+      <g class="fb-rider" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path data-part="nearShin" d="M0 0" stroke="${SKIN}" stroke-width="6.5"></path>
+        <path data-part="nearThigh" d="M0 0" stroke="${SHORTS}" stroke-width="10"></path>
+        <path data-part="nearShoe" d="M0 0" stroke="${SHOE}" stroke-width="6"></path>
+        <path data-part="torso" d="M0 0" stroke="var(--fb-accent)" stroke-width="16"></path>
+        <path data-part="neck" d="M0 0" stroke="${SKIN}" stroke-width="6"></path>
+        <g data-part="head">${headMarkup()}</g>
+        <path data-part="upperArm" d="M0 0" stroke="${SKIN}" stroke-width="6"></path>
+        <path data-part="sleeve" d="M0 0" stroke="var(--fb-accent)" stroke-width="9"></path>
+        <path data-part="forearm" d="M0 0" stroke="${SKIN}" stroke-width="5.5"></path>
+        <circle data-part="hand" r="3.6" fill="${SKIN}" stroke="${SKIN_DARK}" stroke-width="1"></circle>
       </g>
-      <!-- 걸어가는 모습 라이더 (내린 상태) -->
-      <text class="fb-walker" x="318" y="196" font-size="34" text-anchor="middle" hidden>🚶</text>
+      <!-- 내린 라이더(앞바퀴 바람이 빠졌을 때): 바퀴를 내려다보며 머리를 긁적인다 -->
+      <g class="fb-stand" hidden>${standMarkup()}</g>
       <g class="fb-bell">
         <rect x="222" y="0" width="52" height="22" rx="11" fill="#fff" stroke="var(--fg)" stroke-width="2"></rect>
         <text x="248" y="12" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central" fill="var(--fg)">따릉!</text>
@@ -1266,15 +1290,90 @@ function bikeSvgMarkup() {
     </g>`;
 }
 
-/* 엉덩이→페달 2관절 다리(무릎은 앞쪽 위로) */
-function legPath(p) {
-  let dx = p.x - HIP.x, dy = p.y - HIP.y;
-  let d = Math.hypot(dx, dy);
-  const max = LEG * 2 - 0.01;
+/* 2관절 계산: a에서 b로 길이 l1·l2. side 1 = 진행 방향 왼쪽(다리면 무릎이 앞), -1 = 반대(팔꿈치 아래)
+   b가 너무 멀면 닿는 데까지 편다. { j: 관절, e: 끝 } */
+function joint(a, b, l1, l2, side) {
+  let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01;
+  const max = l1 + l2 - 0.01;
   if (d > max) { dx *= max / d; dy *= max / d; d = max; }
-  const a = d / 2, h = Math.sqrt(Math.max(0, LEG * LEG - a * a));
-  const kx = HIP.x + dx / 2 + h * dy / d, ky = HIP.y + dy / 2 - h * dx / d;
-  return `M ${HIP.x} ${HIP.y} L ${kx.toFixed(1)} ${ky.toFixed(1)} L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+  const along = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
+  const h = Math.sqrt(Math.max(0, l1 * l1 - along * along));
+  return {
+    j: { x: a.x + dx * along / d + side * h * dy / d, y: a.y + dy * along / d - side * h * dx / d },
+    e: { x: a.x + dx, y: a.y + dy }
+  };
+}
+const pt = p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+const seg = (a, b) => `M ${pt(a)} L ${pt(b)}`;
+/* 몸통: 엉덩이→어깨, 등이 살짝 둥글게 */
+function torsoPath(h, s) {
+  const mx = (h.x + s.x) / 2, my = (h.y + s.y) / 2;
+  const dx = s.x - h.x, dy = s.y - h.y, d = Math.hypot(dx, dy) || 1;
+  return `M ${pt(h)} Q ${(mx + 4 * dy / d).toFixed(1)} ${(my - 4 * dx / d).toFixed(1)} ${pt(s)}`;
+}
+/* 발목에서 앞쪽으로 신발(페달 위에 수평) */
+const shoePath = a => `M ${(a.x - 2).toFixed(1)} ${(a.y + 3).toFixed(1)} L ${(a.x + 9).toFixed(1)} ${(a.y + 3).toFixed(1)}`;
+function rotAround(p, c, deg) {
+  const r = deg * Math.PI / 180, cs = Math.cos(r), sn = Math.sin(r), x = p.x - c.x, y = p.y - c.y;
+  return { x: c.x + x * cs - y * sn, y: c.y + x * sn + y * cs };
+}
+
+/* 머리(중심 0,0, 오른쪽을 봄): 헬멧·머리카락·귀·표정 4가지(smile·happy·worried·tired) */
+function headMarkup() {
+  const eye = 'fill="#2b1d14"', line = 'fill="none" stroke="#2b1d14" stroke-width="1.3" stroke-linecap="round"';
+  const cheek = '<circle cx="3" cy="4.5" r="2.1" fill="#ff8a80" opacity="0.45"></circle>';
+  return `
+    <path d="M -12 -1 Q -15 8 -7 11 L -6 3 Z" fill="${HAIR}"></path>
+    <circle r="12" fill="${SKIN}" stroke="${SKIN_DARK}" stroke-width="1"></circle>
+    <circle cx="-3" cy="2" r="2.6" fill="${SKIN}" stroke="${SKIN_DARK}" stroke-width="1"></circle>
+    <g class="fb-face" data-face="smile">${cheek}
+      <g class="fb-eyes" ${eye}><circle cx="4.5" cy="0.5" r="1.5"></circle><circle cx="9.8" cy="0" r="1.4"></circle></g>
+      <path d="M 4 5.5 Q 7.5 8.8 11 5" ${line}></path>
+    </g>
+    <g class="fb-face" data-face="happy" display="none">${cheek}
+      <g class="fb-eyes" ${line}><path d="M 3 1 Q 4.5 -1.2 6 1"></path><path d="M 8.4 0.5 Q 9.9 -1.7 11.4 0.5"></path></g>
+      <path d="M 3.5 4.5 Q 7.5 11 11.5 4 Z" fill="#8d2f2f"></path>
+    </g>
+    <g class="fb-face" data-face="worried" display="none">
+      <path d="M 2.8 -2.4 L 5.8 -3.3 M 8.6 -3.6 L 11.3 -2.6" ${line}></path>
+      <g class="fb-eyes" ${eye}><circle cx="4.5" cy="0.7" r="1.7"></circle><circle cx="9.8" cy="0.2" r="1.6"></circle></g>
+      <ellipse cx="7.8" cy="6.6" rx="1.7" ry="2.1" ${eye}></ellipse>
+    </g>
+    <g class="fb-face" data-face="tired" display="none">${cheek}
+      <g class="fb-eyes" ${line}><path d="M 3 0.6 L 6 0.9"></path><path d="M 8.4 0.4 L 11.3 0.6"></path></g>
+      <path d="M 4.2 6.8 Q 5.9 5.6 7.6 6.8 T 11 6.5" ${line}></path>
+      <path d="M 13.5 -3 q 2.2 3.2 0 4.8 q -2.2 -1.6 0 -4.8 z" fill="#4fc3f7"></path>
+    </g>
+    <path d="M -13 -1 C -14 -11, -2 -17, 10 -11 C 13 -9, 14.5 -6, 14.5 -4 C 6 -5.5, -4 -3.5, -13 -1 Z" fill="#ff7043" stroke="#d84315" stroke-width="1.2"></path>
+    <path d="M -6 -11 L -2 -12.6 M 1.5 -12.6 L 5.5 -11.2" stroke="#fff" stroke-opacity="0.8" stroke-width="1.5" stroke-linecap="round"></path>`;
+}
+
+/* 내린 라이더: 오른쪽을 보는 모습으로 그린 뒤 좌우를 뒤집어 앞바퀴 쪽을 보게 한다 */
+function standMarkup() {
+  const hip = { x: 0, y: 105 }, sh = { x: 2, y: 61 }, shFar = { x: -1, y: 60 };
+  const nearAnk = { x: 3, y: 193 }, farAnk = { x: -5, y: 193 };
+  const kn = joint(hip, nearAnk, THIGH, SHIN, 1).j, kf = joint(hip, farAnk, THIGH, SHIN, 1).j;
+  const nearHand = { x: 8, y: 101 }, farHand = { x: -9, y: 35 }; // 먼 손은 머리 뒤를 긁적
+  const en = joint(sh, nearHand, UPPER_ARM, FOREARM, -1).j, ef = joint(shFar, farHand, UPPER_ARM, FOREARM, 1).j;
+  const sleeve = (s, e) => seg(s, { x: s.x + (e.x - s.x) * 0.45, y: s.y + (e.y - s.y) * 0.45 });
+  const st = 'fill="none" stroke-linecap="round" stroke-linejoin="round"';
+  return `<g transform="translate(318 0) scale(-1 1)" ${st}>
+      <path d="${seg(shFar, ef)} L ${pt(farHand)}" stroke="${SKIN_DARK}" stroke-width="5.5"></path>
+      <path d="${seg(kf, farAnk)}" stroke="${SKIN_DARK}" stroke-width="6.5"></path>
+      <path d="${seg(hip, kf)}" stroke="${SHORTS_FAR}" stroke-width="10"></path>
+      <path d="${shoePath(farAnk)}" stroke="#263238" stroke-width="6"></path>
+      <path d="${seg(kn, nearAnk)}" stroke="${SKIN}" stroke-width="6.5"></path>
+      <path d="${seg(hip, kn)}" stroke="${SHORTS}" stroke-width="10"></path>
+      <path d="${shoePath(nearAnk)}" stroke="${SHOE}" stroke-width="6"></path>
+      <path d="${torsoPath(hip, sh)}" stroke="var(--fb-accent)" stroke-width="16"></path>
+      <path d="${seg(sh, { x: 4, y: 50 })}" stroke="${SKIN}" stroke-width="6"></path>
+      <g transform="translate(6 41) rotate(14)">${headMarkup()}</g>
+      <circle cx="${farHand.x}" cy="${farHand.y}" r="3.6" fill="${SKIN_DARK}"></circle>
+      <path d="${seg(sh, en)}" stroke="${SKIN}" stroke-width="6"></path>
+      <path d="${sleeve(sh, en)}" stroke="var(--fb-accent)" stroke-width="9"></path>
+      <path d="${seg(en, nearHand)}" stroke="${SKIN}" stroke-width="5.5"></path>
+      <circle cx="${nearHand.x}" cy="${nearHand.y}" r="3.6" fill="${SKIN}" stroke="${SKIN_DARK}" stroke-width="1"></circle>
+    </g>`;
 }
 
 /* 주행 무대 하나(도로·배경·자전거). opts: { tag, finish, onFinish } */
@@ -1291,18 +1390,24 @@ function createRide(box, opts) {
     svg: q('svg'), sky: q('.ride-sky'), trees: q('.ride-trees'), lines: q('.road-lines'),
     speed: q('.fb-speed'), body: q('.fb-body'), rearSpin: box.querySelectorAll('.fb-rear-spin'),
     front: q('.fb-front'), frontSpin: q('.fb-front-spin'), water: q('.fb-water'), crank: q('.fb-crank'),
-    legNear: q('.fb-leg-near'), legFar: q('.fb-leg-far'), rider: q('.fb-rider'), riderBack: q('.fb-rider-back'),
-    head: q('.fb-head'), walker: q('.fb-walker'), luggage: q('.fb-luggage'), bell: q('.fb-bell'),
-    tag: q('.ride-tag'), progress: q('.ride-progress span'), fills: {}, icons: {}
+    rider: q('.fb-rider'), riderBack: q('.fb-rider-back'), stand: q('.fb-stand'),
+    luggage: q('.fb-luggage'), bell: q('.fb-bell'),
+    tag: q('.ride-tag'), progress: q('.ride-progress span'), fills: {}, icons: {}, part: {}
   };
   box.querySelectorAll('.fb-fill').forEach(p => { el.fills[p.dataset.g] = p; });
   box.querySelectorAll('.fb-icon').forEach(t => { el.icons[t.dataset.g] = t; });
+  box.querySelectorAll('[data-part]').forEach(p => { el.part[p.dataset.part] = p; });
+  // 표정: 머리 안의 4가지 중 하나만 보인다. 눈 깜빡임은 무대마다 조금씩 어긋나게
+  const setFace = (head, face) => head.querySelectorAll('.fb-face').forEach(g => g.setAttribute('display', g.dataset.face === face ? 'inline' : 'none'));
+  setFace(el.stand, 'worried');
+  const blinkDelay = (-Math.random() * 4).toFixed(2) + 's';
+  box.querySelectorAll('.fb-eyes').forEach(g => { g.style.animationDelay = blinkDelay; });
 
   const GROUPS = [1, 2, 3, 4, 5, 6];
   const r = {}, rTo = {}, rWait = {};       // 그린 채움 반지름 / 목표 / 이 시각까지 미룸(날아가는 이모지)
   GROUPS.forEach(g => { r[g] = 0; rTo[g] = 0; rWait[g] = 0; });
-  const cur = { speed: 0, wobble: 0, flat: 0, water: 0 };
-  const to = { speed: 0, wobble: 0, flat: 0, water: 0 };
+  const cur = { speed: 0, wobble: 0, flat: 0, water: 0, heavy: 0 };
+  const to = { speed: 0, wobble: 0, flat: 0, water: 0, heavy: 0 };
   let waterWait = 0, clock = 0, dist = 0, scale = 1, run = null, finished = false, dirty = true;
 
   function fit() {
@@ -1324,6 +1429,7 @@ function createRide(box, opts) {
     to.water = counts.water ? 1 : 0;
     to.flat = a.run === 'stop' ? 1 : 0;
     to.wobble = a.run === 'wobble' ? 1 : 0;
+    to.heavy = a.run === 'heavy' ? 1 : 0;
     to.speed = a.speed;
     if (o.reset) {
       dist = 0; finished = false;
@@ -1331,16 +1437,16 @@ function createRide(box, opts) {
     }
     const prev = run;
     run = a.run;
-    el.head.textContent = FACES[a.run] || '😊';
+    setFace(el.part.head, FACE_OF[a.run] || 'smile');
     el.rider.toggleAttribute('hidden', a.run === 'stop');
     el.riderBack.toggleAttribute('hidden', a.run === 'stop');
-    el.walker.toggleAttribute('hidden', a.run !== 'stop');
+    el.stand.toggleAttribute('hidden', a.run !== 'stop');
     // 짐칸 짐: 유지·당류가 OIL_LIMIT을 넘은 만큼(최대 3). 새로 생긴 상자만 튀어나온다
     const want = counts[6] > OIL_LIMIT ? Math.min(3, counts[6] - OIL_LIMIT) : 0;
     while (el.luggage.children.length > want) el.luggage.lastChild.remove();
     while (el.luggage.children.length < want) {
-      const i = el.luggage.children.length, y = 110 - 18 * (i + 1);
-      el.luggage.insertAdjacentHTML('beforeend', `<g class="fb-luggage-box"><rect x="76" y="${y}" width="44" height="16" rx="3" fill="#d35400" stroke="var(--fg)" stroke-width="2"></rect><text x="98" y="${y + 8.5}" font-size="11" font-weight="800" fill="#fff" text-anchor="middle" dominant-baseline="central">짐</text></g>`);
+      const i = el.luggage.children.length, y = 84 - 18 * (i + 1) + 2;
+      el.luggage.insertAdjacentHTML('beforeend', `<g class="fb-luggage-box"><rect x="80" y="${y}" width="44" height="16" rx="3" fill="#d35400" stroke="var(--fg)" stroke-width="2"></rect><text x="102" y="${y + 8.5}" font-size="11" font-weight="800" fill="#fff" text-anchor="middle" dominant-baseline="central">짐</text></g>`);
     }
     el.svg.setAttribute('aria-label', wheelLabel(counts));
     if (o.ring && prev && prev !== 'go' && run === 'go') setTimeout(ring, (o.ringDelay || 0) * 1000);
@@ -1376,8 +1482,9 @@ function createRide(box, opts) {
     cur.speed += (to.speed - cur.speed) * ks;
     cur.wobble += (to.wobble - cur.wobble) * kf;
     cur.flat += (to.flat - cur.flat) * kf;
+    cur.heavy += (to.heavy - cur.heavy) * kf;
     if (clock >= waterWait) cur.water += (to.water - cur.water) * kf;
-    let settling = Math.abs(to.speed - cur.speed) > 0.002 || Math.abs(to.flat - cur.flat) > 0.002 || Math.abs(to.water - cur.water) > 0.002;
+    let settling = ['speed', 'flat', 'water', 'heavy'].some(k => Math.abs(to[k] - cur[k]) > 0.002);
     GROUPS.forEach(g => {
       if (clock < rWait[g]) { settling = true; return; }
       const d = rTo[g] - r[g];
@@ -1410,8 +1517,7 @@ function createRide(box, opts) {
     const p2 = { x: 2 * CRANK.x - p1.x, y: 2 * CRANK.y - p1.y };
     const f = n => n.toFixed(1);
     el.crank.setAttribute('d', `M ${f(p1.x)} ${f(p1.y)} L ${CRANK.x} ${CRANK.y} L ${f(p2.x)} ${f(p2.y)} M ${f(p1.x - 5)} ${f(p1.y)} L ${f(p1.x + 5)} ${f(p1.y)} M ${f(p2.x - 5)} ${f(p2.y)} L ${f(p2.x + 5)} ${f(p2.y)}`);
-    el.legNear.setAttribute('d', legPath(p1));
-    el.legFar.setAttribute('d', legPath(p2));
+    poseRider(p1, p2, rearRad);
     // 몸 흔들림: 비틀비틀은 앞뒤로 기우뚱·덜컹, 달릴 때는 페달에 맞춰 살짝 들썩
     const tilt = cur.wobble * 4 * Math.sin(clock * 6.5);
     const bounce = -cur.wobble * 3 * Math.abs(Math.sin(clock * 9)) - 0.8 * Math.min(1, cur.speed) * Math.abs(Math.sin(rearRad));
@@ -1432,6 +1538,36 @@ function createRide(box, opts) {
       });
       dirty = false;
     }
+  }
+
+  /* 라이더 자세: 빠를수록·짐이 무거울수록 앞으로 숙이고, 페달에 맞춰 상체가 살짝 들썩인다.
+     비틀비틀이면 자전거가 기우는 반대쪽으로 몸을 기울여 균형을 잡고 고개가 흔들린다 */
+  function poseRider(p1, p2, rearRad) {
+    const P = el.part, sp = Math.min(1, cur.speed);
+    const sway = Math.sin(clock * 6.5);
+    const lean = 5 * sp + 6 * cur.heavy + 1.2 * sp * Math.sin(rearRad * 2) - 4 * cur.wobble * sway;
+    const sh = rotAround(SHOULDER, HIP, lean);
+    const off = rotAround(HEAD_OFF, { x: 0, y: 0 }, lean * 1.2);
+    const head = { x: sh.x + off.x, y: sh.y + off.y };
+    const nod = lean * 0.4 + 7 * cur.wobble * Math.sin(clock * 5) + 4 * cur.heavy;
+    // 다리: 엉덩이 → 무릎 → 발목(페달 위 신발)
+    [['near', p1], ['far', p2]].forEach(([k, p]) => {
+      const ank = { x: p.x - 2, y: p.y - 5 };
+      const lg = joint(HIP, ank, THIGH, SHIN, 1);
+      P[k + 'Thigh'].setAttribute('d', seg(HIP, lg.j));
+      P[k + 'Shin'].setAttribute('d', seg(lg.j, lg.e));
+      P[k + 'Shoe'].setAttribute('d', shoePath(lg.e));
+    });
+    P.torso.setAttribute('d', torsoPath(HIP, sh));
+    P.neck.setAttribute('d', seg(sh, { x: sh.x + off.x * 0.5, y: sh.y + off.y * 0.5 }));
+    P.head.setAttribute('transform', `translate(${pt(head)}) rotate(${nod.toFixed(1)})`);
+    // 팔: 어깨 → 팔꿈치(아래로 굽힘) → 손잡이
+    const arm = joint(sh, GRIP, UPPER_ARM, FOREARM, -1);
+    P.upperArm.setAttribute('d', seg(sh, arm.j));
+    P.sleeve.setAttribute('d', seg(sh, { x: sh.x + (arm.j.x - sh.x) * 0.45, y: sh.y + (arm.j.y - sh.y) * 0.45 }));
+    P.forearm.setAttribute('d', seg(arm.j, arm.e));
+    P.hand.setAttribute('cx', arm.e.x.toFixed(1));
+    P.hand.setAttribute('cy', arm.e.y.toFixed(1));
   }
 
   /* 움직임 줄이기용: 결승선까지 frac만큼 간 모습으로 바로 */
