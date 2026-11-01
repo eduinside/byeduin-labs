@@ -9,13 +9,14 @@
 //             'name'   { summary, customName? }                  → { names[3], customNameOk? }
 //             'image'  { summary }                                → { b64 }
 //
-//   검열: 로컬 금칙어 프리필터(즉시 차단) + OpenAI Moderation(타임아웃 시 통과 — 가용성 우선,
+//   검열(_moderation.js): 로컬 금칙어 프리필터(즉시 차단) + OpenAI Moderation(타임아웃 시 통과 — 가용성 우선,
 //   madang과 동일 정책). 아이가 직접 쓴 텍스트(물건 이름·답변·발명 이름)에 매 호출마다 적용
 //   — 클라이언트가 검열을 건너뛰어도 서버가 매번 다시 검사하므로 우회 불가.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { generateContent, generateImage } from './_ai.js';
 import { guard, json, readJson, errorResponse } from './_guard.js';
+import { moderate, moderateAll } from './_moderation.js';
 
 // 입력 상한
 const BODY_MAX = 16 * 1024;
@@ -29,69 +30,8 @@ const MAGIC_LABEL = {
   resize: '크기 바꾸기',
   material: '재료 바꾸기',
 };
-const MOD_TIMEOUT_MS = 2500;
 const AI_FAIL = 'AI가 잠시 대답하지 못했어요. 잠시 후 다시 시도해 주세요.';
 const PARSE_FAIL = 'AI 응답을 읽지 못했어요. 다시 시도해 주세요.';
-
-// 로컬 금칙어 프리필터 — madang과 같은 목록의 1차 방어선(API 왕복 없이 즉시 차단).
-// 글자 사이 공백 허용 규칙: 붙여 쓴 형태("씨발")는 어디서든 잡고, 글자 사이에 공백을 넣은 형태("씨 발")는
-// 그 글자들이 앞뒤 낱말과 떨어져 있을 때만 잡는다. 예전 /시\s*발/은 "다시 발명"·"도시 발전"·"출시 발표"처럼
-// 앞 낱말의 끝 글자와 뒷 낱말의 첫 글자가 우연히 이어지는 경우까지 막았다(발명 앱의 핵심 낱말과 충돌).
-// 놓친 변형은 뒤이은 OpenAI Moderation이 다시 거른다.
-const HANGUL = '가-힣ㄱ-ㅎㅏ-ㅣ';
-const SPACED_WORDS = [
-  '씨발', '시발', '씨팔', 'ㅅㅂ', 'ㅆㅂ',
-  '개새끼', '개색끼', '개새기',
-  '병신', '븅신', 'ㅂㅅ',
-  '존나', '조낸',
-  '지랄', 'ㅈㄹ',
-  '창녀',
-];
-function spacedWordRe(word) {
-  const chars = [...word];
-  // 붙여 쓴 형태 | (앞에 한글이 붙지 않은 자리에서) 글자 사이 공백 허용 + 끝은 낱말 경계 또는 흔한 접미(야·아·들·놈·년)
-  return new RegExp(`${word}|(?<![${HANGUL}])${chars.join('\\s*')}(?=$|[^${HANGUL}]|[야아들놈년])`, 'i');
-}
-const LOCAL_BAD_PATTERNS = [
-  ...SPACED_WORDS.map(spacedWordRe),
-  /좆/i,
-  /미친\s*놈|미친\s*년/i,
-  /걸레\s*년/i,
-  /죽어라|뒤져라/i,
-  /fuck|shit|bitch|asshole/i,
-];
-function localFilterHit(text) { return LOCAL_BAD_PATTERNS.some((re) => re.test(text)); }
-
-// 검열: 텍스트 하나(또는 여러 개를 합친 것)를 검사. 키 없음/오류/타임아웃이면 통과(가용성 우선).
-async function moderate(env, text) {
-  if (!text || !text.trim()) return { flagged: false };
-  if (localFilterHit(text)) return { flagged: true, local: true };
-  const key = env.OPENAI_API_KEY;
-  if (!key) return { flagged: false, noKey: true };
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), MOD_TIMEOUT_MS);
-  try {
-    const r = await fetch('https://api.openai.com/v1/moderations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model: 'omni-moderation-latest', input: text.slice(0, 4000) }),
-      signal: controller.signal,
-    });
-    if (!r.ok) return { flagged: false, ok: false };
-    const d = await r.json();
-    const res = d && d.results && d.results[0];
-    return { flagged: !!(res && res.flagged) };
-  } catch (e) {
-    return { flagged: false, timedOut: e && e.name === 'AbortError' };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-async function moderateAll(env, texts) {
-  const joined = texts.filter((t) => typeof t === 'string' && t.trim()).join('\n');
-  return moderate(env, joined);
-}
-
 
 function cleanStr(v, max) {
   if (typeof v !== 'string') return '';
