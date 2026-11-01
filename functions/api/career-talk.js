@@ -133,6 +133,15 @@ const DANGER_CATS = /self-harm|violence|sexual|hate|harassment|illicit/;
 // 돈·숫자 표현(연봉·합격률). AI가 어기면 고정 문구로 바꾼다.
 const MONEY_RE = /\d[\d,.]*\s*(만\s*원|억|원|퍼센트|%|등)|연봉\s*[은는이가]?\s*\d|합격률\s*[은는이가]?\s*\d/;
 
+// 추천 이유는 길잡이가 학생이 한 일을 돌려주는 과거형('~했어요'·'~물어봤어요')만 쓴다.
+// '궁금해요'·'저도 좋아요'처럼 학생이 하는 말로 들리거나 '잘 맞아요' 같은 판단이면 기본 문구로 바꾼다.
+const REASON_STOCK = '대화에서 보인 관심과 닮은 직업이에요';
+function guideVoice(reason) {
+  const m = reason.match(/([가-힣])어요$/);
+  if (!m || (m[1].charCodeAt(0) - 0xac00) % 28 !== 20) return false; // 어요 앞 글자 받침이 ㅆ(했·봤·었)
+  return !/^(저는|저도|제가|나는|나도|내가)|맞았어요|어울렸어요/.test(reason);
+}
+
 // 학생 말 검열: 'rephrase'(욕설) / 'safety'(위험 주제) / null
 async function checkStudent(env, pick, history) {
   if (pick && localFilterHit(pick)) return 'rephrase';
@@ -348,7 +357,10 @@ export async function onRequest(ctx) {
       const systemPrompt = [
         `학생이 가상의 ${who}와 나눈 인터뷰와 돌아보기를 읽고, 아래 직업 목록에서 학생이 더 알아볼 만한 직업 3개를 고른다. ${who}(${job.id})는 고르지 않는다.`,
         '대화에서 보인 관심(학생이 말한 자기 이야기, 자주 물어본 것)과 목록의 흥미·적성 태그가 맞는 직업을 고른다. 목록 앞쪽(비슷한 직업)을 먼저 살피되, 대화에 더 맞으면 다른 분류도 좋다.',
-        'reason은 학생에게 하는 말로 30자 이내, 대화 속 말을 근거로 쓴다(예: 사람을 돕는 이야기를 많이 했어요). 태그 이름(뚝딱이 등)이나 "○○형" 같은 분류, 검사·점수 같은 말은 쓰지 않는다.',
+        'reason은 30자 이내. 길잡이 선생님이 학생에게 "네가 대화에서 한 일"을 돌려주는 말로, 학생이 실제로 묻거나 말한 것을 과거형 \'~했어요\'로 쓴다.',
+        '좋은 예: 사람을 구하는 일을 물어봤어요 / 그림 그리기가 좋다고 했어요 / 불 끄는 장비를 궁금해했어요 / 동물 이야기를 많이 했어요',
+        '나쁜 예: 사람을 지키는 일도 궁금해요(학생이 하는 말) / 저도 동물이 좋아요(학생이 하는 말) / 이 직업이 딱 맞아요(판단) / 친절이형이라 잘 맞아요(분류)',
+        '태그 이름(뚝딱이 등)이나 "○○형" 같은 분류, 검사·점수, "잘 맞아요"·"어울려요" 같은 판단은 쓰지 않는다.',
         STYLE_RULE,
         '[출력] JSON만: {"jobs":[{"id":"목록의 id","reason":"…"},{"id":"…","reason":"…"},{"id":"…","reason":"…"}]}',
         `[직업 목록]\n${list}`,
@@ -361,8 +373,8 @@ export async function onRequest(ctx) {
       for (const r of Array.isArray(out.jobs) ? out.jobs : []) {
         const id = r && typeof r.id === 'string' ? r.id.trim() : '';
         if (!JOBS.has(id) || id === job.id || picked.some((p) => p.id === id)) continue;
-        let reason = tidy(cleanStr(r.reason, 30));
-        if (!reason || localFilterHit(reason) || MONEY_RE.test(reason) || /형이|검사|점수/.test(reason)) reason = '대화에서 보인 관심과 닮은 직업이에요';
+        let reason = tidy(cleanStr(r.reason, 30)).replace(/\.$/, '');
+        if (!reason || localFilterHit(reason) || MONEY_RE.test(reason) || /형이|검사|점수/.test(reason) || !guideVoice(reason)) reason = REASON_STOCK;
         picked.push({ id, reason });
         if (picked.length === 3) break;
       }
