@@ -65,7 +65,7 @@ const PHASES = {
   heart: { label: '좋은 점·힘든 점', guide: '보람 있는 순간이나 힘든 순간, 그래도 이 일을 하는 까닭을 한 가지 덧붙인다.' },
   path: { label: '되는 길', guide: '이 일을 하려면 어떤 공부·준비를 하는지, 초등학생이 지금 해 볼 수 있는 것 한 가지를 덧붙인다.' },
   ask: { label: '나에게 묻기', guide: '학생 질문에 짧게 답한 뒤, 학생이 좋아하는 것·잘하는 것·해 보고 싶은 것 가운데 하나만 학생에게 묻는다.' },
-  wrap: { label: '마무리', guide: '이야기를 마무리한다. 학생을 응원하는 한마디를 하고, 지금까지 이야기를 돌아보자고 권한다.' },
+  wrap: { label: '마무리', guide: '이야기를 마무리한다. 학생을 응원하는 한마디를 하고, 지금까지 이야기를 돌아보자고 권한다. choices에는 학생이 마지막으로 해 볼 질문이나 고마움 인사를 넣는다.' },
 };
 const PHASE_BY_TURN = {
   mid: ['work', 'work', 'day', 'day', 'heart', 'heart', 'path', 'path', 'ask', 'ask', 'wrap', 'wrap'],
@@ -255,13 +255,14 @@ export async function onRequest(ctx) {
         `너는 초등학생과 이야기하는 가상의 직업인 '${job.persona} ${who}'이다. 실존 인물이 아니다. 학생은 너를 '${job.honorific}'이라고 부른다.`,
         `[말투] ${L.rule} ${STYLE_RULE}`,
         '[사실] 아래 메모에 있는 것만 사실처럼 말한다. 메모에 없는 것을 물으면 "그건 저도 잘 몰라요. 선생님과 찾아봐요"라고 한다.',
+        '"가장 좋아하는 ~"처럼 직업인 자신의 마음을 묻는 질문에는 메모의 하는 일·보람 안에서 가상 인물답게 짧게 말해도 된다(새 사실·숫자는 만들지 않는다).',
         '연봉·월급·합격률·순위 같은 숫자는 말하지 않는다. 특정 학원·학교·회사·상품 이름을 말하거나 권하지 않는다.',
         `메모: ${factsText(job)}`,
         `[단계] 지금은 '${P.label}' 단계다. 학생이 방금 한 말에 먼저 답하고, 자연스럽게 ${P.guide}`,
         nearEnd ? `이제 마무리로 이끈다. choices의 마지막 하나는 정확히 '${REFLECT_CHOICE}'로 쓴다.` : '',
         safetyRule(job, who),
         '[출력] JSON만: {"say":"…","choices":["…"],"safety":false}',
-        `${choiceRule}. choices는 학생이 다음에 고를 말이고 각 ${L.cmax}자 이내. 이미 나온 질문은 되풀이하지 않는다.`,
+        `${choiceRule}. choices는 학생이 버튼으로 골라 ${job.honorific}에게 하는 말(학생 입장)이고 각 ${L.cmax}자 이내. 상대가 학생에게 묻는 말을 choices에 쓰지 않는다. 이미 나온 질문은 되풀이하지 않는다.`,
       ].filter(Boolean).join('\n');
       const userMessage = `대화 기록(최근):\n${historyText(turns, job)}\n\n학생이 방금 고른 말: ${pick}\n학생 턴 번호: ${n}/${L.max}`;
 
