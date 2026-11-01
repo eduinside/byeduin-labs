@@ -40,7 +40,7 @@ docs/                  ← 개발 문서
 
 ## 앱 목록
 
-### 교육 · 시뮬레이션 (`edu-sim`, 19종 — 주제순: 수학 → 천체·우주 → 지구과학 → 소리 → 전기 → 생태 → 실과 → 세계 → 창의·AI)
+### 교육 · 시뮬레이션 (`edu-sim`, 21종 — 주제순: 수학 → 천체·우주 → 지구과학 → 소리 → 전기 → 생태 → 실과 → 세계 → 창의·AI)
 | ID | 이름 | 설명 |
 |---|---|---|
 | `break-make` | 가르기 모으기 | 구슬 조작으로 수 가르기·모으기 + 도전 모드·도감 |
@@ -63,6 +63,7 @@ docs/                  ← 개발 문서
 | `food-bike` | 식품구성자전거 | 음식을 담아 바퀴를 채우는 균형 식단 게임 |
 | `world-landmarks` | 세계 탐험대 | 3D 위성지도로 세계 랜드마크 11곳 + 여권 수집 |
 | `idea-lab` | 발명 아이디어 공작소 | 발명 마법 4가지 + AI 코치로 발명품 구상·이름·그림 완성 |
+| `career-talk` | 진로 탐험대 | 직업 104개(분류 12)의 가상 직업인과 선택지 인터뷰(AI) → 돌아보기 → 더 알아볼 직업 3개 → 10년 뒤 나의 하루 글·그림 → 탐험 카드(인쇄·공유) |
 
 ### 교육 · 학습지원 (`edu-learn`)
 | ID | 이름 | 설명 |
@@ -140,7 +141,7 @@ docs/                  ← 개발 문서
 | `split` | 2-페인 (입력 \| 미리보기) | md-editor, notion-styler |
 | `sidebar` | 내비 사이드바 + 메인 | search |
 | `gallery` | 반응형 카드 그리드 | blocks-universe, chalkboard, mindmap, bubble-chat |
-| `immersive` | 풀뷰포트 (크롬만 주입) | edu-sim 20종 전체(cube-builder, moon-phase, volcano, step-squad, break-make, clubs, fraction-bar, shape-move, chance-lab, clock, graph-maker, moon-phase-v2, solar-system, sun-shadow, pitch-lab, circuit-lab, eco-web, food-bike, world-landmarks, idea-lab) |
+| `immersive` | 풀뷰포트 (크롬만 주입) | edu-sim 21종 전체(career-talk, cube-builder, moon-phase, volcano, step-squad, break-make, clubs, fraction-bar, shape-move, chance-lab, clock, graph-maker, moon-phase-v2, solar-system, sun-shadow, pitch-lab, circuit-lab, eco-web, food-bike, world-landmarks, idea-lab) |
 
 **폭 플래그** (`data-width`): `narrow`(480px) · `medium`(720px) · `wide`(1120px)  
 **기능 플래그**: `data-focus`(아이템→전체화면 `enterFocus()`) · `data-print`(A4 인쇄 베이스라인)
@@ -172,6 +173,7 @@ docs/                  ← 개발 문서
 | `POST /api/signage-prompt` | 사이니지 이미지 AI 생성 |
 | `POST /api/flash-recommend` | 플래시덱 카드 AI 추천 |
 | `POST /api/mindmap-draft` | 마인드맵 AI 초안(마크다운 개요) |
+| `POST /api/career-talk` | 진로 탐험대 무상태 AI 프록시(talk·reflect·recommend·sketch). 학생 말 매 호출 검열(`_moderation.js`), 개인정보 `[지움]`, 안전 고정 문구, 한도 `career-talk`·`career-talk-image` |
 | `POST /api/mindmap-ask` | 마인드맵 가지에서 AI에게 묻기(작은 가지 추천·설명·예시·질문) |
 | `GET /api/yt-playlist` | 유튜브 재생목록 파싱 |
 | `GET /api/yt-video-info` | 유튜브 영상 정보 |
@@ -210,6 +212,12 @@ docs/                  ← 개발 문서
 ---
 
 ## 주요 변경 이력
+
+### 2026-11-01 — 진로 탐험대(`career-talk`) 신규 (`docs/career-talk-plan.md`)
+- 초등 AI 진로 체험: 직업 104개(주니어 커리어넷 관심주제 12개로 분류, 예시 12개)의 가상 직업인과 선택지형 인터뷰(학생 턴 12, 쉬운 말 8) → 길잡이 선생님과 돌아보기(최대 4턴) → 대화에서 보인 관심으로 더 알아볼 직업 3개 → 10년 뒤 나의 하루 글 + 그림(대화당 1회, 실패 때만 1회 더) → 탐험 카드(인쇄·공유, 대화 원문은 공유하지 않음). 눈높이 3종(쉬운 말·보통·자세히). 읽어주기(TTS)는 두지 않음(운영자 결정).
+- 직업 목록·사실 메모 정본 `public/apps/career-talk/jobs.json`(서버도 JSON import로 같은 파일을 씀). 2차 검수표 `docs/career-talk-jobs-review.md`.
+- `functions/api/_moderation.js`: 발명 공작소의 금칙어·OpenAI Moderation 검열을 공용 모듈로 분리(idea-lab은 import로 교체, 동작 같음).
+- `_guard.js` LIMITS에 `career-talk`(300/분·3000/일·사이트 8000/일)·`career-talk-image`(30/분·300/일·사이트 300/일).
 
 ### 2026-10-31 — 파일 용량 줄이기 3단계 (`docs/file-tools-v2-plan.md` 3단계)
 - **생활 예시 용량**: 1MB · 업무관리(5MB) · 네이버 메일(10MB) · Gmail(25MB), 기본 목표 5MB.
