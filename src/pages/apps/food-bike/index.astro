@@ -116,29 +116,43 @@ body {
   display: inline-flex; align-items: center; justify-content: center; font-size: 13px;
 }
 
-/* 자전거 상자: 남는 높이를 모두 쓰고, 그림(340×220)은 JS가 정한 배율로 아래 가운데에 맞춘다 */
+/* 자전거 상자: 남는 높이를 모두 쓴다. 안의 주행 무대(.ride)마다 JS가 그림 배율(--bike-s)을 정한다 */
 .bike-box {
   position: relative; flex: 1 1 auto; min-height: 90px; width: 100%;
   overflow: hidden; border-radius: 16px;
 }
+.ride { position: absolute; inset: 0; overflow: hidden; --bike-s: 1; }
+.ride[hidden] { display: none; }
+/* 미션 4: 두 자전거를 두 줄로 */
+.race { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 6px; }
+.race[hidden] { display: none; }
+.race .ride { position: relative; inset: auto; flex: 1 1 0; min-height: 0; border-radius: 12px; background: rgba(0,0,0,0.025); }
+
+/* 배경 2겹(구름·나무)과 도로. 위치는 JS가 굴러간 거리로 옮긴다(바퀴 회전과 같은 값) */
+.ride-sky, .ride-trees {
+  position: absolute; left: 0; right: 0; background-repeat: repeat-x; pointer-events: none; z-index: 0;
+}
+.ride-sky {
+  top: 6px; height: calc(var(--bike-s) * 44px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 44'%3E%3Cg fill='%23e1e7ef'%3E%3Cellipse cx='60' cy='28' rx='30' ry='11'/%3E%3Cellipse cx='78' cy='20' rx='18' ry='11'/%3E%3Cellipse cx='225' cy='16' rx='22' ry='8'/%3E%3Cellipse cx='240' cy='11' rx='12' ry='8'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: calc(var(--bike-s) * 320px) 100%;
+}
+.ride-trees {
+  bottom: calc(var(--bike-s) * 24px + 6px); height: calc(var(--bike-s) * 54px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 54'%3E%3Cg fill='%23c9b39b'%3E%3Crect x='38' y='34' width='5' height='20'/%3E%3Crect x='133' y='40' width='4' height='14'/%3E%3C/g%3E%3Cg fill='%23c8e0c6'%3E%3Ccircle cx='40' cy='26' r='14'/%3E%3Ccircle cx='31' cy='33' r='9'/%3E%3Ccircle cx='50' cy='33' r='9'/%3E%3Ccircle cx='135' cy='34' r='10'/%3E%3Cellipse cx='95' cy='50' rx='16' ry='6'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: calc(var(--bike-s) * 180px) 100%;
+}
 .road-bg {
-  position: absolute; bottom: 0; left: 0; width: 200%;
+  position: absolute; bottom: 0; left: 0; right: 0;
   height: calc(var(--bike-s) * 24px + 6px);
   background-color: #34495e;
   border-top: 4px solid #7f8c8d;
-  z-index: 0; transform: translateX(0);
+  z-index: 0;
 }
-.road-bg::after {
-  content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 4px;
-  background: repeating-linear-gradient(90deg, #fff 0px, #fff 30px, transparent 30px, transparent 60px);
-  opacity: 0.6;
-}
-.road-bg.moving {
-  animation: moveRoad 2s linear infinite;
-}
-@keyframes moveRoad {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-80px); }
+/* 차선 무늬 한 주기 = 60px (JS가 60으로 나눈 나머지만큼 옮겨 이음매가 튀지 않음) */
+.road-lines {
+  position: absolute; top: 50%; left: 0; right: 0; height: 4px; margin-top: -2px;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,0.6) 0 30px, transparent 30px 60px);
 }
 
 /* 자전거 & 라이더 */
@@ -148,68 +162,44 @@ body {
 }
 
 .bike-body-svg {
-  position: absolute; inset: 0; width: 100%; height: 100%;
+  position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible;
 }
 /* SVG 요소에는 hidden 속성이 적용되지 않는 브라우저가 있어 직접 숨긴다(내린 상태의 라이더·걷는 사람) */
 .bike-body-svg [hidden] { display: none; }
+.fb-icon { font-size: 11.5px; text-anchor: middle; dominant-baseline: central; transition: opacity 0.3s; }
 
-/* 앞바퀴 (물) */
-.front-wheel {
-  position: absolute; bottom: 20px; right: 40px; width: 76px; height: 76px;
-  border-radius: 50%; border: 4px solid var(--fg);
-  background: transparent; z-index: 2; transition: all 0.3s;
-  display: flex; align-items: center; justify-content: center;
+/* 짐칸 짐(유지·당류를 너무 많이 담았을 때) */
+.fb-luggage-box { transform-box: fill-box; transform-origin: 50% 100%; animation: fbPop 0.25s ease; }
+@keyframes fbPop {
+  from { transform: scale(0.3); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
-.front-wheel.spinning {
-  animation: spin 0.6s linear infinite;
-}
-.front-wheel.flat {
-  border-radius: 50% 50% 40% 40%;
-  transform: scaleY(0.75);
-  bottom: 10px;
-}
-.water-gauge {
-  width: 100%; height: 0%; background: var(--group-water); opacity: 0.65;
-  position: absolute; bottom: 0; border-radius: 50%; transition: height 0.4s;
+/* 처음 '쌩쌩'이 되면 '따릉!' */
+.fb-bell { opacity: 0; transform-box: fill-box; transform-origin: 0% 100%; }
+.fb-bell.ring { animation: fbBell 1.6s ease forwards; }
+@keyframes fbBell {
+  0% { opacity: 0; transform: scale(0.4); }
+  12% { opacity: 1; transform: scale(1.12); }
+  22% { transform: scale(1); }
+  75% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-6px); }
 }
 
-/* 뒷바퀴 (6개 식품군 부채꼴) */
-.rear-wheel {
-  position: absolute; bottom: 20px; left: 40px; width: 110px; height: 110px;
-  border-radius: 50%; border: 5px solid var(--fg);
-  background: var(--bg-sec); z-index: 2; transition: all 0.3s;
-  overflow: hidden;
+/* 미션 4 줄 이름표·결승선까지 막대 */
+.ride-tag {
+  position: absolute; top: 6px; left: 8px; z-index: 3;
+  background: rgba(38,50,56,0.88); color: #fff; border-radius: 10px; padding: 2px 10px;
+  font-size: 13px; font-weight: 800; line-height: 1.5;
 }
-.rear-wheel.spinning {
-  animation: spin 0.8s linear infinite;
+.ride-progress {
+  position: absolute; top: 12px; left: 118px; right: 34px; height: 8px; z-index: 3;
+  border-radius: 4px; background: rgba(0,0,0,0.12); overflow: hidden;
 }
-.rear-wheel.wobbling {
-  animation: wobbleWheel 0.4s ease-in-out infinite alternate;
-}
-@keyframes wobbleWheel {
-  0% { transform: translateY(0) rotate(0deg); }
-  100% { transform: translateY(-3px) rotate(5deg); }
-}
+.ride-progress span { display: block; height: 100%; width: 0; border-radius: 4px; background: var(--fb-accent); }
+.ride-flag { position: absolute; top: 4px; right: 8px; z-index: 3; font-size: 18px; line-height: 1; }
 
-.rear-wheel-svg {
-  width: 100%; height: 100%;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* 짐칸 무거운 짐(유지·당류를 너무 많이 담았을 때) */
-.bike-luggage {
-  position: absolute; bottom: 120px; left: 30px; display: flex; flex-direction: column-reverse; gap: 2px;
-  z-index: 1;
-}
-.luggage-box {
-  width: 48px; height: 28px; background: #d35400; border: 2px solid var(--fg);
-  border-radius: 4px; display: flex; align-items: center; justify-content: center;
-  font-size: 16px; color: #fff; font-weight: 800; animation: popIn 0.25s ease;
-}
+/* 음식을 담을 때 접시 → 바퀴로 날아가는 이모지 */
+.fb-fly { position: fixed; left: 0; top: 0; z-index: 9999; font-size: 24px; line-height: 1; pointer-events: none; }
 
 /* 주행 상태 줄: 자전거와 접시 사이(그림을 가리지 않음) */
 .run-status-banner {
@@ -223,6 +213,7 @@ body {
 .run-status-banner[data-state="stop"] { background: #c0392b; }
 .run-status-banner[data-state="wobble"] { background: #b85c0f; }
 .run-status-banner[data-state="heavy"] { background: #2c3e50; }
+.run-status-banner[data-state="run"] { background: #00796b; }
 .run-status-banner[data-state="go"] { background: #2e7d32; }
 .run-status-banner[data-state="idle"] { background: #546e7a; }
 
@@ -238,6 +229,8 @@ body {
   display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; min-height: 64px; max-height: 148px; overflow-y: auto;
   background: rgba(0,0,0,0.02); border-radius: 12px; padding: 8px;
 }
+.plate-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; justify-content: center; width: 100%; }
+.plate-row strong { font-size: 13px; margin-right: 2px; }
 .plate-slot-empty {
   color: var(--fg-muted); font-size: 14px; font-weight: 700; align-self: center;
 }
@@ -299,8 +292,7 @@ body {
 /* 번호 버튼은 SimKit(.sk-mnav-btn, 44px)이 그린다 */
 .mission-exit { margin-top: 10px; }
 
-/* 미션 4: 식단 A/B 보기 + 결론 고르기 */
-.m4-view { margin-top: 10px; }
+/* 미션 4: 결론 고르기 */
 .m4-choices { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
 .m4-choice {
   min-height: 44px; border-radius: 10px; border: 2px solid var(--border); padding: 8px 12px;
@@ -411,6 +403,12 @@ body {
   .run-status-banner { font-size: 13px; padding: 5px 12px; }
   .sidebar { border-left: none; border-top: 2px solid var(--border); height: auto; }
 }
+
+/* 움직임 줄이기: 주행 루프는 JS가 멈추고(멈춘 자세 한 장), 남은 CSS 움직임도 끈다 */
+@media (prefers-reduced-motion: reduce) {
+  .intro-emoji, .fb-luggage-box { animation: none; }
+  .fb-bell.ring { animation: none; }
+}
   </style>
   <script type="application/ld+json" is:inline="">{"@context":"https://schema.org","@type":"WebApplication","name":"식품구성자전거","description":"음식을 담아 바퀴를 채우는 균형 식단 게임","url":"https://eduin.info/apps/food-bike/","applicationCategory":"EducationApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"isPartOf":{"@type":"WebSite","name":"eduin VIVES","url":"https://eduin.info"}}</script>
   </Fragment>
@@ -444,66 +442,13 @@ body {
           </div>
         </div>
 
-        <!-- 자전거 상자(그림은 상자 크기에 맞춰 줄고 늘어남) -->
+        <!-- 자전거 상자: 주행 무대(도로·배경·자전거 그림)는 JS(createRide)가 그린다 -->
         <div class="bike-box" id="bikeBox">
-          <!-- 가로 도로 배경 효과 -->
-          <div class="road-bg" id="roadBg"></div>
-
-          <div class="bike-rider-stage" id="bikeRiderStage">
-            <!-- 짐칸 무거운 짐들 -->
-            <div class="bike-luggage" id="bikeLuggage"></div>
-
-            <!-- 자전거 본체 프레임 실루엣 및 라이더 통합 SVG -->
-            <svg class="bike-body-svg" viewBox="0 0 340 220" id="bikeBodySvg" aria-hidden="true">
-              <!-- 프레임 (뒷바퀴 중심 95,145 / BB 165,155 / 시트포스트 145,95 / 헤드튜브 235,75 / 앞바퀴 중심 262,162) -->
-              <path d="M 95 145 L 165 155 L 145 95 Z" fill="none" stroke="var(--fg)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"></path>
-              <path d="M 165 155 L 235 75 L 145 95" fill="none" stroke="var(--fg)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"></path>
-              <path d="M 235 75 L 262 162" fill="none" stroke="var(--fg)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"></path>
-              <!-- 핸들바 -->
-              <path d="M 235 75 L 230 50 L 215 50" fill="none" stroke="var(--fg)" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"></path>
-              <!-- 안장 기둥 및 안장 -->
-              <path d="M 145 95 L 142 85 M 130 85 L 155 85" fill="none" stroke="var(--fg)" stroke-width="5" stroke-linecap="round"></path>
-              <!-- 뒷바퀴 짐받이 캐리어 -->
-              <path d="M 95 145 L 75 110 L 125 110 L 145 95" fill="none" stroke="var(--fg)" stroke-width="4" stroke-linejoin="round"></path>
-              <!-- 페달 체인링 기어와 페달 -->
-              <circle cx="165" cy="155" r="14" fill="none" stroke="var(--fg)" stroke-width="4"></circle>
-              <path d="M 165 155 L 155 170 M 150 170 L 160 170" fill="none" stroke="var(--fg)" stroke-width="4" stroke-linecap="round"></path>
-
-              <!-- 라이더 SVG 그룹 -->
-              <g id="riderSvgGroup">
-                <!-- 다리 -->
-                <path d="M 142 95 L 165 122 L 158 165" stroke="var(--fg)" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" fill="none"></path>
-                <!-- 몸통 (옷) -->
-                <path d="M 142 95 C 145 80, 160 65, 172 52" stroke="var(--fb-accent)" stroke-width="12" stroke-linecap="round" fill="none"></path>
-                <!-- 팔 -->
-                <path d="M 172 52 L 195 62 L 215 50" stroke="var(--fg)" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" fill="none"></path>
-                <!-- 머리 (이모지) -->
-                <text x="182" y="38" font-size="28" text-anchor="middle" id="riderHeadEmoji">😊</text>
-              </g>
-
-              <!-- 걸어가는 모습 라이더 (내린 상태) -->
-              <text x="318" y="196" font-size="34" text-anchor="middle" id="riderWalkingEmoji" hidden="">🚶</text>
-            </svg>
-
-            <!-- 뒷바퀴 (6개 식품군 부채꼴) -->
-            <div class="rear-wheel" id="rearWheel">
-              <svg class="rear-wheel-svg" viewBox="0 0 110 110" id="rearWheelSvg" role="img" aria-label="뒷바퀴: 6가지 식품군">
-                <!-- 부채꼴 파트들은 JS에서 동적으로 그립니다 -->
-              </svg>
-            </div>
-
-            <!-- 앞바퀴 (물) + 바퀴살 디자인 오버레이 -->
-            <div class="front-wheel" id="frontWheel" aria-hidden="true">
-              <div class="water-gauge" id="waterGauge"></div>
-              <svg viewBox="0 0 76 76" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;">
-                <circle cx="38" cy="38" r="35" fill="none" stroke="var(--fg)" stroke-width="4"></circle>
-                <line x1="38" y1="3" x2="38" y2="73" stroke="var(--fg)" stroke-width="1.5" opacity="0.4"></line>
-                <line x1="3" y1="38" x2="73" y2="38" stroke="var(--fg)" stroke-width="1.5" opacity="0.4"></line>
-                <line x1="13" y1="13" x2="63" y2="63" stroke="var(--fg)" stroke-width="1.5" opacity="0.4"></line>
-                <line x1="13" y1="63" x2="63" y2="13" stroke="var(--fg)" stroke-width="1.5" opacity="0.4"></line>
-              </svg>
-              <span style="font-size: 20px; z-index: 3;">💧</span>
-            </div>
+          <div class="ride" id="mainRide"></div>
+          <!-- 미션 4: 식단 A·B 두 자전거 -->
+          <div class="race" id="raceBox" hidden>
+            <div class="ride" id="rideA"></div>
+            <div class="ride" id="rideB"></div>
           </div>
         </div>
 
@@ -773,7 +718,7 @@ const MISSIONS = [
   },
   {
     id: 'm4', title: '식단 비교와 평가',
-    desc: '두 식단 가운데 <strong>어느 식단이 식품군을 더 골고루 갖췄는지</strong> 비교해요. [식단 A 보기]·[식단 B 보기]를 눌러 무대의 자전거를 살펴본 뒤 알맞은 결론을 골라 보세요.<br><strong>식단 A:</strong> 쌀밥 + 생선구이 + 시금치 + 귤 + 우유 + 물<br><strong>식단 B:</strong> 식빵 + 버터 + 설탕물',
+    desc: '두 식단 가운데 <strong>어느 식단이 식품군을 더 골고루 갖췄는지</strong> 비교해요. 무대에 나란히 선 두 자전거의 뒷바퀴를 살펴보고 결론을 고른 다음 [확인하기]를 누르면 두 자전거가 달려요.<br><strong>식단 A:</strong> 쌀밥 + 생선구이 + 시금치 + 귤 + 우유 + 물<br><strong>식단 B:</strong> 식빵 + 버터 + 설탕물',
     plateA: ['rice', 'fish', 'spinach', 'orange', 'milk', 'water'],
     plateB: ['bread', 'butter', 'sugar', 'water'],
     choices: [
@@ -798,7 +743,6 @@ let state = {
   plate: [], // foodId 리스트
   // 미션 2·3·4가 쓰는 미션 접시(빌더 접시를 덮어쓰지 않음, 저장하지 않음)
   missionPlate: [],
-  m4View: 'A',
   activeCategory: 'all',
   pendingFoodId: null // 분류 미션: 탭으로 고른 음식(다음에 누른 바구니에 넣음)
 };
@@ -807,7 +751,7 @@ let state = {
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 const L = SimKit.LABELS;
-// 이름을 계산해 쓰는 아이콘 목록: @icons utensils trophy lightbulb circle-x triangle-alert package sparkles party-popper check circle-pause
+// 이름을 계산해 쓰는 아이콘 목록: @icons utensils trophy lightbulb circle-x triangle-alert package sparkles party-popper check circle-pause bike
 
 /* 지금 무대에 보이는 접시: 미션 2·3·4는 미션 접시, 그 밖에는 빌더 접시 */
 function usesMissionPlate() {
@@ -895,6 +839,7 @@ function switchMode(modeNum) {
 
   $('#btnNextMission').style.display = 'none';
   $('#actionPanel').style.display = state.mode === 3 ? 'none' : '';
+  showRace(false); // 미션 4의 두 자전거는 setupMissionUI가 다시 켠다
   if (state.mode === 1) {
     canvasBadgeNum.innerHTML = SimKit.icon('utensils');
     canvasBadgeLabel.textContent = '자유 탐험 · 식단 꾸미기';
@@ -913,8 +858,8 @@ function switchMode(modeNum) {
     paletteSection.style.display = 'none';
     triviaZone.style.display = 'flex';
     renderPlateSlots();
-    // 상식 공부 모드 시 자전거는 천천히 기본 주행
-    setBikeRunState('go', '상식을 공부하고 있어요.');
+    // 상식 공부 중에도 무대는 지금 접시 그대로(바퀴·상태가 접시와 어긋나지 않게)
+    updateBikeSimulation();
   }
   updateVerifyButtonText();
 
@@ -939,13 +884,14 @@ function setupMissionUI() {
   const paletteSection = $('#paletteSection');
   classifyBaskets.style.display = 'none';
   paletteSection.style.display = 'flex';
+  showRace(false);
 
   if (m.id === 'm1') {
     // 분류 미션: 전용 드롭 바구니 셋업. 무대는 빈 미션 접시로 쉬는 모습
     classifyBaskets.style.display = 'grid';
     setupClassificationBaskets();
     renderPlateSlots();
-    setBikeRunState('idle', '음식을 알맞은 식품군 바구니에 넣어 보세요.');
+    showIdleBike('음식을 알맞은 식품군 바구니에 넣어 보세요.');
   } else if (m.id === 'm2') {
     // 부족 식단 보완 미션: 미션 접시를 식빵·버터로(빌더 접시는 그대로)
     state.missionPlate = ['bread', 'butter'];
@@ -957,20 +903,13 @@ function setupMissionUI() {
     renderPlateSlots();
     updateBikeSimulation();
   } else if (m.id === 'm4') {
-    // 식단 비교: 무대에 식단 A/B를 번갈아 보여 주고, 결론은 문장 버튼으로 고른다
+    // 식단 비교: 무대에 두 자전거를 나란히 세우고, 결론을 고른 뒤 [확인]하면 달린다
     paletteSection.style.display = 'none';
     $('#missionExtra').innerHTML = `
-      <div class="sk-actions m4-view" role="group" aria-label="무대에 보여 줄 식단">
-        <button type="button" class="sk-btn sk-btn--sm" data-view="A" aria-pressed="true">식단 A 보기</button>
-        <button type="button" class="sk-btn sk-btn--sm" data-view="B" aria-pressed="false">식단 B 보기</button>
-      </div>
       <div class="m4-choices" role="group" aria-label="결론 고르기">
         ${m.choices.map((c, i) => `<button type="button" class="m4-choice" data-val="${c.val}" aria-pressed="false"><span class="no">${i + 1}.</span><span>${c.text}</span></button>`).join('')}
       </div>
     `;
-    $$('.m4-view .sk-btn').forEach(b => {
-      b.addEventListener('click', () => showM4Plate(b.dataset.view));
-    });
     $$('.m4-choice').forEach(b => {
       b.addEventListener('click', () => {
         $$('.m4-choice').forEach(btn => { btn.classList.remove('selected'); btn.setAttribute('aria-pressed', 'false'); });
@@ -978,7 +917,8 @@ function setupMissionUI() {
         b.setAttribute('aria-pressed', 'true');
       });
     });
-    showM4Plate('A');
+    renderPlateSlots();
+    setupRace();
   }
 
   // 미션을 바꿀 때 팔레트도 다시 그린다(분류 미션의 5종 목록이 다음 미션에 남던 문제)
@@ -990,17 +930,6 @@ function updateVerifyButtonText() {
   // 결과 화면 버튼은 미션 모드에서 모두 끝냈을 때만(자유 탐험의 [결과 보기]와 헷갈리지 않게)
   const allMissionsDone = MISSION_IDS.every(id => state.missionsCompleted[id] === true);
   $('#btnNextScreen').style.display = allMissionsDone && state.mode === 2 ? '' : 'none';
-}
-
-/* 미션 4: 무대에 식단 A 또는 B를 보여 준다 */
-function showM4Plate(view) {
-  const m = MISSIONS[state.missionIdx];
-  if (m.id !== 'm4') return;
-  state.m4View = view === 'B' ? 'B' : 'A';
-  state.missionPlate = (state.m4View === 'B' ? m.plateB : m.plateA).slice();
-  $$('.m4-view .sk-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === state.m4View ? 'true' : 'false'));
-  renderPlateSlots();
-  updateBikeSimulation();
 }
 
 /* ══════════════════════════════════════
@@ -1065,7 +994,7 @@ function renderPalette() {
     } else {
       // 식단 빌더 모드에서는 탭하여 토글 담기/빼기
       card.addEventListener('click', () => {
-        toggleFoodInPlate(f.id);
+        toggleFoodInPlate(f.id, card);
         focusPaletteItem(f.id);
       });
     }
@@ -1093,9 +1022,11 @@ function isClassifiedInBasket(foodId) {
 }
 
 
-function toggleFoodInPlate(foodId) {
+/* fromEl: 누른 음식 카드(담을 때 이모지가 여기서 바퀴로 날아감) */
+function toggleFoodInPlate(foodId, fromEl) {
   const plate = curPlate();
   const idx = plate.indexOf(foodId);
+  let wait = 0;
   if (idx > -1) {
     plate.splice(idx, 1);
   } else {
@@ -1105,10 +1036,11 @@ function toggleFoodInPlate(foodId) {
       return;
     }
     plate.push(foodId);
+    wait = flyFood(fromEl, FOOD_BY_ID[foodId]); // 다시 그리기 전에 카드 위치를 잰다
   }
 
   renderPlateSlots();
-  updateBikeSimulation();
+  updateBikeSimulation({ ring: true, food: FOOD_BY_ID[foodId], wait });
   renderPalette();
   if (!usesMissionPlate()) saveState(); // 미션 접시는 저장하지 않음
 }
@@ -1123,11 +1055,19 @@ function renderPlateSlots() {
   const readOnly = !!mission && (mission.id === 'm4' || mission.id === 'm1');
   const plate = mission && mission.id === 'm1' ? [] : curPlate();
 
-  let title = '오늘의 식단 접시 — 음식을 누르면 빠져요';
-  if (mission && mission.id === 'm4') title = state.m4View === 'B' ? '식단 B' : '식단 A';
+  let title = '오늘의 식단 접시 - 음식을 누르면 빠져요';
+  if (mission && mission.id === 'm4') title = '식단 A와 식단 B';
   else if (mission && mission.id === 'm1') title = '미션 접시';
-  else if (mission) title = '미션 접시 — 음식을 누르면 빠져요';
+  else if (mission) title = '미션 접시 - 음식을 누르면 빠져요';
   $('#plateTitle').innerHTML = SimKit.icon('utensils') + ' ' + title;
+
+  // 미션 4: 두 식단을 한 줄씩(무대의 두 자전거와 같은 순서)
+  if (mission && mission.id === 'm4') {
+    const chip = id => { const f = FOOD_BY_ID[id]; return `<span class="food-card active static"><span aria-hidden="true">${f.emoji}</span><span>${f.name}</span></span>`; };
+    slots.innerHTML = [['A', mission.plateA], ['B', mission.plateB]]
+      .map(([k, ids]) => `<div class="plate-row"><strong>식단 ${k}</strong>${ids.map(chip).join('')}</div>`).join('');
+    return;
+  }
 
   if (plate.length === 0) {
     slots.innerHTML = mission && mission.id === 'm1'
@@ -1155,11 +1095,13 @@ function renderPlateSlots() {
 }
 
 /* ══════════════════════════════════════
-   자전거 & 뒷바퀴 SVG 동역학 시뮬레이션
+   자전거 주행 엔진
+   requestAnimationFrame 루프 하나가 모든 주행 무대를 움직인다. 굴러간 거리(dist) 하나에서
+   바퀴 회전(거리÷반지름)·도로·배경·페달이 모두 나오므로 바퀴와 도로 속도가 늘 맞는다.
    ══════════════════════════════════════ */
-function getPlateCounts() {
+function getPlateCounts(plate) {
   const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 'water': 0 };
-  curPlate().forEach(id => {
+  (plate || curPlate()).forEach(id => {
     const f = FOOD_BY_ID[id];
     if (f) {
       counts[f.group]++;
@@ -1168,180 +1110,52 @@ function getPlateCounts() {
   return counts;
 }
 
-function updateBikeSimulation() {
-  const counts = getPlateCounts();
-  
-  // 1. 앞바퀴 (물) 게이지 제어
-  const wGauge = $('#waterGauge');
-  const fWheel = $('#frontWheel');
-  const hasWater = counts['water'] > 0;
-  
-  if (hasWater) {
-    wGauge.style.height = '100%';
-    fWheel.classList.remove('flat');
+// 한 끼 목표(군별 개수): 바퀴 채움과 속도가 같은 기준을 쓴다(운영자 결정 2026-11-01, 접시 12개 안에서 쌩쌩 가능)
+const MEAL_TARGET = { 1: 2, 2: 2, 3: 2, 4: 1, 5: 1, 6: 1 };
+const RUN_GROUPS = [1, 2, 3, 4, 5]; // 비면 비틀거리는 군(유지·당류는 채움 표시만)
+const MAX_SPEED = 170;              // 쌩쌩일 때 그림 단위/초
+const REAR = { x: 95, y: 145, r: 55 };  // r: 바닥에 닿는 바깥 반지름
+const FRONT = { x: 262, y: 162, r: 38 };
+const GROUND = 200;
+const CRANK = { x: 165, y: 155, len: 13 };
+const HIP = { x: 142, y: 84 };
+const LEG = 45;                     // 허벅지 = 정강이 길이
+const SECTOR_R = 46;                // 뒷바퀴 식품군 자리 최대 반지름
+const FINISH = 700;                 // 미션 4 결승선까지 거리
+const GROUP_ICONS = { 1: '🌾', 2: '🍗', 3: '🥬', 4: '🍎', 5: '🥛', 6: '🧈' };
+const FACES = { stop: '😊', idle: '😊', wobble: '😮', heavy: '😓', run: '😊', go: '😄' };
+const reduceMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+
+function fillOf(counts, g) { return Math.min(1, (counts[g] || 0) / MEAL_TARGET[g]); }
+
+/* 접시 평가: 주행 상태·속도·문구를 한곳에서 정한다(상태 줄·결과 보기·미션 4 공통)
+   가장 덜 찬 군이 속도를 정한다 - '골고루'를 속도로 보여 줌 */
+function assessPlate(counts) {
+  const missing = RUN_GROUPS.filter(g => !counts[g]);
+  const short = RUN_GROUPS.filter(g => counts[g] && fillOf(counts, g) < 1);
+  const heavy = counts[6] > OIL_LIMIT;
+  const balance = Math.min(...RUN_GROUPS.map(g => fillOf(counts, g)));
+  let run, speed, msg;
+  if (!counts.water) {
+    run = 'stop'; speed = 0; msg = '앞바퀴 바람 빠짐! (물이 필요해요)';
+  } else if (missing.length) {
+    run = 'wobble'; speed = 0.22; msg = `비틀비틀! (${josa(GROUP_LABELS[missing[0]], '이', '가')} 부족해요)`;
   } else {
-    wGauge.style.height = '0%';
-    fWheel.classList.add('flat');
+    speed = 0.2 + 0.8 * balance;
+    if (heavy) { run = 'heavy'; speed *= 0.5; msg = '느릿느릿! (유지·당류가 많아 짐칸이 무거워요)'; }
+    else if (short.length) { run = 'run'; msg = `잘 달려요! (${josa(GROUP_LABELS[short[0]], '을', '를')} 더 담으면 쌩쌩)`; }
+    else { run = 'go'; msg = '쌩쌩! 신나게 달리는 중!'; }
   }
+  return { run, speed, msg, missing, short, heavy };
+}
 
-  // 2. 뒷바퀴 (6개 식품군 부채꼴) SVG 드로잉
-  drawRearWheelSectors(counts);
-
-  // 3. 유지·당류 과다에 따른 짐칸 상자 렌더링(OIL_LIMIT을 넘은 만큼, 문구·평가와 같은 기준)
-  const luggage = $('#bikeLuggage');
-  luggage.innerHTML = '';
-  const oilCount = counts[6];
-  if (oilCount > OIL_LIMIT) {
-    for (let i = 0; i < Math.min(3, oilCount - OIL_LIMIT); i++) {
-      const box = document.createElement('div');
-      box.className = 'luggage-box';
-      box.textContent = '짐';
-      luggage.appendChild(box);
-    }
-  }
-
-  // 4. 주행 상태 판단 (대원칙 준수 - 이분법 배제 & 대칭적 비틀거림)
-  // 필수 식품군 5개 (곡류, 고기, 채소, 과일, 유제품) 중 하나라도 비어 있으면 비틀비틀
-  const missingGroups = [];
-  [1, 2, 3, 4, 5].forEach(g => {
-    if (counts[g] === 0) missingGroups.push(GROUP_LABELS[g]);
+/* 화면 읽기용 바퀴 설명 */
+function wheelLabel(counts) {
+  const parts = WHEEL_SECTORS.map(({ group: g }) => {
+    const f = fillOf(counts, g);
+    return `${GROUP_LABELS[g]} ${f >= 1 ? '가득' : f > 0 ? '조금' : '비어 있음'}`;
   });
-
-  if (!hasWater) {
-    setBikeRunState('stop', '앞바퀴 바람 빠짐! (물이 필요해요)');
-  } else if (missingGroups.length > 0) {
-    setBikeRunState('wobble', `비틀비틀! (${josa(missingGroups[0], '이', '가')} 부족해요)`);
-  } else if (oilCount > OIL_LIMIT) {
-    setBikeRunState('heavy', '느릿느릿! (유지·당류가 많아 짐칸이 무거워요)');
-  } else {
-    setBikeRunState('go', '쌩쌩! 신나게 달리는 중!');
-  }
-}
-
-function setBikeRunState(runState, statusMsg) {
-  const rGroup = $('#riderSvgGroup');
-  const rHead = $('#riderHeadEmoji');
-  const rWalk = $('#riderWalkingEmoji');
-
-  const rWheel = $('#rearWheel');
-  const fWheel = $('#frontWheel');
-  const roadBg = $('#roadBg');
-  const banner = $('#runStatusBanner');
-  const stage = $('#bikeRiderStage');
-
-  // 모션 클래스 초기화
-  stage.className = 'bike-rider-stage';
-  rWheel.className = 'rear-wheel';
-  fWheel.className = 'front-wheel';
-  roadBg.className = 'road-bg';
-
-  if (runState === 'stop') {
-    if (rGroup) rGroup.setAttribute('hidden', '');
-    if (rWalk) rWalk.removeAttribute('hidden');
-    fWheel.classList.add('flat');
-  } else if (runState === 'idle') {
-    if (rGroup) rGroup.removeAttribute('hidden');
-    if (rWalk) rWalk.setAttribute('hidden', '');
-    if (rHead) rHead.textContent = '😊';
-  } else if (runState === 'wobble') {
-    if (rGroup) rGroup.removeAttribute('hidden');
-    if (rWalk) rWalk.setAttribute('hidden', '');
-    if (rHead) rHead.textContent = '😊';
-    rWheel.classList.add('wobbling');
-    roadBg.classList.add('moving');
-    roadBg.style.animationDuration = '4s';
-  } else if (runState === 'heavy') {
-    if (rGroup) rGroup.removeAttribute('hidden');
-    if (rWalk) rWalk.setAttribute('hidden', '');
-    if (rHead) rHead.textContent = '🥵';
-    rWheel.classList.add('spinning');
-    rWheel.style.animationDuration = '2s';
-    fWheel.classList.add('spinning');
-    fWheel.style.animationDuration = '2s';
-    roadBg.classList.add('moving');
-    roadBg.style.animationDuration = '4s';
-  } else if (runState === 'go') {
-    if (rGroup) rGroup.removeAttribute('hidden');
-    if (rWalk) rWalk.setAttribute('hidden', '');
-    if (rHead) rHead.textContent = '😊';
-    stage.classList.add('moving');
-    rWheel.classList.add('spinning');
-    fWheel.classList.add('spinning');
-    roadBg.classList.add('moving');
-  }
-  const ICONS = { stop: 'circle-x', wobble: 'triangle-alert', heavy: 'package', go: 'sparkles', idle: 'circle-pause' };
-  banner.dataset.state = runState;
-  banner.innerHTML = SimKit.icon(ICONS[runState] || 'info') + '<span></span>';
-  banner.lastChild.textContent = statusMsg;
-}
-
-/* 자전거 그림 배율: 자전거 상자(남는 높이)에 340×220 그림이 다 들어가게 */
-function fitBike() {
-  const box = $('#bikeBox');
-  if (!box) return;
-  const w = box.clientWidth, h = box.clientHeight;
-  if (!w || !h) return;
-  const sc = Math.max(0.3, Math.min(1.6, w / 340, (h - 6) / 220));
-  document.documentElement.style.setProperty('--bike-s', sc.toFixed(3));
-}
-
-/* ── 뒷바퀴 SVG 부채꼴 그리기 ── */
-function drawRearWheelSectors(counts) {
-  const svg = $('#rearWheelSvg');
-  svg.innerHTML = '';
-
-  const cx = 55;
-  const cy = 55;
-  const maxR = 48; // 최대 반지름
-
-  let currentAngle = -90; // 12시 방향부터 시작
-
-  WHEEL_SECTORS.forEach(sec => {
-    const angleSpan = sec.angle;
-    const group = sec.group;
-    
-    // 각 식품군별 섭취 충실도 비례 반지름 (곡류:3개, 고기:3개, 채소:5개, 과일:1개, 유제품:1개, 유지:1개 타겟)
-    let fillRatio = 0.2; // 기본 최소 두께
-    const cnt = counts[group] || 0;
-
-    if (group === 1) fillRatio = Math.min(1.0, 0.2 + (cnt / 3) * 0.8);
-    else if (group === 2) fillRatio = Math.min(1.0, 0.2 + (cnt / 3) * 0.8);
-    else if (group === 3) fillRatio = Math.min(1.0, 0.2 + (cnt / 5) * 0.8);
-    else if (group === 4) fillRatio = Math.min(1.0, 0.2 + (cnt / 1) * 0.8);
-    else if (group === 5) fillRatio = Math.min(1.0, 0.2 + (cnt / 1) * 0.8);
-    else if (group === 6) {
-      // 유지 당류는 1개 이상이면 1.0 꽉 참, 없으면 0.2
-      fillRatio = cnt > 0 ? 1.0 : 0.2;
-    }
-
-    const r = maxR * fillRatio;
-    
-    // 부채꼴 패스 생성
-    const pathData = getSectorPath(cx, cy, r, currentAngle, currentAngle + angleSpan);
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', pathData);
-    path.setAttribute('fill', GROUP_COLORS[group]);
-    path.setAttribute('stroke', '#fff');
-    path.setAttribute('stroke-width', '1.5');
-    
-    // 툴팁 효과
-    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-    title.textContent = `${GROUP_LABELS[group]} (${cnt}개 담김)`;
-    path.appendChild(title);
-
-    svg.appendChild(path);
-
-    // 스포크 경계선 그리기
-    currentAngle += angleSpan;
-  });
-
-  // 가운데 축 허브 덮개
-  const hub = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  hub.setAttribute('cx', cx);
-  hub.setAttribute('cy', cy);
-  hub.setAttribute('r', '8');
-  hub.setAttribute('fill', 'var(--fg)');
-  svg.appendChild(hub);
+  return `뒷바퀴: ${parts.join(', ')}. 앞바퀴(물): ${counts.water ? '채워짐' : '비어 있음'}`;
 }
 
 // 부채꼴 SVG 패스 수식 계산
@@ -1356,7 +1170,384 @@ function getSectorPath(x, y, r, startAngleDegree, endAngleDegree) {
 
   const largeArcFlag = endAngleDegree - startAngleDegree <= 180 ? 0 : 1;
 
-  return `M ${x} ${y} L ${x1} ${y1} A ${r} ${r} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+  return `M ${x} ${y} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArcFlag} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`;
+}
+
+// 식품군 자리 각도(12시 방향부터)
+const SECTOR_ANGLES = {};
+(function () {
+  let a = -90;
+  WHEEL_SECTORS.forEach(sec => { SECTOR_ANGLES[sec.group] = [a, a + sec.angle]; a += sec.angle; });
+})();
+
+/* 타이어 무늬: 둘레를 n등분해 이음매가 튀지 않게 */
+function treadDash(r, n) {
+  const per = 2 * Math.PI * r / n;
+  return `${(per * 0.35).toFixed(2)} ${(per * 0.65).toFixed(2)}`;
+}
+
+/* 자전거 그림(정적인 부분). 움직이는 부분은 class로 찾아 render()가 고친다 */
+function bikeSvgMarkup() {
+  const fg = 'stroke="var(--fg)" fill="none" stroke-linejoin="round" stroke-linecap="round"';
+  let ghosts = '', fills = '', icons = '';
+  WHEEL_SECTORS.forEach(({ group: g }) => {
+    const [a0, a1] = SECTOR_ANGLES[g];
+    const mid = (a0 + a1) / 2 * Math.PI / 180;
+    // 목표 모양(점선 윤곽): 비어 있어도 어디를 채울지 보인다
+    ghosts += `<path d="${getSectorPath(REAR.x, REAR.y, SECTOR_R, a0, a1)}" fill="${GROUP_COLORS[g]}" fill-opacity="0.14" stroke="${GROUP_COLORS[g]}" stroke-width="1" stroke-dasharray="3 2.5"></path>`;
+    fills += `<path class="fb-fill" data-g="${g}" d="M0 0" fill="${GROUP_COLORS[g]}" stroke="#fff" stroke-width="1.5"></path>`;
+    icons += `<text class="fb-icon" data-g="${g}" x="${(REAR.x + 37 * Math.cos(mid)).toFixed(1)}" y="${(REAR.y + 37 * Math.sin(mid)).toFixed(1)}">${GROUP_ICONS[g]}</text>`;
+  });
+  let rearSpokes = '';
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4;
+    rearSpokes += `<line x1="${REAR.x}" y1="${REAR.y}" x2="${(REAR.x + 49 * Math.cos(a)).toFixed(1)}" y2="${(REAR.y + 49 * Math.sin(a)).toFixed(1)}"></line>`;
+  }
+  let frontSpokes = '';
+  for (let i = 0; i < 4; i++) {
+    const a = i * Math.PI / 4;
+    const dx = 34 * Math.cos(a), dy = 34 * Math.sin(a);
+    frontSpokes += `<line x1="${(FRONT.x - dx).toFixed(1)}" y1="${(FRONT.y - dy).toFixed(1)}" x2="${(FRONT.x + dx).toFixed(1)}" y2="${(FRONT.y + dy).toFixed(1)}"></line>`;
+  }
+  return `
+    <g class="fb-speed" opacity="0" stroke="var(--fg-muted)" stroke-width="3" stroke-linecap="round" stroke-dasharray="18 42">
+      <line x1="0" y1="70" x2="70" y2="70"></line><line x1="10" y1="96" x2="64" y2="96"></line><line x1="0" y1="122" x2="44" y2="122"></line>
+    </g>
+    <g class="fb-body">
+      <g class="fb-rider-back"><path class="fb-leg-far" d="M0 0" stroke="#3b6ea8" stroke-opacity="0.45" stroke-width="6" fill="none" stroke-linejoin="round" stroke-linecap="round"></path></g>
+      <!-- 프레임 (뒷바퀴 중심 95,145 / BB 165,155 / 시트포스트 145,95 / 헤드튜브 235,75 / 앞바퀴 중심 262,162) -->
+      <path d="M 95 145 L 165 155 L 145 95 Z" ${fg} stroke-width="6"></path>
+      <path d="M 165 155 L 235 75 L 145 95" ${fg} stroke-width="6"></path>
+      <path d="M 235 75 L 262 162" ${fg} stroke-width="6"></path>
+      <path d="M 235 75 L 230 50 L 215 50" ${fg} stroke-width="5"></path>
+      <path d="M 145 95 L 142 85 M 130 85 L 155 85" ${fg} stroke-width="5"></path>
+      <path d="M 95 145 L 75 110 L 125 110 L 145 95" ${fg} stroke-width="4"></path>
+      <g class="fb-luggage"></g>
+      <!-- 뒷바퀴: 식품군 자리는 고정, 바퀴살·타이어 무늬만 돈다 -->
+      <g class="fb-rear">
+        <circle cx="${REAR.x}" cy="${REAR.y}" r="50" fill="var(--bg-sec)"></circle>
+        ${ghosts}${fills}
+        <g class="fb-rear-spin" stroke="var(--fg)" stroke-opacity="0.22" stroke-width="1">${rearSpokes}</g>
+        ${icons}
+        <g class="fb-rear-spin">
+          <circle cx="${REAR.x}" cy="${REAR.y}" r="52" fill="none" stroke="var(--fg)" stroke-width="6"></circle>
+          <circle cx="${REAR.x}" cy="${REAR.y}" r="52" fill="none" stroke="#fff" stroke-opacity="0.55" stroke-width="2" stroke-dasharray="${treadDash(52, 24)}"></circle>
+          <circle cx="${REAR.x}" cy="${REAR.y}" r="8" fill="var(--fg)"></circle>
+          <circle cx="${REAR.x + 4}" cy="${REAR.y}" r="1.6" fill="#fff"></circle>
+          <circle cx="${REAR.x - 4}" cy="${REAR.y}" r="1.6" fill="#fff"></circle>
+        </g>
+      </g>
+      <!-- 앞바퀴(물): 바람이 빠지면 바닥 쪽으로 납작해진다 -->
+      <g class="fb-front">
+        <circle class="fb-water" cx="${FRONT.x}" cy="${FRONT.y}" r="34" fill="var(--group-water)" fill-opacity="0"></circle>
+        <g class="fb-front-spin">
+          <g stroke="var(--fg)" stroke-opacity="0.4" stroke-width="1.5">${frontSpokes}</g>
+          <circle cx="${FRONT.x}" cy="${FRONT.y}" r="36" fill="none" stroke="var(--fg)" stroke-width="4"></circle>
+          <circle cx="${FRONT.x}" cy="${FRONT.y}" r="36" fill="none" stroke="#fff" stroke-opacity="0.55" stroke-width="1.5" stroke-dasharray="${treadDash(36, 16)}"></circle>
+        </g>
+        <text x="${FRONT.x}" y="${FRONT.y + 1}" font-size="18" text-anchor="middle" dominant-baseline="central">💧</text>
+      </g>
+      <!-- 체인링·크랭크·페달 -->
+      <circle cx="${CRANK.x}" cy="${CRANK.y}" r="14" ${fg} stroke-width="4"></circle>
+      <path class="fb-crank" d="M0 0" ${fg} stroke-width="4"></path>
+      <!-- 라이더(다리는 페달 위치로 계산) -->
+      <g class="fb-rider">
+        <path class="fb-leg-near" d="M0 0" stroke="#3b6ea8" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-width="6"></path>
+        <path d="M ${HIP.x} ${HIP.y} C 146 72, 160 62, 172 52" stroke="var(--fb-accent)" stroke-width="12" stroke-linecap="round" fill="none"></path>
+        <path d="M 172 52 L 195 62 L 215 50" ${fg} stroke-width="4"></path>
+        <text class="fb-head" x="182" y="38" font-size="28" text-anchor="middle">😊</text>
+      </g>
+      <!-- 걸어가는 모습 라이더 (내린 상태) -->
+      <text class="fb-walker" x="318" y="196" font-size="34" text-anchor="middle" hidden>🚶</text>
+      <g class="fb-bell">
+        <rect x="222" y="0" width="52" height="22" rx="11" fill="#fff" stroke="var(--fg)" stroke-width="2"></rect>
+        <text x="248" y="12" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="central" fill="var(--fg)">따릉!</text>
+      </g>
+    </g>`;
+}
+
+/* 엉덩이→페달 2관절 다리(무릎은 앞쪽 위로) */
+function legPath(p) {
+  let dx = p.x - HIP.x, dy = p.y - HIP.y;
+  let d = Math.hypot(dx, dy);
+  const max = LEG * 2 - 0.01;
+  if (d > max) { dx *= max / d; dy *= max / d; d = max; }
+  const a = d / 2, h = Math.sqrt(Math.max(0, LEG * LEG - a * a));
+  const kx = HIP.x + dx / 2 + h * dy / d, ky = HIP.y + dy / 2 - h * dx / d;
+  return `M ${HIP.x} ${HIP.y} L ${kx.toFixed(1)} ${ky.toFixed(1)} L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+}
+
+/* 주행 무대 하나(도로·배경·자전거). opts: { tag, finish, onFinish } */
+const rides = [];
+function createRide(box, opts) {
+  opts = opts || {};
+  box.innerHTML = `
+    <div class="ride-sky"></div><div class="ride-trees"></div>
+    <div class="road-bg"><div class="road-lines"></div></div>
+    ${opts.tag ? `<div class="ride-tag">${opts.tag}</div><div class="ride-progress" aria-hidden="true"><span></span></div><div class="ride-flag" aria-hidden="true">🏁</div>` : ''}
+    <div class="bike-rider-stage"><svg class="bike-body-svg" viewBox="0 0 340 220" role="img" aria-label="식품구성자전거">${bikeSvgMarkup()}</svg></div>`;
+  const q = s => box.querySelector(s);
+  const el = {
+    svg: q('svg'), sky: q('.ride-sky'), trees: q('.ride-trees'), lines: q('.road-lines'),
+    speed: q('.fb-speed'), body: q('.fb-body'), rearSpin: box.querySelectorAll('.fb-rear-spin'),
+    front: q('.fb-front'), frontSpin: q('.fb-front-spin'), water: q('.fb-water'), crank: q('.fb-crank'),
+    legNear: q('.fb-leg-near'), legFar: q('.fb-leg-far'), rider: q('.fb-rider'), riderBack: q('.fb-rider-back'),
+    head: q('.fb-head'), walker: q('.fb-walker'), luggage: q('.fb-luggage'), bell: q('.fb-bell'),
+    tag: q('.ride-tag'), progress: q('.ride-progress span'), fills: {}, icons: {}
+  };
+  box.querySelectorAll('.fb-fill').forEach(p => { el.fills[p.dataset.g] = p; });
+  box.querySelectorAll('.fb-icon').forEach(t => { el.icons[t.dataset.g] = t; });
+
+  const GROUPS = [1, 2, 3, 4, 5, 6];
+  const r = {}, rTo = {}, rWait = {};       // 그린 채움 반지름 / 목표 / 이 시각까지 미룸(날아가는 이모지)
+  GROUPS.forEach(g => { r[g] = 0; rTo[g] = 0; rWait[g] = 0; });
+  const cur = { speed: 0, wobble: 0, flat: 0, water: 0 };
+  const to = { speed: 0, wobble: 0, flat: 0, water: 0 };
+  let waterWait = 0, clock = 0, dist = 0, scale = 1, run = null, finished = false, dirty = true;
+
+  function fit() {
+    const w = box.clientWidth, h = box.clientHeight;
+    if (!w || !h) return;
+    scale = Math.max(0.25, Math.min(1.6, w / 340, (h - 6) / 220));
+    box.style.setProperty('--bike-s', scale.toFixed(3));
+    dirty = true;
+    render();
+  }
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(box);
+  else window.addEventListener('resize', fit);
+
+  /* 접시 상태 반영. a = assessPlate 결과(또는 { run, speed }). o: { reset, ring } */
+  function set(counts, a, o) {
+    o = o || {};
+    GROUPS.forEach(g => { rTo[g] = SECTOR_R * fillOf(counts, g); });
+    GROUPS.forEach(g => el.icons[g].setAttribute('opacity', counts[g] ? '1' : '0.5'));
+    to.water = counts.water ? 1 : 0;
+    to.flat = a.run === 'stop' ? 1 : 0;
+    to.wobble = a.run === 'wobble' ? 1 : 0;
+    to.speed = a.speed;
+    if (o.reset) {
+      dist = 0; finished = false;
+      if (el.tag) el.tag.textContent = opts.tag;
+    }
+    const prev = run;
+    run = a.run;
+    el.head.textContent = FACES[a.run] || '😊';
+    el.rider.toggleAttribute('hidden', a.run === 'stop');
+    el.riderBack.toggleAttribute('hidden', a.run === 'stop');
+    el.walker.toggleAttribute('hidden', a.run !== 'stop');
+    // 짐칸 짐: 유지·당류가 OIL_LIMIT을 넘은 만큼(최대 3). 새로 생긴 상자만 튀어나온다
+    const want = counts[6] > OIL_LIMIT ? Math.min(3, counts[6] - OIL_LIMIT) : 0;
+    while (el.luggage.children.length > want) el.luggage.lastChild.remove();
+    while (el.luggage.children.length < want) {
+      const i = el.luggage.children.length, y = 110 - 18 * (i + 1);
+      el.luggage.insertAdjacentHTML('beforeend', `<g class="fb-luggage-box"><rect x="76" y="${y}" width="44" height="16" rx="3" fill="#d35400" stroke="var(--fg)" stroke-width="2"></rect><text x="98" y="${y + 8.5}" font-size="11" font-weight="800" fill="#fff" text-anchor="middle" dominant-baseline="central">짐</text></g>`);
+    }
+    el.svg.setAttribute('aria-label', wheelLabel(counts));
+    if (o.ring && prev && prev !== 'go' && run === 'go') setTimeout(ring, (o.ringDelay || 0) * 1000);
+    dirty = true;
+    if (reduceMotion.matches) snap(); else kick();
+  }
+
+  /* 날아가는 이모지가 닿을 때까지 그 자리 채움을 미룬다 */
+  function wait(group, sec) {
+    if (group === 'water') waterWait = clock + sec;
+    else rWait[group] = clock + sec;
+  }
+
+  function ring() {
+    if (reduceMotion.matches) return;
+    el.bell.classList.remove('ring');
+    el.bell.getBoundingClientRect();
+    el.bell.classList.add('ring');
+  }
+
+  /* 움직임 줄이기: 목표 상태로 바로(멈춘 자세) */
+  function snap() {
+    Object.assign(cur, to);
+    GROUPS.forEach(g => { r[g] = rTo[g]; });
+    dirty = true;
+    render();
+  }
+
+  /* 한 프레임 진행. 아직 움직일 것이 있으면 true */
+  function step(dt) {
+    clock += dt;
+    const ks = 1 - Math.exp(-dt * 2.2), kf = 1 - Math.exp(-dt * 6), kr = 1 - Math.exp(-dt * 7);
+    cur.speed += (to.speed - cur.speed) * ks;
+    cur.wobble += (to.wobble - cur.wobble) * kf;
+    cur.flat += (to.flat - cur.flat) * kf;
+    if (clock >= waterWait) cur.water += (to.water - cur.water) * kf;
+    let settling = Math.abs(to.speed - cur.speed) > 0.002 || Math.abs(to.flat - cur.flat) > 0.002 || Math.abs(to.water - cur.water) > 0.002;
+    GROUPS.forEach(g => {
+      if (clock < rWait[g]) { settling = true; return; }
+      const d = rTo[g] - r[g];
+      if (Math.abs(d) > 0.05) { r[g] += d * kr; settling = true; dirty = true; }
+      else if (d) { r[g] = rTo[g]; dirty = true; }
+    });
+    dist += cur.speed * MAX_SPEED * dt;
+    if (opts.finish && !finished && dist >= opts.finish) {
+      finished = true;
+      to.speed = 0;
+      if (el.tag) el.tag.textContent = opts.tag + ' · 도착!';
+      if (opts.onFinish) opts.onFinish();
+    }
+    const moving = cur.speed > 0.001 || cur.wobble > 0.002 || settling;
+    if (moving) render();
+    return moving;
+  }
+
+  function render() {
+    const s = scale;
+    const rearRad = dist / REAR.r;
+    el.rearSpin.forEach(g => g.setAttribute('transform', `rotate(${(rearRad * 180 / Math.PI % 360).toFixed(2)} ${REAR.x} ${REAR.y})`));
+    el.frontSpin.setAttribute('transform', `rotate(${(dist / FRONT.r * 180 / Math.PI % 360).toFixed(2)} ${FRONT.x} ${FRONT.y})`);
+    // 앞바퀴 바람: 바닥(GROUND)을 기준으로 납작하게
+    const fy = 1 - 0.24 * cur.flat, fx = 1 + 0.08 * cur.flat;
+    el.front.setAttribute('transform', `translate(${FRONT.x} ${GROUND}) scale(${fx.toFixed(3)} ${fy.toFixed(3)}) translate(${-FRONT.x} ${-GROUND})`);
+    el.water.setAttribute('fill-opacity', (0.6 * cur.water).toFixed(2));
+    // 페달: 뒷바퀴와 같은 각도로 돈다
+    const p1 = { x: CRANK.x + CRANK.len * Math.cos(rearRad), y: CRANK.y + CRANK.len * Math.sin(rearRad) };
+    const p2 = { x: 2 * CRANK.x - p1.x, y: 2 * CRANK.y - p1.y };
+    const f = n => n.toFixed(1);
+    el.crank.setAttribute('d', `M ${f(p1.x)} ${f(p1.y)} L ${CRANK.x} ${CRANK.y} L ${f(p2.x)} ${f(p2.y)} M ${f(p1.x - 5)} ${f(p1.y)} L ${f(p1.x + 5)} ${f(p1.y)} M ${f(p2.x - 5)} ${f(p2.y)} L ${f(p2.x + 5)} ${f(p2.y)}`);
+    el.legNear.setAttribute('d', legPath(p1));
+    el.legFar.setAttribute('d', legPath(p2));
+    // 몸 흔들림: 비틀비틀은 앞뒤로 기우뚱·덜컹, 달릴 때는 페달에 맞춰 살짝 들썩
+    const tilt = cur.wobble * 4 * Math.sin(clock * 6.5);
+    const bounce = -cur.wobble * 3 * Math.abs(Math.sin(clock * 9)) - 0.8 * Math.min(1, cur.speed) * Math.abs(Math.sin(rearRad));
+    el.body.setAttribute('transform', `translate(0 ${bounce.toFixed(2)}) rotate(${tilt.toFixed(2)} 178 ${GROUND})`);
+    // 빠르게 달릴 때만 속도선
+    el.speed.setAttribute('opacity', (Math.max(0, Math.min(1, (cur.speed - 0.75) / 0.25)) * 0.6).toFixed(2));
+    el.speed.setAttribute('stroke-dashoffset', (dist * 1.3).toFixed(1));
+    // 도로·배경(시차): 화면 px = 그림 단위 × 배율
+    const px = dist * s;
+    el.lines.style.backgroundPosition = `${(-(px % 60)).toFixed(1)}px 0`;
+    el.trees.style.backgroundPosition = `${(-((px * 0.45) % (180 * s))).toFixed(1)}px 0`;
+    el.sky.style.backgroundPosition = `${(-((px * 0.12) % (320 * s))).toFixed(1)}px 0`;
+    if (el.progress) el.progress.style.width = (Math.min(1, dist / opts.finish) * 100).toFixed(1) + '%';
+    if (dirty) {
+      Object.keys(el.fills).forEach(g => {
+        const [a0, a1] = SECTOR_ANGLES[g];
+        el.fills[g].setAttribute('d', r[g] < 0.3 ? 'M0 0' : getSectorPath(REAR.x, REAR.y, +r[g].toFixed(2), a0, a1));
+      });
+      dirty = false;
+    }
+  }
+
+  /* 움직임 줄이기용: 결승선까지 frac만큼 간 모습으로 바로 */
+  function jump(frac) {
+    dist = (opts.finish || 0) * frac;
+    finished = frac >= 1;
+    if (el.tag) el.tag.textContent = finished ? opts.tag + ' · 도착!' : opts.tag;
+    render();
+  }
+
+  const ride = { box, el, fit, set, wait, snap, step, render, jump };
+  rides.push(ride);
+  render();
+  return ride;
+}
+
+/* 루프: 보이는 주행 무대만 움직이고, 모두 멈추면 쉰다 */
+let rafId = 0, lastT = 0;
+function kick() {
+  if (rafId || reduceMotion.matches) return;
+  lastT = 0;
+  rafId = requestAnimationFrame(tick);
+}
+function tick(now) {
+  const dt = lastT ? Math.min(0.05, (now - lastT) / 1000) : 1 / 60;
+  lastT = now;
+  let busy = false;
+  rides.forEach(rd => {
+    if (rd.box.getClientRects().length && rd.step(dt)) busy = true;
+  });
+  rafId = busy ? requestAnimationFrame(tick) : 0;
+}
+if (reduceMotion.addEventListener) {
+  reduceMotion.addEventListener('change', () => { rides.forEach(rd => rd.snap()); kick(); });
+}
+
+/* 담은 음식이 접시 카드에서 바퀴 자리로 날아간다. 닿는 데 걸리는 시간(초)을 돌려준다 */
+function flyFood(fromEl, food) {
+  if (reduceMotion.matches || !fromEl || !mainRide) return 0;
+  const target = food.group === 'water' ? mainRide.el.water : mainRide.el.icons[food.group];
+  if (!target || !target.getClientRects().length) return 0;
+  const a = fromEl.getBoundingClientRect(), b = target.getBoundingClientRect();
+  const fly = document.createElement('span');
+  fly.className = 'fb-fly';
+  fly.setAttribute('aria-hidden', 'true');
+  fly.textContent = food.emoji;
+  document.body.appendChild(fly);
+  if (!fly.animate) { fly.remove(); return 0; }
+  const x0 = a.left + a.width / 2 - 12, y0 = a.top + a.height / 2 - 12;
+  const x1 = b.left + b.width / 2 - 12, y1 = b.top + b.height / 2 - 12;
+  const mx = (x0 + x1) / 2, my = Math.min(y0, y1) - 60;
+  const DUR = 520;
+  fly.animate([
+    { transform: `translate(${x0}px, ${y0}px) scale(1)`, opacity: 1 },
+    { transform: `translate(${mx}px, ${my}px) scale(1.15)`, opacity: 1, offset: 0.5 },
+    { transform: `translate(${x1}px, ${y1}px) scale(0.6)`, opacity: 0.3 }
+  ], { duration: DUR, easing: 'ease-in-out' }).onfinish = () => fly.remove();
+  return DUR / 1000;
+}
+
+let mainRide = null, rideA = null, rideB = null;
+
+/* 무대 자전거를 지금 접시로. o: { ring, food, wait } (음식을 담을 때만) */
+function updateBikeSimulation(o) {
+  o = o || {};
+  const counts = getPlateCounts();
+  const a = assessPlate(counts);
+  mainRide.set(counts, a, { ring: o.ring, ringDelay: o.wait });
+  if (o.food && o.wait) mainRide.wait(o.food.group, o.wait * 0.85);
+  setBanner(a.run, a.msg);
+}
+
+function setBanner(runState, statusMsg) {
+  const ICONS = { stop: 'circle-x', wobble: 'triangle-alert', heavy: 'package', run: 'bike', go: 'sparkles', idle: 'circle-pause' };
+  const banner = $('#runStatusBanner');
+  banner.dataset.state = runState;
+  banner.innerHTML = SimKit.icon(ICONS[runState] || 'info') + '<span></span>';
+  banner.lastChild.textContent = statusMsg;
+}
+
+/* 미션 1처럼 접시와 상관없이 쉬는 모습 */
+function showIdleBike(msg) {
+  mainRide.set(getPlateCounts([]), { run: 'idle', speed: 0 });
+  setBanner('idle', msg);
+}
+
+/* 미션 4: 두 자전거를 나란히 세워 두고(예측), [확인]을 누르면 달린다(확인) */
+function showRace(on) {
+  $('#mainRide').hidden = on;
+  $('#raceBox').hidden = !on;
+}
+function setupRace() {
+  const m = MISSIONS[state.missionIdx];
+  showRace(true);
+  rideA.set(getPlateCounts(m.plateA), { run: 'idle', speed: 0 }, { reset: true });
+  rideB.set(getPlateCounts(m.plateB), { run: 'idle', speed: 0 }, { reset: true });
+  setBanner('idle', '두 자전거의 뒷바퀴를 비교하고 결론을 골라 보세요.');
+}
+function startRace() {
+  const m = MISSIONS[state.missionIdx];
+  const speeds = [[rideA, m.plateA], [rideB, m.plateB]].map(([rd, plate]) => {
+    const counts = getPlateCounts(plate);
+    const a = assessPlate(counts);
+    rd.set(counts, a, { reset: true });
+    return a.speed;
+  });
+  if (reduceMotion.matches) {
+    // 움직임 줄이기: 달리지 않고 결과(간 거리 비율)를 바로 보여 준다
+    const top = Math.max(...speeds) || 1;
+    rideA.jump(speeds[0] / top);
+    rideB.jump(speeds[1] / top);
+    const win = speeds[0] === speeds[1] ? '' : speeds[0] > speeds[1] ? 'A' : 'B';
+    setBanner('go', win ? `식단 ${win} 자전거가 먼저 도착했어요!` : '두 자전거가 함께 도착했어요.');
+    return;
+  }
+  setBanner('run', '두 자전거가 출발했어요! 어느 자전거가 먼저 도착할까요?');
 }
 
 /* ══════════════════════════════════════
@@ -1463,25 +1654,25 @@ function hideFeedback() { fb.hide(); }
 function verifyCurrentMission() {
   const m = MISSIONS[state.missionIdx];
   if (state.mode === 1) {
-    // 자유 빌더 모드에서의 단순 자전거 주행 평가
-    const counts = getPlateCounts();
-    const missing = [];
-    [1, 2, 3, 4, 5].forEach(g => {
-      if (counts[g] === 0) missing.push(GROUP_LABELS[g]);
-    });
+    // 자유 빌더 모드에서의 자전거 주행 평가(상태 줄과 같은 assessPlate 기준)
+    const a = assessPlate(getPlateCounts());
+    const names = gs => gs.map(g => GROUP_LABELS[g]).join(', ');
 
     const no = SimKit.icon('circle-x') + ' ';
-    if (counts['water'] === 0) {
+    if (a.run === 'stop') {
       showFeedback(no + '앞바퀴가 비어 자전거가 움직일 수 없어요! 물을 접시에 꼭 한 잔 담아 보세요.', 'no');
-    } else if (missing.length > 0) {
-      showFeedback(`${no}아직 비어 있는 바퀴 영역이 있어요. <strong>${missing.join(', ')}</strong>에 해당하는 음식을 접시에 더 담아 골고루 균형을 맞춰 보세요.`, 'no');
-    } else if (counts[6] > OIL_LIMIT) {
+    } else if (a.run === 'wobble') {
+      showFeedback(`${no}아직 비어 있는 바퀴 영역이 있어요. <strong>${names(a.missing)}</strong>에 해당하는 음식을 접시에 더 담아 골고루 균형을 맞춰 보세요.`, 'no');
+    } else if (a.run === 'heavy') {
       showFeedback(SimKit.icon('package') + ` 유지·당류는 요리할 때 조금만 써야 해요. ${OIL_LIMIT}개보다 많이 담으면 자전거 짐칸이 무거워져요. 몇 개 빼 볼까요?`, 'no');
+    } else if (a.run === 'run') {
+      showFeedback(`${SimKit.icon('bike')} 자전거가 달려요! <strong>${josa(names(a.short), '을', '를')}</strong> 하나씩 더 담으면 뒷바퀴가 꽉 차서 쌩쌩 달려요.`, 'ok');
     } else {
       showFeedback(SimKit.icon('party-popper') + ' 완벽해요! 여러 식품군이 골고루 조화를 이루고 물까지 마셔서 자전거가 쌩쌩 달리고 있어요!', 'ok');
     }
   } else if (state.mode === 2) {
-    // 도전 미션 검증
+    // 도전 미션 검증. 미션 4는 결론을 고른 뒤 두 자전거를 달려 확인한다(예측→확인)
+    if (m.id === 'm4') startRace();
     const isOk = m.verify();
     if (isOk) {
       // 완료 기록·번호 갱신·저장은 컨트롤러가(onChange). setupMissionUI는 부르지 않음(접시 초기화 방지)
@@ -1497,9 +1688,9 @@ function verifyCurrentMission() {
       } else if (m.id === 'm2') {
         mc.fail(no + '아직 빈 식품군이 남아 있어요. 고기·생선·달걀·콩류, 채소류, 과일류, 우유·유제품류, 물을 각각 1개 이상 미션 접시에 더 담아 보세요.');
       } else if (m.id === 'm3') {
-        mc.fail(no + '6가지 식품군과 물이 모두 1개 이상씩 담겨야 해요. 비어 있는 바퀴 칸을 더 채워 보세요.');
+        mc.fail(no + '6가지 식품군과 물이 모두 1개 이상씩 담겨야 해요. 뒷바퀴에서 비어 있는 자리를 더 채워 보세요.');
       } else if (m.id === 'm4') {
-        mc.fail(no + '다시 생각해 봐요. [식단 A 보기]와 [식단 B 보기]를 눌러 두 자전거 바퀴를 비교한 다음 결론을 다시 골라 보세요.');
+        mc.fail(no + '다시 생각해 봐요. 두 자전거가 달리는 모습과 뒷바퀴의 빈 자리를 비교한 다음 결론을 다시 골라 보세요.');
       }
     }
   }
@@ -1534,6 +1725,16 @@ function init() {
   loadState();
   parseShareLink();
 
+  // 주행 무대: 기본 하나 + 미션 4의 두 자전거(그림 배율은 각 무대가 크기에 맞춰 정함)
+  mainRide = createRide($('#mainRide'));
+  const onArrive = (k) => () => {
+    const other = k === 'A' ? 'B' : 'A';
+    if ($('#runStatusBanner').dataset.state !== 'go') setBanner('go', `식단 ${k} 자전거가 먼저 도착했어요!`);
+    else setBanner('go', `식단 ${other} 자전거에 이어 식단 ${k} 자전거도 도착했어요.`);
+  };
+  rideA = createRide($('#rideA'), { tag: '식단 A', finish: FINISH, onFinish: onArrive('A') });
+  rideB = createRide($('#rideB'), { tag: '식단 B', finish: FINISH, onFinish: onArrive('B') });
+
   // 미션 컨트롤러: 번호 버튼(44px)·이동·문구·완료 기록. 성공해도 자동 이동 없음(지금 동작 유지)
   mc = SimKit.missions({
     ids: MISSION_IDS,
@@ -1549,7 +1750,7 @@ function init() {
   $('#btnStart').addEventListener('click', () => {
     showScreen('screenExplore');
     switchMode(1);
-    fitBike();
+    mainRide.fit();
   });
 
   // 모드 탭 클릭
@@ -1579,10 +1780,6 @@ function init() {
   $('#btnNextMission').addEventListener('click', () => {
     if (nextMissionIdx >= 0) mc.go(nextMissionIdx);
   });
-
-  // 자전거 그림 배율: 무대 크기가 바뀔 때마다
-  if (window.ResizeObserver) new ResizeObserver(fitBike).observe($('#bikeBox'));
-  else window.addEventListener('resize', fitBike);
 
   // 결과 화면 액션
   $('#btnRetry').addEventListener('click', async () => {
