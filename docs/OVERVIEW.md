@@ -39,7 +39,7 @@ docs/                  ← 개발 문서
 
 ## 앱 목록
 
-### 교육 · 시뮬레이션 (`edu-sim`, 21종 — 주제순: 수학 → 천체·우주 → 지구과학 → 소리 → 전기 → 생태 → 실과 → 세계 → 창의·AI)
+### 교육 · 시뮬레이션 (`edu-sim`, 22종 — 주제순: 수학 → 천체·우주 → 지구과학 → 소리 → 전기 → 생태 → 실과 → 세계 → 창의·AI)
 | ID | 이름 | 설명 |
 |---|---|---|
 | `break-make` | 가르기 모으기 | 구슬 조작으로 수 가르기·모으기 + 도전 모드·도감 |
@@ -50,6 +50,7 @@ docs/                  ← 개발 문서
 | `cube-builder` | 큐브 만들기 | 숫자로 정육면체·직육면체를 단위 큐브로 쌓은 3D 모형(three.js) · 두 입체 개수 비교 · 한 층씩 쌓기 · 틈 벌리기 |
 | `chance-lab` | 가능성 실험실 | 동전·주사위·회전판 1000번 실험으로 가능성 체험 |
 | `clock` | 시계 보기 | 바늘을 끌어 돌리며 시각 읽기 · 학년별 단위 제한(정각·30분/10분/5분/1분/1초)과 잠금 링크 · 미션 6종 · 전자칠판 큰 시계 |
+| `time-class` | 시각과 시간 | 시각 읽기·걸린 시간(두 시계 + 시간 띠)·하루 24시간(24시간 시계·하루 띠)·하루 일과표(원·막대, 겹침 알림·끌기·인쇄)·달력(1주일·1개월·1년) · 12/24시간제 · 미션 6개 |
 | `graph-maker` | 그래프 그리기 | 같은 표를 ○·그림·막대·꺾은선·띠·원그래프로 바꿔 보기 · 조사하기(손들기 집계) · 직접 그리기 · 평균 고르게 하기 · 미션 10개 |
 | `moon-phase-v2` | 달의 위상 3D | 달을 직접 돌려 위상 이해 + 일식·월식 |
 | `moon-phase` | Moon Phase | 오늘의 달 위상 시뮬레이터(월령 자동 계산) |
@@ -140,7 +141,7 @@ docs/                  ← 개발 문서
 | `split` | 2-페인 (입력 \| 미리보기) | md-editor, notion-styler |
 | `sidebar` | 내비 사이드바 + 메인 | search |
 | `gallery` | 반응형 카드 그리드 | blocks-universe, chalkboard, mindmap, bubble-chat |
-| `immersive` | 풀뷰포트 (크롬만 주입) | edu-sim 21종 전체(career-talk, cube-builder, moon-phase, volcano, step-squad, break-make, clubs, fraction-bar, shape-move, chance-lab, clock, graph-maker, moon-phase-v2, solar-system, sun-shadow, pitch-lab, circuit-lab, eco-web, food-bike, world-landmarks, idea-lab) |
+| `immersive` | 풀뷰포트 (크롬만 주입) | edu-sim 22종 전체(career-talk, cube-builder, moon-phase, volcano, step-squad, break-make, clubs, fraction-bar, shape-move, chance-lab, clock, time-class, graph-maker, moon-phase-v2, solar-system, sun-shadow, pitch-lab, circuit-lab, eco-web, food-bike, world-landmarks, idea-lab) |
 
 **폭 플래그** (`data-width`): `narrow`(480px) · `medium`(720px) · `wide`(1120px)  
 **기능 플래그**: `data-focus`(아이템→전체화면 `enterFocus()`) · `data-print`(A4 인쇄 베이스라인)
@@ -271,6 +272,10 @@ docs/                  ← 개발 문서
 - **공용**: 버튼 체계 `.hero-btn-danger/-danger-solid/-sm/-icon`, `--warning` 토큰, 배지 마름모를 CSS로 통일, 제목 영문 병기 `.app-title-en`. `VUI.confirm/prompt/alert`(기본 대화상자 대체), 되돌리기 토스트(`action`), 토스트 위치(`toast="top"`, `--vui-toast-bottom`). 셸: "홈", 화면 모드 아이콘·이름, 사이드바 `.app-shell-layout > .app-main` 범위, 드로어 Esc·aria-expanded. `<AppLayout theme="light">`(화면 모드 고정).
 - **시뮬레이션 공통 규약 v2**(sim-kit 2.0.0, `docs/sim-kit.md` 0장): 밝은 화면 고정, 표준 버튼·용어(확인하기·다음 미션·다시 하기·처음부터·자유 탐험으로), 결과 문구 자동 스크롤(`reveal`), `.sk-screen`, 시간 기준 루프(`SimKit.loop`)·움직임 줄이기, 별 아이콘. 14개 시뮬레이션 + blocks-universe 하위 3종(공용 셸·무대+조작판 모양으로 개편).
 - **앱별**: 설명과 실제 동작 불일치 약 20건 정정, 영어·개발자 용어 정리, 모바일 넘침(notion-styler·math-sheet 등), qr 파일 스캔 뒤 카메라 재시작, scoring-table 인쇄, grid-maker 칸 채우기 계산, graph-maker 동점 정답·도달 불가 값, eco-web 화살촉, 달 앱 2종 규칙 통일(태양 오른쪽·월령), sun-shadow 미션 4 추분 고정 등. 운영자 추가 요청: 시계 "지금 시각 따라가기", 그래프 진입 시 "만들기/공부하기" 모드 선택, 식품구성자전거 안내 배너 위치.
+
+### 2026-11 — 시각과 시간 신규, 시계 보기 도움 표시 추가
+- **시각과 시간(`time-class`) 신규** — 시뮬레이션(수학 2학년 「시각과 시간」, [2수03-07~09]). 운영자가 가져온 Claude 아티팩트 '시각과 시간 교실 시계'를 규약 v2에 맞춰 옮김. 모드 6개: 시각 읽기(도움 표시 9가지, 교사용 문제 내기), 걸린 시간(시작·끝 시계 + 10분 시간 띠, 돌려보기), 하루(12시간 시계 + 24시간 시계 + 하루 띠, 바늘 바퀴 수), 일과(원·막대, 겹침 알림, 손잡이 끌기, 비어 있는 시간, A4 인쇄), 달력(두 날 사이 재기, 표시 글, 날짜 가리기, 달마다 날수), 미션 6개(걸린 시간·끝난 시각·오전 오후·24시간·달력 날짜·요일과 날수). 12/24시간제 전환, 전체 화면, 바늘 키보드 조작. 저장 `time-class:v1`. 공유 링크는 넣지 않음. 계획 `docs/time-class-plan.md`.
+- **시계 보기(`clock`)** — 놀이터 도움 표시 5가지 추가: 바늘 이름, 지나간 분 색칠, 바늘 설명, 읽는 말, 13~24 숫자(24시간 표기). 미션·큰 시계 채점에는 영향 없음. `docs/clock-plan.md` 10장.
 
 ### 2026-10 — 개선·신규 앱 묶음 (`docs/new-apps-2026-10.md`)
 - **홈 검색창 헤더 이동**: 768px 이상은 로고 · 검색창 · 테마/공유 버튼을 한 줄(테마/공유는 헤더 안 정적 배치), 768px 미만은 로고 아래 전체 폭 검색창 + 우상단 떠 있는 버튼(종전과 같음). 계획 `docs/home-search-header-plan.md`.

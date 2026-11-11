@@ -30,6 +30,7 @@ import Icon from '../../../components/Icon.astro';
   --ck-minnum: #2563eb;
   --ck-tick: #94a3b8;
   --ck-zone: rgba(249,115,22,0.16);
+  --ck-mfill: rgba(37,99,235,0.13);
   --ck-bg: #f1f5f4;
   --ck-panel: #ffffff;
   --ck-border: #e2e8f0;
@@ -55,6 +56,7 @@ import Icon from '../../../components/Icon.astro';
   --ck-minnum: #93c5fd;
   --ck-tick: #64748b;
   --ck-zone: rgba(251,146,60,0.22);
+  --ck-mfill: rgba(96,165,250,0.20);
   --ck-bg: #0b1215;
   --ck-panel: #111a1f;
   --ck-border: #1f2e35;
@@ -153,6 +155,14 @@ svg.clock .num { fill: var(--ck-num); font-size: 34px; font-weight: 900; text-an
 svg.clock .num.zone-on { fill: var(--ck-hour); }
 svg.clock .minnum { fill: var(--ck-minnum); font-size: 15px; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
 svg.clock .zone { fill: var(--ck-zone); }
+svg.clock .mfill { fill: var(--ck-mfill); }
+/* 13~24 숫자·바늘 이름: 글자 크기는 app.js 가 시계 크기에 맞춰 --ck-fs(그림 단위)로 정함 - 작은 화면에서도 11px 이상 */
+svg.clock .num24 { fill: var(--ck-muted); font-size: var(--ck-fs, 18px); font-weight: 800; text-anchor: middle; dominant-baseline: central; }
+svg.clock .hnames { pointer-events: none; }
+svg.clock .hname { font-size: var(--ck-fs, 18px); font-weight: 900; text-anchor: middle; dominant-baseline: central;
+  paint-order: stroke; stroke: var(--ck-face); stroke-width: 5px; stroke-linejoin: round; }
+svg.clock .hname.hour { fill: var(--ck-hour); }
+svg.clock .hname.minute { fill: var(--ck-minute); }
 svg.clock .hand { stroke-linecap: round; }
 svg.clock .hand.hour { stroke: var(--ck-hour); stroke-width: 13; }
 svg.clock .hand.minute { stroke: var(--ck-minute); stroke-width: 7; }
@@ -175,6 +185,13 @@ svg.clock .bubble text { fill: var(--ck-bg); font-size: 20px; font-weight: 800; 
 .readout .reading { font-size: 30px; font-weight: 900; color: var(--ck-text); }
 .readout .reading.hidden-text { color: transparent; background: var(--ck-btn); border-radius: 10px; min-width: 180px; user-select: none; }
 .readout .before { font-size: 15px; font-weight: 700; color: var(--ck-muted); }
+.help-lines { display: flex; flex-direction: column; align-items: center; gap: 2px; max-width: 100%; flex-shrink: 0;
+  font-size: 17px; font-weight: 700; line-height: 1.45; color: var(--ck-text); text-align: center; }
+.help-lines[hidden] { display: none; }
+.help-lines .hl-24 { color: var(--ck-muted); }
+.help-lines .c-hour { color: var(--ck-hour); font-weight: 900; }
+.help-lines .c-min { color: var(--ck-minute); font-weight: 900; }
+body.big .help-lines { font-size: clamp(17px, 2.2vw, 30px); }
 .icon-btn {
   width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--ck-border); background: var(--ck-panel);
   font-size: 20px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; touch-action: manipulation;
@@ -305,7 +322,7 @@ body.big .big-bar {
   body { overflow-y: auto; }
   .main-screen { height: auto; min-height: 100dvh; }
   .main-layout { display: flex; flex-direction: column; height: auto; min-height: 100dvh; }
-  .clock-zone { height: 54vh; height: 54dvh; min-height: 320px; flex-shrink: 0; padding-top: 58px; }
+  .clock-zone { height: calc(54vh + var(--ck-extra, 0px)); height: calc(54dvh + var(--ck-extra, 0px)); min-height: 320px; flex-shrink: 0; padding-top: 58px; }
   .panel { border-left: 0; border-top: 1px solid var(--ck-border); overflow: visible; }
   .panel-head { padding-top: 14px; }
   .q-banner { font-size: 17px; }
@@ -347,6 +364,8 @@ body.big { --vui-toast-bottom: 96px; }
   .unit-grid { grid-template-columns: repeat(3, 1fr); }
   .intro-screen h1 { font-size: 28px; }
   .readout .reading { font-size: 24px; }
+  .help-lines { font-size: 14.5px; }
+  .tog { font-size: 13.5px; padding: 0 8px; gap: 6px; }
   .chips { grid-template-columns: repeat(4, 1fr); }
 }
     </style>
@@ -389,6 +408,7 @@ body.big { --vui-toast-bottom: 96px; }
         <button type="button" class="say-btn" id="btnSay" aria-label="시각 읽어 주기"><Icon name="volume-2" />읽어 주기</button>
         <button type="button" class="say-btn" id="btnHide" aria-pressed="false" aria-label="읽는 글 가리기"><Icon name="eye-off" /><span>글 가리기</span></button>
       </div>
+      <div class="help-lines" id="helpLines" hidden></div>
       <div class="daybar" id="daybar" hidden aria-hidden="true">
         <div class="track"><div class="mark" id="dayMark"></div></div>
         <div class="labels"><span>밤 12시</span><span><Icon name="sunrise" />오전</span><span>낮 12시</span><span>오후<Icon name="moon" /></span><span>밤 12시</span></div>
@@ -425,6 +445,11 @@ body.big { --vui-toast-bottom: 96px; }
               <button type="button" class="tog" data-show="hourZone" aria-pressed="false">시침 자리 색칠</button>
               <button type="button" class="tog" data-show="dayBar" aria-pressed="false">오전·오후</button>
               <button type="button" class="tog" data-show="second" aria-pressed="false">초침</button>
+              <button type="button" class="tog" data-show="handNames" aria-pressed="false">바늘 이름</button>
+              <button type="button" class="tog" data-show="minuteFill" aria-pressed="false">지나간 분 색칠</button>
+              <button type="button" class="tog" data-show="explain" aria-pressed="false">바늘 설명</button>
+              <button type="button" class="tog" data-show="spoken" aria-pressed="false">읽는 말</button>
+              <button type="button" class="tog" data-show="h24" aria-pressed="false">13~24 숫자</button>
             </div>
           </div>
           <p class="hint-text"><Icon name="lightbulb" /> 분침이 한 바퀴 돌면 시침은 숫자 한 칸을 가요. 시침이 두 숫자 사이에 있으면 <b>지나온 숫자</b>를 읽어요.</p>

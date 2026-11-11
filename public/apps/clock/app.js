@@ -25,7 +25,9 @@
     s1: { u: "1초", grade: "3학년", step: 1 },
   };
   const UNIT_KEYS = Object.keys(UNITS);
-  const SHOW_KEYS = ["minuteNums", "ticks", "hourZone", "dayBar", "second"];
+  // 도움 표시 추가분(2026-11-11): 단위와 상관없이 기본 꺼짐. 미션 중에는 쓰지 않음(missionShow 가 단위 기본값만 씀)
+  const EXTRA_KEYS = ["handNames", "minuteFill", "explain", "spoken", "h24"];
+  const SHOW_KEYS = ["minuteNums", "ticks", "hourZone", "dayBar", "second"].concat(EXTRA_KEYS);
   const SHOW_DEFAULT = {
     h30: { minuteNums: false, ticks: false, hourZone: true, dayBar: false, second: false },
     m10: { minuteNums: true, ticks: false, hourZone: false, dayBar: false, second: false },
@@ -33,6 +35,7 @@
     m1: { minuteNums: true, ticks: true, hourZone: false, dayBar: false, second: false },
     s1: { minuteNums: true, ticks: true, hourZone: false, dayBar: false, second: true },
   };
+  for (const u of UNIT_KEYS) for (const k of EXTRA_KEYS) SHOW_DEFAULT[u][k] = false;
 
   /* ───── 저장 ───── */
   const isObj = (v) => v && typeof v === "object" && !Array.isArray(v);
@@ -77,7 +80,7 @@
   }
   function digital(t, unit = state.unit) {
     const p = parts(t);
-    return p.h + ":" + String(p.m).padStart(2, "0") + (unit === "s1" ? ":" + String(p.s).padStart(2, "0") : "");
+    return (state.show.h24 ? p.h24 : p.h) + ":" + String(p.m).padStart(2, "0") + (unit === "s1" ? ":" + String(p.s).padStart(2, "0") : "");
   }
   function fmtDur(sec) {
     const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
@@ -86,6 +89,43 @@
     if (m) out.push(m + "분");
     if (s) out.push(s + "초");
     return out.join(" ") || "0분";
+  }
+  // 24시간제 글: "15시 25분"
+  function fmt24(t, unit = state.unit) {
+    const p = parts(t);
+    let str = p.h24 + "시";
+    if (unit === "s1" && p.s) str += " " + p.m + "분 " + p.s + "초";
+    else if (p.m) str += " " + p.m + "분";
+    return str;
+  }
+  // 읽는 말: 시는 고유어(한·두·세…), 분·초는 한자어(일·이·삼…). "세 시 이십오 분"
+  const HOUR_KO = ["", "한", "두", "세", "네", "다섯", "여섯", "일곱", "여덟", "아홉", "열", "열한", "열두"];
+  const DIGIT_KO = ["", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구"];
+  function sinoKo(n) {
+    if (n === 0) return "영";
+    const ten = Math.floor(n / 10), one = n % 10;
+    return (ten ? (ten > 1 ? DIGIT_KO[ten] : "") + "십" : "") + DIGIT_KO[one];
+  }
+  function spokenKo(t, unit = state.unit, ampm) {
+    const p = parts(t);
+    let str = HOUR_KO[p.h] + " 시";
+    if (p.m) str += " " + sinoKo(p.m) + " 분";
+    if (unit === "s1" && p.s) str += " " + sinoKo(p.s) + " 초";
+    return (ampm ? (p.pm ? "오후 " : "오전 ") : "") + str;
+  }
+  // 바늘 설명 두 줄. 각 줄은 [바늘 종류, 바늘 이름, 나머지 글]
+  function explainLines(t) {
+    const p = parts(t);
+    const J = (w, pair) => (SK.josa && SK.josa.pick ? SK.josa.pick(String(w), pair) : pair.split("/")[0]);
+    const nextH = (p.h % 12) + 1;
+    const hourLine = p.m === 0
+      ? "이 " + p.h + J(p.h, "을/를") + " 가리켜요 → " + p.h + "시"
+      : "이 " + p.h + J(p.h, "과/와") + " " + nextH + " 사이 → " + p.h + "시";
+    const base = Math.floor(p.m / 5) || 12, more = p.m % 5;
+    const minLine = more === 0
+      ? "이 " + base + J(base, "을/를") + " 가리켜요 → " + p.m + "분"
+      : "이 " + base + "에서 작은 눈금 " + more + "칸 더 → " + p.m + "분";
+    return [["hour", "짧은 바늘", hourLine], ["min", "긴 바늘", minLine]];
   }
   // 받침 따라 '이에요/예요'
   function hasBatchim(w) { const c = w.charCodeAt(w.length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0; }
@@ -109,6 +149,7 @@
     const svg = svgEl("svg", { viewBox: "-6 -6 412 412", class: "clock", role: "group" });
     svg.setAttribute("aria-label", opts.label || "시계");
     svgEl("circle", { cx: 200, cy: 200, r: 170, class: "face" }, svg);
+    const mfill = svgEl("path", { class: "mfill" }, svg); // 지나간 분 색칠(12시 방향 → 분침). 시침 자리 색칠보다 아래에 깔아 둘 다 보이게
     const zone = svgEl("path", { class: "zone" }, svg); // 시침 자리 색칠(문자판 위, 숫자·바늘 아래)
     // 바깥 고리: 분 숫자
     const minG = svgEl("g", { "aria-hidden": "true" }, svg);
@@ -124,6 +165,9 @@
     const nums = [];
     const numG = svgEl("g", { "aria-hidden": "true" }, svg);
     for (let i = 1; i <= 12; i++) { const [x, y] = pt(130, i * 30); const n = svgEl("text", { x, y, class: "num" }, numG); n.textContent = String(i); nums.push(n); }
+    // 안쪽 고리: 13~24 (1 안쪽에 13 … 12 안쪽에 24)
+    const h24G = svgEl("g", { "aria-hidden": "true" }, svg);
+    for (let i = 1; i <= 12; i++) { const [x, y] = pt(98, i * 30); svgEl("text", { x, y, class: "num24" }, h24G).textContent = String(i + 12); }
     function hand(kind) {
       const g = svgEl("g", { class: "grab" }, svg);
       const tail = kind === "second" ? 24 : 14;
@@ -132,6 +176,18 @@
     }
     const gHour = hand("hour"), gMin = hand("minute"), gSec = hand("second");
     svgEl("circle", { cx: 200, cy: 200, r: 10, class: "cap" }, svg);
+    // 바늘 이름: 돌지 않는 글자를 바늘 각도로 계산한 자리에 둔다
+    const nameG = svgEl("g", { class: "hnames", "aria-hidden": "true" }, svg);
+    const nmHour = svgEl("text", { class: "hname hour" }, nameG); nmHour.textContent = "짧은 바늘";
+    const nmMin = svgEl("text", { class: "hname minute" }, nameG); nmMin.textContent = "긴 바늘";
+    // 글자를 바늘 방향 r 지점에서 직각(side: 1 시계 방향 쪽, -1 반대쪽)으로 비켜 놓는다. 가로 글상자가 바늘 선에 닿지 않을 만큼만.
+    function placeName(el, deg, r, side, em) {
+      const a = (deg * Math.PI) / 180;
+      const nx = Math.cos(a) * side, ny = Math.sin(a) * side;
+      const off = Math.abs(nx) * em * c.fs / 2 + Math.abs(ny) * c.fs * 0.6 + 8;
+      el.setAttribute("x", (200 + r * Math.sin(a) + off * nx).toFixed(1));
+      el.setAttribute("y", (200 - r * Math.cos(a) + off * ny).toFixed(1));
+    }
     const bubble = svgEl("g", { class: "bubble", "aria-hidden": "true", visibility: "hidden" }, svg);
     const bRect = svgEl("rect", { rx: 12, height: 40 }, bubble);
     const bText = svgEl("text", {}, bubble);
@@ -139,7 +195,7 @@
     host.appendChild(svg);
 
     const c = {
-      svg, t: 0, show: {}, unit: state.unit, interactive: false, drag: null,
+      svg, t: 0, show: {}, unit: state.unit, interactive: false, drag: null, fs: 18,
       onChange: opts.onChange || null, onRelease: opts.onRelease || null,
     };
     c.draw = function (t, show) {
@@ -160,6 +216,17 @@
         zone.style.display = "";
       } else zone.style.display = "none";
       nums.forEach((n, i) => n.classList.toggle("zone-on", !!s.hourZone && (i + 1) % 12 === hi % 12));
+      if (s.minuteFill && minDeg >= 0.05) {
+        const [mx, my] = pt(166, minDeg);
+        mfill.setAttribute("d", "M200 200 L200 34 A166 166 0 " + (minDeg > 180 ? 1 : 0) + " 1 " + mx.toFixed(1) + " " + my.toFixed(1) + " Z");
+        mfill.style.display = "";
+      } else mfill.style.display = "none";
+      h24G.style.display = s.h24 ? "" : "none";
+      if (s.handNames) {
+        placeName(nmHour, hourDeg, 54, 1, 4.4);   // 반지름의 약 32%
+        placeName(nmMin, minDeg, 105, -1, 3.4);   // 반지름의 약 62%
+        nameG.style.display = "";
+      } else nameG.style.display = "none";
       const read = fmt(snap(T, c.unit), c.unit);
       if (c.interactive) {
         gMin.setAttribute("aria-valuetext", read); gHour.setAttribute("aria-valuetext", read); gSec.setAttribute("aria-valuetext", read);
@@ -176,7 +243,12 @@
         bubble.setAttribute("visibility", "visible");
       } else bubble.setAttribute("visibility", "hidden");
     };
-    c.size = function (px) { svg.setAttribute("width", Math.round(px)); svg.setAttribute("height", Math.round(px)); };
+    c.size = function (px) {
+      svg.setAttribute("width", Math.round(px)); svg.setAttribute("height", Math.round(px));
+      // 작은 화면에서도 바늘 이름·13~24 숫자가 11px 아래로 내려가지 않게 글자 크기(그림 단위)를 키운다
+      const fs = Math.min(28, Math.max(18, Math.ceil((11.5 * 412) / Math.max(1, px))));
+      if (fs !== c.fs) { c.fs = fs; svg.style.setProperty("--ck-fs", fs + "px"); c.draw(); }
+    };
     c.setInteractive = function (on) {
       c.interactive = on;
       svg.classList.toggle("live", on);
@@ -284,6 +356,20 @@
     reading.setAttribute("aria-hidden", hidden ? "true" : "false");
     const p = parts(t);
     $("before").textContent = !hidden && state.unit !== "h30" && p.m >= 50 && !p.s ? "(" + ((p.h % 12) + 1) + "시 " + (60 - p.m) + "분 전)" : "";
+    // 도움 줄(읽는 말·24시간제·바늘 설명): 읽기 글이 가려질 때와 미션 중에는 정답이 드러나지 않게 숨김
+    const hl = $("helpLines");
+    hl.textContent = "";
+    if (!hidden && state.mode !== "mission") {
+      const line = (cls) => { const d = document.createElement("div"); d.className = "hl " + cls; hl.appendChild(d); return d; };
+      if (state.show.spoken) line("hl-say").textContent = "읽기: " + spokenKo(t, state.unit, state.show.dayBar);
+      if (state.show.h24) line("hl-24").textContent = "24시간제로 " + fmt24(t);
+      if (state.show.explain) for (const [kind, name, rest] of explainLines(t)) {
+        const d = line("hl-exp");
+        const b = document.createElement("b"); b.className = "c-" + kind; b.textContent = name;
+        d.append(b, rest);
+      }
+    }
+    hl.hidden = !hl.firstChild;
     $("btnHide").setAttribute("aria-pressed", state.hideReading ? "true" : "false");
     $("btnHide").innerHTML = state.hideReading ? ic("eye") + "<span>글 보이기</span>" : ic("eye-off") + "<span>글 가리기</span>";
     $("daybar").hidden = !(state.show.dayBar && state.mode !== "mission");
@@ -293,6 +379,9 @@
 
   function layout() {
     const zone = $("clockZone");
+    // 좁은 화면(위아래 배치)에서는 도움 줄 높이만큼 시계 영역을 늘려 시계가 줄어들지 않게 함(CSS 가 --ck-extra 를 씀)
+    const help = $("helpLines");
+    zone.style.setProperty("--ck-extra", (help.hidden ? 0 : help.offsetHeight + 10) + "px");
     const zr = zone.getBoundingClientRect();
     const cs = getComputedStyle(zone);
     const padT = parseFloat(cs.paddingTop) || 0, padB = parseFloat(cs.paddingBottom) || 0;
@@ -300,6 +389,7 @@
     const W = zr.width - 32;
     const ro = $("readout"), db = $("daybar"), bn = $("qBanner");
     if (ro.offsetParent) H -= ro.offsetHeight + 10;
+    if (!help.hidden) H -= help.offsetHeight + 10;
     if (!db.hidden) H -= db.offsetHeight + 10;
     if (!bn.hidden) H -= bn.offsetHeight + 8;
     const two = !$("boxB").hidden;
@@ -311,7 +401,11 @@
   }
   let rz = 0;
   window.addEventListener("resize", () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(layout); });
-  if (window.ResizeObserver) new ResizeObserver(() => { cancelAnimationFrame(rz); rz = requestAnimationFrame(layout); }).observe($("clockZone"));
+  if (window.ResizeObserver) {
+    const obs = new ResizeObserver(() => { cancelAnimationFrame(rz); rz = requestAnimationFrame(layout); });
+    obs.observe($("clockZone"));
+    obs.observe($("helpLines")); // 도움 줄이 생기거나 줄 수가 바뀌면 시계 크기를 다시 잡음
+  }
 
   function drawMain() { main.unit = state.unit; second.unit = state.unit; main.draw(state.t, showNow()); renderReadout(); }
 
@@ -400,7 +494,7 @@
       b.hidden = k === "second" && state.unit !== "s1";
       b.setAttribute("aria-pressed", state.show[k] ? "true" : "false");
     }
-    $("ampm").hidden = !state.show.dayBar;
+    $("ampm").hidden = !(state.show.dayBar || state.show.h24); // 24시간 표기는 오전·오후를 바꿔 볼 수 있어야 함
   }
   document.querySelector(".toggles").addEventListener("click", (e) => {
     const b = e.target.closest(".tog");
@@ -480,6 +574,7 @@
     $("paneBig").hidden = true;
     const showRead = m !== "mission";
     $("readout").style.display = showRead ? "" : "none";
+    if (!showRead) $("helpLines").hidden = true;
     if (m !== "mission") {
       $("qBanner").hidden = true; $("boxB").hidden = true; $("capA").hidden = true;
       main.setInteractive(true);

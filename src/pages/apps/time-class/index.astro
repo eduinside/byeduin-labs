@@ -1,0 +1,754 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
+---
+<AppLayout
+  title="시각과 시간 — eduin VIVES"
+  description="바늘 시계로 시각을 읽고, 두 시계로 걸린 시간을 재고, 하루 24시간과 오전·오후, 하루 일과표, 달력의 1주일·1개월·1년을 살펴봐요. 전자칠판 수업과 학생 미션에 함께 써요. 초등 수학 2학년 시각과 시간."
+  bodyShell="immersive"
+  theme="light"
+  toast="top"
+>
+  <Fragment slot="head">
+    <link rel="stylesheet" href="/common/sim-kit.css">
+    <script is:inline src="/common/sim-kit.js"></script>
+    <style is:global="">
+/* ══════════════════════════════════════════════
+   time-class — 시각과 시간 (immersive, 규약 v2: 밝은 화면 고정)
+   계획: docs/time-class-plan.md · 색은 시계 보기(clock)와 맞춤
+   ══════════════════════════════════════════════ */
+:root {
+  --tc-primary: #0d9488;
+  --tc-primary-h: #0f766e;
+  --tc-primary-soft: rgba(13,148,136,0.12);
+  --tc-hour: #ea580c;
+  --tc-hour-soft: rgba(249,115,22,0.18);
+  --tc-minute: #2563eb;
+  --tc-minute-soft: rgba(37,99,235,0.14);
+  --tc-face: #ffffff;
+  --tc-rim: #d5efec;
+  --tc-edge: #334155;
+  --tc-num: #1e293b;
+  --tc-tick: #94a3b8;
+  --tc-bg: #f1f5f4;
+  --tc-panel: #ffffff;
+  --tc-border: #e2e8f0;
+  --tc-text: #1e293b;
+  --tc-muted: #64748b;
+  --tc-btn: #f1f5f9;
+  --tc-star: #f59e0b;
+  --tc-ok: #15803d;
+  --tc-no: #c2410c;
+  --tc-night: #1e3a8a;
+  --tc-dawn: #f59e0b;
+  --tc-day: #fde68a;
+  --tc-sun: #dc2626;
+  --tc-sat: #2563eb;
+  --sk-accent: var(--tc-primary);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Inter', 'Segoe UI', sans-serif;
+  background: var(--tc-bg); color: var(--tc-text);
+  min-height: 100vh; min-height: 100dvh; overflow: hidden; -webkit-tap-highlight-color: transparent;
+}
+button, input, select { font-family: inherit; }
+[hidden] { display: none !important; }
+.screen { display: none; }
+.screen.active { display: flex; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.sk-btn.big { min-height: 60px; padding: 0 36px; font-size: 19px; border-radius: 99px; }
+.ic { flex-shrink: 0; }
+.mode-tab .ic, .panel-head h2 .ic, .group-title .ic, .summary h3 .ic, .intro-cards b .ic, .hint-text .ic { width: 1.1em; height: 1.1em; vertical-align: -0.15em; }
+
+/* ══════════ 인트로·결과 ══════════ */
+.intro-screen, .result-screen {
+  text-align: center; animation: fadeUp .45s ease;
+  background: radial-gradient(circle at 20% 25%, rgba(13,148,136,.10) 0, transparent 40%),
+              radial-gradient(circle at 80% 75%, rgba(249,115,22,.08) 0, transparent 38%), var(--tc-bg);
+}
+.intro-tag { display: inline-block; background: var(--tc-primary); color: #fff; font-size: 14px; font-weight: 800; padding: 6px 14px; border-radius: 99px; margin-bottom: 14px; }
+.intro-art { width: 108px; height: 108px; margin-bottom: 8px; }
+.intro-screen h1, .result-screen h1 { font-size: 34px; font-weight: 900; letter-spacing: -.02em; margin-bottom: 6px; }
+.intro-sub { font-size: 16px; color: var(--tc-muted); line-height: 1.7; margin-bottom: 18px; }
+.intro-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: min(660px, 100%); margin-bottom: 22px; text-align: left; }
+.intro-cards div { background: var(--tc-panel); border: 1px solid var(--tc-border); border-radius: 16px; padding: 14px; font-size: 14px; line-height: 1.55; color: var(--tc-muted); }
+.intro-cards b { display: flex; align-items: center; gap: 6px; color: var(--tc-text); font-size: 16px; margin-bottom: 4px; }
+.intro-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; }
+.intro-link { margin-top: 14px; font-size: 14px; color: var(--tc-muted); }
+.intro-link a { color: var(--tc-primary); font-weight: 800; }
+.intro-credit { margin-top: 10px; font-size: 12px; color: var(--tc-muted); }
+.intro-credit a { color: inherit; text-decoration: underline; }
+
+/* ══════════ 본 화면 ══════════ */
+.main-screen { width: 100vw; height: 100vh; height: 100dvh; animation: fadeUp .35s ease; }
+.main-layout { display: grid; grid-template-columns: minmax(0, 1fr) 384px; width: 100%; height: 100%; }
+.stage {
+  position: relative; min-width: 0; min-height: 0; overflow: hidden;
+  padding: var(--sk-stage-top, 60px) 16px 14px;
+  background-color: var(--tc-bg);
+  background-image: radial-gradient(rgba(13,148,136,.10) 1.5px, transparent 1.5px);
+  background-size: 28px 28px;
+}
+.view { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; min-height: 0; }
+.clockwrap { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+.clockwrap svg { width: 100%; height: 100%; }
+
+/* ── 바늘 시계 ── */
+svg.clock { display: block; touch-action: none; user-select: none; -webkit-user-select: none; overflow: visible; }
+svg.clock .ck-rim { fill: var(--tc-rim); stroke: var(--tc-edge); stroke-width: 5; }
+svg.clock .ck-face { fill: var(--tc-face); stroke: var(--tc-edge); stroke-width: 2; }
+svg.clock .tk { stroke: var(--tc-tick); stroke-width: 2.5; stroke-linecap: round; }
+svg.clock .tk.big { stroke: var(--tc-num); stroke-width: 5; }
+svg.clock text { text-anchor: middle; dominant-baseline: central; font-weight: 900; }
+svg.clock .ck-num { fill: var(--tc-num); font-size: 42px; }
+svg.clock .ck-n24 text { fill: var(--tc-muted); font-size: 24px; font-weight: 800; }
+svg.clock .ck-minnums text { fill: var(--tc-minute); font-size: 20px; font-weight: 800; }
+svg.clock .ck-hourarc { fill: var(--tc-hour-soft); }
+svg.clock .ck-minfill { fill: var(--tc-minute-soft); }
+svg.clock .hand.hour .hand-body { fill: var(--tc-hour); }
+svg.clock .hand.minute .hand-body { fill: var(--tc-minute); }
+svg.clock .hand .hit { stroke: transparent; stroke-width: 46; stroke-linecap: round; cursor: grab; }
+svg.clock.dragging .hand .hit { cursor: grabbing; }
+svg.clock.locked .hand .hit { cursor: default; pointer-events: none; }
+svg.clock .hand:focus { outline: none; }
+svg.clock .hand:focus-visible .hand-body { stroke: var(--tc-primary); stroke-width: 5; paint-order: stroke; }
+svg.clock .ck-cap { fill: var(--tc-edge); }
+svg.clock .ck-pin { fill: #fff; }
+svg.clock .hand-lbl { font-size: 21px; font-weight: 900; paint-order: stroke; stroke: var(--tc-face); stroke-width: 6; stroke-linejoin: round; pointer-events: none; }
+svg.clock .hand-lbl.h { fill: var(--tc-hour); }
+svg.clock .hand-lbl.m { fill: var(--tc-minute); }
+svg.clock .d24-face { fill: var(--tc-face); stroke: var(--tc-edge); stroke-width: 5; }
+svg.clock .d24-pm { fill: rgba(30,58,138,.10); }
+svg.clock .d24-num { fill: var(--tc-num); font-size: 25px; }
+svg.clock .d24-lbl { fill: var(--tc-muted); font-size: 24px; font-weight: 800; }
+svg.clock .d24-hand { fill: var(--tc-primary); }
+
+/* ── 시각 읽기 ── */
+.read-side { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; flex-shrink: 0; }
+.digital {
+  font-variant-numeric: tabular-nums; font-size: 34px; font-weight: 900; letter-spacing: .04em; line-height: 1;
+  padding: 8px 18px; border-radius: 14px; background: #0f172a; color: #a7f3d0; display: inline-flex; align-items: baseline; gap: 8px;
+}
+.digital .ap { font-size: 17px; letter-spacing: 0; color: #cbd5e1; }
+.view-read.digital-only .digital { font-size: clamp(64px, 16vw, 150px); padding: 24px 40px; border-radius: 28px; margin: auto 0; }
+.view-read.digital-only .digital .ap { font-size: .3em; }
+.readout { text-align: center; min-height: 64px; border-radius: 14px; padding: 2px 12px; }
+.ro-main { font-size: 32px; font-weight: 900; line-height: 1.25; }
+.ro-alt { font-size: 17px; font-weight: 800; color: var(--tc-muted); line-height: 1.5; }
+.ro-sub { font-size: 15px; font-weight: 700; color: var(--tc-muted); line-height: 1.6; }
+.ro-hint { font-size: 15.5px; font-weight: 700; line-height: 1.6; }
+.ro-hint .h { color: var(--tc-hour); font-weight: 900; }
+.ro-hint .m { color: var(--tc-minute); font-weight: 900; }
+.maskable.masked { position: relative; cursor: pointer; }
+.maskable.masked > * { visibility: hidden; }
+.maskable.masked::after {
+  content: '눌러서 보기'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  border-radius: inherit; background: var(--tc-btn); border: 2px dashed var(--tc-tick); color: var(--tc-muted); font-size: 16px; font-weight: 800; letter-spacing: 0;
+}
+.digital.maskable.masked::after { background: #0f172a; color: #94a3b8; border-color: #475569; font-size: 14px; }
+.say-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+/* ── 두 시계(걸린 시간·하루·미션) ── */
+.pair { flex: 1; min-height: 0; width: 100%; display: flex; align-items: stretch; justify-content: center; gap: 8px; }
+.card { flex: 1; min-width: 0; max-width: 460px; display: flex; flex-direction: column; align-items: center; gap: 4px; background: var(--tc-panel); border: 1px solid var(--tc-border); border-radius: 18px; padding: 10px 8px; }
+.card h3 { font-size: 15px; font-weight: 800; color: var(--tc-muted); text-align: center; line-height: 1.35; }
+.card .cw { flex: 1; min-height: 0; width: 100%; }
+.card .cw svg { width: 100%; height: 100%; }
+.card .dig { font-size: 22px; font-weight: 900; font-variant-numeric: tabular-nums; min-height: 28px; }
+.pair-arrow { align-self: center; color: var(--tc-muted); flex-shrink: 0; }
+.pair-arrow .ic { width: 28px; height: 28px; }
+.strip-box { width: 100%; flex-shrink: 0; background: var(--tc-panel); border: 1px solid var(--tc-border); border-radius: 16px; padding: 4px 6px; overflow-x: auto; }
+svg.strip { display: block; width: 100%; height: auto; user-select: none; -webkit-user-select: none; }
+svg.strip text { text-anchor: middle; font-weight: 800; }
+.st-cell { fill: #fff; stroke: var(--tc-tick); stroke-width: 1; }
+.st-fill { fill: var(--tc-primary); opacity: .35; }
+.st-hour { stroke: var(--tc-edge); stroke-width: 2.5; }
+.st-lbl { fill: var(--tc-num); font-size: 22px; }
+.st-min { fill: var(--tc-muted); font-size: 15px; }
+.st-mark { stroke-width: 4; }
+.st-mark.a, .st-tag.a { stroke: var(--tc-hour); }
+.st-mark.b, .st-tag.b { stroke: var(--tc-minute); }
+.st-tag { font-size: 18px; stroke: none !important; }
+.st-tag.a { fill: var(--tc-hour); } .st-tag.b { fill: var(--tc-minute); }
+.ds-bg-night { fill: var(--tc-night); } .ds-bg-dawn { fill: var(--tc-dawn); } .ds-bg-day { fill: var(--tc-day); }
+.ds-pass { fill: #fff; opacity: .28; }
+.ds-sun { fill: #f97316; } .ds-moon { fill: #fde68a; }
+.ds-tick { stroke: rgba(255,255,255,.55); stroke-width: 1.5; }
+.ds-n { font-size: 19px; fill: var(--tc-num); }
+.ds-n.off { fill: var(--tc-tick); font-size: 16px; }
+.ds-br { fill: none; stroke: var(--tc-muted); stroke-width: 2; }
+.ds-brt { fill: var(--tc-muted); font-size: 20px; }
+.ds-word { fill: var(--tc-muted); font-size: 16px; }
+.ds-mark { stroke: var(--tc-sun); stroke-width: 5; stroke-linecap: round; }
+.ds-knob { fill: var(--tc-sun); stroke: #fff; stroke-width: 3; cursor: grab; }
+.ds-tag { fill: var(--tc-hour); font-size: 21px; }
+#dayStrip { min-width: 600px; touch-action: none; cursor: pointer; }
+
+/* ── 일과 ── */
+.rt-views { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+#rtCircle { flex: 1; min-height: 0; width: 100%; touch-action: none; }
+.rt-barwrap { width: 100%; flex-shrink: 0; overflow-x: auto; }
+#rtBar { display: block; width: 100%; height: auto; touch-action: pan-x; }
+.rt-views.bar-only { justify-content: center; }
+.rt-views svg text { text-anchor: middle; dominant-baseline: central; font-weight: 800; user-select: none; -webkit-user-select: none; }
+.rt-empty { fill: #fff; stroke: var(--tc-tick); stroke-width: 1.5; }
+.rt-seg { stroke: #fff; stroke-width: 2; cursor: pointer; }
+.rt-seg.sel { stroke: var(--tc-edge); stroke-width: 4; }
+.rt-lbl { fill: #1e293b; font-size: 19px; pointer-events: none; }
+.rt-sub { fill: #475569; font-size: 15px; pointer-events: none; }
+.rt-tick { stroke: var(--tc-edge); stroke-width: 1.5; }
+.rt-hr { fill: var(--tc-muted); font-size: 17px; }
+.rt-am { fill: #fde68a; } .rt-pm { fill: #c7d2fe; }
+.rt-amt { fill: var(--tc-muted); font-size: 19px; }
+.rt-center { fill: #fff; stroke: var(--tc-edge); stroke-width: 2; }
+.rt-ctext { fill: var(--tc-num); font-size: 22px; font-weight: 900; pointer-events: none; }
+.rt-handle { fill: #fff; stroke: var(--tc-edge); stroke-width: 4; cursor: grab; touch-action: none; }
+.rt-handle.e { fill: var(--tc-edge); }
+.rt-info { font-size: 17px; font-weight: 800; text-align: center; min-height: 26px; flex-shrink: 0; }
+
+/* ── 달력 ── */
+.cal-nav { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; width: 100%; flex-shrink: 0; }
+.cal-title { font-size: 28px; font-weight: 900; min-width: 190px; text-align: center; font-variant-numeric: tabular-nums; }
+.cal-grid { flex: 1; min-height: 0; width: 100%; max-width: 860px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal-dow { text-align: center; font-size: 17px; font-weight: 900; color: var(--tc-muted); padding: 4px 0; }
+.cal-dow.sun, .cal-cell.sun .d { color: var(--tc-sun); }
+.cal-dow.sat, .cal-cell.sat .d { color: var(--tc-sat); }
+.cal-cell {
+  position: relative; min-height: 44px; border-radius: 12px; border: 2px solid var(--tc-border); background: var(--tc-panel); color: var(--tc-text);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; cursor: pointer; padding: 2px; touch-action: manipulation; overflow: hidden;
+}
+.cal-cell .d { font-size: clamp(17px, 2.6vw, 28px); font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.cal-cell.other { background: transparent; border-style: dashed; }
+.cal-cell.other .d { opacity: .4; }
+.cal-cell.today { border-color: var(--tc-hour); }
+.cal-cell.inrange { background: var(--tc-primary-soft); border-color: transparent; }
+.cal-cell.sel { background: var(--tc-primary); border-color: var(--tc-primary); }
+.cal-cell.sel .d, .cal-cell.sel .cal-mark { color: #fff; }
+.cal-cell.base { box-shadow: 0 0 0 3px var(--tc-hour) inset; }
+.cal-cell.hid .d { visibility: hidden; }
+.cal-cell.hid::before { content: '?'; position: absolute; font-size: 22px; font-weight: 900; color: var(--tc-tick); }
+.cal-mark { font-size: 12.5px; font-weight: 800; color: var(--tc-primary-h); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-cell:focus-visible { outline: 3px solid var(--tc-primary); outline-offset: 1px; }
+
+/* ══════════ 조작판 ══════════ */
+.panel { background: var(--tc-panel); border-left: 1px solid var(--tc-border); overflow-y: auto; display: flex; flex-direction: column; min-height: 0; }
+.panel-head { padding: 60px 14px 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid var(--tc-border); }
+.panel-head h2 { font-size: 20px; font-weight: 900; flex: 1; min-width: 130px; display: flex; align-items: center; gap: 8px; }
+.mode-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 12px 14px 0; }
+.mode-tab {
+  min-height: 46px; border-radius: 12px; border: 2px solid var(--tc-border); background: var(--tc-btn);
+  font-size: 14.5px; font-weight: 800; color: var(--tc-muted); cursor: pointer; touch-action: manipulation;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 0 4px;
+}
+.mode-tab.active { border-color: var(--tc-primary); background: var(--tc-primary-soft); color: var(--tc-primary-h); }
+.panel-body { padding: 14px; flex: 1; }
+.group { border: 1px solid var(--tc-border); border-radius: 16px; padding: 12px; margin-bottom: 12px; background: var(--tc-bg); }
+.group-title { font-size: 13.5px; font-weight: 800; color: var(--tc-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.group-title .sp { flex: 1; }
+.row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.row + .row, .seg + .row, .row + .seg, .step-grid + .row { margin-top: 8px; }
+.row > .sk-btn { flex: 1; }
+.cap { font-size: 13.5px; font-weight: 800; color: var(--tc-muted); }
+.hint-text { font-size: 13.5px; color: var(--tc-muted); line-height: 1.6; }
+.seg { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--tc-btn); border: 1px solid var(--tc-border); }
+.seg button {
+  flex: 1; min-height: 40px; border-radius: 9px; border: 0; background: transparent; color: var(--tc-muted);
+  font-size: 14px; font-weight: 800; cursor: pointer; touch-action: manipulation; padding: 0 6px; word-break: keep-all;
+}
+.seg button[aria-pressed="true"] { background: var(--tc-panel); color: var(--tc-primary-h); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.seg button:focus-visible { outline: 3px solid var(--tc-primary); outline-offset: 1px; }
+.seg.sm button { min-height: 36px; font-size: 13.5px; }
+.sub-tabs { margin-bottom: 12px; }
+.step-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.step-grid .sk-btn { padding: 0 4px; min-height: 48px; }
+.step-grid .sk-btn.h { color: var(--tc-hour); }
+.step-grid .sk-btn.m { color: var(--tc-minute); }
+.toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.tog {
+  min-height: 46px; border-radius: 12px; border: 2px solid var(--tc-border); background: var(--tc-panel); color: var(--tc-text);
+  font-size: 14px; font-weight: 700; cursor: pointer; text-align: left; padding: 0 10px; display: flex; align-items: center; gap: 8px;
+  touch-action: manipulation; word-break: keep-all; line-height: 1.25;
+}
+.tog::before { content: ''; width: 18px; height: 18px; border-radius: 5px; border: 2px solid var(--tc-muted); flex-shrink: 0; }
+.tog[aria-pressed="true"] { border-color: var(--tc-primary); background: var(--tc-primary-soft); }
+.tog[aria-pressed="true"]::before { background: var(--tc-primary); border-color: var(--tc-primary); box-shadow: inset 0 0 0 3px var(--tc-panel); }
+.big-val { font-size: 30px; font-weight: 900; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.el-res { border-radius: 12px; padding: 4px 8px; min-height: 76px; }
+.el-eq { font-size: 17px; font-weight: 800; color: var(--tc-muted); }
+.counter { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+.counter div { background: var(--tc-panel); border: 1px solid var(--tc-border); border-radius: 12px; padding: 8px 10px; font-size: 13.5px; font-weight: 800; }
+.counter b { display: block; font-size: 22px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.counter .h { color: var(--tc-hour); } .counter .m { color: var(--tc-minute); }
+select, input[type="text"] {
+  min-height: 44px; border-radius: 10px; border: 2px solid var(--tc-border); background: var(--tc-panel); color: var(--tc-text);
+  padding: 0 8px; font-size: 15px; font-weight: 700; min-width: 0;
+}
+select:focus-visible, input[type="text"]:focus-visible { outline: 3px solid var(--tc-primary); outline-offset: 1px; }
+
+/* 일과 목록 */
+.rt-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.rt-item { display: grid; grid-template-columns: 36px minmax(0, 1fr) 44px; gap: 6px; align-items: center; background: var(--tc-panel); border: 2px solid var(--tc-border); border-radius: 12px; padding: 6px; }
+.rt-item.sel { border-color: var(--tc-primary); }
+.rt-item.warn { border-color: var(--tc-no); }
+.rt-sw { width: 36px; height: 44px; border-radius: 9px; border: 2px solid rgba(0,0,0,.15); cursor: pointer; }
+.rt-item input[type="text"] { width: 100%; }
+.rt-times { grid-column: 1 / -1; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-weight: 800; color: var(--tc-muted); }
+.rt-times select { flex: 1; min-width: 68px; padding: 0 2px; font-size: 14px; }
+.rt-del { width: 44px; min-height: 44px; padding: 0; }
+.rt-sum { font-size: 14.5px; font-weight: 800; line-height: 1.6; margin-bottom: 8px; }
+.rt-warn { font-size: 14px; font-weight: 800; color: var(--tc-no); line-height: 1.6; margin-bottom: 8px; display: flex; gap: 6px; align-items: flex-start; }
+.rt-warn .ic { width: 1.2em; height: 1.2em; margin-top: .15em; }
+
+/* 달력 조작 */
+.cal-info { font-size: 18px; font-weight: 900; line-height: 1.4; margin: 10px 0 8px; min-height: 52px; }
+.cal-info small { display: block; font-size: 14.5px; font-weight: 700; color: var(--tc-muted); }
+.months { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 8px; }
+.months div { border-radius: 10px; padding: 5px 2px; text-align: center; font-size: 13px; font-weight: 800; background: var(--tc-panel); border: 2px solid var(--tc-border); }
+.months div b { display: block; font-size: 15px; font-weight: 900; }
+.months .d31 b { color: var(--tc-hour); } .months .d30 b { color: var(--tc-minute); } .months .d28 b { color: var(--tc-primary-h); }
+.months .cur { border-color: var(--tc-primary); background: var(--tc-primary-soft); }
+
+/* ── 미션 ── */
+.m-top { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.m-title { font-size: 18px; font-weight: 900; margin: 10px 0 4px; }
+.m-step { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 800; color: var(--tc-muted); margin-bottom: 8px; }
+.m-step .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--tc-border); }
+.m-step .dot.ok { background: var(--tc-ok); } .m-step .dot.no { background: var(--tc-no); }
+.m-step .dot.cur { background: var(--tc-primary); box-shadow: 0 0 0 3px var(--tc-primary-soft); }
+.m-q { font-size: 18px; font-weight: 800; line-height: 1.5; margin: 6px 0 10px; word-break: keep-all; }
+#mFeedback { margin: 0 0 10px; font-size: 15.5px; }
+#mFeedback:empty { display: none; }
+.opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.opt {
+  min-height: 58px; border-radius: 14px; border: 2px solid var(--tc-border); background: var(--tc-panel); color: var(--tc-text);
+  font-size: 18px; font-weight: 900; cursor: pointer; touch-action: manipulation; padding: 6px; word-break: keep-all;
+}
+.opt:disabled { cursor: default; opacity: .75; }
+.opt.right { border-color: var(--tc-ok); background: rgba(22,163,74,.12); opacity: 1; }
+.opt.wrong { border-color: var(--tc-no); background: rgba(234,88,12,.10); }
+.field-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+.field-row .lbl { font-size: 16px; font-weight: 900; min-width: 40px; padding-top: 11px; }
+.chips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; flex: 1; }
+.chip {
+  min-height: 44px; border-radius: 10px; border: 2px solid var(--tc-border); background: var(--tc-panel); color: var(--tc-text);
+  font-size: 16px; font-weight: 800; cursor: pointer; touch-action: manipulation; font-variant-numeric: tabular-nums; padding: 0;
+}
+.chip[aria-pressed="true"] { border-color: var(--tc-primary); background: var(--tc-primary); color: #fff; }
+.m-actions { margin-top: 12px; }
+.sk-mnav { gap: 6px; flex-wrap: wrap; }
+.m-cal { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+.result-trophy { color: var(--tc-star); line-height: 1; }
+.result-trophy .ic { width: 64px; height: 64px; }
+.result-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: min(560px, 100%); margin: 12px 0 18px; }
+.result-cell { background: var(--tc-panel); border: 1px solid var(--tc-border); border-radius: 14px; padding: 10px; font-size: 14px; font-weight: 700; text-align: left; display: flex; justify-content: space-between; gap: 8px; }
+.result-cell .stars { color: var(--tc-star); white-space: nowrap; }
+.summary { background: var(--tc-panel); border: 1px solid var(--tc-border); border-radius: 18px; padding: 16px 20px; width: min(560px, 100%); text-align: left; margin-bottom: 16px; }
+.summary h3 { font-size: 16px; color: var(--tc-primary-h); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.summary li { font-size: 15px; line-height: 1.7; margin-left: 18px; }
+.result-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* ══════════ 좁은 화면: 위(무대)·아래(조작판) ══════════ */
+@media (max-width: 900px), (orientation: portrait) and (max-width: 1100px) {
+  body { overflow-y: auto; }
+  .main-screen { height: auto; min-height: 100dvh; }
+  .main-layout { display: flex; flex-direction: column; height: auto; min-height: 100dvh; }
+  .stage { overflow: visible; padding-top: 58px; }
+  .view { height: auto; }
+  .clockwrap { flex: none; height: min(76vw, 360px); }
+  .pair { flex: none; height: min(60vw, 330px); }
+  .view-day .pair { height: min(56vw, 300px); }
+  #rtCircle { flex: none; height: min(86vw, 420px); }
+  .cal-grid { flex: none; grid-auto-rows: minmax(46px, auto); }
+  .panel { border-left: 0; border-top: 1px solid var(--tc-border); overflow: visible; }
+  .panel-head { padding-top: 14px; }
+}
+@media (max-width: 560px) {
+  .intro-cards { grid-template-columns: 1fr; }
+  .intro-screen h1 { font-size: 28px; }
+  .stage { padding-left: 10px; padding-right: 10px; }
+  .card { padding: 8px 4px; border-radius: 14px; }
+  .card h3 { font-size: 12.5px; }
+  .card .dig { font-size: 17px; }
+  .pair-arrow .ic { width: 18px; height: 18px; }
+  .ro-main { font-size: 26px; }
+  .cal-title { font-size: 22px; min-width: 150px; order: -1; flex-basis: 100%; }
+  .cal-nav .sk-btn { padding: 0 8px; }
+  .cal-grid { gap: 3px; }
+  .cal-cell { border-radius: 9px; border-width: 1.5px; }
+  .cal-mark { font-size: 11px; }
+  .mode-tab { font-size: 13.5px; }
+  /* 좁은 화면: 띠·막대 글자가 11px 아래로 내려가지 않게 옆으로 밀어 본다 */
+  svg.strip, #rtBar { min-width: 640px; }
+  .card svg.clock .ck-minnums text { font-size: 28px; }
+}
+
+/* ══════════ 인쇄(일과표) ══════════ */
+#printSheet { display: none; }
+@media print {
+  @page { size: A4 portrait; margin: 14mm; }
+  body { overflow: visible !important; background: #fff !important; }
+  body > *:not(#printSheet), .screen { display: none !important; }
+  #printSheet { display: block !important; color: #000; }
+  #printSheet h1 { font-size: 22pt; margin-bottom: 4mm; }
+  #printSheet .p-name { font-size: 12pt; margin-bottom: 6mm; }
+  #printSheet svg { display: block; width: 100%; height: auto; }
+  #printSheet .p-circle { width: 120mm; margin: 0 auto 4mm; }
+  #printSheet table { width: 100%; border-collapse: collapse; margin-top: 6mm; font-size: 12pt; }
+  #printSheet th, #printSheet td { border: 1px solid #555; padding: 2mm 3mm; text-align: left; }
+  #printSheet th { background: #eee; }
+  #printSheet .rt-handle { display: none; }
+}
+    </style>
+  </Fragment>
+
+<!-- ============ 인트로 ============ -->
+<div id="screenIntro" class="screen intro-screen sk-screen active">
+  <div class="intro-tag">수학 2학년 · 시각과 시간</div>
+  <svg class="intro-art" viewBox="0 0 120 120" aria-hidden="true">
+    <circle cx="60" cy="60" r="52" fill="var(--tc-rim)" stroke="var(--tc-edge)" stroke-width="4"/>
+    <circle cx="60" cy="60" r="43" fill="var(--tc-face)"/>
+    <line x1="60" y1="60" x2="60" y2="24" stroke="var(--tc-minute)" stroke-width="5" stroke-linecap="round"/>
+    <line x1="60" y1="60" x2="82" y2="70" stroke="var(--tc-hour)" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="60" cy="60" r="5" fill="var(--tc-edge)"/>
+  </svg>
+  <h1>시각과 시간</h1>
+  <p class="intro-sub">시계 바늘을 돌리고, 하루와 달력을 살펴보며<br>시각과 시간을 알아봐요.</p>
+  <div class="intro-cards">
+    <div><b><Icon name="clock" />시각과 걸린 시간</b>바늘 시계로 시각을 읽고, 두 시계로 걸린 시간을 재요.</div>
+    <div><b><Icon name="sun" />하루와 일과</b>하루 24시간, 오전과 오후를 보고 나의 하루 일과를 만들어요.</div>
+    <div><b><Icon name="calendar" />달력</b>1주일, 1개월, 1년을 달력에서 세어 봐요.</div>
+  </div>
+  <div class="intro-btns">
+    <button type="button" class="sk-btn sk-btn--primary big" id="btnStart">시작하기</button>
+    <button type="button" class="sk-btn big" id="btnStartMission"><Icon name="trophy" />미션 도전</button>
+  </div>
+  <p class="intro-link">몇 시 몇 분 읽기 연습은 <a href="/apps/clock/">시계 보기</a>에서 더 할 수 있어요.</p>
+  <p class="intro-credit">Claude 아티팩트 <a href="https://claude.ai/artifact/YELk82vF74HVHddV7znEZJ" target="_blank" rel="noopener noreferrer">'시각과 시간 교실 시계'</a>를 참고해 만들었어요.</p>
+</div>
+
+<!-- ============ 본 화면 ============ -->
+<div id="screenMain" class="screen main-screen">
+  <div class="main-layout">
+    <div class="stage" id="stage">
+      <!-- 시각 읽기 -->
+      <div class="view view-read" id="viewRead">
+        <div class="clockwrap" id="readClockWrap"><svg id="readClock" role="group" aria-label="바늘을 끌어 움직이는 시계"></svg></div>
+        <div class="read-side">
+          <div class="digital maskable" id="readDigital"><span class="ap" id="rdAp"></span><span id="rdTime">10:10</span></div>
+          <div class="readout maskable" id="readOut">
+            <div class="ro-main" id="roMain" aria-live="polite"></div>
+            <div class="ro-alt" id="roAlt"></div>
+            <div class="ro-sub" id="roSpk"></div>
+            <div class="ro-hint" id="roHint"></div>
+          </div>
+          <div class="say-row">
+            <button type="button" class="sk-btn sk-btn--sm" id="btnMask" aria-pressed="false"><Icon name="eye-off" /><span>읽은 시각 가리기</span></button>
+            <button type="button" class="sk-btn sk-btn--sm" id="btnSpeak"><Icon name="volume-2" />소리로 듣기</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 걸린 시간 -->
+      <div class="view view-el" id="viewElapsed" hidden>
+        <div class="pair">
+          <div class="card"><h3>시작한 시각</h3><div class="cw"><svg id="elA" role="group" aria-label="시작한 시각 시계"></svg></div><div class="dig" id="elADig"></div></div>
+          <div class="pair-arrow" aria-hidden="true"><Icon name="arrow-right" /></div>
+          <div class="card"><h3>끝난 시각</h3><div class="cw"><svg id="elB" role="group" aria-label="끝난 시각 시계"></svg></div><div class="dig" id="elBDig"></div></div>
+        </div>
+        <div class="strip-box"><svg class="strip" id="elStrip" viewBox="0 0 1000 150" role="img" aria-label="시간 띠"></svg></div>
+      </div>
+
+      <!-- 하루 -->
+      <div class="view view-day" id="viewDay" hidden>
+        <div class="pair">
+          <div class="card"><h3>바늘 시계 · 짧은바늘은 하루에 2바퀴</h3><div class="cw"><svg id="dayClock" role="group" aria-label="하루의 시간 시계"></svg></div></div>
+          <div class="card"><h3>24시간 시계 · 하루에 1바퀴</h3><div class="cw"><svg id="dial24" class="clock" viewBox="-250 -250 500 500" role="group" aria-label="24시간 시계"></svg></div></div>
+        </div>
+        <div class="strip-box"><svg class="strip" id="dayStrip" viewBox="0 0 1000 250" role="img" aria-label="하루 24시간 띠"></svg></div>
+      </div>
+
+      <!-- 일과 -->
+      <div class="view view-rt" id="viewRoutine" hidden>
+        <div class="rt-views" id="rtViews">
+          <svg id="rtCircle" viewBox="-285 -285 570 570" role="img" aria-label="원으로 나타낸 하루 일과"></svg>
+          <div class="rt-barwrap"><svg id="rtBar" viewBox="0 0 1000 170" role="img" aria-label="막대로 나타낸 하루 일과"></svg></div>
+        </div>
+        <div class="rt-info" id="rtInfo" aria-live="polite"></div>
+      </div>
+
+      <!-- 달력 -->
+      <div class="view view-cal" id="viewCal" hidden>
+        <div class="cal-nav">
+          <button type="button" class="sk-btn sk-btn--sm" id="calPrevY" aria-label="1년 전"><Icon name="chevrons-left" />1년</button>
+          <button type="button" class="sk-btn sk-btn--sm" id="calPrev" aria-label="이전 달"><Icon name="chevron-left" />1달</button>
+          <div class="cal-title" id="calTitle" aria-live="polite"></div>
+          <button type="button" class="sk-btn sk-btn--sm" id="calNext" aria-label="다음 달">1달<Icon name="chevron-right" /></button>
+          <button type="button" class="sk-btn sk-btn--sm" id="calNextY" aria-label="1년 뒤">1년<Icon name="chevrons-right" /></button>
+          <button type="button" class="sk-btn sk-btn--sm" id="calToday">오늘</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+
+      <!-- 미션 무대 -->
+      <div class="view view-mission" id="viewMission" hidden>
+        <div class="pair" id="mPair">
+          <div class="card" id="mCardA"><h3 id="mCapA"></h3><div class="cw"><svg id="mClockA" role="group" aria-label="문제 시계"></svg></div><div class="dig" id="mDigA"></div></div>
+          <div class="pair-arrow" id="mArrow" aria-hidden="true"><Icon name="arrow-right" /></div>
+          <div class="card" id="mCardB"><h3 id="mCapB"></h3><div class="cw"><svg id="mClockB" role="group" aria-label="끝난 시각 시계"></svg></div><div class="dig" id="mDigB"></div></div>
+        </div>
+        <div class="strip-box" id="mStripBox" hidden><svg class="strip" id="mStrip" viewBox="0 0 1000 150" role="img" aria-label="도움 그림"></svg></div>
+        <div class="m-cal" id="mCalBox" hidden>
+          <div class="cal-nav">
+            <button type="button" class="sk-btn sk-btn--sm" id="mCalPrev" aria-label="이전 달"><Icon name="chevron-left" />1달</button>
+            <div class="cal-title" id="mCalTitle"></div>
+            <button type="button" class="sk-btn sk-btn--sm" id="mCalNext" aria-label="다음 달">1달<Icon name="chevron-right" /></button>
+          </div>
+          <div class="cal-grid" id="mCalGrid"></div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="panel" aria-label="조작판">
+      <div class="panel-head">
+        <h2><Icon name="calendar-clock" />시각과 시간</h2>
+        <div class="seg sm" id="modeSeg" role="group" aria-label="시간 표시 방법"><button type="button" data-v="12">12시간제</button><button type="button" data-v="24">24시간제</button></div>
+        <button type="button" class="sk-btn sk-btn--sm" id="btnFull" aria-pressed="false"><Icon name="maximize" /><span>전체 화면</span></button>
+      </div>
+      <div class="mode-tabs" role="group" aria-label="모드">
+        <button type="button" class="mode-tab active" data-mode="read" aria-pressed="true"><Icon name="clock" />시각 읽기</button>
+        <button type="button" class="mode-tab" data-mode="elapsed" aria-pressed="false"><Icon name="hourglass" />걸린 시간</button>
+        <button type="button" class="mode-tab" data-mode="day" aria-pressed="false"><Icon name="sun" />하루</button>
+        <button type="button" class="mode-tab" data-mode="routine" aria-pressed="false"><Icon name="list-checks" />일과</button>
+        <button type="button" class="mode-tab" data-mode="cal" aria-pressed="false"><Icon name="calendar" />달력</button>
+        <button type="button" class="mode-tab" data-mode="mission" aria-pressed="false"><Icon name="trophy" />미션</button>
+      </div>
+      <div class="panel-body">
+
+        <!-- 시각 읽기 -->
+        <div class="pane" id="paneRead">
+          <div class="seg sub-tabs" id="readPane" role="group" aria-label="조작 고르기"><button type="button" data-v="move">바늘 옮기기</button><button type="button" data-v="help">도움 표시</button><button type="button" data-v="quiz">문제 내기</button></div>
+          <div data-pane="move">
+            <div class="group">
+              <div class="group-title">바늘 옮기기 · 바늘을 손가락으로 끌어도 돼요</div>
+              <div class="step-grid" id="readSteps">
+                <button type="button" class="sk-btn h" data-add="-60">− 1시간</button>
+                <button type="button" class="sk-btn m" data-add="-5">− 5분</button>
+                <button type="button" class="sk-btn m" data-add="-1">− 1분</button>
+                <button type="button" class="sk-btn h" data-add="60">+ 1시간</button>
+                <button type="button" class="sk-btn m" data-add="5">+ 5분</button>
+                <button type="button" class="sk-btn m" data-add="1">+ 1분</button>
+              </div>
+              <div class="row">
+                <button type="button" class="sk-btn sk-btn--sm" id="btnAmPm"><Icon name="sun-moon" />오전 ↔ 오후</button>
+                <button type="button" class="sk-btn sk-btn--sm" id="btnNow"><Icon name="clock" />지금 시각</button>
+              </div>
+              <div class="row">
+                <button type="button" class="sk-btn sk-btn--primary" id="btnPlay" aria-pressed="false"><Icon name="play" /><span>시계 흘러가기</span></button>
+              </div>
+              <div class="row"><span class="cap">끌 때 한 번에</span><div class="seg sm" id="snapSeg" style="flex:1" role="group" aria-label="끌 때 단위"><button type="button" data-v="1">1분씩</button><button type="button" data-v="5">5분씩</button></div></div>
+            </div>
+            <div class="group">
+              <div class="group-title">시계 모양</div>
+              <div class="seg" id="dispSeg" role="group" aria-label="시계 모양"><button type="button" data-v="analog">바늘 시계</button><button type="button" data-v="digital">전자시계</button><button type="button" data-v="both">함께 보기</button></div>
+            </div>
+          </div>
+          <div data-pane="help" hidden>
+            <div class="group">
+              <div class="group-title">도움 표시 · 켜고 끌 수 있어요</div>
+              <div class="toggles" id="readOpts">
+                <button type="button" class="tog" data-opt="minuteNums">분 숫자 (5, 10…)</button>
+                <button type="button" class="tog" data-opt="ticks">작은 눈금</button>
+                <button type="button" class="tog" data-opt="handLabels">바늘 이름</button>
+                <button type="button" class="tog" data-opt="hourArc">짧은바늘 자리 색칠</button>
+                <button type="button" class="tog" data-opt="minuteFill">지나간 분 색칠</button>
+                <button type="button" class="tog" data-opt="nums24">13~24 숫자</button>
+                <button type="button" class="tog" data-opt="explain">바늘 설명</button>
+                <button type="button" class="tog" data-opt="before">몇 시 몇 분 전</button>
+                <button type="button" class="tog" data-opt="spoken">읽는 말</button>
+              </div>
+            </div>
+            <p class="hint-text"><Icon name="lightbulb" /> 짧은바늘이 두 숫자 사이에 있으면 <b>지나온 숫자</b>를 읽어요. 긴바늘이 한 바퀴 돌면 60분, 1시간이에요.</p>
+          </div>
+          <div data-pane="quiz" hidden>
+            <div class="group">
+              <div class="group-title">문제 내기 · 선생님이 내고 함께 풀어요</div>
+              <div class="seg" id="qType" role="group" aria-label="문제 종류"><button type="button" data-v="read">시계 보고 읽기</button><button type="button" data-v="place">바늘 놓기</button></div>
+              <div class="row">
+                <select id="qLevel" aria-label="문제 수준" style="flex:1">
+                  <option value="hour">몇 시</option>
+                  <option value="half">몇 시 30분</option>
+                  <option value="five" selected>5분 단위</option>
+                  <option value="one">1분 단위</option>
+                  <option value="before">몇 시 몇 분 전</option>
+                </select>
+              </div>
+              <div class="row">
+                <button type="button" class="sk-btn sk-btn--primary" id="qNew"><Icon name="dices" />새 문제</button>
+                <button type="button" class="sk-btn" id="qCheck" hidden>정답 보기</button>
+              </div>
+              <div class="row"><button type="button" class="sk-btn sk-btn--sm" id="qEnd" hidden><Icon name="x" />문제 끝내기</button></div>
+              <div id="qMsg" style="margin-top:8px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 걸린 시간 -->
+        <div class="pane" id="paneElapsed" hidden>
+          <div class="group">
+            <div class="group-title">걸린 시간<span class="sp"></span><button type="button" class="sk-btn sk-btn--sm" id="elMask" aria-pressed="false"><Icon name="eye-off" /><span>가리기</span></button></div>
+            <div class="el-res maskable" id="elRes">
+              <div class="big-val" id="elDur" aria-live="polite"></div>
+              <div class="el-eq" id="elEq"></div>
+            </div>
+            <p class="hint-text" id="elNote"></p>
+            <div class="row"><button type="button" class="sk-btn sk-btn--primary" id="elPlay" aria-pressed="false"><Icon name="play" /><span>시작부터 돌려보기</span></button></div>
+          </div>
+          <div class="group">
+            <div class="group-title">시작한 시각 옮기기</div>
+            <div class="step-grid" data-for="a">
+              <button type="button" class="sk-btn h" data-add="-60">− 1시간</button><button type="button" class="sk-btn m" data-add="-10">− 10분</button><button type="button" class="sk-btn m" data-add="-1">− 1분</button>
+              <button type="button" class="sk-btn h" data-add="60">+ 1시간</button><button type="button" class="sk-btn m" data-add="10">+ 10분</button><button type="button" class="sk-btn m" data-add="1">+ 1분</button>
+            </div>
+          </div>
+          <div class="group">
+            <div class="group-title">끝난 시각 옮기기</div>
+            <div class="step-grid" data-for="b">
+              <button type="button" class="sk-btn h" data-add="-60">− 1시간</button><button type="button" class="sk-btn m" data-add="-10">− 10분</button><button type="button" class="sk-btn m" data-add="-1">− 1분</button>
+              <button type="button" class="sk-btn h" data-add="60">+ 1시간</button><button type="button" class="sk-btn m" data-add="10">+ 10분</button><button type="button" class="sk-btn m" data-add="1">+ 1분</button>
+            </div>
+          </div>
+          <div class="toggles" style="margin-bottom:12px">
+            <button type="button" class="tog" id="elMinNums" aria-pressed="true">분 숫자</button>
+            <button type="button" class="tog" id="elSnap5" aria-pressed="false">5분씩 끌기</button>
+          </div>
+          <p class="hint-text"><Icon name="lightbulb" /> 시간 띠의 한 칸은 10분이에요. 6칸이면 60분, 1시간이에요. 긴바늘이 한 바퀴 돌면 60분이 지나요.</p>
+        </div>
+
+        <!-- 하루 -->
+        <div class="pane" id="paneDay" hidden>
+          <div class="group">
+            <div class="ro-main" id="dayMain" aria-live="polite"></div>
+            <div class="ro-alt" id="dayAlt"></div>
+            <div class="ro-sub" id="dayNote"></div>
+          </div>
+          <div class="group">
+            <div class="group-title">하루 흘러가기 · 밤 12시부터 다음 날 밤 12시까지</div>
+            <div class="row"><button type="button" class="sk-btn sk-btn--primary" id="dayPlay" aria-pressed="false"><Icon name="play" /><span>하루 돌려보기</span></button></div>
+            <div class="row"><span class="cap">빠르기</span><div class="seg sm" id="daySpeed" style="flex:1" role="group" aria-label="빠르기"><button type="button" data-v="30000">천천히</button><button type="button" data-v="16000">보통</button><button type="button" data-v="7000">빠르게</button></div></div>
+            <div class="counter">
+              <div class="h">짧은바늘<b id="cntH">0바퀴</b></div>
+              <div class="m">긴바늘<b id="cntM">0바퀴</b></div>
+            </div>
+          </div>
+          <p class="hint-text"><Icon name="lightbulb" /> <b>하루는 24시간</b>이에요. 오전은 밤 12시부터 낮 12시까지, 오후는 낮 12시부터 밤 12시까지예요. 아래 하루 띠를 눌러도 시각이 바뀌어요.</p>
+        </div>
+
+        <!-- 일과 -->
+        <div class="pane" id="paneRoutine" hidden>
+          <div class="group">
+            <div class="group-title">보는 방법</div>
+            <div class="seg" id="rtView" role="group" aria-label="보는 방법"><button type="button" data-v="circle">원</button><button type="button" data-v="bar">막대</button><button type="button" data-v="both">함께 보기</button></div>
+            <div class="row"><button type="button" class="tog" id="rtHide" aria-pressed="false" style="flex:1">활동 이름 가리기</button></div>
+          </div>
+          <div class="group">
+            <div class="group-title">나의 하루 일과 · 이름과 시각을 바꿔 보세요</div>
+            <div class="rt-sum" id="rtSum"></div>
+            <div class="rt-warn" id="rtWarn" hidden></div>
+            <div class="rt-list" id="rtList"></div>
+            <div class="row">
+              <button type="button" class="sk-btn sk-btn--primary" id="rtAdd"><Icon name="plus" />활동 더하기</button>
+            </div>
+            <div class="row">
+              <button type="button" class="sk-btn sk-btn--sm" id="rtSample"><Icon name="rotate-ccw" />예시 일과</button>
+              <button type="button" class="sk-btn sk-btn--sm" id="rtPrint"><Icon name="printer" />인쇄</button>
+              <button type="button" class="sk-btn sk-btn--sm sk-btn--danger" id="rtClear"><Icon name="trash-2" />모두 지우기</button>
+            </div>
+          </div>
+          <p class="hint-text"><Icon name="lightbulb" /> 그림에서 활동을 누르면 손잡이가 나와요. 손잡이를 끌면 시작한 시각과 끝난 시각이 5분씩 바뀌어요.</p>
+        </div>
+
+        <!-- 달력 -->
+        <div class="pane" id="paneCal" hidden>
+          <div class="group">
+            <div class="seg" id="calMode" role="group" aria-label="달력 쓰는 방법"><button type="button" data-v="one">날짜 고르기</button><button type="button" data-v="range">두 날 사이 재기</button></div>
+            <div class="cal-info" id="calInfo" aria-live="polite"></div>
+            <div class="step-grid" id="calMoves" style="grid-template-columns:repeat(4,1fr)">
+              <button type="button" class="sk-btn sk-btn--sm" data-mv="-7">1주일 전</button>
+              <button type="button" class="sk-btn sk-btn--sm" data-mv="-1">하루 전</button>
+              <button type="button" class="sk-btn sk-btn--sm" data-mv="1">하루 뒤</button>
+              <button type="button" class="sk-btn sk-btn--sm" data-mv="7">1주일 뒤</button>
+            </div>
+            <div class="row">
+              <select id="calYearSel" aria-label="연도 고르기" style="flex:1"></select>
+              <select id="calMonthSel" aria-label="달 고르기" style="flex:1"></select>
+            </div>
+          </div>
+          <div class="group">
+            <div class="group-title">고른 날에 표시하기</div>
+            <div class="row">
+              <input type="text" id="calMarkTxt" placeholder="예: 내 생일" maxlength="12" style="flex:1" aria-label="표시할 글">
+              <button type="button" class="sk-btn sk-btn--sm" id="calMarkAdd" style="flex:none">표시</button>
+              <button type="button" class="sk-btn sk-btn--sm" id="calMarkDel" style="flex:none">지우기</button>
+            </div>
+            <div class="row"><button type="button" class="tog" id="calHide" aria-pressed="false" style="flex:1">날짜 숫자 가리기 (누르면 보여요)</button></div>
+          </div>
+          <div class="group">
+            <div class="group-title">달마다 날수 · <span id="calYearNote"></span></div>
+            <div class="months" id="calMonths"></div>
+            <p class="hint-text"><b>1주일은 7일</b>, <b>1년은 12개월</b>이에요. 같은 요일은 7일마다 돌아와요.</p>
+          </div>
+        </div>
+
+        <!-- 미션 -->
+        <div class="pane" id="paneMission" hidden>
+          <div class="m-top">
+            <button type="button" class="sk-btn sk-btn--sm" id="mExit"><Icon name="arrow-left" />자유 탐험으로</button>
+          </div>
+          <div class="sk-mnav" id="missionNav" aria-label="미션 번호"></div>
+          <h3 class="m-title" id="mTitle"></h3>
+          <div class="m-step" id="mStep" aria-label="문제 진행"></div>
+          <p class="m-q" id="mQ"></p>
+          <div id="mFeedback"></div>
+          <div id="mAnswer"></div>
+          <div class="m-actions sk-actions">
+            <button type="button" class="sk-btn sk-btn--primary" id="mCheck"><Icon name="circle-check" />확인하기</button>
+            <button type="button" class="sk-btn sk-btn--primary" id="mNextQ" hidden><Icon name="arrow-right" />다음 문제</button>
+            <button type="button" class="sk-btn sk-btn--primary" id="mNextMission" hidden><Icon name="arrow-right" />다음 미션</button>
+            <button type="button" class="sk-btn" id="mResult" hidden><Icon name="award" />결과 보기</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ============ 결과 ============ -->
+<div id="screenResult" class="screen result-screen sk-screen">
+  <div class="result-trophy" aria-hidden="true"><Icon name="trophy" /></div>
+  <h1>미션 결과</h1>
+  <p class="intro-sub" id="resultSub"></p>
+  <div class="result-grid" id="resultGrid" role="list"></div>
+  <div class="summary">
+    <h3><Icon name="book-open" />배움 정리</h3>
+    <ul>
+      <li>긴바늘이 한 바퀴 돌면 <b>60분 = 1시간</b>이에요.</li>
+      <li><b>하루는 24시간</b>이에요. 낮 12시 전은 오전, 낮 12시 뒤는 오후예요.</li>
+      <li><b>1주일은 7일</b>, <b>1년은 12개월</b>이에요. 같은 요일은 7일마다 돌아와요.</li>
+    </ul>
+  </div>
+  <div class="result-btns">
+    <button type="button" class="sk-btn sk-btn--primary" id="btnRetry"><Icon name="rotate-ccw" />다시 하기</button>
+    <button type="button" class="sk-btn" id="btnToFree"><Icon name="arrow-left" />자유 탐험으로</button>
+  </div>
+</div>
+
+<!-- 인쇄용(일과표) -->
+<div id="printSheet" aria-hidden="true"></div>
+
+<script is:inline src="/apps/time-class/app.js"></script>
+</AppLayout>
