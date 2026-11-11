@@ -8,12 +8,11 @@ export async function onRequest(ctx) {
     return new Response('Method Not Allowed', { status: 405 });
   }
 
-  let text, style, provider;
+  let text, style;
   try {
     const body = await ctx.request.json();
     text = body.text;
     style = body.style;
-    provider = body.provider || 'gemini';
     if (!text || typeof text !== 'string') throw new Error();
     if (text.length > 500) throw new Error();
   } catch {
@@ -43,7 +42,6 @@ export async function onRequest(ctx) {
 
   try {
     const prompt = await generateContent({
-      provider,
       systemPrompt,
       userMessage,
       env: ctx.env,

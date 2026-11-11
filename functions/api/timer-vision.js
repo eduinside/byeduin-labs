@@ -59,7 +59,6 @@ export async function onRequestPost({ request, env }) {
       images: [image],
       json: true,
       temperature: 0.1,
-      geminiModel: 'gemini-flash-latest',   // 직접 Gemini 폴백도 이미지 인식이 되는 모델
       timeoutMs: 45000,
       env,
       request,

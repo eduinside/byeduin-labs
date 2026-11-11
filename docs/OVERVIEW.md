@@ -178,7 +178,7 @@ docs/                  ← 개발 문서
 | `GET /api/yt-playlist` | 유튜브 재생목록 파싱 |
 | `GET /api/yt-video-info` | 유튜브 영상 정보 |
 | `POST /api/shorten` | 단축 URL 생성 (short.io) |
-| `POST /api/search` | 에듀서치 — 교육청 매뉴얼 질의응답(D1 FTS5 검색 + Timely LLM 1회, 인용 [n]) + 문서 요약·질문. IP당 10회/분·100회/일 |
+| `POST /api/search` | 에듀서치 — 교육청 매뉴얼 질의응답(D1 FTS5 검색 + Gemini LLM 1회, 인용 [n]) + 문서 요약·질문. IP당 10회/분·100회/일 |
 | `GET /api/manual` | 에듀서치 매뉴얼 목록 · `?doc=` 본문 조각 · `?file=` 원본(R2 `manual/`) |
 | `GET /api/notices` | 공지사항 |
 | `GET·PUT·DELETE /api/readtree` | Read Tree 읽음 기록 동기화 (D1, set 모드) |
@@ -212,6 +212,12 @@ docs/                  ← 개발 문서
 ---
 
 ## 주요 변경 이력
+
+### 2026-11-12 — AI 호출 Gemini 단일화 (`docs/gemini-migration-plan.md`)
+- 요금 단순화를 위해 Timely 1차 경로를 걷어 내고 `_ai.js`가 Gemini API만 직접 부른다. 텍스트는 전 엔드포인트 `gemini-flash-lite-latest`(운영자 B안), 그림은 `gemini-2.5-flash-image`(같은 모델, 경로만 변경).
+- 키는 URL 대신 `x-goog-api-key` 헤더, 429·500·503은 1회 재시도, 안전 정책 차단은 별도 문구(400). `search`·`timer-vision`·`dictation-ai`의 모델 지정과 `signage-prompt`의 안 쓰던 `provider` 인자 제거. `scripts/translate-bu-episodes.cjs`도 Gemini만.
+- OpenAI Moderation·Corepin은 그대로. 연동 문서는 `docs/ai-pattern.md` → [`docs/ai-pattern.md`](ai-pattern.md).
+- 남은 일: 배포 후 2주 이상 문제없으면 Cloudflare Pages·`.dev.vars`·키관리에서 `TIMELY_API_KEY` 삭제.
 
 ### 2026-11-02 — 앱 공유(OG) 이미지 새 디자인·빌드 자동 생성 (`docs/og-image-plan.md`)
 - node-canvas로 손으로 만들어 커밋하던 `public/og-images/*.png`(이모지 깨짐·한글 대체 글꼴·옛 이름)를 없애고, 빌드 때 `src/pages/og/[id].png.ts`가 `apps.json` 앱마다 `/og/<id>.png`를 만든다(Satori → sharp, 글꼴 Pretendard, 아이콘은 `lucideIcon`). 앱 이름·설명을 바꾸면 다음 배포에 반영.
@@ -256,7 +262,7 @@ docs/                  ← 개발 문서
 - 계산 `public/apps/pitch-lab/dsp.js`(`window.PitchDSP`, node에서도 시험 가능): 예시 노래 원래 33센트 → 보정 후 0~8센트, +5반음 옮기기 실측 5.01반음.
 
 ### 2026-10 — 스마트 타이머 개편 + AI 기본 모델 `openai/gpt-5.6-luna` (`docs/timer-plan.md`)
-- **AI 기본 모델**: `_ai.js` `DEFAULT_TIMELY_MODEL = 'openai/gpt-5.6-luna'`(byeduin 전체 Timely 텍스트 기본). `generateContent`에 `images`(사진 입력)·`json`·`timeoutMs` 추가. search는 긴 답변용 75초. 실측·주의점은 `docs/timely-ai-pattern.md` 9장(지원 모델 목록·종료 모델·호스트는 6장).
+- **AI 기본 모델**(당시): `openai/gpt-5.6-luna`(Timely). `generateContent`에 `images`(사진 입력)·`json`·`timeoutMs` 추가. search는 긴 답변용 75초. 2026-11-12에 Gemini 직접 호출로 바뀜(위 항목).
 - **스마트 타이머**(`src/pages/apps/timer`): 탭 4개(카운트다운·시정·알람·음악).
   - 카운트다운(전체화면, 막대/원, 마지막 10초, 새로고침해도 이어짐), 자주 쓰는 타이머(최대 20).
   - 시정 만들기·여러 개 저장·사용하기(종은 시정에서 실시간 계산), 초등·중학교 기본 틀, 수업 시간 일괄 변경, 공유 링크.
@@ -345,11 +351,11 @@ GitHub(`byeduin-edu-docs`)에서 질문마다 md 30개를 받아 LLM을 두 번 
 - **`imagen-3.0-generate-002`(`:predict`) 폴백이 완전히 죽어 있었음**(모델이 더 이상 존재하지 않아 404) — Timely가 조금이라도 실패하면(429/402/모델 파라미터 오류 등) 안전망 없이 바로 전체 실패로 이어졌음. `gemini-2.5-flash-image`를 표준 `generateContent` + `responseModalities:["IMAGE"]`로 호출하도록 `_ai.js`를 수정해 실제 동작하는 폴백으로 복구.
 - **이미지 크기 상한 고정**: `image_config: { image_size: '1K', aspect_ratio: '1:1' }` 추가 — provider가 기본값으로 2K/4K를 골라 페이로드가 더 커지는 경우를 방지(단, 이 모델은 1K에서도 실측 1.1~1.8MB급이라 절감 효과는 제한적).
 - **그림체를 크레파스 → 플랫 일러스트로 변경**(`idea-lab.js` 이미지 프롬프트): 크레파스 질감은 노이즈가 많아 PNG 압축이 잘 안 됐음 — 굵은 윤곽선·단색 면 채색 스타일로 바꿔 결과물 용량을 실측 약 45% 절감(1.6MB → 0.85~0.9MB대).
-- 관련 조사·실측 내용은 [`docs/timely-ai-pattern.md`](timely-ai-pattern.md) §7에 정리.
+- 관련 조사·실측 내용은 [`docs/ai-pattern.md`](ai-pattern.md) §7에 정리.
 
 ### 2026-08 — Timely AI 게이트웨이 에러 분기 보강 + 연동 패턴 문서화
 - **402/429 상태코드 분기**: `_ai.js`의 `callTimely()` 헬퍼로 Timely 호출을 통합하고, 429(rate limit)는 400ms 후 1회 재시도, 402(크레딧 소진)는 재시도 없이 즉시 Gemini 폴백 + 강조 로그를 남기도록 개선. 기존엔 모든 실패를 동일하게 취급해 크레딧 소진 같은 운영 이슈가 조용히 묻힐 수 있었음.
-- **연동 패턴 문서 신설**: Timely GPT가 OpenRouter를 감싼 재판매 게이트웨이라는 점, 엔드포인트·인증·모델명·rate limit 동작, CF Pages 무료 CPU 예산(요청당 10ms) 제약을 정리한 [`docs/timely-ai-pattern.md`](timely-ai-pattern.md) 작성 — 신규 AI 프록시 앱을 만들 때 참고.
+- **연동 패턴 문서 신설**: Timely GPT가 OpenRouter를 감싼 재판매 게이트웨이라는 점, 엔드포인트·인증·모델명·rate limit 동작, CF Pages 무료 CPU 예산(요청당 10ms) 제약을 정리한 [`docs/ai-pattern.md`](ai-pattern.md) 작성 — 신규 AI 프록시 앱을 만들 때 참고.
 
 ### 2026-07 — Astro 전환 (정적 사이트 재작성)
 `public/apps/<id>/index.html` 36개를 `src/pages/apps/<id>/index.astro`로 이식하고 공통 헤드를 `src/layouts/AppLayout.astro`로 통합. URL 구조·`public/` 자산 경로·`functions/` API는 전부 종전과 동일.

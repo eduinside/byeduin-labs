@@ -89,7 +89,6 @@ ${wrongSamples || '(데이터 없음)'}
       userMessage,
       env,
       temperature: 0.7,
-      geminiModel: 'gemini-flash-latest',
       request
     });
   } catch (err) {

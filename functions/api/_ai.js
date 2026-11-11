@@ -1,8 +1,11 @@
 import { rateLimit } from './_guard.js';
 
+// AI 호출 공용 모듈 — Gemini API 직접 호출 하나로 처리한다(2026-11 Timely 1차 경로 제거, docs/gemini-migration-plan.md).
+// 새 AI 엔드포인트도 fetch를 따로 쓰지 말고 generateContent / generateImage만 쓴다.
+
 // ── 요청 제한 ─────────────────────────────────────────
 // 텍스트와 그림을 따로 센다(_guard.js LIMITS의 'ai-text' / 'ai-image').
-// Cache API 카운터라 isolate가 바뀌어도 유지되고, 사이트 전체 하루 상한으로 AI 크레딧을 지킨다.
+// Cache API 카운터라 isolate가 바뀌어도 유지되고, 사이트 전체 하루 상한으로 요금을 지킨다.
 async function enforceAiLimit(request, kind) {
   if (!request) return;
   const blocked = await rateLimit(request, kind === 'image' ? 'ai-image' : 'ai-text');
@@ -28,239 +31,125 @@ function upstreamError(status) {
 
 const TEXT_TIMEOUT_MS = 30000;   // 텍스트 생성 1회 타임아웃
 const IMAGE_TIMEOUT_MS = 60000;  // 그림 생성 1회 타임아웃
+const RETRY_DELAY_MS = 500;
+const RETRY_STATUS = new Set([429, 500, 503]);
 
-const TIMELY_ENDPOINT = 'https://hello.timelygpt.co.kr/api/v2/chat/bridge/openai/chat/completions';
+// byeduin 전체 텍스트 모델(운영자 결정 2026-11-12, B안: 전부 flash-lite). 사진 입력(images)도 이 모델로 처리한다.
+export const DEFAULT_TEXT_MODEL = 'gemini-flash-lite-latest';
+const IMAGE_MODEL = 'gemini-2.5-flash-image';
 
-// Timely 호출 + 상태코드별 분기(429는 크레딧 등급 하락에 따른 일시 제한이므로 1회 재시도, 402는 크레딧 소진으로 재시도 무의미 → 즉시 Gemini 폴백)
-async function callTimely(body, timelyKey, timeoutMs = TEXT_TIMEOUT_MS) {
-  const doFetch = () => fetch(TIMELY_ENDPOINT, {
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const BLOCKED_FINISH = new Set(['SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII', 'IMAGE_SAFETY']);
+
+// Gemini generateContent 호출. 키는 URL 대신 헤더로 보낸다(로그에 키가 섞이지 않게).
+// 429·500·503은 잠깐 쉬고 1회 재시도한다. 타임아웃은 대기 시간이 두 배가 되므로 재시도하지 않는다.
+async function callGemini(model, payload, key, timeoutMs, slowMessage) {
+  const doFetch = () => fetch(`${GEMINI_BASE}/${model}:generateContent`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${timelyKey}`
-    },
-    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify(payload),
     signal: AbortSignal.timeout(timeoutMs),
   });
 
-  let res = await doFetch();
-
-  if (res.status === 429) {
-    console.warn('⚠️ [AI Service] Timely 429(rate limit) — 400ms 후 1회 재시도...');
-    await new Promise((resolve) => setTimeout(resolve, 400));
+  let res;
+  try {
     res = await doFetch();
+    if (RETRY_STATUS.has(res.status)) {
+      console.warn(`[AI] Gemini ${res.status} — ${RETRY_DELAY_MS}ms 후 1회 재시도`, { model });
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+      res = await doFetch();
+    }
+  } catch (e) {
+    console.error('[AI] Gemini 연결 실패:', e && e.message, { model });
+    throw aiError(slowMessage, 504);
   }
 
-  if (res.status === 402) {
-    console.error('💳 [AI Service] Timely 402(크레딧 소진) — 충전 필요. 직접 Gemini로 폴백합니다.');
-  } else if (!res.ok) {
-    console.warn(`⚠️ [AI Service] Timely API 응답 실패 (status ${res.status}), falling back to direct Gemini...`);
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    console.error('[AI] Gemini 오류:', res.status, data?.error?.message, { model });
+    throw upstreamError(res.status);
   }
 
-  return res;
+  // 안전 정책으로 막힌 응답은 '다시 시도'로 해결되지 않으므로 따로 알린다.
+  const blockReason = data?.promptFeedback?.blockReason;
+  const finish = data?.candidates?.[0]?.finishReason;
+  if (blockReason || BLOCKED_FINISH.has(finish)) {
+    console.warn('[AI] Gemini 안전 정책 차단:', blockReason || finish, { model });
+    throw aiError('이 내용으로는 AI가 결과를 만들 수 없어요. 내용을 바꿔서 다시 시도해 주세요.', 400);
+  }
+  return data;
 }
 
-// byeduin 전체 Timely 기본 텍스트 모델(운영자 결정 2026-10-06). 이미지 입력(images)도 이 모델로 처리한다.
-// 직접 Gemini 폴백은 아래 geminiModel 기본값을 따른다.
-export const DEFAULT_TIMELY_MODEL = 'openai/gpt-5.6-luna';
+function requireKey(env) {
+  const key = env.GEMINI_API_KEY;
+  if (!key) {
+    console.error('[AI] GEMINI_API_KEY 없음');
+    throw aiError('AI 기능이 아직 준비되지 않았어요. 관리자에게 알려 주세요.', 503);
+  }
+  return key;
+}
 
-// images: ['data:image/jpeg;base64,…'] (선택) — 사진 인식용. 있으면 user 메시지를 [텍스트, 이미지…]로 보낸다.
-// json: true면 JSON 객체만 받도록 요청(Timely response_format / Gemini responseMimeType).
+// images: ['data:image/jpeg;base64,…'] (선택) — 사진 인식용. 있으면 텍스트 앞에 inline_data로 붙인다.
+// json: true면 JSON 객체만 받도록 요청(responseMimeType).
 export async function generateContent({
   systemPrompt,
   userMessage,
   env,
   temperature = 0.8,
-  // 모델 오버라이드(선택). 기본은 DEFAULT_TIMELY_MODEL. 직접 Gemini 폴백은 flash-lite(무거운 작업은 호출부에서 승격).
-  timelyModel = DEFAULT_TIMELY_MODEL,
-  geminiModel = 'gemini-flash-lite-latest',
+  model = DEFAULT_TEXT_MODEL,   // 모델 오버라이드(선택)
   images = null,
   json = false,
   timeoutMs = TEXT_TIMEOUT_MS,
   request = null // IP rate limiting용 request 객체
 }) {
   await enforceAiLimit(request, 'text');
-  const timelyKey = env.TIMELY_API_KEY;
-  const geminiKey = env.GEMINI_API_KEY;
+  const key = requireKey(env);
   const imgs = Array.isArray(images) ? images.filter((u) => typeof u === 'string' && /^data:image\/(png|jpe?g|webp);base64,/.test(u)) : [];
 
-  // 1. Try Timely GPT first if key exists
-  if (timelyKey) {
-    try {
-      console.log('🤖 [AI Service] Trying Timely GPT API...', { model: timelyModel, images: imgs.length });
-      const userContent = imgs.length
-        ? [{ type: 'text', text: userMessage }, ...imgs.map((url) => ({ type: 'image_url', image_url: { url } }))]
-        : userMessage;
-      const body = {
-        model: timelyModel,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userContent }
-        ],
-        temperature
-      };
-      if (json) body.response_format = { type: 'json_object' };
-      const res = await callTimely(body, timelyKey, timeoutMs);
+  const data = await callGemini(model, {
+    system_instruction: { parts: { text: systemPrompt } },
+    contents: [{
+      role: 'user',
+      parts: [
+        ...imgs.map((u) => {
+          const m = u.match(/^data:(image\/[a-z]+);base64,(.+)$/);
+          return { inline_data: { mime_type: m[1], data: m[2] } };
+        }),
+        { text: userMessage }
+      ]
+    }],
+    generationConfig: json ? { temperature, responseMimeType: 'application/json' } : { temperature }
+  }, key, timeoutMs, 'AI 응답이 늦어지고 있어요. 잠시 후 다시 시도해 주세요.');
 
-      if (res.ok) {
-        const data = await res.json();
-        const text = data?.choices?.[0]?.message?.content;
-        if (text) {
-          console.log('✅ [AI Service] Timely GPT API success');
-          return text.trim();
-        }
-      }
-    } catch (e) {
-      console.error('❌ [AI Service] Timely GPT API error:', e.message, 'falling back to direct Gemini...');
-    }
-  }
-
-  // 2. Direct Gemini Fallback
-  if (!geminiKey) {
-    console.error('[AI Service] GEMINI_API_KEY·TIMELY_API_KEY 모두 없음');
-    throw aiError('AI 기능이 아직 준비되지 않았어요. 관리자에게 알려 주세요.', 503);
-  }
-
-  console.log('🤖 [AI Service] Calling direct Gemini API...', { model: geminiModel });
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      system_instruction: {
-        parts: { text: systemPrompt }
-      },
-      contents: [{
-        role: 'user',
-        parts: [
-          ...imgs.map((u) => {
-            const m = u.match(/^data:(image\/[a-z]+);base64,(.+)$/);
-            return { inline_data: { mime_type: m[1], data: m[2] } };
-          }),
-          { text: userMessage }
-        ]
-      }],
-      generationConfig: json ? { temperature, responseMimeType: 'application/json' } : { temperature }
-    }),
-    signal: AbortSignal.timeout(timeoutMs),
-  }).catch((e) => {
-    console.error('Gemini API 연결 실패:', e && e.message);
-    throw aiError('AI 응답이 늦어지고 있어요. 잠시 후 다시 시도해 주세요.', 504);
-  });
-
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    console.error('Gemini API error:', res.status, data?.error?.message);
-    throw upstreamError(res.status);
-  }
-
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    console.error('Gemini 응답이 비어 있음');
+  const text = (data?.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('');
+  if (!text.trim()) {
+    console.error('[AI] Gemini 응답이 비어 있음', { model, finish: data?.candidates?.[0]?.finishReason });
     throw aiError('AI가 답을 만들지 못했어요. 다시 시도해 주세요.', 502);
   }
   return text.trim();
 }
 
+// 반환: base64 이미지 데이터(접두사 없음).
+// imagen-3.0-generate-002(:predict)는 이 프로젝트 키에서 더 이상 제공되지 않음(2026-08 확인, 404) —
+// gemini-2.5-flash-image를 표준 generateContent + responseModalities:["IMAGE"]로 호출한다.
 export async function generateImage({ prompt, env, request = null }) {
   await enforceAiLimit(request, 'image');
-  const timelyKey = env.TIMELY_API_KEY;
-  const geminiKey = env.GEMINI_API_KEY;
-  let b64Data = null;
+  const key = requireKey(env);
 
-  // 1. Try Timely GPT first if key exists
-  if (timelyKey) {
-    try {
-      console.log('🤖 [AI Service] Trying Timely GPT Image API...');
-      const res = await callTimely({
-        model: 'google/gemini-2.5-flash-image',
-        messages: [
-          { role: 'user', content: prompt }
-        ],
-        modalities: ['image'],
-        // gemini-2.5-flash-image은 '1K'가 최소 지원 크기(0.5K/512 등은 400 에러 — 실측 확인).
-        // 1K도 실측 1.5~2MB급이라 페이로드 절감 효과는 제한적이지만, aspect_ratio 고정으로
-        // 카드 레이아웃 일관성은 확보하고 미지정 시 더 큰 크기(2K/4K)가 나오는 경우를 방지한다.
-        image_config: { image_size: '1K', aspect_ratio: '1:1' }
-      }, timelyKey, IMAGE_TIMEOUT_MS);
-
-      if (res.ok) {
-        const data = await res.json();
-        const message = data?.choices?.[0]?.message;
-        
-        // Extract base64 from images array
-        if (message?.images && message.images[0]?.image_url?.url) {
-          const url = message.images[0].image_url.url;
-          const match = url.match(/^data:image\/[a-zA-Z]+;base64,(.+)$/);
-          b64Data = match ? match[1] : url;
-        }
-
-        // Fallback to extraction from content markdown if not found
-        if (!b64Data && message?.content) {
-          const match = message.content.match(/!\[\]\(data:image\/[a-zA-Z]+;base64,([^)]+)\)/);
-          if (match && match[1]) {
-            b64Data = match[1];
-          } else {
-            const matchRaw = message.content.match(/data:image\/[a-zA-Z]+;base64,([a-zA-Z0-9+/=]+)/);
-            if (matchRaw && matchRaw[1]) {
-              b64Data = matchRaw[1];
-            }
-          }
-        }
-
-        if (b64Data) {
-          console.log('✅ [AI Service] Timely GPT Image success');
-          return b64Data.trim();
-        }
-      }
-    } catch (e) {
-      console.error('❌ [AI Service] Timely GPT Image error:', e.message, 'falling back to direct Gemini...');
+  const data = await callGemini(IMAGE_MODEL, {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      responseModalities: ['IMAGE'],
+      imageConfig: { aspectRatio: '1:1' }  // 카드 레이아웃 일관성(예전 Timely image_config와 같은 1:1)
     }
-  }
-
-  // 2. Direct Gemini Fallback
-  if (!geminiKey) {
-    console.error('[AI Service] GEMINI_API_KEY·TIMELY_API_KEY 모두 없음');
-    throw aiError('AI 기능이 아직 준비되지 않았어요. 관리자에게 알려 주세요.', 503);
-  }
-
-  // imagen-3.0-generate-002(:predict)는 이 프로젝트 키에서 더 이상 제공되지 않음(2026-08 확인, 404) —
-  // 현재는 gemini-2.5-flash-image를 표준 generateContent + responseModalities:["IMAGE"]로 호출해야 함.
-  console.log('🤖 [AI Service] Calling direct Gemini Image API...');
-  const geminiModel = 'gemini-2.5-flash-image';
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [{
-        role: 'user',
-        parts: [{ text: prompt }]
-      }],
-      generationConfig: {
-        responseModalities: ['IMAGE']
-      }
-    }),
-    signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS),
-  }).catch((e) => {
-    console.error('Gemini Image API 연결 실패:', e && e.message);
-    throw aiError('그림 생성이 늦어지고 있어요. 잠시 후 다시 시도해 주세요.', 504);
-  });
-
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    console.error('Gemini Image API error:', res.status, data?.error?.message);
-    throw upstreamError(res.status);
-  }
+  }, key, IMAGE_TIMEOUT_MS, '그림 생성이 늦어지고 있어요. 잠시 후 다시 시도해 주세요.');
 
   const parts = data?.candidates?.[0]?.content?.parts || [];
-  const imageData = parts.find((p) => p.inlineData)?.inlineData?.data;
-  if (!imageData) {
-    console.error('Gemini 이미지 응답이 비어 있음');
+  const imageData = parts.find((p) => p.inlineData || p.inline_data);
+  const b64 = imageData?.inlineData?.data || imageData?.inline_data?.data;
+  if (!b64) {
+    console.error('[AI] Gemini 이미지 응답이 비어 있음', { finish: data?.candidates?.[0]?.finishReason });
     throw aiError('그림을 만들지 못했어요. 다시 시도해 주세요.', 502);
   }
-  return imageData.trim();
+  return b64.trim();
 }
-

@@ -2,7 +2,7 @@
 
 > 작성: 2026-11-01 · 상태: **구현 완료(2026-11-01, 브랜치 `claude/career-talk-a24dbd`, 배포 전) - 확인 결과·계획과 달라진 점은 §15** · 작성자: Claude Fable 5.1 · 구현: Claude Opus 5.5
 > 직업 목록 초안(검수용): [career-talk-jobs-draft.md](career-talk-jobs-draft.md)
-> 참고 패턴: 발명 아이디어 공작소(`idea-lab` - 무상태 AI 프록시·선택지형 대화·검열·그림 생성·이모지 대체), 마인드맵(AI 초안·눈높이 선택), 세계 탐험대(immersive 탐험 흐름), [sim-kit.md](sim-kit.md) 공통 규약 v2, [timely-ai-pattern.md](timely-ai-pattern.md)
+> 참고 패턴: 발명 아이디어 공작소(`idea-lab` - 무상태 AI 프록시·선택지형 대화·검열·그림 생성·이모지 대체), 마인드맵(AI 초안·눈높이 선택), 세계 탐험대(immersive 탐험 흐름), [sim-kit.md](sim-kit.md) 공통 규약 v2, [ai-pattern.md](ai-pattern.md)
 > 제약: 정적 페이지 + localStorage. 서버는 **무상태 AI 프록시 1개**(`functions/api/career-talk.js`)뿐. DB·세션·업로드·로그인 없음. 무료 티어 유지.
 > AI 엔진: 다른 앱과 같이 `_ai.js`의 `generateContent`(기본 모델 `openai/gpt-5.6-luna` → 직접 Gemini 폴백)·`generateImage`. 새 키·새 fetch 로직 없음.
 

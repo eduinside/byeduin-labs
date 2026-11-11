@@ -20,11 +20,10 @@ if (fs.existsSync(envPath)) {
     if (m) envVars[m[1]] = m[2].trim();
   });
 }
-const TIMELY_KEY = envVars.TIMELY_API_KEY;
 const GEMINI_KEY = envVars.GEMINI_API_KEY;
 
-if (!TIMELY_KEY && !GEMINI_KEY) {
-  console.error('❌ No API keys found in .env (TIMELY_API_KEY or GEMINI_API_KEY required)');
+if (!GEMINI_KEY) {
+  console.error('❌ GEMINI_API_KEY not found in .env');
   process.exit(1);
 }
 
@@ -49,34 +48,14 @@ async function callAI(systemPrompt, text, retries = 3) {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   for (let attempt = 0; attempt < retries; attempt++) {
-    // 1. Timely GPT
-    if (TIMELY_KEY) {
-      try {
-        const res = await fetch('https://hello.timelygpt.co.kr/api/v2/chat/bridge/openai/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TIMELY_KEY}` },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-flash-lite',
-            messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: text }],
-            temperature: 0.3,
-          }),
-        });
-        if (res.ok) {
-          const d = await res.json();
-          const result = d?.choices?.[0]?.message?.content?.trim();
-          if (result) return result;
-        }
-      } catch { /* fall through to Gemini */ }
-    }
-
-    // 2. Gemini direct
-    if (GEMINI_KEY) {
+    // Gemini direct (키는 헤더로)
+    {
       try {
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${GEMINI_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent`,
           {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_KEY },
             body: JSON.stringify({
               system_instruction: { parts: { text: systemPrompt } },
               contents: [{ role: 'user', parts: [{ text }] }],
