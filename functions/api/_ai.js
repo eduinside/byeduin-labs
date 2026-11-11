@@ -36,7 +36,10 @@ const RETRY_STATUS = new Set([429, 500, 503]);
 
 // byeduin 전체 텍스트 모델(운영자 결정 2026-11-12, B안: 전부 flash-lite). 사진 입력(images)도 이 모델로 처리한다.
 export const DEFAULT_TEXT_MODEL = 'gemini-flash-lite-latest';
-const IMAGE_MODEL = 'gemini-2.5-flash-image';
+// 그림: 3.1 flash-lite-image(운영자 결정 2026-11-12, 낮은 모델 허용). JPEG 1024px 약 1MB·약 4초로
+// 2.5-flash-image(PNG 약 2.3MB·약 7.5초)보다 작고 빠르고 싸다. 512px는 이 모델에서 지원 안 함(400).
+// 결과는 JPEG라 화면은 data URL 형식을 base64 앞부분으로 고른다(/9j/ = JPEG).
+const IMAGE_MODEL = 'gemini-3.1-flash-lite-image';
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const BLOCKED_FINISH = new Set(['SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII', 'IMAGE_SAFETY']);
@@ -129,9 +132,8 @@ export async function generateContent({
   return text.trim();
 }
 
-// 반환: base64 이미지 데이터(접두사 없음).
-// imagen-3.0-generate-002(:predict)는 이 프로젝트 키에서 더 이상 제공되지 않음(2026-08 확인, 404) —
-// gemini-2.5-flash-image를 표준 generateContent + responseModalities:["IMAGE"]로 호출한다.
+// 반환: base64 이미지 데이터(접두사 없음, 지금 모델은 JPEG).
+// 표준 generateContent + responseModalities:["IMAGE"]로 호출한다(옛 imagen :predict는 404).
 export async function generateImage({ prompt, env, request = null }) {
   await enforceAiLimit(request, 'image');
   const key = requireKey(env);
@@ -140,7 +142,7 @@ export async function generateImage({ prompt, env, request = null }) {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: {
       responseModalities: ['IMAGE'],
-      imageConfig: { aspectRatio: '1:1' }  // 카드 레이아웃 일관성(예전 Timely image_config와 같은 1:1)
+      imageConfig: { aspectRatio: '1:1', imageSize: '1K' }  // 카드 레이아웃 일관성, 크기 상한 고정
     }
   }, key, IMAGE_TIMEOUT_MS, '그림 생성이 늦어지고 있어요. 잠시 후 다시 시도해 주세요.');
 

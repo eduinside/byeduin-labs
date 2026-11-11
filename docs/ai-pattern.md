@@ -12,7 +12,7 @@
 | 함수 | 모델 | 용도 |
 |---|---|---|
 | `generateContent` | `DEFAULT_TEXT_MODEL = 'gemini-flash-lite-latest'` (호출부에서 `model`로 바꿀 수 있음) | 텍스트, 사진 입력(`images`), JSON(`json: true`) |
-| `generateImage` | `gemini-2.5-flash-image` | 그림(1:1) |
+| `generateImage` | `gemini-3.1-flash-lite-image` | 그림(1:1, 1K, JPEG) |
 
 - 키: `GEMINI_API_KEY` 하나(결제 연결된 유료 키). URL `?key=` 대신 **`x-goog-api-key` 헤더**로 보낸다.
 - 모델 결정(2026-11-12 운영자): 텍스트는 전 엔드포인트 flash-lite(B안). 특정 엔드포인트 품질이 부족하면 그 호출부만 `model: 'gemini-flash-latest'`로 올린다.
@@ -54,9 +54,18 @@
 
 ## 5. 그림 생성 실전 노트
 
-- 호출: 표준 `:generateContent` + `generationConfig.responseModalities: ['IMAGE']`, `imageConfig: { aspectRatio: '1:1' }`. 응답은 `candidates[0].content.parts[].inlineData.data`(base64).
-- 2026-11-12 실측(직접 호출): 1024×1024 PNG, 약 2.2MB, 약 7.5초.
-- **용량이 크다**: 크레파스풍처럼 질감 많은 그림은 PNG 압축이 잘 안 돼 1~2MB대가 나온다. 더 줄이려면 Worker에서 재인코딩해야 하는데 CPU 10ms 예산과 충돌한다.
+- 호출: 표준 `:generateContent` + `generationConfig.responseModalities: ['IMAGE']`, `imageConfig: { aspectRatio: '1:1', imageSize: '1K' }`. 응답은 `candidates[0].content.parts[].inlineData.data`(base64).
+- **모델 선택(2026-11-12, 해상도가 낮아도 되는 그림이라 낮은 모델 허용)**: 같은 크레파스풍 프롬프트 실측.
+
+  | 모델 | 크기 옵션 | 결과 | 시간 | 장당 요금(유료, 2026-11 가격표) |
+  |---|---|---|---|---|
+  | `gemini-2.5-flash-image`(이전) | 1K만 | PNG 1024px 약 2.3MB | 약 7.5초 | $0.039 |
+  | **`gemini-3.1-flash-lite-image`(현재)** | 1K만(512 → 400) | JPEG 1024px 약 0.5~1.1MB | 약 3~4초 | $0.0336 |
+  | `gemini-3.1-flash-image` | 512 가능 | JPEG 512px 약 0.3MB | 약 9.6초 | $0.045 |
+
+  가장 작은 것은 3.1-flash 512지만 더 비싸고 느려서, 용량 절반·요금 최저인 3.1-flash-lite를 골랐다. 2.5 모델은 `imageSize: '512'`/`'0.5K'`, `imageOutputOptions`(JPEG 지정)를 모두 400으로 거절한다.
+- **JPEG 주의**: 지금 결과는 JPEG다. 화면은 base64 앞부분으로 형식을 고른다(`/9j/` = JPEG, 그 밖은 PNG). `idea-lab`·`career-talk`·`_signage-maker`에 반영돼 있다. 새 그림 화면도 `data:image/png` 고정으로 쓰지 말 것.
+- 더 줄이려면 Worker에서 재인코딩해야 하는데 CPU 10ms 예산과 충돌한다. 저장용으로 줄일 때는 브라우저 canvas에서 줄인다.
 - **엣지 502**: 2026-08 실측에서 연속 8회 중 1회 Cloudflare 엣지 502(우리 코드가 응답을 만들기 전 끊김)가 나왔다. 큰 응답 처리로 CPU·메모리 예산을 넘긴 것으로 추정. 프런트(`idea-lab` `startDraw()` 등)는 실패를 이모지 카드로 대체하므로, 새 그림 프록시는 실패 원인이 콘솔에 남는지 확인한다.
 - 옛 `imagen-3.0-generate-002`(`:predict`)는 이 키에서 404(2026-08). 모델 목록은 조용히 바뀌므로 그림 경로가 오래 안 쓰였다면 배포 전에 `GET /v1beta/models`로 확인한다.
 

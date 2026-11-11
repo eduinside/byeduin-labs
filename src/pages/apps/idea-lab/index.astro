@@ -598,7 +598,7 @@ import Icon from '../../../components/Icon.astro';
     function isB64Png(b64) { return typeof b64 === 'string' && b64.length > 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(b64); }
     function makeArtImg(b64, alt) {
       const img = document.createElement('img');
-      img.src = 'data:image/png;base64,' + b64;
+      img.src = (String(b64).startsWith('/9j/') ? 'data:image/jpeg;base64,' : 'data:image/png;base64,') + b64; // 그림은 JPEG(예전 저장분은 PNG)
       img.alt = alt || '';
       return img;
     }

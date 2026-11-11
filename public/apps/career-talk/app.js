@@ -9,6 +9,8 @@
   'use strict';
 
   var API = '/api/career-talk';
+  // 그림 data URL: 지금 모델은 JPEG(/9j/로 시작), 그 밖은 PNG로 본다
+  function b64Src(b64) { return (String(b64).startsWith('/9j/') ? 'data:image/jpeg;base64,' : 'data:image/png;base64,') + b64; }
   var TEXT_TIMEOUT_MS = 30000;
   var IMAGE_TIMEOUT_MS = 75000;
   var SLOW_MS = 8000;
@@ -753,7 +755,7 @@
       box.className = 'ct-art has-img';
       box.innerHTML = '';
       var img = el('img');
-      img.src = 'data:image/png;base64,' + images[r.id];
+      img.src = b64Src(images[r.id]);
       img.alt = '10년 뒤 나의 하루를 그린 그림';
       box.appendChild(img);
       return;
@@ -831,7 +833,7 @@
     var art = el('div', 'ct-card-art');
     if (!shared && images[c.id]) {
       var img = el('img');
-      img.src = 'data:image/png;base64,' + images[c.id];
+      img.src = b64Src(images[c.id]);
       img.alt = '10년 뒤 나의 하루 그림';
       art.appendChild(img);
     } else {
