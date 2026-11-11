@@ -213,6 +213,10 @@ docs/                  ← 개발 문서
 
 ## 주요 변경 이력
 
+### 2026-11-12 — AI 그림 모델 낮춤, 옥토넛 앱 문어 아이콘
+- 그림 생성 모델을 `gemini-3.1-flash-lite-image`(1K JPEG)로 바꿈. 이전 `gemini-2.5-flash-image` PNG 약 2.3MB·7.5초 → JPEG 약 0.5~1.1MB·3~4초, 장당 요금도 낮음. 그림을 보여 주는 idea-lab·career-talk·_signage-maker는 JPEG/PNG를 base64 앞부분으로 구분. 실측 비교는 `docs/ai-pattern.md` §5.
+- lucide에 문어가 없어 직접 그린 아이콘을 `src/components/custom-icons.json`에 두고 `app-meta.ts`(앱 머리·공유 이미지)와 `scripts/build-icons.mjs`(스프라이트)가 lucide 다음으로 찾게 함. 옥토넛 어디서 보지 `lucideIcon`: `fish` → `octopus`.
+
 ### 2026-11-12 — AI 호출 Gemini 단일화 (`docs/gemini-migration-plan.md`)
 - 요금 단순화를 위해 Timely 1차 경로를 걷어 내고 `_ai.js`가 Gemini API만 직접 부른다. 텍스트는 전 엔드포인트 `gemini-flash-lite-latest`(운영자 B안), 그림은 `gemini-2.5-flash-image`(같은 모델, 경로만 변경).
 - 키는 URL 대신 `x-goog-api-key` 헤더, 429·500·503은 1회 재시도, 안전 정책 차단은 별도 문구(400). `search`·`timer-vision`·`dictation-ai`의 모델 지정과 `signage-prompt`의 안 쓰던 `provider` 인자 제거. `scripts/translate-bu-episodes.cjs`도 Gemini만.

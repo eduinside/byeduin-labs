@@ -95,9 +95,23 @@ const esc = (s: unknown) =>
 const toPascal = (name: string) =>
   name.replace(/(^\w|-\w)/g, (m) => m.replace('-', '').toUpperCase());
 
-/** lucide 아이콘의 [태그, 속성] 목록 (og-card.ts도 씀) */
+/* lucide에 없는 직접 그린 아이콘(같은 형식). scripts/build-icons.mjs도 같은 파일을 읽는다. */
+let customIcons: Record<string, [string, Record<string, string>][]> | null = null;
+function loadCustom() {
+  if (customIcons) return customIcons;
+  try {
+    customIcons = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src/components/custom-icons.json'), 'utf8'));
+  } catch (e) {
+    console.warn('[app-meta] custom-icons.json을 읽지 못함:', (e as Error).message);
+    customIcons = {};
+  }
+  return customIcons!;
+}
+
+/** lucide 아이콘의 [태그, 속성] 목록, 없으면 custom-icons.json (og-card.ts도 씀) */
 export function lucideNodes(name: string) {
-  return loadLucide()[toPascal(name)] || null;
+  const custom = loadCustom()[name];
+  return loadLucide()[toPascal(name)] || (Array.isArray(custom) ? custom : null);
 }
 
 export function lucideSvg(name: string): string | null {

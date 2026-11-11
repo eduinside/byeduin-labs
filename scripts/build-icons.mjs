@@ -27,6 +27,8 @@ const src = fs.readFileSync(path.join(ROOT, LUCIDE_FILE), 'utf8');
 const mod = { exports: {} };
 new Function('exports', 'module', src)(mod.exports, mod);
 const icons = mod.exports.icons || {};
+// lucide에 없는 직접 그린 아이콘(src/components/custom-icons.json, app-meta.ts도 같은 파일을 읽음)
+const custom = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/components/custom-icons.json'), 'utf8'));
 const toPascal = (n) => n.replace(/(^\w|-\w)/g, (m) => m.replace('-', '').toUpperCase());
 
 const PATTERNS = [
@@ -69,7 +71,7 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').repl
 const missing = [];
 const symbols = [];
 for (const n of [...names].sort()) {
-  const node = icons[toPascal(n)];
+  const node = icons[toPascal(n)] || (Array.isArray(custom[n]) ? custom[n] : null);
   if (!node) { missing.push(n); continue; }
   const body = node.map(([tag, at]) =>
     `<${tag}${Object.entries(at).map(([k, v]) => ` ${k}="${esc(v)}"`).join('')}/>`).join('');
