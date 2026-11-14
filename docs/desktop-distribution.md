@@ -85,6 +85,7 @@ apps/{id}/
 | `notion-sync` | 노션 폴더 동기화 | **kit 0.1.0 배포됨 (2026-10-19)** — R2 `apps/notion-sync/`, 안내 `/apps/notion-sync/`(유틸리티 › 노션도구). 아래 ‘노션 폴더 동기화’ |
 | `edu-team` | 에듀팀 데스크탑 | kit 0.8.0 배포(2026-10-12). 안내·단추는 team.dgedu.link 마이페이지. 옛 `edu-team-downloads` 는 다리 판 기간 유지 |
 | `rec-note` | Rec Note | **kit 0.6.0 배포됨 (2026-10-31)** — R2 `apps/rec-note/`, 안내 `/apps/rec-note/`(교육 › 업무경감). 아래 ‘Rec Note’ |
+| `font-manager` | 글꼴 관리 | kit 0.1.0 준비 (2026-11-15) — 함수 허용 목록·apps.json·안내 `/apps/font-manager/`(응용프로그램). R2 업로드·사이트 배포 전. 아래 ‘글꼴 관리’ |
 | (`music-to-score`) | 악보 만들기 | byeduin 계열 — 준비만, 아직 배포 안 함 |
 | (`keyvault`) | 키 관리 | byeduin 계열 — 준비만, 아직 배포 안 함 |
 
@@ -142,6 +143,23 @@ apps/rec-note/
 - 사용 통계: 보내지 않음(`X-Kit-Install` 없음)
 - [x] 함수 허용 목록 `rec-note`, apps.json, 안내 페이지 (2026-10-31)
 - [x] R2 첫 업로드 0.6.0 (2026-10-31)
+
+## 글꼴 관리 (`font-manager`) — 공용 모듈 DesktopKit (2026-11-15)
+
+설치된 글꼴 보기·에듀넷 무료 글꼴 장바구니 설치·견본 인쇄·보관함·용량 정리 Windows 앱(`LOCAL/local-font-manager`, 계획 `docs/plan.md`). 안내 페이지는 **응용프로그램(`app`)**.
+
+```
+apps/font-manager/
+├── latest.json                     kit 1 매니페스트
+├── FontManager-<판>-Setup.exe       설치 파일(net48, 약 0.07MB) — 고정 주소 /downloads/apps/font-manager/setup
+└── pack-<sha256>.zip                팩(app 0.3 · runtime 60 MB). 처음 설치 약 60MB, 업데이트는 보통 app 팩만
+```
+
+- 올리기: `LOCAL/local-font-manager/tools/release.ps1 -Upload` (이 폴더의 wrangler 로 팩 → 설치 파일 → latest.json)
+- 에듀넷 글꼴 목록·파일은 앱이 에듀넷에서 직접 받는다(이 저장소와 무관)
+- 사용 통계: 보내지 않음(`X-Kit-Install` 없음)
+- [x] 함수 허용 목록 `font-manager`, apps.json, 안내 페이지 (2026-11-15, 가지 `feat/font-manager-page`)
+- [ ] main 병합·Pages 배포, R2 첫 업로드 0.1.0 (운영자 확인 뒤)
 
 ## 에듀팀 데스크탑 (`edu-team`) — 공용 모듈 DesktopKit (2026-10-11)
 

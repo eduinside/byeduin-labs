@@ -1,0 +1,155 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
+
+// 글꼴 관리 설치 파일·팩은 R2 byeduin-media apps/font-manager/ (docs/desktop-distribution.md, 공용 모듈 LOCAL/local-desktop-kit).
+// 고정 주소 /setup 이 latest.json 의 최신 설치 파일로 보낸다 - 판이 바뀌어도 이 페이지는 그대로.
+// 원본 앱: LOCAL/local-font-manager (docs/plan.md). 사이트 분류: 응용프로그램.
+const DL = '/downloads/apps/font-manager';
+---
+<AppLayout
+  title="글꼴 관리 - 글꼴 보기·설치·견본 인쇄 - eduin VIVES"
+  description="설치된 글꼴을 카드로 보고 언어·제조사·사용 조건별로 나눠 보는 무료 Windows 프로그램. 에듀넷 무료 글꼴 바로 설치, 견본 인쇄, 끄기·보관함, 중복·용량 정리."
+  bodyShell="column"
+  bodyWidth="medium"
+>
+  <Fragment slot="head">
+    <style is:global>
+      .fm-hero { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 24px; align-items: center; padding: 22px; }
+      .fm-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; padding: 0; list-style: none; }
+      .fm-chips li { font-size: 0.75rem; color: var(--fg-muted); border: 1px solid var(--border); background: var(--bg); border-radius: 99px; padding: 2px 10px; }
+      .fm-dl { display: flex; flex-direction: column; gap: 8px; max-width: 360px; }
+      .fm-dl .hero-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; font-size: 1rem; text-decoration: none; }
+      .fm-dl-sub { font-size: 0.8rem; color: var(--fg-muted); }
+      .fm-side { font-size: 0.86rem; line-height: 1.7; color: var(--fg-muted); }
+      .fm-side b { color: var(--fg); }
+      .fm-sample { margin-top: 12px; display: grid; gap: 6px; }
+      .fm-sample span { display: block; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--fg); font-size: 1.05rem; }
+      .fm-section { margin-top: 28px; }
+      .fm-section > h2 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+      .fm-section > h2 .ic { color: var(--primary); }
+      .fm-features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .fm-feat { padding: 14px 16px; }
+      .fm-feat > b { display: flex; align-items: center; gap: 7px; font-size: 0.92rem; margin-bottom: 4px; }
+      .fm-feat > b .ic { color: var(--primary); }
+      .fm-feat p { margin: 0; font-size: 0.83rem; color: var(--fg-muted); line-height: 1.6; }
+      .fm-steps { padding: 16px 20px; }
+      .fm-steps ol { margin: 0; padding-left: 1.2rem; }
+      .fm-steps li { margin: 7px 0; font-size: 0.9rem; line-height: 1.6; }
+      .fm-note { display: flex; gap: 8px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 0.84rem; line-height: 1.6;
+        background: color-mix(in srgb, var(--warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent); }
+      .fm-note .ic { flex: none; margin-top: 3px; color: var(--warning); }
+      .fm-safe { padding: 16px 20px; font-size: 0.88rem; line-height: 1.65; }
+      .fm-safe table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.84rem; }
+      .fm-safe th, .fm-safe td { border-top: 1px solid var(--border); padding: 7px 8px; text-align: left; vertical-align: top; }
+      .fm-safe th { color: var(--fg-muted); font-weight: 600; }
+      .fm-faq details { border: 1px solid var(--border); border-radius: 12px; background: var(--card-bg); padding: 0 16px; margin-bottom: 8px; }
+      .fm-faq summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; padding: 12px 0; min-height: 44px; display: flex; align-items: center; }
+      .fm-faq details p { margin: 0 0 12px; font-size: 0.86rem; color: var(--fg-muted); line-height: 1.65; }
+      .fm-foot { margin-top: 28px; font-size: 0.78rem; color: var(--fg-muted); line-height: 1.6; }
+      @media (max-width: 760px) {
+        .fm-hero { grid-template-columns: 1fr; padding: 16px; }
+        .fm-features { grid-template-columns: 1fr; }
+        .fm-safe table { font-size: 0.8rem; }
+      }
+    </style>
+  </Fragment>
+
+<main class="app-main wrap">
+  <div class="app-header">
+    <div class="app-badge">Windows</div>
+    <h1 class="app-title">글꼴 관리</h1>
+    <p class="app-desc">이 PC에 설치된 글꼴을 카드로 늘어놓고, 언어·제조사·사용 조건별로 나눠 봅니다. 에듀넷이 모아 둔 무료 글꼴을 골라 바로 설치하고, 견본을 인쇄하고, 안 쓰는 글꼴은 지우지 않고 잠시 꺼 둘 수 있어요.</p>
+  </div>
+
+  <div class="hero-card fm-hero">
+    <div>
+      <ul class="fm-chips" aria-label="사용 환경">
+        <li>Windows 10·11 (64비트)</li><li>무료</li><li>관리자 권한 없이 설치</li><li>자동 업데이트</li>
+      </ul>
+      <div class="fm-dl">
+        <a class="hero-btn" href={`${DL}/setup`} id="fmSetup"><Icon name="download" /> 설치 파일 내려받기</a>
+        <div class="fm-dl-sub"><span id="fmVersion">최신 판</span></div>
+      </div>
+    </div>
+    <div class="fm-side">
+      설치 파일은 작고(약 0.1 MB), 실행하면 필요한 부분을 받아 설치해요(처음 한 번 약 60 MB, .NET 포함).
+      그 뒤 업데이트는 <b>바뀐 부분만</b>(보통 1 MB 안쪽) 저절로 받아 다음에 켤 때 바뀝니다.
+      <div class="fm-sample" aria-hidden="true">
+        <span style="font-family: 'Malgun Gothic', sans-serif;">다람쥐 헌 쳇바퀴에 타고파</span>
+        <span style="font-family: 'Batang', serif;">다람쥐 헌 쳇바퀴에 타고파</span>
+      </div>
+    </div>
+  </div>
+
+  <section class="fm-section" aria-labelledby="fmWhat">
+    <h2 id="fmWhat"><Icon name="sparkles" /> 이런 일을 합니다</h2>
+    <div class="fm-features">
+      <div class="hero-card fm-feat"><b><Icon name="layout-grid" /> 한눈에 보기</b><p>글꼴마다 카드에 견본 문장을 보여 줘요. 내가 쓸 문장을 넣으면 모든 카드가 그 문장으로 바뀝니다.</p></div>
+      <div class="hero-card fm-feat"><b><Icon name="filter" /> 나눠 보기</b><p>한글 전체·한자·영문 같은 언어, 만든 곳, OFL·공공누리 같은 사용 조건, 최근 설치 순·용량 순으로 걸러 봅니다.</p></div>
+      <div class="hero-card fm-feat"><b><Icon name="download" /> 에듀넷 글꼴 바로 설치</b><p>에듀넷이 저작권 걱정 없이 쓰도록 모아 둔 무료 글꼴을 장바구니에 담아 한 번에 받아 설치해요. 이미 있는 글꼴은 담기지 않습니다.</p></div>
+      <div class="hero-card fm-feat"><b><Icon name="printer" /> 견본 인쇄</b><p>글꼴마다 크기별 견본, 여러 글꼴을 한 장에 모은 목록, 글자표를 A4로 인쇄하거나 PDF로 저장합니다.</p></div>
+      <div class="hero-card fm-feat"><b><Icon name="archive" /> 끄기와 보관함</b><p>지우는 대신 보관함으로 옮겨 두어 언제든 되돌릴 수 있어요. 수업 때만 쓸 글꼴은 다시 시작할 때까지만 켤 수도 있습니다.</p></div>
+      <div class="hero-card fm-feat"><b><Icon name="hard-drive" /> 중복·용량 정리</b><p>같은 글꼴이 두 번 설치된 것, 큰 글꼴, 보관함 파일을 골라 한 번에 정리해요. Windows 기본 글꼴은 건드리지 않습니다.</p></div>
+    </div>
+  </section>
+
+  <section class="fm-section" aria-labelledby="fmInstall">
+    <h2 id="fmInstall"><Icon name="list-ordered" /> 설치와 사용</h2>
+    <div class="hero-card fm-steps">
+      <ol>
+        <li><b>설치 파일 내려받기</b>를 눌러 받은 <b>FontManager-판-Setup.exe</b>를 실행합니다. 관리자 권한은 필요 없어요. 설치가 끝나면 <b>글꼴 관리</b> 창이 열립니다.</li>
+        <li>글꼴 파일(.ttf·.otf·.ttc)이나 이것을 담은 zip을 창에 끌어다 놓으면 설치 창이 열립니다. 위쪽 <b>에듀넷 글꼴</b>에서 무료 글꼴을 골라도 돼요.</li>
+        <li>설치 위치는 <b>이 PC 모든 사용자</b>(관리자 확인, 모든 프로그램에서 보임)와 <b>내 계정만</b>(관리자 권한 없이) 가운데 고릅니다.</li>
+        <li>글꼴을 Ctrl+클릭으로 여러 개 고른 뒤 Ctrl+P를 누르면 견본 인쇄 창이 열립니다.</li>
+      </ol>
+      <div class="fm-note" role="note"><Icon name="triangle-alert" /><span>"Windows의 PC 보호" 창이 뜨면 <b>추가 정보 → 실행</b>을 누르세요. 개인이 만든 무료 프로그램이라 처음 한 번 표시됩니다. 복원 프로그램이 깔린 학교 PC는 컴퓨터를 다시 시작하면 설치한 글꼴이 사라질 수 있어요. 학교 PC는 정보보안 담당 선생님께 설치 가능 여부를 확인해 주세요.</span></div>
+    </div>
+  </section>
+
+  <section class="fm-section" aria-labelledby="fmSafe">
+    <h2 id="fmSafe"><Icon name="shield-check" /> 내 자료는 어디로 가나요?</h2>
+    <div class="hero-card fm-safe">
+      이 프로그램에는 자료를 모으는 서버가 없어요. 설정·즐겨찾기·보관함은 이 PC(LocalAppData\FontManager)에만 있습니다.
+      <table>
+        <thead><tr><th>어디로</th><th>무엇을</th><th>언제</th></tr></thead>
+        <tbody>
+          <tr><td>에듀넷 (edunet.net)</td><td>글꼴 목록 읽기, 고른 글꼴 파일 받기</td><td>'에듀넷 글꼴'을 열거나 설치할 때(목록은 하루에 한 번)</td></tr>
+          <tr><td>eduin.info</td><td>새 판 확인 요청(판 번호만, 사용 통계는 보내지 않음)</td><td>하루 한 번 (설정에서 끌 수 있음)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="fm-section fm-faq" aria-labelledby="fmFaq">
+    <h2 id="fmFaq"><Icon name="circle-help" /> 자주 묻는 것</h2>
+    <details><summary>설치했는데 한글·파워포인트에서 안 보여요</summary><p>이미 켜져 있던 프로그램은 글꼴 목록을 처음 켤 때 읽어요. 프로그램을 닫았다가 다시 켜 보세요. '내 계정만'으로 설치했다면 일부 오래된 프로그램은 찾지 못할 수 있으니 '이 PC 모든 사용자'로 다시 설치해 보세요.</p></details>
+    <details><summary>에듀넷 글꼴은 마음대로 써도 되나요?</summary><p>에듀넷이 저작권 걱정 없이 쓰도록 모아 둔 글꼴이지만, 쓸 때는 출처(만든 기관)를 표기해 주세요. 공공누리·OFL 등 글꼴마다 표기 방법이 달라요. 글꼴을 누르면 오른쪽에 받은 곳과 만든 기관이 나옵니다.</p></details>
+    <details><summary>설치가 안 되는 에듀넷 글꼴이 있어요</summary><p>몇몇 글꼴은 에듀넷에 글꼴 파일 대신 설치 프로그램(.exe)으로 올라와 있어 바로 설치할 수 없어요. 그런 글꼴은 '설치 프로그램으로 제공'으로 표시되고, 받은 파일이 있는 폴더를 열어 드립니다.</p></details>
+    <details><summary>지운 글꼴을 되살릴 수 있나요?</summary><p>제거한 글꼴은 보관함에 남아 있어 왼쪽 '보관함'에서 다시 설치할 수 있어요. 보관함에서 '완전히 지우기'를 하면 휴지통으로 갑니다.</p></details>
+    <details><summary>지우고 싶어요</summary><p>Windows 설정 → 앱에서 <b>글꼴 관리</b>를 제거합니다. 설치한 글꼴과 설정·보관함(LocalAppData\FontManager)은 남겨 두니 필요 없으면 직접 지워 주세요.</p></details>
+  </section>
+
+  <p class="fm-foot">에듀넷 글꼴 목록은 에듀넷·티-클리어가 공개한 자료를 읽어 옵니다. 이 프로그램은 에듀넷 공식 앱이 아닙니다.</p>
+</main>
+
+<script is:inline>
+  // 최신 판·날짜 (latest.json). 실패해도 버튼은 고정 주소라 그대로 동작한다.
+  // 아직 올리기 전(latest.json 없음)이면 단추를 '준비 중'으로 - 받지 못하는 단추를 누르지 않게
+  function notYet() {
+    var b = document.getElementById('fmSetup');
+    if (b) { b.removeAttribute('href'); b.setAttribute('aria-disabled', 'true'); b.style.opacity = '0.55'; b.style.pointerEvents = 'none'; b.lastChild.textContent = ' 설치 파일 준비 중'; }
+    var el = document.getElementById('fmVersion');
+    if (el) el.textContent = '곧 내려받을 수 있어요';
+  }
+  fetch('/downloads/apps/font-manager/latest.json', { cache: 'no-cache' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (m) {
+      if (!m || !m.version) { notYet(); return; }
+      var el = document.getElementById('fmVersion');
+      if (el) el.textContent = '최신 ' + m.version + (m.date ? ' · ' + m.date : '');
+    })
+    .catch(notYet);
+</script>
+
+</AppLayout>
