@@ -597,6 +597,11 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
     .card-emoji.sub-util-creative { background: rgba(0, 183, 222, 0.08); color: #00b7de; }
     .card-emoji.sub-util-notion { background: rgba(100, 116, 139, 0.08); color: #64748b; }
     .card-emoji.sub-default { background: rgba(127, 140, 141, 0.08); color: #7f8c8d; }
+    /* 응용프로그램(설치형 Windows 프로그램) — 다른 카테고리와 겹치지 않는 청록 */
+    .card-emoji.sub-app { background: rgba(13, 148, 136, 0.1); color: #0d9488; }
+    #section-app .category-header { border-bottom-color: rgba(13, 148, 136, 0.45); }
+    #section-app .category-label .ic { color: #0d9488; }
+    #section-app .app-card:hover { border-color: rgba(13, 148, 136, 0.5); box-shadow: 0 8px 32px rgba(13, 148, 136, 0.12); }
 
     /* 다크모드 대비 향상 */
     [data-theme="dark"] .card-emoji.sub-edu-sim { background: rgba(0, 111, 238, 0.15); color: #338ef7; }
@@ -608,6 +613,10 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
     [data-theme="dark"] .card-emoji.sub-util-creative { background: rgba(0, 183, 222, 0.15); color: #38bdf8; }
     [data-theme="dark"] .card-emoji.sub-util-notion { background: rgba(100, 116, 139, 0.15); color: #94a3b8; }
     [data-theme="dark"] .card-emoji.sub-default { background: rgba(127, 140, 141, 0.15); color: #94a3b8; }
+    [data-theme="dark"] .card-emoji.sub-app { background: rgba(45, 212, 191, 0.15); color: #2dd4bf; }
+    [data-theme="dark"] #section-app .category-header { border-bottom-color: rgba(45, 212, 191, 0.4); }
+    [data-theme="dark"] #section-app .category-label .ic { color: #2dd4bf; }
+    [data-theme="dark"] #section-app .app-card:hover { border-color: rgba(45, 212, 191, 0.5); box-shadow: 0 8px 32px rgba(45, 212, 191, 0.12); }
 
     /* 호버 시 네온 글로우 효과 */
     .app-card:hover .card-emoji { transform: scale(1.08); }
@@ -619,6 +628,7 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
     .app-card:hover .card-emoji.sub-util-social { box-shadow: 0 4px 12px rgba(255, 78, 120, 0.2); }
     .app-card:hover .card-emoji.sub-util-creative { box-shadow: 0 4px 12px rgba(0, 183, 222, 0.2); }
     .app-card:hover .card-emoji.sub-util-notion { box-shadow: 0 4px 12px rgba(100, 116, 139, 0.2); }
+    .app-card:hover .card-emoji.sub-app { box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25); }
 
     .card-title {
       font-weight: 600;
@@ -1054,7 +1064,7 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
                       >
                         {external && <span class="external-badge" aria-hidden="true"><Icon name="arrow-up-right" /></span>}
                         {modal && <span class="external-badge" aria-hidden="true"><Icon name="info" /></span>}
-                        <div class={`card-emoji sub-${app.subcategory || 'default'}`} aria-hidden="true">
+                        <div class={`card-emoji sub-${app.subcategory || (b.type === 'flat' ? b.cat : 'default')}`} aria-hidden="true">
                           {app.lucideIcon ? <Icon name={app.lucideIcon} /> : app.emoji}
                         </div>
                         <div class="card-title">{app.title}</div>
@@ -1213,7 +1223,7 @@ const homeJson = JSON.stringify({ apps: clientApps }).replace(/</g, '\\u003c');
       const cardIcon = opener && opener.querySelector ? opener.querySelector('.card-emoji') : null;
       const icon = cardIcon ? cardIcon.cloneNode(true) : document.createElement('div');
       if (!cardIcon) {
-        icon.className = 'card-emoji sub-' + (app.subcategory || 'default');
+        icon.className = 'card-emoji sub-' + (app.subcategory || app.category || 'default');
         icon.innerHTML = app.lucideIcon ? ic(app.lucideIcon) : '';
         if (!app.lucideIcon) icon.textContent = app.emoji || '';
       }
