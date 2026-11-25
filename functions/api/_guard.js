@@ -47,6 +47,7 @@ export const LIMITS = {
   'career-talk':       { perMin: 300, perDay: 3000,  siteDay: 8000 },  // 진로 탐험대: 대화 1회 약 18번 호출 × 한 반 30명
   'career-talk-image': { perMin: 30,  perDay: 300,   siteDay: 300 },   // 진로 탐험대 그림(대화당 1회, ai-image 600의 절반)
   'timer-vision':      { perMin: 6,   perDay: 60,    siteDay: 400 },   // 시정표 사진 인식(이미지 입력 — 교사만, 가끔)
+  'og-advise':         { perMin: 10,  perDay: 100,   siteDay: 1000 },  // 오픈그래프 AI 제안(버튼 눌렀을 때만)
 
   // 외부 유료·쿼터 API 프록시
   'doc-parse':         { perMin: 10,  perDay: 100,   siteDay: 300 },   // Corepin(서버 키, 최대 50MB)
@@ -57,6 +58,7 @@ export const LIMITS = {
 
   // 키 없는 중계(함수 호출 수·악용 방지)
   'get-page-title':    { perMin: 60,  perDay: 1000,  siteDay: 5000 },
+  'og-fetch':          { perMin: 60,  perDay: 1000,  siteDay: 5000 },  // 오픈그래프: 페이지 1회 + og:image 확인 1회
   'resolve-short-url': { perMin: 120, perDay: 1000,  siteDay: 5000 },  // 채점표 수합: 링크 수십 개 연속 조회
   'yt-video-info':     { perMin: 120, perDay: 2000,  siteDay: 10000 },
   'yt-thumb-img':      { perMin: 600, perDay: 5000,  siteDay: 20000 }, // 재생목록 썸네일·ZIP(엣지 캐시 미스만 셈)

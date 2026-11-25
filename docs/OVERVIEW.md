@@ -119,6 +119,7 @@ docs/                  ← 개발 문서
 | `bubble-chat` | 버블챗 (비공개) | P2P 실시간 채팅 |
 | `madang` | 마당 (비공개) | 패들렛형 실시간 응답 보드 — rev 조건부 폴링, 텍스트·HTML·사진·그림(R2) 카드, 이모지 반응, 저학년 모드, 사전승인·잠금·이름숨김·발표모드·복제, QR 초대·코드 신원·자동검열 |
 | `edulink` | 에듀링크 | 교육용 단축주소·설문·체험 지도 (모달·외부 링크) |
+| `og-check` | 오픈그래프 | 주소(또는 붙여 넣은 HTML)의 링크 미리보기 4종(메신저·SNS·작은 카드·검색 결과)·태그 목록·규칙 점검, 버튼을 누르면 AI 제안(고칠 점·고친 태그 코드)과 AI에 넘길 프롬프트 3종(코딩 AI·사이트 빌더·OG 이미지). 저장 없음 (`docs/og-check-plan.md`) |
 
 ### 크리에이티브 (`util-creative`)
 | ID | 이름 | 설명 |
@@ -183,6 +184,8 @@ docs/                  ← 개발 문서
 | `POST /api/mindmap-draft` | 마인드맵 AI 초안(마크다운 개요) |
 | `POST /api/career-talk` | 진로 탐험대 무상태 AI 프록시(talk·reflect·recommend·sketch). 학생 말 매 호출 검열(`_moderation.js`), 개인정보 `[지움]`, 안전 고정 문구, 한도 `career-talk`·`career-talk-image` |
 | `POST /api/mindmap-ask` | 마인드맵 가지에서 AI에게 묻기(작은 가지 추천·설명·예시·질문) |
+| `POST /api/og-fetch` | 오픈그래프 — 페이지 HTML(앞 512KB, 리다이렉트 최대 5번 기록, 사설 주소 거절, UTF-8이 아니면 base64)·og:image 용량/형식 확인. 한도 `og-fetch` |
+| `POST /api/og-advise` | 오픈그래프 AI 제안(브라우저가 뽑은 요약 JSON만 받음). 한도 `og-advise` |
 | `GET /api/yt-playlist` | 유튜브 재생목록 파싱 |
 | `GET /api/yt-video-info` | 유튜브 영상 정보 |
 | `POST /api/shorten` | 단축 URL 생성 (short.io) |
@@ -220,6 +223,11 @@ docs/                  ← 개발 문서
 ---
 
 ## 주요 변경 이력
+
+### 2026-11-25 — 오픈그래프(`og-check`) 신규 (`docs/og-check-plan.md`)
+- 소셜 분류에 링크 미리보기·SEO 점검 앱 추가. 서버는 HTML을 받아 넘기기만 하고(`/api/og-fetch`, Worker CPU 예산) 태그 분석·규칙 점검은 브라우저 DOMParser가 한다. 자바스크립트는 실행하지 않아 메신저 봇과 같은 조건으로 본다.
+- AI 제안은 버튼을 눌러야 부르고(`/api/og-advise`, flash-lite), 원본 HTML 대신 뽑은 요약을 보낸다. AI에 넘길 프롬프트는 화면에서 틀로 조립(AI 제안이 없으면 규칙 점검 결과로).
+- 글자 길이 점검은 한글·전각을 2, 나머지를 1로 센 너비로 본다(제목 16~60, 설명 50~160).
 
 ### 2026-11-14 — 홈: 응용프로그램 섹션 신설, 에듀팀 카드 삭제, 온에듀 추가
 - 새 카테고리 `app`(응용프로그램, 청록): G노트·교원업무지원 자동 로그인·Rec Note를 업무경감에서 옮기고, 교원업무지원 이전 버전 블로그 글(`login-helper-v1`, 외부 링크) 카드 추가.

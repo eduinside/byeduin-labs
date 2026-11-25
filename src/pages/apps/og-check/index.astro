@@ -1,0 +1,137 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
+// 오픈그래프 — 링크 미리보기·태그 점검·AI 제안 (docs/og-check-plan.md)
+// 서버: /api/og-fetch(HTML·이미지 가져오기), /api/og-advise(AI 제안). 태그 분석·점검은 app.js(브라우저).
+---
+<AppLayout bodyShell="column" bodyWidth="wide">
+  <Fragment slot="head">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./styles.css?v=20261125">
+  </Fragment>
+
+  <main class="app-main">
+    <div class="app-header">
+      <div class="app-badge">소셜</div>
+      <h1 class="app-title">오픈그래프 <span class="app-title-en">Open Graph</span></h1>
+      <p class="app-desc">링크를 보내기 전에 카카오톡·SNS·검색에 보일 모습을 미리 보고, 고칠 태그를 확인해요.</p>
+    </div>
+
+    <!-- 입력 -->
+    <section class="og-card og-input">
+      <div class="og-tabs" role="tablist" aria-label="확인 방법">
+        <button class="og-tab active" role="tab" aria-selected="true" data-src="url"><Icon name="link" /> 주소로 확인</button>
+        <button class="og-tab" role="tab" aria-selected="false" data-src="html"><Icon name="code-2" /> HTML 붙여넣기</button>
+      </div>
+
+      <form id="form-url" class="og-src" data-src="url">
+        <div class="og-row">
+          <input id="in-url" class="hero-input og-url" type="text" inputmode="url" autocomplete="url" spellcheck="false"
+            placeholder="https://example.com/page" aria-label="확인할 주소">
+          <button id="btn-check" class="hero-btn" type="submit"><Icon name="scan-search" /> 확인</button>
+        </div>
+        <div id="recent" class="og-recent" hidden></div>
+      </form>
+
+      <form id="form-html" class="og-src" data-src="html" hidden>
+        <label class="og-label" for="in-html">페이지 소스(HTML)</label>
+        <textarea id="in-html" class="hero-input og-textarea" spellcheck="false"
+          placeholder="브라우저에서 Ctrl+U(페이지 소스 보기)로 연 내용을 모두 복사해 붙여 넣으세요."></textarea>
+        <div class="og-row">
+          <input id="in-base" class="hero-input og-url" type="text" inputmode="url" spellcheck="false"
+            placeholder="페이지 주소(선택) - 이미지 주소 확인·og:url 비교에 써요" aria-label="페이지 주소(선택)">
+          <button class="hero-btn" type="submit"><Icon name="scan-search" /> 확인</button>
+        </div>
+        <p class="og-note">배포 전 사이트(localhost)나 자동 확인을 막는 사이트는 이 방법으로 확인해요.</p>
+      </form>
+
+      <p id="status" class="og-status" aria-live="polite"></p>
+    </section>
+
+    <!-- 결과 -->
+    <section id="result" hidden>
+      <div id="summary" class="og-card og-summary"></div>
+
+      <div class="og-tabs og-rtabs" role="tablist" aria-label="결과 보기">
+        <button class="og-tab active" role="tab" aria-selected="true" data-panel="preview"><Icon name="eye" /> 미리보기</button>
+        <button class="og-tab" role="tab" aria-selected="false" data-panel="tags"><Icon name="table" /> 태그 목록</button>
+        <button class="og-tab" role="tab" aria-selected="false" data-panel="checks"><Icon name="list-checks" /> 점검 <span id="checks-badge" class="og-count"></span></button>
+        <button class="og-tab" role="tab" aria-selected="false" data-panel="ai"><Icon name="sparkles" /> AI 제안</button>
+      </div>
+
+      <div class="og-panel" data-panel="preview">
+        <div id="previews" class="og-previews"></div>
+        <p class="og-note">카드 모양과 글자 수는 서비스마다 조금씩 다르고 자주 바뀌어요. 대략적인 모습으로 봐 주세요.</p>
+      </div>
+
+      <div class="og-panel" data-panel="tags" hidden>
+        <div id="tags"></div>
+      </div>
+
+      <div class="og-panel" data-panel="checks" hidden>
+        <div id="checks"></div>
+      </div>
+
+      <div class="og-panel" data-panel="ai" hidden>
+        <div class="og-card">
+          <div class="og-ai-opts">
+            <label class="og-field">
+              <span class="og-label">링크를 받을 사람(선택)</span>
+              <select id="ai-audience" class="hero-input">
+                <option value="">고르지 않음</option>
+                <option value="parent">학부모</option>
+                <option value="student">학생</option>
+                <option value="teacher">교사·교직원</option>
+                <option value="public">일반 시민</option>
+              </select>
+            </label>
+            <label class="og-field">
+              <span class="og-label">페이지 종류(선택)</span>
+              <select id="ai-kind" class="hero-input">
+                <option value="">고르지 않음</option>
+                <option value="school">학교·기관 소개</option>
+                <option value="notice">공지·안내문</option>
+                <option value="app">웹앱·도구</option>
+                <option value="class">수업 자료</option>
+                <option value="event">행사·모집</option>
+                <option value="blog">글·블로그</option>
+              </select>
+            </label>
+            <button id="btn-ai" class="hero-btn og-ai-btn"><Icon name="sparkles" /> AI 제안 받기</button>
+          </div>
+          <p class="og-note">누르면 이 페이지의 태그 값과 본문 앞부분이 AI(Google Gemini)로 전송돼요. 원본 HTML 전체는 보내지 않아요.</p>
+        </div>
+
+        <div id="ai-result"></div>
+
+        <div class="og-card og-prompt-card">
+          <h2 class="og-h2"><Icon name="message-square-text" /> AI에 넘길 프롬프트</h2>
+          <p id="prompt-src" class="og-note"></p>
+          <div class="og-seg" role="radiogroup" aria-label="프롬프트 종류">
+            <button class="og-seg-btn active" data-target="code" role="radio" aria-checked="true">코딩 AI</button>
+            <button class="og-seg-btn" data-target="builder" role="radio" aria-checked="false">사이트 빌더 안내</button>
+            <button class="og-seg-btn" data-target="image" role="radio" aria-checked="false">OG 이미지 만들기</button>
+          </div>
+          <p id="prompt-hint" class="og-note"></p>
+          <textarea id="prompt-out" class="hero-input og-textarea og-code" readonly aria-label="프롬프트"></textarea>
+          <div class="og-actions">
+            <button id="btn-copy-prompt" class="hero-btn"><Icon name="copy" /> 프롬프트 복사</button>
+          </div>
+        </div>
+      </div>
+
+      <details class="og-card og-tip">
+        <summary><Icon name="info" /> 고쳤는데 메신저에 예전 모습이 나와요</summary>
+        <p>카카오톡·페이스북 같은 서비스는 한 번 읽은 미리보기를 한동안 저장해 두고 다시 보여 줘요. 사이트를 고친 뒤에는 각 서비스의 공유 디버거에서 주소를 다시 읽혀 주세요(로그인이 필요할 수 있어요).</p>
+        <ul>
+          <li><a href="https://developers.kakao.com/tool/debugger/sharing" target="_blank" rel="noopener">카카오 공유 디버거 <Icon name="external-link" /></a> - 주소를 넣고 '캐시 초기화'</li>
+          <li><a id="fb-debug" href="https://developers.facebook.com/tools/debug/" target="_blank" rel="noopener">페이스북 공유 디버거 <Icon name="external-link" /></a> - '다시 스크랩'</li>
+          <li><a href="https://www.linkedin.com/post-inspector/" target="_blank" rel="noopener">링크드인 포스트 인스펙터 <Icon name="external-link" /></a></li>
+        </ul>
+        <p>이 앱은 메신저 봇처럼 자바스크립트를 실행하는 대신 HTML을 그대로 읽어요. 화면에는 보이는데 여기서 '없음'으로 나오는 태그는 자바스크립트가 나중에 넣는 태그라서 메신저도 읽지 못해요.</p>
+      </details>
+    </section>
+  </main>
+
+  <script is:inline src="./app.js?v=20261125"></script>
+</AppLayout>
