@@ -65,6 +65,11 @@ export const LIMITS = {
   'notion':            { perMin: 300, perDay: 5000,  siteDay: 10000 }, // 이용자 토큰 — DB 페이지 수만큼 연속 호출
   'padlet':            { perMin: 300, perDay: 3000,  siteDay: 10000 }, // 이용자 키 — 항목 수만큼 연속 게시
 
+  // 협의 날짜 모으기(meet-date.js). D1 읽기·쓰기. 학교 공인 IP 하나에서 교직원 여럿이 응답.
+  'meet-read':         { perMin: 300, perDay: 5000,  siteDay: 100000 },
+  'meet-create':       { perMin: 10,  perDay: 50,    siteDay: 2000 },
+  'meet-write':        { perMin: 60,  perDay: 2000,  siteDay: 30000 },
+
   // 동기화 쓰기(_sync.js PUT·DELETE). D1 무료 쓰기 한도(일 10만 행) 보호.
   'sync-write':        { perDay: 5000, siteDay: 50000 },
   'sync-bytes':        { perDay: 50 * 1024 * 1024 },                   // IP당 하루 업로드 총량(바이트)

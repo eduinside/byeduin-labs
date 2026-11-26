@@ -1,0 +1,385 @@
+---
+import AppLayout from '../../../layouts/AppLayout.astro';
+import Icon from '../../../components/Icon.astro';
+// 협의 날짜 모으기 — 일정 정하기·활동 날짜와 확인서·실시간 등록부 (docs/meet-date-plan.md §11)
+// 서버: /api/meet-date(D1 meet_events·meet_responses·meet_signs). 등록부·확인서 HWPX는 hwpx.js가 브라우저에서 만든다.
+// 화면: #new(만들기) · #m=CODE(응답) · #s=CODE(출석 서명) · #m=CODE&k=KEY / #manage=CODE(관리)
+//       #edit=CODE(설정 고치기) · #share=…(양식 복제)
+---
+<AppLayout bodyShell="column" bodyWidth="medium">
+  <Fragment slot="head">
+    <link rel="stylesheet" href="./styles.css?v=20261127c">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" is:inline></script>
+  </Fragment>
+
+  <main class="app-main">
+    <div class="app-header">
+      <div class="app-badge">업무경감</div>
+      <h1 class="app-title">협의 날짜 모으기</h1>
+      <p class="app-desc">링크 하나로 일정을 정하고, 활동 확인서와 서명 등록부까지 모아요.</p>
+    </div>
+
+    <p id="loading" class="md-status" aria-live="polite">불러오는 중...</p>
+
+    <!-- 시작 -->
+    <section id="view-home" class="md-view" hidden>
+      <div class="md-kinds">
+        <a class="md-kind-card" href="#new=schedule">
+          <span class="md-kind-ic"><Icon name="calendar-clock" /></span>
+          <b>일정 정하기</b>
+          <span>후보 시간 중 되는 시간을 받아 확정하고 안내해요.</span>
+        </a>
+        <a class="md-kind-card" href="#new=activity">
+          <span class="md-kind-ic"><Icon name="file-text" /></span>
+          <b>활동 날짜 받기 + 확인서</b>
+          <span>정한 횟수만큼 날짜를 고르고 활동 확인서를 받아 내요.</span>
+        </a>
+        <a class="md-kind-card" href="#new=live">
+          <span class="md-kind-ic"><Icon name="pen-line" /></span>
+          <b>실시간 등록부</b>
+          <span>협의 시간에 QR을 띄우면 들어온 사람이 손글씨로 서명해요.</span>
+        </a>
+      </div>
+      <div id="home-mine" class="md-card" hidden>
+        <h2 class="md-h2"><Icon name="clipboard-list" /> 내가 만든 것</h2>
+        <ul id="mine-list" class="md-list"></ul>
+        <p class="md-note">이 브라우저에 기억한 목록이에요. 다른 기기에서는 관리 링크로 열어 주세요.</p>
+      </div>
+      <div class="md-card">
+        <h2 class="md-h2"><Icon name="link" /> 관리 링크로 열기</h2>
+        <form id="form-open" class="md-row">
+          <input id="in-open" class="hero-input" type="text" spellcheck="false" placeholder="관리 링크를 붙여 넣으세요" aria-label="관리 링크">
+          <button class="hero-btn hero-btn-ghost" type="submit">열기</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- 만들기·고치기 -->
+    <section id="view-new" class="md-view" hidden>
+      <form id="form-new" novalidate>
+        <div class="md-card">
+          <h2 class="md-h2">무엇을 할까요?</h2>
+          <div class="md-seg md-seg3" role="radiogroup" aria-label="종류">
+            <label><input type="radio" name="f-kind" value="schedule" checked> <span><b>일정 정하기</b><small>모일 시간을 받아 확정</small></span></label>
+            <label><input type="radio" name="f-kind" value="activity"> <span><b>활동 날짜 + 확인서</b><small>날짜를 골라 확인서 내기</small></span></label>
+            <label><input type="radio" name="f-kind" value="live"> <span><b>실시간 등록부</b><small>그 자리에서 손글씨 서명</small></span></label>
+          </div>
+        </div>
+
+        <div class="md-card">
+          <h2 class="md-h2"><span class="md-num">1</span> 내용</h2>
+          <label class="md-field"><span class="md-label">제목 <em>필수</em></span>
+            <input id="f-title" class="hero-input" maxlength="60" placeholder="예) 2학년 교육과정 협의회" required></label>
+          <label class="md-field"><span class="md-label">내용</span>
+            <textarea id="f-desc" class="hero-input md-textarea" maxlength="1000" placeholder="협의할 내용이나 활동 내용을 짧게 적어 주세요."></textarea></label>
+          <div class="md-grid2">
+            <label class="md-field"><span class="md-label">장소</span>
+              <input id="f-place" class="hero-input" maxlength="60" placeholder="예) 2학년 연구실"></label>
+            <label class="md-field"><span class="md-label">담당자 이름</span>
+              <input id="f-owner" class="hero-input" maxlength="20" placeholder="등록부·확인서 아래에 들어가요(선택)"></label>
+          </div>
+        </div>
+
+        <div class="md-card">
+          <h2 class="md-h2"><span class="md-num">2</span> 날짜와 시간</h2>
+
+          <div id="live-opts" hidden>
+            <div class="md-grid3">
+              <label class="md-field"><span class="md-label">날짜</span><input id="f-live-d" class="hero-input" type="date"></label>
+              <label class="md-field"><span class="md-label">시작</span><input id="f-live-s" class="hero-input" type="time" step="300" value="15:00"></label>
+              <label class="md-field"><span class="md-label">끝</span><input id="f-live-e" class="hero-input" type="time" step="300" value="16:00"></label>
+            </div>
+            <label class="md-check-line"><input type="checkbox" id="f-live-open" checked> 만들자마자 출석 받기 시작</label>
+          </div>
+
+          <div id="range-opts">
+            <div class="md-seg" role="radiogroup" aria-label="시간 받는 방식">
+              <label><input type="radio" name="f-mode" value="pick" checked> <span><b>후보 중에서 고르기</b><small>내가 정한 시간 가운데 골라요</small></span></label>
+              <label><input type="radio" name="f-mode" value="free"> <span><b>직접 적기</b><small>기간 안에서 각자 날짜와 시간을 적어요</small></span></label>
+            </div>
+            <div class="md-grid2">
+              <label class="md-field"><span class="md-label">시작 날짜</span><input id="f-from" class="hero-input" type="date" required></label>
+              <label class="md-field"><span class="md-label">끝 날짜</span><input id="f-to" class="hero-input" type="date" required></label>
+            </div>
+
+            <div id="pick-opts">
+              <div class="md-field"><span class="md-label">요일</span>
+                <div id="f-dows" class="md-chips" role="group" aria-label="요일"></div></div>
+              <div class="md-field"><span class="md-label">시간대</span>
+                <div id="f-times" class="md-times"></div>
+                <button id="btn-add-time" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="plus" /> 시간대 더하기</button>
+              </div>
+              <div class="md-field">
+                <div class="md-label-row"><span class="md-label">후보 시간 <span id="slot-count" class="md-pill"></span></span>
+                  <span class="md-note md-inline">누르면 빼거나 다시 넣어요</span></div>
+                <div id="slot-grid" class="md-grid-wrap"></div>
+              </div>
+            </div>
+
+            <div class="md-grid2">
+              <label class="md-field"><span class="md-label" id="rule-label">몇 개 고르게 할까요?</span>
+                <select id="f-rule" class="hero-input">
+                  <option value="any">되는 시간 모두(1개 이상)</option>
+                  <option value="exact">정확히 정한 횟수</option>
+                  <option value="min">정한 횟수 이상</option>
+                </select></label>
+              <label class="md-field" id="rule-n-wrap" hidden><span class="md-label">횟수</span>
+                <input id="f-rule-n" class="hero-input" type="number" min="1" max="50" value="1"></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="md-card">
+          <h2 class="md-h2"><span class="md-num">3</span> 받을 정보</h2>
+          <p class="md-note md-mt0">이름은 늘 받아요. 더 받을 정보는 꼭 필요할 때 고르세요.</p>
+          <div class="md-checks">
+            <label><input type="checkbox" name="f-field" value="org"> 소속(학교·부서)</label>
+            <label><input type="checkbox" name="f-field" value="pos"> 직위</label>
+            <label><input type="checkbox" name="f-field" value="cls"> 학년반·과목</label>
+            <label class="not-live"><input type="checkbox" id="f-memo"> 의견 한 줄</label>
+          </div>
+          <label class="md-check-line not-live"><input type="checkbox" id="f-others"> 응답한 사람끼리 누가 어느 시간을 골랐는지 보여 주기</label>
+        </div>
+
+        <div class="md-card">
+          <h2 class="md-h2"><span class="md-num">4</span> <span id="form-h">등록부 양식</span></h2>
+          <label class="md-field"><span class="md-label">문서 제목</span>
+            <input id="f-form-title" class="hero-input" maxlength="40"></label>
+          <label class="md-field not-activity"><span class="md-label">머리말(표 위 문장, 선택)</span>
+            <input id="f-form-head" class="hero-input" maxlength="300" placeholder="예) 2027학년도 교육과정 편성을 위한 협의회 참석자 명단"></label>
+          <label class="md-field"><span class="md-label">확인 문구</span>
+            <input id="f-form-foot" class="hero-input" maxlength="200"></label>
+          <div class="md-grid2 only-schedule">
+            <label class="md-field"><span class="md-label">서명란</span>
+              <select id="f-sign" class="hero-input">
+                <option value="name">이름을 넣어 두기</option>
+                <option value="blank">비워 두기(출력해서 서명)</option>
+              </select></label>
+            <label class="md-check-line md-self-end"><input type="checkbox" id="f-when" checked> '참석 일시' 열 넣기</label>
+          </div>
+          <div class="only-activity">
+            <span class="md-label">확인서 내는 방법</span>
+            <div class="md-checks">
+              <label><input type="checkbox" id="f-sub-file" checked> 파일로 받아 보내기(메신저 등)</label>
+              <label><input type="checkbox" id="f-sub-direct" checked> 화면에서 서명해 바로 내기</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="md-card">
+          <h2 class="md-h2"><span class="md-num">5</span> 마감</h2>
+          <label class="md-field"><span class="md-label" id="close-label">응답 마감 일시</span>
+            <input id="f-close" class="hero-input" type="datetime-local" required></label>
+          <p class="md-note md-mt0">받은 내용과 서명은 마감 30일 뒤에 자동으로 지워져요. 등록부는 그 전에 받아 두세요.</p>
+        </div>
+
+        <p id="new-error" class="md-error" role="alert" hidden></p>
+        <div class="md-actions">
+          <button id="btn-cancel-new" class="hero-btn hero-btn-ghost" type="button">취소</button>
+          <button id="btn-save-new" class="hero-btn" type="submit"><Icon name="check" /> <span>만들고 링크 받기</span></button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 응답 -->
+    <section id="view-respond" class="md-view" hidden>
+      <div id="r-head" class="md-card"></div>
+      <div id="r-done" class="md-card md-done" hidden></div>
+      <div id="r-cert" class="md-card" hidden>
+        <h2 class="md-h2"><Icon name="file-text" /> 내 활동 확인서</h2>
+        <p id="r-cert-state" class="md-note md-mt0"></p>
+        <div class="md-field">
+          <div class="md-label-row"><span class="md-label">서명(선택)</span>
+            <button id="btn-cert-clear" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="eraser" /> 지우기</button></div>
+          <div id="cert-pad" class="md-pad"></div>
+          <p class="md-note">비워 두면 확인서를 받아 한글에서 서명해도 돼요.</p>
+        </div>
+        <div class="md-actions md-actions-left">
+          <button id="btn-cert-file" class="hero-btn hero-btn-ghost" type="button"><Icon name="download" /> 확인서 받기(HWPX)</button>
+          <button id="btn-cert-direct" class="hero-btn" type="button"><Icon name="send" /> 담당자에게 바로 내기</button>
+        </div>
+        <p id="r-cert-file-note" class="md-note">받은 파일은 메신저 등으로 담당자에게 보내 주세요.</p>
+      </div>
+      <form id="form-resp" novalidate>
+        <div class="md-card">
+          <div class="md-label-row">
+            <h2 class="md-h2 md-mb0"><Icon name="calendar-clock" /> <span id="r-pick-h">되는 시간 고르기</span></h2>
+            <span id="r-pick-count" class="md-pill"></span>
+          </div>
+          <p id="r-rule" class="md-note"></p>
+          <div id="r-slots"></div>
+          <div id="r-free" hidden>
+            <div id="r-free-rows" class="md-times"></div>
+            <button id="btn-add-free" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="plus" /> 날짜 더하기</button>
+          </div>
+        </div>
+        <div class="md-card">
+          <h2 class="md-h2"><Icon name="pen-line" /> 내 정보</h2>
+          <label class="md-field"><span class="md-label">이름 <em>필수</em></span>
+            <input id="r-name" class="hero-input" maxlength="20" autocomplete="name" required></label>
+          <div id="r-fields" class="md-grid2"></div>
+          <label id="r-memo-wrap" class="md-field" hidden><span class="md-label">의견 한 줄(선택)</span>
+            <input id="r-memo" class="hero-input" maxlength="200"></label>
+          <p id="r-privacy" class="md-note"></p>
+        </div>
+        <p id="resp-error" class="md-error" role="alert" hidden></p>
+        <div class="md-actions">
+          <button id="btn-resp-cancel" class="hero-btn hero-btn-ghost" type="button" hidden>고치기 취소</button>
+          <button id="btn-resp" class="hero-btn" type="submit"><Icon name="send" /> <span>제출하기</span></button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 출석 서명(실시간 등록부) -->
+    <section id="view-sign" class="md-view" hidden>
+      <div id="s-head" class="md-card"></div>
+      <div id="s-done" class="md-card md-done" hidden></div>
+      <form id="form-sign" class="md-card" novalidate>
+        <h2 class="md-h2"><Icon name="pen-line" /> 출석 서명</h2>
+        <label class="md-field"><span class="md-label">이름 <em>필수</em></span>
+          <input id="s-name" class="hero-input" maxlength="20" autocomplete="name" required></label>
+        <div id="s-fields" class="md-grid2"></div>
+        <div class="md-field">
+          <div class="md-label-row"><span class="md-label">서명 <em>필수</em></span>
+            <button id="btn-sign-clear" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="eraser" /> 지우기</button></div>
+          <div id="sign-pad" class="md-pad"></div>
+        </div>
+        <p id="s-privacy" class="md-note"></p>
+        <p id="sign-error" class="md-error" role="alert" hidden></p>
+        <div class="md-actions md-mb0">
+          <button id="btn-sign-cancel" class="hero-btn hero-btn-ghost" type="button" hidden>취소</button>
+          <button id="btn-sign" class="hero-btn" type="submit"><Icon name="check" /> <span>출석하기</span></button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 관리 -->
+    <section id="view-manage" class="md-view" hidden>
+      <div id="m-head" class="md-card"></div>
+      <div class="md-card">
+        <h2 class="md-h2"><Icon name="share-2" /> 링크</h2>
+        <div class="md-linkrow">
+          <span class="md-label" id="m-resp-label">응답 링크 - 받을 사람에게 보내요</span>
+          <div class="md-row">
+            <input id="m-resp-link" class="hero-input" readonly aria-label="응답 링크">
+            <button id="btn-share-resp" class="hero-btn" type="button"><Icon name="copy" /> 복사·QR</button>
+          </div>
+        </div>
+        <div class="md-linkrow">
+          <span class="md-label">관리 링크 - 담당자가 따로 보관해요(잃어버리면 다시 열 수 없어요)</span>
+          <div class="md-row">
+            <input id="m-admin-link" class="hero-input" readonly aria-label="관리 링크" type="password">
+            <button id="btn-show-admin" class="hero-btn hero-btn-ghost hero-btn-icon" type="button" aria-label="관리 링크 보기"><Icon name="eye" /></button>
+            <button id="btn-copy-admin" class="hero-btn hero-btn-ghost" type="button"><Icon name="copy" /> 복사</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 실시간 출석 -->
+      <div id="m-live" class="md-card" hidden>
+        <div class="md-label-row">
+          <h2 class="md-h2 md-mb0"><Icon name="pen-line" /> 실시간 출석 <span id="m-live-pill" class="md-pill"></span></h2>
+          <span id="m-sign-count" class="md-pill"></span>
+        </div>
+        <p id="m-live-note" class="md-note md-mt0"></p>
+        <div class="md-actions md-actions-left md-mt">
+          <button id="btn-live-toggle" class="hero-btn hero-btn-sm" type="button"><Icon name="play" /> <span>출석 받기 시작</span></button>
+          <button id="btn-live-big" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="qr-code" /> 큰 화면으로 QR</button>
+          <button id="btn-live-link" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="copy" /> 출석 링크</button>
+        </div>
+        <div id="m-signs" class="md-signs"></div>
+        <div class="md-actions md-actions-left md-mt">
+          <button id="btn-sign-hwpx" class="hero-btn hero-btn-sm" type="button"><Icon name="file-text" /> 서명 등록부(HWPX)</button>
+          <button id="btn-sign-clear-all" class="hero-btn hero-btn-danger hero-btn-sm" type="button"><Icon name="eraser" /> 서명 그림 모두 지우기</button>
+        </div>
+        <p class="md-note">등록부를 받은 뒤에는 서명 그림을 지워 두는 것이 안전해요. 이름과 시각은 남아요.</p>
+      </div>
+
+      <div id="m-tally-card" class="md-card">
+        <div class="md-label-row">
+          <h2 class="md-h2 md-mb0"><Icon name="chart-column" /> 시간별로 보기</h2>
+          <button id="btn-refresh" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="refresh-cw" /> 새로 고침</button>
+        </div>
+        <div id="m-summary"></div>
+        <div id="m-confirm-bar" class="md-confirm-bar" hidden>
+          <span id="m-confirm-msg"></span>
+          <button id="btn-confirm" class="hero-btn hero-btn-sm" type="button"><Icon name="check" /> 확정 저장</button>
+        </div>
+      </div>
+
+      <div id="m-resp-card" class="md-card">
+        <h2 class="md-h2"><Icon name="users" /> 응답한 사람 <span id="m-count" class="md-pill"></span></h2>
+        <div id="m-responses" class="md-table-wrap"></div>
+      </div>
+
+      <div id="m-dl-card" class="md-card">
+        <h2 class="md-h2"><Icon name="download" /> 받기</h2>
+        <label id="m-only-wrap" class="md-check-line" hidden><input type="checkbox" id="m-only" checked> 확정한 시간에 안 되는 사람은 빼기</label>
+        <div class="md-actions md-actions-left">
+          <button id="btn-certs" class="hero-btn" type="button" hidden><Icon name="file-text" /> 확인서 모두(HWPX)</button>
+          <button id="btn-hwpx" class="hero-btn" type="button"><Icon name="file-text" /> 명단 등록부(HWPX)</button>
+          <button id="btn-csv" class="hero-btn hero-btn-ghost" type="button"><Icon name="sheet" /> 엑셀용(CSV)</button>
+        </div>
+        <p id="m-dl-note" class="md-note">한글에서 열어 고치거나 인쇄할 수 있어요. 응답이 적으면 빈 줄을 더해 10줄로 맞춰요.</p>
+      </div>
+
+      <!-- 안내·공유 -->
+      <div class="md-card">
+        <h2 class="md-h2"><Icon name="megaphone" /> 안내하기</h2>
+        <div class="md-actions md-actions-left">
+          <button id="btn-msg-notice" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="megaphone" /> 일정 안내 문구</button>
+          <button id="btn-msg-remind" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="bell" /> 독촉 문구</button>
+          <button id="btn-ics" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="calendar" /> 달력 파일(.ics)</button>
+        </div>
+        <textarea id="m-msg" class="hero-input md-textarea md-mt" aria-label="안내 문구" hidden></textarea>
+        <div id="m-msg-actions" class="md-actions md-actions-left md-mt" hidden>
+          <button id="btn-msg-copy" class="hero-btn hero-btn-sm" type="button"><Icon name="copy" /> 문구 복사</button>
+        </div>
+        <details id="m-expect" class="md-details">
+          <summary>받을 사람 명단으로 안 낸 사람 찾기</summary>
+          <textarea id="m-expect-in" class="hero-input md-textarea" placeholder="이름을 줄마다 또는 쉼표로 적어 주세요. 이 브라우저에 저장되고 서버로 보내지 않아요." aria-label="받을 사람 명단"></textarea>
+          <p id="m-expect-out" class="md-note"></p>
+        </details>
+      </div>
+
+      <div class="md-card">
+        <h2 class="md-h2"><Icon name="settings" /> 관리</h2>
+        <div class="md-actions md-actions-left">
+          <button id="btn-edit" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="pencil" /> 설정 고치기</button>
+          <button id="btn-close-now" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="calendar-x" /> 마감 바꾸기</button>
+          <button id="btn-clone" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="copy-plus" /> 이 설정으로 새로 만들기</button>
+          <button id="btn-clone-link" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="link" /> 양식 링크 보내기</button>
+          <button id="btn-delete" class="hero-btn hero-btn-danger hero-btn-sm" type="button"><Icon name="trash-2" /> 지우기</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 큰 화면 출석 -->
+    <div id="live-big" class="md-live-big" hidden>
+      <div class="md-live-inner">
+        <div class="md-live-left">
+          <p id="lb-title" class="md-live-title"></p>
+          <div id="lb-qr" class="md-live-qr"></div>
+          <p class="md-live-hint">휴대폰 카메라로 QR을 찍고 이름을 적은 뒤 서명해 주세요.</p>
+          <p id="lb-url" class="md-live-url"></p>
+        </div>
+        <div class="md-live-right">
+          <p class="md-live-count"><b id="lb-count">0</b>명 출석</p>
+          <ul id="lb-list" class="md-live-list"></ul>
+        </div>
+      </div>
+      <button id="btn-live-big-close" class="hero-btn hero-btn-ghost md-live-close" type="button"><Icon name="x" /> 닫기</button>
+    </div>
+
+    <!-- 오류 -->
+    <section id="view-error" class="md-view" hidden>
+      <div class="md-card md-center">
+        <p id="err-msg" class="md-error-big"></p>
+        <a class="hero-btn hero-btn-ghost" href="#">처음으로</a>
+      </div>
+    </section>
+  </main>
+
+  <script is:inline src="./hwpx.js?v=20261127c"></script>
+  <script is:inline src="./app.js?v=20261127c"></script>
+</AppLayout>
