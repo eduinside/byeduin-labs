@@ -1,4 +1,4 @@
-// 협의 날짜 모으기 - 등록부·확인서 HWPX 만들기 (docs/meet-date-plan.md §5, §11)
+// 협의 도우미 - 등록부·확인서 HWPX 만들기 (docs/meet-date-plan.md §5, §11)
 // 브라우저에서 만든다.
 //   - 머리(header.xml: 글꼴·글자 모양·문단 모양·테두리)는 ./hwpx-header.xml 정적 파일
 //     (kordoc 범용 출력에 함초롬돋움·회색 칸·가운데/오른쪽 문단 모양을 더한 것)
@@ -164,9 +164,9 @@
   }
 
   const FILES = {
-    version: '<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>\n<hv:HCFVersion xmlns:hv="http://www.hancom.co.kr/hwpml/2011/version" tagetApplication="WORDPROCESSOR" major="5" minor="1" micro="0" buildNumber="1" os="1" xmlVersion="1.4" application="eduin-meet-date" appVersion="1.0"/>',
+    version: '<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>\n<hv:HCFVersion xmlns:hv="http://www.hancom.co.kr/hwpml/2011/version" tagetApplication="WORDPROCESSOR" major="5" minor="1" micro="0" buildNumber="1" os="1" xmlVersion="1.4" application="eduin-meeting-helper" appVersion="1.0"/>',
     container: '<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>\n<ocf:container xmlns:ocf="urn:oasis:names:tc:opendocument:xmlns:container" xmlns:hpf="http://www.hancom.co.kr/schema/2011/hpf"><ocf:rootfiles><ocf:rootfile full-path="Contents/content.hpf" media-type="application/hwpml-package+xml"/></ocf:rootfiles></ocf:container>',
-    hpf: (imgIds) => '<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>\n<opf:package xmlns:opf="http://www.idpf.org/2007/opf/" xmlns:hpf="http://www.hancom.co.kr/schema/2011/hpf" xmlns:hh="http://www.hancom.co.kr/hwpml/2011/head"><opf:metadata><opf:meta name="generator" content="eduin-meet-date"/></opf:metadata><opf:manifest><opf:item id="header" href="Contents/header.xml" media-type="application/xml"/><opf:item id="section0" href="Contents/section0.xml" media-type="application/xml"/>' +
+    hpf: (imgIds) => '<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>\n<opf:package xmlns:opf="http://www.idpf.org/2007/opf/" xmlns:hpf="http://www.hancom.co.kr/schema/2011/hpf" xmlns:hh="http://www.hancom.co.kr/hwpml/2011/head"><opf:metadata><opf:meta name="generator" content="eduin-meeting-helper"/></opf:metadata><opf:manifest><opf:item id="header" href="Contents/header.xml" media-type="application/xml"/><opf:item id="section0" href="Contents/section0.xml" media-type="application/xml"/>' +
       (imgIds || []).map((id) => '<opf:item id="' + x(id) + '" href="BinData/' + x(id) + '.png" media-type="image/png" isEmbeded="1"/>').join('') +
       '</opf:manifest><opf:spine><opf:itemref idref="header" linear="no"/><opf:itemref idref="section0" linear="yes"/></opf:spine></opf:package>',
   };
@@ -188,7 +188,7 @@
   }
   async function loadHeader() {
     if (headerXml) return headerXml;
-    const r = await fetch('/apps/meet-date/hwpx-header.xml?v=1');
+    const r = await fetch('/apps/meeting-helper/hwpx-header.xml?v=1');
     if (!r.ok) throw new Error('header');
     return (headerXml = await r.text());
   }

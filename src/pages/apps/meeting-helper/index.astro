@@ -1,23 +1,50 @@
 ---
 import AppLayout from '../../../layouts/AppLayout.astro';
 import Icon from '../../../components/Icon.astro';
-// 협의 날짜 모으기 — 일정 정하기·활동 날짜와 확인서·실시간 등록부 (docs/meet-date-plan.md §11)
+// 협의 도우미(옛 주소 /apps/meet-date/ → _redirects) — 일정 정하기·활동 날짜와 확인서·실시간 등록부 (docs/meet-date-plan.md §11)
 // 서버: /api/meet-date(D1 meet_events·meet_responses·meet_signs). 등록부·확인서 HWPX는 hwpx.js가 브라우저에서 만든다.
 // 화면: #new(만들기) · #m=CODE(응답) · #s=CODE(출석 서명) · #m=CODE&k=KEY / #manage=CODE(관리)
 //       #edit=CODE(설정 고치기) · #share=…(양식 복제)
 ---
 <AppLayout bodyShell="column" bodyWidth="medium">
   <Fragment slot="head">
-    <link rel="stylesheet" href="./styles.css?v=20261127d">
+    <link rel="stylesheet" href="./styles.css?v=20261127f">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" is:inline></script>
   </Fragment>
 
   <main class="app-main">
     <div class="app-header">
       <div class="app-badge">업무경감</div>
-      <h1 class="app-title">협의 날짜 모으기</h1>
+      <h1 class="app-title">협의 도우미</h1>
       <p class="app-desc">링크 하나로 일정을 정하고, 활동 확인서와 서명 등록부까지 모아요.</p>
     </div>
+
+    <div class="md-layout">
+    <!-- 담당자 사이드바(만들기·관리 화면). 좁은 화면에서는 맨 위 접힌 메뉴 상자. 내용은 app.js renderSide() -->
+    <aside id="md-side" class="md-side" hidden>
+      <details id="md-side-box" class="md-side-box">
+        <summary class="md-side-sum"><Icon name="menu" /> 협의 도우미 메뉴</summary>
+        <nav class="md-side-nav" aria-label="협의 도우미 메뉴">
+          <a class="md-side-link" href="#" data-nav="home"><Icon name="house" /> 처음 화면</a>
+          <p class="md-side-h">새로 만들기</p>
+          <a class="md-side-link" href="#new=schedule" data-nav="new-schedule"><Icon name="calendar-clock" /> 일정 정하기</a>
+          <a class="md-side-link" href="#new=activity" data-nav="new-activity"><Icon name="file-check" /> 활동 날짜 + 확인서</a>
+          <a class="md-side-link" href="#new=live" data-nav="new-live"><Icon name="pen-line" /> 실시간 등록부</a>
+          <div id="md-side-steps" hidden>
+            <p id="md-side-steps-h" class="md-side-h">단계</p>
+            <ol id="md-side-steps-list" class="md-steps"></ol>
+          </div>
+          <div id="md-side-mine" hidden>
+            <p class="md-side-h">내 협의</p>
+            <ul id="md-side-mine-list" class="md-side-mine"></ul>
+          </div>
+        </nav>
+      </details>
+    </aside>
+    <div class="md-body">
+
+    <!-- 받은 사람 화면(응답·서명)에서 앱 처음 화면(종류 고르기·내 목록)으로 -->
+    <a id="md-to-home" class="hero-btn hero-btn-ghost hero-btn-sm md-to-home" href="#" hidden><Icon name="arrow-left" /> 협의 도우미 처음 화면</a>
 
     <p id="loading" class="md-status" aria-live="polite">불러오는 중...</p>
 
@@ -57,7 +84,7 @@ import Icon from '../../../components/Icon.astro';
     <!-- 만들기·고치기 -->
     <section id="view-new" class="md-view" hidden>
       <form id="form-new" novalidate>
-        <div class="md-card">
+        <div id="f-card-kind" class="md-card">
           <h2 class="md-h2">무엇을 할까요?</h2>
           <div class="md-seg md-seg3" role="radiogroup" aria-label="종류">
             <label><input type="radio" name="f-kind" value="schedule" checked> <span><b>일정 정하기</b><small>모일 시간을 받아 확정</small></span></label>
@@ -66,7 +93,7 @@ import Icon from '../../../components/Icon.astro';
           </div>
         </div>
 
-        <div class="md-card">
+        <div id="f-card-content" class="md-card">
           <h2 class="md-h2"><span class="md-num">1</span> 내용</h2>
           <label class="md-field"><span class="md-label">제목 <em>필수</em></span>
             <input id="f-title" class="hero-input" maxlength="60" placeholder="예) 2학년 교육과정 협의회" required></label>
@@ -80,7 +107,7 @@ import Icon from '../../../components/Icon.astro';
           </div>
         </div>
 
-        <div class="md-card">
+        <div id="f-card-time" class="md-card">
           <h2 class="md-h2"><span class="md-num">2</span> 날짜와 시간</h2>
 
           <div id="live-opts" hidden>
@@ -129,7 +156,7 @@ import Icon from '../../../components/Icon.astro';
           </div>
         </div>
 
-        <div class="md-card">
+        <div id="f-card-fields" class="md-card">
           <h2 class="md-h2"><span class="md-num">3</span> 받을 정보</h2>
           <p class="md-note md-mt0">이름은 늘 받아요. 더 받을 정보는 꼭 필요할 때 고르세요.</p>
           <div class="md-checks">
@@ -141,7 +168,7 @@ import Icon from '../../../components/Icon.astro';
           <label class="md-check-line not-live"><input type="checkbox" id="f-others"> 응답한 사람끼리 누가 어느 시간을 골랐는지 보여 주기</label>
         </div>
 
-        <div class="md-card">
+        <div id="f-card-form" class="md-card">
           <h2 class="md-h2"><span class="md-num">4</span> <span id="form-h">등록부 양식</span></h2>
           <label class="md-field"><span class="md-label">문서 제목</span>
             <input id="f-form-title" class="hero-input" maxlength="40"></label>
@@ -166,7 +193,7 @@ import Icon from '../../../components/Icon.astro';
           </div>
         </div>
 
-        <div class="md-card">
+        <div id="f-card-close" class="md-card">
           <h2 class="md-h2"><span class="md-num">5</span> 마감</h2>
           <label class="md-field"><span class="md-label" id="close-label">응답 마감 일시</span>
             <input id="f-close" class="hero-input" type="datetime-local" required></label>
@@ -256,7 +283,7 @@ import Icon from '../../../components/Icon.astro';
     <!-- 관리 -->
     <section id="view-manage" class="md-view" hidden>
       <div id="m-head" class="md-card"></div>
-      <div class="md-card">
+      <div id="m-link-card" class="md-card">
         <h2 class="md-h2"><Icon name="share-2" /> 링크</h2>
         <div class="md-linkrow">
           <span class="md-label" id="m-resp-label">응답 링크 - 받을 사람에게 보내요</span>
@@ -325,12 +352,12 @@ import Icon from '../../../components/Icon.astro';
       </div>
 
       <!-- 안내·공유 -->
-      <div class="md-card">
+      <div id="m-notice-card" class="md-card">
         <h2 class="md-h2"><Icon name="megaphone" /> 안내하기</h2>
         <div class="md-actions md-actions-left">
           <button id="btn-msg-notice" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="megaphone" /> 일정 안내 문구</button>
           <button id="btn-msg-remind" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="bell" /> 독촉 문구</button>
-          <button id="btn-ics" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="calendar" /> 달력 파일(.ics)</button>
+          <button id="btn-gcal" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="calendar-plus" /> 구글 캘린더 링크</button>
         </div>
         <textarea id="m-msg" class="hero-input md-textarea md-mt" aria-label="안내 문구" hidden></textarea>
         <div id="m-msg-actions" class="md-actions md-actions-left md-mt" hidden>
@@ -343,7 +370,7 @@ import Icon from '../../../components/Icon.astro';
         </details>
       </div>
 
-      <div class="md-card">
+      <div id="m-admin-card" class="md-card">
         <h2 class="md-h2"><Icon name="settings" /> 관리</h2>
         <div class="md-actions md-actions-left">
           <button id="btn-edit" class="hero-btn hero-btn-ghost hero-btn-sm" type="button"><Icon name="pencil" /> 설정 고치기</button>
@@ -379,8 +406,10 @@ import Icon from '../../../components/Icon.astro';
         <a class="hero-btn hero-btn-ghost" href="#">처음으로</a>
       </div>
     </section>
+    </div><!-- /.md-body -->
+    </div><!-- /.md-layout -->
   </main>
 
-  <script is:inline src="./hwpx.js?v=20261127d"></script>
-  <script is:inline src="./app.js?v=20261127d"></script>
+  <script is:inline src="./hwpx.js?v=20261127f"></script>
+  <script is:inline src="./app.js?v=20261127f"></script>
 </AppLayout>

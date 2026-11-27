@@ -1,15 +1,15 @@
-// 협의 날짜 모으기 (docs/meet-date-plan.md §11)
+// 협의 도우미(apps/meeting-helper, API는 /api/meet-date 그대로) (docs/meet-date-plan.md §11)
 // 종류: schedule(일정 정하기) · activity(활동 날짜 + 확인서) · live(실시간 등록부)
 // 화면: 시작 · #new[=종류] 만들기 · #edit=CODE 설정 고치기 · #m=CODE 응답 · #s=CODE 출석 서명
 //       #m=CODE&k=KEY → #manage=CODE 관리 · #share=… 양식 복제(vives-share)
 // 서버 값은 모두 textContent로 넣는다(innerHTML에 넣지 않음). 아이콘만 VUI.icon(고정 이름) 사용.
 // 서명 그림은 data:image/png 형식을 검사한 뒤에만 <img src>에 넣는다.
-// @icons calendar circle-check clock map-pin pencil plus refresh-cw trash-2 x pause play user-plus
+// @icons calendar circle-check clock map-pin pencil plus refresh-cw trash-2 x pause play user-plus calendar-plus 
 (function () {
   'use strict';
 
   const API = '/api/meet-date';
-  const APP_PATH = '/apps/meet-date/';
+  const APP_PATH = '/apps/meeting-helper/';
   const $ = (id) => document.getElementById(id);
   const DOW = ['일', '월', '화', '수', '목', '금', '토'];
   const FIELD_LABEL = { org: '소속', pos: '직위', cls: '학년반·과목' };
@@ -97,9 +97,88 @@
   function show(view) {
     $('loading').hidden = true;
     document.querySelectorAll('.md-view').forEach((v) => { v.hidden = v.id !== 'view-' + view; });
+    CUR = view;
+    renderSide();
     if (view !== 'manage') stopPoll();
     window.scrollTo(0, 0);
   }
+
+  // ── 담당자 사이드바(만들기·관리 화면, docs/meet-date-plan.md §12) ──
+  // 받은 사람 화면(응답·서명)은 사이드바 없이 가운데 한 줄 + '처음 화면' 버튼.
+  let CUR = '';
+  const SIDE_VIEWS = new Set(['new', 'manage']);
+  const wideMQ = window.matchMedia('(min-width: 900px)');
+  function sideSteps() {
+    if (CUR === 'new') {
+      const kind = $('form-new').dataset.kind || 'schedule';
+      return [['f-card-kind', '종류'], ['f-card-content', '내용'], ['f-card-time', '날짜와 시간'], ['f-card-fields', '받을 정보'],
+        ['f-card-form', kind === 'activity' ? '확인서 양식' : '등록부 양식'], ['f-card-close', '마감']].map(([id, label]) => ({ id, label }));
+    }
+    if (CUR !== 'manage' || !M.data) return [];
+    const ev = M.data.event, kind = kindOf(ev.config);
+    const list = M.data.responses || [], n = list.length;
+    const certs = list.filter((r) => r.status).length;
+    const confirmed = kind === 'schedule' && !!(ev.confirmed && ev.confirmed.length);
+    return [
+      { id: 'm-link-card', label: kind === 'live' ? '출석 링크 보내기' : '링크 보내기' },
+      { id: 'm-tally-card', label: '시간별로 보기', sub: n + '명 응답' + (confirmed ? ' · 확정함' : ''), done: confirmed },
+      { id: 'm-live', label: '실시간 출석', sub: liveSigns().length + '명 서명' + (ev.liveOpen ? ' · 받는 중' : '') },
+      { id: 'm-resp-card', label: '응답한 사람', sub: kind === 'activity' ? '확인서 ' + certs + '/' + n : n + '명', done: kind === 'activity' && n > 0 && certs === n },
+      { id: 'm-dl-card', label: '받기' },
+      { id: 'm-notice-card', label: '안내하기' },
+      { id: 'm-admin-card', label: '관리' },
+    ];
+  }
+  function renderSide() {
+    const on = SIDE_VIEWS.has(CUR);
+    $('md-side').hidden = !on;
+    document.body.dataset.width = on ? 'wide' : 'medium';
+    $('md-to-home').hidden = !(CUR === 'respond' || CUR === 'sign');
+    if (!on) return;
+    const editing = CUR === 'new' && B.editing;
+    const kind = $('form-new').dataset.kind;
+    document.querySelectorAll('.md-side-link').forEach((a) => a.classList.toggle('is-on', CUR === 'new' && !editing && a.dataset.nav === 'new-' + kind));
+    const steps = sideSteps().filter((s) => { const el = $(s.id); return el && !el.hidden && !el.closest('[hidden]'); });
+    $('md-side-steps').hidden = !steps.length;
+    $('md-side-steps-h').textContent = CUR === 'new' ? (editing ? '설정 고치기' : '만들기 단계') : '이 협의 단계';
+    const ol = $('md-side-steps-list'); ol.textContent = '';
+    steps.forEach((s, i) => ol.append(h('li', {}, h('button', {
+      type: 'button', class: 'md-step' + (s.done ? ' is-done' : ''), 'data-target': s.id, onclick: () => goStep(s.id),
+    }, h('span', { class: 'md-step-n', text: s.done ? '✓' : String(i + 1) }),
+    h('span', { class: 'md-step-t' }, h('b', { text: s.label }), s.sub ? h('small', { text: s.sub }) : null)))));
+    const cur = CUR === 'manage' && M.data ? M.data.event.id : (editing ? B.editing.event.id : '');
+    const mine = mineList().filter((m) => m && ID_RE.test(m.id || '')).slice(0, 30);
+    const ul = $('md-side-mine-list'); ul.textContent = '';
+    for (const m of mine) {
+      ul.append(h('li', {}, h('a', { class: 'md-side-item' + (m.id === cur ? ' is-on' : ''), href: '#manage=' + m.id, 'aria-current': m.id === cur ? 'page' : null, text: m.title || m.id })));
+    }
+    $('md-side-mine').hidden = !mine.length;
+    spyStep();
+  }
+  function goStep(id) {
+    const el = $(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!wideMQ.matches) $('md-side-box').open = false;
+  }
+  function spyStep() {
+    const btns = [...document.querySelectorAll('#md-side-steps-list .md-step')];
+    if (!btns.length) return;
+    // 맨 아래까지 내려 더 못 내려가면, 화면 위쪽 절반에 들어온 마지막 칸을 지금 단계로 본다
+    const atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+    const line = atEnd ? window.innerHeight * 0.6 : 160;
+    let cur = btns[0];
+    for (const b of btns) { const el = $(b.dataset.target); if (el && el.getBoundingClientRect().top < line) cur = b; }
+    btns.forEach((b) => b.classList.toggle('is-current', b === cur));
+  }
+  let spyRaf = 0;
+  window.addEventListener('scroll', () => {
+    if (spyRaf) return;
+    spyRaf = requestAnimationFrame(() => { spyRaf = 0; if (!$('md-side').hidden) spyStep(); });
+  }, { passive: true });
+  function syncSideOpen() { $('md-side-box').open = wideMQ.matches; }
+  wideMQ.addEventListener('change', syncSideOpen);
+  syncSideOpen();
   function showError(msg) { $('err-msg').textContent = msg; show('error'); }
   function download(blob, name) {
     const a = h('a', { href: URL.createObjectURL(blob), download: name });
@@ -257,6 +336,7 @@
       syncRule();
       if (live && !B.closeTouched) syncLiveClose();
     }
+    if (CUR === 'new') renderSide();
   }
   document.querySelectorAll('input[name="f-kind"]').forEach((r) => r.addEventListener('change', () => setKind(r.value, true)));
   function syncLiveClose() {
@@ -498,6 +578,16 @@
     return ev.confirmed;
   }
   function confirmedText(data) { return confirmedSlots(data.event).map((s) => fmtSlot(s, true)).join(', '); }
+  // 구글 캘린더 '일정 추가' 주소(GET). 시각은 한국 시간 그대로 두고 ctz로 시간대를 알려 준다.
+  function gcalUrl(ev, s) {
+    const cfg = ev.config;
+    const at = (t) => s.d.replace(/-/g, '') + 'T' + t.replace(':', '') + '00';
+    const p = new URLSearchParams({ action: 'TEMPLATE', text: cfg.title, dates: at(s.s) + '/' + at(s.e), ctz: 'Asia/Seoul' });
+    const details = [cfg.desc, shareLinkOf(cfg, ev.id)].filter(Boolean).join('\n');
+    if (details) p.set('details', details.slice(0, 800));
+    if (cfg.place) p.set('location', cfg.place);
+    return 'https://calendar.google.com/calendar/render?' + p.toString();
+  }
   // 같은 날 한 사람이 시간을 여러 개 적었으면 '이지은 15:00~16:00·17:00~18:00' 처럼 묶는다
   function mergeByName(list) {
     const m = new Map();
@@ -529,11 +619,12 @@
         h('button', { type: 'button', class: 'hero-btn hero-btn-ghost hero-btn-sm', onclick: () => route() }, ic('refresh-cw'), '새로 고침')));
       return;
     }
-    const conf = confirmedSlots(ev).map((s) => fmtSlot(s, true));
+    const conf = confirmedSlots(ev);
     if (conf.length) {
       box.append(h('div', { class: 'md-banner' }, h('b', { text: '확정' }),
-        h('ul', { class: 'md-lines' }, conf.map((t) => h('li', { text: t }))),
-        h('button', { type: 'button', class: 'hero-btn hero-btn-ghost hero-btn-sm', onclick: () => downloadIcs(ev) }, ic('calendar'), '내 달력에 넣기')));
+        h('ul', { class: 'md-lines md-gcal-list' }, conf.map((s) => h('li', {},
+          h('span', { text: fmtSlot(s, true) }), ' ',
+          h('a', { class: 'md-gcal', href: gcalUrl(ev, s), target: '_blank', rel: 'noopener' }, ic('calendar-plus'), '구글 캘린더에 넣기'))))));
     } else if (ev.closed) box.append(h('div', { class: 'md-banner closed', text: '응답이 마감됐어요. 확정되면 이 링크에서 확인할 수 있어요.' }));
   }
 
@@ -1122,6 +1213,7 @@
   function renderSignTiles() {
     const list = liveSigns();
     $('m-sign-count').textContent = list.length + '명';
+    if (CUR === 'manage') renderSide();
     const box = $('m-signs'); box.textContent = '';
     if (!list.length) { box.append(h('p', { class: 'md-empty', text: '아직 출석한 사람이 없어요.' })); }
     for (const s of list) {
@@ -1369,7 +1461,7 @@
       lines.push('- 일시: ' + conf);
       if (cfg.place) lines.push('- 장소: ' + cfg.place);
       if (cfg.desc) lines.push('- 내용: ' + cfg.desc.split('\n')[0]);
-      lines.push('자세한 내용과 달력 넣기: ' + link);
+      lines.push('자세한 내용과 구글 캘린더 넣기: ' + link);
       return lines.join('\n');
     }
     lines.push('[' + cfg.title + '] ' + (kind === 'activity' ? '활동할 날짜를 골라 주세요' : '가능한 시간을 알려 주세요'));
@@ -1392,26 +1484,11 @@
   $('btn-msg-notice').addEventListener('click', () => showMsg(noticeText()));
   $('btn-msg-remind').addEventListener('click', () => showMsg(remindText()));
   $('btn-msg-copy').addEventListener('click', () => VUI.copy($('m-msg').value, '안내 문구를 복사했어요. 메신저에 붙여 넣어 주세요.'));
-  $('btn-ics').addEventListener('click', () => downloadIcs(M.data.event));
-
-  function icsStamp(d, t) { return new Date(d + 'T' + t + ':00').toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''); }
-  function icsEsc(s) { return String(s || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/[,;]/g, (m) => '\\' + m); }
-  function downloadIcs(ev) {
-    const cfg = ev.config;
-    const list = confirmedSlots(ev);
-    if (!list.length) { VUI.toast('확정한 일정이 없어요. 시간을 확정한 뒤 받아 주세요.', 'error'); return; }
-    const now = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-    const out = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//eduin VIVES//meet-date//KO', 'CALSCALE:GREGORIAN'];
-    list.forEach((s, i) => {
-      out.push('BEGIN:VEVENT', 'UID:' + ev.id + '-' + i + '@eduin.info', 'DTSTAMP:' + now,
-        'DTSTART:' + icsStamp(s.d, s.s), 'DTEND:' + icsStamp(s.d, s.e), 'SUMMARY:' + icsEsc(cfg.title));
-      if (cfg.place) out.push('LOCATION:' + icsEsc(cfg.place));
-      if (cfg.desc) out.push('DESCRIPTION:' + icsEsc(cfg.desc));
-      out.push('END:VEVENT');
-    });
-    out.push('END:VCALENDAR');
-    download(new Blob([out.join('\r\n') + '\r\n'], { type: 'text/calendar;charset=utf-8' }), safeName(cfg.title) + '.ics');
-  }
+  $('btn-gcal').addEventListener('click', () => {
+    const ev = M.data.event, list = confirmedSlots(ev);
+    if (!list.length) { VUI.toast('확정한 일정이 없어요. 시간을 확정한 뒤 눌러 주세요.', 'error'); return; }
+    showMsg(list.map((s) => fmtSlot(s, true) + ' 구글 캘린더에 넣기\n' + gcalUrl(ev, s)).join('\n\n'));
+  });
 
   // 받을 사람 명단 → 아직 안 낸 사람
   function expectedNames() {
