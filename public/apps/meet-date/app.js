@@ -4,7 +4,7 @@
 //       #m=CODE&k=KEY → #manage=CODE 관리 · #share=… 양식 복제(vives-share)
 // 서버 값은 모두 textContent로 넣는다(innerHTML에 넣지 않음). 아이콘만 VUI.icon(고정 이름) 사용.
 // 서명 그림은 data:image/png 형식을 검사한 뒤에만 <img src>에 넣는다.
-// @icons calendar circle-check clock map-pin pencil plus refresh-cw trash-2 x 
+// @icons calendar circle-check clock map-pin pencil plus refresh-cw trash-2 x pause play user-plus
 (function () {
   'use strict';
 
@@ -498,6 +498,12 @@
     return ev.confirmed;
   }
   function confirmedText(data) { return confirmedSlots(data.event).map((s) => fmtSlot(s, true)).join(', '); }
+  // 같은 날 한 사람이 시간을 여러 개 적었으면 '이지은 15:00~16:00·17:00~18:00' 처럼 묶는다
+  function mergeByName(list) {
+    const m = new Map();
+    for (const x of list) { if (!m.has(x.name)) m.set(x.name, []); m.get(x.name).push(fmtT(x.s, x.e)); }
+    return [...m].map(([n, ts]) => n + ' ' + ts.join('·')).join(', ');
+  }
   function picksText(cfg, picks) {
     if (cfg.mode === 'pick') {
       const byId = new Map(cfg.slots.map((s) => [s.id, s]));
@@ -523,9 +529,10 @@
         h('button', { type: 'button', class: 'hero-btn hero-btn-ghost hero-btn-sm', onclick: () => route() }, ic('refresh-cw'), '새로 고침')));
       return;
     }
-    const conf = confirmedText(data);
-    if (conf) {
-      box.append(h('div', { class: 'md-banner' }, h('b', { text: '확정: ' }), conf, ' ',
+    const conf = confirmedSlots(ev).map((s) => fmtSlot(s, true));
+    if (conf.length) {
+      box.append(h('div', { class: 'md-banner' }, h('b', { text: '확정' }),
+        h('ul', { class: 'md-lines' }, conf.map((t) => h('li', { text: t }))),
         h('button', { type: 'button', class: 'hero-btn hero-btn-ghost hero-btn-sm', onclick: () => downloadIcs(ev) }, ic('calendar'), '내 달력에 넣기')));
     } else if (ev.closed) box.append(h('div', { class: 'md-banner closed', text: '응답이 마감됐어요. 확정되면 이 링크에서 확인할 수 있어요.' }));
   }
@@ -546,10 +553,12 @@
   function ruleText(cfg) {
     const { type, n } = cfg.rule;
     const act = kindOf(cfg) === 'activity';
-    if (type === 'exact') return (act ? '활동할 날짜를 ' : '') + n + '개 골라 주세요.';
-    if (type === 'min') return (act ? '활동할 날짜를 ' : '') + n + '개 이상 골라 주세요.';
-    if (act) return cfg.mode === 'pick' ? '활동할 시간을 골라 주세요.' : '활동할 날짜와 시간을 적어 주세요.';
-    return cfg.mode === 'pick' ? '되는 시간을 모두 골라 주세요.' : '되는 날짜와 시간을 적어 주세요. 여러 개 적어도 돼요.';
+    const free = cfg.mode === 'free';
+    const tip = free ? ' 같은 날 시간이 여러 개면 \'이 날 시간 더하기\'를 눌러요.' : '';
+    if (type === 'exact') return (act ? '활동할 ' : '') + (free ? '날짜와 시간을 ' + n + '개 적어 주세요.' : (act ? '날짜를 ' : '') + n + '개 골라 주세요.') + tip;
+    if (type === 'min') return (act ? '활동할 ' : '') + (free ? '날짜와 시간을 ' + n + '개 이상 적어 주세요.' : (act ? '날짜를 ' : '') + n + '개 이상 골라 주세요.') + tip;
+    if (act) return free ? '활동할 날짜와 시간을 적어 주세요.' + tip : '활동할 시간을 골라 주세요.';
+    return free ? '되는 날짜와 시간을 적어 주세요.' + tip : '되는 시간을 모두 골라 주세요.';
   }
 
   function renderRespond() {
@@ -561,7 +570,8 @@
     if (mine && !R.editing) {
       done.textContent = '';
       done.append(h('h2', { class: 'md-h2' }, ic('circle-check'), '제출했어요'),
-        h('p', { class: 'md-note md-mt0', text: mine.name + ' · ' + picksText(cfg, mine.picks).join(', ') }),
+        h('p', { class: 'md-note md-mt0', text: mine.name }),
+        h('ul', { class: 'md-lines' }, picksText(cfg, mine.picks).map((t) => h('li', { text: t }))),
         ev.closed ? h('p', { class: 'md-note', text: '마감돼서 고를 날짜는 더 고칠 수 없어요.' }) :
           h('div', { class: 'md-actions md-actions-left md-mt' },
             h('button', { class: 'hero-btn hero-btn-ghost hero-btn-sm', type: 'button', onclick: () => { R.editing = true; renderRespond(); } }, ic('pencil'), '고치기'),
@@ -591,7 +601,7 @@
       $('r-slots').hidden = false; $('r-free').hidden = true;
       renderPickSlots();
     } else {
-      R.free = (src.picks && src.picks.length ? src.picks : [{ d: cfg.range.from, s: '15:00', e: '16:00' }]).map((x) => ({ ...x }));
+      R.free = (src.picks && src.picks.length ? src.picks : [{ d: '', s: '15:00', e: '16:00' }]).map((x) => ({ ...x }));
       $('r-slots').hidden = true; $('r-free').hidden = false;
       renderFreeRows();
     }
@@ -638,38 +648,76 @@
   }
   function updatePickCount() {
     const cfg = R.data.event.config;
-    const n = cfg.mode === 'pick' ? R.picks.size : R.free.length;
+    const n = cfg.mode === 'pick' ? R.picks.size : R.free.filter((r) => r.d).length;
     const el = $('r-pick-count');
     const { type, n: need } = cfg.rule;
-    el.textContent = n + '개 골랐어요';
+    el.textContent = n + (cfg.mode === 'pick' ? '개 골랐어요' : '개 적었어요');
     const ok = type === 'exact' ? n === need : type === 'min' ? n >= need : n >= 1;
     el.className = 'md-pill' + (ok ? ' ok' : '');
+  }
+  // 직접 적기: 날짜마다 묶어서 보여 주고, 한 날짜에 시간대를 여러 개 적을 수 있다
+  const toMin = (t) => { const [a, b] = t.split(':').map(Number); return a * 60 + b; };
+  const toHM = (m) => pad(Math.floor(m / 60)) + ':' + pad(m % 60);
+  function freeGroups() {
+    const m = new Map();
+    for (const r of R.free) { const k = r.d || ''; if (!m.has(k)) m.set(k, []); m.get(k).push(r); }
+    return m;
   }
   function renderFreeRows() {
     const cfg = R.data.event.config;
     const box = $('r-free-rows'); box.textContent = '';
-    R.free.forEach((r, i) => {
-      const d = h('input', { type: 'date', class: 'hero-input', value: r.d, min: cfg.range.from, max: cfg.range.to, 'aria-label': '날짜' });
-      const s = h('input', { type: 'time', class: 'hero-input', value: r.s, step: 300, 'aria-label': '시작 시간' });
-      const e = h('input', { type: 'time', class: 'hero-input', value: r.e, step: 300, 'aria-label': '끝 시간' });
-      const upd = () => { r.d = d.value; r.s = s.value; r.e = e.value; };
-      [d, s, e].forEach((x) => x.addEventListener('change', upd));
-      box.append(h('div', { class: 'md-time-row' }, d, s, h('span', { class: 'md-tilde', text: '~' }), e,
-        R.free.length > 1 ? h('button', {
-          type: 'button', class: 'hero-btn hero-btn-ghost hero-btn-icon hero-btn-sm', 'aria-label': '이 날짜 빼기',
-          onclick: () => { R.free.splice(i, 1); renderFreeRows(); },
-        }, ic('x')) : null));
-    });
+    const groups = freeGroups();
+    for (const [day, rows] of groups) {
+      const d = h('input', { type: 'date', class: 'hero-input', value: day, min: cfg.range.from, max: cfg.range.to, 'aria-label': '날짜' });
+      d.addEventListener('change', () => { rows.forEach((r) => { r.d = d.value; }); renderFreeRows(); });
+      const head = h('div', { class: 'md-free-head' }, d,
+        groups.size > 1 ? h('button', {
+          type: 'button', class: 'hero-btn hero-btn-ghost hero-btn-icon hero-btn-sm', 'aria-label': '이 날짜 빼기', title: '이 날짜 빼기',
+          onclick: () => { R.free = R.free.filter((r) => !rows.includes(r)); renderFreeRows(); },
+        }, ic('trash-2')) : null);
+      const times = rows.map((r) => {
+        const s = h('input', { type: 'time', class: 'hero-input', value: r.s, step: 300, 'aria-label': '시작 시간' });
+        const e = h('input', { type: 'time', class: 'hero-input', value: r.e, step: 300, 'aria-label': '끝 시간' });
+        s.addEventListener('change', () => { r.s = s.value; });
+        e.addEventListener('change', () => { r.e = e.value; });
+        return h('div', { class: 'md-time-row' }, s, h('span', { class: 'md-tilde', text: '~' }), e,
+          rows.length > 1 ? h('button', {
+            type: 'button', class: 'hero-btn hero-btn-ghost hero-btn-icon hero-btn-sm', 'aria-label': '이 시간 빼기', title: '이 시간 빼기',
+            onclick: () => { R.free.splice(R.free.indexOf(r), 1); renderFreeRows(); },
+          }, ic('x')) : null);
+      });
+      const addTime = h('button', {
+        type: 'button', class: 'hero-btn hero-btn-ghost hero-btn-sm md-add-time',
+        onclick: () => {
+          const last = rows[rows.length - 1];
+          let s = last && last.e ? toMin(last.e) : 15 * 60;
+          const len = last && last.s && last.e ? Math.max(30, toMin(last.e) - toMin(last.s)) : 60;
+          if (s + len > 23 * 60 + 55) s = Math.max(0, 23 * 60 + 55 - len);
+          R.free.splice(R.free.indexOf(last) + 1, 0, { d: day, s: toHM(s), e: toHM(Math.min(s + len, 23 * 60 + 55)) });
+          renderFreeRows();
+        },
+      }, ic('plus'), '이 날 시간 더하기');
+      box.append(h('div', { class: 'md-free-day' }, head, times, addTime));
+    }
     updatePickCount();
   }
   $('btn-add-free').addEventListener('click', () => {
     const cfg = R.data.event.config;
+    const used = new Set(R.free.map((r) => r.d));
+    const dates = [...used].filter(Boolean).sort();
+    let d = dates.length ? addDays(dates[dates.length - 1], 1) : cfg.range.from;
+    while (used.has(d) && d <= cfg.range.to) d = addDays(d, 1);
+    if (d > cfg.range.to || used.has(d)) d = '';
+    if (!d && used.has('')) { VUI.toast('먼저 비어 있는 날짜를 골라 주세요.'); return; }
     const last = R.free[R.free.length - 1];
-    let d = last && last.d ? addDays(last.d, 1) : cfg.range.from;
-    if (d > cfg.range.to) d = cfg.range.to;
     R.free.push({ d, s: last ? last.s : '15:00', e: last ? last.e : '16:00' });
     renderFreeRows();
   });
+  function freeOverlap(list) {
+    const a = list.slice().sort((x, y) => (x.d + x.s).localeCompare(y.d + y.s));
+    for (let i = 1; i < a.length; i++) if (a[i].d === a[i - 1].d && a[i].s < a[i - 1].e) return a[i].d;
+    return '';
+  }
   $('btn-resp-cancel').addEventListener('click', () => { R.editing = false; renderRespond(); });
 
   $('form-resp').addEventListener('submit', async (e) => {
@@ -686,7 +734,10 @@
     if (!picks.length) return fail('되는 시간을 하나 이상 골라 주세요.');
     if (type === 'exact' && picks.length !== n) return fail('시간을 ' + n + '개 골라 주세요. 지금 ' + picks.length + '개예요.');
     if (type === 'min' && picks.length < n) return fail('시간을 ' + n + '개 이상 골라 주세요.');
-    if (cfg.mode === 'free' && picks.some((p) => !p.d || !p.s || !p.e || p.s >= p.e)) return fail('날짜와 시간을 확인해 주세요. 시작 시간이 끝 시간보다 빨라야 해요.');
+    if (cfg.mode === 'free' && picks.some((p) => !p.d)) return fail('날짜를 골라 주세요.');
+    if (cfg.mode === 'free' && picks.some((p) => !p.s || !p.e || p.s >= p.e)) return fail('시간을 확인해 주세요. 시작 시간이 끝 시간보다 빨라야 해요.');
+    const lap = cfg.mode === 'free' ? freeOverlap(picks) : '';
+    if (lap) return fail(fmtD(lap) + '에 겹치는 시간이 있어요. 시간을 고쳐 주세요.');
 
     const saved = store.get(lsResp(ev.id), null, (v) => v && v.rid);
     const body = { action: 'respond', id: ev.id, name, fields, picks, memo: $('r-memo').value.trim() };
@@ -795,7 +846,9 @@
       done.append(h('h2', { class: 'md-h2' }, ic('circle-check'), '출석했어요'),
         h('p', { class: 'md-note md-mt0', text: my.name + ' · ' + fmtHM(my.at) + ' 서명' }),
         ev.liveOpen ? h('div', { class: 'md-actions md-actions-left md-mt' },
-          h('button', { class: 'hero-btn hero-btn-ghost hero-btn-sm', type: 'button', onclick: () => { S.editing = true; renderSign(); } }, ic('pencil'), '다시 서명하기')) : null);
+          h('button', { class: 'hero-btn hero-btn-sm', type: 'button', onclick: nextSigner }, ic('user-plus'), '다음 사람 출석하기'),
+          h('button', { class: 'hero-btn hero-btn-ghost hero-btn-sm', type: 'button', onclick: () => { S.editing = true; renderSign(); } }, ic('pencil'), '다시 서명하기')) : null,
+        ev.liveOpen ? h('p', { class: 'md-note', text: '기기 하나를 돌려 가며 서명받을 때는 \'다음 사람 출석하기\'를 눌러 주세요.' }) : null);
       done.hidden = false;
       $('form-sign').hidden = true;
       return;
@@ -803,7 +856,7 @@
     done.hidden = true;
     $('form-sign').hidden = false;
     $('sign-error').hidden = true;
-    const me = store.get(LS_ME, {}, (v) => v && typeof v === 'object');
+    const me = S.shared ? {} : store.get(LS_ME, {}, (v) => v && typeof v === 'object');
     $('s-name').value = (my && my.name) || me.name || '';
     fillFieldInputs($('s-fields'), cfg, (my && my.fields) || me.fields);
     $('s-privacy').textContent = '이름과 서명은 이 등록부 작성에 써요. 담당자가 등록부를 받은 뒤 지울 수 있고, 늦어도 ' + fmtD(localDate(new Date(ev.purgeAt)), true) + '에 자동으로 지워져요.';
@@ -812,6 +865,15 @@
     const closed = !ev.liveOpen;
     $('form-sign').querySelectorAll('input,button').forEach((el) => { el.disabled = closed; });
     S.pad.disable(closed);
+  }
+  // 기기 하나를 돌려 쓸 때: 앞사람 서명 열쇠와 이름을 이 기기에서 지우고 빈 서명지를 연다
+  function nextSigner() {
+    store.remove(lsSign(S.data.event.id));
+    store.remove(LS_ME);
+    S.data.mySign = null; S.editing = false; S.shared = true;
+    renderSign();
+    window.scrollTo(0, 0);
+    $('s-name').focus();
   }
   $('btn-sign-clear').addEventListener('click', () => S.pad && S.pad.clear());
   $('btn-sign-cancel').addEventListener('click', () => { S.editing = false; renderSign(); });
@@ -833,7 +895,7 @@
     try {
       const r = await api('POST', { body });
       store.set(lsSign(ev.id), { sid: r.sid, skey: r.skey });
-      store.set(LS_ME, { name, fields });
+      if (!S.shared) store.set(LS_ME, { name, fields });
       VUI.toast('출석했어요 ✓');
       await openSign(ev.id);
     } catch (err) { fail(err.message); }
@@ -844,7 +906,7 @@
   const M = { data: null, confirm: new Set(), freeConfirm: [], signs: new Map(), lastAt: '', timer: null, seen: new Set() };
 
   function openManage(data) {
-    M.data = data;
+    M.data = data; M.loadedAt = Date.now();
     const ev = data.event, cfg = ev.config;
     M.confirm = new Set(cfg.mode === 'pick' ? ev.confirmed || [] : []);
     M.freeConfirm = cfg.mode === 'free' && kindOf(cfg) !== 'live' ? (ev.confirmed || []).map((x) => ({ ...x })) : [];
@@ -853,7 +915,18 @@
     show('manage');
     if (liveVisible()) { M.signs = new Map(); M.lastAt = ''; pollSigns(true); }
   }
-  async function reloadManage() { openManage(await loadOwner(M.data.event.id, M.data.key)); }
+  async function reloadManage() {
+    const y = window.scrollY;
+    openManage(await loadOwner(M.data.event.id, M.data.key));
+    window.scrollTo(0, y);
+  }
+  // 다른 탭(메신저 등)에 다녀오면 응답을 새로 불러온다. 확정을 고치는 중이면 건드리지 않는다.
+  async function autoReloadManage() {
+    if (!M.data || $('view-manage').hidden || !$('m-confirm-bar').hidden) return;
+    if (Date.now() - (M.loadedAt || 0) < 15000) return;
+    M.loadedAt = Date.now();
+    try { await reloadManage(); } catch {}
+  }
   const liveVisible = () => M.data && kindOf(M.data.event.config) !== 'activity';
 
   function renderManage() {
@@ -862,7 +935,7 @@
     eventHead(head, data, { manage: true });
     head.querySelector('.md-ev-title').append(' ',
       h('span', { class: 'md-pill', text: KIND_LABEL[kind] }), ' ',
-      kind === 'live' ? null : h('span', { class: 'md-pill' + (ev.closed ? ' warn' : ' ok'), text: ev.closed ? '마감' : '응답 받는 중' }));
+      kind === 'live' ? '' : h('span', { class: 'md-pill' + (ev.closed ? ' warn' : ' ok'), text: ev.closed ? '마감' : '응답 받는 중' }));
     head.append(h('p', { class: 'md-note', text: '받은 내용과 서명은 ' + fmtD(localDate(new Date(ev.purgeAt)), true) + '에 자동으로 지워져요.' }));
 
     $('m-resp-link').value = shareLinkOf(cfg, ev.id);
@@ -932,7 +1005,7 @@
           h('tbody', {}, days.map((d) => {
             const list = byDay.get(d).sort((a, b) => a.s.localeCompare(b.s));
             return h('tr', {}, h('td', { class: 'md-c-when', text: fmtD(d) }), h('td', { text: new Set(list.map((x) => x.name)).size + '명' }),
-              h('td', {}, h('div', { class: 'md-names', style: 'margin:0', text: list.map((x) => x.name + ' ' + fmtT(x.s, x.e)).join(', ') })));
+              h('td', {}, h('div', { class: 'md-names', style: 'margin:0', text: mergeByName(list) })));
           })))));
       }
       if (kindOf(cfg) !== 'activity') {
@@ -1040,7 +1113,8 @@
       ? '출석 링크나 QR로 들어온 사람이 이름을 적고 서명하면 아래에 바로 보여요.'
       : (kindOf(ev.config) === 'live' ? '출석 받기를 시작하면 QR로 서명을 받을 수 있어요.' : '협의하는 날 출석 받기를 시작하면 그 자리에서 손글씨 서명을 받아요.');
     const tbtn = $('btn-live-toggle');
-    tbtn.querySelector('span').textContent = open ? '출석 받기 멈추기' : '출석 받기 시작';
+    tbtn.textContent = '';
+    tbtn.append(ic(open ? 'pause' : 'play'), ' ', h('span', { text: open ? '출석 받기 멈추기' : '출석 받기 시작' }));
     tbtn.className = 'hero-btn hero-btn-sm' + (open ? ' hero-btn-ghost' : '');
     renderSignTiles();
   }
@@ -1125,6 +1199,7 @@
     M.seen = new Set(M.signs.keys());
     $('live-big').hidden = false;
     document.body.style.overflow = 'hidden';
+    document.body.classList.add('md-big-open');
     if (!ev.liveOpen) VUI.toast('출석 받기가 멈춰 있어요. 시작해야 서명을 낼 수 있어요.', 'error');
     renderBig();
     pollSigns(false);
@@ -1133,6 +1208,7 @@
     if ($('live-big').hidden) return;
     $('live-big').hidden = true;
     document.body.style.overflow = '';
+    document.body.classList.remove('md-big-open');
     schedulePoll();
   }
   function renderBig() {
@@ -1415,7 +1491,11 @@
     } catch (e) { VUI.toast(e.message, 'error'); }
   });
 
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && M.data && !$('view-manage').hidden) schedulePoll(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden || !M.data || $('view-manage').hidden) return;
+    schedulePoll();
+    autoReloadManage();
+  });
   window.addEventListener('hashchange', route);
   route();
 })();

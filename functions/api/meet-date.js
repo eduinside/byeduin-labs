@@ -179,6 +179,10 @@ function cleanPicks(cfg, picks) {
     }
     if (out.length > MAX_FREE) return { error: '날짜는 ' + MAX_FREE + '개까지 적을 수 있어요.' };
     out.sort((a, b) => (a.d + a.s).localeCompare(b.d + b.s));
+    // 하루에 시간대를 여러 개 적을 수 있다. 같은 날 겹치는 시간만 막는다.
+    for (let i = 1; i < out.length; i++) {
+      if (out[i].d === out[i - 1].d && out[i].s < out[i - 1].e) return { error: '같은 날 겹치는 시간이 있어요. 시간을 고쳐 주세요.' };
+    }
   }
   const { type, n } = cfg.rule;
   if (!out.length) return { error: '되는 시간을 하나 이상 골라 주세요.' };

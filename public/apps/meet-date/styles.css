@@ -78,7 +78,15 @@
 .md-chip[aria-pressed="true"] { border-color: var(--primary); background: var(--primary); color: var(--primary-fg); }
 .md-times { display: flex; flex-direction: column; gap: .4rem; margin-bottom: .5rem; }
 /* 시간 줄: [시작] ~ [끝] [빼기] / 날짜가 있으면 [날짜] [시작] ~ [끝] [빼기] (좁으면 날짜를 윗줄로) */
-.md-time-row { display: grid; grid-template-columns: minmax(0, 150px) auto minmax(0, 150px) 44px; gap: .4rem; align-items: center; }
+.md-time-row { display: grid; grid-template-columns: minmax(0, 150px) auto minmax(0, 150px) 44px; gap: .4rem; align-items: center; justify-content: start; }
+/* 직접 적기(응답): 날짜 하나에 시간대 여러 개 */
+.md-free-day { display: flex; flex-direction: column; gap: .4rem; padding: .7rem; margin-bottom: .55rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--bg); }
+.md-free-head { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: .4rem; align-items: center; }
+.md-free-head:not(:has(> button)) { grid-template-columns: minmax(0, 1fr); }
+.md-free-head .hero-input { width: 100%; min-width: 0; font-weight: 600; }
+.md-add-time { align-self: flex-start; }
+.md-lines { margin: .3rem 0 0; padding-left: 1.1rem; font-size: 13.5px; line-height: 1.6; }
+.md-banner .md-lines { margin-bottom: .5rem; }
 .md-time-row:has(input[type="date"]) { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto minmax(0, 1fr) 44px; }
 .md-time-row .hero-input { width: 100%; min-width: 0; padding-left: .6rem; padding-right: .6rem; }
 .md-time-row .md-tilde { color: var(--fg-muted); }
@@ -107,8 +115,10 @@
 }
 .md-sbtn[aria-pressed="false"] { border-style: dashed; border-color: var(--border); background: transparent; color: var(--fg-muted); text-decoration: line-through; }
 
-.md-day { margin-bottom: .8rem; }
-.md-day-title { font-size: 13.5px; font-weight: 700; margin: 0 0 .35rem; }
+/* 날짜는 왼쪽, 고를 시간은 오른쪽: 휴대폰에서 목록 길이가 절반쯤으로 준다 */
+.md-day { display: flex; gap: .7rem; align-items: flex-start; margin-bottom: .55rem; }
+.md-day-title { flex: none; width: 5.6em; font-size: 13.5px; font-weight: 700; margin: 0; padding-top: .8rem; }
+.md-day .md-pick-list { flex: 1; min-width: 0; }
 .md-day-title small { color: var(--fg-muted); font-weight: 500; margin-left: .3rem; }
 .md-pick-list { display: flex; flex-wrap: wrap; gap: .4rem; }
 .md-pick {
@@ -237,3 +247,18 @@
 .md-details { margin-top: .9rem; }
 .md-details summary { cursor: pointer; font-size: 14px; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
 .md-details textarea { margin-top: .5rem; min-height: 90px; width: 100%; }
+
+/* 2026-11-27 시뮬레이션 점검 */
+.md-note.md-status { white-space: normal; text-align: left; padding: 0; }
+body.md-big-open .top-overlay, body.md-big-open .top-overlay-left { display: none !important; }
+.md-details summary { list-style: none; gap: .35rem; }
+.md-details summary::-webkit-details-marker { display: none; }
+.md-details summary::before { content: '▸'; color: var(--fg-muted); transition: transform .15s; }
+.md-details[open] summary::before { transform: rotate(90deg); }
+@media (max-width: 560px) {
+  .md-free-day { padding: .5rem; }
+  .md-free-day .md-time-row { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 36px; gap: .25rem; }
+  .md-free-day .md-time-row:not(:has(> button)) { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  .md-free-day .md-time-row input[type="time"] { font-size: 14px; padding-left: .4rem; padding-right: .15rem; }
+  .md-free-day .md-time-row > button { width: 36px; min-width: 36px; padding: 0; }
+}
