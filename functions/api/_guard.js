@@ -69,6 +69,8 @@ export const LIMITS = {
   'meet-read':         { perMin: 300, perDay: 5000,  siteDay: 100000 },
   'meet-create':       { perMin: 10,  perDay: 50,    siteDay: 2000 },
   'meet-write':        { perMin: 60,  perDay: 2000,  siteDay: 30000 },
+  // 협의 도우미 동기화 문서 읽기(meeting-helper-sync.js). 열쇠 꾸러미라 공용 동기화보다 빡빡하게.
+  'meet-sync-read':    { perMin: 30,  perDay: 600,   siteDay: 20000 },
 
   // 동기화 쓰기(_sync.js PUT·DELETE). D1 무료 쓰기 한도(일 10만 행) 보호.
   'sync-write':        { perDay: 5000, siteDay: 50000 },

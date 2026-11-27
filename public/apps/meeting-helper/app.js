@@ -73,14 +73,130 @@
   }
   const kindOf = (cfg) => (cfg && cfg.kind) || 'schedule';
   const store = VUI.storage;
-  function mineList() { return store.get(LS_MINE, [], Array.isArray); }
-  function saveMine(item) {
-    const list = mineList().filter((x) => x && x.id !== item.id);
-    list.unshift(item);
-    store.set(LS_MINE, list.slice(0, 50));
+  // ── 내가 만든 협의(mine)·참여한 협의(joined) + VIVES 동기화 (docs/meet-date-plan.md §13) ──
+  // 항목: mine {id,key,title,kind,at(만든 때),t(바뀐 때),removed} / joined {id,title,kind,at,t,removed}
+  // 응답키·서명키는 협의별 키(vives-meet:r:CODE / s:CODE)에 그대로 두고, 동기화 문서에만 함께 싣는다.
+  // 기기끼리는 협의 id 기준으로 t가 큰 쪽을 남긴다. 목록에서 뺀 것은 removed로 남겨 다른 기기에도 빠지게.
+  const LS_JOINED = 'vives-meet:joined';
+  const SYNC_API = '/api/meeting-helper-sync';
+  const okItem = (x) => x && typeof x === 'object' && ID_RE.test(x.id || '');
+  const rawMine = () => store.get(LS_MINE, [], Array.isArray).filter((x) => okItem(x) && KEY_RE.test(x.key || ''));
+  const rawJoined = () => store.get(LS_JOINED, [], Array.isArray).filter(okItem);
+  const byT = (a, b) => (b.t || b.at || 0) - (a.t || a.at || 0);
+  function mineList() { return rawMine().filter((x) => !x.removed).sort((a, b) => (b.at || 0) - (a.at || 0)); }
+  function joinedList() { return rawJoined().filter((x) => !x.removed).sort(byT); }
+  function upsert(lsKey, raw, item) {
+    const list = raw();
+    const i = list.findIndex((x) => x.id === item.id);
+    const prev = i >= 0 ? list[i] : null;
+    const next = { ...(prev || {}), ...item, removed: false };
+    const same = prev && !prev.removed && ['key', 'title', 'kind'].every((k) => prev[k] === next[k]);
+    if (same) return false;
+    next.t = Date.now();
+    if (i >= 0) list[i] = next; else list.unshift(next);
+    store.set(lsKey, list.slice(0, 200));
+    queueSync();
+    return true;
   }
-  function mineKey(id) { const m = mineList().find((x) => x && x.id === id); return m && KEY_RE.test(m.key || '') ? m.key : null; }
-  function mineAt(id) { return (mineList().find((x) => x && x.id === id) || {}).at || Date.now(); }
+  function saveMine(item) { return upsert(LS_MINE, rawMine, { id: item.id, key: item.key, title: item.title || '', kind: item.kind || '', at: item.at || Date.now() }); }
+  function removeFrom(lsKey, raw, id) {
+    const list = raw();
+    const it = list.find((x) => x.id === id);
+    if (!it) return;
+    it.removed = true; it.t = Date.now();
+    store.set(lsKey, list);
+    queueSync();
+  }
+  const removeMine = (id) => removeFrom(LS_MINE, rawMine, id);
+  function noteJoined(ev) { return upsert(LS_JOINED, rawJoined, { id: ev.id, title: ev.config.title, kind: kindOf(ev.config), at: (rawJoined().find((x) => x.id === ev.id) || {}).at || Date.now() }); }
+  function leaveJoined(id) {
+    if (store.get(lsResp(id), null) || store.get(lsSign(id), null)) return; // 응답이나 서명이 하나라도 남아 있으면 그대로
+    removeFrom(LS_JOINED, rawJoined, id);
+  }
+  function mineKey(id) { const m = rawMine().find((x) => x.id === id); return m ? m.key : null; }
+  function mineAt(id) { return (rawMine().find((x) => x.id === id) || {}).at || Date.now(); }
+
+  // 예전에 응답·서명만 해 두고 참여 목록이 없던 협의를 목록에 올린다(제목은 처음 화면에서 불러와 채움).
+  function adoptOldKeys() {
+    const have = new Set(rawJoined().map((x) => x.id));
+    const add = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const m = /^vives-meet:[rs]:([A-Z0-9]{6})$/.exec(localStorage.key(i) || '');
+        if (m && ID_RE.test(m[1]) && !have.has(m[1])) { have.add(m[1]); add.push({ id: m[1], title: '', kind: '', at: 0, t: 0 }); }
+      }
+    } catch {}
+    if (add.length) store.set(LS_JOINED, rawJoined().concat(add));
+  }
+
+  const syncCode = () => (window.VivesSync ? VivesSync.getCode() : null);
+  const RESP_KEY_RE = /^[a-z0-9]{6,16}$/;
+  function buildDoc() {
+    const keysOf = (id) => {
+      const r = store.get(lsResp(id), null), s = store.get(lsSign(id), null), o = {};
+      if (r && r.rid && r.rkey) { o.rid = r.rid; o.rkey = r.rkey; }
+      if (s && s.sid && s.skey) { o.sid = s.sid; o.skey = s.skey; }
+      return o;
+    };
+    return {
+      v: 1,
+      mine: rawMine().map((x) => ({ id: x.id, key: x.key, title: x.title || '', kind: x.kind || '', at: x.at || 0, t: x.t || 0, removed: !!x.removed })),
+      joined: rawJoined().map((x) => ({ id: x.id, title: x.title || '', kind: x.kind || '', at: x.at || 0, t: x.t || 0, removed: !!x.removed, ...(x.removed ? {} : keysOf(x.id)) })),
+    };
+  }
+  // 받은 문서를 이 기기 목록에 합친다. 바뀐 게 있으면 true.
+  function mergeIn(doc) {
+    if (!doc || typeof doc !== 'object') return false;
+    let changed = false;
+    const mergeList = (lsKey, raw, incoming, valid) => {
+      if (!Array.isArray(incoming)) return;
+      const list = raw();
+      const at = new Map(list.map((x, i) => [x.id, i]));
+      for (const x of incoming.slice(0, 200)) {
+        if (!okItem(x) || !valid(x)) continue;
+        const item = { id: x.id, title: String(x.title || '').slice(0, 100), kind: String(x.kind || '').slice(0, 10), at: +x.at || 0, t: +x.t || 0, removed: !!x.removed };
+        if (x.key) item.key = x.key;
+        const i = at.get(x.id);
+        if (i == null) { list.push(item); at.set(x.id, list.length - 1); changed = true; }
+        else if ((item.t || 0) > (list[i].t || 0)) { list[i] = { ...list[i], ...item }; changed = true; }
+      }
+      store.set(lsKey, list);
+    };
+    mergeList(LS_MINE, rawMine, doc.mine, (x) => KEY_RE.test(x.key || ''));
+    mergeList(LS_JOINED, rawJoined, doc.joined, () => true);
+    // 다른 기기에서 한 응답·서명 열쇠를 이 기기에도 둔다(이미 있으면 그대로)
+    if (Array.isArray(doc.joined)) {
+      for (const x of doc.joined) {
+        if (!okItem(x) || x.removed) continue;
+        if (RESP_KEY_RE.test(x.rid || '') && KEY_RE.test(x.rkey || '') && !store.get(lsResp(x.id), null)) { store.set(lsResp(x.id), { rid: x.rid, rkey: x.rkey }); changed = true; }
+        if (/^s[a-z0-9]{6,16}$/.test(x.sid || '') && KEY_RE.test(x.skey || '') && !store.get(lsSign(x.id), null)) { store.set(lsSign(x.id), { sid: x.sid, skey: x.skey }); changed = true; }
+      }
+    }
+    return changed;
+  }
+  let syncTimer = 0, syncing = null;
+  // 받아 와서 합치고, 합친 결과가 서버와 다르면 올린다. 오류는 조용히 넘긴다(앱은 이 기기 목록으로 계속 동작).
+  function syncNow() {
+    const code = syncCode();
+    if (!code) return Promise.resolve(false);
+    if (syncing) return syncing;
+    syncing = (async () => {
+      try {
+        const g = await fetch(SYNC_API + '?code=' + code, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null));
+        if (!g) return false;
+        const changed = mergeIn(g.data);
+        const doc = buildDoc();
+        if (JSON.stringify(g.data) !== JSON.stringify(doc)) {
+          await fetch(SYNC_API, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, data: doc, updatedAt: new Date().toISOString() }) });
+        }
+        return changed;
+      } catch { return false; } finally { syncing = null; }
+    })();
+    return syncing;
+  }
+  // 받아 온 목록이 바뀌었으면 지금 화면(처음 화면 목록·사이드바)을 다시 그린다
+  function afterSync(changed) { if (!changed) return; if (CUR === 'home') renderHome(); else if (SIDE_VIEWS.has(CUR)) renderSide(); }
+  function queueSync() { clearTimeout(syncTimer); syncTimer = setTimeout(() => syncNow().then(afterSync), 600); }
 
   async function api(method, opts) {
     const o = opts || {};
@@ -106,12 +222,12 @@
   // ── 담당자 사이드바(만들기·관리 화면, docs/meet-date-plan.md §12) ──
   // 받은 사람 화면(응답·서명)은 사이드바 없이 가운데 한 줄 + '처음 화면' 버튼.
   let CUR = '';
-  const SIDE_VIEWS = new Set(['new', 'manage']);
+  const SIDE_VIEWS = new Set(['home', 'new', 'manage']);
   const wideMQ = window.matchMedia('(min-width: 900px)');
   function sideSteps() {
     if (CUR === 'new') {
       const kind = $('form-new').dataset.kind || 'schedule';
-      return [['f-card-kind', '종류'], ['f-card-content', '내용'], ['f-card-time', '날짜와 시간'], ['f-card-fields', '받을 정보'],
+      return [['f-card-code', '동기화 코드'], ['f-card-kind', '종류'], ['f-card-content', '내용'], ['f-card-time', '날짜와 시간'], ['f-card-fields', '받을 정보'],
         ['f-card-form', kind === 'activity' ? '확인서 양식' : '등록부 양식'], ['f-card-close', '마감']].map(([id, label]) => ({ id, label }));
     }
     if (CUR !== 'manage' || !M.data) return [];
@@ -137,7 +253,7 @@
     if (!on) return;
     const editing = CUR === 'new' && B.editing;
     const kind = $('form-new').dataset.kind;
-    document.querySelectorAll('.md-side-link').forEach((a) => a.classList.toggle('is-on', CUR === 'new' && !editing && a.dataset.nav === 'new-' + kind));
+    document.querySelectorAll('.md-side-link').forEach((a) => a.classList.toggle('is-on', (CUR === 'home' && a.dataset.nav === 'home') || (CUR === 'new' && !editing && a.dataset.nav === 'new-' + kind)));
     const steps = sideSteps().filter((s) => { const el = $(s.id); return el && !el.hidden && !el.closest('[hidden]'); });
     $('md-side-steps').hidden = !steps.length;
     $('md-side-steps-h').textContent = CUR === 'new' ? (editing ? '설정 고치기' : '만들기 단계') : '이 협의 단계';
@@ -153,6 +269,14 @@
       ul.append(h('li', {}, h('a', { class: 'md-side-item' + (m.id === cur ? ' is-on' : ''), href: '#manage=' + m.id, 'aria-current': m.id === cur ? 'page' : null, text: m.title || m.id })));
     }
     $('md-side-mine').hidden = !mine.length;
+    const joined = joinedList().slice(0, 30);
+    const jl = $('md-side-joined-list'); jl.textContent = '';
+    for (const j of joined) jl.append(h('li', {}, h('a', { class: 'md-side-item', href: evLink(j), text: j.title || j.id })));
+    $('md-side-joined').hidden = !joined.length;
+    const code = syncCode();
+    const sy = $('md-side-sync'); sy.textContent = '';
+    sy.append(h('button', { type: 'button', class: 'md-side-sync-btn', onclick: openCodePanel }, ic('refresh-cw'),
+      code ? '동기화 코드 ' + maskCode(code) + ' 연결됨' : '동기화 코드 없음 - 이 기기에서만 보여요'));
     spyStep();
   }
   function goStep(id) {
@@ -254,7 +378,7 @@
         const id = p.get('m'), key = p.get('k');
         if (!ID_RE.test(id) || !KEY_RE.test(key)) return showError('관리 링크가 올바르지 않아요.');
         const data = await loadOwner(id, key);
-        saveMine({ id, key, title: data.event.config.title, at: mineAt(id) });
+        saveMine({ id, key, title: data.event.config.title, kind: kindOf(data.event.config), at: mineAt(id) });
         history.replaceState(null, '', APP_PATH + '#manage=' + id); // 화면 공유 때 키가 보이지 않게
         return openManage(data);
       }
@@ -287,25 +411,135 @@
 
   // ── 시작 ───────────────────────────────────────────
   function openHome() {
-    const list = mineList();
-    const ul = $('mine-list'); ul.textContent = '';
-    for (const m of list) {
-      if (!m || !ID_RE.test(m.id || '')) continue;
-      ul.append(h('li', {},
-        h('a', { class: 'md-item', href: '#manage=' + m.id },
-          h('span', { class: 'md-item-title', text: m.title || m.id }),
-          h('span', { class: 'md-item-sub', text: m.at ? fmtD(localDate(new Date(m.at))) + ' 만듦' : '' })),
+    adoptOldKeys();
+    renderHome();
+    show('home');
+    syncNow().then(afterSync);
+  }
+  const evLink = (x) => (x.kind === 'live' ? '#s=' : '#m=') + x.id;
+  const maskCode = (c) => String(c || '').slice(0, 2) + '••••';
+  const HOME_FETCH = 12; // 처음 화면에서 상태를 불러오는 최대 개수(목록마다)
+  let sideTimer = 0;
+  function sideSoon() { clearTimeout(sideTimer); sideTimer = setTimeout(() => { if (SIDE_VIEWS.has(CUR)) renderSide(); }, 250); }
+  let homeSeq = 0;
+  function renderHome() {
+    const seq = ++homeSeq;
+    const code = syncCode();
+    $('home-sync-note').textContent = code
+      ? '동기화 코드 ' + maskCode(code) + '가 연결돼 있어요. 이 코드를 넣은 다른 기기에서도 내가 만든 협의와 참여한 협의가 보여요.'
+      : '동기화 코드를 넣으면 다른 기기에서도 내가 만든 협의와 참여한 협의가 보여요. 협의를 만들 때는 코드가 꼭 필요해요.';
+    $('btn-home-code').querySelector('span').textContent = code ? '코드 보기·바꾸기' : '코드 넣기·만들기';
+    const joined = joinedList(), mine = mineList();
+    $('home-joined').hidden = !joined.length; $('home-joined-n').textContent = joined.length + '개';
+    $('home-mine').hidden = !mine.length; $('home-mine-n').textContent = mine.length + '개';
+    fillEvList($('joined-list'), joined, 'joined', seq);
+    fillEvList($('mine-list'), mine, 'mine', seq);
+    if (CUR === 'home') renderSide();
+  }
+  function fillEvList(ul, items, type, seq) {
+    ul.textContent = '';
+    items.forEach((x, i) => {
+      const name = h('b', { class: 'md-ev-name', text: x.title || '불러오는 중…' });
+      const pill = h('span', { class: 'md-pill md-pill-sm', text: KIND_LABEL[x.kind] || '협의' });
+      const sub = h('span', { class: 'md-ev-sub', text: i < HOME_FETCH ? '' : '눌러서 열어 보세요' });
+      const li = h('li', { class: 'md-ev' },
+        h('a', { class: 'md-ev-main', href: type === 'mine' ? '#manage=' + x.id : evLink(x) }, h('span', { class: 'md-ev-top' }, pill, name), sub),
         h('button', {
           class: 'hero-btn hero-btn-ghost hero-btn-icon hero-btn-sm', type: 'button', 'aria-label': '목록에서 빼기', title: '목록에서 빼기',
           onclick: async () => {
-            if (!(await VUI.confirm('이 브라우저 목록에서 뺄까요? 받은 내용은 지워지지 않아요. 관리 링크가 없으면 다시 열 수 없어요.', { ok: '빼기' }))) return;
-            store.set(LS_MINE, mineList().filter((x) => x.id !== m.id)); openHome();
+            const msg = type === 'mine'
+              ? '목록에서 뺄까요? 협의와 받은 내용은 지워지지 않아요. 동기화 코드가 같은 다른 기기 목록에서도 빠지고, 다시 열려면 관리 링크가 필요해요.'
+              : '참여 목록에서 뺄까요? 낸 응답과 서명은 그대로 남아요.';
+            if (!(await VUI.confirm(msg, { ok: '빼기' }))) return;
+            if (type === 'mine') removeMine(x.id); else removeFrom(LS_JOINED, rawJoined, x.id);
+            renderHome();
           },
-        }, ic('x'))));
-    }
-    $('home-mine').hidden = !ul.children.length;
-    show('home');
+        }, ic('x')));
+      ul.append(li);
+      if (i < HOME_FETCH) loadEvStatus(x, type, { li, name, pill, sub }, seq);
+    });
   }
+  async function loadEvStatus(x, type, el, seq) {
+    try {
+      const data = type === 'mine'
+        ? await api('GET', { id: x.id, key: x.key })
+        : await api('GET', { id: x.id, resp: store.get(lsResp(x.id), null, (v) => v && v.rid), sign: store.get(lsSign(x.id), null, (v) => v && v.sid) });
+      if (seq !== homeSeq) return;
+      const ev = data.event, cfg = ev.config, kind = kindOf(cfg);
+      el.name.textContent = cfg.title; el.pill.textContent = KIND_LABEL[kind];
+      const renamed = type === 'mine' ? saveMine({ id: x.id, key: x.key, title: cfg.title, kind, at: x.at }) : noteJoined(ev);
+      if (renamed) sideSoon(); // 제목을 새로 알게 되면 사이드바 목록도 고친다
+      const conf = confirmedSlots(ev);
+      const parts = [];
+      if (type === 'mine') {
+        if (kind === 'live') parts.push((ev.liveOpen ? '출석 받는 중' : '출석 멈춤') + ' · 서명 ' + (data.signs || []).filter((s) => s.kind === 'live').length + '명');
+        else {
+          const rs = data.responses || [];
+          parts.push('응답 ' + rs.length + '명');
+          if (kind === 'activity') parts.push('확인서 ' + rs.filter((r) => r.status).length + '/' + rs.length);
+        }
+      } else if (kind === 'live') {
+        parts.push(data.mySign ? '서명함 ' + fmtHM(data.mySign.at) : '아직 서명 안 함');
+      } else {
+        parts.push(data.mine ? '제출함 · ' + data.mine.picks.length + '개 골랐어요' : '아직 안 냄');
+        if (kind === 'activity' && data.mine) parts.push(data.mine.status ? '확인서 냄' : '확인서 아직');
+      }
+      if (kind === 'live') { if (cfg.session) parts.push(fmtSlot(cfg.session, true)); }
+      else if (conf.length) parts.push('확정 ' + fmtSlot(conf[0], true) + (conf.length > 1 ? ' 외 ' + (conf.length - 1) + '개' : ''));
+      else parts.push(ev.closed ? '마감됨' : '마감 ' + fmtDT(ev.closesAt));
+      el.sub.textContent = parts.join(' · ');
+      el.li.classList.toggle('is-done', !!(conf.length || (type === 'joined' && (data.mine || data.mySign))));
+    } catch (err) {
+      if (seq !== homeSeq) return;
+      if (err && err.status === 404) {
+        el.sub.textContent = '지워졌거나 보관 기간이 지난 협의예요. 목록에서 빼 주세요.';
+        el.li.classList.add('is-gone');
+        if (!x.title) el.name.textContent = x.id;
+      } else el.sub.textContent = '상태를 불러오지 못했어요.';
+    }
+  }
+
+  // ── 동기화 코드: 오른쪽 위 공용 버튼(VivesSync) + 만들기 화면 카드 ──
+  const codeBtn = window.VivesSync ? VivesSync.mountCodeButton({ appName: '협의 도우미', onChange: onCodeChange }) : null;
+  function openCodePanel(e) {
+    if (e) e.stopPropagation(); // 패널 바깥 클릭으로 바로 닫히지 않게
+    if (codeBtn) codeBtn.open(); else VUI.toast('동기화 기능을 불러오지 못했어요. 새로 고침 해 주세요.', 'error');
+  }
+  $('btn-home-code').addEventListener('click', openCodePanel);
+  let codeShown = false;
+  function renderCodeCard() {
+    const code = syncCode();
+    $('f-card-code').hidden = !!B.editing;
+    $('code-on').hidden = !code; $('code-off').hidden = !!code;
+    $('code-mask').textContent = code ? (codeShown ? code : maskCode(code)) : '';
+    $('btn-code-reveal').textContent = codeShown ? '가리기' : '코드 보기';
+  }
+  let appReady = false; // 공용 동기화 버튼이 스크립트가 다 돌기 전에 알릴 수 있어서
+  function onCodeChange() {
+    if (!appReady) return;
+    renderCodeCard();
+    if (CUR === 'home') renderHome(); else if (SIDE_VIEWS.has(CUR)) renderSide();
+    syncNow().then(afterSync);
+  }
+  $('btn-code-reveal').addEventListener('click', () => { codeShown = !codeShown; renderCodeCard(); });
+  $('btn-code-new').addEventListener('click', () => {
+    if (!window.VivesSync) return openCodePanel();
+    VivesSync.ensureCode();
+    codeShown = true; // 새로 만든 코드는 바로 보여 준다(다른 기기에 넣을 수 있게)
+    if (codeBtn) codeBtn.refresh();
+    onCodeChange();
+    VUI.toast('새 코드를 만들었어요. 다른 기기에서는 오른쪽 위 동기화 버튼에 이 코드를 넣어 주세요.');
+  });
+  $('btn-code-connect').addEventListener('click', () => {
+    const v = $('code-in').value.trim().toUpperCase();
+    if (!window.VivesSync || !VivesSync.setCode(v)) { VUI.toast('코드 6자리를 확인해 주세요.', 'error'); $('code-in').focus(); return; }
+    $('code-in').value = '';
+    codeShown = false;
+    if (codeBtn) codeBtn.refresh();
+    onCodeChange();
+    VUI.toast('코드를 연결했어요 ✓');
+  });
+  $('code-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('btn-code-connect').click(); } });
   $('form-open').addEventListener('submit', (e) => {
     e.preventDefault();
     const v = $('in-open').value.trim();
@@ -423,6 +657,7 @@
       $('btn-save-new').querySelector('span').textContent = '만들고 링크 받기';
     }
     renderDows(); renderTimes(); syncMode(); syncRule(); renderSlotGrid();
+    renderCodeCard();
     show('new');
   }
 
@@ -545,6 +780,7 @@
     if (!closeV) return fail('마감 일시를 정해 주세요.', 'f-close');
     const closesAt = new Date(closeV).toISOString();
 
+    if (!B.editing && !syncCode()) { $('f-card-code').scrollIntoView({ behavior: 'smooth', block: 'start' }); return fail('먼저 동기화 코드를 만들거나 가진 코드를 넣어 주세요. 이 코드로 내가 만든 협의를 다시 열어요.'); }
     const btn = $('btn-save-new'); btn.disabled = true;
     try {
       if (B.editing) {
@@ -552,12 +788,12 @@
         const body = { action: 'update', id: ev.id, key: B.editing.key, config };
         if (closesAt !== ev.closesAt) body.closesAt = closesAt;
         await api('POST', { body });
-        saveMine({ id: ev.id, key: B.editing.key, title: config.title, at: mineAt(ev.id) });
+        saveMine({ id: ev.id, key: B.editing.key, title: config.title, kind, at: mineAt(ev.id) });
         VUI.toast('고친 내용을 저장했어요 ✓');
         location.hash = 'manage=' + ev.id;
       } else {
         const r = await api('POST', { body: { action: 'create', config, closesAt, liveOpen: $('f-live-open').checked } });
-        saveMine({ id: r.id, key: r.key, title: config.title, at: Date.now() });
+        saveMine({ id: r.id, key: r.key, title: config.title, kind, at: Date.now() }); syncNow();
         VUI.toast(live ? '만들었어요. 협의 시간에 QR을 띄워 주세요.' : '만들었어요. 응답 링크를 보내 주세요.');
         location.hash = 'manage=' + r.id;
       }
@@ -635,7 +871,8 @@
     const resp = store.get(lsResp(id), null, (v) => v && typeof v.rid === 'string' && typeof v.rkey === 'string');
     const data = await api('GET', { id, resp });
     if (kindOf(data.event.config) === 'live') { history.replaceState(null, '', APP_PATH + '#s=' + id); return openSign(id); }
-    if (resp && !data.mine) store.remove(lsResp(id)); // 담당자가 지운 응답
+    if (resp && !data.mine) { store.remove(lsResp(id)); leaveJoined(id); } // 담당자가 지운 응답
+    else if (data.mine) noteJoined(data.event);
     R.data = data; R.editing = false;
     renderRespond();
     show('respond');
@@ -836,7 +1073,7 @@
     const btn = $('btn-resp'); btn.disabled = true;
     try {
       const r = await api('POST', { body });
-      store.set(lsResp(ev.id), { rid: r.rid, rkey: r.rkey });
+      store.set(lsResp(ev.id), { rid: r.rid, rkey: r.rkey }); noteJoined(ev); queueSync();
       store.set(LS_ME, { name, fields });
       VUI.toast(r.certReset ? '고쳤어요. 날짜가 바뀌어 확인서를 다시 내 주세요.' : r.updated ? '고친 내용을 제출했어요 ✓' : '제출했어요 ✓');
       await openRespond(ev.id);
@@ -851,7 +1088,7 @@
     if (!(await VUI.confirm('내 응답을 지울까요? 되돌릴 수 없어요.', { ok: '지우기', danger: true }))) return;
     try {
       await api('POST', { body: { action: 'unrespond', id: ev.id, rid: saved.rid, rkey: saved.rkey } });
-      store.remove(lsResp(ev.id));
+      store.remove(lsResp(ev.id)); leaveJoined(ev.id); queueSync();
       VUI.toast('내 응답을 지웠어요');
       await openRespond(ev.id);
     } catch (err) { VUI.toast(err.message, 'error'); }
@@ -918,7 +1155,8 @@
   async function openSign(id) {
     const sign = store.get(lsSign(id), null, (v) => v && typeof v.sid === 'string' && typeof v.skey === 'string');
     const data = await api('GET', { id, sign });
-    if (sign && !data.mySign) store.remove(lsSign(id));
+    if (sign && !data.mySign) { store.remove(lsSign(id)); leaveJoined(id); }
+    else if (data.mySign && !S.shared) noteJoined(data.event);
     S.data = data; S.editing = false;
     renderSign();
     show('sign');
@@ -986,6 +1224,7 @@
     try {
       const r = await api('POST', { body });
       store.set(lsSign(ev.id), { sid: r.sid, skey: r.skey });
+      if (!S.shared) { noteJoined(ev); queueSync(); }
       if (!S.shared) store.set(LS_ME, { name, fields });
       VUI.toast('출석했어요 ✓');
       await openSign(ev.id);
@@ -1001,7 +1240,7 @@
     const ev = data.event, cfg = ev.config;
     M.confirm = new Set(cfg.mode === 'pick' ? ev.confirmed || [] : []);
     M.freeConfirm = cfg.mode === 'free' && kindOf(cfg) !== 'live' ? (ev.confirmed || []).map((x) => ({ ...x })) : [];
-    saveMine({ id: ev.id, key: data.key, title: cfg.title, at: mineAt(ev.id) });
+    saveMine({ id: ev.id, key: data.key, title: cfg.title, kind: kindOf(cfg), at: mineAt(ev.id) });
     renderManage();
     show('manage');
     if (liveVisible()) { M.signs = new Map(); M.lastAt = ''; pollSigns(true); }
@@ -1032,6 +1271,11 @@
     $('m-resp-link').value = shareLinkOf(cfg, ev.id);
     $('m-resp-label').textContent = kind === 'live' ? '출석 링크 - QR로 띄우거나 보내요' : '응답 링크 - 받을 사람에게 보내요';
     $('m-admin-link').value = adminLink(ev.id, data.key);
+    const hasCode = !!syncCode();
+    $('m-admin-note').textContent = hasCode
+      ? "동기화 코드가 있는 기기에서는 처음 화면 '내가 만든 협의'에서 바로 열려요. 코드를 잃었을 때를 대비해 관리 링크를 따로 적어 두어도 돼요."
+      : '이 기기에는 동기화 코드가 없어요. 다른 기기에서 열려면 이 관리 링크를 따로 보관해 주세요.';
+    if (!hasCode) $('m-admin-more').open = true;
 
     const isLive = kind === 'live';
     $('m-tally-card').hidden = isLive;
@@ -1562,7 +1806,7 @@
     if (!(await VUI.confirm('받은 응답과 서명을 모두 지울까요? 되돌릴 수 없고, 링크도 열리지 않아요.', { title: '지우기', ok: '모두 지우기', danger: true }))) return;
     try {
       await api('POST', { body: { action: 'delete', id: M.data.event.id, key: M.data.key } });
-      store.set(LS_MINE, mineList().filter((x) => x.id !== M.data.event.id));
+      removeMine(M.data.event.id);
       VUI.toast('지웠어요');
       location.hash = '';
     } catch (e) { VUI.toast(e.message, 'error'); }
@@ -1574,5 +1818,7 @@
     autoReloadManage();
   });
   window.addEventListener('hashchange', route);
+  appReady = true;
+  adoptOldKeys();
   route();
 })();

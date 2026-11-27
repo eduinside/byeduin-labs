@@ -24,6 +24,7 @@ read-tree(`/api/readtree`)에서 검증된 **"로그인 없는 코드 기반 + �
 | signage-maker | `mountDocSync` | `/api/signage` | `signage_docs` | 갤러리 **메타데이터만**(이미지 제외) |
 | math-sheet | `docStore` + `mountCodeButton` | `/api/math-sheet` | `math_sheet_sets` | 학습지 세트(다중) |
 | md-editor | `docStore` + `mountCodeButton` | `/api/md-editor` | `md_editor_docs` | 문서(다중) |
+| meeting-helper | 자체 머지(`mountCodeButton` + 직접 GET·PUT) | `/api/meeting-helper-sync` | `meet_sync_docs` | 내가 만든 협의(관리키)·참여한 협의(응답·서명키) — 협의 id별 최근 것 우선 머지, 뺀 것은 `removed` 표시. 읽기 한도 있음 |
 
 - **createSet**: 항목별 동기화(읽음 토글 등). **mountDocSync**: 현재 상태 통째 + 헤더 '동기화' 버튼(자동 push/pull). **docStore**: 코드별 다중 문서 저장/열기. **mountCodeButton**: 우상단 코드 버튼만(상태 자동동기화 없이 코드 연결/발급/해제 → `onChange`로 앱이 갱신).
 - 모두 우상단 통합 **🔄 동기화 버튼**으로 코드를 관리하고, 통합 익명 코드 `vives:code`를 공유(로그인·개인정보 0).
