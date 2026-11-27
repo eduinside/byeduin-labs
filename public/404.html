@@ -6,7 +6,7 @@
   <title>페이지를 찾을 수 없습니다 — eduin VIVES</title>
   <meta name="robots" content="noindex">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/common/hero-theme.css">
+  <link rel="stylesheet" href="/common/hero-theme.css?v=20261127">
   <link rel="stylesheet" href="/common/app-shell.css">
   <script src="/common/theme.js"></script>
   <script src="/common/init.js"></script>
@@ -14,7 +14,7 @@
   <style>
     #nf { visibility: hidden; text-align: center; }
     #nf .nf-emoji { font-size: 56px; margin-bottom: 12px; line-height: 1; }
-    #nf-suggest { margin-top: 1.25rem; display: none; }
+    #nf-suggest { margin-top: 1.25rem; display: none; flex-direction: column; gap: .5rem; }
     .nf-suggest-card {
       display: flex; align-items: center; gap: 12px; text-decoration: none;
       padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px;
@@ -30,8 +30,10 @@
   <script>
     /* 옛 경로 → 새 경로 자동 전환 + 유사 앱 추천 (apps.json 기반, 정적 리다이렉트 목록 없음) */
     (function () {
+      // 무슨 일이 있어도 안내 상자는 보이게(예전에는 /apps/ 주소에서 아래 return 때문에 끝까지 숨어 있었다)
+      setTimeout(reveal, 3000);
       var path = location.pathname;
-      if (path.indexOf('/apps/') === 0 || path === '/' || path === '') return;
+      if (path === '/' || path === '') { reveal(); return; }
 
       // 다운로드 자산 경로
       if (path.indexOf('/chrome-extentions/') === 0) {
@@ -39,16 +41,22 @@
         return;
       }
 
-      var slug = path.replace(/^\/+/, '').split('/')[0];
+      // /apps/<slug>/… 이면 <slug>, 아니면 첫 마디(/<slug> → /apps/<slug>/ 옛 주소)
+      var inApps = path.indexOf('/apps/') === 0;
+      var parts = path.replace(/^\/+/, '').split('/');
+      var slug = decodeURIComponent((inApps ? parts[1] : parts[0]) || '');
 
       fetch('/apps.json').then(function (r) { return r.json(); }).then(function (d) {
         var apps = d.apps || [];
         var pages = apps.filter(function (a) { return !a.hidden && a.href && a.href.indexOf('/apps/') === 0; }); // hidden = 비공개 앱(전환·추천 제외)
         var idOf = function (a) { var m = a.href.match(/^\/apps\/([^\/]+)\//); return m ? m[1] : a.id; };
 
-        // 1) 정확 매치 → 즉시 전환 (해시·쿼리 보존)
+        // 1) 정확 매치 → 즉시 전환 (해시·쿼리 보존). /apps/ 아래에서 앱은 있는데 하위 주소가 없으면 앱 첫 화면으로.
         for (var i = 0; i < pages.length; i++) {
-          if (idOf(pages[i]) === slug) { location.replace('/apps' + path + location.search + location.hash); return; }
+          if (idOf(pages[i]) !== slug) continue;
+          if (inApps && path === pages[i].href) break; // 앱 첫 화면 자체가 없음 → 되돌기 막기
+          location.replace((inApps ? pages[i].href : '/apps' + path) + location.search + location.hash);
+          return;
         }
 
         // 2) 경로 + 리퍼럴로 유사 앱 추천
@@ -85,18 +93,19 @@
           }
         } catch (e) { /* ignore */ }
 
-        // 시도한 경로 slug를 앱 id/title과 퍼지 매칭(주 신호)
-        var best = null, bestScore = 0;
+        // 시도한 경로 slug를 앱 id/title과 퍼지 매칭(주 신호) → 0.5 이상 중 점수 순 최대 3개
+        var scored = [];
         pages.forEach(function (a) {
           var id = idOf(a);
           if (id === fromId) return;
-          [id, (a.title || ''), (a.id || '')].forEach(function (c) {
-            var s = sim(slug, c);
-            if (s > bestScore) { bestScore = s; best = a; }
-          });
+          var s = 0;
+          [id, (a.title || ''), (a.id || '')].forEach(function (c) { s = Math.max(s, sim(slug, c)); });
+          if (s >= 0.5) scored.push({ a: a, s: s });
         });
-        return bestScore >= 0.5 ? best : null;
+        scored.sort(function (x, y) { return y.s - x.s; });
+        return scored.slice(0, 3).map(function (x) { return x.a; });
       }
+      function esc(s) { return String(s || '').replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
       var HEADINGS = [
         '길을 잃으셨나요? 🧭',
@@ -120,23 +129,24 @@
         var sub = document.getElementById('nf-sub');
         if (sub) sub.textContent = SUBMSGS[Math.floor(Math.random() * SUBMSGS.length)];
 
-        var match = idOf ? bestMatch(pages, slug, idOf) : null;
-        if (match) {
+        var list = idOf && slug ? bestMatch(pages, slug, idOf) : [];
+        if (list.length) {
           var box = document.getElementById('nf-suggest');
           box.innerHTML =
             '<div class="nf-suggest-label">혹시 이 앱을 찾으시려고 했나요?</div>' +
-            '<a class="nf-suggest-card" href="' + match.href + '">' +
-              '<span class="nf-suggest-emoji">' + (match.emoji || '📦') + '</span>' +
-              '<span><span class="nf-suggest-title">' + match.title + '</span>' +
-              '<span class="nf-suggest-desc">' + (match.desc || '') + '</span></span>' +
-            '</a>';
-          box.style.display = 'block';
+            list.map(function (m) {
+              return '<a class="nf-suggest-card" href="' + esc(m.href) + '">' +
+                '<span class="nf-suggest-emoji">' + esc(m.emoji || '📦') + '</span>' +
+                '<span><span class="nf-suggest-title">' + esc(m.title) + '</span>' +
+                '<span class="nf-suggest-desc">' + esc(m.desc) + '</span></span>' +
+              '</a>';
+            }).join('');
+          box.style.display = 'flex';
         }
         reveal();
       }
 
       function reveal() { var el = document.getElementById('nf'); if (el) el.style.visibility = 'visible'; }
-      setTimeout(reveal, 3000);
     })();
   </script>
 </head>
